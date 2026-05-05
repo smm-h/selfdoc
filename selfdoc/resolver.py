@@ -23,7 +23,14 @@ def make_resolver(config, base_dir="."):
             from .extractors.python import resolve_python
 
             return resolve_python(name, arg, body, source_paths, base_dir)
-        # Go and TS/JS extractors will be added later
+        if language == "go":
+            from .extractors.go import resolve_go
+
+            return resolve_go(name, arg, body, source_paths, base_dir)
+        if language in ("typescript", "javascript"):
+            from .extractors.typescript import resolve_typescript
+
+            return resolve_typescript(name, arg, body, source_paths, base_dir)
         return (
             f"> *[selfdoc: unsupported language '{language}' "
             f"for :::{name} {arg}]*"
