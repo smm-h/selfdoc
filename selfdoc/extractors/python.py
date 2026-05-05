@@ -1,0 +1,675 @@
+"""Python source extractor -- resolves directives by extracting from .py files.
+
+Uses stdlib ast for parsing, no external dependencies. Handles:
+- :::module  -- extract module docstrings, functions, classes
+- :::test    -- extract test source code
+- :::schema  -- extract dataclass fields or JSON schema
+- :::cli     -- extract CLI help/usage info
+- :::config  -- extract config file contents as tables
+"""
+
+import ast
+import json
+import os
+import textwrap
+
+
+def resolve_python(name, arg, body, source_paths, base_dir):
+    """Dispatch a directive to the appropriate Python extraction handler.
+
+    Args:
+        name: Directive name (module, test, schema, cli, config).
+        arg: Directive argument (path, module name, etc.).
+        body: Body lines of the directive block.
+        source_paths: List of source directories from selfdoc.json.
+        base_dir: Project root directory.
+
+    Returns:
+        Markdown string with the extracted content.
+    """
+    handlers = {
+        "module": _handle_module,
+        "test": _handle_test,
+        "schema": _handle_schema,
+        "cli": _handle_cli,
+        "config": _handle_config,
+    }
+    handler = handlers.get(name)
+    if handler is None:
+        return f"> *[selfdoc: unknown directive '{name}' for Python extractor]*"
+    return handler(arg, body, source_paths, base_dir)
+
+
+# ---------------------------------------------------------------------------
+# :::module
+# ---------------------------------------------------------------------------
+
+
+def _handle_module(arg, body, source_paths, base_dir):
+    """Extract module docstring, functions, and classes.
+
+    Resolves dotted.path or file path to a .py file, parses with ast,
+    and formats the result as markdown.
+    """
+    if not arg:
+        return "> *[selfdoc: :::module requires a module path argument]*"
+
+    filepath = _resolve_module_path(arg, source_paths, base_dir)
+    if filepath is None:
+        return f"> *[selfdoc: module '{arg}' not found]*"
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            source = f.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return f"> *[selfdoc: syntax error in '{arg}': {exc}]*"
+
+    # Determine display name from the dotted path
+    module_name = arg.replace("/", ".").replace(".py", "")
+    if module_name.endswith(".__init__"):
+        module_name = module_name[: -len(".__init__")]
+
+    parts = []
+    parts.append(f"# {module_name}")
+
+    module_doc = ast.get_docstring(tree)
+    if module_doc:
+        parts.append("")
+        parts.append(module_doc)
+
+    # Extract top-level functions and classes
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.ClassDef):
+            cls_md = _format_class(node)
+            if cls_md:
+                parts.append("")
+                parts.append(cls_md)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            func_md = _format_function(node, heading_level=2)
+            if func_md:
+                parts.append("")
+                parts.append(func_md)
+
+    return "\n".join(parts)
+
+
+def _resolve_module_path(arg, source_paths, base_dir):
+    """Try to resolve a module argument to an actual .py file path.
+
+    Tries: dotted-to-path conversion within each source path, then direct path.
+    """
+    # Try as dotted path: selfdoc.config -> selfdoc/config.py
+    dotted_as_path = arg.replace(".", "/") + ".py"
+    # Also try as package: selfdoc.config -> selfdoc/config/__init__.py
+    dotted_as_pkg = arg.replace(".", "/") + "/__init__.py"
+
+    candidates = []
+    for sp in source_paths:
+        candidates.append(os.path.join(base_dir, sp, dotted_as_path))
+        candidates.append(os.path.join(base_dir, sp, dotted_as_pkg))
+    # Try relative to base_dir directly
+    candidates.append(os.path.join(base_dir, dotted_as_path))
+    candidates.append(os.path.join(base_dir, dotted_as_pkg))
+
+    # Try as a direct file path
+    if arg.endswith(".py"):
+        candidates.append(os.path.join(base_dir, arg))
+        for sp in source_paths:
+            candidates.append(os.path.join(base_dir, sp, arg))
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+
+    return None
+
+
+def _format_function(node, heading_level=2):
+    """Format a function/method node as markdown.
+
+    Skips private items (leading _) unless they have a docstring.
+    """
+    docstring = ast.get_docstring(node)
+
+    # Skip private without docstrings
+    if node.name.startswith("_") and not docstring:
+        return None
+
+    # Skip undocumented public items
+    if not docstring and not node.name.startswith("_"):
+        # Still show the signature for public items without docstrings
+        pass
+
+    sig = _build_signature(node)
+    prefix = "#" * heading_level
+
+    parts = []
+    parts.append(f"{prefix} {node.name}")
+    parts.append("")
+    keyword = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+    parts.append(f"```python\n{keyword} {node.name}{sig}\n```")
+
+    if docstring:
+        parts.append("")
+        parts.append(docstring)
+
+    return "\n".join(parts)
+
+
+def _format_class(node):
+    """Format a class node as markdown, including its public methods."""
+    docstring = ast.get_docstring(node)
+
+    # Skip private classes without docstrings
+    if node.name.startswith("_") and not docstring:
+        return None
+
+    methods = []
+    for item in ast.iter_child_nodes(node):
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            method_md = _format_function(item, heading_level=3)
+            if method_md:
+                methods.append(method_md)
+
+    # Skip undocumented classes with no documented methods
+    if not docstring and not methods:
+        return None
+
+    parts = []
+    parts.append(f"## {node.name}")
+
+    if docstring:
+        parts.append("")
+        parts.append(docstring)
+
+    for method_md in methods:
+        parts.append("")
+        parts.append(method_md)
+
+    return "\n".join(parts)
+
+
+def _build_signature(node):
+    """Build a human-readable function signature string from ast.arguments."""
+    args = node.args
+    parts = []
+
+    # Positional-only args
+    posonlyargs = getattr(args, "posonlyargs", [])
+    all_positional = posonlyargs + args.args
+
+    # Defaults are right-aligned
+    num_defaults = len(args.defaults)
+    num_positional = len(all_positional)
+
+    for i, arg in enumerate(all_positional):
+        name = arg.arg
+        annotation = _annotation_str(arg.annotation)
+        part = f"{name}: {annotation}" if annotation else name
+
+        default_idx = i - (num_positional - num_defaults)
+        if default_idx >= 0:
+            default = ast.unparse(args.defaults[default_idx])
+            part += f"={default}"
+
+        parts.append(part)
+
+    # Insert / for positional-only
+    if posonlyargs:
+        parts.insert(len(posonlyargs), "/")
+
+    # *args
+    if args.vararg:
+        annotation = _annotation_str(args.vararg.annotation)
+        if annotation:
+            parts.append(f"*{args.vararg.arg}: {annotation}")
+        else:
+            parts.append(f"*{args.vararg.arg}")
+    elif args.kwonlyargs:
+        parts.append("*")
+
+    # Keyword-only args
+    for i, arg in enumerate(args.kwonlyargs):
+        name = arg.arg
+        annotation = _annotation_str(arg.annotation)
+        part = f"{name}: {annotation}" if annotation else name
+
+        if i < len(args.kw_defaults) and args.kw_defaults[i] is not None:
+            default = ast.unparse(args.kw_defaults[i])
+            part += f"={default}"
+
+        parts.append(part)
+
+    # **kwargs
+    if args.kwarg:
+        annotation = _annotation_str(args.kwarg.annotation)
+        if annotation:
+            parts.append(f"**{args.kwarg.arg}: {annotation}")
+        else:
+            parts.append(f"**{args.kwarg.arg}")
+
+    # Return annotation
+    ret = _annotation_str(node.returns)
+    sig = f"({', '.join(parts)})"
+    if ret:
+        sig += f" -> {ret}"
+
+    return sig
+
+
+def _annotation_str(node):
+    """Convert an annotation AST node to a string, or empty string if None."""
+    if node is None:
+        return ""
+    return ast.unparse(node)
+
+
+# ---------------------------------------------------------------------------
+# :::test
+# ---------------------------------------------------------------------------
+
+
+def _handle_test(arg, body, source_paths, base_dir):
+    """Extract test source code from a test file.
+
+    arg format: <file_path> [TestClassName or test_function_name]
+    """
+    if not arg:
+        return "> *[selfdoc: :::test requires a file path argument]*"
+
+    parts = arg.split(None, 1)
+    file_path = parts[0]
+    target_name = parts[1] if len(parts) > 1 else None
+
+    full_path = os.path.join(base_dir, file_path)
+    if not os.path.isfile(full_path):
+        return f"> *[selfdoc: test file '{file_path}' not found]*"
+
+    try:
+        with open(full_path, "r", encoding="utf-8") as f:
+            source = f.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"> *[selfdoc: cannot read '{file_path}': {exc}]*"
+
+    if target_name is None:
+        # Show the whole file as a code block
+        return f"```python\n{source.rstrip()}\n```"
+
+    # Parse and find the target
+    try:
+        tree = ast.parse(source, filename=full_path)
+    except SyntaxError as exc:
+        return f"> *[selfdoc: syntax error in '{file_path}': {exc}]*"
+
+    source_lines = source.split("\n")
+
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name == target_name:
+                extracted = _extract_node_source(source_lines, node)
+                return f"```python\n{extracted}\n```"
+        elif isinstance(node, ast.ClassDef):
+            if node.name == target_name:
+                extracted = _extract_node_source(source_lines, node)
+                return f"```python\n{extracted}\n```"
+
+    return f"> *[selfdoc: '{target_name}' not found in '{file_path}']*"
+
+
+def _extract_node_source(source_lines, node):
+    """Extract source lines for an AST node, stripping common indent."""
+    # end_lineno is inclusive, 1-based
+    start = node.lineno - 1  # convert to 0-based
+    end = node.end_lineno  # already exclusive when used as slice end
+    lines = source_lines[start:end]
+    return textwrap.dedent("\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
+# :::schema
+# ---------------------------------------------------------------------------
+
+
+def _handle_schema(arg, body, source_paths, base_dir):
+    """Extract schema information from JSON or Python dataclass.
+
+    arg format:
+      - path/to/file.json  -> render JSON keys as table
+      - dotted.module ClassName -> extract dataclass fields
+    """
+    if not arg:
+        return "> *[selfdoc: :::schema requires an argument]*"
+
+    # Check if it's a JSON file
+    parts = arg.split(None, 1)
+    file_or_module = parts[0]
+
+    if file_or_module.endswith(".json"):
+        return _schema_from_json(file_or_module, base_dir)
+
+    # Otherwise, treat as Python module + class name
+    if len(parts) < 2:
+        return (
+            "> *[selfdoc: :::schema for Python requires "
+            "'module_path ClassName' format]*"
+        )
+
+    module_path = parts[0]
+    class_name = parts[1]
+    return _schema_from_dataclass(module_path, class_name, source_paths, base_dir)
+
+
+def _schema_from_json(file_path, base_dir):
+    """Render a JSON file as a documented table of keys, types, and values."""
+    full_path = os.path.join(base_dir, file_path)
+    if not os.path.isfile(full_path):
+        return f"> *[selfdoc: JSON file '{file_path}' not found]*"
+
+    try:
+        with open(full_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        return f"> *[selfdoc: cannot parse '{file_path}': {exc}]*"
+
+    if not isinstance(data, dict):
+        # Non-object JSON: just show as code block
+        return f"```json\n{json.dumps(data, indent=2)}\n```"
+
+    # Render as table
+    rows = []
+    rows.append("| Key | Type | Value |")
+    rows.append("| --- | --- | --- |")
+
+    for key, value in data.items():
+        type_name = _json_type_name(value)
+        value_repr = _json_value_repr(value)
+        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
+
+    return "\n".join(rows)
+
+
+def _json_type_name(value):
+    """Get a human-readable type name for a JSON value."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    return type(value).__name__
+
+
+def _json_value_repr(value):
+    """Get a compact representation of a JSON value for table display."""
+    if value is None:
+        return "`null`"
+    if isinstance(value, bool):
+        return f"`{str(value).lower()}`"
+    if isinstance(value, str):
+        # Truncate long strings
+        if len(value) > 40:
+            return f'`"{value[:37]}..."`'
+        return f'`"{value}"`'
+    if isinstance(value, (int, float)):
+        return f"`{value}`"
+    if isinstance(value, list):
+        if len(value) == 0:
+            return "`[]`"
+        return f"`[...] ({len(value)} items)`"
+    if isinstance(value, dict):
+        if len(value) == 0:
+            return "`{}`"
+        return f"`{{...}} ({len(value)} keys)`"
+    return f"`{value}`"
+
+
+def _schema_from_dataclass(module_path, class_name, source_paths, base_dir):
+    """Extract dataclass/class fields with types and defaults from source."""
+    filepath = _resolve_module_path(module_path, source_paths, base_dir)
+    if filepath is None:
+        return f"> *[selfdoc: module '{module_path}' not found]*"
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            source = f.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"> *[selfdoc: cannot read '{module_path}': {exc}]*"
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return f"> *[selfdoc: syntax error in '{module_path}': {exc}]*"
+
+    # Find the target class
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return _extract_class_fields(node, source)
+
+    return f"> *[selfdoc: class '{class_name}' not found in '{module_path}']*"
+
+
+def _extract_class_fields(class_node, source):
+    """Extract fields from a class (dataclass or regular class with annotations).
+
+    Produces a markdown table with Field, Type, Default, and Description columns.
+    """
+    source_lines = source.split("\n")
+    rows = []
+    rows.append("| Field | Type | Default | Description |")
+    rows.append("| --- | --- | --- | --- |")
+
+    found_fields = False
+
+    for node in ast.iter_child_nodes(class_node):
+        # Annotated assignments: field_name: Type = default
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            field_name = node.target.id
+            if field_name.startswith("_"):
+                continue
+
+            type_str = ast.unparse(node.annotation) if node.annotation else ""
+            default_str = ast.unparse(node.value) if node.value else ""
+
+            # Try to get a description from an inline comment
+            description = _get_inline_comment(source_lines, node.lineno)
+
+            rows.append(
+                f"| `{field_name}` | `{type_str}` | "
+                f"{_format_default(default_str)} | {description} |"
+            )
+            found_fields = True
+
+    if not found_fields:
+        return f"> *[selfdoc: no fields found in class '{class_node.name}']*"
+
+    return "\n".join(rows)
+
+
+def _get_inline_comment(source_lines, lineno):
+    """Extract an inline # comment from a source line (1-based lineno)."""
+    if lineno < 1 or lineno > len(source_lines):
+        return ""
+    line = source_lines[lineno - 1]
+    # Find a # comment that's not inside a string (simple heuristic)
+    # Split on # that's not inside quotes
+    in_string = False
+    quote_char = None
+    for i, ch in enumerate(line):
+        if ch in ('"', "'") and (i == 0 or line[i - 1] != "\\"):
+            if not in_string:
+                in_string = True
+                quote_char = ch
+            elif ch == quote_char:
+                in_string = False
+        elif ch == "#" and not in_string:
+            return line[i + 1 :].strip()
+    return ""
+
+
+def _format_default(default_str):
+    """Format a default value for table display."""
+    if not default_str:
+        return ""
+    return f"`{default_str}`"
+
+
+# ---------------------------------------------------------------------------
+# :::cli
+# ---------------------------------------------------------------------------
+
+
+def _handle_cli(arg, body, source_paths, base_dir):
+    """Extract CLI help/usage information from a module.
+
+    For v1: extracts the module docstring and any string constants named
+    HELP or USAGE, formatted as a code block.
+    """
+    if not arg:
+        return "> *[selfdoc: :::cli requires a module path argument]*"
+
+    filepath = _resolve_module_path(arg, source_paths, base_dir)
+    if filepath is None:
+        return f"> *[selfdoc: module '{arg}' not found]*"
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            source = f.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return f"> *[selfdoc: syntax error in '{arg}': {exc}]*"
+
+    parts = []
+
+    # Module docstring
+    module_doc = ast.get_docstring(tree)
+    if module_doc:
+        parts.append(module_doc)
+
+    # Look for HELP or USAGE string constants
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in ("HELP", "USAGE"):
+                    if isinstance(node.value, ast.Constant) and isinstance(
+                        node.value.value, str
+                    ):
+                        parts.append(f"```\n{node.value.value.strip()}\n```")
+
+    if not parts:
+        return f"> *[selfdoc: no CLI documentation found in '{arg}']*"
+
+    return "\n\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# :::config
+# ---------------------------------------------------------------------------
+
+
+def _handle_config(arg, body, source_paths, base_dir):
+    """Extract config file contents as a documented table.
+
+    Supports JSON and TOML. Detects format from file extension.
+    """
+    if not arg:
+        return "> *[selfdoc: :::config requires a file path argument]*"
+
+    full_path = os.path.join(base_dir, arg)
+    if not os.path.isfile(full_path):
+        return f"> *[selfdoc: config file '{arg}' not found]*"
+
+    ext = os.path.splitext(arg)[1].lower()
+
+    if ext == ".json":
+        return _config_from_json(full_path, arg)
+    elif ext == ".toml":
+        return _config_from_toml(full_path, arg)
+    else:
+        # Unsupported format -- show as code block
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return f"```\n{content.rstrip()}\n```"
+        except (OSError, UnicodeDecodeError) as exc:
+            return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+
+
+def _config_from_json(full_path, display_path):
+    """Parse JSON config and render as a key-value table."""
+    try:
+        with open(full_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
+
+    if not isinstance(data, dict):
+        return f"```json\n{json.dumps(data, indent=2)}\n```"
+
+    rows = []
+    rows.append("| Key | Type | Value |")
+    rows.append("| --- | --- | --- |")
+
+    for key, value in data.items():
+        type_name = _json_type_name(value)
+        value_repr = _json_value_repr(value)
+        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
+
+    return "\n".join(rows)
+
+
+def _config_from_toml(full_path, display_path):
+    """Parse TOML config and render as a key-value table."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ModuleNotFoundError:
+            return (
+                "> *[selfdoc: TOML support requires Python 3.11+ "
+                "or the 'tomli' package]*"
+            )
+
+    try:
+        with open(full_path, "rb") as f:
+            data = tomllib.load(f)
+    except (OSError, Exception) as exc:
+        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
+
+    rows = []
+    rows.append("| Key | Type | Value |")
+    rows.append("| --- | --- | --- |")
+
+    # Flatten nested TOML tables with dotted keys
+    _flatten_toml(data, "", rows)
+
+    return "\n".join(rows)
+
+
+def _flatten_toml(data, prefix, rows):
+    """Recursively flatten TOML data into table rows."""
+    for key, value in data.items():
+        full_key = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
+        if isinstance(value, dict):
+            _flatten_toml(value, full_key, rows)
+        else:
+            type_name = _json_type_name(value)
+            value_repr = _json_value_repr(value)
+            rows.append(f"| `{full_key}` | {type_name} | {value_repr} |")
