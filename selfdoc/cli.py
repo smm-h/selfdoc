@@ -163,7 +163,7 @@ def _cmd_build(args):
 
 
 def _cmd_serve(args):
-    """Serve the documentation site locally."""
+    """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
 
     config = load_config(".")
@@ -182,7 +182,21 @@ def _cmd_serve(args):
 
     port = args.port
 
-    class Handler(http.server.SimpleHTTPRequestHandler):
+    # JS snippet injected into HTML responses to enable live reload
+    _RELOAD_SCRIPT = (
+        b"\n<script>"
+        b"const es = new EventSource('/__reload');"
+        b"es.onmessage = () => location.reload();"
+        b"</script>\n"
+    )
+
+    # Shared state for SSE: a threading.Event that the watcher sets
+    # when any file mtime changes, and a list of connected SSE wfiles.
+    reload_event = threading.Event()
+    sse_clients = []  # list of wfile objects (socket files)
+    sse_lock = threading.Lock()
+
+    class LiveReloadHandler(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *a, **kw):
             super().__init__(*a, directory=output_dir, **kw)
 
@@ -190,14 +204,109 @@ def _cmd_serve(args):
             # Quieter logging
             pass
 
-    server = http.server.HTTPServer(("", port), Handler)
+        def do_GET(self):
+            if self.path == "/__reload":
+                self._handle_sse()
+            else:
+                super().do_GET()
+
+        def _handle_sse(self):
+            """Hold the connection open as an SSE stream."""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+
+            with sse_lock:
+                sse_clients.append(self.wfile)
+            try:
+                # Block until the server shuts down or connection breaks.
+                # The watcher thread sends data by writing to wfile directly.
+                while not _shutdown_flag.is_set():
+                    _shutdown_flag.wait(timeout=1.0)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
+            finally:
+                with sse_lock:
+                    if self.wfile in sse_clients:
+                        sse_clients.remove(self.wfile)
+
+        def end_headers(self):
+            """Inject live-reload script into HTML responses."""
+            super().end_headers()
+
+        def copyfile(self, source, outputfile):
+            """Override copyfile to inject reload script into HTML."""
+            # Check if this is an HTML response by inspecting headers
+            content_type = None
+            for header, value in self._headers_buffer[0:20] if hasattr(self, '_headers_buffer') else []:
+                pass  # can't easily inspect after send
+            # Instead, read content and check if it looks like HTML
+            # We use a simpler approach: check the path
+            if self.path.endswith((".html", ".htm", "/")) or self.path == "/":
+                data = source.read()
+                # Inject before </body> if present, else append
+                lower = data.lower()
+                pos = lower.rfind(b"</body>")
+                if pos != -1:
+                    data = data[:pos] + _RELOAD_SCRIPT + data[pos:]
+                else:
+                    data += _RELOAD_SCRIPT
+                outputfile.write(data)
+            else:
+                super().copyfile(source, outputfile)
+
+    _shutdown_flag = threading.Event()
+
+    def _snapshot_mtimes(directory):
+        """Return a dict of {filepath: mtime} for all files under directory."""
+        mtimes = {}
+        for root, _dirs, files in os.walk(directory):
+            for fname in files:
+                fpath = os.path.join(root, fname)
+                try:
+                    mtimes[fpath] = os.stat(fpath).st_mtime
+                except OSError:
+                    pass
+        return mtimes
+
+    def _watcher():
+        """Background thread: poll file mtimes and notify SSE clients."""
+        prev = _snapshot_mtimes(output_dir)
+        while not _shutdown_flag.is_set():
+            _shutdown_flag.wait(timeout=0.5)
+            if _shutdown_flag.is_set():
+                break
+            current = _snapshot_mtimes(output_dir)
+            if current != prev:
+                prev = current
+                # Send SSE event to all connected clients
+                msg = b"data: reload\n\n"
+                with sse_lock:
+                    dead = []
+                    for wfile in sse_clients:
+                        try:
+                            wfile.write(msg)
+                            wfile.flush()
+                        except (BrokenPipeError, ConnectionResetError, OSError):
+                            dead.append(wfile)
+                    for d in dead:
+                        sse_clients.remove(d)
+
+    watcher_thread = threading.Thread(target=_watcher, daemon=True)
+    watcher_thread.start()
+
+    server = http.server.HTTPServer(("", port), LiveReloadHandler)
     print(f"Serving docs at http://localhost:{port}/")
+    print("Live reload enabled")
     print("Press Ctrl+C to stop.")
 
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")
+        _shutdown_flag.set()
         server.shutdown()
 
 
