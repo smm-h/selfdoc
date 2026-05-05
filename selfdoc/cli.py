@@ -281,48 +281,19 @@ def _detect_version():
 
 def _cmd_check(args):
     """Check documentation coverage and consistency."""
-    from selfdoc.config import load_config
-    from selfdoc.directives import parse_directives
+    from selfdoc.check import check_docs, print_results
 
-    config = load_config(".")
-    if config is None:
-        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+    try:
+        result = check_docs(".")
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    docs_dir = config["docs"].rstrip("/")
-    if not os.path.isdir(docs_dir):
-        print(f"Error: Docs directory '{docs_dir}' not found.", file=sys.stderr)
+    print_results(result)
+
+    # Exit with non-zero status if any directives failed
+    if any(dr.status == "FAILED" for dr in result.directive_results):
         sys.exit(1)
-
-    total = 0
-    unresolved = 0
-
-    # Scan docs/ for .md templates
-    for root, _dirs, files in os.walk(docs_dir):
-        for fname in sorted(files):
-            if not fname.endswith(".md"):
-                continue
-            full_path = os.path.join(root, fname)
-            rel_path = os.path.relpath(full_path, docs_dir)
-
-            with open(full_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            directives = parse_directives(content)
-            for directive in directives:
-                total += 1
-                unresolved += 1
-                arg_display = directive.arg if directive.arg else "(none)"
-                print(
-                    f"  {rel_path}:{directive.line_number}  "
-                    f":::{directive.name} {arg_display}  "
-                    f"UNRESOLVED"
-                )
-
-    if total == 0:
-        print("No directives found in documentation templates.")
-    else:
-        print(f"\n{total} directive(s) found, {unresolved} unresolved.")
 
 
 def run():

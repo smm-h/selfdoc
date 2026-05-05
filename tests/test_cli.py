@@ -91,7 +91,7 @@ def test_build_produces_output(project_dir):
 
 
 def test_check_finds_directives(project_dir, capsys):
-    """selfdoc check reports unresolved directives."""
+    """selfdoc check reports directive validation results."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
     class Args:
@@ -99,12 +99,13 @@ def test_check_finds_directives(project_dir, capsys):
 
     _cmd_init(Args())
 
-    # The starter template has a :::module directive
+    # The starter template has a :::module directive that resolves OK
     _cmd_check(Args())
 
     captured = capsys.readouterr()
-    assert "UNRESOLVED" in captured.out
+    assert "OK" in captured.out
     assert "module" in captured.out
+    assert "directive(s)" in captured.out
 
 
 def test_build_without_init_fails(project_dir):
