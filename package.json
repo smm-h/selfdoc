@@ -1,0 +1,11 @@
+{
+  "name": "selfdoc",
+  "version": "0.1.0",
+  "description": "Code-aware static site generator with directive-based content extraction",
+  "bin": { "selfdoc": "bin/cli.js" },
+  "files": ["bin/"],
+  "license": "MIT",
+  "keywords": ["documentation", "static-site-generator", "selfdoc"],
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "https://github.com/smm-h/selfdoc" }
+}
