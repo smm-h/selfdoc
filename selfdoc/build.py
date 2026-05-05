@@ -6,6 +6,7 @@ import shutil
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
 from selfdoc.html import generate_html
+from selfdoc.resolver import make_resolver
 
 
 def _stub_resolver(name, arg, body):
@@ -19,7 +20,7 @@ def build(dir_path=".", config=None):
 
     1. Load config from selfdoc.json
     2. Scan docs/ directory for .md template files
-    3. For each template, resolve directives (stub resolver for now)
+    3. For each template, resolve directives using language-specific extractor
     4. Convert resolved markdown to HTML
     5. Write HTML to output directory
     6. Copy non-.md files (images, CSS, etc.) to output
@@ -48,6 +49,10 @@ def build(dir_path=".", config=None):
             "Create it or run 'selfdoc init'."
         )
 
+    # Create the resolver: use language-specific extractor if supported,
+    # otherwise fall back to the stub resolver
+    resolver = make_resolver(config, dir_path)
+
     # Scan for .md template files
     markdown_files = {}
     other_files = []
@@ -61,8 +66,8 @@ def build(dir_path=".", config=None):
             if fname.endswith(".md"):
                 with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                # Resolve directives with the stub resolver
-                resolved = resolve_directives(content, _stub_resolver)
+                # Resolve directives with the language-aware resolver
+                resolved = resolve_directives(content, resolver)
                 markdown_files[rel_path] = resolved
             else:
                 other_files.append(rel_path)
