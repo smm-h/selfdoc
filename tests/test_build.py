@@ -53,8 +53,8 @@ def test_build_produces_html(project_dir):
     assert "Welcome." in content
 
 
-def test_build_resolves_directives_as_stub(project_dir):
-    """Directives are replaced with a visible placeholder."""
+def test_build_resolves_directives_with_error_for_missing(project_dir):
+    """Directives for missing modules produce a visible error message."""
     docs_dir = os.path.join(project_dir, "docs")
     page_md = os.path.join(docs_dir, "api.md")
     with open(page_md, "w", encoding="utf-8") as f:
@@ -68,9 +68,9 @@ def test_build_resolves_directives_as_stub(project_dir):
 
     with open(api_html, "r", encoding="utf-8") as f:
         content = f.read()
-    # The stub resolver produces a visible placeholder
-    assert "not yet resolved" in content
-    assert "module mymod" in content
+    # The resolver produces an error message for missing modules
+    assert "not found" in content
+    assert "mymod" in content
 
 
 def test_build_copies_non_md_files(project_dir):

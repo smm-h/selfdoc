@@ -6,7 +6,7 @@ license = "MIT"
 authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.11"
-keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc"]
+keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
 dependencies = []
 
 [project.urls]
