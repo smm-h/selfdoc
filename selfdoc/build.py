@@ -7,6 +7,7 @@ import re
 import shutil
 import struct
 import tempfile
+import zlib
 from datetime import datetime
 
 from selfdoc.config import load_config
@@ -379,6 +380,72 @@ def _generate_og_svg(project_name, page_title, accent_color="#0969da"):
         f'<rect x="80" y="380" width="120" height="4" fill="{accent_color}"/>'
         f'</svg>'
     )
+
+
+def _generate_og_png(project_name, page_title, accent_color="#0969da"):
+    """Generate a 600x315 PNG social card using only stdlib.
+
+    Creates a visually distinct card with:
+    - Light background derived from accent color
+    - Thick accent-colored bar across the top (8px)
+    - Decorative accent-colored stripe pattern in the lower portion
+
+    Uses a small resolution (600x315) for reasonable file size; platforms
+    scale up as needed. Returns the PNG file contents as bytes.
+    """
+    width, height = 600, 315
+
+    # Parse accent color hex to RGB
+    ac = accent_color.lstrip("#")
+    ar, ag, ab = int(ac[0:2], 16), int(ac[2:4], 16), int(ac[4:6], 16)
+
+    # Background: accent at ~10% opacity on white
+    bg_r = 255 - (255 - ar) // 10
+    bg_g = 255 - (255 - ag) // 10
+    bg_b = 255 - (255 - ab) // 10
+
+    # Build raw pixel data row by row (RGB, filter byte 0 per scanline)
+    raw_rows = []
+    top_bar_h = 8
+    # Decorative stripes in lower portion: 4px accent stripes every 20px
+    stripe_start = height - 80
+
+    for y in range(height):
+        if y < top_bar_h:
+            # Top accent bar
+            row = bytes([ar, ag, ab] * width)
+        elif y >= stripe_start and (y - stripe_start) % 20 < 4:
+            # Accent stripe rows in lower portion
+            row = bytes([ar, ag, ab] * width)
+        else:
+            # Background
+            row = bytes([bg_r, bg_g, bg_b] * width)
+        # Each row prefixed with filter byte 0 (no filter)
+        raw_rows.append(b"\x00" + row)
+
+    raw_data = b"".join(raw_rows)
+
+    # Build PNG chunks
+    def _png_chunk(chunk_type, data):
+        chunk = chunk_type + data
+        crc = struct.pack(">I", zlib.crc32(chunk) & 0xFFFFFFFF)
+        return struct.pack(">I", len(data)) + chunk + crc
+
+    # PNG signature
+    signature = b"\x89PNG\r\n\x1a\n"
+
+    # IHDR: width, height, bit depth 8, color type 2 (RGB)
+    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    ihdr = _png_chunk(b"IHDR", ihdr_data)
+
+    # IDAT: zlib-compressed pixel data
+    compressed = zlib.compress(raw_data, 9)
+    idat = _png_chunk(b"IDAT", compressed)
+
+    # IEND
+    iend = _png_chunk(b"IEND", b"")
+
+    return signature + ihdr + idat + iend
 
 
 def _generate_sitemap(base_url, html_paths, page_dates=None):
@@ -916,17 +983,17 @@ def _generate_auxiliary_files(
     """
     written = {}
 
-    # Generate OG social card SVGs (Feature 21)
+    # Generate OG social card PNGs (Feature 21)
     for md_path, content in markdown_files.items():
         html_path = _md_to_html_path(md_path)
         slug = html_path.replace(".html", "")
         page_title = _extract_title(content, slug)
-        svg_content = _generate_og_svg(project_name, page_title)
-        svg_path = os.path.join(output_dir, f"og-{slug}.svg")
-        os.makedirs(os.path.dirname(svg_path), exist_ok=True)
-        with open(svg_path, "w", encoding="utf-8") as f:
-            f.write(svg_content)
-        written[svg_path] = True
+        png_bytes = _generate_og_png(project_name, page_title)
+        png_path = os.path.join(output_dir, f"og-{slug}.png")
+        os.makedirs(os.path.dirname(png_path), exist_ok=True)
+        with open(png_path, "wb") as f:
+            f.write(png_bytes)
+        written[png_path] = True
 
     # Generate sitemap.xml (Feature 22) -- only if base_url is set
     if base_url:

@@ -1373,11 +1373,12 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         if base_url:
             slug = page_path.replace(".html", "")
             seo_tags += (
-                f'\n<meta property="og:image" content="{base_url}/og-{slug}.svg">'
-                f'\n<meta property="og:image:width" content="1200">'
-                f'\n<meta property="og:image:height" content="630">'
+                f'\n<meta property="og:image" content="{base_url}/og-{slug}.png">'
+                f'\n<meta property="og:image:type" content="image/png">'
+                f'\n<meta property="og:image:width" content="600">'
+                f'\n<meta property="og:image:height" content="315">'
                 f'\n<meta property="og:url" content="{canonical_url}">'
-                f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.svg">'
+                f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.png">'
             )
 
     # Canonical URL -- needs base_url

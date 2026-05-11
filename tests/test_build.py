@@ -109,13 +109,16 @@ def test_build_multiple_files(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
-    # 2 HTML + 1 style.css + 1 search-index.json + 2 OG SVGs + 2 llms files
+    # 2 HTML + 1 style.css + 1 search-index.json + 2 OG PNGs + 2 llms files
     # + 1 404.html + 1 favicon.svg + 1 robots.txt + 1 _headers + 1 _redirects
     assert len(written) == 13
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
-    assert os.path.isfile(os.path.join(output_dir, "og-index.svg"))
-    assert os.path.isfile(os.path.join(output_dir, "og-guide.svg"))
+    assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
+    assert os.path.isfile(os.path.join(output_dir, "og-guide.png"))
+    # Verify PNG magic bytes
+    with open(os.path.join(output_dir, "og-index.png"), "rb") as f:
+        assert f.read(8) == b"\x89PNG\r\n\x1a\n"
     assert os.path.isfile(os.path.join(output_dir, "llms.txt"))
     assert os.path.isfile(os.path.join(output_dir, "llms-full.txt"))
     assert os.path.isfile(os.path.join(output_dir, "404.html"))
@@ -609,7 +612,7 @@ def test_og_image_absolute_url(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta property="og:image" content="https://example.com/og-index.svg">' in content
+    assert '<meta property="og:image" content="https://example.com/og-index.png">' in content
 
 
 def test_twitter_card_and_title_present(project_dir):
@@ -2510,7 +2513,7 @@ def test_twitter_image_present_with_base_url(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta name="twitter:image" content="https://example.com/og-index.svg">' in content
+    assert '<meta name="twitter:image" content="https://example.com/og-index.png">' in content
 
 
 def test_og_image_dimensions_present(project_dir):
@@ -2528,8 +2531,8 @@ def test_og_image_dimensions_present(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta property="og:image:width" content="1200">' in content
-    assert '<meta property="og:image:height" content="630">' in content
+    assert '<meta property="og:image:width" content="600">' in content
+    assert '<meta property="og:image:height" content="315">' in content
 
 
 def test_twitter_card_summary_large_image_with_base_url(project_dir):
