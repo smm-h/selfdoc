@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Note: selfdoc sets og:type="website" on index.html, "article" on other pages, none on 404 -->
+<meta name="twitter:site" content="@selfdoc_dev">
 <title>Theme Showcase - selfdoc demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,24 +80,26 @@
 </ul></nav>
 </details>
 
+<div class="page-summary">
+  <p>This page demonstrates every HTML element and CSS class that selfdoc's minimal theme styles. Use it for design iteration -- open this file in a browser, edit the CSS, and see every component update at once.</p>
+</div>
+
 <!-- ==================== TYPOGRAPHY ==================== -->
 
-<h1 id="theme-showcase"><a class="heading-link" href="#theme-showcase">#</a>Theme Showcase</h1>
+<h1 id="theme-showcase"><a class="heading-link" href="#theme-showcase" aria-label="Link to section: Theme Showcase">#</a>Theme Showcase</h1>
 
-<p>This page demonstrates every HTML element and CSS class that selfdoc's minimal theme styles. Use it for design iteration -- open this file in a browser, edit the CSS, and see every component update at once.</p>
+<h2 id="typography"><a class="heading-link" href="#typography" aria-label="Link to section: Typography">#</a>Typography</h2>
 
-<h2 id="typography"><a class="heading-link" href="#typography">#</a>Typography</h2>
+<h3 id="headings"><a class="heading-link" href="#headings" aria-label="Link to section: Headings">#</a>Headings</h3>
 
-<h3 id="headings"><a class="heading-link" href="#headings">#</a>Headings</h3>
+<h1 id="heading-level-1"><a class="heading-link" href="#heading-level-1" aria-label="Link to section: Heading Level 1">#</a>Heading Level 1</h1>
+<h2 id="heading-level-2"><a class="heading-link" href="#heading-level-2" aria-label="Link to section: Heading Level 2">#</a>Heading Level 2</h2>
+<h3 id="heading-level-3"><a class="heading-link" href="#heading-level-3" aria-label="Link to section: Heading Level 3">#</a>Heading Level 3</h3>
+<h4 id="heading-level-4"><a class="heading-link" href="#heading-level-4" aria-label="Link to section: Heading Level 4">#</a>Heading Level 4</h4>
+<h5 id="heading-level-5"><a class="heading-link" href="#heading-level-5" aria-label="Link to section: Heading Level 5">#</a>Heading Level 5</h5>
+<h6 id="heading-level-6"><a class="heading-link" href="#heading-level-6" aria-label="Link to section: Heading Level 6">#</a>Heading Level 6</h6>
 
-<h1 id="heading-level-1"><a class="heading-link" href="#heading-level-1">#</a>Heading Level 1</h1>
-<h2 id="heading-level-2"><a class="heading-link" href="#heading-level-2">#</a>Heading Level 2</h2>
-<h3 id="heading-level-3"><a class="heading-link" href="#heading-level-3">#</a>Heading Level 3</h3>
-<h4 id="heading-level-4"><a class="heading-link" href="#heading-level-4">#</a>Heading Level 4</h4>
-<h5 id="heading-level-5"><a class="heading-link" href="#heading-level-5">#</a>Heading Level 5</h5>
-<h6 id="heading-level-6"><a class="heading-link" href="#heading-level-6">#</a>Heading Level 6</h6>
-
-<h3 id="inline-elements"><a class="heading-link" href="#inline-elements">#</a>Inline Elements</h3>
+<h3 id="inline-elements"><a class="heading-link" href="#inline-elements" aria-label="Link to section: Inline Elements">#</a>Inline Elements</h3>
 
 <p>This paragraph contains <strong>bold text</strong>, <em>italicized text</em>, and <code>inline code</code> like <code>parse_directives()</code>. You can also use <a href="https://github.com/smm-h/selfdoc">external links</a> and <a href="#typography">internal links</a> to navigate the documentation.</p>
 
@@ -105,9 +109,9 @@
 
 <!-- ==================== LISTS ==================== -->
 
-<h2 id="lists"><a class="heading-link" href="#lists">#</a>Lists</h2>
+<h2 id="lists"><a class="heading-link" href="#lists" aria-label="Link to section: Lists">#</a>Lists</h2>
 
-<h3 id="unordered-list"><a class="heading-link" href="#unordered-list">#</a>Unordered List</h3>
+<h3 id="unordered-list"><a class="heading-link" href="#unordered-list" aria-label="Link to section: Unordered List">#</a>Unordered List</h3>
 
 <ul>
 <li>Directive parser -- state machine that tracks fenced code blocks
@@ -126,7 +130,7 @@
 <li>HTML converter -- built-in Markdown-to-HTML with no dependencies</li>
 </ul>
 
-<h3 id="ordered-list"><a class="heading-link" href="#ordered-list">#</a>Ordered List</h3>
+<h3 id="ordered-list"><a class="heading-link" href="#ordered-list" aria-label="Link to section: Ordered List">#</a>Ordered List</h3>
 
 <ol>
 <li>Create a <code>selfdoc.json</code> configuration file in your project root</li>
@@ -135,7 +139,7 @@
 <li>Run <code>selfdoc build</code> to generate your documentation site</li>
 </ol>
 
-<h2 id="step-guide"><a class="heading-link" href="#step-guide">#</a>Step Guide</h2>
+<h2 id="step-guide"><a class="heading-link" href="#step-guide" aria-label="Link to section: Step Guide">#</a>Step Guide</h2>
 
 <ol class="steps">
 <li>Install selfdoc using <code>pip install selfdoc</code> or <code>npm install -g selfdoc</code>. The npm package is a thin Node wrapper that delegates to <code>python3 -m selfdoc</code>.</li>
@@ -145,15 +149,15 @@
 
 <!-- ==================== CODE ==================== -->
 
-<h2 id="code"><a class="heading-link" href="#code">#</a>Code</h2>
+<h2 id="code"><a class="heading-link" href="#code" aria-label="Link to section: Code">#</a>Code</h2>
 
-<h3 id="plain-code-block"><a class="heading-link" href="#plain-code-block">#</a>Plain Code Block</h3>
+<h3 id="plain-code-block"><a class="heading-link" href="#plain-code-block" aria-label="Link to section: Plain Code Block">#</a>Plain Code Block</h3>
 
 <div class="code-block"><pre tabindex="0"><code>selfdoc build --output _site
 selfdoc serve --port 8080
 selfdoc check --coverage</code></pre></div>
 
-<h3 id="code-with-language"><a class="heading-link" href="#code-with-language">#</a>Code with Language</h3>
+<h3 id="code-with-language"><a class="heading-link" href="#code-with-language" aria-label="Link to section: Code with Language">#</a>Code with Language</h3>
 
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">from selfdoc.directives import parse_directives, resolve_directives
 from selfdoc.resolver import make_resolver
@@ -167,7 +171,7 @@ def build_docs(config):
         output = md_to_html(resolved)
         write_output(output, template_path)</code></pre></div>
 
-<h3 id="diff-highlighting"><a class="heading-link" href="#diff-highlighting">#</a>Diff Highlighting</h3>
+<h3 id="diff-highlighting"><a class="heading-link" href="#diff-highlighting" aria-label="Link to section: Diff Highlighting">#</a>Diff Highlighting</h3>
 
 <div class="code-block"><div class="code-label">diff</div><pre tabindex="0"><code class="language-diff"><span class="line"> def resolve_directives(content, resolver):</span>
 <span class="line line-remove">-    directives = parse_directives(content)</span>
@@ -179,7 +183,7 @@ def build_docs(config):
 <span class="line line-add">+        content = content.replace(body, replacement)</span>
 <span class="line">     return content</span></code></pre></div>
 
-<h3 id="code-annotations"><a class="heading-link" href="#code-annotations">#</a>Code Annotations</h3>
+<h3 id="code-annotations"><a class="heading-link" href="#code-annotations" aria-label="Link to section: Code Annotations">#</a>Code Annotations</h3>
 
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def _slugify(text):
     text = re.sub(r"&lt;[^&gt;]+&gt;", "", text)  <span class="code-annotation" data-note="Strip HTML tags like &lt;code&gt; and &lt;strong&gt; before slugifying" tabindex="0">1</span>
@@ -188,7 +192,7 @@ def build_docs(config):
     text = re.sub(r"[^a-z0-9-]", "", text)  <span class="code-annotation" data-note="Remove all non-alphanumeric characters except hyphens" tabindex="0">3</span>
     return text.strip("-")</code></pre></div>
 
-<h3 id="code-tabs"><a class="heading-link" href="#code-tabs">#</a>Code Tabs</h3>
+<h3 id="code-tabs"><a class="heading-link" href="#code-tabs" aria-label="Link to section: Code Tabs">#</a>Code Tabs</h3>
 
 <div class="code-tabs">
 <div class="tab-bar">
@@ -232,13 +236,13 @@ export function extractModule(sourcePath: string): string {
 
 <!-- ==================== BLOCKS ==================== -->
 
-<h2 id="blocks"><a class="heading-link" href="#blocks">#</a>Blocks</h2>
+<h2 id="blocks"><a class="heading-link" href="#blocks" aria-label="Link to section: Blocks">#</a>Blocks</h2>
 
-<h3 id="blockquote"><a class="heading-link" href="#blockquote">#</a>Blockquote</h3>
+<h3 id="blockquote"><a class="heading-link" href="#blockquote" aria-label="Link to section: Blockquote">#</a>Blockquote</h3>
 
 <blockquote><p>selfdoc keeps your documentation in sync with your code. When you change a function signature, the docs update automatically on the next build. No more stale examples or outdated API references.</p></blockquote>
 
-<h3 id="admonitions"><a class="heading-link" href="#admonitions">#</a>Admonitions</h3>
+<h3 id="admonitions"><a class="heading-link" href="#admonitions" aria-label="Link to section: Admonitions">#</a>Admonitions</h3>
 
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -265,7 +269,7 @@ export function extractModule(sourcePath: string): string {
 <p>All external calls (subprocess invocations, network requests) must have explicit timeouts. The deploy module enforces this for both Cloudflare Pages (via wrangler CLI) and GitHub Pages (via git push).</p>
 </div>
 
-<h3 id="table"><a class="heading-link" href="#table">#</a>Table</h3>
+<h3 id="table"><a class="heading-link" href="#table" aria-label="Link to section: Table">#</a>Table</h3>
 
 <div class="table-wrap">
 <table>
@@ -284,35 +288,35 @@ export function extractModule(sourcePath: string): string {
 
 <!-- ==================== API ENTRY CARDS ==================== -->
 
-<h2 id="api-entry-cards"><a class="heading-link" href="#api-entry-cards">#</a>API Entry Cards</h2>
+<h2 id="api-entry-cards"><a class="heading-link" href="#api-entry-cards" aria-label="Link to section: API Entry Cards">#</a>API Entry Cards</h2>
 
 <div class="api-entry">
-<h3 id="parse-directives"><a class="heading-link" href="#parse-directives">#</a>parse_directives</h3>
+<h3 id="parse-directives"><a class="heading-link" href="#parse-directives" aria-label="Link to section: parse directives">#</a>parse_directives</h3>
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def parse_directives(content: str) -&gt; list[tuple[str, str, str]]</code></pre></div>
 <p>Extract all <code>:::name arg</code> / <code>:::</code> directive pairs from a Markdown document. Returns a list of <code>(name, arg, body)</code> tuples. Correctly handles fenced code blocks to avoid false matches inside code examples.</p>
 </div>
 
 <div class="api-entry">
-<h3 id="resolve-directives"><a class="heading-link" href="#resolve-directives">#</a>resolve_directives</h3>
+<h3 id="resolve-directives"><a class="heading-link" href="#resolve-directives" aria-label="Link to section: resolve directives">#</a>resolve_directives</h3>
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def resolve_directives(content: str, resolver: Callable) -&gt; str</code></pre></div>
 <p>Replace all directive blocks in <code>content</code> with the output of <code>resolver(name, arg, body)</code>. The resolver is typically created by <code>make_resolver(config)</code> which dispatches to the appropriate language extractor.</p>
 </div>
 
 <div class="api-entry">
-<h3 id="md-to-html"><a class="heading-link" href="#md-to-html">#</a>md_to_html</h3>
+<h3 id="md-to-html"><a class="heading-link" href="#md-to-html" aria-label="Link to section: md to html">#</a>md_to_html</h3>
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def md_to_html(text: str) -&gt; str</code></pre></div>
 <p>Convert Markdown text to HTML. Handles headings, code blocks (with tabs and annotations), inline code, paragraphs, unordered and ordered lists, links, bold, italic, tables, blockquotes, and admonitions. No external dependencies.</p>
 </div>
 
 <!-- ==================== IMAGES ==================== -->
 
-<h2 id="images"><a class="heading-link" href="#images">#</a>Images</h2>
+<h2 id="images"><a class="heading-link" href="#images" aria-label="Link to section: Images">#</a>Images</h2>
 
 <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='200' viewBox='0 0 600 200'%3E%3Crect width='600' height='200' fill='%23f4f4f8' stroke='%23d0d7de' stroke-width='2' rx='8'/%3E%3Ctext x='300' y='90' text-anchor='middle' font-family='Inter, sans-serif' font-size='16' fill='%23555'%3Eselfdoc build pipeline%3C/text%3E%3Ctext x='300' y='120' text-anchor='middle' font-family='Inter, sans-serif' font-size='13' fill='%23888'%3Edocs/*.md → resolve directives → md_to_html → _site/*.html%3C/text%3E%3C/svg%3E" alt="selfdoc build pipeline diagram" loading="lazy">
 
 <!-- ==================== SEARCH DIALOG ==================== -->
 
-<h2 id="search-dialog"><a class="heading-link" href="#search-dialog">#</a>Search Dialog</h2>
+<h2 id="search-dialog"><a class="heading-link" href="#search-dialog" aria-label="Link to section: Search Dialog">#</a>Search Dialog</h2>
 
 <p>Press <code>Cmd+K</code> (or <code>Ctrl+K</code>) to open the search dialog, or click the button below to open it manually for preview.</p>
 
@@ -320,13 +324,18 @@ export function extractModule(sourcePath: string): string {
 
 <!-- ==================== 404 SECTION ==================== -->
 
-<h2 id="page-not-found"><a class="heading-link" href="#page-not-found">#</a>Page Not Found</h2>
+<h2 id="page-not-found"><a class="heading-link" href="#page-not-found" aria-label="Link to section: Page Not Found">#</a>Page Not Found</h2>
 
 <div style="border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1rem 0; background: var(--sidebar-bg);">
 <h1>Page not found</h1>
 <p>The page you are looking for does not exist.</p>
 <p><a href="index.html">Go to the homepage</a></p>
 </div>
+
+<!-- Nested breadcrumb example (for visual reference) -->
+<nav class="breadcrumbs" aria-label="Breadcrumbs" style="margin-top: 1rem; padding: 0.5rem; border: 1px dashed var(--border); border-radius: 4px;">
+  <a href="index.html">Home</a> / <a href="#">Api</a> / <a href="#">Reference</a> / <span>parse_directives</span>
+</nav>
 
 <!-- ==================== PAGE FOOTER ==================== -->
 
