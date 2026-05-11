@@ -42,7 +42,8 @@ def get_css(theme_name="minimal"):
 
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
-                   base_url=None, frontmatter=None, lang="en"):
+                   base_url=None, frontmatter=None, lang="en",
+                   page_dates=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -54,6 +55,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         docs_dir_name: Docs directory name for constructing source paths.
         base_url: Base URL for canonical links and sitemap (optional).
         frontmatter: Dict mapping relative paths to metadata dicts (Feature 34).
+        page_dates: Dict mapping relative paths to ISO date strings (optional).
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -64,6 +66,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         version = ""
     if frontmatter is None:
         frontmatter = {}
+    if page_dates is None:
+        page_dates = {}
 
     # Build navigation from the file list, using frontmatter for ordering
     nav_items = _build_nav(markdown_files, frontmatter)
@@ -111,6 +115,9 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Source path for "Edit this page" link (Feature 14)
         source_path = docs_dir_name.rstrip("/") + "/" + md_path
 
+        # Date modified for this page (Wave 2 date infrastructure)
+        date_modified = page_dates.get(md_path)
+
         full_html = _wrap_page(
             body_html, nav_html, title, project_name, version,
             css_href, custom_css_href,
@@ -125,6 +132,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             page_path=html_path,
             description=description,
             lang=lang,
+            date_modified=date_modified,
         )
         html_files[html_path] = full_html
 
@@ -724,7 +732,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
-               lang="en"):
+               lang="en", date_modified=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'

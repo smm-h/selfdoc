@@ -2,10 +2,11 @@
 
 import json
 import os
+import re
 
 import pytest
 
-from selfdoc.build import build, _generate_robots_txt, _generate_headers
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers
 from selfdoc.html import generate_html, generate_404_page
 
 
@@ -257,3 +258,81 @@ def test_html_cdnjs_preconnect(project_dir):
         content = f.read()
 
     assert '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>' in content
+
+
+# --- Date infrastructure tests (Wave 2 Phase 0) ---
+
+
+def _build_and_get_page_dates(project_dir):
+    """Helper: run build and return page_dates dict by re-parsing frontmatter and mtime."""
+    from datetime import datetime
+    from selfdoc.config import load_config
+    config = load_config(str(project_dir))
+    docs_dir = os.path.join(project_dir, "docs")
+
+    page_dates = {}
+    for fname in os.listdir(docs_dir):
+        if not fname.endswith(".md"):
+            continue
+        full_path = os.path.join(docs_dir, fname)
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        metadata, _ = _parse_frontmatter(content)
+        if "updated" in metadata:
+            page_dates[fname] = str(metadata["updated"])
+        elif "date" in metadata:
+            page_dates[fname] = str(metadata["date"])
+        else:
+            mtime = os.path.getmtime(full_path)
+            page_dates[fname] = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+    return page_dates
+
+
+def test_page_date_from_updated_frontmatter(project_dir):
+    """A page with 'updated' in frontmatter gets that date."""
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "dated.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write("---\nupdated: 2026-05-01\n---\n# Dated Page\n\nContent.\n")
+
+    # Build succeeds
+    build(str(project_dir))
+
+    page_dates = _build_and_get_page_dates(project_dir)
+    assert page_dates["dated.md"] == "2026-05-01"
+
+
+def test_page_date_from_date_frontmatter(project_dir):
+    """A page with 'date' (no 'updated') in frontmatter gets that date."""
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "dated.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write("---\ndate: 2026-01-15\n---\n# Dated Page\n\nContent.\n")
+
+    build(str(project_dir))
+
+    page_dates = _build_and_get_page_dates(project_dir)
+    assert page_dates["dated.md"] == "2026-01-15"
+
+
+def test_page_date_from_mtime(project_dir):
+    """A page with no date frontmatter gets a date from file mtime (YYYY-MM-DD)."""
+    # The index.md created by the fixture has no date frontmatter
+    build(str(project_dir))
+
+    page_dates = _build_and_get_page_dates(project_dir)
+    date_str = page_dates["index.md"]
+    assert re.match(r"^\d{4}-\d{2}-\d{2}$", date_str), f"Expected YYYY-MM-DD, got {date_str}"
+
+
+def test_page_date_updated_takes_priority_over_date(project_dir):
+    """'updated' takes priority over 'date' in frontmatter."""
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "both.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write("---\ndate: 2026-01-15\nupdated: 2026-05-01\n---\n# Both\n\nContent.\n")
+
+    build(str(project_dir))
+
+    page_dates = _build_and_get_page_dates(project_dir)
+    assert page_dates["both.md"] == "2026-05-01"

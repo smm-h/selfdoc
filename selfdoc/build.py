@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+from datetime import datetime
 
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
@@ -337,6 +338,20 @@ def build(dir_path=".", config=None):
             else:
                 other_files.append(rel_path)
 
+    # Build page_dates: map md_path -> ISO date string (YYYY-MM-DD)
+    # Priority: frontmatter "updated" > frontmatter "date" > file mtime
+    page_dates = {}
+    for rel_path in markdown_files:
+        meta = frontmatter.get(rel_path, {})
+        if "updated" in meta:
+            page_dates[rel_path] = str(meta["updated"])
+        elif "date" in meta:
+            page_dates[rel_path] = str(meta["date"])
+        else:
+            full_path = os.path.join(docs_dir, rel_path)
+            mtime = os.path.getmtime(full_path)
+            page_dates[rel_path] = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+
     if not markdown_files:
         raise RuntimeError(
             f"No .md files found in '{config['docs']}'. Nothing to build."
@@ -370,6 +385,7 @@ def build(dir_path=".", config=None):
         base_url=base_url,
         frontmatter=frontmatter,
         lang=lang,
+        page_dates=page_dates,
     )
 
     # Ensure output directory exists
@@ -424,6 +440,7 @@ def build(dir_path=".", config=None):
         has_custom_css=has_custom_css,
         repo=repo,
         lang=lang,
+        page_dates=page_dates,
     )
     written.update(aux_written)
 
@@ -432,7 +449,7 @@ def build(dir_path=".", config=None):
 
 def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
-    base_url, has_custom_css, repo, lang="en",
+    base_url, has_custom_css, repo, lang="en", page_dates=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon).
 
