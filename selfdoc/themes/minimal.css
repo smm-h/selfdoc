@@ -553,6 +553,27 @@ em {
     font-style: italic;
 }
 
+/* === Skip-to-content link (Feature 10) === */
+
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    padding: 0.5rem 1rem;
+    background: var(--link);
+    color: var(--topbar-text);
+    z-index: 1002;
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.skip-link:focus {
+    top: 0;
+    color: var(--topbar-text);
+}
+
+/* --- NON-CRITICAL --- */
+
 /* === Tables (Feature 38) === */
 
 table {
@@ -775,25 +796,6 @@ hr {
 
 .site-footer a:hover {
     text-decoration: underline;
-}
-
-/* === Skip-to-content link (Feature 10) === */
-
-.skip-link {
-    position: absolute;
-    top: -100%;
-    left: 0;
-    padding: 0.5rem 1rem;
-    background: var(--link);
-    color: var(--topbar-text);
-    z-index: 1002;
-    text-decoration: none;
-    font-size: 0.875rem;
-}
-
-.skip-link:focus {
-    top: 0;
-    color: var(--topbar-text);
 }
 
 /* === Breadcrumbs (Feature 9) === */

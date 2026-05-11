@@ -108,7 +108,8 @@ def generate_pygments_css():
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
-                   page_dates=None, author=None, feed_url=None):
+                   page_dates=None, author=None, feed_url=None,
+                   critical_css=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -213,6 +214,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             author=author,
             feed_url=page_feed_url,
             summary=frontmatter_description,
+            critical_css=critical_css,
         )
         html_files[html_path] = full_html
 
@@ -221,7 +223,7 @@ def generate_html(markdown_files, project_name=None, version=None,
 
 def generate_404_page(project_name=None, version=None, has_custom_css=False,
                       nav_items=None, repo=None, base_url=None, lang="en",
-                      feed_url=None):
+                      feed_url=None, critical_css=None):
     """Generate a custom 404 page using the standard page template (Feature 39).
 
     Returns the full HTML string for 404.html.
@@ -280,6 +282,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         page_path="404.html",
         lang=lang,
         feed_url=feed_url,
+        critical_css=critical_css,
     )
 
 
@@ -888,7 +891,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
                lang="en", date_modified=None, author=None,
-               feed_url=None, summary=None):
+               feed_url=None, summary=None, critical_css=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -1487,7 +1490,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<link rel="preconnect" href="https://fonts.googleapis.com">\n'
         f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
         f'<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">\n'
-        f'<link rel="stylesheet" href="{css_href}">{custom_css_tag}{feed_tag}{seo_tags}\n'
+        f'{"<style>" + critical_css + "</style>" + chr(10) if critical_css else ""}'
+        f'<link rel="stylesheet" href="{css_href}" media="print"'
+        f" onload=\"this.media='all'\">"
+        f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
+        f'{custom_css_tag}{feed_tag}{seo_tags}\n'
         f'<script>{head_js}</script>\n'
         f'</head>\n'
         f'<body>\n'

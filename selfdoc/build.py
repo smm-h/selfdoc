@@ -34,6 +34,24 @@ def _minify_css(css_text):
     return css_text
 
 
+_CRITICAL_CSS_MARKER = "/* --- NON-CRITICAL --- */"
+
+
+def _extract_critical_css(full_css):
+    """Split theme CSS into critical (above-the-fold) and full parts.
+
+    The theme CSS contains a marker comment that separates critical styles
+    (needed for first paint) from non-critical styles (loaded async).
+    Returns (critical_css, full_css) where critical_css is everything above
+    the marker and full_css is the complete stylesheet.
+    """
+    if _CRITICAL_CSS_MARKER in full_css:
+        critical, _ = full_css.split(_CRITICAL_CSS_MARKER, 1)
+        return critical.rstrip(), full_css
+    # No marker found: treat everything as critical (safe fallback)
+    return full_css, full_css
+
+
 def _minify_html(html_text):
     """Minify HTML by removing comments and collapsing inter-tag whitespace.
 
@@ -530,6 +548,12 @@ def build(dir_path=".", config=None):
     # Compute feed URL (Atom feed link in HTML <head>)
     feed_url = "feed.xml" if base_url else None
 
+    # Extract critical CSS from raw theme (before minification) for inlining
+    theme_name = config.get("theme", "minimal")
+    raw_theme_css = get_css(theme_name)
+    critical_css, _ = _extract_critical_css(raw_theme_css)
+    critical_css = _minify_css(critical_css)
+
     # Convert to HTML
     html_files = generate_html(
         markdown_files,
@@ -544,6 +568,7 @@ def build(dir_path=".", config=None):
         page_dates=page_dates,
         author=author,
         feed_url=feed_url,
+        critical_css=critical_css,
     )
 
     # Ensure output directory exists
@@ -552,9 +577,8 @@ def build(dir_path=".", config=None):
     written = {}
 
     # Write the theme CSS file (with Pygments syntax highlighting rules appended)
-    theme_name = config.get("theme", "minimal")
     css_path = os.path.join(output_dir, "style.css")
-    theme_css = get_css(theme_name)
+    theme_css = raw_theme_css
     pygments_css = generate_pygments_css()
     if pygments_css:
         theme_css = theme_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
@@ -607,6 +631,7 @@ def build(dir_path=".", config=None):
         frontmatter=frontmatter,
         description=config_description,
         feed_url=feed_url,
+        critical_css=critical_css,
     )
     written.update(aux_written)
 
@@ -616,7 +641,7 @@ def build(dir_path=".", config=None):
 def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
     base_url, has_custom_css, repo, lang="en", page_dates=None,
-    frontmatter=None, description="", feed_url=None,
+    frontmatter=None, description="", feed_url=None, critical_css=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
@@ -682,6 +707,7 @@ def _generate_auxiliary_files(
         base_url=base_url,
         lang=lang,
         feed_url=feed_url,
+        critical_css=critical_css,
     )
     not_found_path = os.path.join(output_dir, "404.html")
     with open(not_found_path, "w", encoding="utf-8") as f:

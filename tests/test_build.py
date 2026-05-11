@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css
 from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js
 
 
@@ -1097,3 +1097,124 @@ def test_built_html_has_no_html_comments(project_dir):
         content = f.read()
 
     assert "<!--" not in content
+
+
+# --- Phase 3.2: Critical CSS inlining ---
+
+
+def test_built_html_contains_inline_style_block(project_dir):
+    """Built HTML contains a <style> block with critical CSS inlined in <head>."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "<style>" in content
+    assert "</style>" in content
+
+
+def test_built_html_loads_stylesheet_async(project_dir):
+    """Built HTML loads the full stylesheet asynchronously via media="print" onload."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'media="print"' in content
+    assert "onload=\"this.media='all'\"" in content
+
+
+def test_built_html_has_noscript_fallback(project_dir):
+    """Built HTML has a <noscript> fallback for the full stylesheet."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "<noscript>" in content
+    assert '<link rel="stylesheet" href="style.css">' in content
+
+
+def test_critical_css_contains_root_variables(project_dir):
+    """Critical CSS inlined in HTML contains :root custom properties."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract the <style> block content
+    style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
+    assert style_match is not None
+    style_content = style_match.group(1)
+
+    assert ":root" in style_content
+    assert "--bg" in style_content
+
+
+def test_critical_css_contains_layout(project_dir):
+    """Critical CSS inlined in HTML contains .layout grid styles."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
+    assert style_match is not None
+    style_content = style_match.group(1)
+
+    assert ".layout" in style_content
+
+
+def test_critical_css_excludes_admonition(project_dir):
+    """Critical CSS does NOT contain .admonition styles."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
+    assert style_match is not None
+    style_content = style_match.group(1)
+
+    assert ".admonition" not in style_content
+
+
+def test_critical_css_excludes_print_styles(project_dir):
+    """Critical CSS does NOT contain @media print styles."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
+    assert style_match is not None
+    style_content = style_match.group(1)
+
+    # Minified CSS: @media print becomes @media print (no space stripped)
+    assert "@media print" not in style_content
+
+
+def test_extract_critical_css_splits_on_marker():
+    """_extract_critical_css splits CSS at the NON-CRITICAL marker."""
+    css = ":root { --bg: #fff; }\n/* --- NON-CRITICAL --- */\n.admonition { color: red; }"
+    critical, full = _extract_critical_css(css)
+
+    assert ":root" in critical
+    assert ".admonition" not in critical
+    assert ":root" in full
+    assert ".admonition" in full
+
+
+def test_extract_critical_css_no_marker():
+    """_extract_critical_css returns full CSS as critical when no marker exists."""
+    css = ":root { --bg: #fff; }\n.admonition { color: red; }"
+    critical, full = _extract_critical_css(css)
+
+    assert critical == full
