@@ -487,7 +487,8 @@ pre code {
     font-family: var(--font-body);
 }
 
-pre:hover .copy-btn {
+pre:hover .copy-btn,
+pre:focus-within .copy-btn {
     opacity: 1;
 }
 
@@ -515,7 +516,8 @@ pre:hover .copy-btn {
     text-decoration: none;
 }
 
-pre:hover .run-btn {
+pre:hover .run-btn,
+pre:focus-within .run-btn {
     opacity: 1;
 }
 
