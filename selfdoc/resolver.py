@@ -2,6 +2,48 @@
 
 import importlib.util
 import os
+import re
+
+
+def _resolve_glossary(body):
+    """Parse glossary body lines and return HTML with <dl>/<dt>/<dd> elements.
+
+    Each non-empty line is expected as ``**Term**: Definition text``.
+    The ``**`` markers are stripped and the term/definition are split on
+    the first ``: `` separator.
+
+    Returns an HTML string wrapped in ``<div class="glossary">``.
+    """
+    items = []
+    for line in body:
+        line = line.strip()
+        if not line:
+            continue
+        # Strip ** markers around the term
+        line = re.sub(r"^\*\*(.+?)\*\*", r"\1", line)
+        # Split on first ': '
+        if ": " in line:
+            term, definition = line.split(": ", 1)
+        else:
+            term = line
+            definition = ""
+        term = term.strip()
+        definition = definition.strip()
+        items.append((term, definition))
+
+    if not items:
+        return '<div class="glossary"><dl></dl></div>'
+
+    dl_items = []
+    for term, definition in items:
+        dl_items.append(f"<dt><dfn>{term}</dfn></dt>")
+        dl_items.append(f"<dd>{definition}</dd>")
+
+    return (
+        '<div class="glossary">\n<dl>\n'
+        + "\n".join(dl_items)
+        + "\n</dl>\n</div>"
+    )
 
 
 def _load_custom_directive(script_path, name):
@@ -57,6 +99,10 @@ def make_resolver(config, base_dir="."):
     base_dir = os.path.abspath(base_dir)
 
     def resolve(name, arg, body):
+        # Built-in content-formatting directives (not language-specific)
+        if name == "glossary":
+            return _resolve_glossary(body)
+
         # Custom directives take priority over built-in names
         if name in custom_directives:
             script_rel = custom_directives[name]

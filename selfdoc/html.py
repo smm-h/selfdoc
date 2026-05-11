@@ -1162,6 +1162,33 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 f'\n</script>'
             )
 
+        # DefinedTermSet JSON-LD when glossary content is present
+        if '<div class="glossary">' in body_html:
+            dfn_terms = re.findall(
+                r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>",
+                body_html,
+            )
+            if dfn_terms:
+                defined_terms = []
+                for term_name, term_desc in dfn_terms:
+                    entry = {
+                        "@type": "DefinedTerm",
+                        "name": term_name,
+                        "description": term_desc,
+                    }
+                    defined_terms.append(entry)
+                term_set_ld = {
+                    "@context": "https://schema.org",
+                    "@type": "DefinedTermSet",
+                    "name": f"{title} Glossary",
+                    "hasDefinedTerm": defined_terms,
+                }
+                seo_tags += (
+                    f'\n<script type="application/ld+json">\n'
+                    f'{json.dumps(term_set_ld)}'
+                    f'\n</script>'
+                )
+
         # ItemList JSON-LD when frontmatter schema == "itemlist"
         if schema == "itemlist":
             li_matches = re.findall(r"<li>(.*?)</li>", body_html)

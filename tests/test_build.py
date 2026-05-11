@@ -1600,3 +1600,129 @@ def test_itemlist_jsonld_not_emitted_without_base_url(project_dir):
         content = f.read()
 
     assert '"ItemList"' not in content
+
+
+# --- :::glossary directive ---
+
+
+def test_glossary_directive_resolves_to_dl(project_dir):
+    """:::glossary directive resolves to HTML with <dl>, <dt>, <dfn>, <dd>."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "glossary.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Glossary\n\n"
+            ":::glossary\n"
+            "**API**: Application Programming Interface\n"
+            "**SDK**: Software Development Kit\n"
+            ":::\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "glossary.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="glossary">' in content
+    assert "<dl>" in content
+    assert "<dt><dfn>API</dfn></dt>" in content
+    assert "<dd>Application Programming Interface</dd>" in content
+    assert "<dt><dfn>SDK</dfn></dt>" in content
+    assert "<dd>Software Development Kit</dd>" in content
+
+
+def test_glossary_defined_term_set_jsonld_with_base_url(project_dir):
+    """DefinedTermSet JSON-LD is emitted when glossary is present and base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "glossary.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Terms\n\n"
+            ":::glossary\n"
+            "**API**: Application Programming Interface\n"
+            "**CLI**: Command Line Interface\n"
+            ":::\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "glossary.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"DefinedTermSet"' in content
+
+    # Extract and validate the JSON-LD block
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    term_set_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "DefinedTermSet":
+            term_set_data = data
+            break
+
+    assert term_set_data is not None, "DefinedTermSet JSON-LD not found"
+    assert term_set_data["name"] == "Terms Glossary"
+    terms = term_set_data["hasDefinedTerm"]
+    assert len(terms) == 2
+    assert terms[0]["@type"] == "DefinedTerm"
+    assert terms[0]["name"] == "API"
+    assert terms[0]["description"] == "Application Programming Interface"
+    assert terms[1]["name"] == "CLI"
+    assert terms[1]["description"] == "Command Line Interface"
+
+
+def test_glossary_no_jsonld_without_base_url(project_dir):
+    """DefinedTermSet JSON-LD is NOT emitted without base_url."""
+    # Default fixture has no base_url
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "glossary.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Glossary\n\n"
+            ":::glossary\n"
+            "**API**: Application Programming Interface\n"
+            ":::\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "glossary.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # The glossary HTML should still be present
+    assert '<div class="glossary">' in content
+    # But no JSON-LD
+    assert '"DefinedTermSet"' not in content
+
+
+def test_glossary_terms_correctly_extracted():
+    """Glossary resolver correctly parses terms and definitions."""
+    from selfdoc.resolver import _resolve_glossary
+
+    body = [
+        "**Router**: Handles HTTP routing",
+        "**Middleware**: Intercepts requests",
+        "",
+        "**Handler**: Processes the request",
+    ]
+    result = _resolve_glossary(body)
+
+    assert "<dt><dfn>Router</dfn></dt>" in result
+    assert "<dd>Handles HTTP routing</dd>" in result
+    assert "<dt><dfn>Middleware</dfn></dt>" in result
+    assert "<dd>Intercepts requests</dd>" in result
+    assert "<dt><dfn>Handler</dfn></dt>" in result
+    assert "<dd>Processes the request</dd>" in result
+    # Empty lines should be skipped, not produce entries
+    assert result.count("<dt>") == 3
