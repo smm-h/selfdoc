@@ -8,6 +8,7 @@ Supports:
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -15,6 +16,40 @@ class DeployError(RuntimeError):
     """Raised when a deploy operation fails."""
 
     pass
+
+
+def _resolve_cloudflare_env():
+    """Resolve Cloudflare environment variable name variations.
+
+    Checks for deprecated CF_ACCOUNT_ID, CF_API_TOKEN, and CF_PAGES_API_TOKEN
+    and remaps them to CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN so wrangler
+    picks them up. Prints deprecation warnings to stderr.
+    """
+    if not os.environ.get("CLOUDFLARE_ACCOUNT_ID"):
+        fallback = os.environ.get("CF_ACCOUNT_ID")
+        if fallback:
+            print(
+                "Warning: CF_ACCOUNT_ID is deprecated. Set CLOUDFLARE_ACCOUNT_ID instead.",
+                file=sys.stderr,
+            )
+            os.environ["CLOUDFLARE_ACCOUNT_ID"] = fallback
+
+    if not os.environ.get("CLOUDFLARE_API_TOKEN"):
+        fallback = os.environ.get("CF_API_TOKEN")
+        if fallback:
+            print(
+                "Warning: CF_API_TOKEN is deprecated. Set CLOUDFLARE_API_TOKEN instead.",
+                file=sys.stderr,
+            )
+            os.environ["CLOUDFLARE_API_TOKEN"] = fallback
+        else:
+            fallback = os.environ.get("CF_PAGES_API_TOKEN")
+            if fallback:
+                print(
+                    "Warning: CF_PAGES_API_TOKEN is deprecated. Set CLOUDFLARE_API_TOKEN instead.",
+                    file=sys.stderr,
+                )
+                os.environ["CLOUDFLARE_API_TOKEN"] = fallback
 
 
 def deploy_cloudflare_pages(output_dir, project_name, version):
@@ -31,6 +66,8 @@ def deploy_cloudflare_pages(output_dir, project_name, version):
     Raises:
         DeployError: If wrangler is not installed or the deploy fails.
     """
+    _resolve_cloudflare_env()
+
     if not shutil.which("wrangler"):
         raise DeployError(
             "wrangler CLI not found. Install it with: npm install -g wrangler\n"
