@@ -828,15 +828,16 @@ def test_page_summary_shown_with_description(project_dir):
     assert "This is my page summary" in content
 
 
-def test_page_summary_not_shown_without_description(project_dir):
-    """A page without frontmatter description does NOT show a .page-summary block."""
+def test_page_summary_auto_generated_without_frontmatter(project_dir):
+    """A page without frontmatter description gets auto-generated summary from first paragraph."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<div class="page-summary">' not in content
+    assert '<div class="page-summary">' in content
+    assert "Welcome." in content
 
 
 def test_page_summary_text_matches_description(project_dir):
@@ -853,6 +854,93 @@ def test_page_summary_text_matches_description(project_dir):
         content = f.read()
 
     assert f"<p>{desc_text}</p>" in content
+
+
+def test_page_summary_frontmatter_takes_priority(project_dir):
+    """A page with frontmatter description uses that for summary, not auto-generated."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: Frontmatter desc\n---\n# Test\n\nFirst paragraph text.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="page-summary">' in content
+    assert "Frontmatter desc" in content
+
+
+def test_tech_article_has_description_field(project_dir):
+    """TechArticle JSON-LD includes a description field when description exists."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: My page description\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract TechArticle JSON-LD
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert tech_article["description"] == "My page description"
+
+
+def test_tech_article_auto_description(project_dir):
+    """TechArticle JSON-LD includes auto-extracted description when no frontmatter."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nThis is auto-extracted content.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert tech_article["description"] == "This is auto-extracted content."
 
 
 def test_404_contains_sidebar_navigation(project_dir):

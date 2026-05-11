@@ -216,7 +216,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             date_modified=date_modified,
             author=author,
             feed_url=page_feed_url,
-            summary=frontmatter_description,
+            summary=frontmatter_description or description or None,
             critical_css=critical_css,
             schema=schema,
         )
@@ -1070,6 +1070,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             "url": canonical_url,
             "author": author_obj,
         }
+        if description:
+            tech_article["description"] = description
         if date_modified:
             tech_article["dateModified"] = date_modified
 
