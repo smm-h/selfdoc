@@ -460,6 +460,10 @@ def md_to_html(text):
     # cards (Feature 48)
     result = _wrap_api_entries(result)
 
+    # Post-process: auto-detect definitional patterns after headings and
+    # wrap the subject in <dfn> tags (Phase 6A)
+    result = _apply_definitions(result)
+
     # Post-process: mark the first image as high-priority LCP candidate
     # (Phase 3.3). All images start with loading="lazy" from _inline_format;
     # promote the first one to eager loading with high fetchpriority.
@@ -646,6 +650,70 @@ def _wrap_api_entries(html):
         r'<div class="api-entry">\1\n\2\n\3</div>',
         html,
     )
+
+
+def _apply_definitions(html):
+    """Wrap definitional subjects in <dfn> tags when they follow headings.
+
+    Detects patterns like "X is a ...", "X refers to ...", "X means ...",
+    "X represents ...", or the inverted "A/An X is ..." in the first <p>
+    after an <h2> or <h3> heading, and wraps X in <dfn>.
+    """
+    # Match: <h2/h3 ...>...</h2/h3> followed by optional whitespace then <p>
+    # that starts with a definitional pattern.
+    #
+    # The subject (X) can be:
+    #   - Plain text (one or more words)
+    #   - Wrapped in <code>...</code>
+    #   - Wrapped in <strong>...</strong>
+    #
+    # Definitional verbs: "is a", "is an", "is the", "refers to",
+    # "means", "represents"
+
+    # Pattern for the subject: plain words, or <code>...</code>,
+    # or <strong>...</strong>
+    subject_plain = r"[A-Za-z][A-Za-z0-9 ]*?"
+    subject_code = r"<code>[^<]+</code>"
+    subject_strong = r"<strong>[^<]+</strong>"
+    subject = rf"(?:{subject_code}|{subject_strong}|{subject_plain})"
+
+    # Definitional verbs
+    direct_verb = r"(?:is\s+(?:a|an|the)\b|refers\s+to\b|means\b|represents\b)"
+
+    # Inverted form: "A/An Subject verb ..."
+    inverted_pattern = (
+        rf"(<h[23]\s[^>]*>.*?</h[23]>)\n"
+        rf"<p>(?:A|An)\s+({subject})\s+({direct_verb})"
+    )
+
+    # Direct form pattern (excludes "A/An " starts to avoid overlap)
+    direct_pattern = (
+        rf"(<h[23]\s[^>]*>.*?</h[23]>)\n"
+        rf"<p>(?!An?\s)({subject})\s+({direct_verb})"
+    )
+
+    def _wrap_subject(match_obj, inverted=False):
+        heading = match_obj.group(1)
+        subject_text = match_obj.group(2)
+        verb = match_obj.group(3)
+
+        # Wrap subject in <dfn>. If it's inside <code> or <strong>,
+        # wrap the outer tag.
+        dfn_subject = f"<dfn>{subject_text}</dfn>"
+
+        if inverted:
+            # Determine original article from context
+            # Re-read the full match to get the article
+            full = match_obj.group(0)
+            article = "An" if full.startswith(heading + "\n<p>An ") else "A"
+            return f"{heading}\n<p>{article} <dfn>{subject_text}</dfn> {verb}"
+        return f"{heading}\n<p>{dfn_subject} {verb}"
+
+    # Apply inverted form first (more specific), then direct form
+    result = re.sub(inverted_pattern, lambda m: _wrap_subject(m, inverted=True), html)
+    result = re.sub(direct_pattern, lambda m: _wrap_subject(m, inverted=False), result)
+
+    return result
 
 
 def _parse_table(table_lines):

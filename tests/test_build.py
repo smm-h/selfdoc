@@ -2757,3 +2757,47 @@ def test_conditional_js_includes_all_when_needed():
     assert "theme-toggle" in content
     assert "hamburger" in content
     assert "search-dialog" in content
+
+
+# -- Phase 6A: Auto-detect definition patterns --
+
+
+def test_dfn_plain_text_after_heading():
+    """Plain text 'X is a ...' after H2 gets <dfn> wrapping."""
+    md = "## Overview\n\nselfdoc is a static site generator.\n"
+    result = md_to_html(md)
+    assert "<dfn>selfdoc</dfn> is a" in result
+
+
+def test_dfn_code_after_heading():
+    """`code` subject after heading wraps outer <code> in <dfn>."""
+    md = "## Function\n\n`parse_directives` is a function.\n"
+    result = md_to_html(md)
+    assert "<dfn><code>parse_directives</code></dfn> is a" in result
+
+
+def test_dfn_inverted_form():
+    """'A directive refers to' after heading wraps subject in <dfn>."""
+    md = "### Directives\n\nA directive refers to a block.\n"
+    result = md_to_html(md)
+    assert "<dfn>directive</dfn> refers to" in result
+
+
+def test_dfn_not_applied_without_heading():
+    """Paragraph NOT after a heading does NOT get <dfn> treatment."""
+    md = "selfdoc is a static site generator.\n"
+    result = md_to_html(md)
+    assert "<dfn>" not in result
+
+
+def test_dfn_not_applied_to_second_paragraph():
+    """Second paragraph after heading does NOT get <dfn> treatment."""
+    md = (
+        "## Overview\n\n"
+        "First paragraph here.\n\n"
+        "selfdoc is a static site generator.\n"
+    )
+    result = md_to_html(md)
+    # The first paragraph has no definitional pattern, and the second
+    # should not be treated since it is not the first after the heading.
+    assert "<dfn>" not in result
