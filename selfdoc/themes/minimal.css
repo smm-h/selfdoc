@@ -388,10 +388,15 @@ h6:hover .heading-link {
 code {
     font-family: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Code", Consolas, monospace;
     font-size: 0.9em;
+}
+
+/* Inline code styling distinct from code blocks (Feature 29) */
+:not(pre) > code {
     background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 3px;
     padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.875em;
+    border: 1px solid var(--code-border);
 }
 
 pre {
@@ -406,11 +411,7 @@ pre {
 }
 
 pre code {
-    background: none;
-    border: none;
-    padding: 0;
     font-size: 0.875rem;
-    border-radius: 0;
     white-space: pre;
 }
 
@@ -727,16 +728,41 @@ hr {
     display: block;
 }
 
-/* --- Sidebar hamburger toggle (mobile) --- */
+/* --- Hamburger button (Feature 25) --- */
 
-.sidebar-toggle {
+.hamburger {
     display: none;
     background: none;
     border: none;
-    color: var(--topbar-text);
     cursor: pointer;
-    padding: 4px;
-    line-height: 0;
+    padding: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+}
+
+.hamburger span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--topbar-text);
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+/* Animate to X when sidebar is open */
+.sidebar-open .hamburger span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.sidebar-open .hamburger span:nth-child(2) {
+    opacity: 0;
+}
+
+.sidebar-open .hamburger span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
 }
 
 /* Touch targets 44x44px (Feature 16) are integrated into the
@@ -858,6 +884,94 @@ hr {
     white-space: nowrap;
 }
 
+/* --- Diff line highlighting (Feature 27) --- */
+
+.code-block .line {
+    display: block;
+}
+
+.code-block .line-add {
+    background: rgba(46, 160, 67, 0.15);
+}
+
+.code-block .line-remove {
+    background: rgba(248, 81, 73, 0.15);
+}
+
+/* --- Mobile TOC disclosure (Feature 26) --- */
+
+.mobile-toc {
+    display: none;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0;
+}
+
+.mobile-toc summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    list-style: none;
+}
+
+.mobile-toc summary::-webkit-details-marker {
+    display: none;
+}
+
+.mobile-toc summary::before {
+    content: "\25b6";
+    display: inline-block;
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    transition: transform 0.15s;
+}
+
+.mobile-toc[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.mobile-toc .toc-nav {
+    padding: 0 1rem 0.75rem;
+}
+
+/* --- Feedback widget (Feature 30) --- */
+
+.feedback {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.feedback button {
+    padding: 6px 16px;
+    min-height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.feedback button:hover {
+    border-color: var(--link);
+    background: var(--sidebar-hover-bg);
+}
+
+/* --- Sidebar overlay for mobile (Feature 25) --- */
+
+.sidebar-overlay {
+    display: none;
+}
+
 /* --- Responsive: medium screens (hide TOC) --- */
 
 @media (max-width: 1280px) {
@@ -868,6 +982,10 @@ hr {
     .toc {
         display: none;
     }
+
+    .mobile-toc {
+        display: block;
+    }
 }
 
 /* --- Responsive: collapse sidebar on mobile --- */
@@ -877,8 +995,8 @@ hr {
         padding: 0 1rem;
     }
 
-    .sidebar-toggle {
-        display: block;
+    .hamburger {
+        display: flex;
     }
 
     .sidebar {
@@ -892,8 +1010,20 @@ hr {
         z-index: 150;
     }
 
-    .sidebar.open {
+    .sidebar-open .sidebar {
         left: 0;
+    }
+
+    /* Full-height overlay behind sidebar */
+    .sidebar-open::after {
+        content: "";
+        position: fixed;
+        top: 48px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 140;
     }
 
     .nav-list {

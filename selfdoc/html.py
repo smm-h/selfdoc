@@ -41,7 +41,8 @@ def get_css(theme_name="minimal"):
 
 
 def generate_html(markdown_files, project_name=None, version=None,
-                   has_custom_css=False, repo=None, docs_dir_name="docs/"):
+                   has_custom_css=False, repo=None, docs_dir_name="docs/",
+                   base_url=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -51,6 +52,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         has_custom_css: Whether a custom.css file exists for the project.
         repo: GitHub repo URL for "Edit this page" links (optional).
         docs_dir_name: Docs directory name for constructing source paths.
+        base_url: Base URL for canonical links and sitemap (optional).
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -108,6 +110,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             prefix=prefix,
             repo=repo,
             source_path=source_path,
+            base_url=base_url,
+            page_path=html_path,
         )
         html_files[html_path] = full_html
 
@@ -136,7 +140,15 @@ def md_to_html(text):
                 code_lines.append(lines[i])
                 i += 1
             i += 1  # skip closing ```
-            code_content = _escape_html("\n".join(code_lines))
+            # Diff-style line highlighting (Feature 27)
+            is_diff = lang == "diff" or any(
+                cl.startswith("+") or cl.startswith("-")
+                for cl in code_lines
+            )
+            if is_diff:
+                code_content = _render_diff_lines(code_lines)
+            else:
+                code_content = _escape_html("\n".join(code_lines))
             if lang:
                 escaped_lang = _escape_html(lang)
                 label = f'<div class="code-label">{escaped_lang}</div>'
@@ -329,6 +341,24 @@ def _parse_blockquote(bq_lines):
     return f"<blockquote><p>{content}</p></blockquote>"
 
 
+def _render_diff_lines(code_lines):
+    """Render code lines with diff-style highlighting.
+
+    Lines starting with '+' get class "line-add", lines starting with '-'
+    get class "line-remove". Other lines get a plain "line" span.
+    """
+    parts = []
+    for line in code_lines:
+        escaped = _escape_html(line)
+        if line.startswith("+"):
+            parts.append(f'<span class="line line-add">{escaped}</span>')
+        elif line.startswith("-"):
+            parts.append(f'<span class="line line-remove">{escaped}</span>')
+        else:
+            parts.append(f'<span class="line">{escaped}</span>')
+    return "\n".join(parts)
+
+
 def _inline_format(text):
     """Apply inline formatting: links, bold, italic, inline code."""
     # Inline code first (protect from other transformations)
@@ -341,6 +371,12 @@ def _inline_format(text):
         else:
             # Outside backticks -- apply other inline formatting
             formatted = seg
+            # Images: ![alt](src) -- must come before links
+            formatted = re.sub(
+                r"!\[([^\]]*)\]\(([^)]+)\)",
+                r'<img src="\2" alt="\1" loading="lazy">',
+                formatted,
+            )
             # Links: [text](url)
             formatted = re.sub(
                 r"\[([^\]]+)\]\(([^)]+)\)",
@@ -469,7 +505,8 @@ def _build_breadcrumbs(html_path, page_title, prefix):
 def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
-               next_page=None, prefix="", repo=None, source_path=None):
+               next_page=None, prefix="", repo=None, source_path=None,
+               base_url=None, page_path=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -516,22 +553,67 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<nav class="page-nav">{prev_link}{next_link}</nav>'
         )
 
-    # Page footer (Feature 18): combines edit link and prev/next nav
-    footer_html = ""
-    if edit_link_html or page_nav_html:
-        page_meta = ""
-        if edit_link_html:
-            page_meta = f'<div class="page-meta">{edit_link_html}</div>'
-        footer_html = (
-            f'<footer class="page-footer">'
-            f'{page_meta}{page_nav_html}'
-            f'</footer>'
-        )
+    # Feedback widget (Feature 30)
+    feedback_html = (
+        '<div class="feedback">'
+        '<span>Was this page helpful?</span>'
+        '<button class="feedback-yes" aria-label="Yes">Yes</button>'
+        '<button class="feedback-no" aria-label="No">No</button>'
+        '</div>'
+    )
 
-    # TOC aside (Feature 2)
+    # Page footer (Feature 18): combines edit link, feedback, and prev/next nav
+    footer_html = ""
+    footer_parts = []
+    if edit_link_html:
+        footer_parts.append(f'<div class="page-meta">{edit_link_html}</div>')
+    footer_parts.append(feedback_html)
+    if page_nav_html:
+        footer_parts.append(page_nav_html)
+    footer_html = (
+        f'<footer class="page-footer">'
+        f'{"".join(footer_parts)}'
+        f'</footer>'
+    )
+
+    # TOC aside (Feature 2) -- desktop only
     toc_aside = ""
     if toc_html:
         toc_aside = f'<aside class="toc">{toc_html}</aside>'
+
+    # Mobile TOC disclosure (Feature 26) -- shown only on mobile via CSS
+    mobile_toc_html = ""
+    if toc_html:
+        mobile_toc_html = (
+            f'<details class="mobile-toc">'
+            f'<summary>On this page</summary>'
+            f'{toc_html}'
+            f'</details>'
+        )
+
+    # SEO: OG meta tags (Feature 21), canonical URL (Feature 22),
+    # JSON-LD structured data (Feature 23)
+    seo_tags = ""
+    if base_url and page_path:
+        canonical_url = f"{base_url}/{page_path}"
+        escaped_title = _escape_html(title)
+        escaped_project = _escape_html(project_name)
+        slug = page_path.replace(".html", "")
+        seo_tags = (
+            f'\n<meta property="og:image" content="og-{slug}.svg">'
+            f'\n<meta property="og:title" content="{escaped_title}'
+            f' - {escaped_project}">'
+            f'\n<meta property="og:type" content="article">'
+            f'\n<link rel="canonical" href="{canonical_url}">'
+            f'\n<script type="application/ld+json">\n'
+            f'{{"@context": "https://schema.org", '
+            f'"@type": "TechArticle", '
+            f'"headline": "{escaped_title}", '
+            f'"url": "{canonical_url}", '
+            f'"author": {{"@type": "Organization", '
+            f'"name": "{escaped_project}"}}}}'
+            f'\n</script>'
+        )
 
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
@@ -573,7 +655,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <title>{_escape_html(title)} - {_escape_html(project_name)}</title>
 <link rel="stylesheet" href="{css_href}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}{seo_tags}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <script>hljs.highlightAll();</script>
 <script>
@@ -590,8 +672,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="topbar">
 <div class="topbar-inner">
-<button class="sidebar-toggle" aria-label="Toggle navigation">
-<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
 </button>
 <a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>
 {version_badge}
@@ -608,6 +690,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 </nav>
 <main class="content" id="main-content">
 {breadcrumbs_html}
+{mobile_toc_html}
 {body_html}
 {footer_html}
 </main>
@@ -693,21 +776,39 @@ document.querySelectorAll('pre').forEach(function(pre) {{
   }});
 }})();
 
-// Mobile sidebar toggle
+// Mobile sidebar toggle (Feature 25)
 (function() {{
-  var toggle = document.querySelector('.sidebar-toggle');
+  var toggle = document.querySelector('.hamburger');
   var sidebar = document.getElementById('sidebar');
-  if (toggle && sidebar) {{
-    toggle.addEventListener('click', function() {{
-      sidebar.classList.toggle('open');
-    }});
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(e) {{
-      if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {{
-        sidebar.classList.remove('open');
-      }}
-    }});
+  if (!toggle || !sidebar) return;
+  function openSidebar() {{
+    document.body.classList.add('sidebar-open');
+    toggle.setAttribute('aria-expanded', 'true');
   }}
+  function closeSidebar() {{
+    document.body.classList.remove('sidebar-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }}
+  toggle.addEventListener('click', function() {{
+    if (document.body.classList.contains('sidebar-open')) {{
+      closeSidebar();
+    }} else {{
+      openSidebar();
+    }}
+  }});
+  // Close when clicking outside (overlay area)
+  document.addEventListener('click', function(e) {{
+    if (document.body.classList.contains('sidebar-open') &&
+        !sidebar.contains(e.target) && !toggle.contains(e.target)) {{
+      closeSidebar();
+    }}
+  }});
+  // Close when a nav link is clicked
+  sidebar.querySelectorAll('a').forEach(function(link) {{
+    link.addEventListener('click', function() {{
+      closeSidebar();
+    }});
+  }});
 }})();
 
 // Cmd+K search (Feature 19)
@@ -833,6 +934,23 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {{
     }}
   }}, {{ once: true }});
 }});
+
+// Feedback widget (Feature 30)
+(function() {{
+  var widget = document.querySelector('.feedback');
+  if (!widget) return;
+  var key = 'selfdoc-feedback-' + location.pathname;
+  if (localStorage.getItem(key)) {{
+    widget.innerHTML = '<span>Thanks for your feedback!</span>';
+    return;
+  }}
+  widget.querySelectorAll('button').forEach(function(btn) {{
+    btn.addEventListener('click', function() {{
+      localStorage.setItem(key, btn.className);
+      widget.innerHTML = '<span>Thanks for your feedback!</span>';
+    }});
+  }});
+}})();
 </script>
 <dialog class="search-dialog" id="search-dialog">
 <div class="search-inner">
