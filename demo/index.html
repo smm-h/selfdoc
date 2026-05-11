@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theme Showcase - selfdoc demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../selfdoc/themes/minimal.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script>
+// Theme toggle: apply saved preference before paint to avoid flash
+(function() {
+  var saved = localStorage.getItem('selfdoc-theme');
+  if (saved === 'light' || saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="topbar">
+<div class="topbar-inner">
+<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+<span></span><span></span><span></span>
+</button>
+<a class="project-name" href="index.html">selfdoc demo</a>
+<span class="version-badge">v0.3.0</span>
+<button class="theme-toggle" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+<svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+<svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+</div>
+</header>
+<div class="layout">
+<nav class="sidebar" id="sidebar">
+<ul class="nav-list">
+<li><a href="index.html" class="active">Theme Showcase</a></li>
+<li><a href="#">Getting Started</a></li>
+<li><a href="#">Configuration</a></li>
+<li><a href="#">API Reference</a></li>
+</ul>
+</nav>
+<main class="content" id="main-content">
+
+<nav class="breadcrumbs" aria-label="Breadcrumbs"><a href="index.html">Home</a> / <span>Theme Showcase</span></nav>
+
+<details class="mobile-toc">
+<summary>On this page</summary>
+<nav class="toc-nav"><ul>
+<li class="toc-item"><a href="#typography">Typography</a></li>
+<li class="toc-item toc-h3"><a href="#headings">Headings</a></li>
+<li class="toc-item toc-h3"><a href="#inline-elements">Inline Elements</a></li>
+<li class="toc-item"><a href="#lists">Lists</a></li>
+<li class="toc-item toc-h3"><a href="#unordered-list">Unordered List</a></li>
+<li class="toc-item toc-h3"><a href="#ordered-list">Ordered List</a></li>
+<li class="toc-item toc-h3"><a href="#step-guide">Step Guide</a></li>
+<li class="toc-item"><a href="#code">Code</a></li>
+<li class="toc-item toc-h3"><a href="#plain-code-block">Plain Code Block</a></li>
+<li class="toc-item toc-h3"><a href="#code-with-language">Code with Language</a></li>
+<li class="toc-item toc-h3"><a href="#diff-highlighting">Diff Highlighting</a></li>
+<li class="toc-item toc-h3"><a href="#code-annotations">Code Annotations</a></li>
+<li class="toc-item toc-h3"><a href="#code-tabs">Code Tabs</a></li>
+<li class="toc-item"><a href="#blocks">Blocks</a></li>
+<li class="toc-item toc-h3"><a href="#blockquote">Blockquote</a></li>
+<li class="toc-item toc-h3"><a href="#admonitions">Admonitions</a></li>
+<li class="toc-item toc-h3"><a href="#table">Table</a></li>
+<li class="toc-item"><a href="#api-entry-cards">API Entry Cards</a></li>
+<li class="toc-item"><a href="#images">Images</a></li>
+<li class="toc-item"><a href="#search-dialog">Search Dialog</a></li>
+<li class="toc-item"><a href="#page-not-found">Page Not Found</a></li>
+</ul></nav>
+</details>
+
+<!-- ==================== TYPOGRAPHY ==================== -->
+
+<h1 id="theme-showcase"><a class="heading-link" href="#theme-showcase">#</a>Theme Showcase</h1>
+
+<p>This page demonstrates every HTML element and CSS class that selfdoc's minimal theme styles. Use it for design iteration -- open this file in a browser, edit the CSS, and see every component update at once.</p>
+
+<h2 id="typography"><a class="heading-link" href="#typography">#</a>Typography</h2>
+
+<h3 id="headings"><a class="heading-link" href="#headings">#</a>Headings</h3>
+
+<h1 id="heading-level-1"><a class="heading-link" href="#heading-level-1">#</a>Heading Level 1</h1>
+<h2 id="heading-level-2"><a class="heading-link" href="#heading-level-2">#</a>Heading Level 2</h2>
+<h3 id="heading-level-3"><a class="heading-link" href="#heading-level-3">#</a>Heading Level 3</h3>
+<h4 id="heading-level-4"><a class="heading-link" href="#heading-level-4">#</a>Heading Level 4</h4>
+<h5 id="heading-level-5"><a class="heading-link" href="#heading-level-5">#</a>Heading Level 5</h5>
+<h6 id="heading-level-6"><a class="heading-link" href="#heading-level-6">#</a>Heading Level 6</h6>
+
+<h3 id="inline-elements"><a class="heading-link" href="#inline-elements">#</a>Inline Elements</h3>
+
+<p>This paragraph contains <strong>bold text</strong>, <em>italicized text</em>, and <code>inline code</code> like <code>parse_directives()</code>. You can also use <a href="https://github.com/smm-h/selfdoc">external links</a> and <a href="#typography">internal links</a> to navigate the documentation.</p>
+
+<p>selfdoc resolves <code>:::directive</code> blocks in Markdown templates into content extracted from source code. It supports <strong>Python</strong>, <strong>Go</strong>, and <strong>TypeScript/JavaScript</strong> through language-specific extractors that handle all five built-in directives: <code>module</code>, <code>schema</code>, <code>test</code>, <code>cli</code>, and <code>config</code>.</p>
+
+<hr>
+
+<!-- ==================== LISTS ==================== -->
+
+<h2 id="lists"><a class="heading-link" href="#lists">#</a>Lists</h2>
+
+<h3 id="unordered-list"><a class="heading-link" href="#unordered-list">#</a>Unordered List</h3>
+
+<ul>
+<li>Directive parser -- state machine that tracks fenced code blocks
+  <ul>
+    <li><code>parse_directives</code> extracts directive blocks from Markdown</li>
+    <li><code>resolve_directives</code> replaces directives with resolver output</li>
+  </ul>
+</li>
+<li>Resolver -- dispatches to the correct language extractor
+  <ul>
+    <li>Custom directives from <code>selfdoc.json</code> are checked first</li>
+    <li>Falls back to built-in language-specific extractors</li>
+  </ul>
+</li>
+<li>Build pipeline -- scans, resolves, converts, and writes output</li>
+<li>HTML converter -- built-in Markdown-to-HTML with no dependencies</li>
+</ul>
+
+<h3 id="ordered-list"><a class="heading-link" href="#ordered-list">#</a>Ordered List</h3>
+
+<ol>
+<li>Create a <code>selfdoc.json</code> configuration file in your project root</li>
+<li>Write Markdown templates in your <code>docs/</code> directory</li>
+<li>Add <code>:::directive</code> blocks where you want code content injected</li>
+<li>Run <code>selfdoc build</code> to generate your documentation site</li>
+</ol>
+
+<h2 id="step-guide"><a class="heading-link" href="#step-guide">#</a>Step Guide</h2>
+
+<ol class="steps">
+<li>Install selfdoc using <code>pip install selfdoc</code> or <code>npm install -g selfdoc</code>. The npm package is a thin Node wrapper that delegates to <code>python3 -m selfdoc</code>.</li>
+<li>Initialize your project with <code>selfdoc init</code>. This creates a <code>selfdoc.json</code> config file and a <code>docs/</code> directory with a starter template.</li>
+<li>Run the development server with <code>selfdoc serve</code>. It uses SSE-based live reload with mtime polling so you see changes instantly as you edit templates.</li>
+</ol>
+
+<!-- ==================== CODE ==================== -->
+
+<h2 id="code"><a class="heading-link" href="#code">#</a>Code</h2>
+
+<h3 id="plain-code-block"><a class="heading-link" href="#plain-code-block">#</a>Plain Code Block</h3>
+
+<div class="code-block"><pre tabindex="0"><code>selfdoc build --output _site
+selfdoc serve --port 8080
+selfdoc check --coverage</code></pre></div>
+
+<h3 id="code-with-language"><a class="heading-link" href="#code-with-language">#</a>Code with Language</h3>
+
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">from selfdoc.directives import parse_directives, resolve_directives
+from selfdoc.resolver import make_resolver
+
+def build_docs(config):
+    """Build documentation from Markdown templates."""
+    resolver = make_resolver(config)
+    for template_path in config.docs_dir.glob("*.md"):
+        content = template_path.read_text()
+        resolved = resolve_directives(content, resolver)
+        output = md_to_html(resolved)
+        write_output(output, template_path)</code></pre></div>
+
+<h3 id="diff-highlighting"><a class="heading-link" href="#diff-highlighting">#</a>Diff Highlighting</h3>
+
+<div class="code-block"><div class="code-label">diff</div><pre tabindex="0"><code class="language-diff"><span class="line"> def resolve_directives(content, resolver):</span>
+<span class="line line-remove">-    directives = parse_directives(content)</span>
+<span class="line line-remove">-    for directive in directives:</span>
+<span class="line line-remove">-        content = content.replace(directive.raw, resolver(directive))</span>
+<span class="line line-add">+    directives = list(parse_directives(content))</span>
+<span class="line line-add">+    for name, arg, body in directives:</span>
+<span class="line line-add">+        replacement = resolver(name, arg, body)</span>
+<span class="line line-add">+        content = content.replace(body, replacement)</span>
+<span class="line">     return content</span></code></pre></div>
+
+<h3 id="code-annotations"><a class="heading-link" href="#code-annotations">#</a>Code Annotations</h3>
+
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def _slugify(text):
+    text = re.sub(r"&lt;[^&gt;]+&gt;", "", text)  <span class="code-annotation" data-note="Strip HTML tags like &lt;code&gt; and &lt;strong&gt; before slugifying" tabindex="0">1</span>
+    text = text.lower()
+    text = text.replace(" ", "-")  <span class="code-annotation" data-note="Spaces become hyphens for URL-friendly slugs" tabindex="0">2</span>
+    text = re.sub(r"[^a-z0-9-]", "", text)  <span class="code-annotation" data-note="Remove all non-alphanumeric characters except hyphens" tabindex="0">3</span>
+    return text.strip("-")</code></pre></div>
+
+<h3 id="code-tabs"><a class="heading-link" href="#code-tabs">#</a>Code Tabs</h3>
+
+<div class="code-tabs">
+<div class="tab-bar">
+<button class="tab active" data-lang="python">Python</button>
+<button class="tab" data-lang="go">Go</button>
+<button class="tab" data-lang="typescript">TypeScript</button>
+</div>
+<div class="tab-panel active" data-lang="python">
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">import ast
+
+def extract_module(source_path: str) -&gt; str:
+    """Extract module-level docstring using the ast module."""
+    tree = ast.parse(open(source_path).read())
+    return ast.get_docstring(tree) or ""</code></pre></div>
+</div>
+<div class="tab-panel" data-lang="go">
+<div class="code-block"><div class="code-label">go</div><pre tabindex="0"><code class="language-go">package extractor
+
+import "go/doc"
+
+// ExtractModule returns the package-level documentation comment.
+func ExtractModule(pkgPath string) string {
+    pkg, _ := doc.NewFromFiles(fset, files, pkgPath)
+    return pkg.Doc
+}</code></pre></div>
+</div>
+<div class="tab-panel" data-lang="typescript">
+<div class="code-block"><div class="code-label">typescript</div><pre tabindex="0"><code class="language-typescript">import * as ts from "typescript";
+
+export function extractModule(sourcePath: string): string {
+  const sourceFile = ts.createSourceFile(
+    sourcePath,
+    readFileSync(sourcePath, "utf-8"),
+    ts.ScriptTarget.Latest,
+  );
+  // Extract leading comment from the source file
+  return getLeadingComment(sourceFile) ?? "";
+}</code></pre></div>
+</div>
+</div>
+
+<!-- ==================== BLOCKS ==================== -->
+
+<h2 id="blocks"><a class="heading-link" href="#blocks">#</a>Blocks</h2>
+
+<h3 id="blockquote"><a class="heading-link" href="#blockquote">#</a>Blockquote</h3>
+
+<blockquote><p>selfdoc keeps your documentation in sync with your code. When you change a function signature, the docs update automatically on the next build. No more stale examples or outdated API references.</p></blockquote>
+
+<h3 id="admonitions"><a class="heading-link" href="#admonitions">#</a>Admonitions</h3>
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The directive parser uses a state machine to correctly handle fenced code blocks nested inside directives. This prevents false matches on lines that look like directive markers but are actually inside code examples.</p>
+</div>
+
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Use <code>selfdoc check --coverage</code> to see how many of your public symbols are documented. The coverage report only works for Python projects using the <code>ast</code>-based extractor.</p>
+</div>
+
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>File writes to shared state use atomic writes (write to a temporary file, then <code>os.replace</code>). If you bypass selfdoc's build pipeline and write output files directly, you risk partial writes on crash.</p>
+</div>
+
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Removing a directive from your template without removing the corresponding source code will cause <code>selfdoc check</code> to report decreased coverage. Always verify coverage after major refactors.</p>
+</div>
+
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>All external calls (subprocess invocations, network requests) must have explicit timeouts. The deploy module enforces this for both Cloudflare Pages (via wrangler CLI) and GitHub Pages (via git push).</p>
+</div>
+
+<h3 id="table"><a class="heading-link" href="#table">#</a>Table</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Directive</th><th>Description</th><th>Python</th><th>Go</th></tr>
+</thead>
+<tbody>
+<tr><td><code>module</code></td><td>Module-level docstring</td><td>ast</td><td>regex</td></tr>
+<tr><td><code>schema</code></td><td>Data class or struct definition</td><td>ast</td><td>regex</td></tr>
+<tr><td><code>test</code></td><td>Test function source code</td><td>ast</td><td>regex</td></tr>
+<tr><td><code>cli</code></td><td>CLI argument parser definition</td><td>ast</td><td>regex</td></tr>
+<tr><td><code>config</code></td><td>Configuration loading logic</td><td>ast</td><td>regex</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ==================== API ENTRY CARDS ==================== -->
+
+<h2 id="api-entry-cards"><a class="heading-link" href="#api-entry-cards">#</a>API Entry Cards</h2>
+
+<div class="api-entry">
+<h3 id="parse-directives"><a class="heading-link" href="#parse-directives">#</a>parse_directives</h3>
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def parse_directives(content: str) -&gt; list[tuple[str, str, str]]</code></pre></div>
+<p>Extract all <code>:::name arg</code> / <code>:::</code> directive pairs from a Markdown document. Returns a list of <code>(name, arg, body)</code> tuples. Correctly handles fenced code blocks to avoid false matches inside code examples.</p>
+</div>
+
+<div class="api-entry">
+<h3 id="resolve-directives"><a class="heading-link" href="#resolve-directives">#</a>resolve_directives</h3>
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def resolve_directives(content: str, resolver: Callable) -&gt; str</code></pre></div>
+<p>Replace all directive blocks in <code>content</code> with the output of <code>resolver(name, arg, body)</code>. The resolver is typically created by <code>make_resolver(config)</code> which dispatches to the appropriate language extractor.</p>
+</div>
+
+<div class="api-entry">
+<h3 id="md-to-html"><a class="heading-link" href="#md-to-html">#</a>md_to_html</h3>
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def md_to_html(text: str) -&gt; str</code></pre></div>
+<p>Convert Markdown text to HTML. Handles headings, code blocks (with tabs and annotations), inline code, paragraphs, unordered and ordered lists, links, bold, italic, tables, blockquotes, and admonitions. No external dependencies.</p>
+</div>
+
+<!-- ==================== IMAGES ==================== -->
+
+<h2 id="images"><a class="heading-link" href="#images">#</a>Images</h2>
+
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='200' viewBox='0 0 600 200'%3E%3Crect width='600' height='200' fill='%23f4f4f8' stroke='%23d0d7de' stroke-width='2' rx='8'/%3E%3Ctext x='300' y='90' text-anchor='middle' font-family='Inter, sans-serif' font-size='16' fill='%23555'%3Eselfdoc build pipeline%3C/text%3E%3Ctext x='300' y='120' text-anchor='middle' font-family='Inter, sans-serif' font-size='13' fill='%23888'%3Edocs/*.md → resolve directives → md_to_html → _site/*.html%3C/text%3E%3C/svg%3E" alt="selfdoc build pipeline diagram" loading="lazy">
+
+<!-- ==================== SEARCH DIALOG ==================== -->
+
+<h2 id="search-dialog"><a class="heading-link" href="#search-dialog">#</a>Search Dialog</h2>
+
+<p>Press <code>Cmd+K</code> (or <code>Ctrl+K</code>) to open the search dialog, or click the button below to open it manually for preview.</p>
+
+<p><button onclick="document.getElementById('search-dialog').showModal();" style="padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); cursor: pointer; font-family: var(--font-body);">Open Search Dialog</button></p>
+
+<!-- ==================== 404 SECTION ==================== -->
+
+<h2 id="page-not-found"><a class="heading-link" href="#page-not-found">#</a>Page Not Found</h2>
+
+<div style="border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1rem 0; background: var(--sidebar-bg);">
+<h1>Page not found</h1>
+<p>The page you are looking for does not exist.</p>
+<p><a href="index.html">Go to the homepage</a></p>
+</div>
+
+<!-- ==================== PAGE FOOTER ==================== -->
+
+<footer class="page-footer">
+<div class="page-meta"><a class="edit-link" href="https://github.com/smm-h/selfdoc/edit/main/docs/showcase.md">Edit this page on GitHub</a></div>
+<div class="feedback">
+<span>Was this page helpful?</span>
+<button class="feedback-yes" aria-label="Yes">Yes</button>
+<button class="feedback-no" aria-label="No">No</button>
+</div>
+<nav class="page-nav"><a class="page-nav-prev" href="#">&larr; Getting Started</a><a class="page-nav-next" href="#">Configuration &rarr;</a></nav>
+</footer>
+
+</main>
+<aside class="toc">
+<nav class="toc-nav"><ul>
+<li class="toc-item"><a href="#typography">Typography</a></li>
+<li class="toc-item toc-h3"><a href="#headings">Headings</a></li>
+<li class="toc-item toc-h3"><a href="#inline-elements">Inline Elements</a></li>
+<li class="toc-item"><a href="#lists">Lists</a></li>
+<li class="toc-item toc-h3"><a href="#unordered-list">Unordered List</a></li>
+<li class="toc-item toc-h3"><a href="#ordered-list">Ordered List</a></li>
+<li class="toc-item toc-h3"><a href="#step-guide">Step Guide</a></li>
+<li class="toc-item"><a href="#code">Code</a></li>
+<li class="toc-item toc-h3"><a href="#plain-code-block">Plain Code Block</a></li>
+<li class="toc-item toc-h3"><a href="#code-with-language">Code with Language</a></li>
+<li class="toc-item toc-h3"><a href="#diff-highlighting">Diff Highlighting</a></li>
+<li class="toc-item toc-h3"><a href="#code-annotations">Code Annotations</a></li>
+<li class="toc-item toc-h3"><a href="#code-tabs">Code Tabs</a></li>
+<li class="toc-item"><a href="#blocks">Blocks</a></li>
+<li class="toc-item toc-h3"><a href="#blockquote">Blockquote</a></li>
+<li class="toc-item toc-h3"><a href="#admonitions">Admonitions</a></li>
+<li class="toc-item toc-h3"><a href="#table">Table</a></li>
+<li class="toc-item"><a href="#api-entry-cards">API Entry Cards</a></li>
+<li class="toc-item"><a href="#images">Images</a></li>
+<li class="toc-item"><a href="#search-dialog">Search Dialog</a></li>
+<li class="toc-item"><a href="#page-not-found">Page Not Found</a></li>
+</ul></nav>
+</aside>
+</div>
+<script>
+// Theme toggle (Feature 6)
+(function() {
+  var btn = document.querySelector('.theme-toggle');
+  var states = ['system', 'light', 'dark'];
+  function getState() {
+    var s = localStorage.getItem('selfdoc-theme');
+    return (s === 'light' || s === 'dark') ? s : 'system';
+  }
+  function apply(state) {
+    if (state === 'light' || state === 'dark') {
+      document.documentElement.setAttribute('data-theme', state);
+      localStorage.setItem('selfdoc-theme', state);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.removeItem('selfdoc-theme');
+    }
+    btn.setAttribute('data-state', state);
+    // Update highlight.js stylesheet media attributes
+    var hljsLight = document.getElementById('hljs-light');
+    var hljsDark = document.getElementById('hljs-dark');
+    if (hljsLight && hljsDark) {
+      if (state === 'dark') {
+        hljsLight.media = 'not all';
+        hljsDark.media = 'all';
+      } else if (state === 'light') {
+        hljsLight.media = 'all';
+        hljsDark.media = 'not all';
+      } else {
+        hljsLight.media = '(prefers-color-scheme: light)';
+        hljsDark.media = '(prefers-color-scheme: dark)';
+      }
+    }
+  }
+  apply(getState());
+  btn.addEventListener('click', function() {
+    var cur = getState();
+    var next = states[(states.indexOf(cur) + 1) % states.length];
+    apply(next);
+  });
+})();
+
+// Copy button on code blocks (Feature 5)
+document.querySelectorAll('pre').forEach(function(pre) {
+  var code = pre.querySelector('code');
+  if (!code) return;
+  var btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', function() {
+    navigator.clipboard.writeText(code.textContent).then(function() {
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    });
+  });
+  pre.style.position = 'relative';
+  pre.appendChild(btn);
+});
+
+// Scrollspy for TOC (Feature 2)
+(function() {
+  var tocLinks = document.querySelectorAll('.toc a');
+  if (!tocLinks.length) return;
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      var id = entry.target.getAttribute('id');
+      var link = document.querySelector('.toc a[href="#' + id + '"]');
+      if (link) {
+        if (entry.isIntersecting) {
+          tocLinks.forEach(function(a) { a.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      }
+    });
+  }, { rootMargin: '-80px 0px -80% 0px' });
+  document.querySelectorAll('main h2[id], main h3[id]').forEach(function(h) {
+    observer.observe(h);
+  });
+})();
+
+// Mobile sidebar toggle (Feature 25)
+(function() {
+  var toggle = document.querySelector('.hamburger');
+  var sidebar = document.getElementById('sidebar');
+  if (!toggle || !sidebar) return;
+  function openSidebar() {
+    document.body.classList.add('sidebar-open');
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeSidebar() {
+    document.body.classList.remove('sidebar-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+  toggle.addEventListener('click', function() {
+    if (document.body.classList.contains('sidebar-open')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+  // Close when clicking outside (overlay area)
+  document.addEventListener('click', function(e) {
+    if (document.body.classList.contains('sidebar-open') &&
+        !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+      closeSidebar();
+    }
+  });
+  // Close when a nav link is clicked
+  sidebar.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function() {
+      closeSidebar();
+    });
+  });
+})();
+
+// Cmd+K search (Feature 19)
+(function() {
+  var dialog = document.getElementById('search-dialog');
+  if (!dialog) return;
+  var input = dialog.querySelector('.search-input');
+  var resultsList = dialog.querySelector('.search-results');
+  var activeIdx = -1;
+
+  // Static demo results instead of fetching search-index.json
+  var demoResults = [
+    { title: "Getting Started", path: "#", body: "Install selfdoc and create your first documentation site. Run selfdoc init to scaffold a new project." },
+    { title: "Configuration", path: "#", body: "The selfdoc.json file controls language, output directory, deploy provider, and custom directives." },
+    { title: "Directives Reference", path: "#", body: "Use :::module, :::schema, :::test, :::cli, and :::config to pull content from source code." },
+    { title: "API Reference", path: "#", body: "parse_directives, resolve_directives, md_to_html, generate_html, and other public functions." },
+    { title: "Deploy", path: "#", body: "Deploy to Cloudflare Pages or GitHub Pages. Configure the provider in selfdoc.json." }
+  ];
+
+  function openSearch() {
+    dialog.showModal();
+    input.value = '';
+    resultsList.innerHTML = '';
+    activeIdx = -1;
+    input.focus();
+  }
+
+  function closeSearch() {
+    dialog.close();
+  }
+
+  function renderResults(query) {
+    resultsList.innerHTML = '';
+    activeIdx = -1;
+    if (!query) return;
+    var q = query.toLowerCase();
+    var matches = demoResults.filter(function(entry) {
+      return entry.title.toLowerCase().indexOf(q) !== -1 ||
+             entry.body.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 10);
+    matches.forEach(function(entry) {
+      var li = document.createElement('li');
+      li.className = 'search-result-item';
+      var a = document.createElement('a');
+      a.href = entry.path;
+      var titleEl = document.createElement('div');
+      titleEl.className = 'search-result-title';
+      titleEl.textContent = entry.title;
+      var snippet = document.createElement('div');
+      snippet.className = 'search-result-snippet';
+      var bodyLower = entry.body.toLowerCase();
+      var pos = bodyLower.indexOf(q);
+      if (pos !== -1) {
+        var start = Math.max(0, pos - 40);
+        var end = Math.min(entry.body.length, pos + q.length + 60);
+        snippet.textContent = (start > 0 ? '...' : '') +
+          entry.body.substring(start, end) +
+          (end < entry.body.length ? '...' : '');
+      } else {
+        snippet.textContent = entry.body.substring(0, 100) +
+          (entry.body.length > 100 ? '...' : '');
+      }
+      a.appendChild(titleEl);
+      a.appendChild(snippet);
+      li.appendChild(a);
+      resultsList.appendChild(li);
+    });
+  }
+
+  function setActive(idx) {
+    var items = resultsList.querySelectorAll('.search-result-item');
+    items.forEach(function(li) { li.classList.remove('active'); });
+    if (idx >= 0 && idx < items.length) {
+      activeIdx = idx;
+      items[idx].classList.add('active');
+      items[idx].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      if (dialog.open) closeSearch();
+      else openSearch();
+    }
+  });
+
+  dialog.addEventListener('click', function(e) {
+    if (e.target === dialog) closeSearch();
+  });
+
+  input.addEventListener('input', function() {
+    renderResults(input.value);
+  });
+
+  input.addEventListener('keydown', function(e) {
+    var items = resultsList.querySelectorAll('.search-result-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive(Math.min(activeIdx + 1, items.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive(Math.max(activeIdx - 1, 0));
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      var link = items[activeIdx].querySelector('a');
+      if (link) window.location.href = link.href;
+    } else if (e.key === 'Escape') {
+      closeSearch();
+    }
+  });
+})();
+
+// Prefetch links on hover (Feature 20)
+document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
+  link.addEventListener('mouseenter', function() {
+    var href = link.getAttribute('href');
+    if (href && !document.querySelector('link[href="' + href + '"]')) {
+      var prefetch = document.createElement('link');
+      prefetch.rel = 'prefetch';
+      prefetch.href = href;
+      document.head.appendChild(prefetch);
+    }
+  }, { once: true });
+});
+
+// Feedback widget (Feature 30)
+(function() {
+  var widget = document.querySelector('.feedback');
+  if (!widget) return;
+  var key = 'selfdoc-feedback-' + location.pathname;
+  if (localStorage.getItem(key)) {
+    widget.innerHTML = '<span>Thanks for your feedback!</span>';
+    return;
+  }
+  widget.querySelectorAll('button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      localStorage.setItem(key, btn.className);
+      widget.innerHTML = '<span>Thanks for your feedback!</span>';
+    });
+  });
+})();
+
+// Code tabs: switch between language panels (Feature 31)
+(function() {
+  document.querySelectorAll('.code-tabs').forEach(function(tabGroup) {
+    var buttons = tabGroup.querySelectorAll('.tab-bar .tab');
+    var panels = tabGroup.querySelectorAll('.tab-panel');
+    buttons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var lang = btn.getAttribute('data-lang');
+        // Deactivate all tabs and panels in this group
+        buttons.forEach(function(b) { b.classList.remove('active'); });
+        panels.forEach(function(p) { p.classList.remove('active'); });
+        // Activate the selected tab and panel
+        btn.classList.add('active');
+        var panel = tabGroup.querySelector('.tab-panel[data-lang="' + lang + '"]');
+        if (panel) panel.classList.add('active');
+        // Persist preference in localStorage
+        localStorage.setItem('selfdoc-tab-' + lang, 'true');
+        // Sync same-language tabs across all tab groups on the page
+        document.querySelectorAll('.code-tabs').forEach(function(otherGroup) {
+          if (otherGroup === tabGroup) return;
+          var otherBtn = otherGroup.querySelector('.tab-bar .tab[data-lang="' + lang + '"]');
+          if (otherBtn) otherBtn.click();
+        });
+      });
+    });
+    // Restore persisted language preference
+    buttons.forEach(function(btn) {
+      var lang = btn.getAttribute('data-lang');
+      if (localStorage.getItem('selfdoc-tab-' + lang)) {
+        btn.click();
+      }
+    });
+  });
+})();
+
+// Embedded live code playground (Feature 41)
+(function() {
+  document.querySelectorAll('.code-block').forEach(function(block) {
+    var label = block.querySelector('.code-label');
+    if (!label) return;
+    var lang = label.textContent.trim().toLowerCase();
+    var code = block.querySelector('code');
+    if (!code) return;
+    var url = null;
+    if (lang === 'go') {
+      url = 'https://go.dev/play/p/?body=' + encodeURIComponent(code.textContent);
+    } else if (lang === 'python') {
+      url = 'https://www.online-python.com/';
+    }
+    if (url) {
+      var btn = document.createElement('a');
+      btn.className = 'run-btn';
+      btn.href = url;
+      btn.target = '_blank';
+      btn.rel = 'noopener';
+      btn.textContent = 'Run';
+      block.querySelector('pre').appendChild(btn);
+    }
+  });
+})();
+</script>
+<dialog class="search-dialog" id="search-dialog">
+<div class="search-inner">
+<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>
+<ul class="search-results"></ul>
+</div>
+</dialog>
+</body>
+</html>
