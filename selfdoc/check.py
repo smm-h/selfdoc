@@ -262,6 +262,58 @@ def _run_lints(docs_dir, resolver, config):
                 severity="warning",
             ))
 
+        # SEO009 -- Description too short
+        # SEO010 -- Frontmatter description too long
+        fm_description = metadata.get("description")
+        if fm_description is not None:
+            # Frontmatter has an explicit description
+            if isinstance(fm_description, str) and len(fm_description) > 155:
+                results.append(LintResult(
+                    file=rel_path,
+                    line=None,
+                    code="SEO010",
+                    message=(
+                        f"Frontmatter description is {len(fm_description)}"
+                        f" chars (max 155)"
+                    ),
+                    severity="warning",
+                ))
+            effective_desc = str(fm_description)
+        else:
+            # Auto-extract from first paragraph (first non-heading,
+            # non-blank line), take first sentence
+            effective_desc = ""
+            _, body_content = _parse_frontmatter(content)
+            for body_line in body_content.split("\n"):
+                stripped = body_line.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith("#"):
+                    continue
+                # Found first paragraph line; take first sentence
+                match = re.search(r"[.!?]", stripped)
+                if match:
+                    effective_desc = stripped[:match.end()]
+                else:
+                    effective_desc = stripped[:155]
+                break
+
+        # Only fire SEO009 when there IS a description to check.
+        # When fm_description is None and no paragraph was found,
+        # effective_desc is "" (falsy) -- SEO006 already covers that.
+        if effective_desc and len(effective_desc) < 50:
+            results.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="SEO009",
+                message=(
+                    f"Effective description is only"
+                    f" {len(effective_desc)} chars"
+                    f" (aim for 50-155)"
+                ),
+                severity="warning",
+            ))
+
         # SEO007 -- Paragraph length after headings
         for line_num, line in enumerate(lines, start=1):
             m = re.match(r"^(#{2,3})\s+(.+)", line)

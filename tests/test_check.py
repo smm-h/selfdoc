@@ -377,9 +377,10 @@ def test_check_docs_returns_lints_list(python_project):
 def test_print_results_no_lints(python_project, capsys):
     """print_results shows 'No lints.' when there are no lint diagnostics."""
     docs_dir = os.path.join(python_project, "docs")
+    desc = "Complete API reference for the mylib library and utilities"
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write(
-            "---\ntitle: API\ndescription: API reference\n---\n"
+            f"---\ntitle: API\ndescription: {desc}\n---\n"
             "# API\n\n:::module mylib\n:::\n"
         )
 
@@ -669,9 +670,10 @@ def test_clean_file_no_lints(lint_project):
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
+    desc = "A clean page demonstrating proper formatting and metadata usage"
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write(
-            "---\ntitle: Clean\ndescription: A clean page\n---\n"
+            f"---\ntitle: Clean\ndescription: {desc}\n---\n"
             "# Clean\n\n## Section\n\n### Subsection\n\n"
             "![diagram](diagram.png)\n\nSome text.\n"
         )
@@ -880,3 +882,99 @@ def test_seo008_short_page_no_lint(lint_project):
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 0
+
+
+# -- SEO009: Description too short --
+
+
+def test_seo009_short_description(lint_project):
+    """SEO009: short frontmatter description (under 50 chars) triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Short desc.\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo009 = [r for r in results if r.code == "SEO009"]
+
+    assert len(seo009) == 1
+    assert seo009[0].severity == "warning"
+    assert "aim for 50-155" in seo009[0].message
+
+
+def test_seo009_no_description_does_not_trigger(lint_project):
+    """SEO009: no description at all does NOT trigger (SEO006 covers that)."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write("# Title\n")
+
+    results = _run_lints(docs_dir, None, config)
+    seo009 = [r for r in results if r.code == "SEO009"]
+
+    assert len(seo009) == 0
+
+
+def test_seo009_normal_length_no_trigger(lint_project):
+    """SEO009: description of normal length (50-155 chars) does not trigger."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 80  # 80 chars, within range
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo009 = [r for r in results if r.code == "SEO009"]
+
+    assert len(seo009) == 0
+
+
+# -- SEO010: Frontmatter description too long --
+
+
+def test_seo010_long_description(lint_project):
+    """SEO010: frontmatter description over 155 chars triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 200  # 200 chars, over limit
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo010 = [r for r in results if r.code == "SEO010"]
+
+    assert len(seo010) == 1
+    assert seo010[0].severity == "warning"
+    assert "200" in seo010[0].message
+    assert "max 155" in seo010[0].message
+
+
+def test_seo010_normal_length_no_trigger(lint_project):
+    """SEO010: frontmatter description within 155 chars does not trigger."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 100  # 100 chars, within limit
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo010 = [r for r in results if r.code == "SEO010"]
+
+    assert len(seo010) == 0
