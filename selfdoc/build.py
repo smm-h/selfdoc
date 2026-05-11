@@ -409,6 +409,33 @@ def build(dir_path=".", config=None):
         shutil.copy2(src, dst)
         written[dst] = True
 
+    # Generate auxiliary files (OG cards, sitemap, llms.txt, 404, favicon, etc.)
+    aux_written = _generate_auxiliary_files(
+        output_dir=output_dir,
+        project_name=project_name,
+        version=version,
+        markdown_files=markdown_files,
+        html_paths=list(html_files.keys()),
+        base_url=base_url,
+        has_custom_css=has_custom_css,
+        repo=repo,
+    )
+    written.update(aux_written)
+
+    return written
+
+
+def _generate_auxiliary_files(
+    output_dir, project_name, version, markdown_files, html_paths,
+    base_url, has_custom_css, repo,
+):
+    """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon).
+
+    Called by build() after the main HTML pages and static files are written.
+    Returns a dict of {output_path: True} for files written.
+    """
+    written = {}
+
     # Generate OG social card SVGs (Feature 21)
     for md_path, content in markdown_files.items():
         html_path = _md_to_html_path(md_path)
@@ -423,7 +450,7 @@ def build(dir_path=".", config=None):
 
     # Generate sitemap.xml (Feature 22) -- only if base_url is set
     if base_url:
-        sitemap_content = _generate_sitemap(base_url, list(html_files.keys()))
+        sitemap_content = _generate_sitemap(base_url, html_paths)
         sitemap_path = os.path.join(output_dir, "sitemap.xml")
         with open(sitemap_path, "w", encoding="utf-8") as f:
             f.write(sitemap_content)
