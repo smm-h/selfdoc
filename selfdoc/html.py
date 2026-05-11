@@ -99,6 +99,10 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Meta description from frontmatter (Feature 34)
         description = page_meta.get("description", "")
 
+        # Auto-generate description from first paragraph if not in frontmatter
+        if not description:
+            description = _extract_first_paragraph(body_html)
+
         css_href = prefix + "style.css"
         custom_css_href = (prefix + "custom.css") if has_custom_css else None
 
@@ -685,6 +689,29 @@ def _extract_title(md_content, fallback):
     return fallback
 
 
+def _extract_first_paragraph(html):
+    """Extract text from the first <p> tag for use as a meta description.
+
+    Strips HTML tags, trims whitespace, and truncates to 155 characters
+    at a word boundary. Returns empty string if no paragraph found.
+    """
+    match = re.search(r"<p>(.*?)</p>", html, re.DOTALL)
+    if not match:
+        return ""
+    text = re.sub(r"<[^>]+>", "", match.group(1))
+    text = text.strip()
+    if not text:
+        return ""
+    if len(text) <= 155:
+        return text
+    # Truncate at word boundary
+    truncated = text[:155]
+    last_space = truncated.rfind(" ")
+    if last_space > 0:
+        truncated = truncated[:last_space]
+    return truncated
+
+
 def _build_toc(body_html):
     """Extract h2/h3 headings from body HTML and build a TOC nested list.
 
@@ -878,11 +905,27 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         if date_modified:
             tech_article["dateModified"] = date_modified
 
+        escaped_desc = _escape_html(description)
+        og_desc_tag = (
+            f'\n<meta property="og:description" content="{escaped_desc}">'
+            if description else ""
+        )
+        twitter_desc_tag = (
+            f'\n<meta name="twitter:description" content="{escaped_desc}">'
+            if description else ""
+        )
+
         seo_tags = (
-            f'\n<meta property="og:image" content="og-{slug}.svg">'
+            f'\n<meta property="og:image" content="{base_url}/og-{slug}.svg">'
             f'\n<meta property="og:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'\n<meta property="og:type" content="article">'
+            f'\n<meta property="og:url" content="{canonical_url}">'
+            f'{og_desc_tag}'
+            f'\n<meta name="twitter:card" content="summary">'
+            f'\n<meta name="twitter:title" content="{escaped_title}'
+            f' - {escaped_project}">'
+            f'{twitter_desc_tag}'
             f'\n<link rel="canonical" href="{canonical_url}">'
             f'\n<script type="application/ld+json">\n'
             f'{json.dumps(tech_article)}'

@@ -7,7 +7,7 @@ import re
 import pytest
 
 from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap
-from selfdoc.html import generate_html, generate_404_page
+from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph
 
 
 @pytest.fixture()
@@ -535,3 +535,161 @@ def test_software_source_code_on_pages_with_code(project_dir):
     assert '"python"' in content
     assert '"go"' in content
     assert '"https://github.com/test/repo"' in content
+
+
+# --- Phase 2.3: OG tags, Twitter Cards, auto-generated meta descriptions ---
+
+
+def test_og_url_present(project_dir):
+    """og:url meta tag is present with correct absolute URL when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:url" content="https://example.com/index.html">' in content
+
+
+def test_og_description_present(project_dir):
+    """og:description meta tag is present when page has a description."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: My project description\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:description" content="My project description">' in content
+
+
+def test_og_image_absolute_url(project_dir):
+    """og:image uses an absolute URL starting with base_url."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:image" content="https://example.com/og-index.svg">' in content
+
+
+def test_twitter_card_and_title_present(project_dir):
+    """twitter:card and twitter:title meta tags are present when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="twitter:card" content="summary">' in content
+    assert re.search(r'<meta name="twitter:title" content="Test Project - [^"]+">', content)
+
+
+def test_auto_generated_description(project_dir):
+    """Description is auto-generated from first paragraph when no frontmatter description."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nThis is the first paragraph of the page.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="description" content="This is the first paragraph of the page.">' in content
+    assert '<meta property="og:description" content="This is the first paragraph of the page.">' in content
+    assert '<meta name="twitter:description" content="This is the first paragraph of the page.">' in content
+
+
+def test_frontmatter_description_takes_priority(project_dir):
+    """Frontmatter description takes priority over auto-generated."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: Custom description from frontmatter\n---\n# Test\n\nThis is the first paragraph.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="description" content="Custom description from frontmatter">' in content
+    assert "This is the first paragraph" not in content.split('<meta name="description"')[0].split('<meta name="description"')[-1]
+    # Verify frontmatter description is used in OG tags too
+    assert '<meta property="og:description" content="Custom description from frontmatter">' in content
+
+
+def test_extract_first_paragraph_basic():
+    """_extract_first_paragraph extracts text from first <p> tag."""
+    html = '<h1>Title</h1>\n<p>Hello world</p>\n<p>Second para</p>'
+    assert _extract_first_paragraph(html) == "Hello world"
+
+
+def test_extract_first_paragraph_strips_html():
+    """_extract_first_paragraph strips inner HTML tags."""
+    html = '<p>Hello <strong>bold</strong> and <em>italic</em></p>'
+    assert _extract_first_paragraph(html) == "Hello bold and italic"
+
+
+def test_extract_first_paragraph_truncates_at_word_boundary():
+    """_extract_first_paragraph truncates long text at a word boundary."""
+    long_text = "word " * 40  # 200 chars
+    html = f'<p>{long_text.strip()}</p>'
+    result = _extract_first_paragraph(html)
+    assert len(result) <= 155
+    assert not result.endswith(" ")
+    # Should not cut mid-word
+    assert result.endswith("word")
+
+
+def test_extract_first_paragraph_empty():
+    """_extract_first_paragraph returns empty string when no <p> found."""
+    assert _extract_first_paragraph('<h1>Only heading</h1>') == ""
+    assert _extract_first_paragraph('') == ""
