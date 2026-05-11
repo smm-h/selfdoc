@@ -4,6 +4,7 @@ No external dependencies -- handles headings, code blocks, inline code,
 paragraphs, lists, links, bold/italic, tables, blockquotes, and admonitions.
 """
 
+import html
 import json
 import re
 from datetime import datetime
@@ -689,16 +690,18 @@ def _extract_title(md_content, fallback):
     return fallback
 
 
-def _extract_first_paragraph(html):
+def _extract_first_paragraph(page_html):
     """Extract text from the first <p> tag for use as a meta description.
 
-    Strips HTML tags, trims whitespace, and truncates to 155 characters
-    at a word boundary. Returns empty string if no paragraph found.
+    Strips HTML tags, unescapes HTML entities, trims whitespace, and
+    truncates to 155 characters at a word boundary. Returns empty string
+    if no paragraph found.
     """
-    match = re.search(r"<p>(.*?)</p>", html, re.DOTALL)
+    match = re.search(r"<p>(.*?)</p>", page_html, re.DOTALL)
     if not match:
         return ""
     text = re.sub(r"<[^>]+>", "", match.group(1))
+    text = html.unescape(text)
     text = text.strip()
     if not text:
         return ""

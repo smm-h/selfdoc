@@ -693,3 +693,9 @@ def test_extract_first_paragraph_empty():
     """_extract_first_paragraph returns empty string when no <p> found."""
     assert _extract_first_paragraph('<h1>Only heading</h1>') == ""
     assert _extract_first_paragraph('') == ""
+
+
+def test_extract_first_paragraph_unescapes_html_entities():
+    """_extract_first_paragraph unescapes HTML entities to avoid double-escaping."""
+    html = '<p>Use <code>a &amp; b</code> for joining</p>'
+    assert _extract_first_paragraph(html) == "Use a & b for joining"
