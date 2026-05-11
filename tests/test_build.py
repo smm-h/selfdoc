@@ -8,7 +8,7 @@ import pytest
 
 import struct
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions
 from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js, md_to_html
 
 
@@ -1402,6 +1402,219 @@ def test_build_adds_png_dimensions(project_dir):
 
     assert 'width="10"' in content
     assert 'height="20"' in content
+
+
+# --- Phase 0B: JPEG and WebP image dimension parsing ---
+
+
+def _make_minimal_jpeg(width, height):
+    """Create a minimal valid JPEG file content with the given dimensions.
+
+    Produces a valid JPEG with SOI marker, a SOF0 frame header containing
+    the dimensions, and an EOI marker. Not a displayable image, but has
+    valid structure for dimension parsing.
+    """
+    soi = b"\xff\xd8"
+    # SOF0 marker: \xff\xc0
+    # Segment length: 2 bytes (includes itself) = 8 for our minimal frame
+    # Precision: 1 byte (8 bits)
+    # Height: 2 bytes BE
+    # Width: 2 bytes BE
+    # Number of components: 1 byte (1 = grayscale)
+    # Component spec: 3 bytes (id, sampling, quant table)
+    sof_data = struct.pack(">H", 11)  # length = 11 (2+1+2+2+1+3)
+    sof_data += struct.pack("B", 8)  # precision
+    sof_data += struct.pack(">H", height)
+    sof_data += struct.pack(">H", width)
+    sof_data += struct.pack("B", 1)  # 1 component
+    sof_data += b"\x01\x11\x00"  # component spec
+    sof = b"\xff\xc0" + sof_data
+    eoi = b"\xff\xd9"
+    return soi + sof + eoi
+
+
+def _make_minimal_webp_lossy(width, height):
+    """Create a minimal valid lossy WebP (VP8) file content.
+
+    The VP8 bitstream header at bytes 26-29 encodes width and height
+    as little-endian uint16 values (lower 14 bits used).
+    """
+    # VP8 bitstream: starts with 3-byte frame tag + 3-byte sync code
+    # then 2-byte width (LE) + 2-byte height (LE)
+    # Frame tag: keyframe (bit 0=0), version=0, show_frame=1, partition_size
+    frame_tag = b"\x9d\x01\x2a"  # sync code for VP8 keyframe
+    # We need bytes 0-25 to be the RIFF+WEBP+VP8 header, then 26-29 for dims
+    # Total VP8 chunk data: frame_tag(3) + sync(3) + width(2) + height(2) = 10 min
+    vp8_payload = b"\x00\x00\x00"  # 3-byte frame tag (keyframe, version 0)
+    vp8_payload += frame_tag  # sync code
+    vp8_payload += struct.pack("<H", width & 0x3FFF)
+    vp8_payload += struct.pack("<H", height & 0x3FFF)
+
+    chunk = b"VP8 " + struct.pack("<I", len(vp8_payload)) + vp8_payload
+    file_size = 4 + len(chunk)  # "WEBP" + chunk
+    return b"RIFF" + struct.pack("<I", file_size) + b"WEBP" + chunk
+
+
+def _make_minimal_webp_lossless(width, height):
+    """Create a minimal valid lossless WebP (VP8L) file content.
+
+    The VP8L header at byte 21 encodes a uint32 where bits 0-13 = width-1
+    and bits 14-27 = height-1.
+    """
+    # VP8L signature byte: 0x2f, then 4-byte LE uint32 with packed dims
+    sig_byte = b"\x2f"
+    bits = ((width - 1) & 0x3FFF) | (((height - 1) & 0x3FFF) << 14)
+    packed = struct.pack("<I", bits)
+    vp8l_payload = sig_byte + packed
+
+    chunk = b"VP8L" + struct.pack("<I", len(vp8l_payload)) + vp8l_payload
+    file_size = 4 + len(chunk)
+    return b"RIFF" + struct.pack("<I", file_size) + b"WEBP" + chunk
+
+
+def _make_minimal_webp_extended(width, height):
+    """Create a minimal valid extended WebP (VP8X) file content.
+
+    VP8X chunk at bytes 24-29 encodes width-1 and height-1 as uint24 LE.
+    """
+    # VP8X chunk: 10 bytes of data
+    # Flags (4 bytes) + canvas width-1 (3 bytes LE) + canvas height-1 (3 bytes LE)
+    flags = b"\x00\x00\x00\x00"
+    w_bytes = (width - 1).to_bytes(3, "little")
+    h_bytes = (height - 1).to_bytes(3, "little")
+    vp8x_payload = flags + w_bytes + h_bytes
+
+    chunk = b"VP8X" + struct.pack("<I", len(vp8x_payload)) + vp8x_payload
+    file_size = 4 + len(chunk)
+    return b"RIFF" + struct.pack("<I", file_size) + b"WEBP" + chunk
+
+
+def test_jpeg_dimensions_basic(tmp_path):
+    """JPEG reader returns correct dimensions for a valid JPEG file."""
+    jpeg_path = os.path.join(tmp_path, "test.jpg")
+    with open(jpeg_path, "wb") as f:
+        f.write(_make_minimal_jpeg(320, 240))
+
+    result = _read_jpeg_dimensions(jpeg_path)
+    assert result == (320, 240)
+
+
+def test_jpeg_dimensions_invalid_soi(tmp_path):
+    """JPEG reader returns None for a file without a valid SOI marker."""
+    bad_path = os.path.join(tmp_path, "bad.jpg")
+    with open(bad_path, "wb") as f:
+        f.write(b"\x00\x00\x00\x00")
+
+    assert _read_jpeg_dimensions(bad_path) is None
+
+
+def test_jpeg_dimensions_truncated(tmp_path):
+    """JPEG reader returns None for a truncated file."""
+    trunc_path = os.path.join(tmp_path, "trunc.jpg")
+    with open(trunc_path, "wb") as f:
+        f.write(b"\xff\xd8\xff\xc0")  # SOI + SOF0 marker, but no data
+
+    assert _read_jpeg_dimensions(trunc_path) is None
+
+
+def test_jpeg_dimensions_nonexistent():
+    """JPEG reader returns None for a nonexistent file."""
+    assert _read_jpeg_dimensions("/nonexistent/test.jpg") is None
+
+
+def test_jpeg_image_gets_width_height(tmp_path):
+    """JPEG images get width and height attributes via _add_image_dimensions."""
+    docs_dir = str(tmp_path)
+    jpeg_path = os.path.join(docs_dir, "photo.jpg")
+    with open(jpeg_path, "wb") as f:
+        f.write(_make_minimal_jpeg(800, 600))
+
+    html = '<p><img src="photo.jpg" alt="Photo" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert 'width="800"' in result
+    assert 'height="600"' in result
+
+
+def test_jpeg_extension_case_insensitive(tmp_path):
+    """JPEG reader works with .jpeg extension too."""
+    docs_dir = str(tmp_path)
+    jpeg_path = os.path.join(docs_dir, "photo.jpeg")
+    with open(jpeg_path, "wb") as f:
+        f.write(_make_minimal_jpeg(640, 480))
+
+    html = '<p><img src="photo.jpeg" alt="Photo" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert 'width="640"' in result
+    assert 'height="480"' in result
+
+
+def test_webp_lossy_dimensions(tmp_path):
+    """WebP reader returns correct dimensions for a lossy VP8 file."""
+    webp_path = os.path.join(tmp_path, "test.webp")
+    with open(webp_path, "wb") as f:
+        f.write(_make_minimal_webp_lossy(200, 150))
+
+    result = _read_webp_dimensions(webp_path)
+    assert result == (200, 150)
+
+
+def test_webp_lossless_dimensions(tmp_path):
+    """WebP reader returns correct dimensions for a lossless VP8L file."""
+    webp_path = os.path.join(tmp_path, "test.webp")
+    with open(webp_path, "wb") as f:
+        f.write(_make_minimal_webp_lossless(100, 75))
+
+    result = _read_webp_dimensions(webp_path)
+    assert result == (100, 75)
+
+
+def test_webp_extended_dimensions(tmp_path):
+    """WebP reader returns correct dimensions for an extended VP8X file."""
+    webp_path = os.path.join(tmp_path, "test.webp")
+    with open(webp_path, "wb") as f:
+        f.write(_make_minimal_webp_extended(1920, 1080))
+
+    result = _read_webp_dimensions(webp_path)
+    assert result == (1920, 1080)
+
+
+def test_webp_invalid_header(tmp_path):
+    """WebP reader returns None for a file without a valid RIFF/WEBP header."""
+    bad_path = os.path.join(tmp_path, "bad.webp")
+    with open(bad_path, "wb") as f:
+        f.write(b"\x00\x00\x00\x00" * 8)
+
+    assert _read_webp_dimensions(bad_path) is None
+
+
+def test_webp_truncated(tmp_path):
+    """WebP reader returns None for a truncated file."""
+    trunc_path = os.path.join(tmp_path, "trunc.webp")
+    with open(trunc_path, "wb") as f:
+        f.write(b"RIFF\x00\x00\x00\x00WEBP")  # Valid header but too short
+
+    assert _read_webp_dimensions(trunc_path) is None
+
+
+def test_webp_nonexistent():
+    """WebP reader returns None for a nonexistent file."""
+    assert _read_webp_dimensions("/nonexistent/test.webp") is None
+
+
+def test_webp_image_gets_width_height(tmp_path):
+    """WebP images get width and height attributes via _add_image_dimensions."""
+    docs_dir = str(tmp_path)
+    webp_path = os.path.join(docs_dir, "photo.webp")
+    with open(webp_path, "wb") as f:
+        f.write(_make_minimal_webp_lossy(400, 300))
+
+    html = '<p><img src="photo.webp" alt="Photo" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert 'width="400"' in result
+    assert 'height="300"' in result
 
 
 # --- Phase 3.4: ARIA attributes for code tabs and search ---

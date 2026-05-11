@@ -61,8 +61,92 @@ def _read_gif_dimensions(filepath):
         return None
 
 
+def _read_jpeg_dimensions(filepath):
+    """Read width and height from a JPEG file by walking SOF markers.
+
+    Walks JPEG segments looking for SOF0-SOF3 markers (\\xff\\xc0 through
+    \\xff\\xc3). When found, reads height (2 bytes BE) and width (2 bytes BE)
+    after skipping the segment length and precision byte.
+    Returns (width, height) or None if the file is invalid or unreadable.
+    """
+    try:
+        with open(filepath, "rb") as f:
+            # Validate SOI marker
+            soi = f.read(2)
+            if soi != b"\xff\xd8":
+                return None
+            while True:
+                # Each segment starts with 0xFF + marker byte
+                marker = f.read(2)
+                if len(marker) < 2:
+                    return None
+                if marker[0] != 0xFF:
+                    return None
+                marker_byte = marker[1]
+                # SOF0 through SOF3
+                if 0xC0 <= marker_byte <= 0xC3:
+                    # Read segment: 2-byte length, 1-byte precision, then dims
+                    seg = f.read(7)
+                    if len(seg) < 7:
+                        return None
+                    height = struct.unpack(">H", seg[3:5])[0]
+                    width = struct.unpack(">H", seg[5:7])[0]
+                    return (width, height)
+                # Skip this segment: read 2-byte length, advance
+                length_bytes = f.read(2)
+                if len(length_bytes) < 2:
+                    return None
+                seg_len = struct.unpack(">H", length_bytes)[0]
+                # seg_len includes the 2 length bytes themselves
+                f.seek(seg_len - 2, 1)
+    except (OSError, struct.error):
+        return None
+
+
+def _read_webp_dimensions(filepath):
+    """Read width and height from a WebP file.
+
+    Supports VP8 (lossy), VP8L (lossless), and VP8X (extended) sub-formats.
+    Returns (width, height) or None if the file is invalid or unreadable.
+    """
+    try:
+        with open(filepath, "rb") as f:
+            data = f.read(30)
+        if len(data) < 16:
+            return None
+        # Validate RIFF header and WEBP signature
+        if data[0:4] != b"RIFF" or data[8:12] != b"WEBP":
+            return None
+        chunk_type = data[12:16]
+        if chunk_type == b"VP8 ":
+            # Lossy: width at bytes 26-27, height at 28-29 (LE, masked)
+            if len(data) < 30:
+                return None
+            width = struct.unpack("<H", data[26:28])[0] & 0x3FFF
+            height = struct.unpack("<H", data[28:30])[0] & 0x3FFF
+            return (width, height)
+        if chunk_type == b"VP8L":
+            # Lossless: uint32 at byte 21, width = bits 0-13 + 1, height = bits 14-27 + 1
+            if len(data) < 25:
+                return None
+            bits = struct.unpack("<I", data[21:25])[0]
+            width = (bits & 0x3FFF) + 1
+            height = ((bits >> 14) & 0x3FFF) + 1
+            return (width, height)
+        if chunk_type == b"VP8X":
+            # Extended: uint24 LE at bytes 24-26 + 1 (width), 27-29 + 1 (height)
+            if len(data) < 30:
+                return None
+            width = int.from_bytes(data[24:27], "little") + 1
+            height = int.from_bytes(data[27:30], "little") + 1
+            return (width, height)
+        return None
+    except (OSError, struct.error):
+        return None
+
+
 def _get_image_dimensions(filepath):
-    """Read dimensions from an image file (PNG or GIF only).
+    """Read dimensions from an image file (PNG, GIF, JPEG, or WebP).
 
     Returns (width, height) or None if the format is unsupported or
     the file cannot be read.
@@ -72,6 +156,10 @@ def _get_image_dimensions(filepath):
         return _read_png_dimensions(filepath)
     if ext == ".gif":
         return _read_gif_dimensions(filepath)
+    if ext in (".jpg", ".jpeg"):
+        return _read_jpeg_dimensions(filepath)
+    if ext == ".webp":
+        return _read_webp_dimensions(filepath)
     return None
 
 
@@ -79,8 +167,9 @@ def _add_image_dimensions(html_text, docs_dir, page_rel_path):
     """Add width/height attributes to <img> tags whose source files exist.
 
     For each <img src="..."> in *html_text*, resolve the src relative to
-    the page's directory within *docs_dir*. If the file is a PNG or GIF,
-    read its dimensions and insert width="X" height="Y" attributes.
+    the page's directory within *docs_dir*. If the file is a PNG, GIF,
+    JPEG, or WebP, read its dimensions and insert width="X" height="Y"
+    attributes.
     """
     page_dir = os.path.dirname(os.path.join(docs_dir, page_rel_path))
 
