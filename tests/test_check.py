@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from selfdoc.check import CheckResult, check_docs, print_results
+from selfdoc.check import CheckResult, LintResult, check_docs, print_results
 
 
 @pytest.fixture()
@@ -321,3 +321,104 @@ def test_directives_across_multiple_files(python_project):
     assert "api.md" in files_checked
     assert "utils.md" in files_checked
     assert all(dr.status == "OK" for dr in result.directive_results)
+
+
+# -- Lint framework --
+
+
+def test_check_result_has_lints_field():
+    """CheckResult has a lints field that defaults to an empty list."""
+    result = CheckResult()
+    assert hasattr(result, "lints")
+    assert result.lints == []
+    assert isinstance(result.lints, list)
+
+
+def test_lint_result_construction():
+    """LintResult can be constructed with all fields."""
+    lint = LintResult(
+        file="index.md",
+        line=5,
+        code="SEO001",
+        message="Missing title tag",
+        severity="warning",
+    )
+    assert lint.file == "index.md"
+    assert lint.line == 5
+    assert lint.code == "SEO001"
+    assert lint.message == "Missing title tag"
+    assert lint.severity == "warning"
+
+
+def test_lint_result_line_none():
+    """LintResult accepts None for line number."""
+    lint = LintResult(
+        file="page.md",
+        line=None,
+        code="SEO002",
+        message="No meta description",
+        severity="error",
+    )
+    assert lint.line is None
+    assert lint.severity == "error"
+
+
+def test_check_docs_returns_lints_list(python_project):
+    """check_docs() returns a CheckResult with a lints list (even if empty)."""
+    docs_dir = os.path.join(python_project, "docs")
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    result = check_docs(str(python_project))
+
+    assert isinstance(result.lints, list)
+
+
+def test_print_results_no_lints(python_project, capsys):
+    """print_results shows 'No lints.' when there are no lint diagnostics."""
+    docs_dir = os.path.join(python_project, "docs")
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    result = check_docs(str(python_project))
+    print_results(result)
+    captured = capsys.readouterr()
+
+    assert "No lints." in captured.out
+
+
+def test_print_results_with_lints(capsys):
+    """print_results formats lint diagnostics correctly."""
+    result = CheckResult(
+        lints=[
+            LintResult(
+                file="index.md",
+                line=3,
+                code="SEO001",
+                message="Missing title",
+                severity="warning",
+            ),
+            LintResult(
+                file="guide.md",
+                line=None,
+                code="SEO002",
+                message="No description",
+                severity="error",
+            ),
+        ],
+    )
+    # Need at least one directive result to avoid the "No directives" path
+    from selfdoc.check import DirectiveResult
+
+    result.directive_results = [
+        DirectiveResult(
+            file="index.md", line=1, directive=":::module foo", status="OK"
+        )
+    ]
+
+    print_results(result)
+    captured = capsys.readouterr()
+
+    assert "warning: [SEO001] index.md:3 - Missing title" in captured.out
+    assert "error: [SEO002] guide.md - No description" in captured.out
+    assert "No lints." not in captured.out

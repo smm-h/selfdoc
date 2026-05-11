@@ -39,11 +39,23 @@ class CoverageStats:
 
 
 @dataclass
+class LintResult:
+    """A single lint diagnostic (e.g. SEO warning)."""
+
+    file: str  # relative path within docs/
+    line: int | None
+    code: str  # e.g. "SEO001"
+    message: str
+    severity: str  # "warning" or "error"
+
+
+@dataclass
 class CheckResult:
     """Aggregate result of check_docs()."""
 
     directive_results: list[DirectiveResult] = field(default_factory=list)
     coverage: CoverageStats | None = None
+    lints: list[LintResult] = field(default_factory=list)
 
 
 def check_docs(dir_path=".", config=None):
@@ -144,7 +156,19 @@ def check_docs(dir_path=".", config=None):
             config, dir_path, referenced_modules
         )
 
+    # Run lint checks (SEO and other diagnostics)
+    result.lints = _run_lints(docs_dir, resolver, config)
+
     return result
+
+
+def _run_lints(docs_dir, resolver, config):
+    """Run lint checks on documentation templates.
+
+    Returns a list of LintResult diagnostics. Currently a placeholder;
+    actual lint rules (SEO checks, etc.) will be added in later phases.
+    """
+    return []
 
 
 def _compute_python_coverage(config, base_dir, referenced_modules):
@@ -284,3 +308,15 @@ def print_results(result):
             )
         else:
             print("Coverage: no public symbols found in source files")
+
+    # Lint results
+    if result.lints:
+        print()
+        for lint in result.lints:
+            line_part = f":{lint.line}" if lint.line is not None else ""
+            print(
+                f"  {lint.severity}: [{lint.code}] "
+                f"{lint.file}{line_part} - {lint.message}"
+            )
+    else:
+        print("No lints.")
