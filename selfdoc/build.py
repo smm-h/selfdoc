@@ -942,6 +942,12 @@ def _generate_robots_txt(output_dir, base_url):
         "",
         "User-agent: ClaudeBot",
         "Allow: /",
+        "",
+        "User-agent: Googlebot",
+        "Allow: /",
+        "",
+        "User-agent: OAI-SearchBot",
+        "Allow: /",
     ]
     if base_url:
         lines.append("")

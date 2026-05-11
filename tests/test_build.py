@@ -181,7 +181,7 @@ def test_robots_txt_ai_crawlers(tmp_path):
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    for agent in ["GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot", "ClaudeBot"]:
+    for agent in ["GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot", "ClaudeBot", "Googlebot", "OAI-SearchBot"]:
         assert f"User-agent: {agent}" in content
 
 
