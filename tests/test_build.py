@@ -2641,3 +2641,18 @@ def test_css_preload_hint():
     assert 'as="style"' in content
     # The preload link should reference style.css
     assert '<link rel="preload" href="style.css" as="style">' in content
+
+
+# --- Phase 7C: Tab keyboard navigation (WAI-ARIA) ---
+
+
+def test_code_tabs_keyboard_navigation():
+    """Generated JS contains ArrowRight and ArrowLeft keyboard handling."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    assert "ArrowRight" in content
+    assert "ArrowLeft" in content
