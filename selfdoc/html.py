@@ -283,7 +283,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         custom_css_href="custom.css" if has_custom_css else None,
         prefix="",
         base_url=base_url,
-        page_path="404.html",
+        page_path=None,
         lang=lang,
         feed_url=feed_url,
         critical_css=critical_css,
@@ -1362,10 +1362,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         # twitter:card is summary_large_image when og:image exists (base_url set)
         twitter_card_type = "summary_large_image" if base_url else "summary"
 
+        og_type = "website" if page_path == "index.html" else "article"
         seo_tags += (
             f'\n<meta property="og:title" content="{escaped_title}'
             f' - {escaped_project}">'
-            f'\n<meta property="og:type" content="article">'
+            f'\n<meta property="og:type" content="{og_type}">'
             f'\n<meta property="og:site_name" content="{escaped_project}">'
             f'{og_desc_tag}'
             f'\n<meta name="twitter:card" content="{twitter_card_type}">'

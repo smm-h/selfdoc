@@ -2065,7 +2065,7 @@ def test_og_tags_without_base_url(project_dir):
 
     # Basic OG tags present
     assert '<meta property="og:title"' in content
-    assert '<meta property="og:type" content="article">' in content
+    assert '<meta property="og:type" content="website">' in content
     assert '<meta name="twitter:card" content="summary">' in content
 
     # URL-dependent tags absent
@@ -2839,3 +2839,50 @@ def test_heading_anchor_aria_label():
 
     result2 = md_to_html("## Hello <code>World</code>")
     assert 'aria-label="Link to section: Hello World"' in result2
+
+
+# --- Phase 1.3: OG type and 404 OG suppression ---
+
+
+def test_og_type_website_on_index(project_dir):
+    """Homepage (index.html) should have og:type 'website', not 'article'."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'og:type" content="website"' in content
+    assert 'og:type" content="article"' not in content
+
+
+def test_og_type_article_on_other_pages(project_dir):
+    """Non-index pages should have og:type 'article'."""
+    docs_dir = os.path.join(project_dir, "docs")
+    guide_md = os.path.join(docs_dir, "guide.md")
+    with open(guide_md, "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nA guide page.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    guide_html = os.path.join(output_dir, "guide.html")
+    with open(guide_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'og:type" content="article"' in content
+    assert 'og:type" content="website"' not in content
+
+
+def test_404_no_og_tags(project_dir):
+    """404 page should not contain OG meta tags."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    four_oh_four = os.path.join(output_dir, "404.html")
+    with open(four_oh_four, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "og:type" not in content
+    assert "og:title" not in content
