@@ -618,7 +618,7 @@ def test_twitter_card_and_title_present(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta name="twitter:card" content="summary">' in content
+    assert '<meta name="twitter:card" content="summary_large_image">' in content
     assert re.search(r'<meta name="twitter:title" content="Test Project - [^"]+">', content)
 
 
@@ -2222,3 +2222,83 @@ def test_tech_article_has_in_language(project_dir):
 
     assert tech_article is not None, "TechArticle JSON-LD not found"
     assert tech_article["inLanguage"] == "en"
+
+
+def test_og_site_name_present(project_dir):
+    """og:site_name meta tag is present with project name."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # project_name is derived from directory name
+    project_name = os.path.basename(str(project_dir))
+    assert f'<meta property="og:site_name" content="{project_name}">' in content
+
+
+def test_twitter_image_present_with_base_url(project_dir):
+    """twitter:image meta tag is present when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="twitter:image" content="https://example.com/og-index.svg">' in content
+
+
+def test_og_image_dimensions_present(project_dir):
+    """og:image:width and og:image:height meta tags are present when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:image:width" content="1200">' in content
+    assert '<meta property="og:image:height" content="630">' in content
+
+
+def test_twitter_card_summary_large_image_with_base_url(project_dir):
+    """twitter:card is summary_large_image when base_url is set (og:image exists)."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="twitter:card" content="summary_large_image">' in content
+
+
+def test_twitter_card_summary_without_base_url(project_dir):
+    """twitter:card is summary when base_url is not set (no og:image)."""
+    # Default fixture has no base_url
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="twitter:card" content="summary">' in content

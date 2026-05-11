@@ -1223,12 +1223,16 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             if description else ""
         )
 
+        # twitter:card is summary_large_image when og:image exists (base_url set)
+        twitter_card_type = "summary_large_image" if base_url else "summary"
+
         seo_tags += (
             f'\n<meta property="og:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'\n<meta property="og:type" content="article">'
+            f'\n<meta property="og:site_name" content="{escaped_project}">'
             f'{og_desc_tag}'
-            f'\n<meta name="twitter:card" content="summary">'
+            f'\n<meta name="twitter:card" content="{twitter_card_type}">'
             f'\n<meta name="twitter:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'{twitter_desc_tag}'
@@ -1238,6 +1242,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             slug = page_path.replace(".html", "")
             seo_tags += (
                 f'\n<meta property="og:image" content="{base_url}/og-{slug}.svg">'
+                f'\n<meta property="og:image:width" content="1200">'
+                f'\n<meta property="og:image:height" content="630">'
                 f'\n<meta property="og:url" content="{canonical_url}">'
                 f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.svg">'
             )
