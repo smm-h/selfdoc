@@ -2302,3 +2302,76 @@ def test_twitter_card_summary_without_base_url(project_dir):
         content = f.read()
 
     assert '<meta name="twitter:card" content="summary">' in content
+
+
+def test_organization_schema_on_index_page(project_dir):
+    """Organization JSON-LD schema is present on the index page."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    org_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "Organization":
+            org_data = data
+            break
+
+    assert org_data is not None, "Organization JSON-LD not found on index page"
+
+
+def test_organization_schema_absent_on_non_index(project_dir):
+    """Organization JSON-LD schema is absent on non-index pages."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    for block in ld_blocks:
+        data = json.loads(block)
+        assert data.get("@type") != "Organization", \
+            "Organization JSON-LD should not appear on non-index pages"
+
+
+def test_organization_schema_has_correct_name(project_dir):
+    """Organization JSON-LD has the correct project name."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # project_name is derived from directory name
+    project_name = os.path.basename(str(project_dir))
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    org_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "Organization":
+            org_data = data
+            break
+
+    assert org_data is not None, "Organization JSON-LD not found"
+    assert org_data["name"] == project_name

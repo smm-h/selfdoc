@@ -1141,6 +1141,27 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n</script>'
         )
 
+    # Standalone Organization JSON-LD on homepage
+    if page_path == "index.html":
+        org_ld = {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": project_name,
+        }
+        # Determine URL: prefer author org URL, fall back to base_url
+        org_url = None
+        if author and author.get("type") == "Organization" and author.get("url"):
+            org_url = author["url"]
+        elif base_url:
+            org_url = base_url
+        if org_url:
+            org_ld["url"] = org_url
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{json.dumps(org_ld)}'
+            f'\n</script>'
+        )
+
     # SoftwareSourceCode JSON-LD when code blocks with language annotations exist
     lang_matches = re.findall(r'class="language-(\w+)"', body_html)
     if lang_matches:
