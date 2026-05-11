@@ -1214,8 +1214,13 @@ hr {
 @media print {
     .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
     .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
-    .search-dialog, .heading-link, .theme-toggle, .site-footer {
+    .search-dialog, .heading-link, .theme-toggle, .site-footer,
+    .edit-link {
         display: none !important;
+    }
+
+    .code-block, .table-wrap, img, .api-entry, .admonition, blockquote {
+        page-break-inside: avoid;
     }
 
     body::before {
