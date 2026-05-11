@@ -2624,3 +2624,20 @@ def test_organization_schema_has_correct_name(project_dir):
 
     assert org_data is not None, "Organization JSON-LD not found"
     assert org_data["name"] == project_name
+
+
+# --- Phase 4B: CSS preload hint ---
+
+
+def test_css_preload_hint():
+    """Output HTML contains a preload link for the stylesheet."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    assert 'rel="preload"' in content
+    assert 'as="style"' in content
+    # The preload link should reference style.css
+    assert '<link rel="preload" href="style.css" as="style">' in content

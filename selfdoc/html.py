@@ -1675,6 +1675,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
         f'<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">\n'
         f'{"<style>" + critical_css + "</style>" + chr(10) if critical_css else ""}'
+        f'<link rel="preload" href="{css_href}" as="style">\n'
         f'<link rel="stylesheet" href="{css_href}" media="print"'
         f" onload=\"this.media='all'\">"
         f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
