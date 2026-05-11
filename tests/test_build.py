@@ -249,15 +249,18 @@ def test_html_site_footer_present(project_dir):
     assert "selfdoc" in content
 
 
-def test_html_cdnjs_preconnect(project_dir):
-    """Built HTML contains preconnect link for cdnjs.cloudflare.com."""
+def test_html_no_highlight_js(project_dir):
+    """Built HTML does NOT contain highlight.js CDN links or hljs calls."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>' in content
+    assert "highlight.js" not in content
+    assert "hljs" not in content
+    assert "cdnjs.cloudflare.com" not in content
+    assert "hljs.highlightAll()" not in content
 
 
 # --- Date infrastructure tests (Wave 2 Phase 0) ---
@@ -898,3 +901,97 @@ def test_404_contains_popular_page_links(project_dir):
     assert "guide.html" in content
     assert "api.html" in content
     assert "index.html" in content
+
+
+# --- Wave 3 Phase 0: Pygments build-time syntax highlighting ---
+
+
+def test_pygments_code_blocks_have_spans(project_dir):
+    """Code blocks with language annotation contain Pygments-generated <span> elements."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n```python\ndef hello():\n    return 42\n```\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Pygments wraps tokens in <span> elements with short class names
+    # such as "k" (keyword), "n" (name), "nf" (function name), etc.
+    from selfdoc.html import HAS_PYGMENTS
+    if HAS_PYGMENTS:
+        assert 'class="k"' in content or 'class="kd"' in content
+        assert "<span" in content
+    else:
+        # Without Pygments, code is plain-text escaped
+        assert "def hello():" in content
+
+
+def test_code_blocks_without_lang_are_plain(project_dir):
+    """Code blocks without language annotation do not contain Pygments spans."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n```\nplain text here\n```\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Find the code block content -- no Pygments class spans should appear
+    code_match = re.search(r"<code>(.*?)</code>", content, re.DOTALL)
+    assert code_match is not None
+    code_content = code_match.group(1)
+    assert 'class="' not in code_content
+    assert "plain text here" in code_content
+
+
+def test_diff_code_blocks_still_work(project_dir):
+    """Diff code blocks still have .line-add and .line-remove spans."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n```diff\n+added line\n-removed line\n same line\n```\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="line line-add"' in content
+    assert 'class="line line-remove"' in content
+
+
+def test_style_css_contains_pygments_rules(project_dir):
+    """style.css contains Pygments CSS rules when Pygments is available."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "style.css"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    from selfdoc.html import HAS_PYGMENTS
+    if HAS_PYGMENTS:
+        assert ".code-block code" in content
+        assert "prefers-color-scheme: dark" in content
+
+
+def test_no_highlight_js_in_built_html(project_dir):
+    """Built HTML does NOT contain any highlight.js references."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n```python\nprint('hi')\n```\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "highlight.min.js" not in content
+    assert "hljs.highlightAll()" not in content
+    assert "hljs-light" not in content
+    assert "hljs-dark" not in content

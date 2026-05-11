@@ -2,6 +2,7 @@
 
 No external dependencies -- handles headings, code blocks, inline code,
 paragraphs, lists, links, bold/italic, tables, blockquotes, and admonitions.
+Syntax highlighting uses Pygments when available (optional dependency).
 """
 
 import html
@@ -10,6 +11,16 @@ import re
 from datetime import datetime
 
 from selfdoc.themes import get_theme
+
+# Pygments is optional: when available, code blocks get build-time syntax
+# highlighting.  When missing, code blocks render as plain text.
+try:
+    from pygments import highlight as pygments_highlight
+    from pygments.lexers import get_lexer_by_name
+    from pygments.formatters import HtmlFormatter
+    HAS_PYGMENTS = True
+except ImportError:
+    HAS_PYGMENTS = False
 
 # Admonition types recognized in GitHub-flavored blockquotes (> [!TYPE])
 _ADMONITION_TYPES = {"NOTE", "TIP", "WARNING", "CAUTION", "IMPORTANT"}
@@ -41,6 +52,33 @@ def get_css(theme_name="minimal"):
         The CSS content as a string.
     """
     return get_theme(theme_name)
+
+
+def generate_pygments_css():
+    """Generate Pygments CSS rules for light and dark mode.
+
+    Uses 'default' style for light mode and 'monokai' for dark mode.
+    Scoped to ``.code-block code`` to match the HTML structure produced
+    by ``_render_code_block()``.
+
+    Returns the CSS string, or an empty string if Pygments is not installed.
+    """
+    if not HAS_PYGMENTS:
+        return ""
+    scope = ".code-block code"
+    light = HtmlFormatter(style="default").get_style_defs(scope)
+    dark = HtmlFormatter(style="monokai").get_style_defs(scope)
+    return (
+        f"{light}\n\n"
+        f"@media (prefers-color-scheme: dark) {{\n"
+        f"  :root:not([data-theme='light']) {{\n"
+        f"    {dark}\n"
+        f"  }}\n"
+        f"}}\n\n"
+        f"[data-theme='dark'] {{\n"
+        f"  {dark}\n"
+        f"}}"
+    )
 
 
 def generate_html(markdown_files, project_name=None, version=None,
@@ -363,8 +401,9 @@ def md_to_html(text):
 def _render_code_block(lang, code_lines, annotations=None):
     """Render a single fenced code block to HTML.
 
-    Handles diff highlighting (Feature 27) and inline code annotations
-    (Feature 32).
+    Handles diff highlighting (Feature 27), inline code annotations
+    (Feature 32), and build-time syntax highlighting via Pygments
+    (Wave 3 Phase 0).
     """
     if annotations is None:
         annotations = {}
@@ -377,6 +416,22 @@ def _render_code_block(lang, code_lines, annotations=None):
 
     if is_diff:
         code_content = _render_diff_lines(code_lines)
+    elif HAS_PYGMENTS and lang:
+        # Build-time syntax highlighting via Pygments.  The formatter
+        # uses nowrap=True so we keep our own <pre><code> wrapper.
+        # Pygments handles HTML escaping internally.
+        try:
+            lexer = get_lexer_by_name(lang)
+            formatter = HtmlFormatter(nowrap=True)
+            code_content = pygments_highlight(
+                "\n".join(code_lines), lexer, formatter
+            )
+            # pygments_highlight appends a trailing newline; strip it so
+            # we don't get an extra blank line inside <code>.
+            code_content = code_content.rstrip("\n")
+        except Exception:
+            # Unknown language or Pygments error -- fall back to plain text
+            code_content = _escape_html("\n".join(code_lines))
     else:
         code_content = _escape_html("\n".join(code_lines))
 
@@ -1097,13 +1152,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{css_href}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}{feed_tag}{seo_tags}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-<script>hljs.highlightAll();</script>
+<link rel="stylesheet" href="{css_href}">{custom_css_tag}{feed_tag}{seo_tags}
 <script>
 // Theme toggle: apply saved preference before paint to avoid flash
 (function() {{
@@ -1166,21 +1216,6 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
       localStorage.removeItem('selfdoc-theme');
     }}
     btn.setAttribute('data-state', state);
-    // Update highlight.js stylesheet media attributes
-    var hljsLight = document.getElementById('hljs-light');
-    var hljsDark = document.getElementById('hljs-dark');
-    if (hljsLight && hljsDark) {{
-      if (state === 'dark') {{
-        hljsLight.media = 'not all';
-        hljsDark.media = 'all';
-      }} else if (state === 'light') {{
-        hljsLight.media = 'all';
-        hljsDark.media = 'not all';
-      }} else {{
-        hljsLight.media = '(prefers-color-scheme: light)';
-        hljsDark.media = '(prefers-color-scheme: dark)';
-      }}
-    }}
   }}
   apply(getState());
   btn.addEventListener('click', function() {{

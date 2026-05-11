@@ -9,7 +9,8 @@ from datetime import datetime
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
 from selfdoc.html import (
-    generate_html, generate_404_page, get_css, _md_to_html_path, _slugify,
+    generate_html, generate_404_page, get_css, generate_pygments_css,
+    _md_to_html_path, _slugify,
     _extract_title, _escape_html, _build_nav,
 )
 from selfdoc.resolver import make_resolver
@@ -503,11 +504,15 @@ def build(dir_path=".", config=None):
 
     written = {}
 
-    # Write the theme CSS file
+    # Write the theme CSS file (with Pygments syntax highlighting rules appended)
     theme_name = config.get("theme", "minimal")
     css_path = os.path.join(output_dir, "style.css")
+    theme_css = get_css(theme_name)
+    pygments_css = generate_pygments_css()
+    if pygments_css:
+        theme_css = theme_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
     with open(css_path, "w", encoding="utf-8") as f:
-        f.write(get_css(theme_name))
+        f.write(theme_css)
     written[css_path] = True
 
     # Build and write search index (Feature 19)
