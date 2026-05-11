@@ -1360,7 +1360,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();"
     )
 
-    body_js_raw = (
+    # --- JS blocks: always included ---
+    _JS_THEME_TOGGLE = (
         "// Theme toggle (Feature 6)\n"
         "(function(){\n"
         "  var btn = document.querySelector('.theme-toggle');\n"
@@ -1386,45 +1387,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    apply(next);\n"
         "  });\n"
         "})();\n"
-        "\n"
-        "// Copy button on code blocks (Feature 5)\n"
-        "document.querySelectorAll('pre').forEach(function(pre) {\n"
-        "  var code = pre.querySelector('code');\n"
-        "  if (!code) return;\n"
-        "  var btn = document.createElement('button');\n"
-        "  btn.className = 'copy-btn';\n"
-        "  btn.textContent = 'Copy';\n"
-        "  btn.addEventListener('click', function() {\n"
-        "    navigator.clipboard.writeText(code.textContent).then(function() {\n"
-        "      btn.textContent = 'Copied!';\n"
-        "      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);\n"
-        "    });\n"
-        "  });\n"
-        "  pre.style.position = 'relative';\n"
-        "  pre.appendChild(btn);\n"
-        "});\n"
-        "\n"
-        "// Scrollspy for TOC (Feature 2)\n"
-        "(function() {\n"
-        "  var tocLinks = document.querySelectorAll('.toc a');\n"
-        "  if (!tocLinks.length) return;\n"
-        "  var observer = new IntersectionObserver(function(entries) {\n"
-        "    entries.forEach(function(entry) {\n"
-        "      var id = entry.target.getAttribute('id');\n"
-        "      var link = document.querySelector('.toc a[href=\"#' + id + '\"');\n"
-        "      if (link) {\n"
-        "        if (entry.isIntersecting) {\n"
-        "          tocLinks.forEach(function(a) { a.classList.remove('active'); });\n"
-        "          link.classList.add('active');\n"
-        "        }\n"
-        "      }\n"
-        "    });\n"
-        "  }, { rootMargin: '-80px 0px -80% 0px' });\n"
-        "  document.querySelectorAll('main h2[id], main h3[id]').forEach(function(h) {\n"
-        "    observer.observe(h);\n"
-        "  });\n"
-        "})();\n"
-        "\n"
+    )
+
+    _JS_SIDEBAR_TOGGLE = (
         "// Mobile sidebar toggle (Feature 25)\n"
         "(function() {\n"
         "  var toggle = document.querySelector('.hamburger');\n"
@@ -1457,7 +1422,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    });\n"
         "  });\n"
         "})();\n"
-        "\n"
+    )
+
+    # Search JS uses `prefix` for fetch URLs, so it must be built per-page
+    _JS_SEARCH = (
         "// Cmd+K search (Feature 19)\n"
         "(function() {\n"
         "  var dialog = document.getElementById('search-dialog');\n"
@@ -1573,7 +1541,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    }\n"
         "  });\n"
         "})();\n"
-        "\n"
+    )
+
+    _JS_LINK_PREFETCH = (
         "// Prefetch links on hover (Feature 20)\n"
         "document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {\n"
         "  link.addEventListener('mouseenter', function() {\n"
@@ -1586,7 +1556,52 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    }\n"
         "  }, { once: true });\n"
         "});\n"
-        "\n"
+    )
+
+    # --- JS blocks: conditionally included ---
+    _JS_COPY_BUTTON = (
+        "// Copy button on code blocks (Feature 5)\n"
+        "document.querySelectorAll('pre').forEach(function(pre) {\n"
+        "  var code = pre.querySelector('code');\n"
+        "  if (!code) return;\n"
+        "  var btn = document.createElement('button');\n"
+        "  btn.className = 'copy-btn';\n"
+        "  btn.textContent = 'Copy';\n"
+        "  btn.addEventListener('click', function() {\n"
+        "    navigator.clipboard.writeText(code.textContent).then(function() {\n"
+        "      btn.textContent = 'Copied!';\n"
+        "      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);\n"
+        "    });\n"
+        "  });\n"
+        "  pre.style.position = 'relative';\n"
+        "  pre.appendChild(btn);\n"
+        "});\n"
+    )
+
+    _JS_SCROLLSPY = (
+        "// Scrollspy for TOC (Feature 2)\n"
+        "(function() {\n"
+        "  var tocLinks = document.querySelectorAll('.toc a');\n"
+        "  if (!tocLinks.length) return;\n"
+        "  var observer = new IntersectionObserver(function(entries) {\n"
+        "    entries.forEach(function(entry) {\n"
+        "      var id = entry.target.getAttribute('id');\n"
+        "      var link = document.querySelector('.toc a[href=\"#' + id + '\"');\n"
+        "      if (link) {\n"
+        "        if (entry.isIntersecting) {\n"
+        "          tocLinks.forEach(function(a) { a.classList.remove('active'); });\n"
+        "          link.classList.add('active');\n"
+        "        }\n"
+        "      }\n"
+        "    });\n"
+        "  }, { rootMargin: '-80px 0px -80% 0px' });\n"
+        "  document.querySelectorAll('main h2[id], main h3[id]').forEach(function(h) {\n"
+        "    observer.observe(h);\n"
+        "  });\n"
+        "})();\n"
+    )
+
+    _JS_FEEDBACK = (
         "// Feedback widget (Feature 30)\n"
         "(function() {\n"
         "  var widget = document.querySelector('.feedback');\n"
@@ -1603,7 +1618,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    });\n"
         "  });\n"
         "})();\n"
-        "\n"
+    )
+
+    _JS_CODE_TABS = (
         "// Code tabs: switch between language panels (Feature 31)\n"
         "(function() {\n"
         "  document.querySelectorAll('.code-tabs').forEach(function(tabGroup) {\n"
@@ -1658,7 +1675,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    }\n"
         "  });\n"
         "})();\n"
-        "\n"
+    )
+
+    _JS_RUN_BUTTON = (
         "// Embedded live code playground (Feature 41)\n"
         "(function() {\n"
         "  document.querySelectorAll('.code-block').forEach(function(block) {\n"
@@ -1685,7 +1704,22 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "  });\n"
         "})();\n"
     )
-    body_js = _minify_js(body_js_raw)
+
+    # Assemble JS blocks: always-needed first, then conditional
+    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_SEARCH, _JS_LINK_PREFETCH]
+
+    if "<pre" in body_html:
+        js_blocks.append(_JS_COPY_BUTTON)
+    if toc_html:
+        js_blocks.append(_JS_SCROLLSPY)
+    if 'class="feedback"' in footer_html:
+        js_blocks.append(_JS_FEEDBACK)
+    if 'class="code-tabs"' in body_html:
+        js_blocks.append(_JS_CODE_TABS)
+    if 'class="code-label"' in body_html:
+        js_blocks.append(_JS_RUN_BUTTON)
+
+    body_js = _minify_js("\n".join(js_blocks))
 
     return (
         f'<!DOCTYPE html>\n'

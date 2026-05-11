@@ -2656,9 +2656,11 @@ def test_css_preload_hint():
 
 
 def test_code_tabs_keyboard_navigation():
-    """Generated JS contains ArrowRight and ArrowLeft keyboard handling."""
+    """Generated JS contains ArrowRight and ArrowLeft when code tabs present."""
+    # Page with consecutive code blocks (different langs) triggers code tabs
+    md = "# Test\n\n```python\nprint(1)\n```\n```go\nfmt.Println(1)\n```\n"
     html_files = generate_html(
-        {"index.md": "# Test\n\nContent.\n"},
+        {"index.md": md},
         project_name="Test",
     )
     content = html_files["index.html"]
@@ -2712,3 +2714,46 @@ def test_non_text_files_not_compressed(project_dir):
     # The PNG should be copied but NOT have a .gz companion
     assert os.path.isfile(os.path.join(output_dir, "logo.png"))
     assert not os.path.isfile(os.path.join(output_dir, "logo.png.gz"))
+
+
+# --- Phase 5B: Conditional JS inclusion ---
+
+
+def test_conditional_js_excludes_copy_and_tabs_when_not_needed():
+    """Page with no code blocks or tabs excludes copy-btn and code-tabs JS."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nJust text, no code.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    # copy-btn JS should NOT be present (no <pre> in body)
+    assert "copy-btn" not in content
+    # code-tabs JS should NOT be present (no code-tabs in body)
+    assert "code-tabs" not in content
+
+
+def test_conditional_js_includes_all_when_needed():
+    """Page with code blocks and tabs includes all JS blocks."""
+    # Two consecutive code blocks with different languages produce tabs
+    md = (
+        "# API\n\n"
+        "```python\nprint('hello')\n```\n"
+        "```go\nfmt.Println(\"hello\")\n```\n"
+    )
+    html_files = generate_html(
+        {"index.md": md},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    # copy-btn JS present (has <pre>)
+    assert "copy-btn" in content
+    # code-tabs JS present (has code-tabs)
+    assert "code-tabs" in content
+    # run-btn JS present (has code-label)
+    assert "run-btn" in content
+    # Always-present JS blocks
+    assert "theme-toggle" in content
+    assert "hamburger" in content
+    assert "search-dialog" in content
