@@ -98,6 +98,27 @@ def load_config(dir_path="."):
     if base_url is not None:
         base_url = base_url.rstrip("/")
 
+    lang = raw.get("lang", None)
+    if lang is not None:
+        if not isinstance(lang, str) or not lang:
+            raise ConfigError("'lang' must be a non-empty string (BCP 47 language tag)")
+
+    description = raw.get("description", None)
+    if description is not None:
+        if not isinstance(description, str) or not description:
+            raise ConfigError("'description' must be a non-empty string")
+
+    author = raw.get("author", None)
+    if author is not None:
+        if not isinstance(author, dict):
+            raise ConfigError("'author' must be an object")
+        if "name" not in author or not isinstance(author["name"], str) or not author["name"]:
+            raise ConfigError("'author.name' is required and must be a non-empty string")
+        if "type" in author and author["type"] not in ("Person", "Organization"):
+            raise ConfigError(
+                "'author.type' must be 'Person' or 'Organization'"
+            )
+
     return {
         "language": language,
         "source": source,
@@ -108,4 +129,7 @@ def load_config(dir_path="."):
         "directives": directives,
         "repo": repo,
         "base_url": base_url,
+        "lang": lang,
+        "author": author,
+        "description": description,
     }

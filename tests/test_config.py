@@ -136,3 +136,96 @@ def test_invalid_json(config_dir):
         f.write("{bad json")
     with pytest.raises(ConfigError, match="not valid JSON"):
         load_config(str(config_dir))
+
+
+# -- lang, author, description fields --
+
+
+def test_all_new_fields_present(config_dir):
+    """Config with lang, author, and description loads correctly."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "lang": "en",
+        "author": {"name": "Jane Doe", "url": "https://jane.dev", "type": "Person"},
+        "description": "A great project",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["lang"] == "en"
+    assert cfg["author"]["name"] == "Jane Doe"
+    assert cfg["author"]["url"] == "https://jane.dev"
+    assert cfg["author"]["type"] == "Person"
+    assert cfg["description"] == "A great project"
+
+
+def test_new_fields_absent_backward_compat(config_dir):
+    """Config without lang, author, description still loads (all None)."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["lang"] is None
+    assert cfg["author"] is None
+    assert cfg["description"] is None
+
+
+def test_invalid_lang_empty_string(config_dir):
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "lang": "",
+    })
+    with pytest.raises(ConfigError, match="'lang' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+def test_invalid_author_not_dict(config_dir):
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "author": "Jane Doe",
+    })
+    with pytest.raises(ConfigError, match="'author' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_author_missing_name(config_dir):
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "author": {"url": "https://jane.dev"},
+    })
+    with pytest.raises(ConfigError, match="'author.name' is required"):
+        load_config(str(config_dir))
+
+
+def test_author_invalid_type(config_dir):
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "author": {"name": "Jane", "type": "Bot"},
+    })
+    with pytest.raises(ConfigError, match="'author.type' must be 'Person' or 'Organization'"):
+        load_config(str(config_dir))
+
+
+def test_invalid_description_empty_string(config_dir):
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "description": "",
+    })
+    with pytest.raises(ConfigError, match="'description' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+def test_author_name_only(config_dir):
+    """Author with only name (no url/type) loads correctly."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "author": {"name": "Jane Doe"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["author"] == {"name": "Jane Doe"}
