@@ -2909,3 +2909,95 @@ def test_twitter_site_meta_tag(project_dir):
         content = f.read()
 
     assert 'twitter:site" content="@selfdoc"' in content
+
+
+def test_breadcrumbs_flat_page(project_dir):
+    """Flat page produces two-level breadcrumb: Home / Page Title."""
+    docs_dir = os.path.join(project_dir, "docs")
+    guide_md = os.path.join(docs_dir, "guide.md")
+    with open(guide_md, "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nA guide page.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
+    assert '<a href="index.html">Home</a>' in content
+    assert '<span>Guide</span>' in content
+    assert " / " in content
+
+
+def test_breadcrumbs_subdirectory_page(project_dir):
+    """Subdirectory page produces multi-level breadcrumb with dir links."""
+    docs_dir = os.path.join(project_dir, "docs")
+    api_dir = os.path.join(docs_dir, "api")
+    os.makedirs(api_dir)
+    with open(os.path.join(api_dir, "endpoints.md"), "w", encoding="utf-8") as f:
+        f.write("# Endpoints\n\nAPI endpoints.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    endpoints_html = os.path.join(output_dir, "api", "endpoints.html")
+    assert os.path.isfile(endpoints_html)
+
+    with open(endpoints_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
+    assert '<a href="../index.html">Home</a>' in content
+    assert '<a href="../api/index.html">Api</a>' in content
+    assert '<span>Endpoints</span>' in content
+
+
+def test_breadcrumbs_json_ld_nested(project_dir):
+    """Subdirectory page produces BreadcrumbList JSON-LD with 3 items."""
+    # Add base_url to config
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump({
+            "language": "python",
+            "source": ["src/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+        }, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    api_dir = os.path.join(docs_dir, "api")
+    os.makedirs(api_dir)
+    with open(os.path.join(api_dir, "endpoints.md"), "w", encoding="utf-8") as f:
+        f.write("# Endpoints\n\nAPI endpoints.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    endpoints_html = os.path.join(output_dir, "api", "endpoints.html")
+    with open(endpoints_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract BreadcrumbList JSON-LD
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content, re.DOTALL,
+    )
+    breadcrumb_lds = [
+        json.loads(b) for b in ld_blocks
+        if '"BreadcrumbList"' in b
+    ]
+    assert len(breadcrumb_lds) == 1
+    bc = breadcrumb_lds[0]
+    items = bc["itemListElement"]
+    assert len(items) == 3
+    assert items[0]["position"] == 1
+    assert items[0]["name"] == "Home"
+    assert items[0]["item"] == "https://example.com/index.html"
+    assert items[1]["position"] == 2
+    assert items[1]["name"] == "Api"
+    assert items[1]["item"] == "https://example.com/api/"
+    assert items[2]["position"] == 3
+    assert items[2]["name"] == "Endpoints"
+    assert "item" not in items[2]

@@ -999,19 +999,32 @@ def _build_toc(body_html):
 def _build_breadcrumbs(html_path, page_title, prefix):
     """Build breadcrumb HTML for a non-index page.
 
+    For flat pages like ``guide.html``, produces ``Home / Guide``.
+    For subdirectory pages like ``api/endpoints.html``, produces
+    ``Home / Api / Endpoints`` with intermediate directory links.
+
     Args:
-        html_path: The current page's html path (e.g. "guide.html").
+        html_path: The current page's html path (e.g. "guide.html"
+            or "api/endpoints.html").
         page_title: The page title extracted from the first heading.
         prefix: Relative prefix back to root.
 
     Returns:
         Breadcrumb HTML string.
     """
+    parts = html_path.split("/")
+    crumbs = [f'<a href="{prefix}index.html">Home</a>']
+    # Add intermediate directory breadcrumbs
+    for i, dir_name in enumerate(parts[:-1]):
+        dir_path = "/".join(parts[:i + 1])
+        label = _escape_html(dir_name.capitalize())
+        crumbs.append(f'<a href="{prefix}{dir_path}/index.html">{label}</a>')
+    # Final segment is the current page (no link)
+    crumbs.append(f'<span>{_escape_html(page_title)}</span>')
     return (
         '<nav class="breadcrumbs" aria-label="Breadcrumbs">'
-        f'<a href="{prefix}index.html">Home</a>'
-        f' / <span>{_escape_html(page_title)}</span>'
-        '</nav>'
+        + " / ".join(crumbs)
+        + '</nav>'
     )
 
 
@@ -1203,7 +1216,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         )
 
     # BreadcrumbList JSON-LD for non-index pages
-    if breadcrumbs:
+    if breadcrumbs and page_path:
         home_item = {
             "@type": "ListItem",
             "position": 1,
@@ -1211,17 +1224,29 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         }
         if base_url:
             home_item["item"] = f"{base_url}/index.html"
+        items = [home_item]
+        parts = page_path.split("/")
+        # Intermediate directory entries
+        for i, dir_name in enumerate(parts[:-1]):
+            dir_path = "/".join(parts[:i + 1])
+            entry = {
+                "@type": "ListItem",
+                "position": len(items) + 1,
+                "name": dir_name.capitalize(),
+            }
+            if base_url:
+                entry["item"] = f"{base_url}/{dir_path}/"
+            items.append(entry)
+        # Final page entry (no item URL per Google spec)
+        items.append({
+            "@type": "ListItem",
+            "position": len(items) + 1,
+            "name": title,
+        })
         breadcrumb_ld = {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
-            "itemListElement": [
-                home_item,
-                {
-                    "@type": "ListItem",
-                    "position": 2,
-                    "name": title,
-                },
-            ],
+            "itemListElement": items,
         }
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
