@@ -108,6 +108,24 @@ def test_check_finds_directives(project_dir, capsys):
     assert "directive(s)" in captured.out
 
 
+def test_build_shows_seo_warnings(project_dir, capsys):
+    """selfdoc build shows SEO warning count when issues exist."""
+    from selfdoc.cli import _cmd_init, _cmd_build
+
+    class Args:
+        pass
+
+    _cmd_init(Args())
+
+    # The starter template has no frontmatter description,
+    # so SEO006 (missing description) will fire as a warning.
+    _cmd_build(Args())
+
+    captured = capsys.readouterr()
+    assert "SEO warning(s) found" in captured.out
+    assert "selfdoc check" in captured.out
+
+
 def test_build_without_init_fails(project_dir):
     """selfdoc build without selfdoc.json exits with error."""
     from selfdoc.cli import _cmd_build

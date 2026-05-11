@@ -154,12 +154,27 @@ def _cmd_build(args):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+    from selfdoc.check import check_docs
     from selfdoc.config import load_config
 
     config = load_config(".")
     output_dir = config["output"] if config else "docs/_build/"
 
     print(f"Built {len(written)} file(s) to {output_dir}")
+
+    # Show SEO warning summary after build
+    try:
+        check_result = check_docs(".")
+        warn_count = sum(
+            1 for lint in check_result.lints if lint.severity == "warning"
+        )
+        if warn_count > 0:
+            print(
+                f"{warn_count} SEO warning(s) found."
+                f" Run 'selfdoc check' for details."
+            )
+    except Exception:
+        pass  # Don't let lint errors break the build
 
 
 def _cmd_serve(args):
