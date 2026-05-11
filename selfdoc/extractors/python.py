@@ -82,7 +82,7 @@ def _handle_module(arg, body, source_paths, base_dir):
     module_doc = ast.get_docstring(tree)
     if module_doc:
         parts.append("")
-        parts.append(module_doc)
+        parts.append(_format_docstring(module_doc))
 
     # Extract top-level functions and classes
     for node in ast.iter_child_nodes(tree):
@@ -131,6 +131,157 @@ def _resolve_module_path(arg, source_paths, base_dir):
     return None
 
 
+# Section headers recognized in Google-style docstrings
+_SECTION_HEADERS = {
+    "Args",
+    "Arguments",
+    "Returns",
+    "Return",
+    "Raises",
+    "Yields",
+    "Yield",
+    "Attributes",
+    "Note",
+    "Notes",
+    "Example",
+    "Examples",
+    "References",
+    "See Also",
+    "Todo",
+    "Keyword Args",
+    "Keyword Arguments",
+}
+
+
+def _format_docstring(docstring):
+    """Transform Google-style docstring sections into markdown.
+
+    Detects section headers like ``Args:``, ``Returns:``, ``Raises:``
+    followed by indented ``name: description`` lines and converts them
+    to bold headers with bullet lists so the markdown converter renders
+    them as structured HTML instead of collapsing whitespace.
+    """
+    lines = docstring.split("\n")
+    out = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Check for a section header: "Args:", "Returns:", etc.
+        header_name = _match_section_header(stripped)
+        if header_name is not None:
+            # Emit a blank line before the header for markdown spacing
+            if out and out[-1] != "":
+                out.append("")
+            out.append(f"**{header_name}:**")
+            out.append("")
+            i += 1
+
+            # Collect indented lines under this header as list items
+            # Determine the indent of the first content line
+            if i < len(lines):
+                first_content = lines[i]
+                base_indent = len(first_content) - len(first_content.lstrip())
+            else:
+                base_indent = 4
+
+            while i < len(lines):
+                content_line = lines[i]
+
+                # Empty line: might separate items or end the section
+                if not content_line.strip():
+                    # Peek ahead: if next non-empty line is still indented,
+                    # this is a blank line within the section
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines):
+                        next_indent = len(lines[j]) - len(lines[j].lstrip())
+                        if next_indent >= base_indent:
+                            # Still in the section -- preserve the blank line
+                            out.append("")
+                            i += 1
+                            continue
+                    # End of section
+                    break
+
+                current_indent = len(content_line) - len(content_line.lstrip())
+                if current_indent < base_indent:
+                    # No longer indented -- end of section
+                    break
+
+                text = content_line.strip()
+
+                # Check if this is a new item (name: description) at the
+                # base indent level, or a continuation line (deeper indent)
+                if current_indent == base_indent and _is_param_line(text):
+                    # New list item: "param_name: description" or
+                    # "param_name (type): description"
+                    name, desc = _split_param_line(text)
+                    out.append(f"- `{name}`: {desc}" if desc else f"- `{name}`")
+                elif current_indent == base_indent and not _is_param_line(text):
+                    # A plain line at base indent (e.g. Returns section
+                    # with just a description, no param name)
+                    out.append(f"- {text}")
+                else:
+                    # Continuation of a previous item (deeper indent)
+                    out.append(f"  {text}")
+
+                i += 1
+            continue
+
+        # Regular line -- pass through
+        out.append(line)
+        i += 1
+
+    return "\n".join(out)
+
+
+def _match_section_header(stripped):
+    """If ``stripped`` is a recognized section header like ``Args:``, return
+    the header name. Otherwise return None."""
+    if not stripped.endswith(":"):
+        return None
+    candidate = stripped[:-1].strip()
+    if candidate in _SECTION_HEADERS:
+        return candidate
+    return None
+
+
+def _is_param_line(text):
+    """Check if a line looks like ``name: description`` or
+    ``name (type): description``."""
+    # Must have a colon that is not at the very start
+    colon_idx = text.find(":")
+    if colon_idx <= 0:
+        return False
+    # The part before the colon should look like an identifier, possibly
+    # followed by a parenthesized type annotation
+    before = text[:colon_idx].strip()
+    # Strip optional (type) suffix
+    if before.endswith(")"):
+        paren_idx = before.rfind("(")
+        if paren_idx > 0:
+            before = before[:paren_idx].strip()
+    # Should be a valid identifier-like name (allow dots, *, **)
+    before = before.lstrip("*")
+    return bool(before) and all(
+        c.isalnum() or c in ("_", ".", "-") for c in before
+    )
+
+
+def _split_param_line(text):
+    """Split ``name: description`` into (name, description).
+
+    Also handles ``name (type): description``."""
+    colon_idx = text.find(":")
+    name = text[:colon_idx].strip()
+    desc = text[colon_idx + 1 :].strip()
+    return name, desc
+
+
 def _format_function(node, heading_level=2):
     """Format a function/method node as markdown.
 
@@ -158,7 +309,7 @@ def _format_function(node, heading_level=2):
 
     if docstring:
         parts.append("")
-        parts.append(docstring)
+        parts.append(_format_docstring(docstring))
 
     return "\n".join(parts)
 
@@ -187,7 +338,7 @@ def _format_class(node):
 
     if docstring:
         parts.append("")
-        parts.append(docstring)
+        parts.append(_format_docstring(docstring))
 
     for method_md in methods:
         parts.append("")

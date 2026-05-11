@@ -12,6 +12,8 @@ import json
 import os
 import re
 
+from selfdoc.extractors.python import _format_docstring
+
 
 def resolve_go(name, arg, body, source_paths, base_dir):
     """Dispatch a directive to the appropriate Go extraction handler.
@@ -86,7 +88,7 @@ def _handle_module(arg, body, source_paths, base_dir):
 
     if package_doc:
         parts.append("")
-        parts.append(package_doc)
+        parts.append(_format_docstring(package_doc))
 
     # Extract exported declarations from all files
     declarations = []
@@ -116,7 +118,7 @@ def _handle_module(arg, body, source_paths, base_dir):
             parts.append(f"```go\n{decl['signature']}\n```")
             if decl["doc"]:
                 parts.append("")
-                parts.append(decl["doc"])
+                parts.append(_format_docstring(decl["doc"]))
 
     return "\n".join(parts)
 
