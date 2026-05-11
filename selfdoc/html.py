@@ -26,6 +26,30 @@ except ImportError:
 _ADMONITION_TYPES = {"NOTE", "TIP", "WARNING", "CAUTION", "IMPORTANT"}
 
 
+def _minify_js(js_text):
+    """Minify JavaScript by removing comments and collapsing whitespace.
+
+    Conservative approach: avoids breaking URLs containing ``//`` and
+    preserves single spaces between identifiers.
+    """
+    # Remove multi-line comments /* ... */
+    js_text = re.sub(r"/\*.*?\*/", "", js_text, flags=re.DOTALL)
+    # Remove single-line comments (// ... to end of line) but not inside
+    # strings and not URLs (https://, http://).  Only strip when //
+    # appears at the start of a line or after whitespace/semicolons.
+    js_text = re.sub(r"(?m)(?<=^)[ \t]*//(?!.*['\"]).*$", "", js_text)
+    js_text = re.sub(r"(?m)(?<=[;{}\n])[ \t]*//(?!.*['\"]).*$", "", js_text)
+    # Collapse runs of whitespace (but keep at least one space between
+    # word characters so identifiers don't merge)
+    js_text = re.sub(r"[ \t]+", " ", js_text)
+    # Remove whitespace around structural characters
+    js_text = re.sub(r"\s*([{}();,=])\s*", r"\1", js_text)
+    # Strip blank lines
+    js_text = re.sub(r"\n{2,}", "\n", js_text)
+    js_text = js_text.strip()
+    return js_text
+
+
 def _slugify(text):
     """Convert heading text to a URL-friendly slug for deep linking.
 
@@ -1143,373 +1167,370 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         '</svg>'
     )
 
-    return f"""<!DOCTYPE html>
-<html lang="{lang}">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{description_tag}
-<link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{css_href}">{custom_css_tag}{feed_tag}{seo_tags}
-<script>
-// Theme toggle: apply saved preference before paint to avoid flash
-(function() {{
-  var saved = localStorage.getItem('selfdoc-theme');
-  if (saved === 'light' || saved === 'dark') {{
-    document.documentElement.setAttribute('data-theme', saved);
-  }}
-}})();
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to content</a>
-<header class="topbar">
-<div class="topbar-inner">
-<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">
-<span></span><span></span><span></span>
-</button>
-<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>
-{version_badge}
-<button class="theme-toggle" aria-label="Toggle theme">
-{sun_icon}{moon_icon}{auto_icon}
-</button>
-</div>
-</header>
-<div class="layout">
-<nav class="sidebar" id="sidebar">
-<ul class="nav-list">
-{nav_html}
-</ul>
-</nav>
-<main class="content" id="main-content">
-<article>
-{breadcrumbs_html}
-{mobile_toc_html}
-{summary_html}
-{body_html}
-{footer_html}
-</article>
-</main>
-{toc_aside}
-</div>
-<footer class="site-footer">
-<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
-</footer>
-<script>
-// Theme toggle (Feature 6)
-(function() {{
-  var btn = document.querySelector('.theme-toggle');
-  var states = ['system', 'light', 'dark'];
-  function getState() {{
-    var s = localStorage.getItem('selfdoc-theme');
-    return (s === 'light' || s === 'dark') ? s : 'system';
-  }}
-  function apply(state) {{
-    if (state === 'light' || state === 'dark') {{
-      document.documentElement.setAttribute('data-theme', state);
-      localStorage.setItem('selfdoc-theme', state);
-    }} else {{
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.removeItem('selfdoc-theme');
-    }}
-    btn.setAttribute('data-state', state);
-  }}
-  apply(getState());
-  btn.addEventListener('click', function() {{
-    var cur = getState();
-    var next = states[(states.indexOf(cur) + 1) % states.length];
-    apply(next);
-  }});
-}})();
+    # Build inline JS as plain strings (not f-string escaped), minify,
+    # then embed.  The head script runs before paint; the body script
+    # handles interactive features.
+    head_js = (
+        "(function(){"
+        "var saved=localStorage.getItem('selfdoc-theme');"
+        "if(saved==='light'||saved==='dark'){"
+        "document.documentElement.setAttribute('data-theme',saved);"
+        "}"
+        "})();"
+    )
 
-// Copy button on code blocks (Feature 5)
-document.querySelectorAll('pre').forEach(function(pre) {{
-  var code = pre.querySelector('code');
-  if (!code) return;
-  var btn = document.createElement('button');
-  btn.className = 'copy-btn';
-  btn.textContent = 'Copy';
-  btn.addEventListener('click', function() {{
-    navigator.clipboard.writeText(code.textContent).then(function() {{
-      btn.textContent = 'Copied!';
-      setTimeout(function() {{ btn.textContent = 'Copy'; }}, 2000);
-    }});
-  }});
-  pre.style.position = 'relative';
-  pre.appendChild(btn);
-}});
+    body_js_raw = (
+        "// Theme toggle (Feature 6)\n"
+        "(function(){\n"
+        "  var btn = document.querySelector('.theme-toggle');\n"
+        "  var states = ['system', 'light', 'dark'];\n"
+        "  function getState() {\n"
+        "    var s = localStorage.getItem('selfdoc-theme');\n"
+        "    return (s === 'light' || s === 'dark') ? s : 'system';\n"
+        "  }\n"
+        "  function apply(state) {\n"
+        "    if (state === 'light' || state === 'dark') {\n"
+        "      document.documentElement.setAttribute('data-theme', state);\n"
+        "      localStorage.setItem('selfdoc-theme', state);\n"
+        "    } else {\n"
+        "      document.documentElement.removeAttribute('data-theme');\n"
+        "      localStorage.removeItem('selfdoc-theme');\n"
+        "    }\n"
+        "    btn.setAttribute('data-state', state);\n"
+        "  }\n"
+        "  apply(getState());\n"
+        "  btn.addEventListener('click', function() {\n"
+        "    var cur = getState();\n"
+        "    var next = states[(states.indexOf(cur) + 1) % states.length];\n"
+        "    apply(next);\n"
+        "  });\n"
+        "})();\n"
+        "\n"
+        "// Copy button on code blocks (Feature 5)\n"
+        "document.querySelectorAll('pre').forEach(function(pre) {\n"
+        "  var code = pre.querySelector('code');\n"
+        "  if (!code) return;\n"
+        "  var btn = document.createElement('button');\n"
+        "  btn.className = 'copy-btn';\n"
+        "  btn.textContent = 'Copy';\n"
+        "  btn.addEventListener('click', function() {\n"
+        "    navigator.clipboard.writeText(code.textContent).then(function() {\n"
+        "      btn.textContent = 'Copied!';\n"
+        "      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);\n"
+        "    });\n"
+        "  });\n"
+        "  pre.style.position = 'relative';\n"
+        "  pre.appendChild(btn);\n"
+        "});\n"
+        "\n"
+        "// Scrollspy for TOC (Feature 2)\n"
+        "(function() {\n"
+        "  var tocLinks = document.querySelectorAll('.toc a');\n"
+        "  if (!tocLinks.length) return;\n"
+        "  var observer = new IntersectionObserver(function(entries) {\n"
+        "    entries.forEach(function(entry) {\n"
+        "      var id = entry.target.getAttribute('id');\n"
+        "      var link = document.querySelector('.toc a[href=\"#' + id + '\"');\n"
+        "      if (link) {\n"
+        "        if (entry.isIntersecting) {\n"
+        "          tocLinks.forEach(function(a) { a.classList.remove('active'); });\n"
+        "          link.classList.add('active');\n"
+        "        }\n"
+        "      }\n"
+        "    });\n"
+        "  }, { rootMargin: '-80px 0px -80% 0px' });\n"
+        "  document.querySelectorAll('main h2[id], main h3[id]').forEach(function(h) {\n"
+        "    observer.observe(h);\n"
+        "  });\n"
+        "})();\n"
+        "\n"
+        "// Mobile sidebar toggle (Feature 25)\n"
+        "(function() {\n"
+        "  var toggle = document.querySelector('.hamburger');\n"
+        "  var sidebar = document.getElementById('sidebar');\n"
+        "  if (!toggle || !sidebar) return;\n"
+        "  function openSidebar() {\n"
+        "    document.body.classList.add('sidebar-open');\n"
+        "    toggle.setAttribute('aria-expanded', 'true');\n"
+        "  }\n"
+        "  function closeSidebar() {\n"
+        "    document.body.classList.remove('sidebar-open');\n"
+        "    toggle.setAttribute('aria-expanded', 'false');\n"
+        "  }\n"
+        "  toggle.addEventListener('click', function() {\n"
+        "    if (document.body.classList.contains('sidebar-open')) {\n"
+        "      closeSidebar();\n"
+        "    } else {\n"
+        "      openSidebar();\n"
+        "    }\n"
+        "  });\n"
+        "  document.addEventListener('click', function(e) {\n"
+        "    if (document.body.classList.contains('sidebar-open') &&\n"
+        "        !sidebar.contains(e.target) && !toggle.contains(e.target)) {\n"
+        "      closeSidebar();\n"
+        "    }\n"
+        "  });\n"
+        "  sidebar.querySelectorAll('a').forEach(function(link) {\n"
+        "    link.addEventListener('click', function() {\n"
+        "      closeSidebar();\n"
+        "    });\n"
+        "  });\n"
+        "})();\n"
+        "\n"
+        "// Cmd+K search (Feature 19)\n"
+        "(function() {\n"
+        "  var dialog = document.getElementById('search-dialog');\n"
+        "  if (!dialog) return;\n"
+        "  var input = dialog.querySelector('.search-input');\n"
+        "  var resultsList = dialog.querySelector('.search-results');\n"
+        "  var searchIndex = null;\n"
+        "  var activeIdx = -1;\n"
+        "\n"
+        "  function loadIndex() {\n"
+        "    if (searchIndex) return Promise.resolve(searchIndex);\n"
+        "    return fetch('" + prefix + "search-index.json')\n"
+        "      .then(function(r) { return r.json(); })\n"
+        "      .then(function(data) { searchIndex = data; return data; });\n"
+        "  }\n"
+        "\n"
+        "  function openSearch() {\n"
+        "    loadIndex();\n"
+        "    dialog.showModal();\n"
+        "    input.value = '';\n"
+        "    resultsList.innerHTML = '';\n"
+        "    activeIdx = -1;\n"
+        "    input.focus();\n"
+        "  }\n"
+        "\n"
+        "  function closeSearch() {\n"
+        "    dialog.close();\n"
+        "  }\n"
+        "\n"
+        "  function renderResults(query) {\n"
+        "    resultsList.innerHTML = '';\n"
+        "    activeIdx = -1;\n"
+        "    if (!query || !searchIndex) return;\n"
+        "    var q = query.toLowerCase();\n"
+        "    var matches = searchIndex.filter(function(entry) {\n"
+        "      return entry.title.toLowerCase().indexOf(q) !== -1 ||\n"
+        "             entry.body.toLowerCase().indexOf(q) !== -1;\n"
+        "    }).slice(0, 10);\n"
+        "    matches.forEach(function(entry, idx) {\n"
+        "      var li = document.createElement('li');\n"
+        "      li.className = 'search-result-item';\n"
+        "      var a = document.createElement('a');\n"
+        "      a.href = '" + prefix + "' + entry.path;\n"
+        "      var titleEl = document.createElement('div');\n"
+        "      titleEl.className = 'search-result-title';\n"
+        "      titleEl.textContent = entry.title;\n"
+        "      var snippet = document.createElement('div');\n"
+        "      snippet.className = 'search-result-snippet';\n"
+        "      var bodyLower = entry.body.toLowerCase();\n"
+        "      var pos = bodyLower.indexOf(q);\n"
+        "      if (pos !== -1) {\n"
+        "        var start = Math.max(0, pos - 40);\n"
+        "        var end = Math.min(entry.body.length, pos + q.length + 60);\n"
+        "        snippet.textContent = (start > 0 ? '...' : '') +\n"
+        "          entry.body.substring(start, end) +\n"
+        "          (end < entry.body.length ? '...' : '');\n"
+        "      } else {\n"
+        "        snippet.textContent = entry.body.substring(0, 100) +\n"
+        "          (entry.body.length > 100 ? '...' : '');\n"
+        "      }\n"
+        "      a.appendChild(titleEl);\n"
+        "      a.appendChild(snippet);\n"
+        "      li.appendChild(a);\n"
+        "      resultsList.appendChild(li);\n"
+        "    });\n"
+        "  }\n"
+        "\n"
+        "  function setActive(idx) {\n"
+        "    var items = resultsList.querySelectorAll('.search-result-item');\n"
+        "    items.forEach(function(li) { li.classList.remove('active'); });\n"
+        "    if (idx >= 0 && idx < items.length) {\n"
+        "      activeIdx = idx;\n"
+        "      items[idx].classList.add('active');\n"
+        "      items[idx].scrollIntoView({ block: 'nearest' });\n"
+        "    }\n"
+        "  }\n"
+        "\n"
+        "  document.addEventListener('keydown', function(e) {\n"
+        "    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {\n"
+        "      e.preventDefault();\n"
+        "      if (dialog.open) closeSearch();\n"
+        "      else openSearch();\n"
+        "    }\n"
+        "  });\n"
+        "\n"
+        "  dialog.addEventListener('click', function(e) {\n"
+        "    if (e.target === dialog) closeSearch();\n"
+        "  });\n"
+        "\n"
+        "  input.addEventListener('input', function() {\n"
+        "    renderResults(input.value);\n"
+        "  });\n"
+        "\n"
+        "  input.addEventListener('keydown', function(e) {\n"
+        "    var items = resultsList.querySelectorAll('.search-result-item');\n"
+        "    if (e.key === 'ArrowDown') {\n"
+        "      e.preventDefault();\n"
+        "      setActive(Math.min(activeIdx + 1, items.length - 1));\n"
+        "    } else if (e.key === 'ArrowUp') {\n"
+        "      e.preventDefault();\n"
+        "      setActive(Math.max(activeIdx - 1, 0));\n"
+        "    } else if (e.key === 'Enter' && activeIdx >= 0) {\n"
+        "      e.preventDefault();\n"
+        "      var link = items[activeIdx].querySelector('a');\n"
+        "      if (link) window.location.href = link.href;\n"
+        "    } else if (e.key === 'Escape') {\n"
+        "      closeSearch();\n"
+        "    }\n"
+        "  });\n"
+        "})();\n"
+        "\n"
+        "// Prefetch links on hover (Feature 20)\n"
+        "document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {\n"
+        "  link.addEventListener('mouseenter', function() {\n"
+        "    var href = link.getAttribute('href');\n"
+        "    if (href && !document.querySelector('link[href=\"' + href + '\"')) {\n"
+        "      var prefetch = document.createElement('link');\n"
+        "      prefetch.rel = 'prefetch';\n"
+        "      prefetch.href = href;\n"
+        "      document.head.appendChild(prefetch);\n"
+        "    }\n"
+        "  }, { once: true });\n"
+        "});\n"
+        "\n"
+        "// Feedback widget (Feature 30)\n"
+        "(function() {\n"
+        "  var widget = document.querySelector('.feedback');\n"
+        "  if (!widget) return;\n"
+        "  var key = 'selfdoc-feedback-' + location.pathname;\n"
+        "  if (localStorage.getItem(key)) {\n"
+        "    widget.innerHTML = '<span>Thanks for your feedback!</span>';\n"
+        "    return;\n"
+        "  }\n"
+        "  widget.querySelectorAll('button').forEach(function(btn) {\n"
+        "    btn.addEventListener('click', function() {\n"
+        "      localStorage.setItem(key, btn.className);\n"
+        "      widget.innerHTML = '<span>Thanks for your feedback!</span>';\n"
+        "    });\n"
+        "  });\n"
+        "})();\n"
+        "\n"
+        "// Code tabs: switch between language panels (Feature 31)\n"
+        "(function() {\n"
+        "  document.querySelectorAll('.code-tabs').forEach(function(tabGroup) {\n"
+        "    var buttons = tabGroup.querySelectorAll('.tab-bar .tab');\n"
+        "    var panels = tabGroup.querySelectorAll('.tab-panel');\n"
+        "    buttons.forEach(function(btn) {\n"
+        "      btn.addEventListener('click', function() {\n"
+        "        var lang = btn.getAttribute('data-lang');\n"
+        "        buttons.forEach(function(b) { b.classList.remove('active'); });\n"
+        "        panels.forEach(function(p) { p.classList.remove('active'); });\n"
+        "        btn.classList.add('active');\n"
+        "        var panel = tabGroup.querySelector('.tab-panel[data-lang=\"' + lang + '\"');\n"
+        "        if (panel) panel.classList.add('active');\n"
+        "        localStorage.setItem('selfdoc-tab-' + lang, 'true');\n"
+        "        document.querySelectorAll('.code-tabs').forEach(function(otherGroup) {\n"
+        "          if (otherGroup === tabGroup) return;\n"
+        "          var otherBtn = otherGroup.querySelector('.tab-bar .tab[data-lang=\"' + lang + '\"');\n"
+        "          if (otherBtn) otherBtn.click();\n"
+        "        });\n"
+        "      });\n"
+        "    });\n"
+        "    buttons.forEach(function(btn) {\n"
+        "      var lang = btn.getAttribute('data-lang');\n"
+        "      if (localStorage.getItem('selfdoc-tab-' + lang)) {\n"
+        "        btn.click();\n"
+        "      }\n"
+        "    });\n"
+        "  });\n"
+        "})();\n"
+        "\n"
+        "// Embedded live code playground (Feature 41)\n"
+        "(function() {\n"
+        "  document.querySelectorAll('.code-block').forEach(function(block) {\n"
+        "    var label = block.querySelector('.code-label');\n"
+        "    if (!label) return;\n"
+        "    var lang = label.textContent.trim().toLowerCase();\n"
+        "    var code = block.querySelector('code');\n"
+        "    if (!code) return;\n"
+        "    var url = null;\n"
+        "    if (lang === 'go') {\n"
+        "      url = 'https://go.dev/play/p/?body=' + encodeURIComponent(code.textContent);\n"
+        "    } else if (lang === 'python') {\n"
+        "      url = 'https://www.online-python.com/';\n"
+        "    }\n"
+        "    if (url) {\n"
+        "      var btn = document.createElement('a');\n"
+        "      btn.className = 'run-btn';\n"
+        "      btn.href = url;\n"
+        "      btn.target = '_blank';\n"
+        "      btn.rel = 'noopener';\n"
+        "      btn.textContent = 'Run';\n"
+        "      block.querySelector('pre').appendChild(btn);\n"
+        "    }\n"
+        "  });\n"
+        "})();\n"
+    )
+    body_js = _minify_js(body_js_raw)
 
-// Scrollspy for TOC (Feature 2)
-(function() {{
-  var tocLinks = document.querySelectorAll('.toc a');
-  if (!tocLinks.length) return;
-  var observer = new IntersectionObserver(function(entries) {{
-    entries.forEach(function(entry) {{
-      var id = entry.target.getAttribute('id');
-      var link = document.querySelector('.toc a[href="#' + id + '"]');
-      if (link) {{
-        if (entry.isIntersecting) {{
-          tocLinks.forEach(function(a) {{ a.classList.remove('active'); }});
-          link.classList.add('active');
-        }}
-      }}
-    }});
-  }}, {{ rootMargin: '-80px 0px -80% 0px' }});
-  document.querySelectorAll('main h2[id], main h3[id]').forEach(function(h) {{
-    observer.observe(h);
-  }});
-}})();
-
-// Mobile sidebar toggle (Feature 25)
-(function() {{
-  var toggle = document.querySelector('.hamburger');
-  var sidebar = document.getElementById('sidebar');
-  if (!toggle || !sidebar) return;
-  function openSidebar() {{
-    document.body.classList.add('sidebar-open');
-    toggle.setAttribute('aria-expanded', 'true');
-  }}
-  function closeSidebar() {{
-    document.body.classList.remove('sidebar-open');
-    toggle.setAttribute('aria-expanded', 'false');
-  }}
-  toggle.addEventListener('click', function() {{
-    if (document.body.classList.contains('sidebar-open')) {{
-      closeSidebar();
-    }} else {{
-      openSidebar();
-    }}
-  }});
-  // Close when clicking outside (overlay area)
-  document.addEventListener('click', function(e) {{
-    if (document.body.classList.contains('sidebar-open') &&
-        !sidebar.contains(e.target) && !toggle.contains(e.target)) {{
-      closeSidebar();
-    }}
-  }});
-  // Close when a nav link is clicked
-  sidebar.querySelectorAll('a').forEach(function(link) {{
-    link.addEventListener('click', function() {{
-      closeSidebar();
-    }});
-  }});
-}})();
-
-// Cmd+K search (Feature 19)
-(function() {{
-  var dialog = document.getElementById('search-dialog');
-  if (!dialog) return;
-  var input = dialog.querySelector('.search-input');
-  var resultsList = dialog.querySelector('.search-results');
-  var searchIndex = null;
-  var activeIdx = -1;
-
-  function loadIndex() {{
-    if (searchIndex) return Promise.resolve(searchIndex);
-    return fetch('{prefix}search-index.json')
-      .then(function(r) {{ return r.json(); }})
-      .then(function(data) {{ searchIndex = data; return data; }});
-  }}
-
-  function openSearch() {{
-    loadIndex();
-    dialog.showModal();
-    input.value = '';
-    resultsList.innerHTML = '';
-    activeIdx = -1;
-    input.focus();
-  }}
-
-  function closeSearch() {{
-    dialog.close();
-  }}
-
-  function renderResults(query) {{
-    resultsList.innerHTML = '';
-    activeIdx = -1;
-    if (!query || !searchIndex) return;
-    var q = query.toLowerCase();
-    var matches = searchIndex.filter(function(entry) {{
-      return entry.title.toLowerCase().indexOf(q) !== -1 ||
-             entry.body.toLowerCase().indexOf(q) !== -1;
-    }}).slice(0, 10);
-    matches.forEach(function(entry, idx) {{
-      var li = document.createElement('li');
-      li.className = 'search-result-item';
-      var a = document.createElement('a');
-      a.href = '{prefix}' + entry.path;
-      var titleEl = document.createElement('div');
-      titleEl.className = 'search-result-title';
-      titleEl.textContent = entry.title;
-      var snippet = document.createElement('div');
-      snippet.className = 'search-result-snippet';
-      var bodyLower = entry.body.toLowerCase();
-      var pos = bodyLower.indexOf(q);
-      if (pos !== -1) {{
-        var start = Math.max(0, pos - 40);
-        var end = Math.min(entry.body.length, pos + q.length + 60);
-        snippet.textContent = (start > 0 ? '...' : '') +
-          entry.body.substring(start, end) +
-          (end < entry.body.length ? '...' : '');
-      }} else {{
-        snippet.textContent = entry.body.substring(0, 100) +
-          (entry.body.length > 100 ? '...' : '');
-      }}
-      a.appendChild(titleEl);
-      a.appendChild(snippet);
-      li.appendChild(a);
-      resultsList.appendChild(li);
-    }});
-  }}
-
-  function setActive(idx) {{
-    var items = resultsList.querySelectorAll('.search-result-item');
-    items.forEach(function(li) {{ li.classList.remove('active'); }});
-    if (idx >= 0 && idx < items.length) {{
-      activeIdx = idx;
-      items[idx].classList.add('active');
-      items[idx].scrollIntoView({{ block: 'nearest' }});
-    }}
-  }}
-
-  document.addEventListener('keydown', function(e) {{
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {{
-      e.preventDefault();
-      if (dialog.open) closeSearch();
-      else openSearch();
-    }}
-  }});
-
-  dialog.addEventListener('click', function(e) {{
-    if (e.target === dialog) closeSearch();
-  }});
-
-  input.addEventListener('input', function() {{
-    renderResults(input.value);
-  }});
-
-  input.addEventListener('keydown', function(e) {{
-    var items = resultsList.querySelectorAll('.search-result-item');
-    if (e.key === 'ArrowDown') {{
-      e.preventDefault();
-      setActive(Math.min(activeIdx + 1, items.length - 1));
-    }} else if (e.key === 'ArrowUp') {{
-      e.preventDefault();
-      setActive(Math.max(activeIdx - 1, 0));
-    }} else if (e.key === 'Enter' && activeIdx >= 0) {{
-      e.preventDefault();
-      var link = items[activeIdx].querySelector('a');
-      if (link) window.location.href = link.href;
-    }} else if (e.key === 'Escape') {{
-      closeSearch();
-    }}
-  }});
-}})();
-
-// Prefetch links on hover (Feature 20)
-document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {{
-  link.addEventListener('mouseenter', function() {{
-    var href = link.getAttribute('href');
-    if (href && !document.querySelector('link[href="' + href + '"]')) {{
-      var prefetch = document.createElement('link');
-      prefetch.rel = 'prefetch';
-      prefetch.href = href;
-      document.head.appendChild(prefetch);
-    }}
-  }}, {{ once: true }});
-}});
-
-// Feedback widget (Feature 30)
-(function() {{
-  var widget = document.querySelector('.feedback');
-  if (!widget) return;
-  var key = 'selfdoc-feedback-' + location.pathname;
-  if (localStorage.getItem(key)) {{
-    widget.innerHTML = '<span>Thanks for your feedback!</span>';
-    return;
-  }}
-  widget.querySelectorAll('button').forEach(function(btn) {{
-    btn.addEventListener('click', function() {{
-      localStorage.setItem(key, btn.className);
-      widget.innerHTML = '<span>Thanks for your feedback!</span>';
-    }});
-  }});
-}})();
-
-// Code tabs: switch between language panels (Feature 31)
-(function() {{
-  document.querySelectorAll('.code-tabs').forEach(function(tabGroup) {{
-    var buttons = tabGroup.querySelectorAll('.tab-bar .tab');
-    var panels = tabGroup.querySelectorAll('.tab-panel');
-    buttons.forEach(function(btn) {{
-      btn.addEventListener('click', function() {{
-        var lang = btn.getAttribute('data-lang');
-        // Deactivate all tabs and panels in this group
-        buttons.forEach(function(b) {{ b.classList.remove('active'); }});
-        panels.forEach(function(p) {{ p.classList.remove('active'); }});
-        // Activate the selected tab and panel
-        btn.classList.add('active');
-        var panel = tabGroup.querySelector('.tab-panel[data-lang="' + lang + '"]');
-        if (panel) panel.classList.add('active');
-        // Persist preference in localStorage
-        localStorage.setItem('selfdoc-tab-' + lang, 'true');
-        // Sync same-language tabs across all tab groups on the page
-        document.querySelectorAll('.code-tabs').forEach(function(otherGroup) {{
-          if (otherGroup === tabGroup) return;
-          var otherBtn = otherGroup.querySelector('.tab-bar .tab[data-lang="' + lang + '"]');
-          if (otherBtn) otherBtn.click();
-        }});
-      }});
-    }});
-    // Restore persisted language preference
-    buttons.forEach(function(btn) {{
-      var lang = btn.getAttribute('data-lang');
-      if (localStorage.getItem('selfdoc-tab-' + lang)) {{
-        btn.click();
-      }}
-    }});
-  }});
-}})();
-
-// Embedded live code playground (Feature 41)
-// Adds a "Run" button to Go and Python code blocks linking to online playgrounds.
-(function() {{
-  document.querySelectorAll('.code-block').forEach(function(block) {{
-    var label = block.querySelector('.code-label');
-    if (!label) return;
-    var lang = label.textContent.trim().toLowerCase();
-    var code = block.querySelector('code');
-    if (!code) return;
-    var url = null;
-    if (lang === 'go') {{
-      url = 'https://go.dev/play/p/?body=' + encodeURIComponent(code.textContent);
-    }} else if (lang === 'python') {{
-      url = 'https://www.online-python.com/';
-    }}
-    if (url) {{
-      var btn = document.createElement('a');
-      btn.className = 'run-btn';
-      btn.href = url;
-      btn.target = '_blank';
-      btn.rel = 'noopener';
-      btn.textContent = 'Run';
-      block.querySelector('pre').appendChild(btn);
-    }}
-  }});
-}})();
-
-// Feature 42: API playground / "Try it" panel -- future feature requiring a running backend.
-// Feature 43: Browser/platform compatibility tables -- future feature, not relevant for most projects.
-</script>
-<dialog class="search-dialog" id="search-dialog">
-<div class="search-inner">
-<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>
-<ul class="search-results"></ul>
-</div>
-</dialog>
-</body>
-</html>
-"""
+    return (
+        f'<!DOCTYPE html>\n'
+        f'<html lang="{lang}">\n'
+        f'<head>\n'
+        f'<meta charset="UTF-8">\n'
+        f'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        f'<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{description_tag}\n'
+        f'<link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">\n'
+        f'<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+        f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+        f'<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">\n'
+        f'<link rel="stylesheet" href="{css_href}">{custom_css_tag}{feed_tag}{seo_tags}\n'
+        f'<script>{head_js}</script>\n'
+        f'</head>\n'
+        f'<body>\n'
+        f'<a class="skip-link" href="#main-content">Skip to content</a>\n'
+        f'<header class="topbar">\n'
+        f'<div class="topbar-inner">\n'
+        f'<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">\n'
+        f'<span></span><span></span><span></span>\n'
+        f'</button>\n'
+        f'<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>\n'
+        f'{version_badge}\n'
+        f'<button class="theme-toggle" aria-label="Toggle theme">\n'
+        f'{sun_icon}{moon_icon}{auto_icon}\n'
+        f'</button>\n'
+        f'</div>\n'
+        f'</header>\n'
+        f'<div class="layout">\n'
+        f'<nav class="sidebar" id="sidebar">\n'
+        f'<ul class="nav-list">\n'
+        f'{nav_html}\n'
+        f'</ul>\n'
+        f'</nav>\n'
+        f'<main class="content" id="main-content">\n'
+        f'<article>\n'
+        f'{breadcrumbs_html}\n'
+        f'{mobile_toc_html}\n'
+        f'{summary_html}\n'
+        f'{body_html}\n'
+        f'{footer_html}\n'
+        f'</article>\n'
+        f'</main>\n'
+        f'{toc_aside}\n'
+        f'</div>\n'
+        f'<footer class="site-footer">\n'
+        f'<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
+        f'</footer>\n'
+        f'<script>{body_js}</script>\n'
+        f'<dialog class="search-dialog" id="search-dialog">\n'
+        f'<div class="search-inner">\n'
+        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>\n'
+        f'<ul class="search-results"></ul>\n'
+        f'</div>\n'
+        f'</dialog>\n'
+        f'</body>\n'
+        f'</html>\n'
+    )

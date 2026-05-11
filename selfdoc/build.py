@@ -16,6 +16,53 @@ from selfdoc.html import (
 from selfdoc.resolver import make_resolver
 
 
+def _minify_css(css_text):
+    """Minify CSS by removing comments, collapsing whitespace, and trimming.
+
+    Simple regex-based approach suitable for well-formed CSS.
+    """
+    # Remove CSS comments /* ... */
+    css_text = re.sub(r"/\*.*?\*/", "", css_text, flags=re.DOTALL)
+    # Collapse whitespace (multiple spaces/newlines -> single space)
+    css_text = re.sub(r"\s+", " ", css_text)
+    # Remove spaces around { } : ; ,
+    css_text = re.sub(r"\s*([{}:;,])\s*", r"\1", css_text)
+    # Remove trailing semicolons before }
+    css_text = re.sub(r";}", "}", css_text)
+    # Strip leading/trailing whitespace
+    css_text = css_text.strip()
+    return css_text
+
+
+def _minify_html(html_text):
+    """Minify HTML by removing comments and collapsing inter-tag whitespace.
+
+    Preserves whitespace inside <pre>, <code>, <script>, and <textarea> tags.
+    """
+    # Split the HTML into preserved and non-preserved segments.
+    # We protect <pre>, <code>, <script>, <textarea> content.
+    preserve_pattern = re.compile(
+        r"(<(?:pre|code|script|textarea)\b[^>]*>.*?</(?:pre|code|script|textarea)>)",
+        re.DOTALL | re.IGNORECASE,
+    )
+    parts = preserve_pattern.split(html_text)
+    result = []
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            # Preserved segment -- keep as-is
+            result.append(part)
+        else:
+            # Non-preserved segment -- minify
+            # Remove HTML comments <!-- ... -->
+            part = re.sub(r"<!--.*?-->", "", part, flags=re.DOTALL)
+            # Collapse whitespace between > and <
+            part = re.sub(r">\s+<", "> <", part)
+            # Collapse runs of whitespace in text nodes to single space
+            part = re.sub(r"\s+", " ", part)
+            result.append(part)
+    return "".join(result)
+
+
 def _stub_resolver(name, arg, body):
     """Placeholder resolver that produces a visible unresolved marker."""
     label = f"{name} {arg}".strip()
@@ -511,6 +558,7 @@ def build(dir_path=".", config=None):
     pygments_css = generate_pygments_css()
     if pygments_css:
         theme_css = theme_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
+    theme_css = _minify_css(theme_css)
     with open(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
@@ -528,12 +576,12 @@ def build(dir_path=".", config=None):
         shutil.copy2(custom_css_src, custom_css_dst)
         written[custom_css_dst] = True
 
-    # Write HTML files
+    # Write HTML files (minified)
     for rel_path, html_content in html_files.items():
         out_path = os.path.join(output_dir, rel_path)
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
+            f.write(_minify_html(html_content))
         written[out_path] = True
 
     # Copy non-.md files (images, CSS, etc.) to output

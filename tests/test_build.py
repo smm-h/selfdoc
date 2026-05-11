@@ -6,8 +6,8 @@ import re
 
 import pytest
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed
-from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html
+from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js
 
 
 @pytest.fixture()
@@ -976,7 +976,8 @@ def test_style_css_contains_pygments_rules(project_dir):
     from selfdoc.html import HAS_PYGMENTS
     if HAS_PYGMENTS:
         assert ".code-block code" in content
-        assert "prefers-color-scheme: dark" in content
+        # CSS is minified, so spaces around colon are removed
+        assert "prefers-color-scheme:dark" in content
 
 
 def test_no_highlight_js_in_built_html(project_dir):
@@ -995,3 +996,104 @@ def test_no_highlight_js_in_built_html(project_dir):
     assert "hljs.highlightAll()" not in content
     assert "hljs-light" not in content
     assert "hljs-dark" not in content
+
+
+# --- Phase 3.1: Build-time CSS, JS, and HTML minification ---
+
+
+def test_minify_css_removes_comments():
+    """_minify_css removes CSS comments."""
+    css = "body { /* page background */ color: red; }"
+    result = _minify_css(css)
+    assert "/* page background */" not in result
+    assert "color" in result
+
+
+def test_minify_css_collapses_whitespace():
+    """_minify_css collapses whitespace and removes spaces around symbols."""
+    css = "body  {\n  color :  red ;\n  margin : 0 ;\n}\n"
+    result = _minify_css(css)
+    assert "  " not in result
+    assert "\n" not in result
+    assert "color:red" in result
+
+
+def test_minify_css_removes_trailing_semicolons():
+    """_minify_css removes trailing semicolons before }."""
+    css = "body { color: red; margin: 0; }"
+    result = _minify_css(css)
+    assert ";}" not in result
+    assert "margin:0}" in result
+
+
+def test_minify_js_removes_comments():
+    """_minify_js removes single-line and multi-line comments."""
+    js = "/* header */\nvar x = 1;\n// set y\nvar y = 2;\n"
+    result = _minify_js(js)
+    assert "/* header */" not in result
+    assert "set y" not in result
+    assert "x" in result
+    assert "y" in result
+
+
+def test_minify_js_preserves_urls():
+    """_minify_js does not break URLs containing //."""
+    js = "var url = 'https://example.com/path';\n"
+    result = _minify_js(js)
+    assert "https://example.com/path" in result
+
+
+def test_minify_html_removes_comments():
+    """_minify_html removes HTML comments."""
+    html = "<div><!-- a comment --><p>text</p></div>"
+    result = _minify_html(html)
+    assert "<!-- a comment -->" not in result
+    assert "<p>text</p>" in result
+
+
+def test_minify_html_preserves_pre_content():
+    """_minify_html preserves whitespace inside <pre> tags."""
+    html = '<p>  hello  </p>\n<pre>  line1\n  line2  </pre>\n<p>world</p>'
+    result = _minify_html(html)
+    # Whitespace inside <pre> must be kept verbatim
+    assert "  line1\n  line2  " in result
+    # Whitespace outside <pre> may be collapsed
+    assert "\n<p>" not in result or "> <p>" in result
+
+
+def test_minify_html_preserves_code_content():
+    """_minify_html preserves whitespace inside <code> tags."""
+    html = '<code>  a  +  b  </code>'
+    result = _minify_html(html)
+    assert "  a  +  b  " in result
+
+
+def test_built_style_css_is_minified(project_dir):
+    """Built style.css is smaller than the raw theme CSS (minification applied)."""
+    from selfdoc.html import get_css, generate_pygments_css
+    raw_css = get_css("minimal")
+    pygments_css = generate_pygments_css()
+    if pygments_css:
+        raw_css = raw_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "style.css"), "r", encoding="utf-8") as f:
+        built_css = f.read()
+
+    assert len(built_css) < len(raw_css), (
+        f"Minified CSS ({len(built_css)} bytes) should be smaller "
+        f"than raw CSS ({len(raw_css)} bytes)"
+    )
+
+
+def test_built_html_has_no_html_comments(project_dir):
+    """Built HTML has no <!-- ... --> comments."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "<!--" not in content
