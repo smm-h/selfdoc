@@ -436,6 +436,10 @@ h6:hover .heading-link {
     text-decoration: none;
 }
 
+.heading-link:focus-visible {
+    opacity: 1;
+}
+
 /* === Code === */
 
 code {
