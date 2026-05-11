@@ -1044,13 +1044,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # SEO: OG meta tags (Feature 21), canonical URL (Feature 22),
     # JSON-LD structured data (Feature 23)
+    # Each feature is independently gated so structured data degrades
+    # gracefully when base_url is absent.
     seo_tags = ""
-    if base_url and page_path:
-        canonical_url = f"{base_url}/{page_path}"
-        escaped_title = _escape_html(title)
-        escaped_project = _escape_html(project_name)
-        slug = page_path.replace(".html", "")
+    escaped_title = _escape_html(title)
+    escaped_project = _escape_html(project_name)
+    canonical_url = f"{base_url}/{page_path}" if base_url and page_path else None
 
+    # TechArticle JSON-LD -- emitted when page_path is set
+    if page_path:
         # Build author object for TechArticle
         if author and author.get("name"):
             author_obj = {
@@ -1062,19 +1064,143 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         else:
             author_obj = {"@type": "Organization", "name": project_name}
 
-        # TechArticle JSON-LD
         tech_article = {
             "@context": "https://schema.org",
             "@type": "TechArticle",
             "headline": title,
-            "url": canonical_url,
             "author": author_obj,
         }
+        if canonical_url:
+            tech_article["url"] = canonical_url
         if description:
             tech_article["description"] = description
         if date_modified:
             tech_article["dateModified"] = date_modified
 
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{json.dumps(tech_article)}'
+            f'\n</script>'
+        )
+
+    # BreadcrumbList JSON-LD for non-index pages
+    if breadcrumbs:
+        home_item = {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+        }
+        if base_url:
+            home_item["item"] = f"{base_url}/index.html"
+        breadcrumb_ld = {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                home_item,
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": title,
+                },
+            ],
+        }
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{json.dumps(breadcrumb_ld)}'
+            f'\n</script>'
+        )
+
+    # WebSite + SearchAction JSON-LD -- needs base_url for absolute URLs
+    if base_url and page_path == "index.html":
+        website_ld = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": project_name,
+            "url": f"{base_url}/",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": f"{base_url}/?q={{search_term_string}}",
+                "query-input": "required name=search_term_string",
+            },
+        }
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{json.dumps(website_ld)}'
+            f'\n</script>'
+        )
+
+    # SoftwareSourceCode JSON-LD when code blocks with language annotations exist
+    lang_matches = re.findall(r'class="language-(\w+)"', body_html)
+    if lang_matches:
+        unique_langs = list(dict.fromkeys(lang_matches))
+        prog_lang = unique_langs[0] if len(unique_langs) == 1 else unique_langs
+        source_code_ld = {
+            "@context": "https://schema.org",
+            "@type": "SoftwareSourceCode",
+            "programmingLanguage": prog_lang,
+        }
+        if repo:
+            source_code_ld["codeRepository"] = repo
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{json.dumps(source_code_ld)}'
+            f'\n</script>'
+        )
+
+    # DefinedTermSet JSON-LD when glossary content is present
+    if '<div class="glossary">' in body_html:
+        dfn_terms = re.findall(
+            r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>",
+            body_html,
+        )
+        if dfn_terms:
+            defined_terms = []
+            for term_name, term_desc in dfn_terms:
+                entry = {
+                    "@type": "DefinedTerm",
+                    "name": term_name,
+                    "description": term_desc,
+                }
+                defined_terms.append(entry)
+            term_set_ld = {
+                "@context": "https://schema.org",
+                "@type": "DefinedTermSet",
+                "name": f"{title} Glossary",
+                "hasDefinedTerm": defined_terms,
+            }
+            seo_tags += (
+                f'\n<script type="application/ld+json">\n'
+                f'{json.dumps(term_set_ld)}'
+                f'\n</script>'
+            )
+
+    # ItemList JSON-LD when frontmatter schema == "itemlist"
+    if schema == "itemlist":
+        li_matches = re.findall(r"<li>(.*?)</li>", body_html)
+        if li_matches:
+            item_list_elements = []
+            for pos, li_content in enumerate(li_matches, start=1):
+                # Strip HTML tags from each list item
+                plain_text = re.sub(r"<[^>]+>", "", li_content).strip()
+                item_list_elements.append({
+                    "@type": "ListItem",
+                    "position": pos,
+                    "name": plain_text,
+                })
+            item_list_ld = {
+                "@context": "https://schema.org",
+                "@type": "ItemList",
+                "itemListElement": item_list_elements,
+            }
+            seo_tags += (
+                f'\n<script type="application/ld+json">\n'
+                f'{json.dumps(item_list_ld)}'
+                f'\n</script>'
+            )
+
+    # OG tags -- emit basic tags always when page_path exists,
+    # URL-dependent tags only when base_url is set
+    if page_path:
         escaped_desc = _escape_html(description)
         og_desc_tag = (
             f'\n<meta property="og:description" content="{escaped_desc}">'
@@ -1085,135 +1211,28 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             if description else ""
         )
 
-        seo_tags = (
-            f'\n<meta property="og:image" content="{base_url}/og-{slug}.svg">'
+        seo_tags += (
             f'\n<meta property="og:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'\n<meta property="og:type" content="article">'
-            f'\n<meta property="og:url" content="{canonical_url}">'
             f'{og_desc_tag}'
             f'\n<meta name="twitter:card" content="summary">'
             f'\n<meta name="twitter:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'{twitter_desc_tag}'
-            f'\n<link rel="canonical" href="{canonical_url}">'
-            f'\n<script type="application/ld+json">\n'
-            f'{json.dumps(tech_article)}'
-            f'\n</script>'
         )
 
-        # BreadcrumbList JSON-LD for non-index pages
-        if breadcrumbs:
-            breadcrumb_ld = {
-                "@context": "https://schema.org",
-                "@type": "BreadcrumbList",
-                "itemListElement": [
-                    {
-                        "@type": "ListItem",
-                        "position": 1,
-                        "name": "Home",
-                        "item": f"{base_url}/index.html",
-                    },
-                    {
-                        "@type": "ListItem",
-                        "position": 2,
-                        "name": title,
-                    },
-                ],
-            }
+        if base_url:
+            slug = page_path.replace(".html", "")
             seo_tags += (
-                f'\n<script type="application/ld+json">\n'
-                f'{json.dumps(breadcrumb_ld)}'
-                f'\n</script>'
+                f'\n<meta property="og:image" content="{base_url}/og-{slug}.svg">'
+                f'\n<meta property="og:url" content="{canonical_url}">'
+                f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.svg">'
             )
 
-        # WebSite + SearchAction JSON-LD for index page only
-        if page_path == "index.html":
-            website_ld = {
-                "@context": "https://schema.org",
-                "@type": "WebSite",
-                "name": project_name,
-                "url": f"{base_url}/",
-                "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": f"{base_url}/?q={{search_term_string}}",
-                    "query-input": "required name=search_term_string",
-                },
-            }
-            seo_tags += (
-                f'\n<script type="application/ld+json">\n'
-                f'{json.dumps(website_ld)}'
-                f'\n</script>'
-            )
-
-        # SoftwareSourceCode JSON-LD when code blocks with language annotations exist
-        lang_matches = re.findall(r'class="language-(\w+)"', body_html)
-        if lang_matches:
-            unique_langs = list(dict.fromkeys(lang_matches))
-            prog_lang = unique_langs[0] if len(unique_langs) == 1 else unique_langs
-            source_code_ld = {
-                "@context": "https://schema.org",
-                "@type": "SoftwareSourceCode",
-                "programmingLanguage": prog_lang,
-            }
-            if repo:
-                source_code_ld["codeRepository"] = repo
-            seo_tags += (
-                f'\n<script type="application/ld+json">\n'
-                f'{json.dumps(source_code_ld)}'
-                f'\n</script>'
-            )
-
-        # DefinedTermSet JSON-LD when glossary content is present
-        if '<div class="glossary">' in body_html:
-            dfn_terms = re.findall(
-                r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>",
-                body_html,
-            )
-            if dfn_terms:
-                defined_terms = []
-                for term_name, term_desc in dfn_terms:
-                    entry = {
-                        "@type": "DefinedTerm",
-                        "name": term_name,
-                        "description": term_desc,
-                    }
-                    defined_terms.append(entry)
-                term_set_ld = {
-                    "@context": "https://schema.org",
-                    "@type": "DefinedTermSet",
-                    "name": f"{title} Glossary",
-                    "hasDefinedTerm": defined_terms,
-                }
-                seo_tags += (
-                    f'\n<script type="application/ld+json">\n'
-                    f'{json.dumps(term_set_ld)}'
-                    f'\n</script>'
-                )
-
-        # ItemList JSON-LD when frontmatter schema == "itemlist"
-        if schema == "itemlist":
-            li_matches = re.findall(r"<li>(.*?)</li>", body_html)
-            if li_matches:
-                item_list_elements = []
-                for pos, li_content in enumerate(li_matches, start=1):
-                    # Strip HTML tags from each list item
-                    plain_text = re.sub(r"<[^>]+>", "", li_content).strip()
-                    item_list_elements.append({
-                        "@type": "ListItem",
-                        "position": pos,
-                        "name": plain_text,
-                    })
-                item_list_ld = {
-                    "@context": "https://schema.org",
-                    "@type": "ItemList",
-                    "itemListElement": item_list_elements,
-                }
-                seo_tags += (
-                    f'\n<script type="application/ld+json">\n'
-                    f'{json.dumps(item_list_ld)}'
-                    f'\n</script>'
-                )
+    # Canonical URL -- needs base_url
+    if canonical_url:
+        seo_tags += f'\n<link rel="canonical" href="{canonical_url}">'
 
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
