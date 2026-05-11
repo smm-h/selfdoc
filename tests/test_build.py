@@ -1402,3 +1402,77 @@ def test_build_adds_png_dimensions(project_dir):
 
     assert 'width="10"' in content
     assert 'height="20"' in content
+
+
+# --- Phase 3.4: ARIA attributes for code tabs and search ---
+
+
+def test_code_tabs_aria_tablist():
+    """Code tabs have role='tablist' on the tab bar."""
+    md = "```python\nprint('hi')\n```\n```go\nfmt.Println()\n```\n"
+    result = md_to_html(md)
+
+    assert 'role="tablist"' in result
+
+
+def test_code_tabs_aria_tab_roles():
+    """Code tab buttons have role='tab' and aria-selected attributes."""
+    md = "```python\nprint('hi')\n```\n```go\nfmt.Println()\n```\n"
+    result = md_to_html(md)
+
+    assert 'role="tab"' in result
+    assert 'aria-selected="true"' in result
+    assert 'aria-selected="false"' in result
+
+
+def test_code_tabs_aria_controls():
+    """Code tab buttons have aria-controls pointing to panel ids."""
+    md = "```python\nprint('hi')\n```\n```go\nfmt.Println()\n```\n"
+    result = md_to_html(md)
+
+    assert 'aria-controls="panel-python"' in result
+    assert 'aria-controls="panel-go"' in result
+
+
+def test_code_tabs_aria_tabpanel():
+    """Code tab panels have role='tabpanel', id, and aria-labelledby."""
+    md = "```python\nprint('hi')\n```\n```go\nfmt.Println()\n```\n"
+    result = md_to_html(md)
+
+    assert 'role="tabpanel"' in result
+    assert 'id="panel-python"' in result
+    assert 'id="panel-go"' in result
+    assert 'aria-labelledby="tab-python"' in result
+    assert 'aria-labelledby="tab-go"' in result
+
+
+def test_code_tabs_aria_tab_ids():
+    """Code tab buttons have id attributes for aria-labelledby references."""
+    md = "```python\nprint('hi')\n```\n```go\nfmt.Println()\n```\n"
+    result = md_to_html(md)
+
+    assert 'id="tab-python"' in result
+    assert 'id="tab-go"' in result
+
+
+def test_search_dialog_aria_listbox():
+    """Search results list has role='listbox' and id='search-results'."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    assert 'role="listbox"' in content
+    assert 'id="search-results"' in content
+
+
+def test_search_input_aria_controls():
+    """Search input has aria-controls='search-results'."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    assert 'aria-controls="search-results"' in content

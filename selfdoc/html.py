@@ -540,17 +540,26 @@ def _group_code_tabs(html):
                     lang = label_match.group(1) if label_match else f"Tab {idx + 1}"
                     lang_id = lang.lower().replace(" ", "-")
                     active = " active" if idx == 0 else ""
+                    selected = "true" if idx == 0 else "false"
+                    escaped_lang_id = _escape_html(lang_id)
                     tabs.append(
                         f'<button class="tab{active}" '
-                        f'data-lang="{_escape_html(lang_id)}">'
+                        f'role="tab" '
+                        f'id="tab-{escaped_lang_id}" '
+                        f'aria-selected="{selected}" '
+                        f'aria-controls="panel-{escaped_lang_id}" '
+                        f'data-lang="{escaped_lang_id}">'
                         f'{_escape_html(lang)}</button>'
                     )
                     panels.append(
                         f'<div class="tab-panel{active}" '
-                        f'data-lang="{_escape_html(lang_id)}">'
+                        f'role="tabpanel" '
+                        f'id="panel-{escaped_lang_id}" '
+                        f'aria-labelledby="tab-{escaped_lang_id}" '
+                        f'data-lang="{escaped_lang_id}">'
                         f'{block_html}</div>'
                     )
-                tab_bar = '<div class="tab-bar">' + "".join(tabs) + '</div>'
+                tab_bar = '<div class="tab-bar" role="tablist">' + "".join(tabs) + '</div>'
                 result.append(
                     '<div class="code-tabs">'
                     + tab_bar
@@ -1331,6 +1340,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    matches.forEach(function(entry, idx) {\n"
         "      var li = document.createElement('li');\n"
         "      li.className = 'search-result-item';\n"
+        "      li.setAttribute('role', 'option');\n"
+        "      li.id = 'search-result-' + idx;\n"
         "      var a = document.createElement('a');\n"
         "      a.href = '" + prefix + "' + entry.path;\n"
         "      var titleEl = document.createElement('div');\n"
@@ -1364,6 +1375,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "      activeIdx = idx;\n"
         "      items[idx].classList.add('active');\n"
         "      items[idx].scrollIntoView({ block: 'nearest' });\n"
+        "      input.setAttribute('aria-activedescendant', items[idx].id);\n"
+        "    } else {\n"
+        "      input.removeAttribute('aria-activedescendant');\n"
         "    }\n"
         "  }\n"
         "\n"
@@ -1439,9 +1453,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    buttons.forEach(function(btn) {\n"
         "      btn.addEventListener('click', function() {\n"
         "        var lang = btn.getAttribute('data-lang');\n"
-        "        buttons.forEach(function(b) { b.classList.remove('active'); });\n"
+        "        buttons.forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });\n"
         "        panels.forEach(function(p) { p.classList.remove('active'); });\n"
         "        btn.classList.add('active');\n"
+        "        btn.setAttribute('aria-selected', 'true');\n"
         "        var panel = tabGroup.querySelector('.tab-panel[data-lang=\"' + lang + '\"');\n"
         "        if (panel) panel.classList.add('active');\n"
         "        localStorage.setItem('selfdoc-tab-' + lang, 'true');\n"
@@ -1544,8 +1559,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<script>{body_js}</script>\n'
         f'<dialog class="search-dialog" id="search-dialog">\n'
         f'<div class="search-inner">\n'
-        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>\n'
-        f'<ul class="search-results"></ul>\n'
+        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results" autofocus>\n'
+        f'<ul class="search-results" id="search-results" role="listbox"></ul>\n'
         f'</div>\n'
         f'</dialog>\n'
         f'</body>\n'
