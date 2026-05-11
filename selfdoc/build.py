@@ -57,7 +57,13 @@ def build(dir_path=".", config=None):
     markdown_files = {}
     other_files = []
 
+    # Normalize output_dir so we can reliably check containment
+    abs_output = os.path.abspath(output_dir)
+
     for root, _dirs, files in os.walk(docs_dir):
+        # Skip the output directory to avoid processing previous build artifacts
+        if os.path.abspath(root) == abs_output or os.path.abspath(root).startswith(abs_output + os.sep):
+            continue
         for fname in files:
             full_path = os.path.join(root, fname)
             # Relative path within docs/

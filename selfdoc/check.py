@@ -79,8 +79,15 @@ def check_docs(dir_path=".", config=None):
     # Track which module args are referenced (for coverage)
     referenced_modules = []
 
+    # Normalize output dir so we can skip it during the walk
+    output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
+    abs_output = os.path.abspath(output_dir)
+
     # Scan docs/ for .md templates
     for root, _dirs, files in os.walk(docs_dir):
+        # Skip the output directory to avoid processing previous build artifacts
+        if os.path.abspath(root) == abs_output or os.path.abspath(root).startswith(abs_output + os.sep):
+            continue
         for fname in sorted(files):
             if not fname.endswith(".md"):
                 continue
