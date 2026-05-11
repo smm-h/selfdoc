@@ -408,7 +408,7 @@ def _cmd_check(args):
     from selfdoc.check import check_docs, print_results
 
     try:
-        result = check_docs(".")
+        result = check_docs(".", skip_seo=getattr(args, "no_seo", False))
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -456,6 +456,10 @@ def run():
     sub_check.add_argument(
         "--verbose", "-v", action="store_true", default=False,
         help="Show info-level lint hints",
+    )
+    sub_check.add_argument(
+        "--no-seo", action="store_true", default=False,
+        help="Suppress SEO lint warnings",
     )
     sub_check.set_defaults(func=_cmd_check)
 

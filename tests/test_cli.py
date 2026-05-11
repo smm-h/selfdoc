@@ -126,6 +126,34 @@ def test_build_shows_seo_warnings(project_dir, capsys):
     assert "selfdoc check" in captured.out
 
 
+def test_check_no_seo_flag(project_dir, capsys):
+    """selfdoc check --no-seo suppresses SEO lint output."""
+    from selfdoc.cli import _cmd_init, _cmd_check
+
+    class Args:
+        pass
+
+    _cmd_init(Args())
+
+    # Without --no-seo, SEO warnings appear (e.g. SEO006 missing description)
+    class CheckArgs:
+        verbose = False
+        no_seo = False
+
+    _cmd_check(CheckArgs())
+    captured = capsys.readouterr()
+    assert "SEO" in captured.out
+
+    # With --no-seo, no SEO warnings appear
+    class CheckArgsNoSeo:
+        verbose = False
+        no_seo = True
+
+    _cmd_check(CheckArgsNoSeo())
+    captured = capsys.readouterr()
+    assert "SEO" not in captured.out
+
+
 def test_build_without_init_fails(project_dir):
     """selfdoc build without selfdoc.json exits with error."""
     from selfdoc.cli import _cmd_build

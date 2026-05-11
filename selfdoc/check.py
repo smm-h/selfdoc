@@ -61,7 +61,7 @@ class CheckResult:
     lints: list[LintResult] = field(default_factory=list)
 
 
-def check_docs(dir_path=".", config=None):
+def check_docs(dir_path=".", config=None, skip_seo=False):
     """Validate all directives in docs templates and report coverage.
 
     Scans docs/ for .md templates, parses directives, attempts to resolve
@@ -160,7 +160,10 @@ def check_docs(dir_path=".", config=None):
         )
 
     # Run lint checks (SEO and other diagnostics)
-    result.lints = _run_lints(docs_dir, resolver, config)
+    if not skip_seo:
+        result.lints = _run_lints(docs_dir, resolver, config)
+    else:
+        result.lints = []
 
     return result
 

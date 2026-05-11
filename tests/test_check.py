@@ -1145,3 +1145,26 @@ def test_parse_hex_color_invalid():
     """Invalid hex colors return None."""
     assert _parse_hex_color("not-a-color") is None
     assert _parse_hex_color("#fff") is None  # Too short
+
+
+# -- skip_seo parameter --
+
+
+def test_skip_seo_suppresses_lints(python_project):
+    """check_docs with skip_seo=True returns an empty lints list."""
+    docs_dir = os.path.join(python_project, "docs")
+    # Write a file that would normally produce SEO warnings:
+    # no frontmatter description (SEO006), no base_url (SEO005)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    # Verify lints exist without skip_seo
+    result_with_lints = check_docs(str(python_project))
+    assert len(result_with_lints.lints) > 0
+
+    # Now with skip_seo=True
+    result = check_docs(str(python_project), skip_seo=True)
+    assert result.lints == []
+    # Directive validation still works
+    assert len(result.directive_results) == 1
+    assert result.directive_results[0].status == "OK"
