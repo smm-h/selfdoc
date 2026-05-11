@@ -42,7 +42,7 @@ def get_css(theme_name="minimal"):
 
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
-                   base_url=None, frontmatter=None):
+                   base_url=None, frontmatter=None, lang="en"):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -124,6 +124,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             base_url=base_url,
             page_path=html_path,
             description=description,
+            lang=lang,
         )
         html_files[html_path] = full_html
 
@@ -131,7 +132,7 @@ def generate_html(markdown_files, project_name=None, version=None,
 
 
 def generate_404_page(project_name=None, version=None, has_custom_css=False,
-                      nav_items=None, repo=None, base_url=None):
+                      nav_items=None, repo=None, base_url=None, lang="en"):
     """Generate a custom 404 page using the standard page template (Feature 39).
 
     Returns the full HTML string for 404.html.
@@ -157,6 +158,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         prefix="",
         base_url=base_url,
         page_path="404.html",
+        lang=lang,
     )
 
 
@@ -721,7 +723,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
-               base_url=None, page_path=None, description=""):
+               base_url=None, page_path=None, description="",
+               lang="en"):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -869,7 +872,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     )
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -877,6 +880,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{css_href}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
@@ -914,13 +918,18 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 </ul>
 </nav>
 <main class="content" id="main-content">
+<article>
 {breadcrumbs_html}
 {mobile_toc_html}
 {body_html}
 {footer_html}
+</article>
 </main>
 {toc_aside}
 </div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+</footer>
 <script>
 // Theme toggle (Feature 6)
 (function() {{

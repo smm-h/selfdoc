@@ -756,6 +756,25 @@ hr {
     font-size: 0.85rem;
 }
 
+/* === Site footer === */
+
+.site-footer {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    padding: 1.5rem 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.site-footer a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    text-decoration: underline;
+}
+
 /* === Skip-to-content link (Feature 10) === */
 
 .skip-link {
@@ -1175,7 +1194,7 @@ hr {
 @media print {
     .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
     .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
-    .search-dialog, .heading-link, .theme-toggle {
+    .search-dialog, .heading-link, .theme-toggle, .site-footer {
         display: none !important;
     }
 

@@ -356,6 +356,9 @@ def build(dir_path=".", config=None):
     # Get base_url for canonical links and sitemap (Feature 22)
     base_url = config.get("base_url", None)
 
+    # Get lang attribute for HTML pages (default "en")
+    lang = config.get("lang") or "en"
+
     # Convert to HTML
     html_files = generate_html(
         markdown_files,
@@ -366,6 +369,7 @@ def build(dir_path=".", config=None):
         docs_dir_name=config["docs"],
         base_url=base_url,
         frontmatter=frontmatter,
+        lang=lang,
     )
 
     # Ensure output directory exists
@@ -419,6 +423,7 @@ def build(dir_path=".", config=None):
         base_url=base_url,
         has_custom_css=has_custom_css,
         repo=repo,
+        lang=lang,
     )
     written.update(aux_written)
 
@@ -427,7 +432,7 @@ def build(dir_path=".", config=None):
 
 def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
-    base_url, has_custom_css, repo,
+    base_url, has_custom_css, repo, lang="en",
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon).
 
@@ -477,6 +482,7 @@ def _generate_auxiliary_files(
         nav_items=None,
         repo=repo,
         base_url=base_url,
+        lang=lang,
     )
     not_found_path = os.path.join(output_dir, "404.html")
     with open(not_found_path, "w", encoding="utf-8") as f:

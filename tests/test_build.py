@@ -6,6 +6,7 @@ import os
 import pytest
 
 from selfdoc.build import build, _generate_robots_txt, _generate_headers
+from selfdoc.html import generate_html, generate_404_page
 
 
 @pytest.fixture()
@@ -191,3 +192,68 @@ def test_headers_file(tmp_path):
     assert "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload" in content
     assert "X-Content-Type-Options: nosniff" in content
     assert "X-Frame-Options: DENY" in content
+
+
+def test_html_lang_attribute_from_config(project_dir):
+    """HTML lang attribute matches the lang value from config."""
+    # Update config with a custom lang
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["lang"] = "fa"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<html lang="fa">' in content
+
+
+def test_html_lang_default_en(project_dir):
+    """HTML lang defaults to 'en' when not set in config."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<html lang="en">' in content
+
+
+def test_html_article_tag_present(project_dir):
+    """Built HTML wraps content in an <article> tag."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "<article>" in content
+    assert "</article>" in content
+
+
+def test_html_site_footer_present(project_dir):
+    """Built HTML contains the site footer."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<footer class="site-footer">' in content
+    assert "selfdoc" in content
+
+
+def test_html_cdnjs_preconnect(project_dir):
+    """Built HTML contains preconnect link for cdnjs.cloudflare.com."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>' in content
