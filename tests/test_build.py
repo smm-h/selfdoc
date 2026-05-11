@@ -2118,6 +2118,64 @@ def test_breadcrumb_no_item_url_without_base_url(project_dir):
     assert "item" not in home_item
 
 
+def test_glossary_integration_end_to_end(project_dir):
+    """End-to-end: :::glossary directive produces HTML and DefinedTermSet JSON-LD."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Glossary\n\n"
+            ":::glossary\n"
+            "**Directive**: A special block in Markdown templates\n"
+            "**Extractor**: A language-specific code parser\n"
+            "**Resolver**: The factory that dispatches directives\n"
+            ":::\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Verify glossary HTML structure
+    assert '<div class="glossary">' in content
+    assert "<dl>" in content
+    assert "<dt><dfn>Directive</dfn></dt>" in content
+    assert "<dd>A special block in Markdown templates</dd>" in content
+    assert "<dt><dfn>Extractor</dfn></dt>" in content
+    assert "<dd>A language-specific code parser</dd>" in content
+    assert "<dt><dfn>Resolver</dfn></dt>" in content
+    assert "<dd>The factory that dispatches directives</dd>" in content
+
+    # Verify DefinedTermSet JSON-LD
+    assert '<script type="application/ld+json">' in content
+    assert '"DefinedTermSet"' in content
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    term_set_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "DefinedTermSet":
+            term_set_data = data
+            break
+
+    assert term_set_data is not None, "DefinedTermSet JSON-LD not found"
+    terms = term_set_data["hasDefinedTerm"]
+    assert len(terms) == 3
+    term_names = [t["name"] for t in terms]
+    assert "Directive" in term_names
+    assert "Extractor" in term_names
+    assert "Resolver" in term_names
+    # Verify descriptions are present
+    for t in terms:
+        assert t["@type"] == "DefinedTerm"
+        assert len(t["description"]) > 0
+
+
 def test_glossary_terms_correctly_extracted():
     """Glossary resolver correctly parses terms and definitions."""
     from selfdoc.resolver import _resolve_glossary
