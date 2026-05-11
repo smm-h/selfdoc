@@ -966,6 +966,15 @@ def _generate_headers(output_dir):
         "  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload\n"
         "  X-Content-Type-Options: nosniff\n"
         "  X-Frame-Options: DENY\n"
+        "  Referrer-Policy: strict-origin-when-cross-origin\n"
+        "  Permissions-Policy: camera=(), microphone=(), geolocation=()\n"
+        "  X-XSS-Protection: 0\n"
+        "\n"
+        "/style.css\n"
+        "  Cache-Control: public, max-age=31536000, immutable\n"
+        "\n"
+        "/*.svg\n"
+        "  Cache-Control: public, max-age=31536000, immutable\n"
     )
     path = os.path.join(output_dir, "_headers")
     with open(path, "w", encoding="utf-8") as f:

@@ -195,6 +195,13 @@ def test_headers_file(tmp_path):
     assert "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload" in content
     assert "X-Content-Type-Options: nosniff" in content
     assert "X-Frame-Options: DENY" in content
+    assert "Referrer-Policy: strict-origin-when-cross-origin" in content
+    assert "Permissions-Policy: camera=(), microphone=(), geolocation=()" in content
+    assert "X-XSS-Protection: 0" in content
+    # Cache-control for static assets
+    assert "/style.css" in content
+    assert "/*.svg" in content
+    assert "Cache-Control: public, max-age=31536000, immutable" in content
 
 
 def test_html_lang_attribute_from_config(project_dir):
