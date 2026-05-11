@@ -1476,3 +1476,127 @@ def test_search_input_aria_controls():
     content = html_files["index.html"]
 
     assert 'aria-controls="search-results"' in content
+
+
+# --- ItemList JSON-LD via frontmatter schema flag ---
+
+
+def test_itemlist_jsonld_with_schema_frontmatter(project_dir):
+    """A page with schema: itemlist frontmatter gets ItemList JSON-LD."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "features.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\nschema: itemlist\n---\n"
+            "# Features\n\n"
+            "- Alpha feature\n"
+            "- Beta feature\n"
+            "- Gamma feature\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' in content
+    assert '"ListItem"' in content
+
+
+def test_itemlist_jsonld_contains_correct_items(project_dir):
+    """ItemList JSON-LD contains the correct list items from the page."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "features.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\nschema: itemlist\n---\n"
+            "# Features\n\n"
+            "1. First item\n"
+            "2. Second item\n"
+            "3. Third item\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract the ItemList JSON-LD block
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    item_list_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "ItemList":
+            item_list_data = data
+            break
+
+    assert item_list_data is not None, "ItemList JSON-LD not found"
+    elements = item_list_data["itemListElement"]
+    assert len(elements) == 3
+    assert elements[0]["position"] == 1
+    assert elements[0]["name"] == "First item"
+    assert elements[1]["position"] == 2
+    assert elements[1]["name"] == "Second item"
+    assert elements[2]["position"] == 3
+    assert elements[2]["name"] == "Third item"
+
+
+def test_no_itemlist_jsonld_without_schema_frontmatter(project_dir):
+    """A page WITHOUT schema: itemlist does NOT get ItemList JSON-LD."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n- Item one\n- Item two\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' not in content
+
+
+def test_itemlist_jsonld_not_emitted_without_base_url(project_dir):
+    """ItemList JSON-LD is not emitted without base_url even with schema: itemlist."""
+    # No base_url in config (default fixture has none)
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "features.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\nschema: itemlist\n---\n"
+            "# Features\n\n"
+            "- Alpha\n"
+            "- Beta\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' not in content

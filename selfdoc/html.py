@@ -196,6 +196,9 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Compute feed href relative to this page's depth
         page_feed_url = (prefix + feed_url) if feed_url else None
 
+        # Schema type from frontmatter (e.g. "itemlist" for ItemList JSON-LD)
+        schema = page_meta.get("schema")
+
         full_html = _wrap_page(
             body_html, nav_html, title, project_name, version,
             css_href, custom_css_href,
@@ -215,6 +218,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             feed_url=page_feed_url,
             summary=frontmatter_description,
             critical_css=critical_css,
+            schema=schema,
         )
         html_files[html_path] = full_html
 
@@ -910,7 +914,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
                lang="en", date_modified=None, author=None,
-               feed_url=None, summary=None, critical_css=None):
+               feed_url=None, summary=None, critical_css=None,
+               schema=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -1156,6 +1161,30 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 f'{json.dumps(source_code_ld)}'
                 f'\n</script>'
             )
+
+        # ItemList JSON-LD when frontmatter schema == "itemlist"
+        if schema == "itemlist":
+            li_matches = re.findall(r"<li>(.*?)</li>", body_html)
+            if li_matches:
+                item_list_elements = []
+                for pos, li_content in enumerate(li_matches, start=1):
+                    # Strip HTML tags from each list item
+                    plain_text = re.sub(r"<[^>]+>", "", li_content).strip()
+                    item_list_elements.append({
+                        "@type": "ListItem",
+                        "position": pos,
+                        "name": plain_text,
+                    })
+                item_list_ld = {
+                    "@context": "https://schema.org",
+                    "@type": "ItemList",
+                    "itemListElement": item_list_elements,
+                }
+                seo_tags += (
+                    f'\n<script type="application/ld+json">\n'
+                    f'{json.dumps(item_list_ld)}'
+                    f'\n</script>'
+                )
 
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
