@@ -1056,3 +1056,92 @@ def test_seo011_h2_followed_by_h3_no_trigger(lint_project):
     seo011 = [r for r in results if r.code == "SEO011"]
 
     assert len(seo011) == 0
+
+
+# -- SEO012: WCAG contrast ratio checks --
+
+
+from selfdoc.check import (
+    _check_contrast, _parse_hex_color, _relative_luminance, _contrast_ratio,
+)
+
+
+def test_seo012_default_theme_passes(lint_project):
+    """Default minimal theme passes all contrast checks (no SEO012)."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+    config["theme"] = "minimal"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo012 = [r for r in results if r.code == "SEO012"]
+
+    assert len(seo012) == 0
+
+
+def test_seo012_low_contrast_triggers(lint_project, tmp_path):
+    """Mock CSS with low contrast triggers SEO012 warnings."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # Directly test _check_pairs with bad contrast values
+    lints = []
+    mock_css_vars = {
+        "--bg": "#ffffff",
+        "--text": "#eeeeee",          # Very light gray on white = bad
+        "--text-secondary": "#dddddd",  # Even worse
+        "--heading": "#fafafa",        # Nearly invisible
+        "--link": "#f0f0f0",           # Bad contrast
+        "--sidebar-bg": "#ffffff",
+        "--sidebar-text": "#eeeeee",   # Bad
+    }
+
+    from selfdoc.check import _check_pairs
+    pairs = [
+        ("--text", "--bg", "body text", 4.5),
+        ("--text-secondary", "--bg", "secondary text", 4.5),
+        ("--heading", "--bg", "headings", 3.0),
+        ("--link", "--bg", "links", 4.5),
+        ("--sidebar-text", "--sidebar-bg", "sidebar text", 4.5),
+    ]
+
+    _check_pairs(lints, mock_css_vars, pairs, "")
+
+    seo012 = [r for r in lints if r.code == "SEO012"]
+    assert len(seo012) == 5  # All 5 pairs fail
+    assert all(r.severity == "warning" for r in seo012)
+    assert any("body text" in r.message for r in seo012)
+    assert any("WCAG AA" in r.message for r in seo012)
+
+
+def test_contrast_ratio_black_on_white():
+    """Black on white has maximum contrast ratio of 21:1."""
+    black = (0, 0, 0)
+    white = (255, 255, 255)
+    ratio = _contrast_ratio(black, white)
+    assert abs(ratio - 21.0) < 0.1
+
+
+def test_contrast_ratio_same_color():
+    """Same color has contrast ratio of 1:1."""
+    gray = (128, 128, 128)
+    ratio = _contrast_ratio(gray, gray)
+    assert abs(ratio - 1.0) < 0.01
+
+
+def test_parse_hex_color_valid():
+    """Valid hex colors are parsed correctly."""
+    assert _parse_hex_color("#ffffff") == (255, 255, 255)
+    assert _parse_hex_color("#000000") == (0, 0, 0)
+    assert _parse_hex_color("#0969da") == (9, 105, 218)
+
+
+def test_parse_hex_color_invalid():
+    """Invalid hex colors return None."""
+    assert _parse_hex_color("not-a-color") is None
+    assert _parse_hex_color("#fff") is None  # Too short

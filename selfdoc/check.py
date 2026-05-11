@@ -428,7 +428,128 @@ def _run_lints(docs_dir, resolver, config):
             severity="warning",
         ))
 
+    # SEO012 -- WCAG contrast ratio checks
+    _check_contrast(results, config, docs_dir)
+
     return results
+
+
+def _parse_hex_color(hex_color):
+    """Parse a #RRGGBB hex color to (R, G, B) tuple of 0-255 ints."""
+    hex_color = hex_color.strip().lstrip("#")
+    if len(hex_color) != 6:
+        return None
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        return (r, g, b)
+    except ValueError:
+        return None
+
+
+def _relative_luminance(rgb):
+    """Compute WCAG 2.1 relative luminance from an (R, G, B) tuple."""
+    channels = []
+    for c in rgb:
+        srgb = c / 255.0
+        if srgb <= 0.04045:
+            linear = srgb / 12.92
+        else:
+            linear = ((srgb + 0.055) / 1.055) ** 2.4
+        channels.append(linear)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def _contrast_ratio(rgb1, rgb2):
+    """Compute WCAG 2.1 contrast ratio between two RGB colors."""
+    l1 = _relative_luminance(rgb1)
+    l2 = _relative_luminance(rgb2)
+    lighter = max(l1, l2)
+    darker = min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _extract_css_vars(css_block):
+    """Extract CSS custom properties from a block of CSS text.
+
+    Returns a dict mapping property names (e.g. '--bg') to values.
+    """
+    props = {}
+    for match in re.finditer(r"(--[\w-]+)\s*:\s*([^;]+);", css_block):
+        props[match.group(1)] = match.group(2).strip()
+    return props
+
+
+def _check_contrast(lints, config, base_dir):
+    """Check WCAG 2.1 contrast ratios for theme colors (SEO012).
+
+    Parses the theme CSS for custom properties and verifies critical
+    foreground/background pairs meet minimum contrast ratios.
+    """
+    theme_name = config.get("theme", "minimal")
+
+    # Locate theme CSS using the same path as selfdoc.themes
+    themes_dir = os.path.join(os.path.dirname(__file__), "themes")
+    css_path = os.path.join(themes_dir, f"{theme_name}.css")
+    if not os.path.isfile(css_path):
+        return
+
+    with open(css_path, "r", encoding="utf-8") as f:
+        css_content = f.read()
+
+    # Critical pairs: (foreground var, background var, label, threshold)
+    pairs = [
+        ("--text", "--bg", "body text", 4.5),
+        ("--text-secondary", "--bg", "secondary text", 4.5),
+        ("--heading", "--bg", "headings", 3.0),
+        ("--link", "--bg", "links", 4.5),
+        ("--sidebar-text", "--sidebar-bg", "sidebar text", 4.5),
+    ]
+
+    # Extract :root block variables (light mode)
+    root_match = re.search(r":root\s*\{([^}]+)\}", css_content)
+    if root_match:
+        light_vars = _extract_css_vars(root_match.group(1))
+        _check_pairs(lints, light_vars, pairs, "")
+
+    # Extract [data-theme="dark"] block variables
+    dark_match = re.search(
+        r'\[data-theme="dark"\]\s*\{([^}]+)\}', css_content
+    )
+    if dark_match:
+        dark_vars = _extract_css_vars(dark_match.group(1))
+        _check_pairs(lints, dark_vars, pairs, "dark mode ")
+
+
+def _check_pairs(lints, css_vars, pairs, mode_prefix):
+    """Check contrast ratio for each pair and emit SEO012 if below threshold."""
+    css_file = "theme CSS"
+
+    for fg_var, bg_var, name, threshold in pairs:
+        fg_hex = css_vars.get(fg_var)
+        bg_hex = css_vars.get(bg_var)
+        if not fg_hex or not bg_hex:
+            continue
+
+        fg_rgb = _parse_hex_color(fg_hex)
+        bg_rgb = _parse_hex_color(bg_hex)
+        if fg_rgb is None or bg_rgb is None:
+            continue
+
+        ratio = _contrast_ratio(fg_rgb, bg_rgb)
+        if ratio < threshold:
+            lints.append(LintResult(
+                file=css_file,
+                line=None,
+                code="SEO012",
+                message=(
+                    f"Low contrast ratio {ratio:.1f}:1 for "
+                    f"{mode_prefix}{name} on {bg_var} "
+                    f"(WCAG AA requires {threshold}:1)"
+                ),
+                severity="warning",
+            ))
 
 
 def _compute_python_coverage(config, base_dir, referenced_modules):
