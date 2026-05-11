@@ -1,7 +1,46 @@
 /* selfdoc minimal theme
    Clean, content-focused documentation styling. */
 
-/* --- Custom properties (light mode) --- */
+/* === CSS Reset (Feature 46) === */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    -moz-tab-size: 4;
+    tab-size: 4;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    line-height: 1.6;
+}
+
+img, svg {
+    display: block;
+    max-width: 100%;
+}
+
+button, input {
+    font: inherit;
+    color: inherit;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+}
+
+a {
+    color: inherit;
+    text-decoration: inherit;
+}
+
+/* === Custom properties (light mode) === */
 
 :root {
     --bg: #ffffff;
@@ -21,11 +60,17 @@
     --topbar-text: #ffffff;
     --badge-bg: #1a7f37;
     --badge-text: #ffffff;
+    --admonition-tip: #1a7f37;
+    --admonition-important: #8250df;
+    --admonition-warning: #8a5d00;
+    --admonition-caution: #cf222e;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
 
-/* --- Dark variant --- */
+/* === Dark variant === */
 
-/* System preference (applies when no data-theme override or data-theme="system") */
+/* System preference (applies when no data-theme override) */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
         --bg: #0d1117;
@@ -77,7 +122,7 @@
     --admonition-caution: #f85149;
 }
 
-/* --- High contrast variant --- */
+/* === High contrast variant === */
 
 @media (prefers-contrast: more) {
     :root {
@@ -97,7 +142,7 @@
     }
 }
 
-/* --- Reduced motion --- */
+/* === Reduced motion === */
 
 @media (prefers-reduced-motion: reduce) {
     * {
@@ -109,40 +154,42 @@
     }
 }
 
-/* --- Reset --- */
-
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-/* --- Scroll offset for fixed topbar (Feature 36) --- */
+/* === Scroll offset for fixed topbar + accent strip === */
 
 [id] {
-    scroll-margin-top: 60px;
+    scroll-margin-top: 63px;
 }
 
-/* --- Body --- */
+/* === Body === */
 
 body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-body);
     font-size: 16px;
-    line-height: 1.7;
+    line-height: 1.6;
     color: var(--text);
     background: var(--bg);
     min-height: 100vh;
 }
 
-/* --- Top bar --- */
+/* === Gradient accent strip (Feature 47) === */
+
+body::before {
+    content: '';
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, var(--link), #8b5cf6, #ec4899);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+}
+
+/* === Top bar === */
 
 .topbar {
     position: fixed;
-    top: 0;
+    top: 3px;
     left: 0;
     right: 0;
     height: 48px;
@@ -185,23 +232,23 @@ body {
     line-height: 1.4;
 }
 
-/* --- Layout (three-column with responsive collapse) --- */
+/* === Layout (three-column with responsive collapse) === */
 
 .layout {
     display: grid;
     grid-template-columns: 240px minmax(0, 1fr) 200px;
-    padding-top: 48px;
+    padding-top: 51px;
     min-height: 100vh;
 }
 
-/* --- Sidebar --- */
+/* === Sidebar === */
 
 .sidebar {
     position: fixed;
-    top: 48px;
+    top: 51px;
     left: 0;
     width: 240px;
-    height: calc(100vh - 48px);
+    height: calc(100vh - 51px);
     overflow-y: auto;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border);
@@ -221,14 +268,14 @@ body {
 
 .nav-list a {
     display: block;
-    padding: 8px 16px;
+    padding: 0.5rem 1rem;
     min-height: 44px;
     line-height: 28px;
     color: var(--sidebar-text);
     text-decoration: none;
     border-radius: 4px;
     font-size: 0.875rem;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .nav-list a:hover {
@@ -242,7 +289,7 @@ body {
     font-weight: 600;
 }
 
-/* --- Content area --- */
+/* === Content area === */
 
 .content {
     grid-column: 2;
@@ -251,12 +298,12 @@ body {
     min-width: 0;
 }
 
-/* --- Right-side TOC (Feature 2) --- */
+/* === Right-side TOC (Feature 2) === */
 
 .toc {
     grid-column: 3;
     position: sticky;
-    top: 60px;
+    top: 63px;
     align-self: start;
     max-height: calc(100vh - 80px);
     overflow-y: auto;
@@ -277,13 +324,13 @@ body {
 
 .toc-item a {
     display: block;
-    padding: 4px 0.5rem;
+    padding: 0.25rem 0.5rem;
     min-height: 44px;
     line-height: 36px;
     color: var(--text-secondary);
     text-decoration: none;
     border-radius: 3px;
-    transition: color 0.15s, background 0.15s;
+    transition: color 0.15s ease, background 0.15s ease;
 }
 
 .toc-item a:hover {
@@ -300,7 +347,7 @@ body {
     padding-left: 0.75rem;
 }
 
-/* --- Typography --- */
+/* === Typography === */
 
 h1, h2, h3, h4, h5, h6 {
     color: var(--heading);
@@ -347,15 +394,15 @@ h5, h6 {
 }
 
 p {
-    margin-bottom: 1em;
+    margin-bottom: 1rem;
 }
 
-/* --- Links --- */
+/* === Links === */
 
 a {
     color: var(--link);
     text-decoration: none;
-    transition: color 0.15s;
+    transition: color 0.15s ease;
 }
 
 a:hover {
@@ -363,7 +410,7 @@ a:hover {
     text-decoration: underline;
 }
 
-/* --- Heading anchor links --- */
+/* === Heading anchor links === */
 
 .heading-link {
     opacity: 0;
@@ -372,7 +419,7 @@ a:hover {
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 400;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s ease;
 }
 
 h1:hover .heading-link,
@@ -389,11 +436,11 @@ h6:hover .heading-link {
     text-decoration: none;
 }
 
-/* --- Code --- */
+/* === Code === */
 
 code {
-    font-family: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Code", Consolas, monospace;
-    font-size: 0.9em;
+    font-family: var(--font-mono);
+    font-size: 0.875em;
 }
 
 /* Inline code styling distinct from code blocks (Feature 29) */
@@ -406,13 +453,14 @@ code {
 }
 
 pre {
+    font-family: var(--font-mono);
     background: var(--code-bg);
     border: 1px solid var(--code-border);
     border-radius: 4px;
     padding: 1rem;
     overflow-x: auto;
     white-space: pre;
-    margin-bottom: 1em;
+    margin-bottom: 1rem;
     line-height: 1.5;
 }
 
@@ -421,13 +469,13 @@ pre code {
     white-space: pre;
 }
 
-/* --- Copy button on code blocks (Feature 5) --- */
+/* === Copy button on code blocks (Feature 5) === */
 
 .copy-btn {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 4px 10px;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -435,8 +483,8 @@ pre code {
     color: var(--text-secondary);
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.2s;
-    font-family: inherit;
+    transition: opacity 0.15s ease;
+    font-family: var(--font-body);
 }
 
 pre:hover .copy-btn {
@@ -448,15 +496,44 @@ pre:hover .copy-btn {
     border-color: var(--text-secondary);
 }
 
-/* --- Lists --- */
+/* === Run button on code blocks (Feature 41) === */
+
+.run-btn {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    font-family: var(--font-body);
+    text-decoration: none;
+}
+
+pre:hover .run-btn {
+    opacity: 1;
+}
+
+.run-btn:hover {
+    color: var(--link);
+    border-color: var(--link);
+    text-decoration: none;
+}
+
+/* === Lists === */
 
 ul, ol {
-    margin-bottom: 1em;
-    padding-left: 1.5em;
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
 }
 
 li {
-    margin-bottom: 0.25em;
+    margin-bottom: 0.25rem;
 }
 
 li > ul,
@@ -464,7 +541,7 @@ li > ol {
     margin-bottom: 0;
 }
 
-/* --- Bold / italic --- */
+/* === Bold / italic === */
 
 strong {
     font-weight: 600;
@@ -474,7 +551,7 @@ em {
     font-style: italic;
 }
 
-/* --- Tables (Feature 38) --- */
+/* === Tables (Feature 38) === */
 
 table {
     width: 100%;
@@ -492,12 +569,12 @@ thead {
 th {
     text-align: left;
     font-weight: 600;
-    padding: 10px 12px;
+    padding: 0.5rem 0.75rem;
     border-bottom: 2px solid var(--border);
 }
 
 td {
-    padding: 8px 12px;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -505,30 +582,30 @@ tr:nth-child(even) td {
     background: var(--sidebar-bg);
 }
 
-/* --- Blockquotes --- */
+/* === Blockquotes === */
 
 blockquote {
     border-left: 3px solid var(--link);
-    padding: 0.5em 1em;
-    margin: 0 0 1em 0;
+    padding: 0.5rem 1rem;
+    margin: 0 0 1rem 0;
     color: var(--text-secondary);
 }
 
 blockquote p {
-    margin-bottom: 0.5em;
+    margin-bottom: 0.5rem;
 }
 
 blockquote p:last-child {
     margin-bottom: 0;
 }
 
-/* --- Admonition / callout blocks (Feature 7) --- */
+/* === Admonition / callout blocks (Feature 7) === */
 
 .admonition {
     border-left: 4px solid var(--border);
     border-radius: 4px;
     padding: 0.75rem 1rem;
-    margin: 0 0 1em 0;
+    margin: 0 0 1rem 0;
     background: var(--code-bg);
 }
 
@@ -550,42 +627,47 @@ blockquote p:last-child {
 }
 
 .admonition.tip {
-    border-left-color: var(--admonition-tip, #1a7f37);
+    border-left-color: var(--admonition-tip);
 }
 
 .admonition.tip .admonition-title {
-    color: var(--admonition-tip, #1a7f37);
+    color: var(--admonition-tip);
 }
 
 .admonition.important {
-    border-left-color: var(--admonition-important, #8250df);
+    border-left-color: var(--admonition-important);
 }
 
 .admonition.important .admonition-title {
-    color: var(--admonition-important, #8250df);
+    color: var(--admonition-important);
 }
 
 .admonition.warning {
-    border-left-color: var(--admonition-warning, #8a5d00);
+    border-left-color: var(--admonition-warning);
 }
 
 .admonition.warning .admonition-title {
-    color: var(--admonition-warning, #8a5d00);
+    color: var(--admonition-warning);
 }
 
 .admonition.caution {
-    border-left-color: var(--admonition-caution, #cf222e);
+    border-left-color: var(--admonition-caution);
 }
 
 .admonition.caution .admonition-title {
-    color: var(--admonition-caution, #cf222e);
+    color: var(--admonition-caution);
 }
 
-/* --- Code block with label (Feature 11) --- */
+/* === Code block with label (Feature 11) === */
 
 .code-block {
     position: relative;
-    margin-bottom: 1em;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.15s ease;
+}
+
+.code-block:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .code-block pre {
@@ -597,7 +679,7 @@ blockquote p:last-child {
     top: 0;
     right: 0;
     font-size: 0.7rem;
-    font-family: inherit;
+    font-family: var(--font-body);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-secondary);
@@ -607,12 +689,46 @@ blockquote p:last-child {
     border-bottom-left-radius: 4px;
     border-top-width: 0;
     border-right-width: 0;
-    padding: 2px 8px;
+    padding: 2px 0.5rem;
     line-height: 1.4;
     z-index: 1;
 }
 
-/* --- Focus indicators (Feature 12) --- */
+/* === API entry cards (Feature 48) === */
+
+.api-entry {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1rem 0 1.5rem;
+    background: var(--sidebar-bg);
+    transition: border-color 0.15s ease;
+}
+
+.api-entry:hover {
+    border-color: var(--link);
+}
+
+.api-entry h3,
+.api-entry h4 {
+    margin-top: 0;
+}
+
+.api-entry pre {
+    margin: 0;
+    border: none;
+    background: transparent;
+}
+
+.api-entry .code-block {
+    margin-bottom: 0.5rem;
+}
+
+.api-entry p:last-child {
+    margin-bottom: 0;
+}
+
+/* === Focus indicators (Feature 12) === */
 
 a:focus-visible,
 button:focus-visible,
@@ -622,15 +738,15 @@ input:focus-visible,
     outline-offset: 2px;
 }
 
-/* --- Horizontal rule --- */
+/* === Horizontal rule === */
 
 hr {
     border: none;
     border-top: 1px solid var(--border);
-    margin: 2em 0;
+    margin: 2rem 0;
 }
 
-/* --- Footer --- */
+/* === Footer === */
 
 .footer {
     margin-left: 240px;
@@ -640,26 +756,26 @@ hr {
     font-size: 0.85rem;
 }
 
-/* --- Skip-to-content link (Feature 10) --- */
+/* === Skip-to-content link (Feature 10) === */
 
 .skip-link {
     position: absolute;
     top: -100%;
     left: 0;
-    padding: 8px 16px;
+    padding: 0.5rem 1rem;
     background: var(--link);
-    color: #ffffff;
-    z-index: 1000;
+    color: var(--topbar-text);
+    z-index: 1002;
     text-decoration: none;
     font-size: 0.875rem;
 }
 
 .skip-link:focus {
     top: 0;
-    color: #ffffff;
+    color: var(--topbar-text);
 }
 
-/* --- Breadcrumbs (Feature 9) --- */
+/* === Breadcrumbs (Feature 9) === */
 
 .breadcrumbs {
     font-size: 0.8125rem;
@@ -677,7 +793,7 @@ hr {
     text-decoration: underline;
 }
 
-/* --- Page prev/next navigation (Feature 8) --- */
+/* === Page prev/next navigation (Feature 8) === */
 
 .page-nav {
     display: flex;
@@ -700,14 +816,14 @@ hr {
     text-align: right;
 }
 
-/* --- Theme toggle button (Feature 6) --- */
+/* === Theme toggle button (Feature 6) === */
 
 .theme-toggle {
     margin-left: auto;
     background: none;
     border: 1px solid transparent;
     border-radius: 4px;
-    padding: 4px 6px;
+    padding: 0.25rem 0.5rem;
     min-width: 44px;
     min-height: 44px;
     color: var(--topbar-text);
@@ -715,7 +831,7 @@ hr {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s ease;
 }
 
 .theme-toggle:hover {
@@ -741,14 +857,14 @@ hr {
     display: block;
 }
 
-/* --- Hamburger button (Feature 25) --- */
+/* === Hamburger button (Feature 25) === */
 
 .hamburger {
     display: none;
     background: none;
     border: none;
     cursor: pointer;
-    padding: 8px;
+    padding: 0.5rem;
     min-width: 44px;
     min-height: 44px;
     flex-direction: column;
@@ -762,7 +878,7 @@ hr {
     width: 20px;
     height: 2px;
     background: var(--topbar-text);
-    transition: transform 0.2s, opacity 0.2s;
+    transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 /* Animate to X when sidebar is open */
@@ -778,14 +894,10 @@ hr {
     transform: translateY(-7px) rotate(-45deg);
 }
 
-/* Touch targets 44x44px (Feature 16) are integrated into the
-   respective component rules above (.nav-list a, .toc-item a,
-   .theme-toggle). */
-
-/* --- Page footer (Feature 18) --- */
+/* === Page footer (Feature 18) === */
 
 .page-footer {
-    margin-top: 3rem;
+    margin-top: 2.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border);
 }
@@ -805,7 +917,7 @@ hr {
     text-decoration: underline;
 }
 
-/* --- Search dialog (Feature 19) --- */
+/* === Search dialog (Feature 19) === */
 
 .search-dialog {
     position: fixed;
@@ -842,13 +954,13 @@ hr {
 .search-input {
     display: block;
     width: 100%;
-    padding: 14px 16px;
+    padding: 0.875rem 1rem;
     border: none;
     border-bottom: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
     font-size: 1rem;
-    font-family: inherit;
+    font-family: var(--font-body);
 }
 
 .search-input:focus {
@@ -869,7 +981,7 @@ hr {
 
 .search-result-item a {
     display: block;
-    padding: 10px 16px;
+    padding: 0.5rem 1rem;
     text-decoration: none;
     color: var(--text);
     border-bottom: 1px solid var(--code-border);
@@ -897,7 +1009,7 @@ hr {
     white-space: nowrap;
 }
 
-/* --- Diff line highlighting (Feature 27) --- */
+/* === Diff line highlighting (Feature 27) === */
 
 .code-block .line {
     display: block;
@@ -911,7 +1023,7 @@ hr {
     background: rgba(248, 81, 73, 0.15);
 }
 
-/* --- Mobile TOC disclosure (Feature 26) --- */
+/* === Mobile TOC disclosure (Feature 26) === */
 
 .mobile-toc {
     display: none;
@@ -939,7 +1051,7 @@ hr {
     display: inline-block;
     margin-right: 0.5rem;
     font-size: 0.75rem;
-    transition: transform 0.15s;
+    transition: transform 0.15s ease;
 }
 
 .mobile-toc[open] summary::before {
@@ -950,7 +1062,7 @@ hr {
     padding: 0 1rem 0.75rem;
 }
 
-/* --- Feedback widget (Feature 30) --- */
+/* === Feedback widget (Feature 30) === */
 
 .feedback {
     display: flex;
@@ -962,16 +1074,16 @@ hr {
 }
 
 .feedback button {
-    padding: 6px 16px;
+    padding: 0.5rem 1rem;
     min-height: 36px;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg);
     color: var(--text);
     cursor: pointer;
-    font-family: inherit;
+    font-family: var(--font-body);
     font-size: 0.8125rem;
-    transition: border-color 0.15s, background 0.15s;
+    transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .feedback button:hover {
@@ -979,13 +1091,13 @@ hr {
     background: var(--sidebar-hover-bg);
 }
 
-/* --- Sidebar overlay for mobile (Feature 25) --- */
+/* === Sidebar overlay for mobile (Feature 25) === */
 
 .sidebar-overlay {
     display: none;
 }
 
-/* --- Responsive: medium screens (hide TOC) --- */
+/* === Responsive: medium screens (hide TOC) === */
 
 @media (max-width: 1280px) {
     .layout {
@@ -1001,7 +1113,7 @@ hr {
     }
 }
 
-/* --- Responsive: collapse sidebar on mobile --- */
+/* === Responsive: collapse sidebar on mobile === */
 
 @media (max-width: 768px) {
     .topbar-inner {
@@ -1014,10 +1126,10 @@ hr {
 
     .sidebar {
         position: fixed;
-        top: 48px;
+        top: 51px;
         left: -260px;
         width: 240px;
-        height: calc(100vh - 48px);
+        height: calc(100vh - 51px);
         border-right: 1px solid var(--border);
         transition: left 0.2s ease;
         z-index: 150;
@@ -1031,20 +1143,12 @@ hr {
     .sidebar-open::after {
         content: "";
         position: fixed;
-        top: 48px;
+        top: 51px;
         left: 0;
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.4);
         z-index: 140;
-    }
-
-    .nav-list {
-        display: block;
-    }
-
-    .nav-list li {
-        margin-bottom: 2px;
     }
 
     .layout {
@@ -1066,37 +1170,46 @@ hr {
     }
 }
 
-/* --- Print stylesheet (Feature 37) --- */
+/* === Print stylesheet (Feature 37) === */
 
 @media print {
     .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
-    .skip-link, .page-nav, .feedback, .copy-btn,
+    .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
     .search-dialog, .heading-link, .theme-toggle {
         display: none !important;
     }
+
+    body::before {
+        display: none;
+    }
+
     .layout {
         display: block;
     }
+
     .content {
         max-width: 100%;
         margin: 0;
         padding: 0;
     }
+
     pre {
         white-space: pre-wrap;
-        border: 1px solid #ccc;
+        border: 1px solid var(--border);
     }
+
     a[href]::after {
         content: " (" attr(href) ")";
         font-size: 0.8em;
-        color: #666;
+        color: var(--text-secondary);
     }
+
     a.heading-link::after {
         content: none;
     }
 }
 
-/* --- Table wrapper for horizontal scrolling (Feature 38) --- */
+/* === Table wrapper for horizontal scrolling (Feature 38) === */
 
 .table-wrap {
     overflow-x: auto;
@@ -1107,7 +1220,7 @@ hr {
     margin: 0;
 }
 
-/* --- Step-by-step guides (Feature 33) --- */
+/* === Step-by-step guides (Feature 33) === */
 
 .steps {
     counter-reset: step;
@@ -1131,17 +1244,17 @@ hr {
     height: 2rem;
     border-radius: 50%;
     background: var(--link);
-    color: white;
+    color: var(--topbar-text);
     text-align: center;
     line-height: 2rem;
     font-weight: 700;
     font-size: 0.875rem;
 }
 
-/* --- Code tabs (Feature 31) --- */
+/* === Code tabs (Feature 31) === */
 
 .code-tabs {
-    margin-bottom: 1em;
+    margin-bottom: 1rem;
 }
 
 .tab-bar {
@@ -1152,17 +1265,17 @@ hr {
 }
 
 .tab-bar .tab {
-    padding: 6px 16px;
+    padding: 0.5rem 1rem;
     border: none;
     background: none;
     color: var(--text-secondary);
-    font-family: inherit;
+    font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 500;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
-    transition: color 0.15s, border-color 0.15s;
+    transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .tab-bar .tab:hover {
@@ -1191,7 +1304,7 @@ hr {
     border-top-right-radius: 0;
 }
 
-/* --- Inline code annotations (Feature 32) --- */
+/* === Inline code annotations (Feature 32) === */
 
 .code-annotation {
     display: inline-flex;
@@ -1201,7 +1314,7 @@ hr {
     height: 1.25em;
     border-radius: 50%;
     background: var(--link);
-    color: white;
+    color: var(--topbar-text);
     font-size: 0.75em;
     font-weight: 700;
     cursor: pointer;
@@ -1219,13 +1332,12 @@ hr {
     transform: translateX(-50%);
     background: var(--topbar-bg);
     color: var(--topbar-text);
-    padding: 6px 10px;
+    padding: 0.5rem 0.75rem;
     border-radius: 4px;
     font-size: 0.8125rem;
     font-weight: 400;
-    white-space: nowrap;
-    max-width: 300px;
     white-space: normal;
+    max-width: 300px;
     z-index: 10;
     pointer-events: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
