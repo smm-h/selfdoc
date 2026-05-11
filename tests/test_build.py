@@ -2138,3 +2138,87 @@ def test_glossary_terms_correctly_extracted():
     assert "<dd>Processes the request</dd>" in result
     # Empty lines should be skipped, not produce entries
     assert result.count("<dt>") == 3
+
+
+def test_tech_article_has_date_published(project_dir):
+    """TechArticle JSON-LD includes datePublished field."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndate: 2025-01-15\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert tech_article["datePublished"] == "2025-01-15"
+
+
+def test_tech_article_has_publisher_organization(project_dir):
+    """TechArticle JSON-LD includes publisher with @type Organization."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert "publisher" in tech_article
+    assert tech_article["publisher"]["@type"] == "Organization"
+
+
+def test_tech_article_has_in_language(project_dir):
+    """TechArticle JSON-LD includes inLanguage field."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert tech_article["inLanguage"] == "en"

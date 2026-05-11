@@ -1076,6 +1076,18 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             tech_article["description"] = description
         if date_modified:
             tech_article["dateModified"] = date_modified
+            tech_article["datePublished"] = date_modified
+
+        # Publisher must always be an Organization per Google's spec
+        if author and author.get("type") == "Organization":
+            tech_article["publisher"] = author_obj
+        else:
+            tech_article["publisher"] = {
+                "@type": "Organization",
+                "name": project_name,
+            }
+
+        tech_article["inLanguage"] = lang
 
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
