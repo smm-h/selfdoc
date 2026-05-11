@@ -216,7 +216,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             date_modified=date_modified,
             author=author,
             feed_url=page_feed_url,
-            summary=frontmatter_description or description or None,
+            summary=frontmatter_description,
             critical_css=critical_css,
             schema=schema,
             twitter_site=twitter_site,
@@ -1154,11 +1154,24 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         )
 
     # Page summary block from frontmatter description (Phase 2.6)
+    # Auto-extract from first paragraph when no frontmatter summary (Phase 2.3)
     summary_html = ""
-    if summary:
+    effective_summary = summary
+    if not effective_summary:
+        # Auto-extract from first paragraph
+        first_p = re.search(r'<p>(.*?)</p>', body_html, re.DOTALL)
+        if first_p:
+            text = re.sub(r'<[^>]+>', '', first_p.group(1)).strip()
+            if len(text) >= 20:
+                if len(text) > 160:
+                    # Truncate at word boundary
+                    truncated = text[:160].rsplit(' ', 1)[0]
+                    text = truncated.rstrip('.,;:') + '...'
+                effective_summary = text
+    if effective_summary:
         summary_html = (
             f'<div class="page-summary">\n'
-            f'  <p>{_escape_html(summary)}</p>\n'
+            f'  <p>{_escape_html(effective_summary)}</p>\n'
             f'</div>'
         )
 

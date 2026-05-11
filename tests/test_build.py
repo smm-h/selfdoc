@@ -842,6 +842,10 @@ def test_page_summary_shown_with_description(project_dir):
 
 def test_page_summary_auto_generated_without_frontmatter(project_dir):
     """A page without frontmatter description gets auto-generated summary from first paragraph."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test Project\n\nThis is a substantial first paragraph with enough text to trigger auto-summary.\n")
+
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
@@ -849,7 +853,7 @@ def test_page_summary_auto_generated_without_frontmatter(project_dir):
         content = f.read()
 
     assert '<div class="page-summary">' in content
-    assert "Welcome." in content
+    assert "substantial first paragraph" in content
 
 
 def test_page_summary_text_matches_description(project_dir):
@@ -882,6 +886,58 @@ def test_page_summary_frontmatter_takes_priority(project_dir):
 
     assert '<div class="page-summary">' in content
     assert "Frontmatter desc" in content
+
+
+def test_auto_summary_from_first_paragraph(project_dir):
+    """A page with no frontmatter description but a substantial first paragraph gets auto-summary."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "autosummary.md"), "w", encoding="utf-8") as f:
+        f.write("# Auto Summary\n\nSelfdoc is a code-aware static site generator that resolves directive blocks.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "autosummary.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="page-summary">' in content
+    assert "code-aware static site generator" in content
+
+
+def test_explicit_summary_takes_precedence(project_dir):
+    """A page with frontmatter description uses that for summary, not auto-generated text."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "explicit.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Explicit description from frontmatter\n---\n"
+            "# Explicit\n\nThis is the first paragraph which should not appear as summary.\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "explicit.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="page-summary">' in content
+    assert "Explicit description from frontmatter" in content
+    # The auto-extracted text should NOT appear in the summary block
+    assert "should not appear as summary" not in content.split('<div class="page-summary">')[1].split('</div>')[0]
+
+
+def test_no_summary_for_short_content(project_dir):
+    """A page with a very short first paragraph gets no page-summary div."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "short.md"), "w", encoding="utf-8") as f:
+        f.write("# Short\n\nHi.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "short.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="page-summary">' not in content
 
 
 def test_tech_article_has_description_field(project_dir):
