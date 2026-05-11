@@ -398,7 +398,7 @@ def _cmd_check(args):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print_results(result)
+    print_results(result, verbose=getattr(args, "verbose", False))
 
     # Exit with non-zero status if any directives failed
     if any(dr.status == "FAILED" for dr in result.directive_results):
@@ -438,6 +438,10 @@ def run():
 
     # check
     sub_check = subparsers.add_parser("check", help=COMMANDS["check"])
+    sub_check.add_argument(
+        "--verbose", "-v", action="store_true", default=False,
+        help="Show info-level lint hints",
+    )
     sub_check.set_defaults(func=_cmd_check)
 
     args = parser.parse_args()

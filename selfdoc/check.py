@@ -49,7 +49,7 @@ class LintResult:
     line: int | None
     code: str  # e.g. "SEO001"
     message: str
-    severity: str  # "warning" or "error"
+    severity: str  # "warning", "error", or "info"
 
 
 @dataclass
@@ -262,6 +262,79 @@ def _run_lints(docs_dir, resolver, config):
                 severity="warning",
             ))
 
+        # SEO007 -- Paragraph length after headings
+        for line_num, line in enumerate(lines, start=1):
+            m = re.match(r"^(#{2,3})\s+(.+)", line)
+            if not m:
+                continue
+            heading_text = m.group(2).strip()
+            # Look at the next non-empty line after the heading
+            next_idx = line_num  # 0-based index of line after heading
+            if next_idx >= len(lines):
+                continue
+            # Skip blank lines between heading and content
+            content_start = next_idx
+            while content_start < len(lines) and lines[content_start].strip() == "":
+                content_start += 1
+            if content_start >= len(lines):
+                continue
+            first_content_line = lines[content_start].strip()
+            # Skip if followed by a list, code block, or another heading
+            if (first_content_line.startswith(("-", "*", "+", "1."))
+                    or first_content_line.startswith("```")
+                    or first_content_line.startswith("#")):
+                continue
+            # Collect the paragraph (lines until blank line or heading)
+            para_lines = []
+            for pi in range(content_start, len(lines)):
+                pl = lines[pi].strip()
+                if pl == "" or pl.startswith("#"):
+                    break
+                para_lines.append(pl)
+            paragraph = " ".join(para_lines)
+            word_count = len(paragraph.split())
+            if word_count < 30 or word_count > 80:
+                results.append(LintResult(
+                    file=rel_path,
+                    line=line_num,
+                    code="SEO007",
+                    message=(
+                        f"First paragraph after '{heading_text}' is"
+                        f" {word_count} words (aim for 40-60 for AI citation)"
+                    ),
+                    severity="info",
+                ))
+
+        # SEO008 -- Statistics density
+        # Strip frontmatter for counting
+        body = content
+        if content.startswith("---"):
+            fm_lines = content.split("\n")
+            end_idx = None
+            for idx in range(1, len(fm_lines)):
+                if fm_lines[idx].strip() == "---":
+                    end_idx = idx
+                    break
+            if end_idx is not None:
+                body = "\n".join(fm_lines[end_idx + 1:])
+
+        words = body.split()
+        total_words = len(words)
+        numeric_tokens = sum(
+            1 for w in words if any(c.isdigit() for c in w)
+        )
+        if total_words > 200 and numeric_tokens == 0:
+            results.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="SEO008",
+                message=(
+                    f"Page has {total_words} words but no numeric data"
+                    f" points (statistics improve AI citation)"
+                ),
+                severity="info",
+            ))
+
     # SEO005 -- Missing base_url (project-level, not per-file)
     if config.get("base_url") is None:
         results.append(LintResult(
@@ -383,8 +456,13 @@ def _resolve_module_to_relpath(arg, source_paths, base_dir):
     return None
 
 
-def print_results(result):
-    """Print check results to stdout in a human-readable format."""
+def print_results(result, verbose=False):
+    """Print check results to stdout in a human-readable format.
+
+    Args:
+        result: CheckResult to print.
+        verbose: If True, show info-level lints. If False, hide them.
+    """
     if not result.directive_results:
         print("No directives found in documentation templates.")
         return
@@ -416,14 +494,27 @@ def print_results(result):
         else:
             print("Coverage: no public symbols found in source files")
 
-    # Lint results
-    if result.lints:
+    # Lint results -- filter by severity based on verbose flag
+    info_lints = [l for l in result.lints if l.severity == "info"]
+    visible_lints = [
+        l for l in result.lints
+        if l.severity != "info" or verbose
+    ]
+
+    if visible_lints:
         print()
-        for lint in result.lints:
+        for lint in visible_lints:
             line_part = f":{lint.line}" if lint.line is not None else ""
             print(
                 f"  {lint.severity}: [{lint.code}] "
                 f"{lint.file}{line_part} - {lint.message}"
             )
+    elif info_lints and not verbose:
+        info_count = len(info_lints)
+        print(
+            f"No warnings. ({info_count} info hint"
+            f"{'s' if info_count != 1 else ''}"
+            f", use --verbose to see)"
+        )
     else:
         print("No lints.")

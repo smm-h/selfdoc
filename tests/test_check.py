@@ -677,4 +677,206 @@ def test_clean_file_no_lints(lint_project):
         )
 
     results = _run_lints(docs_dir, None, config)
-    assert len(results) == 0
+    # Filter out info-level lints (SEO007/SEO008) that may fire on this content
+    non_info = [r for r in results if r.severity != "info"]
+    assert len(non_info) == 0
+
+
+# -- Info severity and verbose --
+
+
+def test_info_lints_hidden_when_not_verbose(capsys):
+    """Info-level lints are hidden when verbose=False."""
+    from selfdoc.check import DirectiveResult
+
+    result = CheckResult(
+        directive_results=[
+            DirectiveResult(
+                file="index.md", line=1, directive=":::module foo", status="OK"
+            )
+        ],
+        lints=[
+            LintResult(
+                file="index.md",
+                line=5,
+                code="SEO007",
+                message="Test info lint",
+                severity="info",
+            ),
+        ],
+    )
+
+    print_results(result, verbose=False)
+    captured = capsys.readouterr()
+
+    assert "SEO007" not in captured.out
+    assert "Test info lint" not in captured.out
+
+
+def test_info_lints_shown_when_verbose(capsys):
+    """Info-level lints are shown when verbose=True."""
+    from selfdoc.check import DirectiveResult
+
+    result = CheckResult(
+        directive_results=[
+            DirectiveResult(
+                file="index.md", line=1, directive=":::module foo", status="OK"
+            )
+        ],
+        lints=[
+            LintResult(
+                file="index.md",
+                line=5,
+                code="SEO007",
+                message="Test info lint",
+                severity="info",
+            ),
+        ],
+    )
+
+    print_results(result, verbose=True)
+    captured = capsys.readouterr()
+
+    assert "SEO007" in captured.out
+    assert "Test info lint" in captured.out
+
+
+def test_info_hints_message_when_not_verbose(capsys):
+    """When only info lints exist and verbose is off, show hint count."""
+    from selfdoc.check import DirectiveResult
+
+    result = CheckResult(
+        directive_results=[
+            DirectiveResult(
+                file="index.md", line=1, directive=":::module foo", status="OK"
+            )
+        ],
+        lints=[
+            LintResult(
+                file="page.md", line=3, code="SEO007",
+                message="Short paragraph", severity="info",
+            ),
+            LintResult(
+                file="page.md", line=None, code="SEO008",
+                message="No numbers", severity="info",
+            ),
+        ],
+    )
+
+    print_results(result, verbose=False)
+    captured = capsys.readouterr()
+
+    assert "No warnings." in captured.out
+    assert "2 info hints" in captured.out
+    assert "--verbose" in captured.out
+
+
+# -- SEO007: Paragraph length after headings --
+
+
+def test_seo007_short_paragraph(lint_project):
+    """SEO007: short paragraph after heading triggers info lint."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            "## Section\n\n"
+            "This is short.\n\n"
+            "More content here.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 1
+    assert seo007[0].severity == "info"
+    assert "3 words" in seo007[0].message
+    assert "Section" in seo007[0].message
+
+
+def test_seo007_normal_paragraph_no_lint(lint_project):
+    """SEO007: paragraph of 40-60 words does not trigger a lint."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # Generate a paragraph of exactly 50 words
+    words = " ".join(["word"] * 50)
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"## Section\n\n"
+            f"{words}\n\n"
+            "More content.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 0
+
+
+# -- SEO008: Statistics density --
+
+
+def test_seo008_no_numbers_long_page(lint_project):
+    """SEO008: page with >200 words and no numbers triggers info lint."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    words = " ".join(["word"] * 250)
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 1
+    assert seo008[0].severity == "info"
+    assert "words" in seo008[0].message
+    assert "no numeric" in seo008[0].message
+
+
+def test_seo008_with_numbers_no_lint(lint_project):
+    """SEO008: page with numbers does not trigger a lint."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    words = " ".join(["word"] * 200) + " 42 items"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 0
+
+
+def test_seo008_short_page_no_lint(lint_project):
+    """SEO008: page with <200 words does not trigger a lint (even without numbers)."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    words = " ".join(["word"] * 100)
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 0
