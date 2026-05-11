@@ -74,8 +74,12 @@ def load_config(dir_path="."):
     # --- optional fields with defaults ---
     docs = raw.get("docs", "docs/")
     output = raw.get("output", "docs/_build/")
+    theme = raw.get("theme", "minimal")
     deploy = raw.get("deploy", None)
     directives = raw.get("directives", {})
+
+    if not isinstance(theme, str) or not theme:
+        raise ConfigError("'theme' must be a non-empty string")
 
     if deploy is not None:
         _validate_deploy(deploy)
@@ -88,6 +92,7 @@ def load_config(dir_path="."):
         "source": source,
         "docs": docs,
         "output": output,
+        "theme": theme,
         "deploy": deploy,
         "directives": directives,
     }

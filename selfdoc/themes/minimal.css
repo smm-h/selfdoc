@@ -1,0 +1,443 @@
+/* selfdoc minimal theme
+   Clean, content-focused documentation styling. */
+
+/* --- Custom properties (light mode) --- */
+
+:root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --text-secondary: #555;
+    --heading: #111;
+    --link: #0969da;
+    --link-hover: #0550ae;
+    --sidebar-bg: #f6f8fa;
+    --sidebar-text: #444;
+    --sidebar-active: #0969da;
+    --sidebar-hover-bg: #e8ecef;
+    --code-bg: #f4f4f8;
+    --code-border: #e0e0e0;
+    --border: #d0d7de;
+    --topbar-bg: #24292f;
+    --topbar-text: #ffffff;
+    --badge-bg: #1a7f37;
+    --badge-text: #ffffff;
+}
+
+/* --- Dark variant --- */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0d1117;
+        --text: #c9d1d9;
+        --text-secondary: #8b949e;
+        --heading: #e6edf3;
+        --link: #58a6ff;
+        --link-hover: #79c0ff;
+        --sidebar-bg: #161b22;
+        --sidebar-text: #8b949e;
+        --sidebar-active: #58a6ff;
+        --sidebar-hover-bg: #1c2128;
+        --code-bg: #161b22;
+        --code-border: #30363d;
+        --border: #30363d;
+        --topbar-bg: #010409;
+        --topbar-text: #f0f6fc;
+        --badge-bg: #238636;
+        --badge-text: #ffffff;
+    }
+}
+
+/* --- High contrast variant --- */
+
+@media (prefers-contrast: more) {
+    :root {
+        --text: #000;
+        --heading: #000;
+        --border: #000;
+        --code-border: #000;
+    }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+    :root {
+        --text: #fff;
+        --heading: #fff;
+        --border: #fff;
+        --code-border: #fff;
+    }
+}
+
+/* --- Reduced motion --- */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* --- Reset --- */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* --- Body --- */
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+}
+
+/* --- Top bar --- */
+
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: var(--topbar-bg);
+    color: var(--topbar-text);
+    z-index: 200;
+    border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.project-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--topbar-text);
+    text-decoration: none;
+}
+
+.project-name:hover {
+    color: var(--topbar-text);
+    opacity: 0.85;
+}
+
+.version-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--badge-bg);
+    color: var(--badge-text);
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    line-height: 1.4;
+}
+
+/* --- Layout --- */
+
+.layout {
+    display: flex;
+    padding-top: 48px;
+    min-height: 100vh;
+}
+
+/* --- Sidebar --- */
+
+.sidebar {
+    position: fixed;
+    top: 48px;
+    left: 0;
+    width: 240px;
+    height: calc(100vh - 48px);
+    overflow-y: auto;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 1.25rem 0.75rem;
+    z-index: 100;
+}
+
+.nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-list li {
+    margin-bottom: 2px;
+}
+
+.nav-list a {
+    display: block;
+    padding: 0.3rem 0.6rem;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    transition: background 0.15s, color 0.15s;
+}
+
+.nav-list a:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--link);
+    text-decoration: none;
+}
+
+.nav-list a.active {
+    color: var(--sidebar-active);
+    font-weight: 600;
+}
+
+/* --- Content area --- */
+
+.content {
+    margin-left: 240px;
+    max-width: 800px;
+    padding: 2.5rem 3rem;
+    flex: 1;
+}
+
+/* --- Typography --- */
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--heading);
+    font-weight: 600;
+    line-height: 1.3;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 0;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--border);
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid var(--border);
+}
+
+h3 {
+    font-size: 1.25rem;
+}
+
+h4 {
+    font-size: 1.1rem;
+}
+
+p {
+    margin-bottom: 1em;
+}
+
+/* --- Links --- */
+
+a {
+    color: var(--link);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+/* --- Heading anchor links --- */
+
+.heading-link {
+    opacity: 0;
+    margin-left: -1.2em;
+    padding-right: 0.3em;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 400;
+    transition: opacity 0.15s;
+}
+
+h1:hover .heading-link,
+h2:hover .heading-link,
+h3:hover .heading-link,
+h4:hover .heading-link,
+h5:hover .heading-link,
+h6:hover .heading-link {
+    opacity: 1;
+}
+
+.heading-link:hover {
+    color: var(--link);
+    text-decoration: none;
+}
+
+/* --- Code --- */
+
+code {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 3px;
+    padding: 2px 6px;
+}
+
+pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 4px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 1em;
+    line-height: 1.5;
+}
+
+pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.875rem;
+    border-radius: 0;
+}
+
+/* --- Lists --- */
+
+ul, ol {
+    margin-bottom: 1em;
+    padding-left: 1.5em;
+}
+
+li {
+    margin-bottom: 0.25em;
+}
+
+li > ul,
+li > ol {
+    margin-bottom: 0;
+}
+
+/* --- Bold / italic --- */
+
+strong {
+    font-weight: 600;
+}
+
+em {
+    font-style: italic;
+}
+
+/* --- Tables --- */
+
+table {
+    border-collapse: collapse;
+    margin-bottom: 1em;
+    width: 100%;
+    font-size: 0.95rem;
+}
+
+th, td {
+    border: 1px solid var(--border);
+    padding: 0.5em 0.75em;
+    text-align: left;
+}
+
+th {
+    background: var(--sidebar-bg);
+    font-weight: 600;
+}
+
+tbody tr:nth-child(even) {
+    background: var(--code-bg);
+}
+
+/* --- Blockquotes --- */
+
+blockquote {
+    border-left: 3px solid var(--link);
+    padding: 0.5em 1em;
+    margin: 0 0 1em 0;
+    color: var(--text-secondary);
+}
+
+blockquote p {
+    margin-bottom: 0.5em;
+}
+
+blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* --- Horizontal rule --- */
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2em 0;
+}
+
+/* --- Footer --- */
+
+.footer {
+    margin-left: 240px;
+    padding: 1.5rem 3rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* --- Responsive: collapse sidebar on mobile --- */
+
+@media (max-width: 768px) {
+    .topbar-inner {
+        padding: 0 1rem;
+    }
+
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem;
+    }
+
+    .nav-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .nav-list li {
+        margin-bottom: 0;
+    }
+
+    .layout {
+        flex-direction: column;
+    }
+
+    .content {
+        margin-left: 0;
+        padding: 1.5rem 1rem;
+        max-width: 100%;
+    }
+
+    .footer {
+        margin-left: 0;
+        padding: 1.5rem 1rem;
+    }
+}

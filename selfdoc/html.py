@@ -6,6 +6,8 @@ paragraphs, lists, links, bold/italic, and tables.
 
 import re
 
+from selfdoc.themes import get_theme
+
 
 def _slugify(text):
     """Convert heading text to a URL-friendly slug for deep linking.
@@ -23,234 +25,27 @@ def _slugify(text):
     return text.strip("-")
 
 
-_CSS = """\
-:root {
-    --bg: #ffffff;
-    --fg: #1a1a2e;
-    --sidebar-bg: #f5f5f7;
-    --sidebar-width: 260px;
-    --code-bg: #f0f0f3;
-    --code-border: #dcdce0;
-    --link: #2563eb;
-    --link-hover: #1d4ed8;
-    --heading: #111827;
-    --border: #e5e7eb;
-    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
-}
+def get_css(theme_name="minimal"):
+    """Return the CSS content for the named theme.
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+    Args:
+        theme_name: Name of the theme to load (default "minimal").
 
-body {
-    font-family: var(--font-body);
-    color: var(--fg);
-    background: var(--bg);
-    line-height: 1.6;
-    display: flex;
-    min-height: 100vh;
-}
-
-/* Sidebar navigation */
-.sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: var(--sidebar-width);
-    height: 100vh;
-    overflow-y: auto;
-    background: var(--sidebar-bg);
-    border-right: 1px solid var(--border);
-    padding: 1.5rem 1rem;
-    z-index: 100;
-}
-
-.sidebar h2 {
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
-    margin-bottom: 0.75rem;
-}
-
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-}
-
-.sidebar li {
-    margin-bottom: 0.25rem;
-}
-
-.sidebar a {
-    display: block;
-    padding: 0.25rem 0.5rem;
-    color: var(--fg);
-    text-decoration: none;
-    border-radius: 4px;
-    font-size: 0.85rem;
-}
-
-.sidebar a:hover {
-    background: var(--border);
-    color: var(--link);
-}
-
-/* Main content area */
-.content {
-    margin-left: var(--sidebar-width);
-    max-width: 52rem;
-    padding: 2rem 3rem;
-    flex: 1;
-}
-
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-    color: var(--heading);
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-    line-height: 1.3;
-}
-
-h1 { font-size: 1.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
-h2 { font-size: 1.4rem; }
-h3 { font-size: 1.15rem; }
-h4 { font-size: 1rem; }
-
-p {
-    margin-bottom: 1em;
-}
-
-a {
-    color: var(--link);
-    text-decoration: none;
-}
-
-a:hover {
-    color: var(--link-hover);
-    text-decoration: underline;
-}
-
-/* Code */
-code {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-    background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 3px;
-    padding: 0.15em 0.35em;
-}
-
-pre {
-    background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 6px;
-    padding: 1rem 1.25rem;
-    overflow-x: auto;
-    margin-bottom: 1em;
-}
-
-pre code {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 0.85rem;
-}
-
-/* Lists */
-ul, ol {
-    margin-bottom: 1em;
-    padding-left: 1.5em;
-}
-
-li {
-    margin-bottom: 0.25em;
-}
-
-/* Bold / italic */
-strong { font-weight: 600; }
-em { font-style: italic; }
-
-/* Tables */
-table {
-    border-collapse: collapse;
-    margin-bottom: 1em;
-    width: 100%;
-}
-
-th, td {
-    border: 1px solid var(--border);
-    padding: 0.5em 0.75em;
-    text-align: left;
-}
-
-th {
-    background: var(--sidebar-bg);
-    font-weight: 600;
-}
-
-/* Version badge */
-.version {
-    display: inline-block;
-    font-size: 0.8rem;
-    background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 4px;
-    padding: 0.1em 0.5em;
-    margin-left: 0.5em;
-    vertical-align: middle;
-}
-
-/* Mobile: collapse sidebar */
-@media (max-width: 768px) {
-    .sidebar {
-        position: static;
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-    }
-    .content {
-        margin-left: 0;
-        padding: 1.5rem 1rem;
-    }
-    body {
-        flex-direction: column;
-    }
-}
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #1a1a2e;
-        --fg: #e0e0e0;
-        --sidebar-bg: #16213e;
-        --code-bg: #0d1117;
-        --code-border: #2a2a4a;
-        --link: #64b5f6;
-        --link-hover: #90caf9;
-        --heading: #f0f0f0;
-        --border: #2a2a4a;
-    }
-
-    .sidebar h2 {
-        color: #a0a0b0;
-    }
-}
-"""
+    Returns:
+        The CSS content as a string.
+    """
+    return get_theme(theme_name)
 
 
-def get_css():
-    """Return the CSS content for writing to an external stylesheet."""
-    return _CSS
-
-
-def generate_html(markdown_files, project_name=None, version=None):
+def generate_html(markdown_files, project_name=None, version=None,
+                   has_custom_css=False):
     """Convert Markdown files to static HTML.
 
     Args:
         markdown_files: Dict mapping relative paths to MD content.
         project_name: Project name for titles and sidebar.
         version: Version string for display (optional).
+        has_custom_css: Whether a custom.css file exists for the project.
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -276,7 +71,11 @@ def generate_html(markdown_files, project_name=None, version=None):
         nav_html = _render_nav(nav_items, prefix, current_path=html_path)
         title = _extract_title(md_content, project_name)
         css_href = prefix + "style.css"
-        full_html = _wrap_page(body_html, nav_html, title, project_name, version, css_href)
+        custom_css_href = (prefix + "custom.css") if has_custom_css else None
+        full_html = _wrap_page(
+            body_html, nav_html, title, project_name, version,
+            css_href, custom_css_href,
+        )
         html_files[html_path] = full_html
 
     return html_files
@@ -320,7 +119,10 @@ def md_to_html(text):
             level = len(heading_match.group(1))
             content = _inline_format(heading_match.group(2))
             slug = _slugify(content)
-            html_parts.append(f'<h{level} id="{slug}">{content}</h{level}>')
+            anchor = f'<a class="heading-link" href="#{slug}">#</a>'
+            html_parts.append(
+                f'<h{level} id="{slug}">{anchor}{content}</h{level}>'
+            )
             i += 1
             continue
 
@@ -498,19 +300,16 @@ def _build_nav(markdown_files):
 
 
 def _render_nav(nav_items, prefix, current_path=""):
-    """Render the sidebar navigation HTML."""
+    """Render the sidebar navigation HTML as a flat list of links."""
     items_html = []
     for item in nav_items:
         href = prefix + item["path"]
-        active = (
-            ' style="font-weight:600;color:var(--link)"'
-            if item["path"] == current_path
-            else ""
-        )
+        active_cls = ' class="active"' if item["path"] == current_path else ""
         items_html.append(
-            f'<li><a href="{href}"{active}>{_escape_html(item["label"])}</a></li>'
+            f'<li><a href="{href}"{active_cls}>'
+            f'{_escape_html(item["label"])}</a></li>'
         )
-    return "<ul>" + "".join(items_html) + "</ul>"
+    return "".join(items_html)
 
 
 def _extract_title(md_content, fallback):
@@ -521,10 +320,16 @@ def _extract_title(md_content, fallback):
     return fallback
 
 
-def _wrap_page(body_html, nav_html, title, project_name, version, css_href="style.css"):
+def _wrap_page(body_html, nav_html, title, project_name, version,
+               css_href="style.css", custom_css_href=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
-        f' <span class="version">{_escape_html(version)}</span>' if version else ""
+        f'<span class="version-badge">v{_escape_html(version)}</span>'
+        if version else ""
+    )
+    custom_css_tag = (
+        f'\n<link rel="stylesheet" href="{custom_css_href}">'
+        if custom_css_href else ""
     )
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -534,18 +339,27 @@ def _wrap_page(body_html, nav_html, title, project_name, version, css_href="styl
 <title>{_escape_html(title)} - {_escape_html(project_name)}</title>
 <link rel="stylesheet" href="{css_href}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">{custom_css_tag}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <script>hljs.highlightAll();</script>
 </head>
 <body>
+<header class="topbar">
+<div class="topbar-inner">
+<a class="project-name" href="index.html">{_escape_html(project_name)}</a>
+{version_badge}
+</div>
+</header>
+<div class="layout">
 <nav class="sidebar">
-<h2>{_escape_html(project_name)}{version_badge}</h2>
+<ul class="nav-list">
 {nav_html}
+</ul>
 </nav>
 <main class="content">
 {body_html}
 </main>
+</div>
 </body>
 </html>
 """

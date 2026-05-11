@@ -1,5 +1,6 @@
 """Build pipeline for selfdoc: template scanning, directive resolution, HTML output."""
 
+import json
 import os
 import shutil
 
@@ -13,6 +14,42 @@ def _stub_resolver(name, arg, body):
     """Placeholder resolver that produces a visible unresolved marker."""
     label = f"{name} {arg}".strip()
     return f"> *[selfdoc: {label} — not yet resolved]*"
+
+
+def _detect_project_version(dir_path):
+    """Detect project version from pyproject.toml or package.json.
+
+    Returns the version string, or an empty string if not found.
+    """
+    # Try pyproject.toml
+    pyproject_path = os.path.join(dir_path, "pyproject.toml")
+    if os.path.isfile(pyproject_path):
+        try:
+            try:
+                import tomllib
+            except ModuleNotFoundError:
+                import tomli as tomllib  # type: ignore[no-redef]
+            with open(pyproject_path, "rb") as f:
+                data = tomllib.load(f)
+            version = data.get("project", {}).get("version")
+            if version:
+                return version
+        except Exception:
+            pass
+
+    # Try package.json
+    package_path = os.path.join(dir_path, "package.json")
+    if os.path.isfile(package_path):
+        try:
+            with open(package_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            version = data.get("version")
+            if version:
+                return version
+        except Exception:
+            pass
+
+    return ""
 
 
 def build(dir_path=".", config=None):
@@ -83,13 +120,20 @@ def build(dir_path=".", config=None):
             f"No .md files found in '{config['docs']}'. Nothing to build."
         )
 
-    # Detect project name from config or directory name
+    # Detect project name and version
     project_name = os.path.basename(os.path.abspath(dir_path))
+    version = _detect_project_version(dir_path)
+
+    # Check for custom.css in docs/
+    custom_css_src = os.path.join(docs_dir, "custom.css")
+    has_custom_css = os.path.isfile(custom_css_src)
 
     # Convert to HTML
     html_files = generate_html(
         markdown_files,
         project_name=project_name,
+        version=version,
+        has_custom_css=has_custom_css,
     )
 
     # Ensure output directory exists
@@ -97,11 +141,18 @@ def build(dir_path=".", config=None):
 
     written = {}
 
-    # Write the external CSS file
+    # Write the theme CSS file
+    theme_name = config.get("theme", "minimal")
     css_path = os.path.join(output_dir, "style.css")
     with open(css_path, "w", encoding="utf-8") as f:
-        f.write(get_css())
+        f.write(get_css(theme_name))
     written[css_path] = True
+
+    # Copy custom.css to output if it exists
+    if has_custom_css:
+        custom_css_dst = os.path.join(output_dir, "custom.css")
+        shutil.copy2(custom_css_src, custom_css_dst)
+        written[custom_css_dst] = True
 
     # Write HTML files
     for rel_path, html_content in html_files.items():

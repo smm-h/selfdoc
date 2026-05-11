@@ -49,7 +49,7 @@ def test_build_produces_html(project_dir):
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert "<!DOCTYPE html>" in content
-    assert '<h1 id="test-project">Test Project</h1>' in content
+    assert '<h1 id="test-project"><a class="heading-link" href="#test-project">#</a>Test Project</h1>' in content
     assert "Welcome." in content
 
 
