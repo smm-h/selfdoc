@@ -140,4 +140,4 @@ def test_build_generates_sidebar(project_dir):
 
     # Sidebar should link to guide.html
     assert "guide.html" in content
-    assert '<nav class="sidebar">' in content
+    assert '<nav class="sidebar" id="sidebar">' in content
