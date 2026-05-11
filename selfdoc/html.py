@@ -292,6 +292,10 @@ def md_to_html(text):
     # headings (Feature 33)
     result = _apply_step_guides(result)
 
+    # Post-process: wrap h3/h4 + code block + description in API entry
+    # cards (Feature 48)
+    result = _wrap_api_entries(result)
+
     return result
 
 
@@ -424,6 +428,23 @@ def _apply_step_guides(html):
         r'\1\n<ol class="steps">',
         html,
         flags=re.IGNORECASE,
+    )
+
+
+def _wrap_api_entries(html):
+    """Wrap h3/h4 + code block + description paragraph in API entry cards
+    (Feature 48).
+
+    When an h3 or h4 heading is immediately followed by a code-block div
+    (a function/type signature) and optionally a <p> (description), wrap
+    them together in a <div class="api-entry">.
+    """
+    return re.sub(
+        r'(<h[34]\s[^>]*>.*?</h[34]>)\n'
+        r'(<div class="code-block">.*?</div>)\n'
+        r'(<p>.*?</p>)',
+        r'<div class="api-entry">\1\n\2\n\3</div>',
+        html,
     )
 
 
@@ -854,6 +875,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{_escape_html(title)} - {_escape_html(project_name)}</title>{description_tag}
 <link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{css_href}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}{seo_tags}
@@ -1187,6 +1211,36 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {{
     }});
   }});
 }})();
+
+// Embedded live code playground (Feature 41)
+// Adds a "Run" button to Go and Python code blocks linking to online playgrounds.
+(function() {{
+  document.querySelectorAll('.code-block').forEach(function(block) {{
+    var label = block.querySelector('.code-label');
+    if (!label) return;
+    var lang = label.textContent.trim().toLowerCase();
+    var code = block.querySelector('code');
+    if (!code) return;
+    var url = null;
+    if (lang === 'go') {{
+      url = 'https://go.dev/play/p/?body=' + encodeURIComponent(code.textContent);
+    }} else if (lang === 'python') {{
+      url = 'https://www.online-python.com/';
+    }}
+    if (url) {{
+      var btn = document.createElement('a');
+      btn.className = 'run-btn';
+      btn.href = url;
+      btn.target = '_blank';
+      btn.rel = 'noopener';
+      btn.textContent = 'Run';
+      block.querySelector('pre').appendChild(btn);
+    }}
+  }});
+}})();
+
+// Feature 42: API playground / "Try it" panel -- future feature requiring a running backend.
+// Feature 43: Browser/platform compatibility tables -- future feature, not relevant for most projects.
 </script>
 <dialog class="search-dialog" id="search-dialog">
 <div class="search-inner">
