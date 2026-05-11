@@ -4,6 +4,7 @@ No external dependencies -- handles headings, code blocks, inline code,
 paragraphs, lists, links, bold/italic, tables, blockquotes, and admonitions.
 """
 
+import json
 import re
 from datetime import datetime
 
@@ -44,7 +45,7 @@ def get_css(theme_name="minimal"):
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
-                   page_dates=None):
+                   page_dates=None, author=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -57,6 +58,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         base_url: Base URL for canonical links and sitemap (optional).
         frontmatter: Dict mapping relative paths to metadata dicts (Feature 34).
         page_dates: Dict mapping relative paths to ISO date strings (optional).
+        author: Author dict from config (optional, keys: name, type, url).
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -134,6 +136,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             description=description,
             lang=lang,
             date_modified=date_modified,
+            author=author,
         )
         html_files[html_path] = full_html
 
@@ -733,7 +736,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
-               lang="en", date_modified=None):
+               lang="en", date_modified=None, author=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -852,9 +855,29 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         escaped_title = _escape_html(title)
         escaped_project = _escape_html(project_name)
         slug = page_path.replace(".html", "")
-        date_modified_json = ""
+
+        # Build author object for TechArticle
+        if author and author.get("name"):
+            author_obj = {
+                "@type": author.get("type") or "Organization",
+                "name": author["name"],
+            }
+            if author.get("url"):
+                author_obj["url"] = author["url"]
+        else:
+            author_obj = {"@type": "Organization", "name": project_name}
+
+        # TechArticle JSON-LD
+        tech_article = {
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            "headline": title,
+            "url": canonical_url,
+            "author": author_obj,
+        }
         if date_modified:
-            date_modified_json = f', "dateModified": "{date_modified}"'
+            tech_article["dateModified"] = date_modified
+
         seo_tags = (
             f'\n<meta property="og:image" content="og-{slug}.svg">'
             f'\n<meta property="og:title" content="{escaped_title}'
@@ -862,15 +885,71 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n<meta property="og:type" content="article">'
             f'\n<link rel="canonical" href="{canonical_url}">'
             f'\n<script type="application/ld+json">\n'
-            f'{{"@context": "https://schema.org", '
-            f'"@type": "TechArticle", '
-            f'"headline": "{escaped_title}", '
-            f'"url": "{canonical_url}", '
-            f'"author": {{"@type": "Organization", '
-            f'"name": "{escaped_project}"}}'
-            f'{date_modified_json}}}'
+            f'{json.dumps(tech_article)}'
             f'\n</script>'
         )
+
+        # BreadcrumbList JSON-LD for non-index pages
+        if breadcrumbs:
+            breadcrumb_ld = {
+                "@context": "https://schema.org",
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Home",
+                        "item": f"{base_url}/index.html",
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": title,
+                    },
+                ],
+            }
+            seo_tags += (
+                f'\n<script type="application/ld+json">\n'
+                f'{json.dumps(breadcrumb_ld)}'
+                f'\n</script>'
+            )
+
+        # WebSite + SearchAction JSON-LD for index page only
+        if page_path == "index.html":
+            website_ld = {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": project_name,
+                "url": f"{base_url}/",
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": f"{base_url}/?q={{search_term_string}}",
+                    "query-input": "required name=search_term_string",
+                },
+            }
+            seo_tags += (
+                f'\n<script type="application/ld+json">\n'
+                f'{json.dumps(website_ld)}'
+                f'\n</script>'
+            )
+
+        # SoftwareSourceCode JSON-LD when code blocks with language annotations exist
+        lang_matches = re.findall(r'class="language-(\w+)"', body_html)
+        if lang_matches:
+            unique_langs = list(dict.fromkeys(lang_matches))
+            prog_lang = unique_langs[0] if len(unique_langs) == 1 else unique_langs
+            source_code_ld = {
+                "@context": "https://schema.org",
+                "@type": "SoftwareSourceCode",
+                "programmingLanguage": prog_lang,
+            }
+            if repo:
+                source_code_ld["codeRepository"] = repo
+            seo_tags += (
+                f'\n<script type="application/ld+json">\n'
+                f'{json.dumps(source_code_ld)}'
+                f'\n</script>'
+            )
 
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (

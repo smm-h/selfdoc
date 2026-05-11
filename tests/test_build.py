@@ -405,3 +405,133 @@ def test_sitemap_lastmod(project_dir):
         content = f.read()
 
     assert "<lastmod>2026-05-01</lastmod>" in content
+
+
+# --- Phase 2.2: BreadcrumbList, WebSite, author, SoftwareSourceCode JSON-LD ---
+
+
+def test_breadcrumb_list_on_non_index_page(project_dir):
+    """BreadcrumbList JSON-LD appears on non-index pages when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    # Non-index page should have BreadcrumbList
+    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+        guide_html = f.read()
+    assert '"BreadcrumbList"' in guide_html
+    assert '"Home"' in guide_html
+    assert "https://example.com/index.html" in guide_html
+
+    # Index page should NOT have BreadcrumbList
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        index_html = f.read()
+    assert '"BreadcrumbList"' not in index_html
+
+
+def test_website_search_action_on_index_only(project_dir):
+    """WebSite+SearchAction JSON-LD appears only on index page when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    # Index page should have WebSite with SearchAction
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        index_html = f.read()
+    assert '"WebSite"' in index_html
+    assert '"SearchAction"' in index_html
+    assert "https://example.com/" in index_html
+
+    # Non-index page should NOT have WebSite
+    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+        guide_html = f.read()
+    assert '"WebSite"' not in guide_html
+
+
+def test_author_from_config_in_json_ld(project_dir):
+    """Author from config appears in TechArticle JSON-LD."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    config["author"] = {"name": "Jane Doe", "type": "Person", "url": "https://jane.dev"}
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"Person"' in content
+    assert '"Jane Doe"' in content
+    assert '"https://jane.dev"' in content
+
+
+def test_default_author_when_no_config_author(project_dir):
+    """Default author (project name as Organization) when no config author."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    # No "author" key in config
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Should use project name as Organization
+    assert '"Organization"' in content
+
+
+def test_software_source_code_on_pages_with_code(project_dir):
+    """SoftwareSourceCode JSON-LD appears on pages containing code blocks."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    config["repo"] = "https://github.com/test/repo"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n```python\nprint('hi')\n```\n\n```go\nfmt.Println()\n```\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"SoftwareSourceCode"' in content
+    assert '"python"' in content
+    assert '"go"' in content
+    assert '"https://github.com/test/repo"' in content

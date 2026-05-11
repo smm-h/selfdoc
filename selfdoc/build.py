@@ -391,6 +391,9 @@ def build(dir_path=".", config=None):
     # Get lang attribute for HTML pages (default "en")
     lang = config.get("lang") or "en"
 
+    # Get author from config for JSON-LD structured data
+    author = config.get("author")
+
     # Convert to HTML
     html_files = generate_html(
         markdown_files,
@@ -403,6 +406,7 @@ def build(dir_path=".", config=None):
         frontmatter=frontmatter,
         lang=lang,
         page_dates=page_dates,
+        author=author,
     )
 
     # Ensure output directory exists
