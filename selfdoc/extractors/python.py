@@ -70,12 +70,14 @@ def _handle_module(arg, body, source_paths, base_dir):
         return f"> *[selfdoc: syntax error in '{arg}': {exc}]*"
 
     # Determine display name from the dotted path
-    module_name = arg.replace("/", ".").replace(".py", "")
+    module_name = arg.replace("/", ".")
+    if module_name.endswith(".py"):
+        module_name = module_name[:-3]
     if module_name.endswith(".__init__"):
         module_name = module_name[: -len(".__init__")]
 
     parts = []
-    parts.append(f"# {module_name}")
+    parts.append(f"## {module_name}")
 
     module_doc = ast.get_docstring(tree)
     if module_doc:
@@ -90,7 +92,7 @@ def _handle_module(arg, body, source_paths, base_dir):
                 parts.append("")
                 parts.append(cls_md)
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            func_md = _format_function(node, heading_level=2)
+            func_md = _format_function(node, heading_level=3)
             if func_md:
                 parts.append("")
                 parts.append(func_md)
@@ -172,7 +174,7 @@ def _format_class(node):
     methods = []
     for item in ast.iter_child_nodes(node):
         if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            method_md = _format_function(item, heading_level=3)
+            method_md = _format_function(item, heading_level=4)
             if method_md:
                 methods.append(method_md)
 
@@ -181,7 +183,7 @@ def _format_class(node):
         return None
 
     parts = []
-    parts.append(f"## {node.name}")
+    parts.append(f"### {node.name}")
 
     if docstring:
         parts.append("")
