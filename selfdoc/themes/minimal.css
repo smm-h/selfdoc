@@ -75,12 +75,12 @@ a {
     :root:not([data-theme="light"]) {
         --bg: #0d1117;
         --text: #c9d1d9;
-        --text-secondary: #8b949e;
+        --text-secondary: #9ca3ab;
         --heading: #e6edf3;
         --link: #58a6ff;
         --link-hover: #79c0ff;
         --sidebar-bg: #161b22;
-        --sidebar-text: #8b949e;
+        --sidebar-text: #adb5bd;
         --sidebar-active: #58a6ff;
         --sidebar-hover-bg: #1c2128;
         --code-bg: #161b22;
@@ -101,12 +101,12 @@ a {
 [data-theme="dark"] {
     --bg: #0d1117;
     --text: #c9d1d9;
-    --text-secondary: #8b949e;
+    --text-secondary: #9ca3ab;
     --heading: #e6edf3;
     --link: #58a6ff;
     --link-hover: #79c0ff;
     --sidebar-bg: #161b22;
-    --sidebar-text: #8b949e;
+    --sidebar-text: #adb5bd;
     --sidebar-active: #58a6ff;
     --sidebar-hover-bg: #1c2128;
     --code-bg: #161b22;
