@@ -884,6 +884,7 @@ def build(dir_path=".", config=None):
         author=author,
         feed_url=feed_url,
         critical_css=critical_css,
+        twitter_site=config.get("twitter"),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection

@@ -118,6 +118,25 @@ def load_config(dir_path="."):
             raise ConfigError(
                 "'author.type' must be 'Person' or 'Organization'"
             )
+        if "twitter" in author:
+            if not isinstance(author["twitter"], str) or not author["twitter"]:
+                raise ConfigError("'author.twitter' must be a non-empty string")
+            if not author["twitter"].startswith("@"):
+                raise ConfigError("'author.twitter' must start with '@'")
+
+    top_twitter = raw.get("twitter", None)
+    if top_twitter is not None:
+        if not isinstance(top_twitter, str) or not top_twitter:
+            raise ConfigError("'twitter' must be a non-empty string")
+        if not top_twitter.startswith("@"):
+            raise ConfigError("'twitter' must start with '@'")
+
+    # Resolve twitter: author.twitter takes precedence over top-level twitter
+    twitter = None
+    if author and author.get("twitter"):
+        twitter = author["twitter"]
+    elif top_twitter:
+        twitter = top_twitter
 
     return {
         "language": language,
@@ -132,4 +151,5 @@ def load_config(dir_path="."):
         "lang": lang,
         "author": author,
         "description": description,
+        "twitter": twitter,
     }

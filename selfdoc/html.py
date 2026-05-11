@@ -109,7 +109,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
-                   critical_css=None):
+                   critical_css=None, twitter_site=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -219,6 +219,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             summary=frontmatter_description or description or None,
             critical_css=critical_css,
             schema=schema,
+            twitter_site=twitter_site,
         )
         html_files[html_path] = full_html
 
@@ -1021,7 +1022,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                base_url=None, page_path=None, description="",
                lang="en", date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
-               schema=None):
+               schema=None, twitter_site=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -1363,6 +1364,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         twitter_card_type = "summary_large_image" if base_url else "summary"
 
         og_type = "website" if page_path == "index.html" else "article"
+        twitter_site_tag = (
+            f'\n<meta name="twitter:site" content="{_escape_html(twitter_site)}">'
+            if twitter_site else ""
+        )
+
         seo_tags += (
             f'\n<meta property="og:title" content="{escaped_title}'
             f' - {escaped_project}">'
@@ -1373,6 +1379,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n<meta name="twitter:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'{twitter_desc_tag}'
+            f'{twitter_site_tag}'
         )
 
         if base_url:

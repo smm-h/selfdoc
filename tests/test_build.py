@@ -2886,3 +2886,26 @@ def test_404_no_og_tags(project_dir):
 
     assert "og:type" not in content
     assert "og:title" not in content
+
+
+def test_twitter_site_meta_tag(project_dir):
+    """Build with twitter config emits twitter:site meta tag in output HTML."""
+    # Rewrite selfdoc.json with twitter field
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump({
+            "language": "python",
+            "source": ["src/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "twitter": "@selfdoc",
+        }, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'twitter:site" content="@selfdoc"' in content

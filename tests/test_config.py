@@ -229,3 +229,51 @@ def test_author_name_only(config_dir):
     })
     cfg = load_config(str(config_dir))
     assert cfg["author"] == {"name": "Jane Doe"}
+
+
+# -- twitter field --
+
+
+def test_twitter_in_author(config_dir):
+    """Twitter handle in author section is returned in config."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "author": {"name": "Test", "twitter": "@test"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["twitter"] == "@test"
+
+
+def test_twitter_top_level(config_dir):
+    """Top-level twitter handle is returned when author.twitter is absent."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "twitter": "@test",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["twitter"] == "@test"
+
+
+def test_twitter_author_takes_precedence(config_dir):
+    """author.twitter takes precedence over top-level twitter."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "author": {"name": "Test", "twitter": "@author_handle"},
+        "twitter": "@top_handle",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["twitter"] == "@author_handle"
+
+
+def test_twitter_invalid(config_dir):
+    """Twitter handle not starting with '@' raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "twitter": "test",
+    })
+    with pytest.raises(ConfigError, match="'twitter' must start with '@'"):
+        load_config(str(config_dir))
