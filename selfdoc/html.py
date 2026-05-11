@@ -390,6 +390,36 @@ def md_to_html(text):
             i += 1
             continue
 
+        # Definition list: a non-blank line followed by `: ` definition lines
+        if (line.strip()
+                and i + 1 < len(lines)
+                and lines[i + 1].startswith(": ")):
+            dl_items = []
+            while i < len(lines):
+                term_line = lines[i].strip()
+                if not term_line:
+                    break
+                # Check that next line is a definition
+                if i + 1 >= len(lines) or not lines[i + 1].startswith(": "):
+                    break
+                term_html = _inline_format(term_line)
+                dl_items.append(f"<dt><dfn>{term_html}</dfn></dt>")
+                i += 1
+                # Collect one or more `: ` definition lines
+                while i < len(lines) and lines[i].startswith(": "):
+                    defn_text = lines[i][2:]
+                    dl_items.append(f"<dd>{_inline_format(defn_text)}</dd>")
+                    i += 1
+                # Skip blank lines between term/definition pairs
+                while i < len(lines) and not lines[i].strip():
+                    i += 1
+            html_parts.append(
+                '<div class="glossary">\n<dl>\n'
+                + "\n".join(dl_items)
+                + "\n</dl>\n</div>"
+            )
+            continue
+
         # Paragraph: collect consecutive non-empty, non-special lines
         para_lines = []
         while i < len(lines):
@@ -407,6 +437,10 @@ def md_to_html(text):
             if re.match(r"^\|.+\|$", current.strip()):
                 break
             if current.startswith(">"):
+                break
+            # Don't absorb a line if the next line starts a definition
+            if (i + 1 < len(lines)
+                    and lines[i + 1].startswith(": ")):
                 break
             para_lines.append(current)
             i += 1

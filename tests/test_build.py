@@ -2176,6 +2176,88 @@ def test_glossary_integration_end_to_end(project_dir):
         assert len(t["description"]) > 0
 
 
+def test_definition_list_two_terms():
+    """Definition list with 2 terms renders correct HTML."""
+    md = "Term One\n: Definition of term one\n\nTerm Two\n: Definition of term two\n"
+    result = md_to_html(md)
+
+    assert '<div class="glossary">' in result
+    assert "<dl>" in result
+    assert "<dt><dfn>Term One</dfn></dt>" in result
+    assert "<dd>Definition of term one</dd>" in result
+    assert "<dt><dfn>Term Two</dfn></dt>" in result
+    assert "<dd>Definition of term two</dd>" in result
+
+
+def test_definition_list_multiple_definitions_per_term():
+    """Definition list with multiple definitions for one term."""
+    md = "Term One\n: First definition\n: Second definition\n"
+    result = md_to_html(md)
+
+    assert "<dt><dfn>Term One</dfn></dt>" in result
+    assert "<dd>First definition</dd>" in result
+    assert "<dd>Second definition</dd>" in result
+    assert result.count("<dt>") == 1
+    assert result.count("<dd>") == 2
+
+
+def test_definition_list_generates_defined_term_set_jsonld(project_dir):
+    """DefinedTermSet JSON-LD is auto-generated from definition list syntax (no :::glossary)."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Terms\n\n"
+            "API\n"
+            ": Application Programming Interface\n\n"
+            "CLI\n"
+            ": Command Line Interface\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="glossary">' in content
+    assert '"DefinedTermSet"' in content
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    term_set_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "DefinedTermSet":
+            term_set_data = data
+            break
+
+    assert term_set_data is not None, "DefinedTermSet JSON-LD not found"
+    terms = term_set_data["hasDefinedTerm"]
+    assert len(terms) == 2
+    assert terms[0]["name"] == "API"
+    assert terms[0]["description"] == "Application Programming Interface"
+    assert terms[1]["name"] == "CLI"
+    assert terms[1]["description"] == "Command Line Interface"
+
+
+def test_definition_list_no_false_match_on_paragraphs():
+    """Regular paragraphs near definition lists render correctly (no false matches)."""
+    md = (
+        "This is a regular paragraph.\n\n"
+        "Term\n: Definition\n\n"
+        "Another regular paragraph.\n"
+    )
+    result = md_to_html(md)
+
+    assert "<p>This is a regular paragraph.</p>" in result
+    assert "<p>Another regular paragraph.</p>" in result
+    assert "<dt><dfn>Term</dfn></dt>" in result
+    assert "<dd>Definition</dd>" in result
+
+
 def test_glossary_terms_correctly_extracted():
     """Glossary resolver correctly parses terms and definitions."""
     from selfdoc.resolver import _resolve_glossary
