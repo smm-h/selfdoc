@@ -490,7 +490,63 @@ def _generate_auxiliary_files(
         f.write(favicon_svg)
     written[favicon_path] = True
 
+    # Generate robots.txt (allow all crawlers including AI bots)
+    robots_path = _generate_robots_txt(output_dir, base_url)
+    written[robots_path] = True
+
+    # Generate _headers (Cloudflare Pages security headers)
+    headers_path = _generate_headers(output_dir)
+    written[headers_path] = True
+
     return written
+
+
+def _generate_robots_txt(output_dir, base_url):
+    """Generate robots.txt allowing all crawlers including AI bots.
+
+    Includes a Sitemap directive only if base_url is set.
+    """
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "",
+        "User-agent: GPTBot",
+        "Allow: /",
+        "",
+        "User-agent: ChatGPT-User",
+        "Allow: /",
+        "",
+        "User-agent: Google-Extended",
+        "Allow: /",
+        "",
+        "User-agent: PerplexityBot",
+        "Allow: /",
+        "",
+        "User-agent: ClaudeBot",
+        "Allow: /",
+    ]
+    if base_url:
+        lines.append("")
+        lines.append(f"Sitemap: {base_url}/sitemap.xml")
+    content = "\n".join(lines) + "\n"
+    path = os.path.join(output_dir, "robots.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
+
+
+def _generate_headers(output_dir):
+    """Generate _headers file (Cloudflare Pages format) with security headers."""
+    content = (
+        "/*\n"
+        "  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload\n"
+        "  X-Content-Type-Options: nosniff\n"
+        "  X-Frame-Options: DENY\n"
+    )
+    path = os.path.join(output_dir, "_headers")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
 
 
 def _generate_favicon_svg(project_name):

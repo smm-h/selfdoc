@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from selfdoc.build import build
+from selfdoc.build import build, _generate_robots_txt, _generate_headers
 
 
 @pytest.fixture()
@@ -104,8 +104,8 @@ def test_build_multiple_files(project_dir):
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
     # 2 HTML + 1 style.css + 1 search-index.json + 2 OG SVGs + 2 llms files
-    # + 1 404.html + 1 favicon.svg (Features 39, 40)
-    assert len(written) == 10
+    # + 1 404.html + 1 favicon.svg + 1 robots.txt + 1 _headers
+    assert len(written) == 12
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.svg"))
@@ -149,3 +149,45 @@ def test_build_generates_sidebar(project_dir):
     # Sidebar should link to guide.html
     assert "guide.html" in content
     assert '<nav class="sidebar" id="sidebar">' in content
+
+
+def test_robots_txt_with_base_url(tmp_path):
+    """robots.txt includes Sitemap line when base_url is set."""
+    path = _generate_robots_txt(str(tmp_path), "https://example.com")
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "User-agent: *\nAllow: /" in content
+    assert "Sitemap: https://example.com/sitemap.xml" in content
+
+
+def test_robots_txt_without_base_url(tmp_path):
+    """robots.txt omits Sitemap line when base_url is None."""
+    path = _generate_robots_txt(str(tmp_path), None)
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "User-agent: *\nAllow: /" in content
+    assert "Sitemap" not in content
+
+
+def test_robots_txt_ai_crawlers(tmp_path):
+    """robots.txt contains entries for all AI crawler user-agents."""
+    path = _generate_robots_txt(str(tmp_path), None)
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    for agent in ["GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot", "ClaudeBot"]:
+        assert f"User-agent: {agent}" in content
+
+
+def test_headers_file(tmp_path):
+    """_headers file contains correct security headers."""
+    path = _generate_headers(str(tmp_path))
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert content.startswith("/*\n")
+    assert "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload" in content
+    assert "X-Content-Type-Options: nosniff" in content
+    assert "X-Frame-Options: DENY" in content
