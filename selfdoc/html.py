@@ -41,7 +41,7 @@ def get_css(theme_name="minimal"):
 
 
 def generate_html(markdown_files, project_name=None, version=None,
-                   has_custom_css=False):
+                   has_custom_css=False, repo=None, docs_dir_name="docs/"):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -49,6 +49,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         project_name: Project name for titles and sidebar.
         version: Version string for display (optional).
         has_custom_css: Whether a custom.css file exists for the project.
+        repo: GitHub repo URL for "Edit this page" links (optional).
+        docs_dir_name: Docs directory name for constructing source paths.
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -93,6 +95,9 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Extract TOC from the body HTML (Feature 2)
         toc_html = _build_toc(body_html)
 
+        # Source path for "Edit this page" link (Feature 14)
+        source_path = docs_dir_name.rstrip("/") + "/" + md_path
+
         full_html = _wrap_page(
             body_html, nav_html, title, project_name, version,
             css_href, custom_css_href,
@@ -101,6 +106,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             prev_page=prev_page,
             next_page=next_page,
             prefix=prefix,
+            repo=repo,
+            source_path=source_path,
         )
         html_files[html_path] = full_html
 
@@ -131,12 +138,19 @@ def md_to_html(text):
             i += 1  # skip closing ```
             code_content = _escape_html("\n".join(code_lines))
             if lang:
+                escaped_lang = _escape_html(lang)
+                label = f'<div class="code-label">{escaped_lang}</div>'
                 html_parts.append(
-                    f'<pre><code class="language-{_escape_html(lang)}">'
-                    f"{code_content}</code></pre>"
+                    f'<div class="code-block">{label}'
+                    f'<pre tabindex="0"><code class="language-{escaped_lang}">'
+                    f"{code_content}</code></pre></div>"
                 )
             else:
-                html_parts.append(f"<pre><code>{code_content}</code></pre>")
+                html_parts.append(
+                    f'<div class="code-block">'
+                    f'<pre tabindex="0"><code>{code_content}</code></pre>'
+                    f'</div>'
+                )
             continue
 
         # Headings
@@ -455,7 +469,7 @@ def _build_breadcrumbs(html_path, page_title, prefix):
 def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
-               next_page=None, prefix=""):
+               next_page=None, prefix="", repo=None, source_path=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -468,6 +482,16 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # Breadcrumbs (Feature 9)
     breadcrumbs_html = breadcrumbs if breadcrumbs else ""
+
+    # Edit link (Feature 14)
+    edit_link_html = ""
+    if repo and source_path:
+        repo_url = repo.rstrip("/")
+        edit_url = f"{repo_url}/edit/main/{source_path}"
+        edit_link_html = (
+            f'<a class="edit-link" href="{edit_url}">'
+            f'Edit this page on GitHub</a>'
+        )
 
     # Prev/next page navigation (Feature 8)
     page_nav_html = ""
@@ -490,6 +514,18 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             )
         page_nav_html = (
             f'<nav class="page-nav">{prev_link}{next_link}</nav>'
+        )
+
+    # Page footer (Feature 18): combines edit link and prev/next nav
+    footer_html = ""
+    if edit_link_html or page_nav_html:
+        page_meta = ""
+        if edit_link_html:
+            page_meta = f'<div class="page-meta">{edit_link_html}</div>'
+        footer_html = (
+            f'<footer class="page-footer">'
+            f'{page_meta}{page_nav_html}'
+            f'</footer>'
         )
 
     # TOC aside (Feature 2)
@@ -573,7 +609,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <main class="content" id="main-content">
 {breadcrumbs_html}
 {body_html}
-{page_nav_html}
+{footer_html}
 </main>
 {toc_aside}
 </div>
@@ -673,7 +709,137 @@ document.querySelectorAll('pre').forEach(function(pre) {{
     }});
   }}
 }})();
+
+// Cmd+K search (Feature 19)
+(function() {{
+  var dialog = document.getElementById('search-dialog');
+  if (!dialog) return;
+  var input = dialog.querySelector('.search-input');
+  var resultsList = dialog.querySelector('.search-results');
+  var searchIndex = null;
+  var activeIdx = -1;
+
+  function loadIndex() {{
+    if (searchIndex) return Promise.resolve(searchIndex);
+    return fetch('{prefix}search-index.json')
+      .then(function(r) {{ return r.json(); }})
+      .then(function(data) {{ searchIndex = data; return data; }});
+  }}
+
+  function openSearch() {{
+    loadIndex();
+    dialog.showModal();
+    input.value = '';
+    resultsList.innerHTML = '';
+    activeIdx = -1;
+    input.focus();
+  }}
+
+  function closeSearch() {{
+    dialog.close();
+  }}
+
+  function renderResults(query) {{
+    resultsList.innerHTML = '';
+    activeIdx = -1;
+    if (!query || !searchIndex) return;
+    var q = query.toLowerCase();
+    var matches = searchIndex.filter(function(entry) {{
+      return entry.title.toLowerCase().indexOf(q) !== -1 ||
+             entry.body.toLowerCase().indexOf(q) !== -1;
+    }}).slice(0, 10);
+    matches.forEach(function(entry, idx) {{
+      var li = document.createElement('li');
+      li.className = 'search-result-item';
+      var a = document.createElement('a');
+      a.href = '{prefix}' + entry.path;
+      var titleEl = document.createElement('div');
+      titleEl.className = 'search-result-title';
+      titleEl.textContent = entry.title;
+      var snippet = document.createElement('div');
+      snippet.className = 'search-result-snippet';
+      var bodyLower = entry.body.toLowerCase();
+      var pos = bodyLower.indexOf(q);
+      if (pos !== -1) {{
+        var start = Math.max(0, pos - 40);
+        var end = Math.min(entry.body.length, pos + q.length + 60);
+        snippet.textContent = (start > 0 ? '...' : '') +
+          entry.body.substring(start, end) +
+          (end < entry.body.length ? '...' : '');
+      }} else {{
+        snippet.textContent = entry.body.substring(0, 100) +
+          (entry.body.length > 100 ? '...' : '');
+      }}
+      a.appendChild(titleEl);
+      a.appendChild(snippet);
+      li.appendChild(a);
+      resultsList.appendChild(li);
+    }});
+  }}
+
+  function setActive(idx) {{
+    var items = resultsList.querySelectorAll('.search-result-item');
+    items.forEach(function(li) {{ li.classList.remove('active'); }});
+    if (idx >= 0 && idx < items.length) {{
+      activeIdx = idx;
+      items[idx].classList.add('active');
+      items[idx].scrollIntoView({{ block: 'nearest' }});
+    }}
+  }}
+
+  document.addEventListener('keydown', function(e) {{
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {{
+      e.preventDefault();
+      if (dialog.open) closeSearch();
+      else openSearch();
+    }}
+  }});
+
+  dialog.addEventListener('click', function(e) {{
+    if (e.target === dialog) closeSearch();
+  }});
+
+  input.addEventListener('input', function() {{
+    renderResults(input.value);
+  }});
+
+  input.addEventListener('keydown', function(e) {{
+    var items = resultsList.querySelectorAll('.search-result-item');
+    if (e.key === 'ArrowDown') {{
+      e.preventDefault();
+      setActive(Math.min(activeIdx + 1, items.length - 1));
+    }} else if (e.key === 'ArrowUp') {{
+      e.preventDefault();
+      setActive(Math.max(activeIdx - 1, 0));
+    }} else if (e.key === 'Enter' && activeIdx >= 0) {{
+      e.preventDefault();
+      var link = items[activeIdx].querySelector('a');
+      if (link) window.location.href = link.href;
+    }} else if (e.key === 'Escape') {{
+      closeSearch();
+    }}
+  }});
+}})();
+
+// Prefetch links on hover (Feature 20)
+document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {{
+  link.addEventListener('mouseenter', function() {{
+    var href = link.getAttribute('href');
+    if (href && !document.querySelector('link[href="' + href + '"]')) {{
+      var prefetch = document.createElement('link');
+      prefetch.rel = 'prefetch';
+      prefetch.href = href;
+      document.head.appendChild(prefetch);
+    }}
+  }}, {{ once: true }});
+}});
 </script>
+<dialog class="search-dialog" id="search-dialog">
+<div class="search-inner">
+<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>
+<ul class="search-results"></ul>
+</div>
+</dialog>
 </body>
 </html>
 """

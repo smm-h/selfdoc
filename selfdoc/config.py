@@ -87,6 +87,10 @@ def load_config(dir_path="."):
     if not isinstance(directives, dict):
         raise ConfigError("'directives' must be an object")
 
+    repo = raw.get("repo", None)
+    if repo is not None and not isinstance(repo, str):
+        raise ConfigError("'repo' must be a string (GitHub repo URL)")
+
     return {
         "language": language,
         "source": source,
@@ -95,4 +99,5 @@ def load_config(dir_path="."):
         "theme": theme,
         "deploy": deploy,
         "directives": directives,
+        "repo": repo,
     }

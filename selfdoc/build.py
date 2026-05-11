@@ -2,11 +2,12 @@
 
 import json
 import os
+import re
 import shutil
 
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
-from selfdoc.html import generate_html, get_css
+from selfdoc.html import generate_html, get_css, _md_to_html_path, _slugify
 from selfdoc.resolver import make_resolver
 
 
@@ -50,6 +51,59 @@ def _detect_project_version(dir_path):
             pass
 
     return ""
+
+
+def _build_search_index(markdown_files):
+    """Build a search index from markdown files.
+
+    Splits each file by headings and creates one entry per section.
+    Each entry has: title, path (html path with anchor), and body text.
+    """
+    entries = []
+    for md_path, content in markdown_files.items():
+        html_path = _md_to_html_path(md_path)
+        lines = content.split("\n")
+        current_title = None
+        current_slug = None
+        current_body = []
+
+        def _flush():
+            if current_title is not None:
+                body_text = " ".join(current_body).strip()
+                # Strip markdown formatting for plain text
+                body_text = re.sub(r"\*\*(.+?)\*\*", r"\1", body_text)
+                body_text = re.sub(r"\*(.+?)\*", r"\1", body_text)
+                body_text = re.sub(r"`([^`]+)`", r"\1", body_text)
+                body_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", body_text)
+                path = html_path
+                if current_slug:
+                    path = f"{html_path}#{current_slug}"
+                entries.append({
+                    "title": current_title,
+                    "path": path,
+                    "body": body_text[:500],
+                })
+
+        for line in lines:
+            heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
+            if heading_match:
+                _flush()
+                current_title = heading_match.group(2)
+                current_slug = _slugify(current_title)
+                current_body = []
+            elif line.startswith("```"):
+                # Skip code fence markers
+                pass
+            elif line.startswith(">"):
+                # Strip blockquote prefix
+                stripped = re.sub(r"^>\s?", "", line)
+                current_body.append(stripped)
+            elif line.strip():
+                current_body.append(line.strip())
+
+        _flush()
+
+    return entries
 
 
 def build(dir_path=".", config=None):
@@ -128,12 +182,17 @@ def build(dir_path=".", config=None):
     custom_css_src = os.path.join(docs_dir, "custom.css")
     has_custom_css = os.path.isfile(custom_css_src)
 
+    # Get repo URL for edit links (Feature 14)
+    repo = config.get("repo", None)
+
     # Convert to HTML
     html_files = generate_html(
         markdown_files,
         project_name=project_name,
         version=version,
         has_custom_css=has_custom_css,
+        repo=repo,
+        docs_dir_name=config["docs"],
     )
 
     # Ensure output directory exists
@@ -147,6 +206,13 @@ def build(dir_path=".", config=None):
     with open(css_path, "w", encoding="utf-8") as f:
         f.write(get_css(theme_name))
     written[css_path] = True
+
+    # Build and write search index (Feature 19)
+    search_index = _build_search_index(markdown_files)
+    search_index_path = os.path.join(output_dir, "search-index.json")
+    with open(search_index_path, "w", encoding="utf-8") as f:
+        json.dump(search_index, f, ensure_ascii=False)
+    written[search_index_path] = True
 
     # Copy custom.css to output if it exists
     if has_custom_css:

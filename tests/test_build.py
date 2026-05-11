@@ -103,9 +103,10 @@ def test_build_multiple_files(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
-    # 2 HTML files + 1 style.css
-    assert len(written) == 3
+    # 2 HTML files + 1 style.css + 1 search-index.json
+    assert len(written) == 4
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
+    assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
 
 
 def test_build_no_config_raises(tmp_path):

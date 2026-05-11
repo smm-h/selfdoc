@@ -45,6 +45,10 @@
         --topbar-text: #f0f6fc;
         --badge-bg: #238636;
         --badge-text: #ffffff;
+        --admonition-tip: #3fb950;
+        --admonition-important: #bc8cff;
+        --admonition-warning: #d29922;
+        --admonition-caution: #f85149;
     }
 }
 
@@ -67,6 +71,10 @@
     --topbar-text: #f0f6fc;
     --badge-bg: #238636;
     --badge-text: #ffffff;
+    --admonition-tip: #3fb950;
+    --admonition-important: #bc8cff;
+    --admonition-warning: #d29922;
+    --admonition-caution: #f85149;
 }
 
 /* --- High contrast variant --- */
@@ -207,12 +215,13 @@ body {
 
 .nav-list a {
     display: block;
-    padding: 0.3rem 0.6rem;
+    padding: 8px 16px;
+    min-height: 44px;
+    line-height: 28px;
     color: var(--sidebar-text);
     text-decoration: none;
     border-radius: 4px;
     font-size: 0.875rem;
-    line-height: 1.5;
     transition: background 0.15s, color 0.15s;
 }
 
@@ -262,11 +271,12 @@ body {
 
 .toc-item a {
     display: block;
-    padding: 0.2rem 0.5rem;
+    padding: 4px 0.5rem;
+    min-height: 44px;
+    line-height: 36px;
     color: var(--text-secondary);
     text-decoration: none;
     border-radius: 3px;
-    line-height: 1.4;
     transition: color 0.15s, background 0.15s;
 }
 
@@ -390,6 +400,7 @@ pre {
     border-radius: 4px;
     padding: 1rem;
     overflow-x: auto;
+    white-space: pre;
     margin-bottom: 1em;
     line-height: 1.5;
 }
@@ -400,6 +411,7 @@ pre code {
     padding: 0;
     font-size: 0.875rem;
     border-radius: 0;
+    white-space: pre;
 }
 
 /* --- Copy button on code blocks (Feature 5) --- */
@@ -516,43 +528,84 @@ blockquote p:last-child {
 }
 
 .admonition.note {
-    border-left-color: #0969da;
+    border-left-color: var(--link);
 }
 
 .admonition.note .admonition-title {
-    color: #0969da;
+    color: var(--link);
 }
 
 .admonition.tip {
-    border-left-color: #1a7f37;
+    border-left-color: var(--admonition-tip, #1a7f37);
 }
 
 .admonition.tip .admonition-title {
-    color: #1a7f37;
+    color: var(--admonition-tip, #1a7f37);
 }
 
 .admonition.important {
-    border-left-color: #8250df;
+    border-left-color: var(--admonition-important, #8250df);
 }
 
 .admonition.important .admonition-title {
-    color: #8250df;
+    color: var(--admonition-important, #8250df);
 }
 
 .admonition.warning {
-    border-left-color: #bf8700;
+    border-left-color: var(--admonition-warning, #8a5d00);
 }
 
 .admonition.warning .admonition-title {
-    color: #bf8700;
+    color: var(--admonition-warning, #8a5d00);
 }
 
 .admonition.caution {
-    border-left-color: #cf222e;
+    border-left-color: var(--admonition-caution, #cf222e);
 }
 
 .admonition.caution .admonition-title {
-    color: #cf222e;
+    color: var(--admonition-caution, #cf222e);
+}
+
+/* --- Code block with label (Feature 11) --- */
+
+.code-block {
+    position: relative;
+    margin-bottom: 1em;
+}
+
+.code-block pre {
+    margin-bottom: 0;
+}
+
+.code-label {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 0.7rem;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-top-width: 0;
+    border-right-width: 0;
+    padding: 2px 8px;
+    line-height: 1.4;
+    z-index: 1;
+}
+
+/* --- Focus indicators (Feature 12) --- */
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
 }
 
 /* --- Horizontal rule --- */
@@ -615,9 +668,6 @@ hr {
 .page-nav {
     display: flex;
     justify-content: space-between;
-    margin-top: 3rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--border);
     gap: 1rem;
 }
 
@@ -644,10 +694,13 @@ hr {
     border: 1px solid transparent;
     border-radius: 4px;
     padding: 4px 6px;
+    min-width: 44px;
+    min-height: 44px;
     color: var(--topbar-text);
     cursor: pointer;
     display: flex;
     align-items: center;
+    justify-content: center;
     transition: border-color 0.15s;
 }
 
@@ -684,6 +737,125 @@ hr {
     cursor: pointer;
     padding: 4px;
     line-height: 0;
+}
+
+/* Touch targets 44x44px (Feature 16) are integrated into the
+   respective component rules above (.nav-list a, .toc-item a,
+   .theme-toggle). */
+
+/* --- Page footer (Feature 18) --- */
+
+.page-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+.page-meta {
+    margin-bottom: 1rem;
+}
+
+.edit-link {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.edit-link:hover {
+    color: var(--link);
+    text-decoration: underline;
+}
+
+/* --- Search dialog (Feature 19) --- */
+
+.search-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.search-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.search-inner {
+    position: fixed;
+    top: 15vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 560px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.search-input {
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.search-input:focus {
+    outline: none;
+}
+
+.search-results {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    margin: 0;
+}
+
+.search-result-item a {
+    display: block;
+    padding: 10px 16px;
+    text-decoration: none;
+    color: var(--text);
+    border-bottom: 1px solid var(--code-border);
+}
+
+.search-result-item a:hover,
+.search-result-item.active a {
+    background: var(--sidebar-hover-bg);
+    text-decoration: none;
+}
+
+.search-result-title {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--link);
+}
+
+.search-result-snippet {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* --- Responsive: medium screens (hide TOC) --- */
