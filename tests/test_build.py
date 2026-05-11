@@ -55,7 +55,7 @@ def test_build_produces_html(project_dir):
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert "<!DOCTYPE html>" in content
-    assert '<h1 id="test-project"><a class="heading-link" href="#test-project">#</a>Test Project</h1>' in content
+    assert '<h1 id="test-project"><a class="heading-link" href="#test-project" aria-label="Link to section: Test Project">#</a>Test Project</h1>' in content
     assert "Welcome." in content
 
 
@@ -2828,3 +2828,14 @@ def test_redirects_contains_trailing_slash_rule(project_dir):
         content = f.read()
 
     assert "/:path/ /:path 301" in content
+
+
+def test_heading_anchor_aria_label():
+    """Heading anchors include aria-label with readable section name."""
+    from selfdoc.html import md_to_html
+
+    result = md_to_html("## parse_directives")
+    assert 'aria-label="Link to section: parse directives"' in result
+
+    result2 = md_to_html("## Hello <code>World</code>")
+    assert 'aria-label="Link to section: Hello World"' in result2

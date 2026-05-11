@@ -334,7 +334,11 @@ def md_to_html(text):
             level = len(heading_match.group(1))
             content = _inline_format(heading_match.group(2))
             slug = _slugify(content)
-            anchor = f'<a class="heading-link" href="#{slug}">#</a>'
+            readable = re.sub(r"<[^>]+>", "", content).replace("_", " ")
+            anchor = (
+                f'<a class="heading-link" href="#{slug}"'
+                f' aria-label="Link to section: {_escape_html(readable)}">#</a>'
+            )
             html_parts.append(
                 f'<h{level} id="{slug}">{anchor}{content}</h{level}>'
             )
