@@ -46,7 +46,7 @@ def get_css(theme_name="minimal"):
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
-                   page_dates=None, author=None):
+                   page_dates=None, author=None, feed_url=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -60,6 +60,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         frontmatter: Dict mapping relative paths to metadata dicts (Feature 34).
         page_dates: Dict mapping relative paths to ISO date strings (optional).
         author: Author dict from config (optional, keys: name, type, url).
+        feed_url: Relative URL to the Atom feed (optional, e.g. "feed.xml").
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -126,6 +127,9 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Date modified for this page (Wave 2 date infrastructure)
         date_modified = page_dates.get(md_path)
 
+        # Compute feed href relative to this page's depth
+        page_feed_url = (prefix + feed_url) if feed_url else None
+
         full_html = _wrap_page(
             body_html, nav_html, title, project_name, version,
             css_href, custom_css_href,
@@ -142,6 +146,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             lang=lang,
             date_modified=date_modified,
             author=author,
+            feed_url=page_feed_url,
         )
         html_files[html_path] = full_html
 
@@ -149,7 +154,8 @@ def generate_html(markdown_files, project_name=None, version=None,
 
 
 def generate_404_page(project_name=None, version=None, has_custom_css=False,
-                      nav_items=None, repo=None, base_url=None, lang="en"):
+                      nav_items=None, repo=None, base_url=None, lang="en",
+                      feed_url=None):
     """Generate a custom 404 page using the standard page template (Feature 39).
 
     Returns the full HTML string for 404.html.
@@ -176,6 +182,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         base_url=base_url,
         page_path="404.html",
         lang=lang,
+        feed_url=feed_url,
     )
 
 
@@ -766,7 +773,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
-               lang="en", date_modified=None, author=None):
+               lang="en", date_modified=None, author=None,
+               feed_url=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -776,6 +784,13 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'\n<link rel="stylesheet" href="{custom_css_href}">'
         if custom_css_href else ""
     )
+    # Atom feed link tag
+    feed_tag = ""
+    if feed_url:
+        feed_tag = (
+            f'\n<link rel="alternate" type="application/atom+xml" '
+            f'title="{_escape_html(project_name)} Feed" href="{feed_url}">'
+        )
     # Meta description tag (Feature 34)
     description_tag = ""
     if description:
@@ -1042,7 +1057,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{css_href}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}{seo_tags}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}{feed_tag}{seo_tags}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <script>hljs.highlightAll();</script>
 <script>

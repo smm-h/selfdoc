@@ -287,6 +287,88 @@ def _generate_llms_full_txt(project_name, markdown_files):
     return "\n".join(parts) + "\n"
 
 
+def _generate_atom_feed(
+    output_dir, base_url, project_name, description,
+    markdown_files, frontmatter, page_dates,
+):
+    """Generate an Atom feed (feed.xml) for the documentation site.
+
+    Only generates when base_url is set (Atom requires absolute URLs).
+    Returns the path written, or None if base_url is not set.
+    """
+    if not base_url:
+        return None
+
+    if frontmatter is None:
+        frontmatter = {}
+    if page_dates is None:
+        page_dates = {}
+
+    entries = []
+    for md_path, content in sorted(markdown_files.items()):
+        html_path = _md_to_html_path(md_path)
+
+        # Determine page title: frontmatter > first heading > filename
+        meta = frontmatter.get(md_path, {})
+        title = meta.get("title")
+        if not title:
+            title = _extract_title(content, md_path.replace(".md", ""))
+
+        # Get first sentence for summary
+        summary = ""
+        for line in content.split("\n"):
+            line = line.strip()
+            if line and not line.startswith("#") and not line.startswith("```"):
+                summary = _first_sentence(line)
+                break
+
+        # Get page date
+        page_date = page_dates.get(md_path, "")
+
+        # Escape for XML
+        escaped_title = _escape_html(title)
+        escaped_summary = _escape_html(summary)
+
+        entry = (
+            f"  <entry>\n"
+            f"    <title>{escaped_title}</title>\n"
+            f"    <link href=\"{base_url}/{html_path}\"/>\n"
+            f"    <id>{base_url}/{html_path}</id>\n"
+            f"    <updated>{page_date}T00:00:00Z</updated>\n"
+            f"    <summary>{escaped_summary}</summary>\n"
+            f"  </entry>"
+        )
+        entries.append(entry)
+
+    # Find most recent date for the feed-level <updated>
+    all_dates = [page_dates.get(p, "") for p in markdown_files]
+    all_dates = [d for d in all_dates if d]
+    most_recent = max(all_dates) if all_dates else datetime.now().strftime("%Y-%m-%d")
+
+    # Build subtitle line
+    subtitle_line = ""
+    if description:
+        subtitle_line = f"  <subtitle>{_escape_html(description)}</subtitle>\n"
+
+    feed_xml = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<feed xmlns="http://www.w3.org/2005/Atom">\n'
+        f"  <title>{_escape_html(project_name)} Documentation</title>\n"
+        f'  <link href="{base_url}/feed.xml" rel="self"/>\n'
+        f'  <link href="{base_url}/"/>\n'
+        f"  <id>{base_url}/</id>\n"
+        f"  <updated>{most_recent}T00:00:00Z</updated>\n"
+        f"{subtitle_line}"
+        + "\n".join(entries) + "\n"
+        "</feed>\n"
+    )
+
+    feed_path = os.path.join(output_dir, "feed.xml")
+    with open(feed_path, "w", encoding="utf-8") as f:
+        f.write(feed_xml)
+    return feed_path
+
+
 def build(dir_path=".", config=None):
     """Build docs from templates + directives.
 
@@ -394,6 +476,12 @@ def build(dir_path=".", config=None):
     # Get author from config for JSON-LD structured data
     author = config.get("author")
 
+    # Get project-level description from config
+    config_description = config.get("description", "")
+
+    # Compute feed URL (Atom feed link in HTML <head>)
+    feed_url = "feed.xml" if base_url else None
+
     # Convert to HTML
     html_files = generate_html(
         markdown_files,
@@ -407,6 +495,7 @@ def build(dir_path=".", config=None):
         lang=lang,
         page_dates=page_dates,
         author=author,
+        feed_url=feed_url,
     )
 
     # Ensure output directory exists
@@ -450,7 +539,7 @@ def build(dir_path=".", config=None):
         shutil.copy2(src, dst)
         written[dst] = True
 
-    # Generate auxiliary files (OG cards, sitemap, llms.txt, 404, favicon, etc.)
+    # Generate auxiliary files (OG cards, sitemap, llms.txt, 404, favicon, feed, etc.)
     aux_written = _generate_auxiliary_files(
         output_dir=output_dir,
         project_name=project_name,
@@ -462,6 +551,9 @@ def build(dir_path=".", config=None):
         repo=repo,
         lang=lang,
         page_dates=page_dates,
+        frontmatter=frontmatter,
+        description=config_description,
+        feed_url=feed_url,
     )
     written.update(aux_written)
 
@@ -471,8 +563,9 @@ def build(dir_path=".", config=None):
 def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
     base_url, has_custom_css, repo, lang="en", page_dates=None,
+    frontmatter=None, description="", feed_url=None,
 ):
-    """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon).
+    """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
     Called by build() after the main HTML pages and static files are written.
     Returns a dict of {output_path: True} for files written.
@@ -512,6 +605,19 @@ def _generate_auxiliary_files(
         f.write(llms_full)
     written[llms_full_path] = True
 
+    # Generate Atom feed (feed.xml) -- only if base_url is set
+    feed_path = _generate_atom_feed(
+        output_dir=output_dir,
+        base_url=base_url,
+        project_name=project_name,
+        description=description,
+        markdown_files=markdown_files,
+        frontmatter=frontmatter,
+        page_dates=page_dates,
+    )
+    if feed_path:
+        written[feed_path] = True
+
     # Generate 404.html (Feature 39)
     not_found_html = generate_404_page(
         project_name=project_name,
@@ -521,6 +627,7 @@ def _generate_auxiliary_files(
         repo=repo,
         base_url=base_url,
         lang=lang,
+        feed_url=feed_url,
     )
     not_found_path = os.path.join(output_dir, "404.html")
     with open(not_found_path, "w", encoding="utf-8") as f:

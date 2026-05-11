@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed
 from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph
 
 
@@ -699,3 +699,103 @@ def test_extract_first_paragraph_unescapes_html_entities():
     """_extract_first_paragraph unescapes HTML entities to avoid double-escaping."""
     html = '<p>Use <code>a &amp; b</code> for joining</p>'
     assert _extract_first_paragraph(html) == "Use a & b for joining"
+
+
+# --- Phase 2.4: Atom feed generation ---
+
+
+def test_atom_feed_generated_with_base_url(project_dir):
+    """feed.xml is generated when base_url is set in config."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    written = build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    feed_path = os.path.join(output_dir, "feed.xml")
+    assert feed_path in written
+    assert os.path.isfile(feed_path)
+
+
+def test_atom_feed_not_generated_without_base_url(project_dir):
+    """feed.xml is NOT generated when base_url is not set."""
+    written = build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    feed_path = os.path.join(output_dir, "feed.xml")
+    assert feed_path not in written
+    assert not os.path.isfile(feed_path)
+
+
+def test_atom_feed_contains_valid_structure(project_dir):
+    """feed.xml contains <feed>, <entry>, correct title, and correct URLs."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    config["description"] = "A test project"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("---\nupdated: 2026-05-01\n---\n# Guide Page\n\nThis is a guide.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "feed.xml"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Feed-level structure
+    assert '<feed xmlns="http://www.w3.org/2005/Atom">' in content
+    assert "</feed>" in content
+    assert "<title>" in content
+    assert "Documentation</title>" in content
+    assert '<link href="https://example.com/feed.xml" rel="self"/>' in content
+    assert '<link href="https://example.com/"/>' in content
+    assert "<id>https://example.com/</id>" in content
+    assert "<subtitle>A test project</subtitle>" in content
+
+    # Entry structure
+    assert "<entry>" in content
+    assert "</entry>" in content
+    assert "<title>Guide Page</title>" in content
+    assert '<link href="https://example.com/guide.html"/>' in content
+    assert "<id>https://example.com/guide.html</id>" in content
+    assert "<updated>2026-05-01T00:00:00Z</updated>" in content
+    assert "<summary>This is a guide.</summary>" in content
+
+
+def test_atom_feed_link_in_html_with_base_url(project_dir):
+    """HTML pages contain Atom feed <link> tag when base_url is set."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<link rel="alternate" type="application/atom+xml"' in content
+    assert 'href="feed.xml">' in content
+
+
+def test_atom_feed_link_not_in_html_without_base_url(project_dir):
+    """HTML pages do NOT contain Atom feed <link> tag when base_url is not set."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'application/atom+xml' not in content
