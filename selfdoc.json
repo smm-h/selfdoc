@@ -1,0 +1,10 @@
+{
+  "language": "python",
+  "source": ["selfdoc/"],
+  "docs": "docs/",
+  "output": "docs/_build/",
+  "deploy": {
+    "provider": "cloudflare-pages",
+    "project": "selfdoc"
+  }
+}
