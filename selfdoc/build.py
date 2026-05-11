@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import struct
 from datetime import datetime
 
 from selfdoc.config import load_config
@@ -14,6 +15,95 @@ from selfdoc.html import (
     _extract_title, _escape_html, _build_nav,
 )
 from selfdoc.resolver import make_resolver
+
+
+def _read_png_dimensions(filepath):
+    """Read width and height from a PNG file's IHDR chunk.
+
+    The IHDR chunk starts at byte 16. Width is 4 bytes big-endian at
+    offset 16, height is 4 bytes big-endian at offset 20.
+    Returns (width, height) or None if the file is too short or invalid.
+    """
+    try:
+        with open(filepath, "rb") as f:
+            header = f.read(24)
+        if len(header) < 24:
+            return None
+        # PNG signature: 89 50 4E 47 0D 0A 1A 0A
+        if header[:8] != b"\x89PNG\r\n\x1a\n":
+            return None
+        width = struct.unpack(">I", header[16:20])[0]
+        height = struct.unpack(">I", header[20:24])[0]
+        return (width, height)
+    except (OSError, struct.error):
+        return None
+
+
+def _read_gif_dimensions(filepath):
+    """Read width and height from a GIF file header.
+
+    Bytes 6-7 are width (little-endian uint16), bytes 8-9 are height
+    (little-endian uint16).
+    Returns (width, height) or None if the file is too short or invalid.
+    """
+    try:
+        with open(filepath, "rb") as f:
+            header = f.read(10)
+        if len(header) < 10:
+            return None
+        # GIF signature: GIF87a or GIF89a
+        if header[:3] != b"GIF":
+            return None
+        width = struct.unpack("<H", header[6:8])[0]
+        height = struct.unpack("<H", header[8:10])[0]
+        return (width, height)
+    except (OSError, struct.error):
+        return None
+
+
+def _get_image_dimensions(filepath):
+    """Read dimensions from an image file (PNG or GIF only).
+
+    Returns (width, height) or None if the format is unsupported or
+    the file cannot be read.
+    """
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext == ".png":
+        return _read_png_dimensions(filepath)
+    if ext == ".gif":
+        return _read_gif_dimensions(filepath)
+    return None
+
+
+def _add_image_dimensions(html_text, docs_dir, page_rel_path):
+    """Add width/height attributes to <img> tags whose source files exist.
+
+    For each <img src="..."> in *html_text*, resolve the src relative to
+    the page's directory within *docs_dir*. If the file is a PNG or GIF,
+    read its dimensions and insert width="X" height="Y" attributes.
+    """
+    page_dir = os.path.dirname(os.path.join(docs_dir, page_rel_path))
+
+    def _add_dims(match):
+        full_tag = match.group(0)
+        src = match.group(1)
+        # Skip external URLs
+        if src.startswith(("http://", "https://", "//")):
+            return full_tag
+        # Resolve relative to the page's directory
+        img_path = os.path.normpath(os.path.join(page_dir, src))
+        dims = _get_image_dimensions(img_path)
+        if dims is None:
+            return full_tag
+        width, height = dims
+        # Insert width/height before the closing >
+        return full_tag.replace(
+            ">",
+            f' width="{width}" height="{height}">',
+            1,
+        )
+
+    return re.sub(r'<img\s[^>]*src="([^"]+)"[^>]*>', _add_dims, html_text)
 
 
 def _minify_css(css_text):
@@ -570,6 +660,14 @@ def build(dir_path=".", config=None):
         feed_url=feed_url,
         critical_css=critical_css,
     )
+
+    # Post-process HTML pages: add image dimensions from file inspection
+    # (Phase 3.3). Convert md_path keys to html_path keys for lookup.
+    for html_path in list(html_files):
+        md_path = html_path.replace(".html", ".md") if html_path.endswith(".html") else html_path
+        html_files[html_path] = _add_image_dimensions(
+            html_files[html_path], docs_dir, md_path,
+        )
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)

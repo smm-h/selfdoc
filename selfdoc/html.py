@@ -422,6 +422,16 @@ def md_to_html(text):
     # cards (Feature 48)
     result = _wrap_api_entries(result)
 
+    # Post-process: mark the first image as high-priority LCP candidate
+    # (Phase 3.3). All images start with loading="lazy" from _inline_format;
+    # promote the first one to eager loading with high fetchpriority.
+    result = re.sub(
+        r'loading="lazy"',
+        'fetchpriority="high" loading="eager"',
+        result,
+        count=1,
+    )
+
     return result
 
 

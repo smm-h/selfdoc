@@ -6,8 +6,10 @@ import re
 
 import pytest
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css
-from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js
+import struct
+
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions
+from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js, md_to_html
 
 
 @pytest.fixture()
@@ -1218,3 +1220,185 @@ def test_extract_critical_css_no_marker():
     critical, full = _extract_critical_css(css)
 
     assert critical == full
+
+
+# --- Phase 3.3: Image fetchpriority and width/height ---
+
+
+def _make_minimal_png(width, height):
+    """Create a minimal valid PNG file content with the given dimensions.
+
+    Produces a valid PNG with an IHDR chunk (dimensions encoded in bytes
+    16-23) followed by a minimal IDAT and IEND. The image data is a single
+    transparent pixel row repeated, but the important part is the header.
+    """
+    import zlib
+
+    # PNG signature
+    sig = b"\x89PNG\r\n\x1a\n"
+
+    # IHDR chunk: width(4) + height(4) + bit_depth(1) + color_type(1)
+    #             + compression(1) + filter(1) + interlace(1) = 13 bytes
+    ihdr_data = struct.pack(">II", width, height) + b"\x08\x02\x00\x00\x00"
+    ihdr_crc = struct.pack(">I", zlib.crc32(b"IHDR" + ihdr_data) & 0xFFFFFFFF)
+    ihdr = struct.pack(">I", 13) + b"IHDR" + ihdr_data + ihdr_crc
+
+    # IDAT chunk: minimal compressed image data (one row of zeros)
+    raw_data = b"\x00" + b"\x00" * (width * 3)  # filter byte + RGB pixels
+    raw_rows = raw_data * height
+    compressed = zlib.compress(raw_rows)
+    idat_crc = struct.pack(">I", zlib.crc32(b"IDAT" + compressed) & 0xFFFFFFFF)
+    idat = struct.pack(">I", len(compressed)) + b"IDAT" + compressed + idat_crc
+
+    # IEND chunk
+    iend_crc = struct.pack(">I", zlib.crc32(b"IEND") & 0xFFFFFFFF)
+    iend = struct.pack(">I", 0) + b"IEND" + iend_crc
+
+    return sig + ihdr + idat + iend
+
+
+def _make_minimal_gif(width, height):
+    """Create a minimal valid GIF file content with the given dimensions.
+
+    GIF header: signature(3) + version(3) + width(2 LE) + height(2 LE)
+    followed by minimal global color table and trailer.
+    """
+    # GIF89a header
+    header = b"GIF89a"
+    dims = struct.pack("<HH", width, height)
+    # Packed field: no global color table, color resolution=1, not sorted, size=0
+    packed = b"\x00"
+    bg_color = b"\x00"
+    aspect = b"\x00"
+    trailer = b"\x3b"  # GIF trailer
+    return header + dims + packed + bg_color + aspect + trailer
+
+
+def test_first_image_gets_fetchpriority_high():
+    """The first image in md_to_html output gets fetchpriority='high' and loading='eager'."""
+    md = "![first](a.png)\n\n![second](b.png)"
+    result = md_to_html(md)
+
+    # First image: eager with high priority
+    assert 'fetchpriority="high"' in result
+    assert 'loading="eager"' in result
+    # Second image: still lazy
+    assert 'loading="lazy"' in result
+
+
+def test_subsequent_images_keep_lazy():
+    """Images after the first one retain loading='lazy' without fetchpriority."""
+    md = "![one](a.png)\n\n![two](b.png)\n\n![three](c.png)"
+    result = md_to_html(md)
+
+    # Count occurrences
+    assert result.count('loading="lazy"') == 2
+    assert result.count('fetchpriority="high"') == 1
+    assert result.count('loading="eager"') == 1
+
+
+def test_single_image_gets_fetchpriority():
+    """A page with only one image still gets fetchpriority='high'."""
+    md = "# Title\n\n![logo](logo.png)"
+    result = md_to_html(md)
+
+    assert 'fetchpriority="high"' in result
+    assert 'loading="eager"' in result
+    assert 'loading="lazy"' not in result
+
+
+def test_no_images_no_fetchpriority():
+    """A page with no images does not contain fetchpriority attributes."""
+    md = "# Title\n\nJust text."
+    result = md_to_html(md)
+
+    assert "fetchpriority" not in result
+    assert 'loading="eager"' not in result
+    assert 'loading="lazy"' not in result
+
+
+def test_png_image_gets_width_height(tmp_path):
+    """PNG images get width and height attributes added by _add_image_dimensions."""
+    # Create a 42x17 PNG in the docs dir
+    docs_dir = str(tmp_path)
+    png_path = os.path.join(docs_dir, "logo.png")
+    with open(png_path, "wb") as f:
+        f.write(_make_minimal_png(42, 17))
+
+    html = '<p><img src="logo.png" alt="Logo" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert 'width="42"' in result
+    assert 'height="17"' in result
+
+
+def test_gif_image_gets_width_height(tmp_path):
+    """GIF images get width and height attributes added by _add_image_dimensions."""
+    docs_dir = str(tmp_path)
+    gif_path = os.path.join(docs_dir, "anim.gif")
+    with open(gif_path, "wb") as f:
+        f.write(_make_minimal_gif(100, 50))
+
+    html = '<p><img src="anim.gif" alt="Animation" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert 'width="100"' in result
+    assert 'height="50"' in result
+
+
+def test_non_image_files_not_affected(tmp_path):
+    """Non-image src values are not modified by _add_image_dimensions."""
+    docs_dir = str(tmp_path)
+    # Create a .txt file (not an image)
+    txt_path = os.path.join(docs_dir, "data.txt")
+    with open(txt_path, "w") as f:
+        f.write("hello")
+
+    html = '<p><img src="data.txt" alt="data" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert "width=" not in result
+    assert "height=" not in result
+
+
+def test_external_images_not_affected(tmp_path):
+    """External (http/https) image URLs are not modified."""
+    docs_dir = str(tmp_path)
+    html = '<p><img src="https://example.com/img.png" alt="ext" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert "width=" not in result
+    assert "height=" not in result
+
+
+def test_missing_image_file_not_affected(tmp_path):
+    """Images referencing non-existent files are not modified."""
+    docs_dir = str(tmp_path)
+    html = '<p><img src="missing.png" alt="gone" loading="lazy"></p>'
+    result = _add_image_dimensions(html, docs_dir, "index.md")
+
+    assert "width=" not in result
+    assert "height=" not in result
+
+
+def test_build_adds_png_dimensions(project_dir):
+    """Full build pipeline adds width/height to images referencing PNG files in docs/."""
+    docs_dir = os.path.join(project_dir, "docs")
+
+    # Create a 10x20 PNG
+    png_path = os.path.join(docs_dir, "photo.png")
+    with open(png_path, "wb") as f:
+        f.write(_make_minimal_png(10, 20))
+
+    # Reference the image in a markdown page
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\n![photo](photo.png)\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'width="10"' in content
+    assert 'height="20"' in content
