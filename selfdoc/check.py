@@ -387,6 +387,34 @@ def _run_lints(docs_dir, resolver, config):
                 severity="info",
             ))
 
+        # SEO011 -- Empty heading section (heading followed by same-or-higher
+        # level heading with no content between)
+        last_heading_line = None  # (line_number, level)
+        for line_num, line in enumerate(lines, start=1):
+            heading_match = re.match(r"^(#{2,3})\s", line)
+            if heading_match:
+                level = len(heading_match.group(1))
+                if last_heading_line is not None:
+                    prev_line_num, prev_level = last_heading_line
+                    # Warn if next heading is same or higher level
+                    # (fewer or equal #'s), meaning the previous section
+                    # was empty
+                    if level <= prev_level:
+                        results.append(LintResult(
+                            file=rel_path,
+                            line=prev_line_num,
+                            code="SEO011",
+                            message=(
+                                f"H{prev_level} heading has no content"
+                                f" before next H{level} heading"
+                            ),
+                            severity="warning",
+                        ))
+                last_heading_line = (line_num, level)
+            elif line.strip():
+                # Non-blank, non-heading line resets tracking
+                last_heading_line = None
+
     # SEO005 -- Missing base_url (project-level, not per-file)
     if config.get("base_url") is None:
         results.append(LintResult(

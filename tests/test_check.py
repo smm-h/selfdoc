@@ -978,3 +978,81 @@ def test_seo010_normal_length_no_trigger(lint_project):
     seo010 = [r for r in results if r.code == "SEO010"]
 
     assert len(seo010) == 0
+
+
+# -- SEO011: Empty heading section --
+
+
+def test_seo011_h2_followed_by_h2(lint_project):
+    """SEO011: H2 followed by H2 with no content triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A page for testing empty heading sections in documentation"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n## Foo\n\n## Bar\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo011 = [r for r in results if r.code == "SEO011"]
+
+    assert len(seo011) == 1
+    assert seo011[0].severity == "warning"
+    assert "H2" in seo011[0].message
+
+
+def test_seo011_h3_followed_by_h2(lint_project):
+    """SEO011: H3 followed by H2 (empty H3 section) triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A page for testing empty heading sections in documentation"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n### A\n\n## B\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo011 = [r for r in results if r.code == "SEO011"]
+
+    assert len(seo011) == 1
+    assert seo011[0].severity == "warning"
+
+
+def test_seo011_h2_with_content_no_trigger(lint_project):
+    """SEO011: H2 with content before next H2 does not trigger."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A page for testing that headings with content pass validation"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n## Foo\n\nSome text.\n\n## Bar\n\nMore text.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo011 = [r for r in results if r.code == "SEO011"]
+
+    assert len(seo011) == 0
+
+
+def test_seo011_h2_followed_by_h3_no_trigger(lint_project):
+    """SEO011: H2 followed by H3 (valid subsection nesting) does not trigger."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A page for testing valid heading nesting with subsections"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n## Foo\n\n### Bar\n\nText here.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo011 = [r for r in results if r.code == "SEO011"]
+
+    assert len(seo011) == 0
