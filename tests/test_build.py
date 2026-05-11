@@ -2258,6 +2258,115 @@ def test_definition_list_no_false_match_on_paragraphs():
     assert "<dd>Definition</dd>" in result
 
 
+def test_itemlist_auto_detected_on_list_heavy_page(project_dir):
+    """Page with 8 list items and 2 paragraphs gets ItemList JSON-LD automatically."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Features\n\n"
+            "Overview paragraph.\n\n"
+            "- Feature one\n"
+            "- Feature two\n"
+            "- Feature three\n"
+            "- Feature four\n"
+            "- Feature five\n"
+            "- Feature six\n"
+            "- Feature seven\n"
+            "- Feature eight\n\n"
+            "Closing paragraph.\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' in content
+    assert '"ListItem"' in content
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    item_list_data = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "ItemList":
+            item_list_data = data
+            break
+
+    assert item_list_data is not None, "ItemList JSON-LD not found"
+    assert len(item_list_data["itemListElement"]) == 8
+
+
+def test_itemlist_not_auto_detected_on_paragraph_heavy_page(project_dir):
+    """Page with 2 list items and 5 paragraphs does NOT get ItemList."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Article\n\n"
+            "First paragraph.\n\n"
+            "Second paragraph.\n\n"
+            "Third paragraph.\n\n"
+            "Fourth paragraph.\n\n"
+            "Fifth paragraph.\n\n"
+            "- Item one\n"
+            "- Item two\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' not in content
+
+
+def test_itemlist_explicit_schema_still_works(project_dir):
+    """Page with explicit schema: itemlist frontmatter still works (no regression)."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "features.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\nschema: itemlist\n---\n"
+            "# Features\n\n"
+            "- Alpha\n"
+            "- Beta\n"
+            "- Gamma\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' in content
+
+
+def test_itemlist_not_auto_detected_below_threshold(project_dir):
+    """Page with fewer than 5 list items does NOT trigger auto-detection even if li > p."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Short List\n\n"
+            "- Item one\n"
+            "- Item two\n"
+            "- Item three\n"
+            "- Item four\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"ItemList"' not in content
+
+
 def test_glossary_terms_correctly_extracted():
     """Glossary resolver correctly parses terms and definitions."""
     from selfdoc.resolver import _resolve_glossary

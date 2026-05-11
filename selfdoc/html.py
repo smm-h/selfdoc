@@ -1241,6 +1241,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 f'\n</script>'
             )
 
+    # ItemList auto-detection: if schema is not set and the page is
+    # list-heavy (more <li> than <p>, with at least 5 <li>), auto-set
+    # schema to trigger ItemList JSON-LD.
+    if not schema:
+        li_count = body_html.count('<li>')
+        p_count = body_html.count('<p>')
+        if li_count > p_count and li_count >= 5:
+            schema = "itemlist"
+
     # ItemList JSON-LD when frontmatter schema == "itemlist"
     if schema == "itemlist":
         li_matches = re.findall(r"<li>(.*?)</li>", body_html)
