@@ -799,3 +799,56 @@ def test_atom_feed_link_not_in_html_without_base_url(project_dir):
         content = f.read()
 
     assert 'application/atom+xml' not in content
+
+
+# --- Phase 2.5: Improved 404 page ---
+
+
+def test_404_contains_sidebar_navigation(project_dir):
+    """404.html contains sidebar navigation links matching other pages."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "404.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<nav class="sidebar" id="sidebar">' in content
+    assert "guide.html" in content
+    assert "index.html" in content
+
+
+def test_404_contains_search_button(project_dir):
+    """404.html contains a search button/prompt to help users find content."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "404.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Try searching for what you need:" in content
+    assert "Search documentation</button>" in content
+    assert "search-dialog" in content
+
+
+def test_404_contains_popular_page_links(project_dir):
+    """404.html contains a 'Popular pages' section with links to nav items."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\nAPI docs.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "404.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Popular pages" in content
+    assert "guide.html" in content
+    assert "api.html" in content
+    assert "index.html" in content

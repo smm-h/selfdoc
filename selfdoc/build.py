@@ -10,7 +10,7 @@ from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
 from selfdoc.html import (
     generate_html, generate_404_page, get_css, _md_to_html_path, _slugify,
-    _extract_title, _escape_html,
+    _extract_title, _escape_html, _build_nav,
 )
 from selfdoc.resolver import make_resolver
 
@@ -619,11 +619,12 @@ def _generate_auxiliary_files(
         written[feed_path] = True
 
     # Generate 404.html (Feature 39)
+    nav_items = _build_nav(markdown_files, frontmatter)
     not_found_html = generate_404_page(
         project_name=project_name,
         version=version,
         has_custom_css=has_custom_css,
-        nav_items=None,
+        nav_items=nav_items,
         repo=repo,
         base_url=base_url,
         lang=lang,

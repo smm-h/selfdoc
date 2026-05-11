@@ -164,14 +164,45 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         project_name = "Documentation"
     if not version:
         version = ""
+    if nav_items is None:
+        nav_items = []
+
+    # Render sidebar navigation from nav_items
+    nav_html = _render_nav(nav_items, prefix="", current_path="404.html")
+
+    # Search prompt button
+    search_html = (
+        '<p>Try searching for what you need:</p>\n'
+        '<button onclick="document.getElementById(\'search-dialog\')'
+        '.showModal(); document.querySelector(\'.search-input\').focus();" '
+        'style="padding: 0.5rem 1.5rem; font-size: 1rem; cursor: pointer; '
+        'border: 1px solid var(--border); border-radius: 6px; '
+        'background: var(--bg-secondary, #f5f5f5); '
+        'color: var(--text-primary, #333);">'
+        'Search documentation</button>'
+    )
+
+    # Popular pages section (first 5 nav items)
+    popular_html = ""
+    if nav_items:
+        popular_links = []
+        for item in nav_items[:5]:
+            popular_links.append(
+                f'<li><a href="{item["path"]}">'
+                f'{_escape_html(item["label"])}</a></li>'
+            )
+        popular_html = (
+            '\n<h2>Popular pages</h2>\n'
+            '<ul>\n' + "\n".join(popular_links) + '\n</ul>'
+        )
 
     body_html = (
         '<h1>Page not found</h1>\n'
         '<p>The page you are looking for does not exist.</p>\n'
-        '<p><a href="index.html">Go to the homepage</a></p>'
+        '<p><a href="index.html">Go to the homepage</a></p>\n'
+        + search_html
+        + popular_html
     )
-    # Minimal nav (empty sidebar) since we don't have nav_items context
-    nav_html = ""
     title = "Page not found"
 
     return _wrap_page(
