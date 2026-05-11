@@ -5,7 +5,7 @@ import shutil
 
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
-from selfdoc.html import generate_html
+from selfdoc.html import generate_html, get_css
 from selfdoc.resolver import make_resolver
 
 
@@ -90,6 +90,12 @@ def build(dir_path=".", config=None):
     os.makedirs(output_dir, exist_ok=True)
 
     written = {}
+
+    # Write the external CSS file
+    css_path = os.path.join(output_dir, "style.css")
+    with open(css_path, "w", encoding="utf-8") as f:
+        f.write(get_css())
+    written[css_path] = True
 
     # Write HTML files
     for rel_path, html_content in html_files.items():

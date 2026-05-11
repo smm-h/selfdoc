@@ -49,7 +49,7 @@ def test_build_produces_html(project_dir):
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert "<!DOCTYPE html>" in content
-    assert "<h1>Test Project</h1>" in content
+    assert '<h1 id="test-project">Test Project</h1>' in content
     assert "Welcome." in content
 
 
@@ -103,7 +103,9 @@ def test_build_multiple_files(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
-    assert len(written) == 2
+    # 2 HTML files + 1 style.css
+    assert len(written) == 3
+    assert os.path.isfile(os.path.join(output_dir, "style.css"))
 
 
 def test_build_no_config_raises(tmp_path):

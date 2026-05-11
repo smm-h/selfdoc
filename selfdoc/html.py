@@ -7,6 +7,22 @@ paragraphs, lists, links, bold/italic, and tables.
 import re
 
 
+def _slugify(text):
+    """Convert heading text to a URL-friendly slug for deep linking.
+
+    Strips HTML tags first, then: lowercase, spaces to hyphens,
+    remove non-alphanumeric characters except hyphens.
+    """
+    # Strip HTML tags (e.g. <code>, <strong>, <a>)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = text.lower()
+    text = text.replace(" ", "-")
+    text = re.sub(r"[^a-z0-9-]", "", text)
+    # Collapse multiple hyphens
+    text = re.sub(r"-+", "-", text)
+    return text.strip("-")
+
+
 _CSS = """\
 :root {
     --bg: #ffffff;
@@ -201,7 +217,31 @@ th {
         flex-direction: column;
     }
 }
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #1a1a2e;
+        --fg: #e0e0e0;
+        --sidebar-bg: #16213e;
+        --code-bg: #0d1117;
+        --code-border: #2a2a4a;
+        --link: #64b5f6;
+        --link-hover: #90caf9;
+        --heading: #f0f0f0;
+        --border: #2a2a4a;
+    }
+
+    .sidebar h2 {
+        color: #a0a0b0;
+    }
+}
 """
+
+
+def get_css():
+    """Return the CSS content for writing to an external stylesheet."""
+    return _CSS
 
 
 def generate_html(markdown_files, project_name=None, version=None):
@@ -235,7 +275,8 @@ def generate_html(markdown_files, project_name=None, version=None):
         body_html = body_html.replace(".md)", ".html)")
         nav_html = _render_nav(nav_items, prefix, current_path=html_path)
         title = _extract_title(md_content, project_name)
-        full_html = _wrap_page(body_html, nav_html, title, project_name, version)
+        css_href = prefix + "style.css"
+        full_html = _wrap_page(body_html, nav_html, title, project_name, version, css_href)
         html_files[html_path] = full_html
 
     return html_files
@@ -278,7 +319,8 @@ def md_to_html(text):
         if heading_match:
             level = len(heading_match.group(1))
             content = _inline_format(heading_match.group(2))
-            html_parts.append(f"<h{level}>{content}</h{level}>")
+            slug = _slugify(content)
+            html_parts.append(f'<h{level} id="{slug}">{content}</h{level}>')
             i += 1
             continue
 
@@ -479,7 +521,7 @@ def _extract_title(md_content, fallback):
     return fallback
 
 
-def _wrap_page(body_html, nav_html, title, project_name, version):
+def _wrap_page(body_html, nav_html, title, project_name, version, css_href="style.css"):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f' <span class="version">{_escape_html(version)}</span>' if version else ""
@@ -490,9 +532,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{_escape_html(title)} - {_escape_html(project_name)}</title>
-<style>
-{_CSS}
-</style>
+<link rel="stylesheet" href="{css_href}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
 </head>
 <body>
 <nav class="sidebar">
