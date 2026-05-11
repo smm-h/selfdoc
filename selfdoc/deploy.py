@@ -19,37 +19,21 @@ class DeployError(RuntimeError):
 
 
 def _resolve_cloudflare_env():
-    """Resolve Cloudflare environment variable name variations.
+    """Bridge CF_* env vars to CLOUDFLARE_* for wrangler.
 
-    Checks for deprecated CF_ACCOUNT_ID, CF_API_TOKEN, and CF_PAGES_API_TOKEN
-    and remaps them to CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN so wrangler
-    picks them up. Prints deprecation warnings to stderr.
+    Our canonical env var names use the CF_ prefix (CF_ACCOUNT_ID,
+    CF_PAGES_API_TOKEN). Wrangler expects CLOUDFLARE_ACCOUNT_ID and
+    CLOUDFLARE_API_TOKEN. This function bridges the gap.
     """
     if not os.environ.get("CLOUDFLARE_ACCOUNT_ID"):
         fallback = os.environ.get("CF_ACCOUNT_ID")
         if fallback:
-            print(
-                "Warning: CF_ACCOUNT_ID is deprecated. Set CLOUDFLARE_ACCOUNT_ID instead.",
-                file=sys.stderr,
-            )
             os.environ["CLOUDFLARE_ACCOUNT_ID"] = fallback
 
     if not os.environ.get("CLOUDFLARE_API_TOKEN"):
-        fallback = os.environ.get("CF_API_TOKEN")
+        fallback = os.environ.get("CF_PAGES_API_TOKEN")
         if fallback:
-            print(
-                "Warning: CF_API_TOKEN is deprecated. Set CLOUDFLARE_API_TOKEN instead.",
-                file=sys.stderr,
-            )
             os.environ["CLOUDFLARE_API_TOKEN"] = fallback
-        else:
-            fallback = os.environ.get("CF_PAGES_API_TOKEN")
-            if fallback:
-                print(
-                    "Warning: CF_PAGES_API_TOKEN is deprecated. Set CLOUDFLARE_API_TOKEN instead.",
-                    file=sys.stderr,
-                )
-                os.environ["CLOUDFLARE_API_TOKEN"] = fallback
 
 
 def deploy_cloudflare_pages(output_dir, project_name, version):
