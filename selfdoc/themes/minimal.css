@@ -121,6 +121,12 @@ html {
     scroll-behavior: smooth;
 }
 
+/* --- Scroll offset for fixed topbar (Feature 36) --- */
+
+[id] {
+    scroll-margin-top: 60px;
+}
+
 /* --- Body --- */
 
 body {
@@ -468,28 +474,35 @@ em {
     font-style: italic;
 }
 
-/* --- Tables --- */
+/* --- Tables (Feature 38) --- */
 
 table {
-    border-collapse: collapse;
-    margin-bottom: 1em;
     width: 100%;
-    font-size: 0.95rem;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.9rem;
 }
 
-th, td {
-    border: 1px solid var(--border);
-    padding: 0.5em 0.75em;
-    text-align: left;
+thead {
+    position: sticky;
+    top: 0;
+    background: var(--sidebar-bg);
 }
 
 th {
-    background: var(--sidebar-bg);
+    text-align: left;
     font-weight: 600;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--border);
 }
 
-tbody tr:nth-child(even) {
-    background: var(--code-bg);
+td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+tr:nth-child(even) td {
+    background: var(--sidebar-bg);
 }
 
 /* --- Blockquotes --- */
@@ -1051,4 +1064,169 @@ hr {
         margin-left: 0;
         padding: 1.5rem 1rem;
     }
+}
+
+/* --- Print stylesheet (Feature 37) --- */
+
+@media print {
+    .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
+    .skip-link, .page-nav, .feedback, .copy-btn,
+    .search-dialog, .heading-link, .theme-toggle {
+        display: none !important;
+    }
+    .layout {
+        display: block;
+    }
+    .content {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    pre {
+        white-space: pre-wrap;
+        border: 1px solid #ccc;
+    }
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+        color: #666;
+    }
+    a.heading-link::after {
+        content: none;
+    }
+}
+
+/* --- Table wrapper for horizontal scrolling (Feature 38) --- */
+
+.table-wrap {
+    overflow-x: auto;
+    margin: 1.5rem 0;
+}
+
+.table-wrap table {
+    margin: 0;
+}
+
+/* --- Step-by-step guides (Feature 33) --- */
+
+.steps {
+    counter-reset: step;
+    list-style: none;
+    padding-left: 0;
+}
+
+.steps > li {
+    position: relative;
+    padding-left: 3rem;
+    margin-bottom: 2rem;
+}
+
+.steps > li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--link);
+    color: white;
+    text-align: center;
+    line-height: 2rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+/* --- Code tabs (Feature 31) --- */
+
+.code-tabs {
+    margin-bottom: 1em;
+}
+
+.tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 0;
+}
+
+.tab-bar .tab {
+    padding: 6px 16px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-bar .tab:hover {
+    color: var(--text);
+}
+
+.tab-bar .tab.active {
+    color: var(--link);
+    border-bottom-color: var(--link);
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+.tab-panel .code-block {
+    margin-bottom: 0;
+}
+
+.tab-panel .code-block pre {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* --- Inline code annotations (Feature 32) --- */
+
+.code-annotation {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25em;
+    height: 1.25em;
+    border-radius: 50%;
+    background: var(--link);
+    color: white;
+    font-size: 0.75em;
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 0.25em;
+}
+
+.code-annotation:hover::after,
+.code-annotation:focus::after {
+    content: attr(data-note);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--topbar-bg);
+    color: var(--topbar-text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    white-space: nowrap;
+    max-width: 300px;
+    white-space: normal;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }

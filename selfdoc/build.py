@@ -8,7 +8,7 @@ import shutil
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
 from selfdoc.html import (
-    generate_html, get_css, _md_to_html_path, _slugify,
+    generate_html, generate_404_page, get_css, _md_to_html_path, _slugify,
     _extract_title, _escape_html,
 )
 from selfdoc.resolver import make_resolver
@@ -146,6 +146,54 @@ def _generate_sitemap(base_url, html_paths):
     )
 
 
+def _parse_frontmatter(content):
+    """Parse YAML-like frontmatter from markdown content (Feature 34).
+
+    If the content starts with '---', extracts key: value pairs until the
+    closing '---'. Returns (metadata_dict, remaining_content). If no
+    frontmatter is found, returns ({}, original_content).
+
+    Simple parser: splits on ':' (first occurrence), strips whitespace.
+    No YAML library needed.
+    """
+    if not content.startswith("---"):
+        return {}, content
+
+    lines = content.split("\n")
+    # Find closing ---
+    end_idx = None
+    for idx in range(1, len(lines)):
+        if lines[idx].strip() == "---":
+            end_idx = idx
+            break
+
+    if end_idx is None:
+        return {}, content
+
+    metadata = {}
+    for line in lines[1:end_idx]:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        colon_pos = line.find(":")
+        if colon_pos == -1:
+            continue
+        key = line[:colon_pos].strip()
+        value = line[colon_pos + 1:].strip()
+        # Try to convert numeric values
+        try:
+            value = int(value)
+        except ValueError:
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+        metadata[key] = value
+
+    remaining = "\n".join(lines[end_idx + 1:]).lstrip("\n")
+    return metadata, remaining
+
+
 def _strip_html(text):
     """Strip HTML tags from text, returning plain text."""
     return re.sub(r"<[^>]+>", "", text)
@@ -261,6 +309,7 @@ def build(dir_path=".", config=None):
 
     # Scan for .md template files
     markdown_files = {}
+    frontmatter = {}  # {rel_path: metadata_dict} (Feature 34)
     other_files = []
 
     # Normalize output_dir so we can reliably check containment
@@ -278,9 +327,13 @@ def build(dir_path=".", config=None):
             if fname.endswith(".md"):
                 with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read()
+                # Parse frontmatter (Feature 34)
+                metadata, content = _parse_frontmatter(content)
                 # Resolve directives with the language-aware resolver
                 resolved = resolve_directives(content, resolver)
                 markdown_files[rel_path] = resolved
+                if metadata:
+                    frontmatter[rel_path] = metadata
             else:
                 other_files.append(rel_path)
 
@@ -312,6 +365,7 @@ def build(dir_path=".", config=None):
         repo=repo,
         docs_dir_name=config["docs"],
         base_url=base_url,
+        frontmatter=frontmatter,
     )
 
     # Ensure output directory exists
@@ -388,4 +442,42 @@ def build(dir_path=".", config=None):
         f.write(llms_full)
     written[llms_full_path] = True
 
+    # Generate 404.html (Feature 39)
+    not_found_html = generate_404_page(
+        project_name=project_name,
+        version=version,
+        has_custom_css=has_custom_css,
+        nav_items=None,
+        repo=repo,
+        base_url=base_url,
+    )
+    not_found_path = os.path.join(output_dir, "404.html")
+    with open(not_found_path, "w", encoding="utf-8") as f:
+        f.write(not_found_html)
+    written[not_found_path] = True
+
+    # Generate favicon.svg from project initials (Feature 40)
+    favicon_svg = _generate_favicon_svg(project_name)
+    favicon_path = os.path.join(output_dir, "favicon.svg")
+    with open(favicon_path, "w", encoding="utf-8") as f:
+        f.write(favicon_svg)
+    written[favicon_path] = True
+
     return written
+
+
+def _generate_favicon_svg(project_name):
+    """Generate a simple SVG favicon from the project name's initial (Feature 40).
+
+    Uses the first letter (uppercase) of the project name, with the accent
+    color as the background.
+    """
+    initial = project_name[0].upper() if project_name else "D"
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        f'<rect width="32" height="32" rx="4" fill="#0969da"/>'
+        f'<text x="16" y="22" text-anchor="middle" fill="white" '
+        f'font-family="system-ui" font-size="18" font-weight="700">'
+        f'{_escape_html(initial)}</text>'
+        '</svg>'
+    )

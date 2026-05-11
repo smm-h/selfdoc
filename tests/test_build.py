@@ -104,13 +104,16 @@ def test_build_multiple_files(project_dir):
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
     # 2 HTML + 1 style.css + 1 search-index.json + 2 OG SVGs + 2 llms files
-    assert len(written) == 8
+    # + 1 404.html + 1 favicon.svg (Features 39, 40)
+    assert len(written) == 10
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.svg"))
     assert os.path.isfile(os.path.join(output_dir, "og-guide.svg"))
     assert os.path.isfile(os.path.join(output_dir, "llms.txt"))
     assert os.path.isfile(os.path.join(output_dir, "llms-full.txt"))
+    assert os.path.isfile(os.path.join(output_dir, "404.html"))
+    assert os.path.isfile(os.path.join(output_dir, "favicon.svg"))
 
 
 def test_build_no_config_raises(tmp_path):

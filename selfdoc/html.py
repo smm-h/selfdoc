@@ -42,7 +42,7 @@ def get_css(theme_name="minimal"):
 
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
-                   base_url=None):
+                   base_url=None, frontmatter=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -53,6 +53,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         repo: GitHub repo URL for "Edit this page" links (optional).
         docs_dir_name: Docs directory name for constructing source paths.
         base_url: Base URL for canonical links and sitemap (optional).
+        frontmatter: Dict mapping relative paths to metadata dicts (Feature 34).
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -61,9 +62,11 @@ def generate_html(markdown_files, project_name=None, version=None,
         project_name = "Documentation"
     if not version:
         version = ""
+    if frontmatter is None:
+        frontmatter = {}
 
-    # Build navigation from the file list
-    nav_items = _build_nav(markdown_files)
+    # Build navigation from the file list, using frontmatter for ordering
+    nav_items = _build_nav(markdown_files, frontmatter)
 
     html_files = {}
     for page_idx, (md_path, md_content) in enumerate(
@@ -80,7 +83,15 @@ def generate_html(markdown_files, project_name=None, version=None,
         body_html = body_html.replace('.md"', '.html"')
         body_html = body_html.replace(".md)", ".html)")
         nav_html = _render_nav(nav_items, prefix, current_path=html_path)
-        title = _extract_title(md_content, project_name)
+
+        # Use frontmatter title if available, else extract from content
+        # (Feature 34)
+        page_meta = frontmatter.get(md_path, {})
+        title = page_meta.get("title") or _extract_title(md_content, project_name)
+
+        # Meta description from frontmatter (Feature 34)
+        description = page_meta.get("description", "")
+
         css_href = prefix + "style.css"
         custom_css_href = (prefix + "custom.css") if has_custom_css else None
 
@@ -112,17 +123,48 @@ def generate_html(markdown_files, project_name=None, version=None,
             source_path=source_path,
             base_url=base_url,
             page_path=html_path,
+            description=description,
         )
         html_files[html_path] = full_html
 
     return html_files
 
 
+def generate_404_page(project_name=None, version=None, has_custom_css=False,
+                      nav_items=None, repo=None, base_url=None):
+    """Generate a custom 404 page using the standard page template (Feature 39).
+
+    Returns the full HTML string for 404.html.
+    """
+    if not project_name:
+        project_name = "Documentation"
+    if not version:
+        version = ""
+
+    body_html = (
+        '<h1>Page not found</h1>\n'
+        '<p>The page you are looking for does not exist.</p>\n'
+        '<p><a href="index.html">Go to the homepage</a></p>'
+    )
+    # Minimal nav (empty sidebar) since we don't have nav_items context
+    nav_html = ""
+    title = "Page not found"
+
+    return _wrap_page(
+        body_html, nav_html, title, project_name, version,
+        css_href="style.css",
+        custom_css_href="custom.css" if has_custom_css else None,
+        prefix="",
+        base_url=base_url,
+        page_path="404.html",
+    )
+
+
 def md_to_html(text):
     """Convert Markdown text to HTML.
 
-    Handles: headings, code blocks, inline code, paragraphs,
-    unordered lists, ordered lists, links, bold, italic, tables.
+    Handles: headings, code blocks (with tabs and annotations), inline code,
+    paragraphs, unordered lists, ordered lists, links, bold, italic, tables.
     """
     lines = text.split("\n")
     html_parts = []
@@ -131,7 +173,7 @@ def md_to_html(text):
     while i < len(lines):
         line = lines[i]
 
-        # Fenced code blocks
+        # Fenced code blocks (with annotation support -- Feature 32)
         if line.startswith("```"):
             lang = line[3:].strip()
             code_lines = []
@@ -140,29 +182,20 @@ def md_to_html(text):
                 code_lines.append(lines[i])
                 i += 1
             i += 1  # skip closing ```
-            # Diff-style line highlighting (Feature 27)
-            is_diff = lang == "diff" or any(
-                cl.startswith("+") or cl.startswith("-")
-                for cl in code_lines
+
+            # Collect annotation definitions after code block (Feature 32)
+            # Lines like [1]: explanation text
+            annotations = {}
+            annotation_start = i
+            while i < len(lines) and re.match(r"^\[(\d+)\]:\s*(.+)$", lines[i]):
+                m = re.match(r"^\[(\d+)\]:\s*(.+)$", lines[i])
+                annotations[m.group(1)] = m.group(2)
+                i += 1
+
+            code_block_html = _render_code_block(
+                lang, code_lines, annotations
             )
-            if is_diff:
-                code_content = _render_diff_lines(code_lines)
-            else:
-                code_content = _escape_html("\n".join(code_lines))
-            if lang:
-                escaped_lang = _escape_html(lang)
-                label = f'<div class="code-label">{escaped_lang}</div>'
-                html_parts.append(
-                    f'<div class="code-block">{label}'
-                    f'<pre tabindex="0"><code class="language-{escaped_lang}">'
-                    f"{code_content}</code></pre></div>"
-                )
-            else:
-                html_parts.append(
-                    f'<div class="code-block">'
-                    f'<pre tabindex="0"><code>{code_content}</code></pre>'
-                    f'</div>'
-                )
+            html_parts.append(code_block_html)
             continue
 
         # Headings
@@ -178,13 +211,17 @@ def md_to_html(text):
             i += 1
             continue
 
-        # Tables: detect | col | col | pattern
+        # Tables: detect | col | col | pattern (Feature 38: wrap in .table-wrap)
         if re.match(r"^\|.+\|$", line.strip()):
             table_lines = []
             while i < len(lines) and re.match(r"^\|.+\|$", lines[i].strip()):
                 table_lines.append(lines[i].strip())
                 i += 1
-            html_parts.append(_parse_table(table_lines))
+            html_parts.append(
+                '<div class="table-wrap">'
+                + _parse_table(table_lines)
+                + '</div>'
+            )
             continue
 
         # Unordered list items (collect consecutive)
@@ -246,7 +283,148 @@ def md_to_html(text):
         para_content = _inline_format(" ".join(para_lines))
         html_parts.append(f"<p>{para_content}</p>")
 
-    return "\n".join(html_parts)
+    result = "\n".join(html_parts)
+
+    # Post-process: group consecutive code blocks into tabs (Feature 31)
+    result = _group_code_tabs(result)
+
+    # Post-process: add class="steps" to <ol> after step/guide/tutorial
+    # headings (Feature 33)
+    result = _apply_step_guides(result)
+
+    return result
+
+
+def _render_code_block(lang, code_lines, annotations=None):
+    """Render a single fenced code block to HTML.
+
+    Handles diff highlighting (Feature 27) and inline code annotations
+    (Feature 32).
+    """
+    if annotations is None:
+        annotations = {}
+
+    # Diff-style line highlighting (Feature 27)
+    is_diff = lang == "diff" or any(
+        cl.startswith("+") or cl.startswith("-")
+        for cl in code_lines
+    )
+
+    if is_diff:
+        code_content = _render_diff_lines(code_lines)
+    else:
+        code_content = _escape_html("\n".join(code_lines))
+
+    # Replace annotation markers // [N] or # [N] with badge elements
+    # (Feature 32)
+    if annotations:
+        for num, note in annotations.items():
+            escaped_note = _escape_html(note)
+            badge = (
+                f'<span class="code-annotation" data-note="{escaped_note}" '
+                f'tabindex="0">{_escape_html(num)}</span>'
+            )
+            # Match escaped marker patterns in the code content
+            # The markers were already HTML-escaped, so match escaped forms
+            code_content = code_content.replace(
+                f"// [{_escape_html(num)}]", badge
+            )
+            code_content = code_content.replace(
+                f"# [{_escape_html(num)}]", badge
+            )
+
+    if lang:
+        escaped_lang = _escape_html(lang)
+        label = f'<div class="code-label">{escaped_lang}</div>'
+        return (
+            f'<div class="code-block">{label}'
+            f'<pre tabindex="0"><code class="language-{escaped_lang}">'
+            f"{code_content}</code></pre></div>"
+        )
+    return (
+        f'<div class="code-block">'
+        f'<pre tabindex="0"><code>{code_content}</code></pre>'
+        f'</div>'
+    )
+
+
+def _group_code_tabs(html):
+    """Group consecutive code blocks into a tabbed interface (Feature 31).
+
+    Detects runs of consecutive <div class="code-block"> elements (with
+    different language labels) and wraps them in a tab container.
+    Only groups blocks that have language labels.
+    """
+    parts = html.split("\n")
+    result = []
+    i = 0
+
+    while i < len(parts):
+        part = parts[i]
+        # Check if this is a code block with a language label
+        if '<div class="code-block"><div class="code-label">' in part:
+            # Collect consecutive code blocks with language labels
+            group = [part]
+            j = i + 1
+            while (j < len(parts) and
+                   '<div class="code-block"><div class="code-label">' in parts[j]):
+                group.append(parts[j])
+                j += 1
+
+            if len(group) >= 2:
+                # Build tabbed interface
+                tabs = []
+                panels = []
+                for idx, block_html in enumerate(group):
+                    # Extract language from the code-label div
+                    label_match = re.search(
+                        r'<div class="code-label">([^<]+)</div>', block_html
+                    )
+                    lang = label_match.group(1) if label_match else f"Tab {idx + 1}"
+                    lang_id = lang.lower().replace(" ", "-")
+                    active = " active" if idx == 0 else ""
+                    tabs.append(
+                        f'<button class="tab{active}" '
+                        f'data-lang="{_escape_html(lang_id)}">'
+                        f'{_escape_html(lang)}</button>'
+                    )
+                    panels.append(
+                        f'<div class="tab-panel{active}" '
+                        f'data-lang="{_escape_html(lang_id)}">'
+                        f'{block_html}</div>'
+                    )
+                tab_bar = '<div class="tab-bar">' + "".join(tabs) + '</div>'
+                result.append(
+                    '<div class="code-tabs">'
+                    + tab_bar
+                    + "".join(panels)
+                    + '</div>'
+                )
+                i = j
+            else:
+                result.append(part)
+                i += 1
+        else:
+            result.append(part)
+            i += 1
+
+    return "\n".join(result)
+
+
+def _apply_step_guides(html):
+    """Add class="steps" to <ol> elements that follow step/guide/tutorial
+    headings (Feature 33).
+
+    Detects headings (h2, h3) containing keywords "step", "guide", or
+    "tutorial" (case-insensitive) and adds the "steps" class to the
+    immediately following <ol>.
+    """
+    return re.sub(
+        r'(<h[23]\s[^>]*>.*?(?:step|guide|tutorial).*?</h[23]>)\n<ol>',
+        r'\1\n<ol class="steps">',
+        html,
+        flags=re.IGNORECASE,
+    )
 
 
 def _parse_table(table_lines):
@@ -408,11 +586,17 @@ def _md_to_html_path(md_path):
     return md_path + ".html"
 
 
-def _build_nav(markdown_files):
+def _build_nav(markdown_files, frontmatter=None):
     """Build navigation items from the markdown file list.
+
+    Sorts by frontmatter 'order' (lower = first), then alphabetically
+    (Feature 35). Index.md is always first regardless of order.
 
     Returns list of dicts: {"label": str, "path": str (html path), "md_path": str}
     """
+    if frontmatter is None:
+        frontmatter = {}
+
     nav = []
     # Index first
     if "index.md" in markdown_files:
@@ -420,12 +604,22 @@ def _build_nav(markdown_files):
             "label": "Home", "path": "index.html", "md_path": "index.md",
         })
 
-    # Remaining pages sorted alphabetically
-    for md_path in sorted(markdown_files.keys()):
-        if md_path == "index.md":
-            continue
-        # Use the filename (without extension) as the label
-        label = md_path.replace(".md", "").replace("/", " / ")
+    # Remaining pages: sort by frontmatter order, then alphabetically
+    other_pages = [p for p in markdown_files.keys() if p != "index.md"]
+
+    def sort_key(md_path):
+        meta = frontmatter.get(md_path, {})
+        order = meta.get("order")
+        # Pages with order come first (sorted numerically),
+        # pages without order come after (sorted alphabetically)
+        if isinstance(order, (int, float)):
+            return (0, order, md_path)
+        return (1, 0, md_path)
+
+    for md_path in sorted(other_pages, key=sort_key):
+        # Use frontmatter title as label if available, else filename
+        meta = frontmatter.get(md_path, {})
+        label = meta.get("title") or md_path.replace(".md", "").replace("/", " / ")
         nav.append({
             "label": label,
             "path": _md_to_html_path(md_path),
@@ -506,7 +700,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
-               base_url=None, page_path=None):
+               base_url=None, page_path=None, description=""):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -516,6 +710,12 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'\n<link rel="stylesheet" href="{custom_css_href}">'
         if custom_css_href else ""
     )
+    # Meta description tag (Feature 34)
+    description_tag = ""
+    if description:
+        description_tag = (
+            f'\n<meta name="description" content="{_escape_html(description)}">'
+        )
 
     # Breadcrumbs (Feature 9)
     breadcrumbs_html = breadcrumbs if breadcrumbs else ""
@@ -652,7 +852,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{_escape_html(title)} - {_escape_html(project_name)}</title>
+<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{description_tag}
+<link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">
 <link rel="stylesheet" href="{css_href}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">{custom_css_tag}{seo_tags}
@@ -948,6 +1149,41 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {{
     btn.addEventListener('click', function() {{
       localStorage.setItem(key, btn.className);
       widget.innerHTML = '<span>Thanks for your feedback!</span>';
+    }});
+  }});
+}})();
+
+// Code tabs: switch between language panels (Feature 31)
+(function() {{
+  document.querySelectorAll('.code-tabs').forEach(function(tabGroup) {{
+    var buttons = tabGroup.querySelectorAll('.tab-bar .tab');
+    var panels = tabGroup.querySelectorAll('.tab-panel');
+    buttons.forEach(function(btn) {{
+      btn.addEventListener('click', function() {{
+        var lang = btn.getAttribute('data-lang');
+        // Deactivate all tabs and panels in this group
+        buttons.forEach(function(b) {{ b.classList.remove('active'); }});
+        panels.forEach(function(p) {{ p.classList.remove('active'); }});
+        // Activate the selected tab and panel
+        btn.classList.add('active');
+        var panel = tabGroup.querySelector('.tab-panel[data-lang="' + lang + '"]');
+        if (panel) panel.classList.add('active');
+        // Persist preference in localStorage
+        localStorage.setItem('selfdoc-tab-' + lang, 'true');
+        // Sync same-language tabs across all tab groups on the page
+        document.querySelectorAll('.code-tabs').forEach(function(otherGroup) {{
+          if (otherGroup === tabGroup) return;
+          var otherBtn = otherGroup.querySelector('.tab-bar .tab[data-lang="' + lang + '"]');
+          if (otherBtn) otherBtn.click();
+        }});
+      }});
+    }});
+    // Restore persisted language preference
+    buttons.forEach(function(btn) {{
+      var lang = btn.getAttribute('data-lang');
+      if (localStorage.getItem('selfdoc-tab-' + lang)) {{
+        btn.click();
+      }}
     }});
   }});
 }})();
