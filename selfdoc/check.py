@@ -10,6 +10,9 @@ import ast
 import os
 from dataclasses import dataclass, field
 
+import re
+
+from selfdoc.build import _parse_frontmatter
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives
 from selfdoc.resolver import make_resolver
@@ -165,10 +168,114 @@ def check_docs(dir_path=".", config=None):
 def _run_lints(docs_dir, resolver, config):
     """Run lint checks on documentation templates.
 
-    Returns a list of LintResult diagnostics. Currently a placeholder;
-    actual lint rules (SEO checks, etc.) will be added in later phases.
+    Returns a list of LintResult diagnostics covering SEO best practices:
+    multiple H1s, heading level gaps, empty alt text, title length,
+    missing base_url, and missing description.
     """
-    return []
+    results = []
+
+    # Collect .md files (same walk pattern as check_docs)
+    md_files = []
+    for root, _dirs, files in os.walk(docs_dir):
+        for fname in sorted(files):
+            if fname.endswith(".md"):
+                full_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(full_path, docs_dir)
+                md_files.append((rel_path, full_path))
+
+    project_name = os.path.basename(os.path.dirname(os.path.abspath(docs_dir)))
+
+    for rel_path, full_path in md_files:
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        lines = content.split("\n")
+        metadata, _ = _parse_frontmatter(content)
+
+        # SEO001 -- Multiple H1s
+        h1_count = 0
+        for line in lines:
+            if re.match(r"^# (?!#)", line):
+                h1_count += 1
+        if h1_count > 1:
+            results.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="SEO001",
+                message=f"Multiple H1 headings ({h1_count} found); use a single H1 per page",
+                severity="warning",
+            ))
+
+        # SEO002 -- Heading level gaps
+        prev_level = 0
+        for line_num, line in enumerate(lines, start=1):
+            m = re.match(r"^(#{1,6})\s", line)
+            if m:
+                level = len(m.group(1))
+                if prev_level > 0 and level > prev_level + 1:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=line_num,
+                        code="SEO002",
+                        message=(
+                            f"Heading level jumps from H{prev_level} to H{level}"
+                            f" (skips H{prev_level + 1})"
+                        ),
+                        severity="warning",
+                    ))
+                prev_level = level
+
+        # SEO003 -- Empty alt text
+        for line_num, line in enumerate(lines, start=1):
+            if "![](" in line:
+                results.append(LintResult(
+                    file=rel_path,
+                    line=line_num,
+                    code="SEO003",
+                    message="Image with empty alt text",
+                    severity="warning",
+                ))
+
+        # SEO004 -- Title too long
+        title = metadata.get("title")
+        if title is not None:
+            combined = f"{title} - {project_name}"
+            if len(combined) > 60:
+                results.append(LintResult(
+                    file=rel_path,
+                    line=None,
+                    code="SEO004",
+                    message=(
+                        f"Title too long for SEO ({len(combined)} chars):"
+                        f" \"{combined}\""
+                    ),
+                    severity="warning",
+                ))
+
+        # SEO006 -- Missing description
+        if "description" not in metadata:
+            results.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="SEO006",
+                message="No 'description' in frontmatter",
+                severity="warning",
+            ))
+
+    # SEO005 -- Missing base_url (project-level, not per-file)
+    if config.get("base_url") is None:
+        results.append(LintResult(
+            file="selfdoc.json",
+            line=None,
+            code="SEO005",
+            message=(
+                "base_url not set in config; canonical URLs,"
+                " sitemap, and OG tags will be missing"
+            ),
+            severity="warning",
+        ))
+
+    return results
 
 
 def _compute_python_coverage(config, base_dir, referenced_modules):

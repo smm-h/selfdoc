@@ -378,7 +378,18 @@ def test_print_results_no_lints(python_project, capsys):
     """print_results shows 'No lints.' when there are no lint diagnostics."""
     docs_dir = os.path.join(python_project, "docs")
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
-        f.write("# API\n\n:::module mylib\n:::\n")
+        f.write(
+            "---\ntitle: API\ndescription: API reference\n---\n"
+            "# API\n\n:::module mylib\n:::\n"
+        )
+
+    # Add base_url to config so SEO005 does not trigger
+    config_path = os.path.join(python_project, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
 
     result = check_docs(str(python_project))
     print_results(result)
@@ -422,3 +433,248 @@ def test_print_results_with_lints(capsys):
     assert "warning: [SEO001] index.md:3 - Missing title" in captured.out
     assert "error: [SEO002] guide.md - No description" in captured.out
     assert "No lints." not in captured.out
+
+
+# -- SEO lint rules --
+
+
+from selfdoc.check import _run_lints
+
+
+@pytest.fixture()
+def lint_project(tmp_path):
+    """Create a minimal project with docs dir and config for lint testing."""
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+    }
+    return tmp_path, docs_dir, config
+
+
+def test_seo001_multiple_h1s(lint_project):
+    """SEO001: file with two H1 headings triggers a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# First Title\n\nSome text.\n\n# Second Title\n\nMore text.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo001 = [r for r in results if r.code == "SEO001"]
+
+    assert len(seo001) == 1
+    assert seo001[0].file == "page.md"
+    assert seo001[0].severity == "warning"
+    assert "2" in seo001[0].message
+
+
+def test_seo001_single_h1_no_warning(lint_project):
+    """SEO001: file with one H1 does not trigger a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Only Title\n\n## Subsection\n\n### Sub-subsection\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo001 = [r for r in results if r.code == "SEO001"]
+    assert len(seo001) == 0
+
+
+def test_seo002_heading_level_gap(lint_project):
+    """SEO002: heading that jumps from H2 to H4 triggers a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n## Section\n\n#### Skipped H3\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo002 = [r for r in results if r.code == "SEO002"]
+
+    assert len(seo002) == 1
+    assert seo002[0].file == "page.md"
+    assert seo002[0].severity == "warning"
+    assert seo002[0].line is not None
+    assert "H2" in seo002[0].message
+    assert "H4" in seo002[0].message
+
+
+def test_seo002_no_gap(lint_project):
+    """SEO002: sequential heading levels do not trigger a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n## Section\n\n### Subsection\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo002 = [r for r in results if r.code == "SEO002"]
+    assert len(seo002) == 0
+
+
+def test_seo003_empty_alt_text(lint_project):
+    """SEO003: image with empty alt text triggers a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n![](image.png)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo003 = [r for r in results if r.code == "SEO003"]
+
+    assert len(seo003) == 1
+    assert seo003[0].file == "page.md"
+    assert seo003[0].severity == "warning"
+    assert seo003[0].line is not None
+
+
+def test_seo003_with_alt_text_no_warning(lint_project):
+    """SEO003: image with alt text does not trigger a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n![screenshot](image.png)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo003 = [r for r in results if r.code == "SEO003"]
+    assert len(seo003) == 0
+
+
+def test_seo004_title_too_long(lint_project):
+    """SEO004: frontmatter title that exceeds 60 chars with project name warns."""
+    tmp_path, docs_dir, config = lint_project
+    long_title = "A Very Long Page Title That Will Exceed The Sixty Character Limit"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ntitle: {long_title}\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo004 = [r for r in results if r.code == "SEO004"]
+
+    # project_name is derived from docs_dir parent basename
+    project_name = os.path.basename(str(tmp_path))
+    combined_len = len(long_title) + len(" - ") + len(project_name)
+    assert combined_len > 60, "Test setup: combined title must exceed 60 chars"
+
+    assert len(seo004) == 1
+    assert seo004[0].file == "page.md"
+    assert seo004[0].severity == "warning"
+
+
+def test_seo004_short_title_no_warning(lint_project):
+    """SEO004: short frontmatter title does not trigger a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ntitle: Hi\ndescription: test\n---\n"
+            "# Hi\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo004 = [r for r in results if r.code == "SEO004"]
+    assert len(seo004) == 0
+
+
+def test_seo005_missing_base_url(lint_project):
+    """SEO005: config without base_url triggers a warning."""
+    _, docs_dir, config = lint_project
+    # Ensure no base_url key
+    config.pop("base_url", None)
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo005 = [r for r in results if r.code == "SEO005"]
+
+    assert len(seo005) == 1
+    assert seo005[0].file == "selfdoc.json"
+    assert seo005[0].line is None
+    assert "base_url" in seo005[0].message
+    assert seo005[0].severity == "warning"
+
+
+def test_seo005_with_base_url_no_warning(lint_project):
+    """SEO005: config with base_url does not trigger a warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo005 = [r for r in results if r.code == "SEO005"]
+    assert len(seo005) == 0
+
+
+def test_seo006_missing_description(lint_project):
+    """SEO006: file without description in frontmatter triggers a warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ntitle: My Page\n---\n"
+            "# My Page\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo006 = [r for r in results if r.code == "SEO006"]
+
+    assert len(seo006) == 1
+    assert seo006[0].file == "page.md"
+    assert seo006[0].severity == "warning"
+    assert "description" in seo006[0].message
+
+
+def test_seo006_with_description_no_warning(lint_project):
+    """SEO006: file with description in frontmatter does not trigger a warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ntitle: My Page\ndescription: A great page\n---\n"
+            "# My Page\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo006 = [r for r in results if r.code == "SEO006"]
+    assert len(seo006) == 0
+
+
+def test_clean_file_no_lints(lint_project):
+    """A well-formed file with all metadata produces no lint warnings."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ntitle: Clean\ndescription: A clean page\n---\n"
+            "# Clean\n\n## Section\n\n### Subsection\n\n"
+            "![diagram](diagram.png)\n\nSome text.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    assert len(results) == 0
