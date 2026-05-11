@@ -10,7 +10,7 @@ import struct
 
 import gzip as gzip_module
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output
 from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js, md_to_html
 
 
@@ -110,8 +110,8 @@ def test_build_multiple_files(project_dir):
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
     # 2 HTML + 1 style.css + 1 search-index.json + 2 OG SVGs + 2 llms files
-    # + 1 404.html + 1 favicon.svg + 1 robots.txt + 1 _headers
-    assert len(written) == 12
+    # + 1 404.html + 1 favicon.svg + 1 robots.txt + 1 _headers + 1 _redirects
+    assert len(written) == 13
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.svg"))
@@ -2801,3 +2801,27 @@ def test_dfn_not_applied_to_second_paragraph():
     # The first paragraph has no definitional pattern, and the second
     # should not be treated since it is not the first after the heading.
     assert "<dfn>" not in result
+
+
+# --- Phase 7A: Trailing slash redirect rules ---
+
+
+def test_redirects_file_exists_after_build(project_dir):
+    """After build, _redirects file exists in the output directory."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    redirects_path = os.path.join(output_dir, "_redirects")
+    assert os.path.isfile(redirects_path)
+
+
+def test_redirects_contains_trailing_slash_rule(project_dir):
+    """_redirects file contains the trailing slash redirect rule."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    redirects_path = os.path.join(output_dir, "_redirects")
+    with open(redirects_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "/:path/ /:path 301" in content

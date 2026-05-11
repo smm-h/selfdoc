@@ -995,6 +995,10 @@ def _generate_auxiliary_files(
     headers_path = _generate_headers(output_dir)
     written[headers_path] = True
 
+    # Generate _redirects (Cloudflare Pages trailing slash rules)
+    redirects_path = _generate_redirects(output_dir)
+    written[redirects_path] = True
+
     return written
 
 
@@ -1056,6 +1060,18 @@ def _generate_headers(output_dir):
         "  Cache-Control: public, max-age=31536000, immutable\n"
     )
     path = os.path.join(output_dir, "_headers")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
+
+
+def _generate_redirects(output_dir):
+    """Generate _redirects file (Cloudflare Pages format) with trailing slash rules."""
+    content = (
+        "# Strip trailing slashes (except root)\n"
+        "/:path/ /:path 301\n"
+    )
+    path = os.path.join(output_dir, "_redirects")
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path
