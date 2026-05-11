@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap
 from selfdoc.html import generate_html, generate_404_page
 
 
@@ -336,3 +336,72 @@ def test_page_date_updated_takes_priority_over_date(project_dir):
 
     page_dates = _build_and_get_page_dates(project_dir)
     assert page_dates["both.md"] == "2026-05-01"
+
+
+# --- Phase 2.1: Visible dates, JSON-LD dateModified, sitemap lastmod ---
+
+
+def test_last_updated_visible_in_html(project_dir):
+    """Built HTML contains 'Last updated' with a formatted date and <time> element."""
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "dated.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write("---\nupdated: 2026-05-01\n---\n# Dated Page\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "dated.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Last updated" in content
+    assert '<time datetime="2026-05-01">' in content
+    assert "May 1, 2026" in content
+
+
+def test_json_ld_date_modified(project_dir):
+    """Built HTML JSON-LD contains dateModified when page has a date."""
+    docs_dir = os.path.join(project_dir, "docs")
+    # Need base_url for JSON-LD to be generated
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    page_md = os.path.join(docs_dir, "dated.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write("---\nupdated: 2026-05-01\n---\n# Dated Page\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "dated.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"dateModified": "2026-05-01"' in content
+
+
+def test_sitemap_lastmod(project_dir):
+    """sitemap.xml contains <lastmod> entries when page_dates are available."""
+    # Set base_url so sitemap is generated
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "dated.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write("---\nupdated: 2026-05-01\n---\n# Dated Page\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "sitemap.xml"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "<lastmod>2026-05-01</lastmod>" in content

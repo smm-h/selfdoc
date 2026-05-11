@@ -134,11 +134,28 @@ def _generate_og_svg(project_name, page_title, accent_color="#0969da"):
     )
 
 
-def _generate_sitemap(base_url, html_paths):
-    """Generate a sitemap.xml string for the given HTML paths."""
+def _generate_sitemap(base_url, html_paths, page_dates=None):
+    """Generate a sitemap.xml string for the given HTML paths.
+
+    Args:
+        base_url: Base URL for constructing full URLs.
+        html_paths: List of HTML file paths (e.g. ["index.html", "guide.html"]).
+        page_dates: Optional dict mapping md paths to ISO date strings.
+    """
+    if page_dates is None:
+        page_dates = {}
     urls = []
     for path in sorted(html_paths):
-        urls.append(f"  <url><loc>{base_url}/{path}</loc></url>")
+        # Convert html path to md path for date lookup
+        md_path = path.replace(".html", ".md") if path.endswith(".html") else path
+        date = page_dates.get(md_path)
+        if date:
+            urls.append(
+                f"  <url><loc>{base_url}/{path}</loc>"
+                f"<lastmod>{date}</lastmod></url>"
+            )
+        else:
+            urls.append(f"  <url><loc>{base_url}/{path}</loc></url>")
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -472,7 +489,7 @@ def _generate_auxiliary_files(
 
     # Generate sitemap.xml (Feature 22) -- only if base_url is set
     if base_url:
-        sitemap_content = _generate_sitemap(base_url, html_paths)
+        sitemap_content = _generate_sitemap(base_url, html_paths, page_dates)
         sitemap_path = os.path.join(output_dir, "sitemap.xml")
         with open(sitemap_path, "w", encoding="utf-8") as f:
             f.write(sitemap_content)

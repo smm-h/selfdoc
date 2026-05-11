@@ -5,6 +5,7 @@ paragraphs, lists, links, bold/italic, tables, blockquotes, and admonitions.
 """
 
 import re
+from datetime import datetime
 
 from selfdoc.themes import get_theme
 
@@ -794,11 +795,31 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         '</div>'
     )
 
+    # Format date_modified for display (e.g. "May 1, 2026")
+    date_display_html = ""
+    if date_modified:
+        try:
+            dt = datetime.strptime(date_modified, "%Y-%m-%d")
+            formatted_date = dt.strftime("%B %-d, %Y")
+        except (ValueError, TypeError):
+            formatted_date = date_modified
+        date_display_html = (
+            f'<time datetime="{_escape_html(date_modified)}">'
+            f'{_escape_html(formatted_date)}</time>'
+        )
+
     # Page footer (Feature 18): combines edit link, feedback, and prev/next nav
     footer_html = ""
     footer_parts = []
+    meta_parts = []
     if edit_link_html:
-        footer_parts.append(f'<div class="page-meta">{edit_link_html}</div>')
+        meta_parts.append(edit_link_html)
+    if date_display_html:
+        meta_parts.append(f'Last updated {date_display_html}')
+    if meta_parts:
+        footer_parts.append(
+            f'<div class="page-meta">{"".join(meta_parts)}</div>'
+        )
     footer_parts.append(feedback_html)
     if page_nav_html:
         footer_parts.append(page_nav_html)
@@ -831,6 +852,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         escaped_title = _escape_html(title)
         escaped_project = _escape_html(project_name)
         slug = page_path.replace(".html", "")
+        date_modified_json = ""
+        if date_modified:
+            date_modified_json = f', "dateModified": "{date_modified}"'
         seo_tags = (
             f'\n<meta property="og:image" content="og-{slug}.svg">'
             f'\n<meta property="og:title" content="{escaped_title}'
@@ -843,7 +867,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'"headline": "{escaped_title}", '
             f'"url": "{canonical_url}", '
             f'"author": {{"@type": "Organization", '
-            f'"name": "{escaped_project}"}}}}'
+            f'"name": "{escaped_project}"}}'
+            f'{date_modified_json}}}'
             f'\n</script>'
         )
 
