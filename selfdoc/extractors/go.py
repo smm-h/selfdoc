@@ -82,7 +82,7 @@ def _handle_module(arg, body, source_paths, base_dir):
     package_name, package_doc = _extract_package_doc(file_contents)
 
     parts = []
-    parts.append(f"# {arg}")
+    parts.append(f"## {arg}")
 
     if package_doc:
         parts.append("")
@@ -111,7 +111,7 @@ def _handle_module(arg, body, source_paths, base_dir):
 
         for decl in kind_decls:
             parts.append("")
-            parts.append(f"## {decl['name']}")
+            parts.append(f"### {decl['name']}")
             parts.append("")
             parts.append(f"```go\n{decl['signature']}\n```")
             if decl["doc"]:

@@ -243,7 +243,7 @@ def _handle_module(arg, body, source_paths, base_dir):
             break
 
     parts = []
-    parts.append(f"# {display_name}")
+    parts.append(f"## {display_name}")
 
     # Module-level JSDoc: the first /** */ block before any declaration
     module_jsdoc = _extract_module_jsdoc(source)
@@ -255,7 +255,7 @@ def _handle_module(arg, body, source_paths, base_dir):
     exports = _extract_exports(source)
     for export in exports:
         parts.append("")
-        parts.append(f"## {export['name']}")
+        parts.append(f"### {export['name']}")
         parts.append("")
 
         # Show the signature as a code block

@@ -85,7 +85,7 @@ class TestModuleDirective:
         result = resolve_python(
             "module", "core", [], source_paths, str(sample_project)
         )
-        assert "# core" in result
+        assert "## core" in result
         assert "Core module for mylib." in result
         assert "Provides essential utilities." in result
 
@@ -93,7 +93,7 @@ class TestModuleDirective:
         result = resolve_python(
             "module", "core", [], source_paths, str(sample_project)
         )
-        assert "## greet" in result
+        assert "### greet" in result
         assert "def greet(name: str, loud: bool=False) -> str" in result
         assert "Say hello to someone." in result
 
@@ -101,9 +101,9 @@ class TestModuleDirective:
         result = resolve_python(
             "module", "core", [], source_paths, str(sample_project)
         )
-        assert "## Processor" in result
+        assert "### Processor" in result
         assert "Processes items in a pipeline." in result
-        assert "### run" in result
+        assert "#### run" in result
         assert "Run the pipeline on items." in result
 
     def test_skips_private_without_docstring(self, sample_project, source_paths):
@@ -129,7 +129,7 @@ class TestModuleDirective:
         assert "_transform" not in result or "_special_transform" in result
         # More precise: check that we don't have just "_transform" as a heading
         lines = result.split("\n")
-        headings = [l for l in lines if l.startswith("###")]
+        headings = [l for l in lines if l.startswith("####")]
         heading_names = [h.strip("# ") for h in headings]
         assert "_transform" not in heading_names
 
@@ -157,7 +157,7 @@ class TestModuleDirective:
         # When source_paths is ["mylib/"], "mylib.core" would look for
         # mylib/mylib/core.py which won't exist. But direct resolution
         # against base_dir should find it.
-        assert "# mylib.core" in result
+        assert "## mylib.core" in result
         assert "Core module for mylib." in result
 
     def test_empty_arg_error(self, sample_project, source_paths):

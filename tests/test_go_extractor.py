@@ -191,7 +191,7 @@ class TestModuleDirective:
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "# internal/commit" in result
+        assert "## internal/commit" in result
         assert "Package commit implements the two-phase commit pipeline." in result
         assert "Phase A is parallel-safe" in result
 
@@ -199,7 +199,7 @@ class TestModuleDirective:
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "## NewPipeline" in result
+        assert "### NewPipeline" in result
         assert "func NewPipeline(dir string) *Pipeline" in result
         assert "creates a new Pipeline with defaults" in result
 
@@ -207,7 +207,7 @@ class TestModuleDirective:
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "## CommitError" in result
+        assert "### CommitError" in result
         assert "type CommitError struct" in result
         assert "carries a structured exit code" in result
 
@@ -215,21 +215,21 @@ class TestModuleDirective:
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "## ExitCASExhausted" in result
+        assert "### ExitCASExhausted" in result
         assert "Exit codes for commit-specific errors." in result
 
     def test_extracts_single_const(self, go_project, source_paths):
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "## DefaultTimeout" in result
+        assert "### DefaultTimeout" in result
         assert "const DefaultTimeout = 30" in result
 
     def test_extracts_method(self, go_project, source_paths):
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "## Pipeline.Execute" in result
+        assert "### Pipeline.Execute" in result
         assert "runs the full two-phase commit pipeline" in result
 
     def test_skips_unexported(self, go_project, source_paths):
@@ -251,8 +251,8 @@ class TestModuleDirective:
         result = resolve_go(
             "module", "internal/commit", [], source_paths, str(go_project)
         )
-        assert "## Request" in result
-        assert "## Result" in result
+        assert "### Request" in result
+        assert "### Result" in result
 
     def test_missing_package_error(self, go_project, source_paths):
         result = resolve_go(
