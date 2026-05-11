@@ -814,6 +814,22 @@ hr {
     text-decoration: underline;
 }
 
+/* === Page summary block (Phase 2.6) === */
+
+.page-summary {
+    background: var(--sidebar-bg);
+    border-left: 3px solid var(--link);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.95em;
+    color: var(--text-secondary);
+}
+
+.page-summary p {
+    margin-bottom: 0;
+}
+
 /* === Page prev/next navigation (Feature 8) === */
 
 .page-nav {

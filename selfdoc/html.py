@@ -101,6 +101,9 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Meta description from frontmatter (Feature 34)
         description = page_meta.get("description", "")
 
+        # Track frontmatter description for visible summary block (Phase 2.6)
+        frontmatter_description = description or None
+
         # Auto-generate description from first paragraph if not in frontmatter
         if not description:
             description = _extract_first_paragraph(body_html)
@@ -147,6 +150,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             date_modified=date_modified,
             author=author,
             feed_url=page_feed_url,
+            summary=frontmatter_description,
         )
         html_files[html_path] = full_html
 
@@ -805,7 +809,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
                lang="en", date_modified=None, author=None,
-               feed_url=None):
+               feed_url=None, summary=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -921,6 +925,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<summary>On this page</summary>'
             f'{toc_html}'
             f'</details>'
+        )
+
+    # Page summary block from frontmatter description (Phase 2.6)
+    summary_html = ""
+    if summary:
+        summary_html = (
+            f'<div class="page-summary">\n'
+            f'  <p>{_escape_html(summary)}</p>\n'
+            f'</div>'
         )
 
     # SEO: OG meta tags (Feature 21), canonical URL (Feature 22),
@@ -1125,6 +1138,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 <article>
 {breadcrumbs_html}
 {mobile_toc_html}
+{summary_html}
 {body_html}
 {footer_html}
 </article>

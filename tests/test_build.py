@@ -804,6 +804,52 @@ def test_atom_feed_link_not_in_html_without_base_url(project_dir):
 # --- Phase 2.5: Improved 404 page ---
 
 
+# --- Phase 2.6: Visible page summary from frontmatter description ---
+
+
+def test_page_summary_shown_with_description(project_dir):
+    """A page with frontmatter description shows a .page-summary block."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "summary.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: This is my page summary\n---\n# Summary Page\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "summary.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="page-summary">' in content
+    assert "This is my page summary" in content
+
+
+def test_page_summary_not_shown_without_description(project_dir):
+    """A page without frontmatter description does NOT show a .page-summary block."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<div class="page-summary">' not in content
+
+
+def test_page_summary_text_matches_description(project_dir):
+    """The summary text matches the frontmatter description exactly."""
+    docs_dir = os.path.join(project_dir, "docs")
+    desc_text = "A detailed description of what this page covers"
+    with open(os.path.join(docs_dir, "detailed.md"), "w", encoding="utf-8") as f:
+        f.write(f"---\ndescription: {desc_text}\n---\n# Detailed\n\nBody text.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "detailed.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert f"<p>{desc_text}</p>" in content
+
+
 def test_404_contains_sidebar_navigation(project_dir):
     """404.html contains sidebar navigation links matching other pages."""
     docs_dir = os.path.join(project_dir, "docs")
