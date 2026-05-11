@@ -8,7 +8,9 @@ import pytest
 
 import struct
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions
+import gzip as gzip_module
+
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output
 from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js, md_to_html
 
 
@@ -2663,3 +2665,50 @@ def test_code_tabs_keyboard_navigation():
 
     assert "ArrowRight" in content
     assert "ArrowLeft" in content
+
+
+# --- Phase 5A: gzip/brotli pre-compression ---
+
+
+def test_build_creates_gz_companions(project_dir):
+    """After building, .gz files exist alongside .html and .css files."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    # Check that index.html.gz exists
+    assert os.path.isfile(os.path.join(output_dir, "index.html.gz"))
+    # Check that style.css.gz exists
+    assert os.path.isfile(os.path.join(output_dir, "style.css.gz"))
+
+
+def test_gz_files_are_valid_gzip(project_dir):
+    """Verify .gz files are valid gzip and match original content."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    html_path = os.path.join(output_dir, "index.html")
+    gz_path = html_path + ".gz"
+
+    with open(html_path, "rb") as f:
+        original = f.read()
+
+    with gzip_module.open(gz_path, "rb") as f:
+        decompressed = f.read()
+
+    assert decompressed == original
+
+
+def test_non_text_files_not_compressed(project_dir):
+    """Files with non-text extensions (e.g. images) do NOT get compressed."""
+    docs_dir = os.path.join(project_dir, "docs")
+    # Create a dummy image file
+    img_path = os.path.join(docs_dir, "logo.png")
+    with open(img_path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 16)
+
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    # The PNG should be copied but NOT have a .gz companion
+    assert os.path.isfile(os.path.join(output_dir, "logo.png"))
+    assert not os.path.isfile(os.path.join(output_dir, "logo.png.gz"))

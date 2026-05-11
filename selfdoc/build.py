@@ -1,10 +1,12 @@
 """Build pipeline for selfdoc: template scanning, directive resolution, HTML output."""
 
+import gzip
 import json
 import os
 import re
 import shutil
 import struct
+import tempfile
 from datetime import datetime
 
 from selfdoc.config import load_config
@@ -614,6 +616,73 @@ def _generate_atom_feed(
     return feed_path
 
 
+_COMPRESSIBLE_EXTENSIONS = {'.html', '.css', '.js', '.json', '.xml', '.txt', '.svg'}
+
+
+def _compress_output(output_dir):
+    """Generate gzip and brotli compressed companions for text-based files.
+
+    Walks the output directory and creates .gz (and optionally .br) files
+    alongside each compressible file. Uses atomic writes (write to tmp,
+    then os.replace) for safety.
+
+    Returns the count of files that were compressed.
+    """
+    try:
+        import brotli
+        has_brotli = True
+    except ImportError:
+        has_brotli = False
+
+    count = 0
+    for root, _dirs, files in os.walk(output_dir):
+        for fname in files:
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in _COMPRESSIBLE_EXTENSIONS:
+                continue
+
+            filepath = os.path.join(root, fname)
+            with open(filepath, "rb") as f:
+                data = f.read()
+
+            # gzip companion
+            gz_path = filepath + ".gz"
+            fd, tmp_path = tempfile.mkstemp(dir=root)
+            try:
+                with os.fdopen(fd, "wb") as tmp_f:
+                    with gzip.GzipFile(
+                        fileobj=tmp_f, mode="wb", compresslevel=9,
+                    ) as gz_f:
+                        gz_f.write(data)
+                os.replace(tmp_path, gz_path)
+            except Exception:
+                # Clean up temp file on failure
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
+
+            # brotli companion (optional)
+            if has_brotli:
+                br_path = filepath + ".br"
+                fd, tmp_path = tempfile.mkstemp(dir=root)
+                try:
+                    with os.fdopen(fd, "wb") as tmp_f:
+                        tmp_f.write(brotli.compress(data))
+                    os.replace(tmp_path, br_path)
+                except Exception:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
+
+            count += 1
+
+    return count, has_brotli
+
+
 def build(dir_path=".", config=None):
     """Build docs from templates + directives.
 
@@ -821,6 +890,16 @@ def build(dir_path=".", config=None):
         critical_css=critical_css,
     )
     written.update(aux_written)
+
+    # Pre-compress text-based output files (gzip + optional brotli)
+    compress_count, has_brotli = _compress_output(output_dir)
+    if has_brotli:
+        print(f"Pre-compressed {compress_count} files (gzip + brotli)")
+    else:
+        print(
+            f"Pre-compressed {compress_count} files "
+            f"(gzip only, install brotli for better compression)"
+        )
 
     return written
 
