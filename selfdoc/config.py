@@ -92,12 +92,13 @@ def load_config(dir_path="."):
     if repo is not None and not isinstance(repo, str):
         raise ConfigError("'repo' must be a string (GitHub repo URL)")
 
-    base_url = raw.get("base_url", None)
-    if base_url is not None and not isinstance(base_url, str):
-        raise ConfigError("'base_url' must be a string (e.g. 'https://example.com')")
+    if "base_url" not in raw:
+        raise ConfigError("'base_url' is required")
+    base_url = raw["base_url"]
+    if not isinstance(base_url, str) or not base_url:
+        raise ConfigError("'base_url' must be a non-empty string (e.g. 'https://example.com')")
     # Strip trailing slash for consistent URL joining
-    if base_url is not None:
-        base_url = base_url.rstrip("/")
+    base_url = base_url.rstrip("/")
 
     lang = raw.get("lang", None)
     if lang is not None:
