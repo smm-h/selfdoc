@@ -1487,11 +1487,25 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             if twitter_site else ""
         )
 
+        # og:locale -- map lang code to locale string
+        _LANG_TO_LOCALE = {
+            "en": "en_US", "es": "es_ES", "fr": "fr_FR", "de": "de_DE",
+            "it": "it_IT", "pt": "pt_BR", "ja": "ja_JP", "ko": "ko_KR",
+            "zh": "zh_CN", "ru": "ru_RU", "ar": "ar_SA", "fa": "fa_IR",
+            "nl": "nl_NL", "pl": "pl_PL", "tr": "tr_TR", "sv": "sv_SE",
+        }
+        effective_lang = lang if lang else "en"
+        og_locale = _LANG_TO_LOCALE.get(
+            effective_lang,
+            f"{effective_lang}_{effective_lang.upper()}",
+        )
+
         seo_tags += (
             f'\n<meta property="og:title" content="{escaped_title}'
             f' - {escaped_project}">'
             f'\n<meta property="og:type" content="{og_type}">'
             f'\n<meta property="og:site_name" content="{escaped_project}">'
+            f'\n<meta property="og:locale" content="{og_locale}">'
             f'{og_desc_tag}'
             f'\n<meta name="twitter:card" content="{twitter_card_type}">'
             f'\n<meta name="twitter:title" content="{escaped_title}'
@@ -1501,11 +1515,14 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         )
 
         slug = page_path.replace(".html", "")
+        # og:image:alt -- use description if available, otherwise title
+        og_image_alt = _escape_html(description if description else title)
         seo_tags += (
             f'\n<meta property="og:image" content="{base_url}/og-{slug}.png">'
             f'\n<meta property="og:image:type" content="image/png">'
             f'\n<meta property="og:image:width" content="1200">'
             f'\n<meta property="og:image:height" content="630">'
+            f'\n<meta property="og:image:alt" content="{og_image_alt}">'
             f'\n<meta property="og:url" content="{canonical_url}">'
             f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.png">'
         )

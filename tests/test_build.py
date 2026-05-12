@@ -3445,3 +3445,62 @@ def test_inline_stat_markup_not_in_code_block():
     """Text inside code blocks is NOT affected by stat markup."""
     result = md_to_html("```\n==42==\n```")
     assert "<data" not in result
+
+
+def test_og_locale_default_en(project_dir):
+    """og:locale defaults to en_US when lang is not set."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:locale" content="en_US">' in content
+
+
+def test_og_locale_custom_language(project_dir):
+    """og:locale uses the correct locale for a custom language."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["lang"] = "fa"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:locale" content="fa_IR">' in content
+
+
+def test_og_image_alt_with_description(project_dir):
+    """og:image:alt uses page description when available."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: My project overview\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:image:alt" content="My project overview">' in content
+
+
+def test_og_image_alt_falls_back_to_title(project_dir):
+    """og:image:alt falls back to page title when no description is available."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# My Page Title\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta property="og:image:alt" content="My Page Title">' in content
