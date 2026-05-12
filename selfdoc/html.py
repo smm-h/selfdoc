@@ -1206,12 +1206,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # SEO: OG meta tags (Feature 21), canonical URL (Feature 22),
     # JSON-LD structured data (Feature 23)
-    # Each feature is independently gated so structured data degrades
-    # gracefully when base_url is absent.
     seo_tags = ""
     escaped_title = _escape_html(title)
     escaped_project = _escape_html(project_name)
-    canonical_url = f"{base_url}/{page_path}" if base_url and page_path else None
+    canonical_url = f"{base_url}/{page_path}" if page_path else None
 
     # TechArticle JSON-LD -- emitted when page_path is set
     if page_path:
@@ -1263,9 +1261,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             "@type": "ListItem",
             "position": 1,
             "name": "Home",
+            "item": f"{base_url}/index.html",
         }
-        if base_url:
-            home_item["item"] = f"{base_url}/index.html"
         items = [home_item]
         parts = page_path.split("/")
         # Intermediate directory entries
@@ -1275,9 +1272,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 "@type": "ListItem",
                 "position": len(items) + 1,
                 "name": dir_name.capitalize(),
+                "item": f"{base_url}/{dir_path}/",
             }
-            if base_url:
-                entry["item"] = f"{base_url}/{dir_path}/"
             items.append(entry)
         # Final page entry (no item URL per Google spec)
         items.append({
@@ -1296,8 +1292,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n</script>'
         )
 
-    # WebSite + SearchAction JSON-LD -- needs base_url for absolute URLs
-    if base_url and page_path == "index.html":
+    # WebSite + SearchAction JSON-LD on the homepage
+    if page_path == "index.html":
         website_ld = {
             "@context": "https://schema.org",
             "@type": "WebSite",
@@ -1332,13 +1328,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             "name": entity_name,
         }
         # Determine URL: prefer author URL, fall back to base_url
-        org_url = None
         if author and author.get("url"):
-            org_url = author["url"]
-        elif base_url:
-            org_url = base_url
-        if org_url:
-            org_ld["url"] = org_url
+            org_ld["url"] = author["url"]
+        else:
+            org_ld["url"] = base_url
 
         # sameAs: collect social profile URLs
         same_as = []
@@ -1474,8 +1467,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 f'\n</script>'
             )
 
-    # OG tags -- emit basic tags always when page_path exists,
-    # URL-dependent tags only when base_url is set
+    # OG tags -- emitted when page_path exists
     if page_path:
         escaped_desc = _escape_html(description)
         og_desc_tag = (
@@ -1487,8 +1479,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             if description else ""
         )
 
-        # twitter:card is summary_large_image when og:image exists (base_url set)
-        twitter_card_type = "summary_large_image" if base_url else "summary"
+        twitter_card_type = "summary_large_image"
 
         og_type = "website" if page_path == "index.html" else "article"
         twitter_site_tag = (
@@ -1509,16 +1500,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'{twitter_site_tag}'
         )
 
-        if base_url:
-            slug = page_path.replace(".html", "")
-            seo_tags += (
-                f'\n<meta property="og:image" content="{base_url}/og-{slug}.png">'
-                f'\n<meta property="og:image:type" content="image/png">'
-                f'\n<meta property="og:image:width" content="1200">'
-                f'\n<meta property="og:image:height" content="630">'
-                f'\n<meta property="og:url" content="{canonical_url}">'
-                f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.png">'
-            )
+        slug = page_path.replace(".html", "")
+        seo_tags += (
+            f'\n<meta property="og:image" content="{base_url}/og-{slug}.png">'
+            f'\n<meta property="og:image:type" content="image/png">'
+            f'\n<meta property="og:image:width" content="1200">'
+            f'\n<meta property="og:image:height" content="630">'
+            f'\n<meta property="og:url" content="{canonical_url}">'
+            f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.png">'
+        )
 
     # Canonical URL -- needs base_url
     if canonical_url:
