@@ -56,6 +56,36 @@ def test_init_creates_config_and_docs(project_dir):
     assert ":::module testproj" in content
 
 
+def test_init_index_has_frontmatter(project_dir):
+    """selfdoc init produces docs/index.md with description and date in frontmatter."""
+    import datetime
+    from selfdoc.cli import _cmd_init
+
+    class Args:
+        pass
+
+    _cmd_init(Args())
+
+    index_path = project_dir / "docs" / "index.md"
+    content = index_path.read_text()
+
+    # Check frontmatter delimiters
+    assert content.startswith("---\n")
+    # Extract frontmatter block
+    parts = content.split("---\n", 2)
+    assert len(parts) >= 3, "frontmatter must have opening and closing ---"
+    fm_text = parts[1]
+
+    assert "description: Documentation for" in fm_text
+    assert "date: " in fm_text
+    # Verify date is a valid ISO date
+    for line in fm_text.strip().split("\n"):
+        if line.startswith("date: "):
+            date_val = line[len("date: "):]
+            # Should be today's date in ISO format
+            datetime.date.fromisoformat(date_val)
+
+
 def test_init_aborts_if_config_exists(project_dir):
     """selfdoc init aborts if selfdoc.json already exists."""
     (project_dir / "selfdoc.json").write_text("{}")

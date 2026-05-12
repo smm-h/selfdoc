@@ -1,6 +1,7 @@
 """CLI interface for selfdoc."""
 
 import argparse
+import datetime
 import http.server
 import json
 import os
@@ -124,7 +125,14 @@ def _cmd_init(args):
     # Create starter index.md
     index_path = os.path.join("docs", "index.md")
     if not os.path.isfile(index_path):
+        today = datetime.date.today().isoformat()
         starter = (
+            f"---\n"
+            f"title: {project_name}\n"
+            f"description: Documentation for {project_name}\n"
+            f"date: {today}\n"
+            f"---\n"
+            f"\n"
             f"# {project_name}\n"
             f"\n"
             f"Welcome to the {project_name} documentation.\n"
