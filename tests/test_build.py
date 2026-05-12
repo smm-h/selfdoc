@@ -3059,6 +3059,76 @@ def test_dfn_not_applied_to_second_paragraph():
     assert "<dfn>" not in result
 
 
+# --- Phase 2E: DefinedTerm from standalone dfn tags ---
+
+
+def test_inline_dfn_produces_defined_term_jsonld():
+    """A page with a definitional pattern (triggering _apply_definitions)
+    produces a DefinedTerm JSON-LD entry."""
+    html_files = generate_html(
+        {"index.md": (
+            "## Overview\n\n"
+            "Selfdoc is a static site generator.\n"
+        )},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    term_set = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "DefinedTermSet":
+            term_set = data
+            break
+
+    assert term_set is not None, "DefinedTermSet JSON-LD not found"
+    terms = term_set["hasDefinedTerm"]
+    names = [t["name"] for t in terms]
+    assert "Selfdoc" in names
+
+
+def test_glossary_and_inline_dfn_no_duplicates():
+    """A page with both glossary terms and inline definitions produces
+    entries for both without duplicates."""
+    html_files = generate_html(
+        {"index.md": (
+            "## Overview\n\n"
+            "Parser is a core component.\n\n"
+            "Parser\n"
+            ": Breaks input into tokens\n\n"
+            "Lexer\n"
+            ": Tokenizes raw text\n"
+        )},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    term_set = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "DefinedTermSet":
+            term_set = data
+            break
+
+    assert term_set is not None, "DefinedTermSet JSON-LD not found"
+    terms = term_set["hasDefinedTerm"]
+    names = [t["name"] for t in terms]
+    # Parser should appear once (from glossary), Lexer once (from glossary),
+    # inline Parser should be deduplicated
+    assert names.count("Parser") == 1
+    assert "Lexer" in names
+
+
 # --- Phase 7A: Trailing slash redirect rules ---
 
 

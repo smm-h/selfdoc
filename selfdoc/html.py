@@ -1349,32 +1349,66 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n</script>'
         )
 
-    # DefinedTermSet JSON-LD when glossary content is present
+    # DefinedTermSet JSON-LD from glossary blocks and standalone <dfn> tags
+    defined_terms = []
+    seen_names = set()
+
+    # 1. Glossary terms: <dt><dfn>X</dfn></dt><dd>Y</dd>
     if '<div class="glossary">' in body_html:
         dfn_terms = re.findall(
             r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>",
             body_html,
         )
-        if dfn_terms:
-            defined_terms = []
-            for term_name, term_desc in dfn_terms:
-                entry = {
+        for term_name, term_desc in dfn_terms:
+            if term_name not in seen_names:
+                seen_names.add(term_name)
+                defined_terms.append({
                     "@type": "DefinedTerm",
                     "name": term_name,
                     "description": term_desc,
-                }
-                defined_terms.append(entry)
-            term_set_ld = {
-                "@context": "https://schema.org",
-                "@type": "DefinedTermSet",
-                "name": f"{title} Glossary",
-                "hasDefinedTerm": defined_terms,
-            }
-            seo_tags += (
-                f'\n<script type="application/ld+json">\n'
-                f'{json.dumps(term_set_ld)}'
-                f'\n</script>'
-            )
+                })
+
+    # 2. Standalone <dfn> tags from _apply_definitions (inside <p> tags,
+    #    outside glossary blocks). Extract term and containing paragraph.
+    for p_match in re.finditer(r"<p>(.*?)</p>", body_html, re.DOTALL):
+        p_content = p_match.group(1)
+        dfn_match = re.search(r"<dfn>(.*?)</dfn>", p_content)
+        if not dfn_match:
+            continue
+        # Skip if this <p> is inside a glossary block
+        p_start = p_match.start()
+        # Find the last glossary-open before this <p>
+        glossary_open = body_html.rfind('<div class="glossary">', 0, p_start)
+        if glossary_open != -1:
+            glossary_close = body_html.find('</div>', glossary_open)
+            if glossary_close == -1 or glossary_close > p_start:
+                continue  # inside a glossary block
+        term_name = dfn_match.group(1)
+        # Strip HTML tags from term name (e.g. <code>, <strong>)
+        clean_name = re.sub(r"<[^>]+>", "", term_name).strip()
+        if clean_name in seen_names:
+            continue
+        seen_names.add(clean_name)
+        # Use full paragraph text (stripped of HTML) as description
+        clean_desc = re.sub(r"<[^>]+>", "", p_content).strip()
+        defined_terms.append({
+            "@type": "DefinedTerm",
+            "name": clean_name,
+            "description": clean_desc,
+        })
+
+    if defined_terms:
+        term_set_ld = {
+            "@context": "https://schema.org",
+            "@type": "DefinedTermSet",
+            "name": f"{title} Glossary",
+            "hasDefinedTerm": defined_terms,
+        }
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{json.dumps(term_set_ld)}'
+            f'\n</script>'
+        )
 
     # ItemList auto-detection: if schema is not set and the page is
     # list-heavy (more <li> than <p>, with at least 5 <li>), auto-set
