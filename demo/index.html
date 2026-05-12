@@ -356,7 +356,7 @@ body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent
 <li class="toc-item toc-h3"><a href="#table">Table</a></li>
 <li class="toc-item"><a href="#api-entry-cards">API Entry Cards</a></li>
 <li class="toc-item"><a href="#images">Images</a></li>
-<li class="toc-item"><a href="#search-dialog">Search Dialog</a></li>
+<li class="toc-item"><a href="#search-dialog-section">Search Dialog</a></li>
 <li class="toc-item"><a href="#page-not-found">Page Not Found</a></li>
 </ul></nav>
 </details>
@@ -597,11 +597,11 @@ export function extractModule(sourcePath: string): string {
 
 <!-- ==================== SEARCH DIALOG ==================== -->
 
-<h2 id="search-dialog"><a class="heading-link" href="#search-dialog" aria-label="Link to section: Search Dialog">#</a>Search Dialog</h2>
+<h2 id="search-dialog-section"><a class="heading-link" href="#search-dialog-section" aria-label="Link to section: Search Dialog">#</a>Search Dialog</h2>
 
 <p>Press <code>Cmd+K</code> (or <code>Ctrl+K</code>) to open the search dialog, or click the button below to open it manually for preview.</p>
 
-<p><button onclick="document.getElementById('search-dialog').showModal();" style="padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); cursor: pointer; font-family: var(--font-body);">Open Search Dialog</button></p>
+<p><button onclick="document.querySelector('dialog.search-dialog').showModal();" style="padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); cursor: pointer; font-family: var(--font-body);">Open Search Dialog</button></p>
 
 <!-- ==================== 404 SECTION ==================== -->
 
@@ -652,7 +652,7 @@ export function extractModule(sourcePath: string): string {
 <li class="toc-item toc-h3"><a href="#table">Table</a></li>
 <li class="toc-item"><a href="#api-entry-cards">API Entry Cards</a></li>
 <li class="toc-item"><a href="#images">Images</a></li>
-<li class="toc-item"><a href="#search-dialog">Search Dialog</a></li>
+<li class="toc-item"><a href="#search-dialog-section">Search Dialog</a></li>
 <li class="toc-item"><a href="#page-not-found">Page Not Found</a></li>
 </ul></nav>
 </aside>
