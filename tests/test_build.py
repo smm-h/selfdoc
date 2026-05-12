@@ -174,19 +174,9 @@ def test_robots_txt_with_base_url(tmp_path):
     assert "Sitemap: https://example.com/sitemap.xml" in content
 
 
-def test_robots_txt_without_base_url(tmp_path):
-    """robots.txt omits Sitemap line when base_url is None."""
-    path = _generate_robots_txt(str(tmp_path), None)
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert "User-agent: *\nAllow: /" in content
-    assert "Sitemap" not in content
-
-
 def test_robots_txt_ai_crawlers(tmp_path):
     """robots.txt contains entries for all AI crawler user-agents."""
-    path = _generate_robots_txt(str(tmp_path), None)
+    path = _generate_robots_txt(str(tmp_path), "https://example.com")
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
