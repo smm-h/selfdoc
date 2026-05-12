@@ -3603,3 +3603,39 @@ def test_short_frontmatter_description_unchanged_in_meta():
     assert match, "meta description tag must be present"
     meta_desc = match.group(1)
     assert meta_desc == short_desc, f"short description should be unchanged"
+
+
+def test_inline_stat_markup_percentage():
+    """==99.9%== produces <data value="99.9%">99.9%</data>."""
+    result = md_to_html("Uptime is ==99.9%== guaranteed.")
+    assert '<data value="99.9%">99.9%</data>' in result
+
+
+def test_inline_stat_markup_number():
+    """==42== produces <data value="42">42</data>."""
+    result = md_to_html("There are ==42== modules.")
+    assert '<data value="42">42</data>' in result
+
+
+def test_inline_stat_markup_phrase():
+    """==1.5x faster== produces <data value="1.5x faster">1.5x faster</data>."""
+    result = md_to_html("It runs ==1.5x faster== than before.")
+    assert '<data value="1.5x faster">1.5x faster</data>' in result
+
+
+def test_inline_stat_markup_no_false_positive_assignment():
+    """Regular text with = signs like a = b is NOT affected."""
+    result = md_to_html("Set a = b in the config.")
+    assert "<data" not in result
+
+
+def test_inline_stat_markup_no_false_positive_equality():
+    """Comparison operator == is NOT affected."""
+    result = md_to_html("Check if x == y in the code.")
+    assert "<data" not in result
+
+
+def test_inline_stat_markup_not_in_code_block():
+    """Text inside code blocks is NOT affected by stat markup."""
+    result = md_to_html("```\n==42==\n```")
+    assert "<data" not in result

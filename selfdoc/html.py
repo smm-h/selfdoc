@@ -862,6 +862,12 @@ def _inline_format(text):
                 r'<a href="\2">\1</a>',
                 formatted,
             )
+            # Inline stat/data markup: ==value== -> <data value="value">value</data>
+            formatted = re.sub(
+                r"==([^=]+?)==",
+                r'<data value="\1">\1</data>',
+                formatted,
+            )
             # Bold: **text**
             formatted = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", formatted)
             # Italic: *text*
