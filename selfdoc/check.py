@@ -418,19 +418,6 @@ def _run_lints(docs_dir, resolver, config):
                 # Non-blank, non-heading line resets tracking
                 last_heading_line = None
 
-    # SEO005 -- Missing base_url (project-level, not per-file)
-    if config.get("base_url") is None:
-        results.append(LintResult(
-            file="selfdoc.json",
-            line=None,
-            code="SEO005",
-            message=(
-                "base_url not set in config; canonical URLs,"
-                " sitemap, and OG tags will be missing"
-            ),
-            severity="warning",
-        ))
-
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
 
