@@ -1758,20 +1758,6 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();\n"
     )
 
-    _JS_LINK_PREFETCH = (
-        "// Prefetch links on hover (Feature 20)\n"
-        "document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {\n"
-        "  link.addEventListener('mouseenter', function() {\n"
-        "    var href = link.getAttribute('href');\n"
-        "    if (href && !document.querySelector('link[href=\"' + href + '\"')) {\n"
-        "      var prefetch = document.createElement('link');\n"
-        "      prefetch.rel = 'prefetch';\n"
-        "      prefetch.href = href;\n"
-        "      document.head.appendChild(prefetch);\n"
-        "    }\n"
-        "  }, { once: true });\n"
-        "});\n"
-    )
 
     # --- JS blocks: conditionally included ---
     _JS_COPY_BUTTON = (
@@ -1921,7 +1907,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     )
 
     # Assemble JS blocks: always-needed first, then conditional
-    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_SEARCH, _JS_LINK_PREFETCH]
+    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_SEARCH]
 
     if "<pre" in body_html:
         js_blocks.append(_JS_COPY_BUTTON)
