@@ -1,5 +1,5 @@
 {
-  "name": "selfdoc",
+  "name": "selfdocumenting",
   "version": "0.3.0",
   "description": "Code-aware static site generator with directive-based content extraction",
   "bin": {
