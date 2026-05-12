@@ -145,6 +145,35 @@ def load_config(dir_path="."):
     elif top_twitter:
         twitter = top_twitter
 
+    valid_search_values = ("icon", "bar", "hidden")
+    search = raw.get("search", None)
+    if search is not None:
+        if not isinstance(search, str) or search not in valid_search_values:
+            raise ConfigError(
+                f"invalid search value {search!r}; "
+                f"must be one of: {', '.join(valid_search_values)}"
+            )
+
+    feedback = raw.get("feedback", None)
+    if feedback is not None:
+        if not isinstance(feedback, dict):
+            raise ConfigError("'feedback' must be an object")
+        webhook = feedback.get("webhook")
+        ga = feedback.get("ga")
+        if webhook is None and ga is None:
+            raise ConfigError(
+                "'feedback' must contain at least one of 'webhook' or 'ga'"
+            )
+        if webhook is not None and (not isinstance(webhook, str) or not webhook):
+            raise ConfigError("'feedback.webhook' must be a non-empty string")
+        if ga is not None and (not isinstance(ga, str) or not ga):
+            raise ConfigError("'feedback.ga' must be a non-empty string")
+
+    branch = raw.get("branch", None)
+    if branch is not None:
+        if not isinstance(branch, str) or not branch:
+            raise ConfigError("'branch' must be a non-empty string")
+
     return {
         "language": language,
         "source": source,
@@ -159,4 +188,7 @@ def load_config(dir_path="."):
         "author": author,
         "description": description,
         "twitter": twitter,
+        "search": search,
+        "feedback": feedback,
+        "branch": branch,
     }

@@ -333,3 +333,227 @@ def test_invalid_bcp47_lang_tags(config_dir, tag):
     })
     with pytest.raises(ConfigError, match="invalid lang"):
         load_config(str(config_dir))
+
+
+# -- search field --
+
+
+@pytest.mark.parametrize("value", ["icon", "bar", "hidden"])
+def test_search_valid_values(config_dir, value):
+    """Valid search values are accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "search": value,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["search"] == value
+
+
+def test_search_absent_is_none(config_dir):
+    """Missing search field defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["search"] is None
+
+
+def test_search_invalid_value(config_dir):
+    """Invalid search value raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "search": "fullscreen",
+    })
+    with pytest.raises(ConfigError, match="invalid search value"):
+        load_config(str(config_dir))
+
+
+def test_search_non_string(config_dir):
+    """Non-string search value raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "search": 42,
+    })
+    with pytest.raises(ConfigError, match="invalid search value"):
+        load_config(str(config_dir))
+
+
+# -- feedback field --
+
+
+def test_feedback_absent_is_none(config_dir):
+    """Missing feedback field defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["feedback"] is None
+
+
+def test_feedback_webhook_only(config_dir):
+    """Feedback with only webhook is valid."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"webhook": "https://hooks.example.com/fb"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["feedback"]["webhook"] == "https://hooks.example.com/fb"
+
+
+def test_feedback_ga_only(config_dir):
+    """Feedback with only ga is valid."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"ga": "G-ABCDEF1234"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["feedback"]["ga"] == "G-ABCDEF1234"
+
+
+def test_feedback_both_keys(config_dir):
+    """Feedback with both webhook and ga is valid."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"webhook": "https://hooks.example.com/fb", "ga": "G-ABCDEF1234"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["feedback"]["webhook"] == "https://hooks.example.com/fb"
+    assert cfg["feedback"]["ga"] == "G-ABCDEF1234"
+
+
+def test_feedback_empty_object(config_dir):
+    """Empty feedback object raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {},
+    })
+    with pytest.raises(ConfigError, match="at least one of 'webhook' or 'ga'"):
+        load_config(str(config_dir))
+
+
+def test_feedback_not_object(config_dir):
+    """Non-object feedback raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": "yes",
+    })
+    with pytest.raises(ConfigError, match="'feedback' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_feedback_webhook_non_string(config_dir):
+    """Non-string webhook raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"webhook": 123},
+    })
+    with pytest.raises(ConfigError, match="'feedback.webhook' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+def test_feedback_webhook_empty_string(config_dir):
+    """Empty string webhook raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"webhook": ""},
+    })
+    with pytest.raises(ConfigError, match="'feedback.webhook' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+def test_feedback_ga_non_string(config_dir):
+    """Non-string ga raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"ga": 42},
+    })
+    with pytest.raises(ConfigError, match="'feedback.ga' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+def test_feedback_ga_empty_string(config_dir):
+    """Empty string ga raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feedback": {"ga": ""},
+    })
+    with pytest.raises(ConfigError, match="'feedback.ga' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+# -- branch field --
+
+
+def test_branch_valid(config_dir):
+    """Valid branch string is accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branch": "main",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["branch"] == "main"
+
+
+def test_branch_absent_is_none(config_dir):
+    """Missing branch field defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["branch"] is None
+
+
+def test_branch_empty_string(config_dir):
+    """Empty string branch raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branch": "",
+    })
+    with pytest.raises(ConfigError, match="'branch' must be a non-empty string"):
+        load_config(str(config_dir))
+
+
+def test_branch_non_string(config_dir):
+    """Non-string branch raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branch": 42,
+    })
+    with pytest.raises(ConfigError, match="'branch' must be a non-empty string"):
+        load_config(str(config_dir))
