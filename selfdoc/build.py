@@ -579,10 +579,7 @@ def _generate_llms_txt(project_name, markdown_files, base_url=None):
                 first = _first_sentence(line)
                 break
 
-        if base_url:
-            url = f"{base_url}/{html_path}"
-        else:
-            url = html_path
+        url = f"{base_url}/{html_path}"
         lines.append(f"- [{title}]({url}): {first}")
 
     return "\n".join(lines) + "\n"
@@ -609,12 +606,8 @@ def _generate_atom_feed(
 ):
     """Generate an Atom feed (feed.xml) for the documentation site.
 
-    Only generates when base_url is set (Atom requires absolute URLs).
-    Returns the path written, or None if base_url is not set.
+    Returns the path written.
     """
-    if not base_url:
-        return None
-
     if frontmatter is None:
         frontmatter = {}
     if page_dates is None:
@@ -874,8 +867,8 @@ def build(dir_path=".", config=None):
     # Get project-level description from config
     config_description = config.get("description", "")
 
-    # Compute feed URL (Atom feed link in HTML <head>)
-    feed_url = "feed.xml" if base_url else None
+    # Atom feed link in HTML <head>
+    feed_url = "feed.xml"
 
     # Extract critical CSS from raw theme (before minification) for inlining
     theme_name = config.get("theme", "minimal")
@@ -1010,13 +1003,12 @@ def _generate_auxiliary_files(
             f.write(png_bytes)
         written[png_path] = True
 
-    # Generate sitemap.xml (Feature 22) -- only if base_url is set
-    if base_url:
-        sitemap_content = _generate_sitemap(base_url, html_paths, page_dates)
-        sitemap_path = os.path.join(output_dir, "sitemap.xml")
-        with open(sitemap_path, "w", encoding="utf-8") as f:
-            f.write(sitemap_content)
-        written[sitemap_path] = True
+    # Generate sitemap.xml (Feature 22)
+    sitemap_content = _generate_sitemap(base_url, html_paths, page_dates)
+    sitemap_path = os.path.join(output_dir, "sitemap.xml")
+    with open(sitemap_path, "w", encoding="utf-8") as f:
+        f.write(sitemap_content)
+    written[sitemap_path] = True
 
     # Generate llms.txt and llms-full.txt (Feature 24)
     llms_txt = _generate_llms_txt(project_name, markdown_files, base_url)
@@ -1031,7 +1023,7 @@ def _generate_auxiliary_files(
         f.write(llms_full)
     written[llms_full_path] = True
 
-    # Generate Atom feed (feed.xml) -- only if base_url is set
+    # Generate Atom feed (feed.xml)
     feed_path = _generate_atom_feed(
         output_dir=output_dir,
         base_url=base_url,
@@ -1041,8 +1033,7 @@ def _generate_auxiliary_files(
         frontmatter=frontmatter,
         page_dates=page_dates,
     )
-    if feed_path:
-        written[feed_path] = True
+    written[feed_path] = True
 
     # Generate 404.html (Feature 39)
     nav_items = _build_nav(markdown_files, frontmatter)
@@ -1085,10 +1076,7 @@ def _generate_auxiliary_files(
 
 
 def _generate_robots_txt(output_dir, base_url):
-    """Generate robots.txt allowing all crawlers including AI bots.
-
-    Includes a Sitemap directive only if base_url is set.
-    """
+    """Generate robots.txt allowing all crawlers including AI bots."""
     lines = [
         "User-agent: *",
         "Allow: /",
@@ -1113,10 +1101,9 @@ def _generate_robots_txt(output_dir, base_url):
         "",
         "User-agent: OAI-SearchBot",
         "Allow: /",
+        "",
+        f"Sitemap: {base_url}/sitemap.xml",
     ]
-    if base_url:
-        lines.append("")
-        lines.append(f"Sitemap: {base_url}/sitemap.xml")
     content = "\n".join(lines) + "\n"
     path = os.path.join(output_dir, "robots.txt")
     with open(path, "w", encoding="utf-8") as f:
