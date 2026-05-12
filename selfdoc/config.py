@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 
 VALID_LANGUAGES = ("python", "go", "typescript", "javascript")
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
@@ -102,6 +103,11 @@ def load_config(dir_path="."):
     if lang is not None:
         if not isinstance(lang, str) or not lang:
             raise ConfigError("'lang' must be a non-empty string (BCP 47 language tag)")
+        if not re.match(r"^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$", lang):
+            raise ConfigError(
+                f"invalid lang {lang!r}; must be a valid BCP 47 language tag "
+                f"(e.g. 'en', 'en-US', 'pt-BR')"
+            )
 
     description = raw.get("description", None)
     if description is not None:

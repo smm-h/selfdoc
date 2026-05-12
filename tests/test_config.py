@@ -277,3 +277,30 @@ def test_twitter_invalid(config_dir):
     })
     with pytest.raises(ConfigError, match="'twitter' must start with '@'"):
         load_config(str(config_dir))
+
+
+# -- BCP 47 lang validation --
+
+
+@pytest.mark.parametrize("tag", ["en", "en-US", "pt-BR", "zh-Hans"])
+def test_valid_bcp47_lang_tags(config_dir, tag):
+    """Valid BCP 47 language tags are accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "lang": tag,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["lang"] == tag
+
+
+@pytest.mark.parametrize("tag", ["foobar123", "e", "en_US", "123"])
+def test_invalid_bcp47_lang_tags(config_dir, tag):
+    """Invalid BCP 47 language tags raise ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "lang": tag,
+    })
+    with pytest.raises(ConfigError, match="invalid lang"):
+        load_config(str(config_dir))
