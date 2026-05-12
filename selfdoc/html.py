@@ -505,9 +505,26 @@ def md_to_html(text):
             while i < len(lines) and re.match(r"^\|.+\|$", lines[i].strip()):
                 table_lines.append(lines[i].strip())
                 i += 1
+            table_html = _parse_table(table_lines)
+            # Add caption from most recent heading for accessibility
+            caption_text = ""
+            for prev_part in reversed(html_parts):
+                heading_m = re.search(
+                    r"<h[1-6][^>]*>.*?</a>(.*?)</h[1-6]>", prev_part
+                )
+                if heading_m:
+                    caption_text = re.sub(r"<[^>]+>", "", heading_m.group(1)).strip()
+                    break
+            if caption_text:
+                table_html = table_html.replace(
+                    "<table>",
+                    f'<table><caption class="sr-only">'
+                    f"{_escape_html(caption_text)}</caption>",
+                    1,
+                )
             html_parts.append(
                 '<div class="table-wrap">'
-                + _parse_table(table_lines)
+                + table_html
                 + '</div>'
             )
             continue
@@ -1286,7 +1303,7 @@ def _build_toc(body_html):
             f'<a href="#{slug}">{_escape_html(clean_text)}</a></li>'
         )
 
-    return '<nav class="toc-nav"><ul>' + "\n".join(items) + "</ul></nav>"
+    return '<nav class="toc-nav" aria-label="Table of contents"><ul>' + "\n".join(items) + "</ul></nav>"
 
 
 def _build_breadcrumbs(html_path, page_title, prefix):
@@ -1876,6 +1893,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "      localStorage.removeItem('selfdoc-theme');\n"
         "    }\n"
         "    btn.setAttribute('data-state', state);\n"
+        "    var labels = {system: 'Theme: system. Click for light mode', light: 'Theme: light. Click for dark mode', dark: 'Theme: dark. Click for system theme'};\n"
+        "    btn.setAttribute('aria-label', labels[state]);\n"
         "  }\n"
         "  apply(getState());\n"
         "  btn.addEventListener('click', function() {\n"
@@ -2013,10 +2032,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    buttons.forEach(function(btn) {\n"
         "      btn.addEventListener('click', function() {\n"
         "        var lang = btn.getAttribute('data-lang');\n"
-        "        buttons.forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });\n"
+        "        buttons.forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); b.setAttribute('tabindex', '-1'); });\n"
         "        panels.forEach(function(p) { p.classList.remove('active'); });\n"
         "        btn.classList.add('active');\n"
         "        btn.setAttribute('aria-selected', 'true');\n"
+        "        btn.setAttribute('tabindex', '0');\n"
         "        var panel = tabGroup.querySelector('.tab-panel[data-lang=\"' + lang + '\"');\n"
         "        if (panel) panel.classList.add('active');\n"
         "        localStorage.setItem('selfdoc-tab-' + lang, 'true');\n"
@@ -2032,6 +2052,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "      if (localStorage.getItem('selfdoc-tab-' + lang)) {\n"
         "        btn.click();\n"
         "      }\n"
+        "    });\n"
+        "    // Initialize roving tabindex\n"
+        "    buttons.forEach(function(b) {\n"
+        "      b.setAttribute('tabindex', b.classList.contains('active') ? '0' : '-1');\n"
         "    });\n"
         "    // Keyboard navigation for tabs (WAI-ARIA)\n"
         "    var tabBar = tabGroup.querySelector('.tab-bar');\n"
@@ -2199,7 +2223,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</div>\n'
         f'</header>\n'
         f'<div class="layout">\n'
-        f'<nav class="sidebar" id="sidebar">\n'
+        f'<nav class="sidebar" id="sidebar" aria-label="Site navigation">\n'
         f'<ul class="nav-list">\n'
         f'{nav_html}\n'
         f'</ul>\n'
@@ -2219,9 +2243,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
-        f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}">\n'
+        f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}" aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
-        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results" autofocus>\n'
+        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'
         f'<ul class="search-results" id="search-results" role="listbox"></ul>\n'
         f'</div>\n'
         f'</dialog>\n'

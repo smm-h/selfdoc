@@ -163,7 +163,7 @@ def test_build_generates_sidebar(project_dir):
 
     # Sidebar should link to guide.html
     assert "guide.html" in content
-    assert '<nav class="sidebar" id="sidebar">' in content
+    assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
 
 
 def test_robots_txt_with_base_url(tmp_path):
@@ -1044,7 +1044,7 @@ def test_404_contains_sidebar_navigation(project_dir):
     with open(os.path.join(output_dir, "404.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<nav class="sidebar" id="sidebar">' in content
+    assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
     assert "guide.html" in content
     assert "index.html" in content
 
@@ -4012,3 +4012,92 @@ def test_content_header_flex():
     assert 'class="content-header"' in content
     assert 'class="breadcrumbs"' in content
     assert 'edit-link-top' in content
+
+
+# --- Accessibility tests ---
+
+
+def test_sidebar_nav_aria_label():
+    """Sidebar nav has aria-label='Site navigation'."""
+    html_files = generate_html(
+        {"index.md": "# Home\n\nWelcome.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert 'aria-label="Site navigation"' in content
+    assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
+
+
+def test_toc_nav_aria_label():
+    """TOC nav has aria-label='Table of contents'."""
+    # Need enough headings to trigger TOC (>=2 h2/h3)
+    md = "# Home\n\n## Section One\n\nText.\n\n## Section Two\n\nMore text.\n"
+    html_files = generate_html(
+        {"index.md": md},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert '<nav class="toc-nav" aria-label="Table of contents">' in content
+
+
+def test_search_dialog_aria_label():
+    """Search dialog has aria-label='Search documentation'."""
+    html_files = generate_html(
+        {"index.md": "# Home\n\nWelcome.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert 'aria-label="Search documentation"' in content
+    assert '<dialog' in content
+
+
+def test_theme_toggle_dynamic_aria():
+    """Theme toggle JS contains dynamic aria-label updates."""
+    html_files = generate_html(
+        {"index.md": "# Home\n\nWelcome.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert "Theme: system. Click for light mode" in content
+    assert "Theme: light. Click for dark mode" in content
+    assert "Theme: dark. Click for system theme" in content
+
+
+def test_code_tabs_roving_tabindex():
+    """Code tabs JS contains tabindex management for roving tabindex."""
+    # Build a page with code tabs (consecutive fenced blocks with different langs)
+    md = (
+        "# Home\n\n"
+        "```python\nprint('hello')\n```\n\n"
+        "```javascript\nconsole.log('hello');\n```\n"
+    )
+    html_files = generate_html(
+        {"index.md": md},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    # The code tabs JS should contain tabindex management
+    assert "tabindex" in content
+    assert "setAttribute" in content
+
+
+def test_search_input_no_autofocus():
+    """Search input does NOT have autofocus attribute."""
+    html_files = generate_html(
+        {"index.md": "# Home\n\nWelcome.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    # The search input should exist but without autofocus
+    assert 'class="search-input"' in content
+    # Find the search input tag and verify no autofocus
+    search_input_match = re.search(r'<input[^>]*class="search-input"[^>]*>', content)
+    assert search_input_match is not None
+    assert "autofocus" not in search_input_match.group(0)
+
+
+def test_table_has_caption():
+    """Tables get a sr-only caption from the preceding heading."""
+    md = "# Home\n\n## Data Summary\n\n| Name | Value |\n| ---- | ----- |\n| A | 1 |\n| B | 2 |\n"
+    result = md_to_html(md)
+    assert '<caption class="sr-only">Data Summary</caption>' in result
