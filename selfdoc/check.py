@@ -61,7 +61,7 @@ class CheckResult:
     lints: list[LintResult] = field(default_factory=list)
 
 
-def check_docs(dir_path=".", config=None, skip_seo=False):
+def check_docs(dir_path=".", config=None):
     """Validate all directives in docs templates and report coverage.
 
     Scans docs/ for .md templates, parses directives, attempts to resolve
@@ -160,10 +160,7 @@ def check_docs(dir_path=".", config=None, skip_seo=False):
         )
 
     # Run lint checks (SEO and other diagnostics)
-    if not skip_seo:
-        result.lints = _run_lints(docs_dir, resolver, config)
-    else:
-        result.lints = []
+    result.lints = _run_lints(docs_dir, resolver, config)
 
     return result
 
@@ -357,7 +354,7 @@ def _run_lints(docs_dir, resolver, config):
                         f"First paragraph after '{heading_text}' is"
                         f" {word_count} words (aim for 40-60 for AI citation)"
                     ),
-                    severity="info",
+                    severity="warning",
                 ))
 
         # SEO008 -- Statistics density
@@ -387,7 +384,7 @@ def _run_lints(docs_dir, resolver, config):
                     f"Page has {total_words} words but no numeric data"
                     f" points (statistics improve AI citation)"
                 ),
-                severity="info",
+                severity="warning",
             ))
 
         # SEO011 -- Empty heading section (heading followed by same-or-higher
@@ -647,12 +644,11 @@ def _resolve_module_to_relpath(arg, source_paths, base_dir):
     return None
 
 
-def print_results(result, verbose=False):
+def print_results(result):
     """Print check results to stdout in a human-readable format.
 
     Args:
         result: CheckResult to print.
-        verbose: If True, show info-level lints. If False, hide them.
     """
     if not result.directive_results:
         print("No directives found in documentation templates.")
@@ -685,27 +681,14 @@ def print_results(result, verbose=False):
         else:
             print("Coverage: no public symbols found in source files")
 
-    # Lint results -- filter by severity based on verbose flag
-    info_lints = [l for l in result.lints if l.severity == "info"]
-    visible_lints = [
-        l for l in result.lints
-        if l.severity != "info" or verbose
-    ]
-
-    if visible_lints:
+    # Lint results -- all lints are always shown
+    if result.lints:
         print()
-        for lint in visible_lints:
+        for lint in result.lints:
             line_part = f":{lint.line}" if lint.line is not None else ""
             print(
                 f"  {lint.severity}: [{lint.code}] "
                 f"{lint.file}{line_part} - {lint.message}"
             )
-    elif info_lints and not verbose:
-        info_count = len(info_lints)
-        print(
-            f"No warnings. ({info_count} info hint"
-            f"{'s' if info_count != 1 else ''}"
-            f", use --verbose to see)"
-        )
     else:
         print("No lints.")

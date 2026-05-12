@@ -636,24 +636,24 @@ def test_clean_file_no_lints(lint_project):
     config["base_url"] = "https://example.com"
 
     desc = "A clean page demonstrating proper formatting and metadata usage"
+    # Generate a paragraph of 50 words to satisfy SEO007 (40-60 words)
+    para = " ".join(["word"] * 50)
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write(
             f"---\ntitle: Clean\ndescription: {desc}\n---\n"
-            "# Clean\n\n## Section\n\n### Subsection\n\n"
-            "![diagram](diagram.png)\n\nSome text.\n"
+            f"# Clean\n\n## Section\n\n{para}\n\n### Subsection\n\n"
+            f"{para}\n\n![diagram](diagram.png)\n"
         )
 
     results = _run_lints(docs_dir, None, config)
-    # Filter out info-level lints (SEO007/SEO008) that may fire on this content
-    non_info = [r for r in results if r.severity != "info"]
-    assert len(non_info) == 0
+    assert len(results) == 0
 
 
 # -- Info severity and verbose --
 
 
-def test_info_lints_hidden_when_not_verbose(capsys):
-    """Info-level lints are hidden when verbose=False."""
+def test_info_lints_always_shown(capsys):
+    """Info-level lints are always shown (no verbose flag needed)."""
     from selfdoc.check import DirectiveResult
 
     result = CheckResult(
@@ -666,50 +666,22 @@ def test_info_lints_hidden_when_not_verbose(capsys):
             LintResult(
                 file="index.md",
                 line=5,
-                code="SEO007",
+                code="SEO099",
                 message="Test info lint",
                 severity="info",
             ),
         ],
     )
 
-    print_results(result, verbose=False)
+    print_results(result)
     captured = capsys.readouterr()
 
-    assert "SEO007" not in captured.out
-    assert "Test info lint" not in captured.out
-
-
-def test_info_lints_shown_when_verbose(capsys):
-    """Info-level lints are shown when verbose=True."""
-    from selfdoc.check import DirectiveResult
-
-    result = CheckResult(
-        directive_results=[
-            DirectiveResult(
-                file="index.md", line=1, directive=":::module foo", status="OK"
-            )
-        ],
-        lints=[
-            LintResult(
-                file="index.md",
-                line=5,
-                code="SEO007",
-                message="Test info lint",
-                severity="info",
-            ),
-        ],
-    )
-
-    print_results(result, verbose=True)
-    captured = capsys.readouterr()
-
-    assert "SEO007" in captured.out
+    assert "SEO099" in captured.out
     assert "Test info lint" in captured.out
 
 
-def test_info_hints_message_when_not_verbose(capsys):
-    """When only info lints exist and verbose is off, show hint count."""
+def test_warning_and_info_lints_both_shown(capsys):
+    """Both warning and info lints are shown together."""
     from selfdoc.check import DirectiveResult
 
     result = CheckResult(
@@ -720,29 +692,66 @@ def test_info_hints_message_when_not_verbose(capsys):
         ],
         lints=[
             LintResult(
-                file="page.md", line=3, code="SEO007",
+                file="index.md",
+                line=5,
+                code="SEO001",
+                message="Test warning lint",
+                severity="warning",
+            ),
+            LintResult(
+                file="index.md",
+                line=10,
+                code="SEO099",
+                message="Test info lint",
+                severity="info",
+            ),
+        ],
+    )
+
+    print_results(result)
+    captured = capsys.readouterr()
+
+    assert "SEO001" in captured.out
+    assert "Test warning lint" in captured.out
+    assert "SEO099" in captured.out
+    assert "Test info lint" in captured.out
+
+
+def test_info_lints_do_not_show_no_lints_message(capsys):
+    """When info lints exist, 'No lints.' message is not shown."""
+    from selfdoc.check import DirectiveResult
+
+    result = CheckResult(
+        directive_results=[
+            DirectiveResult(
+                file="index.md", line=1, directive=":::module foo", status="OK"
+            )
+        ],
+        lints=[
+            LintResult(
+                file="page.md", line=3, code="SEO099",
                 message="Short paragraph", severity="info",
             ),
             LintResult(
-                file="page.md", line=None, code="SEO008",
+                file="page.md", line=None, code="SEO098",
                 message="No numbers", severity="info",
             ),
         ],
     )
 
-    print_results(result, verbose=False)
+    print_results(result)
     captured = capsys.readouterr()
 
-    assert "No warnings." in captured.out
-    assert "2 info hints" in captured.out
-    assert "--verbose" in captured.out
+    assert "No lints." not in captured.out
+    assert "SEO099" in captured.out
+    assert "SEO098" in captured.out
 
 
 # -- SEO007: Paragraph length after headings --
 
 
 def test_seo007_short_paragraph(lint_project):
-    """SEO007: short paragraph after heading triggers info lint."""
+    """SEO007: short paragraph after heading triggers warning lint."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -759,7 +768,7 @@ def test_seo007_short_paragraph(lint_project):
     seo007 = [r for r in results if r.code == "SEO007"]
 
     assert len(seo007) == 1
-    assert seo007[0].severity == "info"
+    assert seo007[0].severity == "warning"
     assert "3 words" in seo007[0].message
     assert "Section" in seo007[0].message
 
@@ -790,7 +799,7 @@ def test_seo007_normal_paragraph_no_lint(lint_project):
 
 
 def test_seo008_no_numbers_long_page(lint_project):
-    """SEO008: page with >200 words and no numbers triggers info lint."""
+    """SEO008: page with >200 words and no numbers triggers warning lint."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -806,7 +815,7 @@ def test_seo008_no_numbers_long_page(lint_project):
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 1
-    assert seo008[0].severity == "info"
+    assert seo008[0].severity == "warning"
     assert "words" in seo008[0].message
     assert "no numeric" in seo008[0].message
 
@@ -1112,24 +1121,22 @@ def test_parse_hex_color_invalid():
     assert _parse_hex_color("#fff") is None  # Too short
 
 
-# -- skip_seo parameter --
+# -- SEO lints always run --
 
 
-def test_skip_seo_suppresses_lints(python_project):
-    """check_docs with skip_seo=True returns an empty lints list."""
+def test_seo_lints_always_run(python_project):
+    """check_docs always runs SEO lints (no skip_seo parameter)."""
     docs_dir = os.path.join(python_project, "docs")
-    # Write a file that would normally produce SEO warnings:
+    # Write a file that produces SEO warnings:
     # no frontmatter description (SEO006)
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write("# API\n\n:::module mylib\n:::\n")
 
-    # Verify lints exist without skip_seo
-    result_with_lints = check_docs(str(python_project))
-    assert len(result_with_lints.lints) > 0
-
-    # Now with skip_seo=True
-    result = check_docs(str(python_project), skip_seo=True)
-    assert result.lints == []
+    result = check_docs(str(python_project))
+    assert len(result.lints) > 0
+    # SEO006 (missing description) should be present
+    seo006 = [l for l in result.lints if l.code == "SEO006"]
+    assert len(seo006) >= 1
     # Directive validation still works
     assert len(result.directive_results) == 1
     assert result.directive_results[0].status == "OK"

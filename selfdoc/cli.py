@@ -170,19 +170,21 @@ def _cmd_build(args):
 
     print(f"Built {len(written)} file(s) to {output_dir}")
 
-    # Show SEO warning summary after build
-    try:
-        check_result = check_docs(".")
-        warn_count = sum(
-            1 for lint in check_result.lints if lint.severity == "warning"
+    # Run lint checks after build completes
+    check_result = check_docs(".")
+    warn_count = 0
+    for lint in check_result.lints:
+        line_part = f":{lint.line}" if lint.line is not None else ""
+        print(
+            f"{lint.severity}: [{lint.code}] "
+            f"{lint.file}{line_part} - {lint.message}"
         )
-        if warn_count > 0:
-            print(
-                f"{warn_count} SEO warning(s) found."
-                f" Run 'selfdoc check' for details."
-            )
-    except Exception:
-        pass  # Don't let lint errors break the build
+        if lint.severity == "warning":
+            warn_count += 1
+
+    if warn_count > 0:
+        print(f"{warn_count} SEO warning(s) found.")
+        sys.exit(1)
 
 
 def _cmd_serve(args):
@@ -416,15 +418,17 @@ def _cmd_check(args):
     from selfdoc.check import check_docs, print_results
 
     try:
-        result = check_docs(".", skip_seo=getattr(args, "no_seo", False))
+        result = check_docs(".")
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print_results(result, verbose=getattr(args, "verbose", False))
+    print_results(result)
 
-    # Exit with non-zero status if any directives failed
-    if any(dr.status == "FAILED" for dr in result.directive_results):
+    # Exit with non-zero status if any directives failed or any warning lints
+    has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
+    has_warnings = any(lint.severity == "warning" for lint in result.lints)
+    if has_failures or has_warnings:
         sys.exit(1)
 
 
@@ -461,14 +465,6 @@ def run():
 
     # check
     sub_check = subparsers.add_parser("check", help=COMMANDS["check"])
-    sub_check.add_argument(
-        "--verbose", "-v", action="store_true", default=False,
-        help="Show info-level lint hints",
-    )
-    sub_check.add_argument(
-        "--no-seo", action="store_true", default=False,
-        help="Suppress SEO lint warnings",
-    )
     sub_check.set_defaults(func=_cmd_check)
 
     args = parser.parse_args()

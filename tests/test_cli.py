@@ -109,7 +109,7 @@ def _add_base_url(project_dir):
 
 
 def test_build_produces_output(project_dir):
-    """selfdoc build produces HTML in the output directory."""
+    """selfdoc build produces HTML in the output directory even when lints fail."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
     class Args:
@@ -119,8 +119,12 @@ def test_build_produces_output(project_dir):
     _cmd_init(Args())
     _add_base_url(project_dir)
 
-    # Then build
-    _cmd_build(Args())
+    # Build exits non-zero due to SEO lints on the starter template,
+    # but the output files are still written before the lint check.
+    try:
+        _cmd_build(Args())
+    except SystemExit:
+        pass
 
     output_dir = project_dir / "docs" / "_build"
     assert output_dir.exists()
@@ -140,8 +144,12 @@ def test_check_finds_directives(project_dir, capsys):
     _cmd_init(Args())
     _add_base_url(project_dir)
 
-    # The starter template has a :::module directive that resolves OK
-    _cmd_check(Args())
+    # The starter template has a :::module directive that resolves OK,
+    # but check exits 1 due to SEO warnings on the starter template.
+    try:
+        _cmd_check(Args())
+    except SystemExit:
+        pass
 
     captured = capsys.readouterr()
     assert "OK" in captured.out
@@ -150,7 +158,7 @@ def test_check_finds_directives(project_dir, capsys):
 
 
 def test_build_shows_seo_warnings(project_dir, capsys):
-    """selfdoc build shows SEO warning count when issues exist."""
+    """selfdoc build exits non-zero and shows individual lint messages."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
     class Args:
@@ -161,15 +169,22 @@ def test_build_shows_seo_warnings(project_dir, capsys):
 
     # The starter template has no frontmatter description,
     # so SEO006 (missing description) will fire as a warning.
-    _cmd_build(Args())
+    with pytest.raises(SystemExit) as exc_info:
+        _cmd_build(Args())
+
+    assert exc_info.value.code == 1
 
     captured = capsys.readouterr()
+    # Build output is still written
+    assert "Built" in captured.out
+    # Individual lint messages are printed in compiler-style format
+    assert "warning:" in captured.out
+    assert "SEO" in captured.out
     assert "SEO warning(s) found" in captured.out
-    assert "selfdoc check" in captured.out
 
 
-def test_check_no_seo_flag(project_dir, capsys):
-    """selfdoc check --no-seo suppresses SEO lint output."""
+def test_check_always_runs_seo_lints(project_dir, capsys):
+    """selfdoc check always runs SEO lints (no --no-seo flag)."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
     class Args:
@@ -178,23 +193,14 @@ def test_check_no_seo_flag(project_dir, capsys):
     _cmd_init(Args())
     _add_base_url(project_dir)
 
-    # Without --no-seo, SEO warnings appear (e.g. SEO006 missing description)
-    class CheckArgs:
-        verbose = False
-        no_seo = False
+    # SEO warnings always appear (e.g. SEO006 missing description)
+    with pytest.raises(SystemExit) as exc_info:
+        _cmd_check(Args())
 
-    _cmd_check(CheckArgs())
+    assert exc_info.value.code == 1
+
     captured = capsys.readouterr()
     assert "SEO" in captured.out
-
-    # With --no-seo, no SEO warnings appear
-    class CheckArgsNoSeo:
-        verbose = False
-        no_seo = True
-
-    _cmd_check(CheckArgsNoSeo())
-    captured = capsys.readouterr()
-    assert "SEO" not in captured.out
 
 
 def test_build_without_init_fails(project_dir):
