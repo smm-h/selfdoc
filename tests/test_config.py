@@ -28,6 +28,7 @@ def test_valid_config_loads(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "docs": "docs/",
         "output": "docs/_build/",
         "deploy": {"provider": "github-pages"},
@@ -45,6 +46,7 @@ def test_defaults_applied(config_dir):
     _write_config(config_dir, {
         "language": "go",
         "source": ["pkg/"],
+        "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
     assert cfg["docs"] == "docs/"
@@ -72,6 +74,18 @@ def test_missing_language(config_dir):
 def test_missing_source(config_dir):
     _write_config(config_dir, {"language": "python"})
     with pytest.raises(ConfigError, match="missing required field 'source'"):
+        load_config(str(config_dir))
+
+
+def test_missing_base_url(config_dir):
+    _write_config(config_dir, {"language": "python", "source": ["src/"]})
+    with pytest.raises(ConfigError, match="'base_url' is required"):
+        load_config(str(config_dir))
+
+
+def test_empty_base_url(config_dir):
+    _write_config(config_dir, {"language": "python", "source": ["src/"], "base_url": ""})
+    with pytest.raises(ConfigError, match="'base_url' must be a non-empty string"):
         load_config(str(config_dir))
 
 
@@ -123,6 +137,7 @@ def test_cloudflare_with_project(config_dir):
     _write_config(config_dir, {
         "language": "javascript",
         "source": ["lib/"],
+        "base_url": "https://example.com",
         "deploy": {"provider": "cloudflare-pages", "project": "my-docs"},
     })
     cfg = load_config(str(config_dir))
@@ -146,6 +161,7 @@ def test_all_new_fields_present(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "lang": "en",
         "author": {"name": "Jane Doe", "url": "https://jane.dev", "type": "Person"},
         "description": "A great project",
@@ -163,6 +179,7 @@ def test_new_fields_absent_backward_compat(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
     assert cfg["lang"] is None
@@ -174,6 +191,7 @@ def test_invalid_lang_empty_string(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "lang": "",
     })
     with pytest.raises(ConfigError, match="'lang' must be a non-empty string"):
@@ -184,6 +202,7 @@ def test_invalid_author_not_dict(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "author": "Jane Doe",
     })
     with pytest.raises(ConfigError, match="'author' must be an object"):
@@ -194,6 +213,7 @@ def test_author_missing_name(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "author": {"url": "https://jane.dev"},
     })
     with pytest.raises(ConfigError, match="'author.name' is required"):
@@ -204,6 +224,7 @@ def test_author_invalid_type(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "author": {"name": "Jane", "type": "Bot"},
     })
     with pytest.raises(ConfigError, match="'author.type' must be 'Person' or 'Organization'"):
@@ -214,6 +235,7 @@ def test_invalid_description_empty_string(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "description": "",
     })
     with pytest.raises(ConfigError, match="'description' must be a non-empty string"):
@@ -225,6 +247,7 @@ def test_author_name_only(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "author": {"name": "Jane Doe"},
     })
     cfg = load_config(str(config_dir))
@@ -239,6 +262,7 @@ def test_twitter_in_author(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "author": {"name": "Test", "twitter": "@test"},
     })
     cfg = load_config(str(config_dir))
@@ -250,6 +274,7 @@ def test_twitter_top_level(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "twitter": "@test",
     })
     cfg = load_config(str(config_dir))
@@ -261,6 +286,7 @@ def test_twitter_author_takes_precedence(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "author": {"name": "Test", "twitter": "@author_handle"},
         "twitter": "@top_handle",
     })
@@ -273,6 +299,7 @@ def test_twitter_invalid(config_dir):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "twitter": "test",
     })
     with pytest.raises(ConfigError, match="'twitter' must start with '@'"):
@@ -288,6 +315,7 @@ def test_valid_bcp47_lang_tags(config_dir, tag):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "lang": tag,
     })
     cfg = load_config(str(config_dir))
@@ -300,6 +328,7 @@ def test_invalid_bcp47_lang_tags(config_dir, tag):
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "lang": tag,
     })
     with pytest.raises(ConfigError, match="invalid lang"):
