@@ -1258,6 +1258,26 @@ def test_seo014_filename_alt(lint_project):
     assert "dashboard-v2.png" in seo014[0].message
 
 
+def test_seo014_single_char_alt(lint_project):
+    """SEO014: single-character alt text triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n![x](photo.png)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo014 = [r for r in results if r.code == "SEO014"]
+
+    assert len(seo014) == 1
+    assert seo014[0].severity == "warning"
+    assert "'x'" in seo014[0].message
+
+
 def test_seo014_descriptive_alt_no_warning(lint_project):
     """SEO014: image with descriptive alt text does not trigger warning."""
     _, docs_dir, config = lint_project
@@ -1310,6 +1330,27 @@ def test_seo015_descriptive_anchor_no_warning(lint_project):
         f.write(
             f"---\ndescription: {desc}\n---\n"
             "# Title\n\n[selfdoc configuration reference](https://example.com/config)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo015 = [r for r in results if r.code == "SEO015"]
+
+    assert len(seo015) == 0
+
+
+def test_seo015_inside_code_block_no_warning(lint_project):
+    """SEO015: generic anchor text inside a fenced code block does NOT trigger."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n"
+            "```\n"
+            "[click here](url)\n"
+            "```\n"
         )
 
     results = _run_lints(docs_dir, None, config)
