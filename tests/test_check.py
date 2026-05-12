@@ -594,46 +594,6 @@ def test_seo004_short_title_no_warning(lint_project):
     assert len(seo004) == 0
 
 
-@pytest.mark.skip(reason="base_url is now required; SEO005 removed in Phase 0c")
-def test_seo005_missing_base_url(lint_project):
-    """SEO005: config without base_url triggers a warning."""
-    _, docs_dir, config = lint_project
-    # Ensure no base_url key
-    config.pop("base_url", None)
-
-    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
-        f.write(
-            "---\ndescription: test\n---\n"
-            "# Title\n\nContent.\n"
-        )
-
-    results = _run_lints(docs_dir, None, config)
-    seo005 = [r for r in results if r.code == "SEO005"]
-
-    assert len(seo005) == 1
-    assert seo005[0].file == "selfdoc.json"
-    assert seo005[0].line is None
-    assert "base_url" in seo005[0].message
-    assert seo005[0].severity == "warning"
-
-
-@pytest.mark.skip(reason="base_url is now required; SEO005 removed in Phase 0c")
-def test_seo005_with_base_url_no_warning(lint_project):
-    """SEO005: config with base_url does not trigger a warning."""
-    _, docs_dir, config = lint_project
-    config["base_url"] = "https://example.com"
-
-    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
-        f.write(
-            "---\ndescription: test\n---\n"
-            "# Title\n\nContent.\n"
-        )
-
-    results = _run_lints(docs_dir, None, config)
-    seo005 = [r for r in results if r.code == "SEO005"]
-    assert len(seo005) == 0
-
-
 def test_seo006_missing_description(lint_project):
     """SEO006: file without description in frontmatter triggers a warning."""
     _, docs_dir, config = lint_project
