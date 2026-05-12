@@ -26,4 +26,5 @@ build-backend = "hatchling.build"
 dev = [
     "pygments>=2.20.0",
     "pytest>=9.0.3",
+    "pytest-playwright>=0.7.2",
 ]
