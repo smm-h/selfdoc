@@ -10,7 +10,9 @@ import struct
 
 import gzip as gzip_module
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output
+from unittest import mock
+
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic
 from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js, md_to_html
 
 
@@ -3749,3 +3751,56 @@ def test_search_closes_on_click(project_dir):
     # Specifically, there should be an addEventListener('click'... closeSearch pattern
     assert "addEventListener" in js
     assert "closeSearch" in js
+
+
+# --- OG PNG predraw integration ---
+
+
+def test_og_png_basic_fallback(project_dir):
+    """When predraw is unavailable, OG PNGs are valid basic PNGs."""
+    with mock.patch("selfdoc.build._HAS_PREDRAW", False):
+        build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    png_path = os.path.join(output_dir, "og-index.png")
+    assert os.path.isfile(png_path)
+
+    with open(png_path, "rb") as f:
+        data = f.read()
+
+    # Verify PNG signature
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    # Verify 1200x630 dimensions from IHDR
+    ihdr_width = struct.unpack(">I", data[16:20])[0]
+    ihdr_height = struct.unpack(">I", data[20:24])[0]
+    assert ihdr_width == 1200
+    assert ihdr_height == 630
+
+
+def test_og_png_rich_when_predraw_available(project_dir):
+    """When predraw is installed, rich PNGs are larger than basic ones."""
+    try:
+        from predraw.model import Scene, Element, Font
+        from predraw.renderer import render_svg
+        import cairosvg
+    except ImportError:
+        pytest.skip("predraw or cairosvg not installed")
+
+    # Build with predraw enabled (real import)
+    with mock.patch("selfdoc.build._HAS_PREDRAW", True):
+        build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    rich_png_path = os.path.join(output_dir, "og-index.png")
+    assert os.path.isfile(rich_png_path)
+    rich_size = os.path.getsize(rich_png_path)
+
+    with open(rich_png_path, "rb") as f:
+        rich_data = f.read()
+
+    # Verify valid PNG
+    assert rich_data[:8] == b"\x89PNG\r\n\x1a\n"
+
+    # Compare with basic version
+    basic_bytes = _generate_og_png_basic()
+    assert rich_size > len(basic_bytes)

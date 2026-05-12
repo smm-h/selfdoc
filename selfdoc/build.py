@@ -20,6 +20,14 @@ from selfdoc.html import (
 )
 from selfdoc.resolver import make_resolver
 
+try:
+    from predraw.model import Scene, Element, Font
+    from predraw.renderer import render_svg
+    import cairosvg
+    _HAS_PREDRAW = True
+except ImportError:
+    _HAS_PREDRAW = False
+
 
 def _read_png_dimensions(filepath):
     """Read width and height from a PNG file's IHDR chunk.
@@ -383,8 +391,8 @@ def _generate_og_svg(project_name, page_title, accent_color="#0969da"):
     )
 
 
-def _generate_og_png(project_name, page_title, accent_color="#0969da"):
-    """Generate a 1200x630 PNG social card using only stdlib.
+def _generate_og_png_basic(accent_color="#0969da"):
+    """Generate a 1200x630 PNG social card using only stdlib (no text).
 
     Creates a visually distinct card with:
     - Light background derived from accent color
@@ -447,6 +455,83 @@ def _generate_og_png(project_name, page_title, accent_color="#0969da"):
     iend = _png_chunk(b"IEND", b"")
 
     return signature + ihdr + idat + iend
+
+
+def _generate_og_png_rich(project_name, title, accent_color, output_path):
+    """Generate a 1200x630 PNG social card with text using predraw + cairosvg.
+
+    Builds a predraw Scene with project name, page title, accent bar,
+    decorative elements, and renders it to PNG via SVG intermediate.
+    """
+    # Compute background: accent at 10% opacity on white
+    ac = accent_color.lstrip("#")
+    ar, ag, ab = int(ac[0:2], 16), int(ac[2:4], 16), int(ac[4:6], 16)
+    bg_r = 255 - (255 - ar) // 10
+    bg_g = 255 - (255 - ag) // 10
+    bg_b = 255 - (255 - ab) // 10
+    bg_hex = f"#{bg_r:02x}{bg_g:02x}{bg_b:02x}"
+
+    scene = Scene(
+        width=1200,
+        height=630,
+        background=bg_hex,
+        elements=[
+            # Top accent bar
+            Element(type="rect", x=0, y=0, width=1200, height=8, fill=accent_color),
+            # Project name
+            Element(
+                type="text", x=80, y=160, content=project_name,
+                fill="#555555",
+                font=Font(family="system-ui, sans-serif", size=36, weight=600),
+            ),
+            # Page title
+            Element(
+                type="text", x=80, y=330, content=title,
+                fill="#111111",
+                font=Font(family="system-ui, sans-serif", size=56, weight=700),
+            ),
+            # Decorative bar below title
+            Element(type="rect", x=80, y=380, width=120, height=4, fill=accent_color),
+            # Decorative accent rects at the bottom
+            Element(type="rect", x=0, y=470, width=1200, height=8, fill=accent_color, opacity=0.3),
+            Element(type="rect", x=0, y=510, width=1200, height=8, fill=accent_color, opacity=0.2),
+            Element(type="rect", x=0, y=550, width=1200, height=8, fill=accent_color, opacity=0.15),
+            Element(type="rect", x=0, y=590, width=1200, height=8, fill=accent_color, opacity=0.1),
+        ],
+    )
+
+    svg = render_svg(scene)
+    cairosvg.svg2png(
+        bytestring=svg.encode("utf-8"),
+        write_to=output_path,
+        output_width=1200,
+        output_height=630,
+    )
+
+
+def _generate_og_png(project_name, title, accent_color="#0969da"):
+    """Generate a 1200x630 PNG social card.
+
+    Uses predraw for rich text-bearing cards when available, otherwise
+    falls back to the basic stdlib-only version (no text).
+    Returns PNG bytes (basic path) or writes to a temp file and returns
+    bytes (rich path).
+    """
+    if _HAS_PREDRAW:
+        # Rich path: render to a temp file, read bytes back
+        fd, tmp_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        try:
+            _generate_og_png_rich(project_name, title, accent_color, tmp_path)
+            with open(tmp_path, "rb") as f:
+                return f.read()
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+    else:
+        return _generate_og_png_basic(accent_color)
 
 
 def _generate_sitemap(base_url, html_paths, page_dates=None):
@@ -982,6 +1067,11 @@ def build(dir_path=".", config=None):
             f"Pre-compressed {compress_count} files "
             f"(gzip only, install brotli for better compression)"
         )
+
+    if _HAS_PREDRAW:
+        print("OG cards: rich (predraw)")
+    else:
+        print("OG cards: basic (install predraw for text)")
 
     return written
 
