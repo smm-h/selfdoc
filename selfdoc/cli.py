@@ -162,7 +162,7 @@ def _cmd_build(args):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    from selfdoc.check import check_docs
+    from selfdoc.check import check_docs, filter_lints
     from selfdoc.config import load_config
 
     config = load_config(".")
@@ -170,10 +170,16 @@ def _cmd_build(args):
 
     print(f"Built {len(written)} file(s) to {output_dir}")
 
+    # Build ignore set from config
+    ignore_codes = set()
+    if config:
+        ignore_codes.update(config.get("lint_ignore", []))
+
     # Run lint checks after build completes
     check_result = check_docs(".")
+    lints = filter_lints(check_result.lints, ignore_codes)
     warn_count = 0
-    for lint in check_result.lints:
+    for lint in lints:
         line_part = f":{lint.line}" if lint.line is not None else ""
         print(
             f"{lint.severity}: [{lint.code}] "
@@ -415,7 +421,8 @@ def _detect_version():
 
 def _cmd_check(args):
     """Check documentation coverage and consistency."""
-    from selfdoc.check import check_docs, print_results
+    from selfdoc.check import check_docs, filter_lints, print_results
+    from selfdoc.config import load_config
 
     try:
         result = check_docs(".")
@@ -423,12 +430,63 @@ def _cmd_check(args):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print_results(result)
+    # Build combined ignore set from CLI --ignore and config lint_ignore
+    ignore_codes = set()
+    cli_ignore = getattr(args, "ignore", "")
+    if cli_ignore:
+        ignore_codes.update(
+            code.strip() for code in cli_ignore.split(",") if code.strip()
+        )
+    config = load_config(".")
+    if config:
+        ignore_codes.update(config.get("lint_ignore", []))
 
-    # Exit with non-zero status if any directives failed or any warning lints
+    # Filter lints
+    result.lints = filter_lints(result.lints, ignore_codes)
+
+    # Determine exit code before output
     has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
     has_warnings = any(lint.severity == "warning" for lint in result.lints)
-    if has_failures or has_warnings:
+    exit_code = 1 if (has_failures or has_warnings) else 0
+
+    if getattr(args, "format", "text") == "json":
+        output = {
+            "directives": [
+                {
+                    "file": dr.file,
+                    "line": dr.line,
+                    "directive": dr.directive,
+                    "status": dr.status,
+                    "error": dr.error,
+                }
+                for dr in result.directive_results
+            ],
+            "coverage": None,
+            "lints": [
+                {
+                    "file": lint.file,
+                    "line": lint.line,
+                    "code": lint.code,
+                    "message": lint.message,
+                    "severity": lint.severity,
+                }
+                for lint in result.lints
+            ],
+            "exit_code": exit_code,
+        }
+        if result.coverage is not None:
+            cov = result.coverage
+            output["coverage"] = {
+                "total_public": cov.total_public,
+                "referenced": cov.referenced,
+                "documented_symbols": cov.documented_symbols,
+                "undocumented_symbols": cov.undocumented_symbols,
+            }
+        print(json.dumps(output, indent=2))
+    else:
+        print_results(result)
+
+    if exit_code != 0:
         sys.exit(1)
 
 
@@ -465,6 +523,10 @@ def run():
 
     # check
     sub_check = subparsers.add_parser("check", help=COMMANDS["check"])
+    sub_check.add_argument("--ignore", type=str, default="",
+        help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
+    sub_check.add_argument("--format", choices=["text", "json"], default="text",
+        help="Output format (default: text)")
     sub_check.set_defaults(func=_cmd_check)
 
     args = parser.parse_args()

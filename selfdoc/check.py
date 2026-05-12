@@ -8,6 +8,7 @@ also computes coverage: how many public symbols are referenced by
 
 import ast
 import os
+import sys
 from dataclasses import dataclass, field
 
 import re
@@ -735,6 +736,31 @@ def _resolve_module_to_relpath(arg, source_paths, base_dir):
     return None
 
 
+_USE_COLOR = sys.stdout.isatty()
+
+
+def _color(text, code):
+    """Wrap *text* in ANSI escape codes when color output is enabled."""
+    if _USE_COLOR:
+        return f"\033[{code}m{text}\033[0m"
+    return text
+
+
+def filter_lints(lints, ignore_codes):
+    """Return lints excluding those whose code is in *ignore_codes*.
+
+    Args:
+        lints: List of LintResult objects.
+        ignore_codes: Set or collection of code strings to suppress.
+
+    Returns:
+        Filtered list of LintResult objects.
+    """
+    if not ignore_codes:
+        return lints
+    return [lint for lint in lints if lint.code not in ignore_codes]
+
+
 def print_results(result):
     """Print check results to stdout in a human-readable format.
 
@@ -742,13 +768,15 @@ def print_results(result):
         result: CheckResult to print.
     """
     if not result.directive_results:
-        print("No directives found in documentation templates.")
+        print(_color("No directives found in documentation templates.", "1"))
     else:
         # Per-directive results
+        print(_color("Directives", "1"))
         for dr in result.directive_results:
-            status_str = dr.status
             if dr.error:
-                status_str = f"FAILED: {dr.error}"
+                status_str = _color(f"FAILED: {dr.error}", "31")
+            else:
+                status_str = _color("OK", "32")
             print(f"  {dr.file}:{dr.line}  {dr.directive}  {status_str}")
 
         # Summary counts
@@ -768,16 +796,39 @@ def print_results(result):
                     f"Coverage: {cov.referenced}/{cov.total_public} "
                     f"public symbols documented ({pct}%)"
                 )
+                # Print undocumented symbols when coverage is below 100%
+                if cov.undocumented_symbols and pct < 100:
+                    print(_color("Undocumented symbols:", "1"))
+                    # Group by file path
+                    by_file: dict[str, list[str]] = {}
+                    for qualified in cov.undocumented_symbols:
+                        # qualified is "rel/path.py:symbol_name"
+                        if ":" in qualified:
+                            fpath, sym = qualified.rsplit(":", 1)
+                        else:
+                            fpath, sym = qualified, qualified
+                        by_file.setdefault(fpath, []).append(sym)
+                    for fpath in sorted(by_file):
+                        symbols = ", ".join(by_file[fpath])
+                        print(f"  {fpath}: {symbols}")
             else:
                 print("Coverage: no public symbols found in source files")
 
     # Lint results -- all lints are always shown
     if result.lints:
         print()
+        print(_color("Lints", "1"))
         for lint in result.lints:
             line_part = f":{lint.line}" if lint.line is not None else ""
+            if lint.severity == "error":
+                sev_str = _color(lint.severity, "31")
+            elif lint.severity == "warning":
+                sev_str = _color(lint.severity, "33")
+            else:
+                sev_str = lint.severity
+            code_str = _color(f"[{lint.code}]", "36")
             print(
-                f"  {lint.severity}: [{lint.code}] "
+                f"  {sev_str}: {code_str} "
                 f"{lint.file}{line_part} - {lint.message}"
             )
     else:

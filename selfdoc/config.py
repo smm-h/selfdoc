@@ -174,6 +174,16 @@ def load_config(dir_path="."):
         if not isinstance(branch, str) or not branch:
             raise ConfigError("'branch' must be a non-empty string")
 
+    lint_ignore = raw.get("lint_ignore", [])
+    if not isinstance(lint_ignore, list):
+        raise ConfigError("'lint_ignore' must be a list of strings")
+    for item in lint_ignore:
+        if not isinstance(item, str) or not re.match(r"^SEO\d+$", item):
+            raise ConfigError(
+                f"invalid lint_ignore entry {item!r}; "
+                f"must match pattern SEO followed by digits (e.g. 'SEO007')"
+            )
+
     return {
         "language": language,
         "source": source,
@@ -191,4 +201,5 @@ def load_config(dir_path="."):
         "search": search,
         "feedback": feedback,
         "branch": branch,
+        "lint_ignore": lint_ignore,
     }

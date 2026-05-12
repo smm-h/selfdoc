@@ -473,8 +473,8 @@ def test_breadcrumb_list_on_non_index_page(project_dir):
     assert '"BreadcrumbList"' not in index_html
 
 
-def test_website_search_action_on_index_only(project_dir):
-    """WebSite+SearchAction JSON-LD appears only on index page when base_url is set."""
+def test_website_on_index_only(project_dir):
+    """WebSite JSON-LD appears only on index page when base_url is set."""
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -490,11 +490,11 @@ def test_website_search_action_on_index_only(project_dir):
 
     output_dir = os.path.join(project_dir, "docs", "_build")
 
-    # Index page should have WebSite with SearchAction
+    # Index page should have WebSite without SearchAction
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
     assert '"WebSite"' in index_html
-    assert '"SearchAction"' in index_html
+    assert '"SearchAction"' not in index_html
     assert "https://example.com/" in index_html
 
     # Non-index page should NOT have WebSite
@@ -4259,3 +4259,24 @@ def test_breadcrumb_no_broken_links(project_dir):
     # Intermediate "Guides" should be a span (no index page), not a link
     assert '<span>Guides</span>' in content
     assert '<a href="../guides/index.html">' not in content
+
+
+def test_no_search_action_in_jsonld(project_dir):
+    """WebSite JSON-LD does NOT contain SearchAction (static site has no search)."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        index_html = f.read()
+
+    assert '"WebSite"' in index_html
+    assert '"SearchAction"' not in index_html
+    assert "search_term_string" not in index_html
+    assert "potentialAction" not in index_html

@@ -1605,18 +1605,13 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n</script>'
         )
 
-    # WebSite + SearchAction JSON-LD on the homepage
+    # WebSite JSON-LD on the homepage
     if page_path == "index.html":
         website_ld = {
             "@context": "https://schema.org",
             "@type": "WebSite",
             "name": project_name,
             "url": f"{base_url}/",
-            "potentialAction": {
-                "@type": "SearchAction",
-                "target": f"{base_url}/?q={{search_term_string}}",
-                "query-input": "required name=search_term_string",
-            },
         }
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
