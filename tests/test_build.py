@@ -2607,8 +2607,8 @@ def test_og_image_dimensions_present(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta property="og:image:width" content="600">' in content
-    assert '<meta property="og:image:height" content="315">' in content
+    assert '<meta property="og:image:width" content="1200">' in content
+    assert '<meta property="og:image:height" content="630">' in content
 
 
 def test_twitter_card_summary_large_image_with_base_url(project_dir):
@@ -3221,3 +3221,26 @@ def test_no_date_frontmatter_uses_mtime(project_dir):
     # Both should be the same mtime-derived date
     assert re.match(r"^\d{4}-\d{2}-\d{2}$", tech_article["datePublished"])
     assert tech_article["datePublished"] == tech_article["dateModified"]
+
+
+# --- Phase 0B: OG Image Size Upgrade ---
+
+
+def test_og_png_dimensions_1200x630(project_dir):
+    """Generated OG PNG images are 1200x630."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    png_path = os.path.join(output_dir, "og-index.png")
+    assert os.path.isfile(png_path)
+
+    with open(png_path, "rb") as f:
+        data = f.read()
+
+    # PNG signature
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    # IHDR chunk: 4 bytes length, 4 bytes "IHDR", then width (4 bytes) and height (4 bytes)
+    ihdr_width = struct.unpack(">I", data[16:20])[0]
+    ihdr_height = struct.unpack(">I", data[20:24])[0]
+    assert ihdr_width == 1200
+    assert ihdr_height == 630

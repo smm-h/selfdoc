@@ -383,17 +383,17 @@ def _generate_og_svg(project_name, page_title, accent_color="#0969da"):
 
 
 def _generate_og_png(project_name, page_title, accent_color="#0969da"):
-    """Generate a 600x315 PNG social card using only stdlib.
+    """Generate a 1200x630 PNG social card using only stdlib.
 
     Creates a visually distinct card with:
     - Light background derived from accent color
-    - Thick accent-colored bar across the top (8px)
+    - Thick accent-colored bar across the top (16px)
     - Decorative accent-colored stripe pattern in the lower portion
 
-    Uses a small resolution (600x315) for reasonable file size; platforms
-    scale up as needed. Returns the PNG file contents as bytes.
+    Uses the recommended OG image resolution (1200x630).
+    Returns the PNG file contents as bytes.
     """
-    width, height = 600, 315
+    width, height = 1200, 630
 
     # Parse accent color hex to RGB
     ac = accent_color.lstrip("#")
@@ -406,15 +406,15 @@ def _generate_og_png(project_name, page_title, accent_color="#0969da"):
 
     # Build raw pixel data row by row (RGB, filter byte 0 per scanline)
     raw_rows = []
-    top_bar_h = 8
-    # Decorative stripes in lower portion: 4px accent stripes every 20px
-    stripe_start = height - 80
+    top_bar_h = 16
+    # Decorative stripes in lower portion: 8px accent stripes every 40px
+    stripe_start = height - 160
 
     for y in range(height):
         if y < top_bar_h:
             # Top accent bar
             row = bytes([ar, ag, ab] * width)
-        elif y >= stripe_start and (y - stripe_start) % 20 < 4:
+        elif y >= stripe_start and (y - stripe_start) % 40 < 8:
             # Accent stripe rows in lower portion
             row = bytes([ar, ag, ab] * width)
         else:
