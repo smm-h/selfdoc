@@ -561,3 +561,120 @@ def test_export_produces_content(page):
     )
 
     close_panel(page)
+
+
+# ---------------------------------------------------------------------------
+# 0.5 -- Export contains CSS rules for all knobs (not just comments)
+# ---------------------------------------------------------------------------
+
+# Each entry: (knob_name, value_to_set, list_of_expected_css_fragments)
+_EXPORT_KNOB_FRAGMENTS = [
+    ("sidebar-position", "right", [
+        "grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px)",
+        ".sidebar { order: 3; }",
+        ".content { order: 1; }",
+    ]),
+    ("sidebar-position", "hidden", [
+        ".sidebar { display: none; }",
+        "grid-template-columns: minmax(0, 1fr) 200px",
+    ]),
+    ("sidebar-width", "280px", ["--sidebar-width: 280px"]),
+    ("toc-position", "hidden", [
+        ".toc { display: none; }",
+        "grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr)",
+    ]),
+    ("content-width", "90ch", ["--content-max-width: 90ch"]),
+    ("font-kind", "serif", ['--font-body: Georgia, "Times New Roman", serif']),
+    ("font-size", "18px", ["font-size: 18px"]),
+    ("heading-transform", "uppercase", ["--heading-transform: uppercase"]),
+    ("heading-transform", "small-caps", [
+        "font-variant: small-caps",
+        "text-transform: none",
+    ]),
+    ("heading-separator", "bottom", [
+        "border-bottom: 1px solid var(--border)",
+        "border-top: none",
+    ]),
+    ("heading-separator", "none", [
+        "border-top: none",
+        "padding-top: 0",
+    ]),
+    ("density", "compact", [
+        "--spacing-scale: 0.8",
+        "--line-height-body: 1.4",
+    ]),
+    ("light-dark", "dark", [
+        'Theme: dark. Set via <html data-theme="dark">',
+    ]),
+    ("accent-color", "green", [
+        "--link: #1a7f37",
+        '--link: #3fb950',
+        '[data-theme="dark"]',
+    ]),
+    ("topbar-color", "light", [
+        ".topbar {",
+        "background: var(--bg)",
+        "border-bottom: 1px solid var(--border)",
+        "color: var(--text)",
+    ]),
+    ("topbar-color", "accent", [
+        ".topbar { background: var(--link); }",
+    ]),
+    ("gradient-strip", "hide", [
+        "body::before { display: none; }",
+    ]),
+    ("gradient-strip", "solid", [
+        "body::before { background: var(--link); }",
+    ]),
+    ("border-radius", "rounded", ["--radius: 8px"]),
+    ("code-block-style", "plain", [
+        ".code-block { border: none; background: transparent; }",
+    ]),
+    ("code-block-style", "filled", [
+        ".code-block { border: none; background: var(--code-bg); }",
+        ".code-block pre { background: transparent; }",
+    ]),
+    ("code-block-style", "floating", [
+        "box-shadow: 0 2px 8px rgba(0,0,0,0.12)",
+    ]),
+    ("table-style", "plain", [
+        "tr:nth-child(even) td { background: transparent; }",
+    ]),
+    ("table-style", "bordered", [
+        "td, th { border: 1px solid var(--border); }",
+    ]),
+    ("table-style", "minimal", [
+        "thead { border-bottom: 2px solid var(--border); }",
+        "td { border: none; }",
+    ]),
+]
+
+
+def _make_export_ids():
+    ids = []
+    for knob_name, value, _frags in _EXPORT_KNOB_FRAGMENTS:
+        ids.append(f"export-{knob_name}={value}")
+    return ids
+
+
+@pytest.mark.parametrize(
+    "knob_name,value,expected_fragments",
+    _EXPORT_KNOB_FRAGMENTS,
+    ids=_make_export_ids(),
+)
+def test_export_contains_knob_css(page, knob_name, value, expected_fragments):
+    """Change a knob to a non-default value, export, and verify CSS fragments."""
+    open_panel(page)
+    click_knob_option(page, knob_name, value)
+    page.click("#ds-export")
+    page.wait_for_function(
+        'document.getElementById("ds-export").textContent === "Copied!"',
+        timeout=5000,
+    )
+    clipboard = page.evaluate("navigator.clipboard.readText()")
+    for frag in expected_fragments:
+        assert frag in clipboard, (
+            f"Knob {knob_name}={value}: expected '{frag}' in export.\n"
+            f"Got:\n{clipboard}"
+        )
+    close_panel(page)

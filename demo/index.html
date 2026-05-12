@@ -1489,8 +1489,25 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       if (value === KNOBS[name].defaultValue) return;
 
       switch (name) {
+        case 'sidebar-position':
+          if (value === 'right') {
+            overrides.push('.layout { grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px); }');
+            overrides.push('.sidebar { order: 3; }');
+            overrides.push('.content { order: 1; }');
+            overrides.push('.toc { order: 2; }');
+          } else if (value === 'hidden') {
+            overrides.push('.sidebar { display: none; }');
+            overrides.push('.layout { grid-template-columns: minmax(0, 1fr) 200px; }');
+          }
+          break;
         case 'sidebar-width':
           rootVars.push('  --sidebar-width: ' + value + ';');
+          break;
+        case 'toc-position':
+          if (value === 'hidden') {
+            overrides.push('.toc { display: none; }');
+            overrides.push('.layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); }');
+          }
           break;
         case 'content-width':
           rootVars.push('  --content-max-width: ' + value + ';');
@@ -1510,10 +1527,26 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
         case 'heading-transform':
           if (value === 'uppercase') {
             rootVars.push('  --heading-transform: uppercase;');
+          } else if (value === 'small-caps') {
+            overrides.push('.content h1, .content h2, .content h3, .content h4, .content h5, .content h6 {');
+            overrides.push('  text-transform: none;');
+            overrides.push('  font-variant: small-caps;');
+            overrides.push('}');
           }
-          // small-caps needs a separate rule, added as comment
-          if (value === 'small-caps') {
-            overrides.push('/* Heading small-caps: apply font-variant: small-caps to h1-h6 */');
+          break;
+        case 'heading-separator':
+          if (value === 'bottom') {
+            overrides.push('.content h2 {');
+            overrides.push('  border-top: none;');
+            overrides.push('  padding-top: 0;');
+            overrides.push('  border-bottom: 1px solid var(--border);');
+            overrides.push('  padding-bottom: 0.5rem;');
+            overrides.push('}');
+          } else if (value === 'none') {
+            overrides.push('.content h2 {');
+            overrides.push('  border-top: none;');
+            overrides.push('  padding-top: 0;');
+            overrides.push('}');
           }
           break;
         case 'density':
@@ -1521,6 +1554,9 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           var lineHeights = { 'compact': 1.4, 'normal': 1.6, 'relaxed': 1.8 };
           rootVars.push('  --spacing-scale: ' + (scales[value] || 1.0) + ';');
           rootVars.push('  --line-height-body: ' + (lineHeights[value] || 1.6) + ';');
+          break;
+        case 'light-dark':
+          overrides.push('/* Theme: ' + value + '. Set via <html data-theme="' + value + '"> or JavaScript. */');
           break;
         case 'accent-color':
           var accentExport = {
@@ -1535,13 +1571,61 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           rootVars.push('  --link-hover: ' + ae.light.hover + ';');
           rootVars.push('  --sidebar-active: ' + ae.light.active + ';');
           rootVars.push('  --badge-bg: ' + ae.light.badge + ';');
+          overrides.push('[data-theme="dark"] {');
+          overrides.push('  --link: ' + ae.dark.link + ';');
+          overrides.push('  --link-hover: ' + ae.dark.hover + ';');
+          overrides.push('  --sidebar-active: ' + ae.dark.active + ';');
+          overrides.push('  --badge-bg: ' + ae.dark.badge + ';');
+          overrides.push('}');
+          break;
+        case 'topbar-color':
+          if (value === 'light') {
+            overrides.push('.topbar {');
+            overrides.push('  background: var(--bg);');
+            overrides.push('  border-bottom: 1px solid var(--border);');
+            overrides.push('}');
+            overrides.push('.topbar .project-name,');
+            overrides.push('.topbar .theme-toggle,');
+            overrides.push('.topbar .hamburger span {');
+            overrides.push('  color: var(--text);');
+            overrides.push('}');
+          } else if (value === 'accent') {
+            overrides.push('.topbar { background: var(--link); }');
+          }
+          break;
+        case 'gradient-strip':
+          if (value === 'hide') {
+            overrides.push('body::before { display: none; }');
+          } else if (value === 'solid') {
+            overrides.push('body::before { background: var(--link); }');
+          }
           break;
         case 'border-radius':
           var radii = { 'sharp': '0', 'subtle': '4px', 'rounded': '8px', 'pill': '16px' };
           rootVars.push('  --radius: ' + (radii[value] || '4px') + ';');
           break;
-        default:
-          overrides.push('/* ' + name + ': ' + value + ' */');
+        case 'code-block-style':
+          if (value === 'plain') {
+            overrides.push('.code-block { border: none; background: transparent; }');
+            overrides.push('.code-block:hover { border-color: transparent; }');
+          } else if (value === 'filled') {
+            overrides.push('.code-block { border: none; background: var(--code-bg); }');
+            overrides.push('.code-block pre { background: transparent; }');
+          } else if (value === 'floating') {
+            overrides.push('.code-block { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }');
+            overrides.push('.code-block:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.16); }');
+          }
+          break;
+        case 'table-style':
+          if (value === 'plain') {
+            overrides.push('tr:nth-child(even) td { background: transparent; }');
+          } else if (value === 'bordered') {
+            overrides.push('td, th { border: 1px solid var(--border); }');
+          } else if (value === 'minimal') {
+            overrides.push('thead { border-bottom: 2px solid var(--border); }');
+            overrides.push('td { border: none; }');
+            overrides.push('tr:nth-child(even) td { background: transparent; }');
+          }
           break;
       }
     });
