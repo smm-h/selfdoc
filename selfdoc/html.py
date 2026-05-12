@@ -1338,6 +1338,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         source_code_ld = {
             "@context": "https://schema.org",
             "@type": "SoftwareSourceCode",
+            "name": title,
             "programmingLanguage": prog_lang,
         }
         if repo:

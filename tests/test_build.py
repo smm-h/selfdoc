@@ -574,6 +574,33 @@ def test_software_source_code_on_pages_with_code(project_dir):
     assert '"https://github.com/test/repo"' in content
 
 
+# --- Phase 2C: SoftwareSourceCode name property ---
+
+
+def test_software_source_code_has_name():
+    """SoftwareSourceCode JSON-LD includes name property from page title."""
+    html_files = generate_html(
+        {"index.md": "# API Reference\n\n```python\nprint('hi')\n```\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    source_code = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "SoftwareSourceCode":
+            source_code = data
+            break
+
+    assert source_code is not None, "SoftwareSourceCode JSON-LD not found"
+    assert source_code["name"] == "API Reference"
+
+
 # --- Phase 2.3: OG tags, Twitter Cards, auto-generated meta descriptions ---
 
 
