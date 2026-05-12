@@ -285,7 +285,7 @@ def _run_lints(docs_dir, resolver, config):
                 line=None,
                 code="SEO006",
                 message="No 'description' in frontmatter",
-                severity="warning",
+                severity="error",
             ))
 
         # SEO009 -- Description too short

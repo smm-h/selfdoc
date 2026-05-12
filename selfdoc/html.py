@@ -312,10 +312,6 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Track frontmatter description for visible summary block (Phase 2.6)
         frontmatter_description = description or None
 
-        # Auto-generate description from first paragraph if not in frontmatter
-        if not description:
-            description = _extract_first_paragraph(body_html)
-
         # Truncate description for meta tag (SEO best practice: <= 155 chars)
         # The summary block can still show the full text via `summary`.
         description = _truncate_description(description)
@@ -1448,24 +1444,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         )
 
     # Page summary block from frontmatter description (Phase 2.6)
-    # Auto-extract from first paragraph when no frontmatter summary (Phase 2.3)
     summary_html = ""
-    effective_summary = summary
-    if not effective_summary:
-        # Auto-extract from first paragraph
-        first_p = re.search(r'<p>(.*?)</p>', body_html, re.DOTALL)
-        if first_p:
-            text = re.sub(r'<[^>]+>', '', first_p.group(1)).strip()
-            if len(text) >= 20:
-                if len(text) > 160:
-                    # Truncate at word boundary
-                    truncated = text[:160].rsplit(' ', 1)[0]
-                    text = truncated.rstrip('.,;:') + '...'
-                effective_summary = text
-    if effective_summary:
+    if summary:
         summary_html = (
             f'<div class="page-summary">\n'
-            f'  <p>{_escape_html(effective_summary)}</p>\n'
+            f'  <p>{_escape_html(summary)}</p>\n'
             f'</div>'
         )
 

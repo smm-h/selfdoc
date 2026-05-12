@@ -677,8 +677,8 @@ def test_twitter_card_and_title_present(project_dir):
     assert re.search(r'<meta name="twitter:title" content="Test Project - [^"]+">', content)
 
 
-def test_auto_generated_description(project_dir):
-    """Description is auto-generated from first paragraph when no frontmatter description."""
+def test_no_auto_generated_description(project_dir):
+    """Without frontmatter description, meta description is empty (no auto-extraction)."""
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -696,9 +696,8 @@ def test_auto_generated_description(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta name="description" content="This is the first paragraph of the page.">' in content
-    assert '<meta property="og:description" content="This is the first paragraph of the page.">' in content
-    assert '<meta name="twitter:description" content="This is the first paragraph of the page.">' in content
+    # No auto-extraction: no meta description tag should be emitted
+    assert '<meta name="description"' not in content
 
 
 def test_frontmatter_description_takes_priority(project_dir):
@@ -863,11 +862,11 @@ def test_page_summary_shown_with_description(project_dir):
     assert "This is my page summary" in content
 
 
-def test_page_summary_auto_generated_without_frontmatter(project_dir):
-    """A page without frontmatter description gets auto-generated summary from first paragraph."""
+def test_no_page_summary_without_frontmatter(project_dir):
+    """A page without frontmatter description gets no .page-summary div (no auto-extraction)."""
     docs_dir = os.path.join(project_dir, "docs")
     with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write("# Test Project\n\nThis is a substantial first paragraph with enough text to trigger auto-summary.\n")
+        f.write("# Test Project\n\nThis is a substantial first paragraph with enough text.\n")
 
     build(str(project_dir))
 
@@ -875,8 +874,7 @@ def test_page_summary_auto_generated_without_frontmatter(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<div class="page-summary">' in content
-    assert "substantial first paragraph" in content
+    assert '<div class="page-summary">' not in content
 
 
 def test_page_summary_text_matches_description(project_dir):
@@ -911,8 +909,8 @@ def test_page_summary_frontmatter_takes_priority(project_dir):
     assert "Frontmatter desc" in content
 
 
-def test_auto_summary_from_first_paragraph(project_dir):
-    """A page with no frontmatter description but a substantial first paragraph gets auto-summary."""
+def test_no_auto_summary_from_first_paragraph(project_dir):
+    """A page with no frontmatter description gets no .page-summary div (no auto-extraction)."""
     docs_dir = os.path.join(project_dir, "docs")
     with open(os.path.join(docs_dir, "autosummary.md"), "w", encoding="utf-8") as f:
         f.write("# Auto Summary\n\nSelfdoc is a code-aware static site generator that resolves directive blocks.\n")
@@ -923,8 +921,7 @@ def test_auto_summary_from_first_paragraph(project_dir):
     with open(os.path.join(output_dir, "autosummary.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<div class="page-summary">' in content
-    assert "code-aware static site generator" in content
+    assert '<div class="page-summary">' not in content
 
 
 def test_explicit_summary_takes_precedence(project_dir):
@@ -999,8 +996,8 @@ def test_tech_article_has_description_field(project_dir):
     assert tech_article["description"] == "My page description"
 
 
-def test_tech_article_auto_description(project_dir):
-    """TechArticle JSON-LD includes auto-extracted description when no frontmatter."""
+def test_tech_article_no_auto_description(project_dir):
+    """TechArticle JSON-LD has empty description when no frontmatter description (no auto-extraction)."""
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -1010,7 +1007,7 @@ def test_tech_article_auto_description(project_dir):
 
     docs_dir = os.path.join(project_dir, "docs")
     with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write("# Test\n\nThis is auto-extracted content.\n")
+        f.write("# Test\n\nThis is content without frontmatter description.\n")
 
     build(str(project_dir))
 
@@ -1031,7 +1028,8 @@ def test_tech_article_auto_description(project_dir):
             break
 
     assert tech_article is not None, "TechArticle JSON-LD not found"
-    assert tech_article["description"] == "This is auto-extracted content."
+    # No auto-extraction: description field should be absent
+    assert "description" not in tech_article
 
 
 def test_404_contains_sidebar_navigation(project_dir):

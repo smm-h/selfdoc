@@ -291,7 +291,7 @@ def test_print_results_no_directives_with_lints(capsys):
                 line=None,
                 code="SEO006",
                 message="No 'description' in frontmatter",
-                severity="warning",
+                severity="error",
             ),
         ],
     )
@@ -615,7 +615,7 @@ def test_seo004_short_title_no_warning(lint_project):
 
 
 def test_seo006_missing_description(lint_project):
-    """SEO006: file without description in frontmatter triggers a warning."""
+    """SEO006: file without description in frontmatter triggers an error."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -630,7 +630,7 @@ def test_seo006_missing_description(lint_project):
 
     assert len(seo006) == 1
     assert seo006[0].file == "page.md"
-    assert seo006[0].severity == "warning"
+    assert seo006[0].severity == "error"
     assert "description" in seo006[0].message
 
 
