@@ -702,6 +702,8 @@ blockquote p:last-child {
 .admonition-title {
     font-weight: 600;
     margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
 }
 
 .admonition p:last-child {
@@ -927,19 +929,6 @@ hr {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-}
-
-.page-nav a {
-    font-size: 0.9375rem;
-    text-decoration: none;
-    color: var(--link);
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-}
-
-.page-nav a:hover {
-    text-decoration: underline;
 }
 
 .page-nav-next {
@@ -1601,4 +1590,130 @@ hr {
     z-index: 10;
     pointer-events: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* === Content details/summary styling (Feature 9.1) === */
+
+article details:not(.mobile-toc) {
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 4px);
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+article details:not(.mobile-toc) > summary {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+}
+
+article details:not(.mobile-toc) > summary::-webkit-details-marker {
+    display: none;
+}
+
+article details:not(.mobile-toc) > summary::before {
+    content: "";
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid var(--text-secondary);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    margin-right: 0.5rem;
+    transition: transform 0.15s ease;
+}
+
+article details:not(.mobile-toc)[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+article details:not(.mobile-toc) > :not(summary) {
+    padding: 0 1rem 0.75rem;
+}
+
+/* === Admonition icons (Feature 9.2) === */
+
+.admonition-title::before {
+    content: "";
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    margin-right: 0.4em;
+    vertical-align: -0.15em;
+    background-size: contain;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+}
+
+.admonition.note .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230969da' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
+}
+
+.admonition.tip .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a7f37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z'/%3E%3C/svg%3E");
+}
+
+.admonition.warning .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236d4a00' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+}
+
+.admonition.caution .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cf222e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
+}
+
+.admonition.important .admonition-title::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238250df' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
+}
+
+/* === Prev/next nav cards (Feature 9.3) === */
+
+.page-nav a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--link);
+    font-size: 0.9375rem;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    min-height: 44px;
+}
+
+.page-nav a:hover {
+    border-color: var(--link);
+    background: rgba(9, 105, 218, 0.04);
+    text-decoration: none;
+}
+
+/* === Standalone dfn styling (Feature 9.4) === */
+
+dfn {
+    font-style: normal;
+    background: var(--code-bg);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* === Feed link in site footer (Feature 9.5) === */
+
+.feed-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.feed-link:hover {
+    color: var(--link);
+}
+
+.feed-link svg {
+    display: inline-block;
 }

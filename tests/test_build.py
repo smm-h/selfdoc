@@ -4120,3 +4120,67 @@ def test_table_has_caption():
     md = "# Home\n\n## Data Summary\n\n| Name | Value |\n| ---- | ----- |\n| A | 1 |\n| B | 2 |\n"
     result = md_to_html(md)
     assert '<caption class="sr-only">Data Summary</caption>' in result
+
+
+def test_details_summary_styled():
+    """CSS contains article details styling for generic details/summary elements."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    assert "article details:not(.mobile-toc)" in css
+    assert "article details:not(.mobile-toc) > summary" in css
+    # Verify key properties
+    assert "border: 1px solid var(--border)" in css
+    assert "user-select: none" in css
+
+
+def test_admonition_icons():
+    """CSS contains admonition icon rules with background-image data URIs."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    assert ".admonition-title::before" in css
+    assert "background-image" in css
+    # Each admonition type gets an icon
+    assert ".admonition.note .admonition-title::before" in css
+    assert ".admonition.tip .admonition-title::before" in css
+    assert ".admonition.warning .admonition-title::before" in css
+    assert ".admonition.caution .admonition-title::before" in css
+    assert ".admonition.important .admonition-title::before" in css
+
+
+def test_page_nav_card_style():
+    """CSS styles .page-nav a as cards with border."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    # Find the .page-nav a block and check it has border
+    nav_match = re.search(r"\.page-nav a\s*\{([^}]+)\}", css)
+    assert nav_match is not None
+    nav_body = nav_match.group(1)
+    assert "border:" in nav_body or "border: " in nav_body
+
+
+def test_dfn_styled():
+    """CSS contains standalone dfn styling with background."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    # Find an unscoped dfn rule (not inside .glossary)
+    dfn_match = re.search(r"(?<!\.)dfn\s*\{([^}]+)\}", css)
+    assert dfn_match is not None
+    dfn_body = dfn_match.group(1)
+    assert "background" in dfn_body
+
+
+def test_feed_link_in_footer(project_dir):
+    """Site footer contains feed-link and feed.xml when base_url is set."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "feed-link" in content
+    assert "feed.xml" in content
+    assert "Subscribe via RSS" in content

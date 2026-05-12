@@ -2184,6 +2184,19 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'</script>\n'
         )
 
+    # Feed link in site footer (Feature 9.5)
+    feed_footer_html = ""
+    if feed_url:
+        feed_footer_html = (
+            '\n<p><a class="feed-link" href="' + _escape_html(feed_url) + '">'
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">'
+            '<circle cx="6.18" cy="17.82" r="2.18"/>'
+            '<path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56z'
+            'm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/>'
+            '</svg>'
+            'Subscribe via RSS</a></p>'
+        )
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -2241,6 +2254,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</div>\n'
         f'<footer class="site-footer">\n'
         f'<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
+        f'{feed_footer_html}\n'
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
         f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}" aria-label="Search documentation">\n'
