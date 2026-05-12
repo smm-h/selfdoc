@@ -3542,3 +3542,140 @@ def test_search_js_deferred(project_dir):
     assert inline_match is not None
     inline_js = inline_match.group(1)
     assert "search-index" not in inline_js
+
+
+# --- Subdirectory-based nested nav groups ---
+
+
+def test_subdirectory_pages_grouped_in_nav(project_dir):
+    """Pages in subdirectories appear inside a nav-group with details/summary."""
+    docs_dir = os.path.join(project_dir, "docs")
+    guides_dir = os.path.join(docs_dir, "guides")
+    os.makedirs(guides_dir)
+    with open(os.path.join(guides_dir, "intro.md"), "w", encoding="utf-8") as f:
+        f.write("# Introduction\n\nIntro content.\n")
+    with open(os.path.join(guides_dir, "setup.md"), "w", encoding="utf-8") as f:
+        f.write("# Setup\n\nSetup content.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="nav-group"' in content
+    assert 'class="nav-group-title"' in content
+    assert "Guides" in content
+    assert 'class="nav-group-items"' in content
+    assert 'href="guides/intro.html"' in content
+    assert 'href="guides/setup.html"' in content
+
+
+def test_top_level_pages_ungrouped(project_dir):
+    """Pages in docs/ root appear as flat list items without a group wrapper."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "faq.md"), "w", encoding="utf-8") as f:
+        f.write("# FAQ\n\nFrequently asked questions.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # FAQ link should exist as a direct nav-list child, not inside a group
+    assert 'href="faq.html"' in content
+    # The nav-list should not contain any nav-group since there are no subdirs
+    assert 'class="nav-group"' not in content
+
+
+def test_nav_group_frontmatter_override(project_dir):
+    """nav_group frontmatter overrides the directory-based group title."""
+    docs_dir = os.path.join(project_dir, "docs")
+    api_dir = os.path.join(docs_dir, "api")
+    os.makedirs(api_dir)
+    with open(os.path.join(api_dir, "config.md"), "w", encoding="utf-8") as f:
+        f.write("---\nnav_group: Custom Title\n---\n# Configuration\n\nConfig.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Custom Title" in content
+    # The default "Api" should not appear as a group title
+    assert '>Api<' not in content
+
+
+def test_nav_order_frontmatter(project_dir):
+    """nav_order frontmatter controls sort order within a group."""
+    docs_dir = os.path.join(project_dir, "docs")
+    guides_dir = os.path.join(docs_dir, "guides")
+    os.makedirs(guides_dir)
+    # setup has nav_order 1, intro has nav_order 2 -- so setup should come first
+    with open(os.path.join(guides_dir, "intro.md"), "w", encoding="utf-8") as f:
+        f.write("---\ntitle: Introduction\nnav_order: 2\n---\n# Introduction\n\nIntro.\n")
+    with open(os.path.join(guides_dir, "setup.md"), "w", encoding="utf-8") as f:
+        f.write("---\ntitle: Setup\nnav_order: 1\n---\n# Setup\n\nSetup.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Find positions of the two links within the nav-group-items
+    setup_pos = content.find('guides/setup.html')
+    intro_pos = content.find('guides/intro.html')
+    assert setup_pos < intro_pos, "Setup (nav_order=1) should appear before Introduction (nav_order=2)"
+
+
+def test_active_group_auto_expands(project_dir):
+    """The details element containing the active page has the open attribute."""
+    docs_dir = os.path.join(project_dir, "docs")
+    guides_dir = os.path.join(docs_dir, "guides")
+    os.makedirs(guides_dir)
+    with open(os.path.join(guides_dir, "intro.md"), "w", encoding="utf-8") as f:
+        f.write("# Introduction\n\nIntro content.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    # Check the intro page itself -- its group should be open
+    with open(os.path.join(output_dir, "guides", "intro.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<details open>' in content
+    # Check that the index page (different group) does NOT have it open
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        index_content = f.read()
+
+    # On index page, the group should be closed (no active page in it)
+    assert '<details open>' not in index_content
+    assert '<details>' in index_content
+
+
+def test_nav_groups_sorted_alphabetically(project_dir):
+    """Multiple nav groups appear sorted alphabetically by group name."""
+    docs_dir = os.path.join(project_dir, "docs")
+    # Create two subdirectories: "api" and "guides"
+    api_dir = os.path.join(docs_dir, "api")
+    guides_dir = os.path.join(docs_dir, "guides")
+    os.makedirs(api_dir)
+    os.makedirs(guides_dir)
+    with open(os.path.join(api_dir, "ref.md"), "w", encoding="utf-8") as f:
+        f.write("# API Reference\n\nRef.\n")
+    with open(os.path.join(guides_dir, "start.md"), "w", encoding="utf-8") as f:
+        f.write("# Getting Started\n\nStart.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # "Api" comes before "Guides" alphabetically
+    api_pos = content.find('>Api<')
+    guides_pos = content.find('>Guides<')
+    assert api_pos < guides_pos, "Api group should appear before Guides group"

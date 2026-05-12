@@ -267,11 +267,14 @@ def generate_html(markdown_files, project_name=None, version=None,
     # Build navigation from the file list, using frontmatter for ordering
     nav_items = _build_nav(markdown_files, frontmatter)
 
+    # Flatten nav_items for page iteration order (prev/next links)
+    flat_nav = _flatten_nav(nav_items)
+
     html_files = {}
     for page_idx, (md_path, md_content) in enumerate(
         # Iterate in nav order so prev/next matches sidebar
         [(item["md_path"], markdown_files[item["md_path"]])
-         for item in nav_items if item["md_path"] in markdown_files]
+         for item in flat_nav if item["md_path"] in markdown_files]
     ):
         html_path = _md_to_html_path(md_path)
         # Compute relative path from this file back to root for nav links
@@ -306,9 +309,9 @@ def generate_html(markdown_files, project_name=None, version=None,
         custom_css_href = (prefix + "custom.css") if has_custom_css else None
 
         # Prev/next page links (Feature 8)
-        prev_page = nav_items[page_idx - 1] if page_idx > 0 else None
-        next_page = (nav_items[page_idx + 1]
-                     if page_idx < len(nav_items) - 1 else None)
+        prev_page = flat_nav[page_idx - 1] if page_idx > 0 else None
+        next_page = (flat_nav[page_idx + 1]
+                     if page_idx < len(flat_nav) - 1 else None)
 
         # Breadcrumbs (Feature 9): not shown on index.html
         breadcrumbs = None
@@ -389,11 +392,12 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         'Search documentation</button>'
     )
 
-    # Popular pages section (first 5 nav items)
+    # Popular pages section (first 5 nav items, flattened)
+    flat_nav = _flatten_nav(nav_items)
     popular_html = ""
-    if nav_items:
+    if flat_nav:
         popular_links = []
-        for item in nav_items[:5]:
+        for item in flat_nav[:5]:
             popular_links.append(
                 f'<li><a href="{item["path"]}">'
                 f'{_escape_html(item["label"])}</a></li>'
@@ -1026,53 +1030,171 @@ def _build_nav(markdown_files, frontmatter=None):
     Sorts by frontmatter 'order' (lower = first), then alphabetically
     (Feature 35). Index.md is always first regardless of order.
 
-    Returns list of dicts: {"label": str, "path": str (html path), "md_path": str}
+    Pages in subdirectories are grouped under collapsible nav groups.
+    Group title defaults to the titlecased directory name but can be
+    overridden via ``nav_group`` frontmatter.  ``nav_order`` frontmatter
+    controls sort order within a group (default 0, ties broken
+    alphabetically).
+
+    Returns list of dicts.  Ungrouped items:
+        {"label": str, "path": str, "md_path": str}
+    Group items:
+        {"group": str, "slug": str, "items": [ungrouped-style dicts]}
     """
     if frontmatter is None:
         frontmatter = {}
 
-    nav = []
-    # Index first
-    if "index.md" in markdown_files:
-        nav.append({
-            "label": "Home", "path": "index.html", "md_path": "index.md",
-        })
+    # Collect all items with their metadata
+    ungrouped = []  # top-level pages (no subdirectory)
+    groups = {}     # dir_name -> list of item dicts
 
-    # Remaining pages: sort by frontmatter order, then alphabetically
-    other_pages = [p for p in markdown_files.keys() if p != "index.md"]
-
-    def sort_key(md_path):
-        meta = frontmatter.get(md_path, {})
-        order = meta.get("order")
-        # Pages with order come first (sorted numerically),
-        # pages without order come after (sorted alphabetically)
-        if isinstance(order, (int, float)):
-            return (0, order, md_path)
-        return (1, 0, md_path)
-
-    for md_path in sorted(other_pages, key=sort_key):
-        # Use frontmatter title as label if available, else filename
+    for md_path in markdown_files:
         meta = frontmatter.get(md_path, {})
         label = meta.get("title") or md_path.replace(".md", "").replace("/", " / ")
-        nav.append({
+        item = {
             "label": label,
             "path": _md_to_html_path(md_path),
             "md_path": md_path,
+        }
+
+        # Determine group membership
+        parts = md_path.split("/")
+        if len(parts) > 1:
+            # Subdirectory page -- group by first directory component
+            dir_name = parts[0]
+            # nav_group frontmatter overrides group title
+            group_title = meta.get("nav_group") or dir_name.replace(
+                "-", " ").replace("_", " ").title()
+            nav_order = meta.get("nav_order", 0)
+            if not isinstance(nav_order, (int, float)):
+                nav_order = 0
+            item["_nav_order"] = nav_order
+
+            if dir_name not in groups:
+                groups[dir_name] = {"title": group_title, "items": []}
+            # If a later page overrides the group title, update it
+            if meta.get("nav_group"):
+                groups[dir_name]["title"] = meta["nav_group"]
+            groups[dir_name]["items"].append(item)
+        else:
+            # Top-level page
+            order = meta.get("order")
+            if isinstance(order, (int, float)):
+                item["_sort_key"] = (0, order, md_path)
+            else:
+                item["_sort_key"] = (1, 0, md_path)
+            ungrouped.append(item)
+
+    # Sort ungrouped: index.md always first, then by order/alpha
+    nav = []
+    # Pull out index.md
+    index_item = None
+    rest = []
+    for item in ungrouped:
+        if item["md_path"] == "index.md":
+            index_item = item
+        else:
+            rest.append(item)
+
+    if index_item:
+        index_item["label"] = "Home"
+        nav.append(index_item)
+
+    rest.sort(key=lambda x: x["_sort_key"])
+    nav.extend(rest)
+
+    # Clean up internal sort keys
+    for item in nav:
+        item.pop("_sort_key", None)
+
+    # Build sorted groups: groups sorted alphabetically by group title
+    sorted_group_keys = sorted(
+        groups.keys(), key=lambda k: groups[k]["title"].lower()
+    )
+
+    for dir_name in sorted_group_keys:
+        group_data = groups[dir_name]
+        # Sort items within group by nav_order then alphabetically
+        group_data["items"].sort(
+            key=lambda x: (x.get("_nav_order", 0), x["md_path"])
+        )
+        # Clean up internal keys
+        for item in group_data["items"]:
+            item.pop("_nav_order", None)
+            item.pop("_sort_key", None)
+
+        slug = re.sub(r"[^a-z0-9]+", "-", group_data["title"].lower()).strip("-")
+        nav.append({
+            "group": group_data["title"],
+            "slug": slug,
+            "items": group_data["items"],
         })
 
     return nav
 
 
+def _flatten_nav(nav_items):
+    """Flatten grouped nav items into a simple page list.
+
+    Groups are expanded in order so that prev/next links work across
+    group boundaries.  Returns a list of dicts with ``label``, ``path``,
+    and ``md_path`` keys (no group wrappers).
+    """
+    flat = []
+    for item in nav_items:
+        if "group" in item:
+            flat.extend(item["items"])
+        else:
+            flat.append(item)
+    return flat
+
+
 def _render_nav(nav_items, prefix, current_path=""):
-    """Render the sidebar navigation HTML as a flat list of links."""
+    """Render the sidebar navigation HTML.
+
+    Ungrouped items render as flat ``<li><a>`` elements.  Grouped items
+    render inside ``<details>/<summary>`` wrappers with a
+    ``nav-group`` class.  The group containing the active page gets the
+    ``open`` attribute so it auto-expands.
+    """
     items_html = []
     for item in nav_items:
-        href = prefix + item["path"]
-        active_cls = ' class="active"' if item["path"] == current_path else ""
-        items_html.append(
-            f'<li><a href="{href}"{active_cls}>'
-            f'{_escape_html(item["label"])}</a></li>'
-        )
+        if "group" in item:
+            # Check if the active page is in this group
+            is_active_group = any(
+                sub["path"] == current_path for sub in item["items"]
+            )
+            open_attr = " open" if is_active_group else ""
+            sub_items = []
+            for sub in item["items"]:
+                href = prefix + sub["path"]
+                active_cls = (
+                    ' class="active"' if sub["path"] == current_path else ""
+                )
+                sub_items.append(
+                    f'<li><a href="{href}"{active_cls}>'
+                    f'{_escape_html(sub["label"])}</a></li>'
+                )
+            items_html.append(
+                f'<li class="nav-group">'
+                f'<details{open_attr}>'
+                f'<summary class="nav-group-title">'
+                f'{_escape_html(item["group"])}</summary>'
+                f'<ul class="nav-group-items">'
+                f'{"".join(sub_items)}'
+                f'</ul>'
+                f'</details>'
+                f'</li>'
+            )
+        else:
+            href = prefix + item["path"]
+            active_cls = (
+                ' class="active"' if item["path"] == current_path else ""
+            )
+            items_html.append(
+                f'<li><a href="{href}"{active_cls}>'
+                f'{_escape_html(item["label"])}</a></li>'
+            )
     return "".join(items_html)
 
 
@@ -1913,8 +2035,29 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();\n"
     )
 
+    _JS_NAV_GROUPS = (
+        "// Nav group collapse persistence\n"
+        "(function() {\n"
+        "  var groups = document.querySelectorAll('.nav-group details');\n"
+        "  if (!groups.length) return;\n"
+        "  groups.forEach(function(d) {\n"
+        "    var slug = d.querySelector('.nav-group-title');\n"
+        "    if (!slug) return;\n"
+        "    var key = 'selfdoc-nav-' + slug.textContent.trim()"
+        ".toLowerCase().replace(/[^a-z0-9]+/g, '-');\n"
+        "    var saved = localStorage.getItem(key);\n"
+        "    if (saved === 'closed') {\n"
+        "      d.removeAttribute('open');\n"
+        "    }\n"
+        "    d.addEventListener('toggle', function() {\n"
+        "      localStorage.setItem(key, d.open ? 'open' : 'closed');\n"
+        "    });\n"
+        "  });\n"
+        "})();\n"
+    )
+
     # Assemble JS blocks: always-needed first, then conditional
-    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE]
+    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_NAV_GROUPS]
 
     if "<pre" in body_html:
         js_blocks.append(_JS_COPY_BUTTON)
