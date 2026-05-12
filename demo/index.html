@@ -315,6 +315,34 @@ body[data-table-style="minimal"] thead { border-bottom: 2px solid var(--border);
 body[data-table-style="minimal"] td { border: none; }
 body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent; }
 
+/* 14. Heading weight */
+.content h1, .content h2, .content h3, .content h4, .content h5, .content h6 { font-weight: var(--heading-weight, 600); }
+
+/* 15. Code font size */
+pre code, :not(pre) > code { font-size: var(--code-font-size, 14px); }
+
+/* 16. Link underline */
+body[data-link-underline="always"] .content a:not(.heading-link):not(.nav-list a):not(.page-nav a):not(.breadcrumbs a) { text-decoration: underline; }
+body[data-link-underline="hover"] .content a:not(.heading-link):not(.nav-list a):not(.page-nav a):not(.breadcrumbs a) { text-decoration: none; }
+body[data-link-underline="hover"] .content a:not(.heading-link):not(.nav-list a):not(.page-nav a):not(.breadcrumbs a):hover { text-decoration: underline; }
+
+/* 17. Sidebar background */
+.sidebar { background: var(--sidebar-bg); }
+
+/* 18. Admonition style */
+body[data-admonition-style="filled"] .admonition { border-left: none; border-radius: var(--radius, 4px); }
+body[data-admonition-style="filled"] .admonition.note { background: color-mix(in srgb, var(--link) 10%, transparent); }
+body[data-admonition-style="filled"] .admonition.tip { background: color-mix(in srgb, var(--admonition-tip) 10%, transparent); }
+body[data-admonition-style="filled"] .admonition.warning { background: color-mix(in srgb, var(--admonition-warning) 10%, transparent); }
+body[data-admonition-style="filled"] .admonition.caution { background: color-mix(in srgb, var(--admonition-caution) 10%, transparent); }
+body[data-admonition-style="filled"] .admonition.important { background: color-mix(in srgb, var(--admonition-important) 10%, transparent); }
+body[data-admonition-style="outlined"] .admonition { border-left: none; border: 1px solid var(--border); border-radius: var(--radius, 4px); background: transparent; }
+body[data-admonition-style="outlined"] .admonition.note { border-color: var(--link); }
+body[data-admonition-style="outlined"] .admonition.tip { border-color: var(--admonition-tip); }
+body[data-admonition-style="outlined"] .admonition.warning { border-color: var(--admonition-warning); }
+body[data-admonition-style="outlined"] .admonition.caution { border-color: var(--admonition-caution); }
+body[data-admonition-style="outlined"] .admonition.important { border-color: var(--admonition-important); }
+
 /* Print: hide settings panel */
 @media print {
     .ds-panel, .ds-backdrop, .settings-btn { display: none !important; }
@@ -912,12 +940,31 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
+<div class="ds-knob" data-knob="code-font-size">
+<div class="ds-knob-label">Code font size</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="13px">13</button>
+<button class="ds-opt" data-value="14px">14</button>
+<button class="ds-opt" data-value="15px">15</button>
+</div>
+</div>
+
 <div class="ds-knob" data-knob="heading-transform">
 <div class="ds-knob-label">Heading transform</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="normal">Normal</button>
 <button class="ds-opt" data-value="uppercase">Uppercase</button>
 <button class="ds-opt" data-value="small-caps">Small Caps</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="heading-weight">
+<div class="ds-knob-label">Heading weight</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="400">Light</button>
+<button class="ds-opt" data-value="600">Semi-bold</button>
+<button class="ds-opt" data-value="700">Bold</button>
+<button class="ds-opt" data-value="800">Extra-bold</button>
 </div>
 </div>
 
@@ -976,6 +1023,15 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
+<div class="ds-knob" data-knob="sidebar-bg">
+<div class="ds-knob-label">Sidebar background</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="tinted">Tinted</button>
+<button class="ds-opt" data-value="same">Same</button>
+<button class="ds-opt" data-value="darker">Darker</button>
+</div>
+</div>
+
 <div class="ds-knob" data-knob="gradient-strip">
 <div class="ds-knob-label">Gradient strip</div>
 <div class="ds-options">
@@ -1016,6 +1072,24 @@ export function extractModule(sourcePath: string): string {
 <button class="ds-opt" data-value="plain">Plain</button>
 <button class="ds-opt" data-value="bordered">Bordered</button>
 <button class="ds-opt" data-value="minimal">Minimal</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="link-underline">
+<div class="ds-knob-label">Link underline</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="none">None</button>
+<button class="ds-opt" data-value="always">Always</button>
+<button class="ds-opt" data-value="hover">Hover</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="admonition-style">
+<div class="ds-knob-label">Admonition style</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="left-border">Left border</button>
+<button class="ds-opt" data-value="filled">Filled</button>
+<button class="ds-opt" data-value="outlined">Outlined</button>
 </div>
 </div>
 </div>
@@ -1533,6 +1607,57 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       apply: function(v) {
         document.body.setAttribute('data-table-style', v);
       }
+    },
+    'heading-weight': {
+      defaultValue: '600',
+      apply: function(v) {
+        document.documentElement.style.setProperty('--heading-weight', v);
+      }
+    },
+    'code-font-size': {
+      defaultValue: '14px',
+      apply: function(v) {
+        document.documentElement.style.setProperty('--code-font-size', v);
+      }
+    },
+    'link-underline': {
+      defaultValue: 'none',
+      apply: function(v) {
+        if (v === 'none') {
+          document.body.removeAttribute('data-link-underline');
+        } else {
+          document.body.setAttribute('data-link-underline', v);
+        }
+      }
+    },
+    'sidebar-bg': {
+      defaultValue: 'tinted',
+      apply: function(v) {
+        if (v === 'tinted') {
+          document.documentElement.style.removeProperty('--sidebar-bg');
+        } else {
+          var theme = document.documentElement.getAttribute('data-theme');
+          var isDark;
+          if (theme === 'dark') { isDark = true; }
+          else if (theme === 'light') { isDark = false; }
+          else { isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
+          if (v === 'same') {
+            document.documentElement.style.setProperty('--sidebar-bg', isDark ? '#0d1117' : '#ffffff');
+          } else if (v === 'darker') {
+            document.documentElement.style.setProperty('--sidebar-bg', isDark ? '#010409' : '#eaeef2');
+          }
+        }
+      }
+    },
+    'admonition-style': {
+      defaultValue: 'left-border',
+      apply: function(v) {
+        if (v === 'left-border') {
+          document.body.removeAttribute('data-admonition-style');
+        } else {
+          document.body.setAttribute('data-admonition-style', v);
+        }
+      }
     }
   };
 
@@ -1624,11 +1749,12 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
   updateModifiedIndicator();
   updatePreview();
 
-  // Re-apply accent color when theme changes
+  // Re-apply accent color and sidebar-bg when theme changes
   var _accentObserver = new MutationObserver(function(mutations) {
     mutations.forEach(function(m) {
       if (m.attributeName === 'data-theme') {
         KNOBS['accent-color'].apply(currentValues['accent-color'] || 'blue');
+        KNOBS['sidebar-bg'].apply(currentValues['sidebar-bg'] || 'tinted');
       }
     });
   });
@@ -1828,6 +1954,46 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
             overrides.push('thead { border-bottom: 2px solid var(--border); }');
             overrides.push('td { border: none; }');
             overrides.push('tr:nth-child(even) td { background: transparent; }');
+          }
+          break;
+        case 'heading-weight':
+          rootVars.push('  --heading-weight: ' + value + ';');
+          break;
+        case 'code-font-size':
+          rootVars.push('  --code-font-size: ' + value + ';');
+          break;
+        case 'link-underline':
+          if (value === 'always') {
+            overrides.push('.content a:not(.heading-link) { text-decoration: underline; }');
+          } else if (value === 'hover') {
+            overrides.push('.content a:not(.heading-link) { text-decoration: none; }');
+            overrides.push('.content a:not(.heading-link):hover { text-decoration: underline; }');
+          }
+          break;
+        case 'sidebar-bg':
+          if (value === 'same') {
+            rootVars.push('  --sidebar-bg: #ffffff;');
+            overrides.push('[data-theme="dark"] { --sidebar-bg: #0d1117; }');
+          } else if (value === 'darker') {
+            rootVars.push('  --sidebar-bg: #eaeef2;');
+            overrides.push('[data-theme="dark"] { --sidebar-bg: #010409; }');
+          }
+          break;
+        case 'admonition-style':
+          if (value === 'filled') {
+            overrides.push('.admonition { border-left: none; border-radius: var(--radius, 4px); }');
+            overrides.push('.admonition.note { background: color-mix(in srgb, var(--link) 10%, transparent); }');
+            overrides.push('.admonition.tip { background: color-mix(in srgb, var(--admonition-tip) 10%, transparent); }');
+            overrides.push('.admonition.warning { background: color-mix(in srgb, var(--admonition-warning) 10%, transparent); }');
+            overrides.push('.admonition.caution { background: color-mix(in srgb, var(--admonition-caution) 10%, transparent); }');
+            overrides.push('.admonition.important { background: color-mix(in srgb, var(--admonition-important) 10%, transparent); }');
+          } else if (value === 'outlined') {
+            overrides.push('.admonition { border-left: none; border: 1px solid var(--border); border-radius: var(--radius, 4px); background: transparent; }');
+            overrides.push('.admonition.note { border-color: var(--link); }');
+            overrides.push('.admonition.tip { border-color: var(--admonition-tip); }');
+            overrides.push('.admonition.warning { border-color: var(--admonition-warning); }');
+            overrides.push('.admonition.caution { border-color: var(--admonition-caution); }');
+            overrides.push('.admonition.important { border-color: var(--admonition-important); }');
           }
           break;
       }

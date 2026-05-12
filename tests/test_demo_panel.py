@@ -458,6 +458,116 @@ _KNOB_CASES = [
             ),
         ],
     ),
+    # heading-weight
+    (
+        "heading-weight",
+        [
+            (
+                "400",
+                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
+                "400",
+            ),
+            (
+                "600",
+                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
+                "600",
+            ),
+            (
+                "700",
+                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
+                "700",
+            ),
+            (
+                "800",
+                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
+                "800",
+            ),
+        ],
+    ),
+    # code-font-size
+    (
+        "code-font-size",
+        [
+            (
+                "13px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--code-font-size').trim()",
+                "13px",
+            ),
+            (
+                "14px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--code-font-size').trim()",
+                "14px",
+            ),
+            (
+                "15px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--code-font-size').trim()",
+                "15px",
+            ),
+        ],
+    ),
+    # link-underline
+    (
+        "link-underline",
+        [
+            (
+                "none",
+                "document.body.getAttribute('data-link-underline')",
+                None,
+            ),
+            (
+                "always",
+                "document.body.getAttribute('data-link-underline')",
+                "always",
+            ),
+            (
+                "hover",
+                "document.body.getAttribute('data-link-underline')",
+                "hover",
+            ),
+        ],
+    ),
+    # sidebar-bg
+    (
+        "sidebar-bg",
+        [
+            (
+                "tinted",
+                "document.documentElement.style.getPropertyValue('--sidebar-bg').trim()",
+                "",
+            ),
+            (
+                "same",
+                "document.documentElement.style.getPropertyValue('--sidebar-bg').trim()",
+                "#ffffff",
+            ),
+            (
+                "darker",
+                "document.documentElement.style.getPropertyValue('--sidebar-bg').trim()",
+                "#eaeef2",
+            ),
+        ],
+    ),
+    # admonition-style
+    (
+        "admonition-style",
+        [
+            (
+                "left-border",
+                "document.body.getAttribute('data-admonition-style')",
+                None,
+            ),
+            (
+                "filled",
+                "document.body.getAttribute('data-admonition-style')",
+                "filled",
+            ),
+            (
+                "outlined",
+                "document.body.getAttribute('data-admonition-style')",
+                "outlined",
+            ),
+        ],
+    ),
 ]
 
 
@@ -647,6 +757,35 @@ _EXPORT_KNOB_FRAGMENTS = [
     ("table-style", "minimal", [
         "thead { border-bottom: 2px solid var(--border); }",
         "td { border: none; }",
+    ]),
+    ("heading-weight", "700", ["--heading-weight: 700"]),
+    ("heading-weight", "400", ["--heading-weight: 400"]),
+    ("code-font-size", "13px", ["--code-font-size: 13px"]),
+    ("code-font-size", "15px", ["--code-font-size: 15px"]),
+    ("link-underline", "always", [
+        ".content a:not(.heading-link) { text-decoration: underline; }",
+    ]),
+    ("link-underline", "hover", [
+        ".content a:not(.heading-link) { text-decoration: none; }",
+        ".content a:not(.heading-link):hover { text-decoration: underline; }",
+    ]),
+    ("sidebar-bg", "same", [
+        "--sidebar-bg: #ffffff",
+        '--sidebar-bg: #0d1117',
+        '[data-theme="dark"]',
+    ]),
+    ("sidebar-bg", "darker", [
+        "--sidebar-bg: #eaeef2",
+        '--sidebar-bg: #010409',
+        '[data-theme="dark"]',
+    ]),
+    ("admonition-style", "filled", [
+        ".admonition { border-left: none; border-radius: var(--radius, 4px); }",
+        ".admonition.note { background: color-mix(in srgb, var(--link) 10%, transparent); }",
+    ]),
+    ("admonition-style", "outlined", [
+        ".admonition { border-left: none; border: 1px solid var(--border); border-radius: var(--radius, 4px); background: transparent; }",
+        ".admonition.note { border-color: var(--link); }",
     ]),
 ]
 
