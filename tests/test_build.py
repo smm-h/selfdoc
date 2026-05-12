@@ -790,17 +790,6 @@ def test_atom_feed_generated_with_base_url(project_dir):
     assert os.path.isfile(feed_path)
 
 
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_atom_feed_not_generated_without_base_url(project_dir):
-    """feed.xml is NOT generated when base_url is not set."""
-    written = build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    feed_path = os.path.join(output_dir, "feed.xml")
-    assert feed_path not in written
-    assert not os.path.isfile(feed_path)
-
-
 def test_atom_feed_contains_valid_structure(project_dir):
     """feed.xml contains <feed>, <entry>, correct title, and correct URLs."""
     config_path = os.path.join(project_dir, "selfdoc.json")
@@ -858,18 +847,6 @@ def test_atom_feed_link_in_html_with_base_url(project_dir):
 
     assert '<link rel="alternate" type="application/atom+xml"' in content
     assert 'href="feed.xml">' in content
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_atom_feed_link_not_in_html_without_base_url(project_dir):
-    """HTML pages do NOT contain Atom feed <link> tag when base_url is not set."""
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert 'application/atom+xml' not in content
 
 
 # --- Phase 2.5: Improved 404 page ---
@@ -2004,28 +1981,6 @@ def test_no_itemlist_jsonld_without_schema_frontmatter(project_dir):
     assert '"ItemList"' not in content
 
 
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_itemlist_jsonld_emitted_without_base_url(project_dir):
-    """ItemList JSON-LD is emitted without base_url when schema: itemlist is set."""
-    # No base_url in config (default fixture has none)
-    docs_dir = os.path.join(project_dir, "docs")
-    with open(os.path.join(docs_dir, "features.md"), "w", encoding="utf-8") as f:
-        f.write(
-            "---\nschema: itemlist\n---\n"
-            "# Features\n\n"
-            "- Alpha\n"
-            "- Beta\n"
-        )
-
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert '"ItemList"' in content
-
-
 # --- :::glossary directive ---
 
 
@@ -2104,147 +2059,6 @@ def test_glossary_defined_term_set_jsonld_with_base_url(project_dir):
     assert terms[0]["description"] == "Application Programming Interface"
     assert terms[1]["name"] == "CLI"
     assert terms[1]["description"] == "Command Line Interface"
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_glossary_jsonld_emitted_without_base_url(project_dir):
-    """DefinedTermSet JSON-LD is emitted even without base_url."""
-    # Default fixture has no base_url
-    docs_dir = os.path.join(project_dir, "docs")
-    with open(os.path.join(docs_dir, "glossary.md"), "w", encoding="utf-8") as f:
-        f.write(
-            "# Glossary\n\n"
-            ":::glossary\n"
-            "**API**: Application Programming Interface\n"
-            ":::\n"
-        )
-
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "glossary.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # The glossary HTML should be present
-    assert '<div class="glossary">' in content
-    # JSON-LD should be present even without base_url
-    assert '"DefinedTermSet"' in content
-
-
-# --- Phase 0C: Structured data without base_url ---
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_structured_data_without_base_url(project_dir):
-    """TechArticle, BreadcrumbList, SoftwareSourceCode JSON-LD appear without base_url."""
-    # Default fixture has no base_url
-    docs_dir = os.path.join(project_dir, "docs")
-    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
-        f.write("# Guide\n\n```python\nprint('hi')\n```\n")
-
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-
-    # Non-index page: should have TechArticle and BreadcrumbList
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
-        guide_html = f.read()
-
-    assert '"TechArticle"' in guide_html
-    assert '"BreadcrumbList"' in guide_html
-    assert '"SoftwareSourceCode"' in guide_html
-
-    # TechArticle should NOT have url field without base_url
-    ld_blocks = re.findall(
-        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
-        guide_html,
-        re.DOTALL,
-    )
-    for block in ld_blocks:
-        data = json.loads(block)
-        if data.get("@type") == "TechArticle":
-            assert "url" not in data
-            break
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_og_tags_without_base_url(project_dir):
-    """og:title and og:type appear without base_url; og:url and og:image do not."""
-    # Default fixture has no base_url
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Basic OG tags present
-    assert '<meta property="og:title"' in content
-    assert '<meta property="og:type" content="website">' in content
-    assert '<meta name="twitter:card" content="summary">' in content
-
-    # URL-dependent tags absent
-    assert '<meta property="og:url"' not in content
-    assert '<meta property="og:image"' not in content
-    assert '<link rel="canonical"' not in content
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_canonical_and_sitemap_absent_without_base_url(project_dir):
-    """Canonical URL and sitemap are absent without base_url."""
-    # Default fixture has no base_url
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert '<link rel="canonical"' not in content
-    assert not os.path.isfile(os.path.join(output_dir, "sitemap.xml"))
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_website_search_action_absent_without_base_url(project_dir):
-    """WebSite+SearchAction JSON-LD is absent without base_url."""
-    # Default fixture has no base_url
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert '"WebSite"' not in content
-    assert '"SearchAction"' not in content
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_breadcrumb_no_item_url_without_base_url(project_dir):
-    """BreadcrumbList Home entry has no item URL when base_url is absent."""
-    docs_dir = os.path.join(project_dir, "docs")
-    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
-        f.write("# Guide\n\nContent.\n")
-
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    ld_blocks = re.findall(
-        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
-        content,
-        re.DOTALL,
-    )
-    breadcrumb_data = None
-    for block in ld_blocks:
-        data = json.loads(block)
-        if data.get("@type") == "BreadcrumbList":
-            breadcrumb_data = data
-            break
-
-    assert breadcrumb_data is not None, "BreadcrumbList JSON-LD not found"
-    home_item = breadcrumb_data["itemListElement"][0]
-    assert home_item["name"] == "Home"
-    assert "item" not in home_item
 
 
 def test_glossary_integration_end_to_end(project_dir):
@@ -2738,19 +2552,6 @@ def test_twitter_card_summary_large_image_with_base_url(project_dir):
         content = f.read()
 
     assert '<meta name="twitter:card" content="summary_large_image">' in content
-
-
-@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
-def test_twitter_card_summary_without_base_url(project_dir):
-    """twitter:card is summary when base_url is not set (no og:image)."""
-    # Default fixture has no base_url
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert '<meta name="twitter:card" content="summary">' in content
 
 
 def test_organization_schema_on_index_page(project_dir):
