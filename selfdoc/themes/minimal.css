@@ -64,6 +64,7 @@ a {
     --admonition-important: #8250df;
     --admonition-warning: #6d4a00;
     --admonition-caution: #cf222e;
+    --shadow-sm: rgba(0, 0, 0, 0.08);
     --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
@@ -94,6 +95,7 @@ a {
         --admonition-important: #bc8cff;
         --admonition-warning: #d29922;
         --admonition-caution: #f85149;
+        --shadow-sm: rgba(255, 255, 255, 0.06);
     }
 }
 
@@ -120,6 +122,7 @@ a {
     --admonition-important: #bc8cff;
     --admonition-warning: #d29922;
     --admonition-caution: #f85149;
+    --shadow-sm: rgba(255, 255, 255, 0.06);
 }
 
 /* === High contrast variant === */
@@ -499,6 +502,25 @@ h6:hover .heading-link {
     opacity: 1;
 }
 
+@media (hover: none) {
+    .heading-link {
+        opacity: 0.3;
+    }
+}
+
+/* === Fragment highlight animation === */
+
+@keyframes target-highlight {
+    0% { background-color: rgba(9, 105, 218, 0.12); }
+    100% { background-color: transparent; }
+}
+:target {
+    animation: target-highlight 1.5s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    :target { animation: none; }
+}
+
 /* === Code === */
 
 code {
@@ -759,7 +781,7 @@ blockquote p:last-child {
 }
 
 .code-block:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px var(--shadow-sm);
 }
 
 .code-block pre {
@@ -1373,12 +1395,27 @@ hr {
 
 /* === Print stylesheet (Feature 37) === */
 
+@page { margin: 2cm; }
+
 @media print {
     .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
     .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
     .search-dialog, .heading-link, .theme-toggle, .site-footer,
-    .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger {
+    .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger,
+    .breadcrumbs, .page-summary, .content-header {
         display: none !important;
+    }
+
+    :root {
+        --bg: #ffffff;
+        --text: #1a1a1a;
+        --text-secondary: #555555;
+        --heading: #111111;
+        --link: #0969da;
+        --link-hover: #0550ae;
+        --code-bg: #f6f8fa;
+        --code-border: #d0d7de;
+        --border: #d0d7de;
     }
 
     .code-block, .table-wrap, img, .api-entry, .admonition, blockquote {

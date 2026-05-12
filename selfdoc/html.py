@@ -286,6 +286,9 @@ def generate_html(markdown_files, project_name=None, version=None,
     # Flatten nav_items for page iteration order (prev/next links)
     flat_nav = _flatten_nav(nav_items)
 
+    # Pre-compute set of all HTML paths for breadcrumb link validation
+    all_html_paths = {_md_to_html_path(p) for p in markdown_files}
+
     html_files = {}
     for page_idx, (md_path, md_content) in enumerate(
         # Iterate in nav order so prev/next matches sidebar
@@ -328,7 +331,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Breadcrumbs (Feature 9): not shown on index.html
         breadcrumbs = None
         if html_path != "index.html":
-            breadcrumbs = _build_breadcrumbs(html_path, title, prefix)
+            breadcrumbs = _build_breadcrumbs(html_path, title, prefix,
+                                             all_html_paths)
 
         # Extract TOC from the body HTML (Feature 2)
         toc_html = _build_toc(body_html)
@@ -1306,29 +1310,39 @@ def _build_toc(body_html):
     return '<nav class="toc-nav" aria-label="Table of contents"><ul>' + "\n".join(items) + "</ul></nav>"
 
 
-def _build_breadcrumbs(html_path, page_title, prefix):
+def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None):
     """Build breadcrumb HTML for a non-index page.
 
     For flat pages like ``guide.html``, produces ``Home / Guide``.
     For subdirectory pages like ``api/endpoints.html``, produces
     ``Home / Api / Endpoints`` with intermediate directory links.
+    If an intermediate directory index page does not exist in
+    *existing_pages*, the segment is rendered as a ``<span>``
+    instead of a link.
 
     Args:
         html_path: The current page's html path (e.g. "guide.html"
             or "api/endpoints.html").
         page_title: The page title extracted from the first heading.
         prefix: Relative prefix back to root.
+        existing_pages: Optional set of HTML paths that actually exist.
 
     Returns:
         Breadcrumb HTML string.
     """
+    if existing_pages is None:
+        existing_pages = set()
     parts = html_path.split("/")
     crumbs = [f'<a href="{prefix}index.html">Home</a>']
     # Add intermediate directory breadcrumbs
     for i, dir_name in enumerate(parts[:-1]):
         dir_path = "/".join(parts[:i + 1])
         label = _escape_html(dir_name.capitalize())
-        crumbs.append(f'<a href="{prefix}{dir_path}/index.html">{label}</a>')
+        target = f'{dir_path}/index.html'
+        if target in existing_pages:
+            crumbs.append(f'<a href="{prefix}{target}">{label}</a>')
+        else:
+            crumbs.append(f'<span>{label}</span>')
     # Final segment is the current page (no link)
     crumbs.append(f'<span>{_escape_html(page_title)}</span>')
     return (

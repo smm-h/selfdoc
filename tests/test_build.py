@@ -3079,7 +3079,8 @@ def test_breadcrumbs_subdirectory_page(project_dir):
 
     assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
     assert '<a href="../index.html">Home</a>' in content
-    assert '<a href="../api/index.html">Api</a>' in content
+    # No api/index.md exists, so intermediate breadcrumb is a span not a link
+    assert '<span>Api</span>' in content
     assert '<span>Endpoints</span>' in content
 
 
@@ -4184,3 +4185,77 @@ def test_feed_link_in_footer(project_dir):
     assert "feed-link" in content
     assert "feed.xml" in content
     assert "Subscribe via RSS" in content
+
+
+def test_print_forces_light_colors():
+    """CSS contains @media print with --bg: #ffffff to force light colors."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    # Find the @media print block and check it forces light-mode variables
+    print_match = re.search(r"@media\s+print\s*\{(.+)", css, re.DOTALL)
+    assert print_match is not None
+    print_body = print_match.group(1)
+    assert "--bg: #ffffff" in print_body
+
+
+def test_print_hides_breadcrumbs():
+    """CSS print block hides .breadcrumbs, .page-summary, .content-header."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    print_match = re.search(r"@media\s+print\s*\{(.+)", css, re.DOTALL)
+    assert print_match is not None
+    print_body = print_match.group(1)
+    assert ".breadcrumbs" in print_body
+    assert ".page-summary" in print_body
+    assert ".content-header" in print_body
+    assert "display: none !important" in print_body
+
+
+def test_fragment_highlight_animation():
+    """CSS contains target-highlight keyframes for fragment navigation."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    assert "@keyframes target-highlight" in css
+    assert ":target" in css
+    assert "animation: target-highlight" in css
+
+
+def test_heading_anchor_touch_visible():
+    """CSS contains @media (hover: none) with .heading-link visible."""
+    from selfdoc.themes import get_theme
+
+    css = get_theme("minimal")
+    # Find the hover:none media query
+    hover_match = re.search(
+        r"@media\s*\(hover:\s*none\)\s*\{([^}]+)\}", css
+    )
+    assert hover_match is not None
+    hover_body = hover_match.group(1)
+    assert ".heading-link" in hover_body
+    assert "opacity" in hover_body
+
+
+def test_breadcrumb_no_broken_links(project_dir):
+    """Breadcrumb intermediate segment is <span> when no directory index exists."""
+    docs_dir = os.path.join(project_dir, "docs")
+    sub_dir = os.path.join(docs_dir, "guides")
+    os.makedirs(sub_dir)
+    # Create a page in guides/ but NO guides/index.md
+    with open(os.path.join(sub_dir, "setup.md"), "w", encoding="utf-8") as f:
+        f.write("# Setup\n\nSetup instructions.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    setup_html = os.path.join(output_dir, "guides", "setup.html")
+    assert os.path.isfile(setup_html)
+
+    with open(setup_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Intermediate "Guides" should be a span (no index page), not a link
+    assert '<span>Guides</span>' in content
+    assert '<a href="../guides/index.html">' not in content
