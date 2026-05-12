@@ -187,66 +187,38 @@
 
 /* === Knob override styles === */
 
-/* Sidebar position */
-[data-sidebar="right"] .layout {
-    grid-template-columns: minmax(0,1fr) 200px var(--sidebar-width, 240px);
-}
-[data-sidebar="right"] .sidebar {
-    left: auto;
-    right: 0;
-    border-right: none;
-    border-left: 1px solid var(--border);
-}
-[data-sidebar="right"] .content {
-    grid-column: 1;
-}
-[data-sidebar="right"] .toc {
-    grid-column: 2;
-}
-[data-sidebar="hidden"] .sidebar {
-    display: none;
-}
-[data-sidebar="hidden"] .layout {
-    grid-template-columns: minmax(0,1fr) 200px;
-}
-[data-sidebar="hidden"] .content {
-    grid-column: 1;
-}
-[data-sidebar="hidden"] .toc {
-    grid-column: 2;
-}
+/* 1. Sidebar width */
+.layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr) 200px; }
+.sidebar { width: var(--sidebar-width, 240px); }
+@media (max-width: 1280px) { .layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); } }
+@media (max-width: 768px) { .sidebar { width: var(--sidebar-width, 240px); } body.sidebar-open .content { margin-left: var(--sidebar-width, 240px); } }
 
-/* Sidebar width override */
-.layout {
-    grid-template-columns: var(--sidebar-width, 240px) minmax(0,1fr) 200px;
-}
-.sidebar {
-    width: var(--sidebar-width, 240px);
-}
+/* 2. Content width */
+.content { max-width: var(--content-max-width, 800px); }
 
-/* TOC position */
-[data-toc="hidden"] .toc {
-    display: none;
-}
-[data-toc="hidden"] .layout {
-    grid-template-columns: var(--sidebar-width, 240px) minmax(0,1fr);
-}
-[data-toc="hidden"][data-sidebar="hidden"] .layout {
-    grid-template-columns: minmax(0,1fr);
-}
-[data-toc="hidden"][data-sidebar="right"] .layout {
-    grid-template-columns: minmax(0,1fr) var(--sidebar-width, 240px);
-}
+/* 3. Border radius */
+.nav-list a,
+.version-badge,
+.code-block,
+.admonition,
+.copy-btn,
+.run-btn,
+.tab-bar .tab,
+.search-inner,
+.search-input,
+.search-result-item a,
+.mobile-toc,
+.feedback button,
+.api-entry,
+.theme-toggle,
+.code-annotation { border-radius: var(--radius, 4px); }
 
-/* Content width */
-.content {
-    max-width: var(--content-max-width, 800px);
-}
+/* 4. Line height */
+body, .content p { line-height: var(--line-height-body, 1.6); }
 
-/* Heading transform */
-.content h1, .content h2, .content h3,
-.content h4, .content h5, .content h6 {
-    text-transform: var(--heading-transform, none);
+/* 5. Heading transform */
+.content h1, .content h2, .content h3, .content h4, .content h5, .content h6 {
+  text-transform: var(--heading-transform, none);
 }
 body.heading-smallcaps .content h1,
 body.heading-smallcaps .content h2,
@@ -254,143 +226,62 @@ body.heading-smallcaps .content h3,
 body.heading-smallcaps .content h4,
 body.heading-smallcaps .content h5,
 body.heading-smallcaps .content h6 {
-    text-transform: none;
-    font-variant: small-caps;
+  text-transform: none;
+  font-variant: small-caps;
 }
 
-/* Heading separator */
-body.heading-sep-bottom .content h2 {
-    border-top: none;
-    padding-top: 0;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.5rem;
-    margin-top: 2.5rem;
-}
-body.heading-sep-none .content h2 {
-    border-top: none;
-    padding-top: 0;
-}
+/* 6. Spacing scale */
+.content { padding: calc(2rem * var(--spacing-scale, 1)); }
+.content h2, .content h3, .content h4 { margin-top: calc(2rem * var(--spacing-scale, 1)); }
+.content p { margin-bottom: calc(1rem * var(--spacing-scale, 1)); }
+.content ul, .content ol { margin-bottom: calc(1rem * var(--spacing-scale, 1)); }
+.content li { margin-bottom: calc(0.25rem * var(--spacing-scale, 1)); }
+.code-block { margin: calc(1.5rem * var(--spacing-scale, 1)) 0; }
+.admonition { margin: calc(1.5rem * var(--spacing-scale, 1)) 0; padding: calc(1rem * var(--spacing-scale, 1)); }
+blockquote { margin: calc(1.5rem * var(--spacing-scale, 1)) 0; padding: calc(0.5rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1)); }
 
-/* Density */
-body {
-    line-height: var(--line-height-body, 1.6);
-}
-.content {
-    padding: calc(2.5rem * var(--spacing-scale, 1)) calc(3rem * var(--spacing-scale, 1));
-}
-p {
-    margin-bottom: calc(1rem * var(--spacing-scale, 1));
-}
-h2 {
-    margin-top: calc(2.5rem * var(--spacing-scale, 1));
-    margin-bottom: calc(1rem * var(--spacing-scale, 1));
-}
-h3 {
-    margin-top: calc(2rem * var(--spacing-scale, 1));
-    margin-bottom: calc(0.75rem * var(--spacing-scale, 1));
-}
-pre {
-    padding: calc(1rem * var(--spacing-scale, 1));
-}
-.admonition {
-    padding: calc(0.75rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1));
-}
+/* 7. Sidebar position */
+body[data-sidebar="right"] .layout { grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px); }
+body[data-sidebar="right"] .sidebar { order: 3; }
+body[data-sidebar="right"] .content { order: 1; }
+body[data-sidebar="right"] .toc { order: 2; }
+body[data-sidebar="hidden"] .sidebar { display: none; }
+body[data-sidebar="hidden"] .layout { grid-template-columns: minmax(0, 1fr) 200px; }
 
-/* Gradient strip */
-body.gradient-hidden::before {
-    display: none;
-}
-body.gradient-solid::before {
-    background: var(--link);
-}
+/* 8. TOC position */
+body[data-toc="hidden"] .toc { display: none; }
+body[data-toc="hidden"] .layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); }
 
-/* Topbar color */
-body.topbar-light .topbar {
-    background: var(--bg);
-    color: var(--text);
-    border-bottom: 1px solid var(--border);
-}
+/* 9. Heading separator */
+body.heading-sep-none .content h2 { border-top: none; padding-top: 0; }
+body.heading-sep-bottom .content h2 { border-top: none; padding-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+
+/* 10. Topbar color */
+body.topbar-light .topbar { background: var(--bg); border-bottom: 1px solid var(--border); }
 body.topbar-light .topbar .project-name,
 body.topbar-light .topbar .theme-toggle,
 body.topbar-light .topbar .settings-btn,
-body.topbar-light .topbar .hamburger span {
-    color: var(--text);
-}
-body.topbar-accent .topbar {
-    background: var(--link);
-    color: #fff;
-}
-body.topbar-accent .topbar .project-name,
-body.topbar-accent .topbar .theme-toggle,
-body.topbar-accent .topbar .settings-btn,
-body.topbar-accent .topbar .hamburger span {
-    color: #fff;
-}
+body.topbar-light .topbar .hamburger span { color: var(--text); background-color: var(--text); }
+body.topbar-accent .topbar { background: var(--link); }
 
-/* Border radius */
-pre,
-.admonition,
-.api-entry,
-.nav-list a,
-.version-badge,
-.copy-btn,
-.run-btn,
-.feedback button,
-.ds-opt,
-.ds-close,
-.ds-export-btn,
-:not(pre) > code {
-    border-radius: var(--radius, 4px);
-}
+/* 11. Gradient strip */
+body.gradient-hidden::before { display: none; }
+body.gradient-solid::before { background: var(--link) !important; }
 
-/* Code block style */
-[data-code-style="plain"] .code-block pre {
-    border: none;
-    background: transparent;
-    box-shadow: none;
-}
-[data-code-style="plain"] .code-block:hover {
-    box-shadow: none;
-}
-[data-code-style="plain"] .code-label {
-    border: none;
-    background: transparent;
-}
-[data-code-style="filled"] .code-block pre {
-    border: none;
-    background: var(--code-bg);
-}
-[data-code-style="floating"] .code-block pre {
-    border: none;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-}
-[data-code-style="floating"] .code-block:hover {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
+/* 12. Code block style */
+body[data-code-style="plain"] .code-block { border: none; background: transparent; }
+body[data-code-style="plain"] .code-block:hover { border: none; }
+body[data-code-style="filled"] .code-block { border: none; background: var(--code-bg); }
+body[data-code-style="filled"] .code-block pre { background: transparent; }
+body[data-code-style="floating"] .code-block { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+body[data-code-style="floating"] .code-block:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.16); }
 
-/* Table style */
-[data-table-style="plain"] tr:nth-child(even) td {
-    background: transparent;
-}
-[data-table-style="bordered"] td,
-[data-table-style="bordered"] th {
-    border: 1px solid var(--border);
-}
-[data-table-style="bordered"] tr:nth-child(even) td {
-    background: transparent;
-}
-[data-table-style="minimal"] table {
-    border-collapse: collapse;
-}
-[data-table-style="minimal"] th {
-    border-bottom: 2px solid var(--border);
-}
-[data-table-style="minimal"] td {
-    border-bottom: none;
-}
-[data-table-style="minimal"] tr:nth-child(even) td {
-    background: transparent;
-}
+/* 13. Table style */
+body[data-table-style="plain"] tr:nth-child(even) td { background: transparent; }
+body[data-table-style="bordered"] td, body[data-table-style="bordered"] th { border: 1px solid var(--border); }
+body[data-table-style="minimal"] thead { border-bottom: 2px solid var(--border); }
+body[data-table-style="minimal"] td { border: none; }
+body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent; }
 
 /* Print: hide settings panel */
 @media print {
@@ -951,6 +842,13 @@ export function extractModule(sourcePath: string): string {
 <button class="ds-export-btn" id="ds-export">Export as custom.css</button>
 </div>
 </div>
+
+<dialog class="search-dialog" id="search-dialog">
+<div class="search-inner">
+<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>
+<ul class="search-results"></ul>
+</div>
+</dialog>
 
 <script>
 // Theme toggle (Feature 6)
@@ -1649,12 +1547,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
   });
 })();
 </script>
-<dialog class="search-dialog" id="search-dialog">
-<div class="search-inner">
-<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>
-<ul class="search-results"></ul>
-</div>
-</dialog>
 
 </body>
 </html>
