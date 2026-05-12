@@ -148,6 +148,14 @@ def _generate_search_js():
         "    }\n"
         "  }\n"
         "\n"
+        "  var trigger = document.querySelector('.search-trigger, .search-bar-trigger');\n"
+        "  if (trigger) {\n"
+        "    trigger.addEventListener('click', function(e) {\n"
+        "      e.preventDefault();\n"
+        "      openSearch();\n"
+        "    });\n"
+        "  }\n"
+        "\n"
         "  document.addEventListener('keydown', function(e) {\n"
         "    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {\n"
         "      e.preventDefault();\n"
@@ -243,7 +251,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
-                   critical_css=None, twitter_site=None):
+                   critical_css=None, twitter_site=None, search=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -364,6 +372,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             critical_css=critical_css,
             schema=schema,
             twitter_site=twitter_site,
+            search=search,
         )
         html_files[html_path] = full_html
 
@@ -1320,7 +1329,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                base_url=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
-               schema=None, twitter_site=None):
+               schema=None, twitter_site=None, search=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -2063,6 +2072,26 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();\n"
     )
 
+    # Search trigger HTML (configurable: "icon", "bar", or "hidden")
+    effective_search = search if search else "icon"
+    if effective_search == "icon":
+        search_trigger_html = (
+            '<button class="search-trigger" aria-label="Search documentation" title="Search (Cmd+K)">\n'
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
+            '</button>\n'
+        )
+    elif effective_search == "bar":
+        search_trigger_html = (
+            '<button class="search-bar-trigger" aria-label="Search documentation">\n'
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
+            '<span class="search-bar-text">Search...</span>\n'
+            '<kbd class="search-bar-kbd">Cmd+K</kbd>\n'
+            '</button>\n'
+        )
+    else:
+        # "hidden" -- no trigger in topbar
+        search_trigger_html = ""
+
     # Assemble JS blocks: always-needed first, then conditional
     js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_NAV_GROUPS]
 
@@ -2113,6 +2142,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<button class="theme-toggle" aria-label="Toggle theme">\n'
         f'{sun_icon}{moon_icon}{auto_icon}\n'
         f'</button>\n'
+        f'{search_trigger_html}'
         f'</div>\n'
         f'</header>\n'
         f'<div class="layout">\n'

@@ -3804,3 +3804,92 @@ def test_og_png_rich_when_predraw_available(project_dir):
     # Compare with basic version
     basic_bytes = _generate_og_png_basic()
     assert rich_size > len(basic_bytes)
+
+
+# === Search trigger tests ===
+
+
+def test_search_trigger_icon_default(project_dir):
+    """Build without search config renders the icon trigger by default."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert 'class="search-trigger"' in content
+    assert 'class="search-bar-trigger"' not in content
+
+
+def test_search_trigger_icon_explicit(project_dir):
+    """Build with search: "icon" renders the icon trigger."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["search"] = "icon"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert 'class="search-trigger"' in content
+    assert 'class="search-bar-trigger"' not in content
+
+
+def test_search_trigger_bar(project_dir):
+    """Build with search: "bar" renders the bar trigger."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["search"] = "bar"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert 'class="search-bar-trigger"' in content
+    assert 'class="search-trigger"' not in content
+    assert 'class="search-bar-text"' in content
+    assert 'class="search-bar-kbd"' in content
+
+
+def test_search_trigger_hidden(project_dir):
+    """Build with search: "hidden" renders no trigger in topbar."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["search"] = "hidden"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert 'search-trigger' not in content
+    assert 'search-bar-trigger' not in content
+
+
+def test_search_cmd_k_always_works(project_dir):
+    """Search dialog HTML and search.js are always present regardless of search config."""
+    for search_val in [None, "icon", "bar", "hidden"]:
+        config_path = os.path.join(project_dir, "selfdoc.json")
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        if search_val is not None:
+            config["search"] = search_val
+        elif "search" in config:
+            del config["search"]
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f)
+        build(str(project_dir))
+        output_dir = os.path.join(project_dir, "docs", "_build")
+        index_html = os.path.join(output_dir, "index.html")
+        with open(index_html, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert 'id="search-dialog"' in content, f"search dialog missing for search={search_val}"
+        search_js = os.path.join(output_dir, "search.js")
+        assert os.path.isfile(search_js), f"search.js missing for search={search_val}"
