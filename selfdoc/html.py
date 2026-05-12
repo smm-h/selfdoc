@@ -251,7 +251,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
-                   critical_css=None, twitter_site=None, search=None):
+                   critical_css=None, twitter_site=None, search=None,
+                   feedback=None, branch="main"):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -369,6 +370,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             schema=schema,
             twitter_site=twitter_site,
             search=search,
+            feedback=feedback,
+            branch=branch,
         )
         html_files[html_path] = full_html
 
@@ -1325,7 +1328,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                base_url=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
-               schema=None, twitter_site=None, search=None):
+               schema=None, twitter_site=None, search=None,
+               feedback=None, branch="main"):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -1354,12 +1358,35 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # Edit link (Feature 14)
     edit_link_html = ""
+    edit_url = ""
     if repo and source_path:
         repo_url = repo.rstrip("/")
-        edit_url = f"{repo_url}/edit/main/{source_path}"
+        edit_url = f"{repo_url}/edit/{branch}/{source_path}"
         edit_link_html = (
             f'<a class="edit-link" href="{edit_url}">'
             f'Edit this page on GitHub</a>'
+        )
+
+    # Top edit link: right-aligned near breadcrumbs
+    top_edit_link_html = ""
+    if edit_url:
+        top_edit_link_html = (
+            f'<a class="edit-link edit-link-top" href="{edit_url}">Edit</a>'
+        )
+
+    # Content header: wraps breadcrumbs and top edit link
+    if breadcrumbs_html and top_edit_link_html:
+        breadcrumbs_html = (
+            f'<div class="content-header">\n'
+            f'{breadcrumbs_html}\n'
+            f'{top_edit_link_html}\n'
+            f'</div>'
+        )
+    elif top_edit_link_html:
+        breadcrumbs_html = (
+            f'<div class="content-header">\n'
+            f'{top_edit_link_html}\n'
+            f'</div>'
         )
 
     # Prev/next page navigation (Feature 8)
@@ -1385,14 +1412,21 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<nav class="page-nav">{prev_link}{next_link}</nav>'
         )
 
-    # Feedback widget (Feature 30)
-    feedback_html = (
-        '<div class="feedback">'
-        '<span>Was this page helpful?</span>'
-        '<button class="feedback-yes" aria-label="Yes">Yes</button>'
-        '<button class="feedback-no" aria-label="No">No</button>'
-        '</div>'
-    )
+    # Feedback widget (Feature 30): only rendered when feedback config is set
+    feedback_html = ""
+    if feedback is not None:
+        data_attrs = ""
+        if feedback.get("webhook"):
+            data_attrs += f' data-webhook="{_escape_html(feedback["webhook"])}"'
+        if feedback.get("ga"):
+            data_attrs += f' data-ga="{_escape_html(feedback["ga"])}"'
+        feedback_html = (
+            f'<div class="feedback"{data_attrs}>'
+            '<span>Was this page helpful?</span>'
+            '<button class="feedback-yes" aria-label="Yes">Yes</button>'
+            '<button class="feedback-no" aria-label="No">No</button>'
+            '</div>'
+        )
 
     # Format date_modified for display (e.g. "May 1, 2026")
     date_display_html = ""
@@ -1940,8 +1974,29 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "    widget.innerHTML = '<span>Thanks for your feedback!</span>';\n"
         "    return;\n"
         "  }\n"
+        "  var webhook = widget.getAttribute('data-webhook');\n"
+        "  var gaId = widget.getAttribute('data-ga');\n"
         "  widget.querySelectorAll('button').forEach(function(btn) {\n"
         "    btn.addEventListener('click', function() {\n"
+        "      var vote = btn.className.indexOf('yes') !== -1 ? 'yes' : 'no';\n"
+        "      if (webhook) {\n"
+        "        fetch(webhook, {\n"
+        "          method: 'POST',\n"
+        "          headers: {'Content-Type': 'application/json'},\n"
+        "          body: JSON.stringify({\n"
+        "            page: location.pathname,\n"
+        "            vote: vote,\n"
+        "            timestamp: new Date().toISOString(),\n"
+        "            user_agent: navigator.userAgent\n"
+        "          })\n"
+        "        }).catch(function() {});\n"
+        "      }\n"
+        "      if (gaId && typeof gtag === 'function') {\n"
+        "        gtag('event', 'selfdoc_feedback', {\n"
+        "          page_path: location.pathname,\n"
+        "          vote: vote\n"
+        "        });\n"
+        "      }\n"
         "      localStorage.setItem(key, btn.className);\n"
         "      widget.innerHTML = '<span>Thanks for your feedback!</span>';\n"
         "    });\n"
@@ -2091,6 +2146,20 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     body_js = _minify_js("\n".join(js_blocks))
 
+    # Google Analytics script (injected when feedback.ga is configured)
+    ga_head_script = ""
+    if feedback and feedback.get("ga"):
+        ga_id = _escape_html(feedback["ga"])
+        ga_head_script = (
+            f'<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>\n'
+            f'<script>\n'
+            f'window.dataLayer = window.dataLayer || [];\n'
+            f'function gtag(){{dataLayer.push(arguments);}}\n'
+            f"gtag('js', new Date());\n"
+            f"gtag('config', '{ga_id}');\n"
+            f'</script>\n'
+        )
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -2112,6 +2181,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
         f'{custom_css_tag}{feed_tag}{seo_tags}\n'
         f'<script>{head_js}</script>\n'
+        f'{ga_head_script}'
         f'</head>\n'
         f'<body>\n'
         f'<a class="skip-link" href="#main-content">Skip to content</a>\n'

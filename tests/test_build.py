@@ -3891,3 +3891,124 @@ def test_search_cmd_k_always_works(project_dir):
         assert 'id="search-dialog"' in content, f"search dialog missing for search={search_val}"
         search_js = os.path.join(output_dir, "search.js")
         assert os.path.isfile(search_js), f"search.js missing for search={search_val}"
+
+
+# --- Feedback widget: webhook POST and Google Analytics ---
+
+
+def test_feedback_hidden_without_config():
+    """Build without feedback config produces no feedback widget."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert 'class="feedback"' not in content
+
+
+def test_feedback_rendered_with_webhook():
+    """Feedback widget appears with data-webhook when webhook is configured."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        feedback={"webhook": "https://example.com/hook"},
+    )
+    content = html_files["index.html"]
+    assert 'class="feedback"' in content
+    assert 'data-webhook="https://example.com/hook"' in content
+
+
+def test_feedback_rendered_with_ga():
+    """Feedback widget appears with data-ga and GA script when ga is configured."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        feedback={"ga": "G-XXXXX"},
+    )
+    content = html_files["index.html"]
+    assert 'class="feedback"' in content
+    assert 'data-ga="G-XXXXX"' in content
+    assert "googletagmanager.com/gtag/js?id=G-XXXXX" in content
+
+
+def test_feedback_rendered_with_both():
+    """Feedback widget includes both webhook and GA when both are configured."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        feedback={"webhook": "https://example.com/hook", "ga": "G-XXXXX"},
+    )
+    content = html_files["index.html"]
+    assert 'class="feedback"' in content
+    assert 'data-webhook="https://example.com/hook"' in content
+    assert 'data-ga="G-XXXXX"' in content
+    assert "googletagmanager.com/gtag/js?id=G-XXXXX" in content
+
+
+def test_feedback_js_has_fetch():
+    """Feedback JS block contains fetch() for webhook POST when feedback is configured."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        feedback={"webhook": "https://example.com/hook"},
+    )
+    content = html_files["index.html"]
+    assert "fetch(" in content
+
+
+def test_edit_link_uses_config_branch():
+    """Edit URL uses branch from config when provided."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        repo="https://github.com/user/repo",
+        docs_dir_name="docs",
+        branch="develop",
+    )
+    content = html_files["index.html"]
+    assert "/edit/develop/" in content
+
+
+def test_edit_link_default_branch():
+    """Edit URL defaults to 'main' when no branch config and git fails."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        repo="https://github.com/user/repo",
+        docs_dir_name="docs",
+    )
+    content = html_files["index.html"]
+    assert "/edit/main/" in content
+
+
+def test_edit_link_top_and_bottom():
+    """Both top and bottom edit links are present when repo is configured."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        repo="https://github.com/user/repo",
+        docs_dir_name="docs",
+    )
+    content = html_files["index.html"]
+    assert 'edit-link-top' in content
+    assert 'edit-link" href=' in content
+    # The bottom edit link is inside page-footer
+    assert 'class="page-footer"' in content
+    assert 'Edit this page on GitHub' in content
+
+
+def test_content_header_flex():
+    """Content header wraps breadcrumbs and top edit link on non-index pages."""
+    html_files = generate_html(
+        {
+            "index.md": "# Home\n\nWelcome.\n",
+            "guide.md": "# Guide\n\nContent.\n",
+        },
+        project_name="Test",
+        repo="https://github.com/user/repo",
+        docs_dir_name="docs",
+    )
+    content = html_files["guide.html"]
+    assert 'class="content-header"' in content
+    assert 'class="breadcrumbs"' in content
+    assert 'edit-link-top' in content

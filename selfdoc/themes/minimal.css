@@ -856,6 +856,24 @@ hr {
     text-decoration: underline;
 }
 
+/* === Content header (breadcrumbs + top edit link) === */
+
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.content-header .breadcrumbs {
+    margin-bottom: 0;
+}
+
+.edit-link-top {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
 /* === Breadcrumbs (Feature 9) === */
 
 .breadcrumbs {
@@ -1347,7 +1365,7 @@ hr {
     .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
     .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
     .search-dialog, .heading-link, .theme-toggle, .site-footer,
-    .edit-link, .search-trigger, .search-bar-trigger {
+    .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger {
         display: none !important;
     }
 

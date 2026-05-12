@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import struct
+import subprocess
 import tempfile
 import zlib
 from datetime import datetime
@@ -941,6 +942,22 @@ def build(dir_path=".", config=None):
     # Get repo URL for edit links (Feature 14)
     repo = config.get("repo", None)
 
+    # Detect git branch for edit links
+    branch = config.get("branch")
+    if not branch:
+        try:
+            result = subprocess.run(
+                ["git", "symbolic-ref", "--short", "HEAD"],
+                capture_output=True, text=True, timeout=5,
+                cwd=dir_path,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                branch = result.stdout.strip()
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if not branch:
+        branch = "main"
+
     # Get base_url for canonical links and sitemap (Feature 22)
     base_url = config.get("base_url", None)
 
@@ -979,6 +996,8 @@ def build(dir_path=".", config=None):
         critical_css=critical_css,
         twitter_site=config.get("twitter"),
         search=config.get("search"),
+        feedback=config.get("feedback"),
+        branch=branch,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
