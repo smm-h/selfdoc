@@ -16,6 +16,7 @@ from selfdoc.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
     _md_to_html_path, _slugify,
     _extract_title, _escape_html, _build_nav,
+    _generate_search_js, _minify_js,
 )
 from selfdoc.resolver import make_resolver
 
@@ -924,6 +925,12 @@ def build(dir_path=".", config=None):
     with open(search_index_path, "w", encoding="utf-8") as f:
         json.dump(search_index, f, ensure_ascii=False)
     written[search_index_path] = True
+
+    # Generate external search JS (Feature 19 -- externalized)
+    search_js_path = os.path.join(output_dir, "search.js")
+    with open(search_js_path, "w", encoding="utf-8") as f:
+        f.write(_minify_js(_generate_search_js()))
+    written[search_js_path] = True
 
     # Copy custom.css to output if it exists
     if has_custom_css:

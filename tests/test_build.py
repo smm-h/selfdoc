@@ -110,10 +110,10 @@ def test_build_multiple_files(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
-    # 2 HTML + 1 style.css + 1 search-index.json + 2 OG PNGs + 2 llms files
-    # + 1 404.html + 1 favicon.svg + 1 robots.txt + 1 _headers + 1 _redirects
-    # + 1 sitemap.xml + 1 feed.xml (base_url is set)
-    assert len(written) == 15
+    # 2 HTML + 1 style.css + 1 search-index.json + 1 search.js + 2 OG PNGs
+    # + 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt
+    # + 1 _headers + 1 _redirects + 1 sitemap.xml + 1 feed.xml (base_url is set)
+    assert len(written) == 16
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
@@ -3504,3 +3504,41 @@ def test_og_image_alt_falls_back_to_title(project_dir):
         content = f.read()
 
     assert '<meta property="og:image:alt" content="My Page Title">' in content
+
+
+# --- Externalized search JS ---
+
+
+def test_search_js_file_generated(project_dir):
+    """search.js exists in the output directory with correct contents."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    search_js_path = os.path.join(output_dir, "search.js")
+    assert os.path.isfile(search_js_path)
+
+    with open(search_js_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Must contain the fetch URL for the search index
+    assert "search-index.json" in content
+    # Must read prefix from data attribute
+    assert "search-prefix" in content or "searchPrefix" in content
+
+
+def test_search_js_deferred(project_dir):
+    """HTML references search.js via a deferred script tag, not inline."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # External deferred script tag must point to search.js
+    assert '<script defer src="search.js">' in content
+
+    # The inline <script> block must NOT contain search index logic
+    inline_match = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
+    assert inline_match is not None
+    inline_js = inline_match.group(1)
+    assert "search-index" not in inline_js
