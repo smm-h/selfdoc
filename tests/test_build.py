@@ -747,10 +747,11 @@ def test_extract_first_paragraph_truncates_at_word_boundary():
     long_text = "word " * 40  # 200 chars
     html = f'<p>{long_text.strip()}</p>'
     result = _extract_first_paragraph(html)
-    assert len(result) <= 155
-    assert not result.endswith(" ")
-    # Should not cut mid-word
-    assert result.endswith("word")
+    # Truncated at word boundary with "..." appended (max 155 + 3 = 158)
+    assert len(result) <= 158
+    assert result.endswith("...")
+    # Should not cut mid-word (strip "..." to check)
+    assert result[:-3].endswith("word")
 
 
 def test_extract_first_paragraph_empty():
@@ -3563,3 +3564,42 @@ def test_google_fonts_deferred_loading():
     assert not blocking_pattern.search(content), (
         "Google Fonts link should be deferred, not render-blocking"
     )
+
+
+def test_long_frontmatter_description_truncated_in_meta():
+    """A 300-char frontmatter description is truncated in <meta> to <= 158 chars."""
+    long_desc = "A" * 50 + " " + "B" * 50 + " " + "C" * 50 + " " + "D" * 50 + " " + "E" * 50 + " " + "F" * 50
+    assert len(long_desc) == 305  # 6*50 + 5 spaces
+
+    html_files = generate_html(
+        {"index.md": "# Test\n\nSome content here.\n"},
+        project_name="Test",
+        frontmatter={"index.md": {"description": long_desc}},
+    )
+    content = html_files["index.html"]
+
+    # Extract the meta description content
+    match = re.search(r'<meta name="description" content="([^"]*)"', content)
+    assert match, "meta description tag must be present"
+    meta_desc = match.group(1)
+    # Must be at most 158 chars (155 + "...")
+    assert len(meta_desc) <= 158, f"meta description is {len(meta_desc)} chars, expected <= 158"
+    assert meta_desc.endswith("..."), "truncated description must end with '...'"
+
+
+def test_short_frontmatter_description_unchanged_in_meta():
+    """A 100-char frontmatter description is kept unchanged in <meta>."""
+    short_desc = "This is a short description for testing purposes, well under the limit of one hundred fifty five."
+    assert len(short_desc) < 155
+
+    html_files = generate_html(
+        {"index.md": "# Test\n\nSome content here.\n"},
+        project_name="Test",
+        frontmatter={"index.md": {"description": short_desc}},
+    )
+    content = html_files["index.html"]
+
+    match = re.search(r'<meta name="description" content="([^"]*)"', content)
+    assert match, "meta description tag must be present"
+    meta_desc = match.group(1)
+    assert meta_desc == short_desc, f"short description should be unchanged"

@@ -171,6 +171,10 @@ def generate_html(markdown_files, project_name=None, version=None,
         if not description:
             description = _extract_first_paragraph(body_html)
 
+        # Truncate description for meta tag (SEO best practice: <= 155 chars)
+        # The summary block can still show the full text via `summary`.
+        description = _truncate_description(description)
+
         css_href = prefix + "style.css"
         custom_css_href = (prefix + "custom.css") if has_custom_css else None
 
@@ -969,7 +973,23 @@ def _extract_first_paragraph(page_html):
     last_space = truncated.rfind(" ")
     if last_space > 0:
         truncated = truncated[:last_space]
-    return truncated
+    return truncated + "..."
+
+
+def _truncate_description(description):
+    """Truncate a description string for use in meta tags.
+
+    If the description exceeds 155 characters, truncates at the last
+    word boundary before 155 chars and appends "...".  Returns the
+    original string unchanged if it fits within 155 characters.
+    """
+    if not description or len(description) <= 155:
+        return description
+    truncated = description[:155]
+    last_space = truncated.rfind(" ")
+    if last_space > 0:
+        truncated = truncated[:last_space]
+    return truncated + "..."
 
 
 def _build_toc(body_html):
