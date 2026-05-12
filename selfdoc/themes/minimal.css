@@ -216,6 +216,11 @@ body::before {
     font-weight: 600;
     color: var(--topbar-text);
     text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .project-name:hover {
@@ -540,9 +545,11 @@ pre code {
     background: var(--bg);
     color: var(--text-secondary);
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity 0.15s ease;
     font-family: var(--font-body);
+    min-width: 36px;
+    min-height: 36px;
 }
 
 pre:hover .copy-btn,
@@ -568,10 +575,12 @@ pre:focus-within .copy-btn {
     background: var(--bg);
     color: var(--text-secondary);
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity 0.15s ease;
     font-family: var(--font-body);
     text-decoration: none;
+    min-width: 36px;
+    min-height: 36px;
 }
 
 pre:hover .run-btn,
@@ -753,6 +762,7 @@ blockquote p:last-child {
 
 .code-block pre {
     margin-bottom: 0;
+    scrollbar-width: thin;
 }
 
 .code-label {
@@ -885,6 +895,9 @@ hr {
 .breadcrumbs a {
     color: var(--text-secondary);
     text-decoration: none;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .breadcrumbs a:hover {
@@ -920,6 +933,9 @@ hr {
     font-size: 0.9375rem;
     text-decoration: none;
     color: var(--link);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .page-nav a:hover {
@@ -1087,6 +1103,9 @@ hr {
 .edit-link {
     color: var(--text-secondary);
     text-decoration: none;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .edit-link:hover {
@@ -1157,7 +1176,10 @@ hr {
 }
 
 .search-result-item a {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 44px;
     padding: 0.5rem 1rem;
     text-decoration: none;
     color: var(--text);
@@ -1224,6 +1246,7 @@ hr {
     font-size: 0.875rem;
     color: var(--text-secondary);
     list-style: none;
+    min-height: 44px;
 }
 
 .mobile-toc summary::-webkit-details-marker {
@@ -1259,7 +1282,7 @@ hr {
 
 .feedback button {
     padding: 0.5rem 1rem;
-    min-height: 36px;
+    min-height: 44px;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg);
@@ -1408,6 +1431,7 @@ hr {
 .table-wrap {
     overflow-x: auto;
     margin: 1.5rem 0;
+    scrollbar-width: thin;
 }
 
 .table-wrap table {
@@ -1470,6 +1494,7 @@ hr {
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
     transition: color 0.15s ease, border-color 0.15s ease;
+    min-height: 44px;
 }
 
 .tab-bar .tab:hover {
