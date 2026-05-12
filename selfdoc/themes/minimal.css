@@ -643,7 +643,7 @@ table {
 
 thead {
     position: sticky;
-    top: 0;
+    top: 52px;
     background: var(--sidebar-bg);
 }
 
@@ -1000,11 +1000,16 @@ hr {
 }
 
 .page-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
     margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
 }
 
 .edit-link {
-    font-size: 0.875rem;
     color: var(--text-secondary);
     text-decoration: none;
 }
@@ -1104,6 +1109,13 @@ hr {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.search-no-results {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
 }
 
 /* === Diff line highlighting (Feature 27) === */

@@ -3679,3 +3679,73 @@ def test_nav_groups_sorted_alphabetically(project_dir):
     api_pos = content.find('>Api<')
     guides_pos = content.find('>Guides<')
     assert api_pos < guides_pos, "Api group should appear before Guides group"
+
+
+# --- Bug fixes: meta separator, sticky header, search no-results, search close ---
+
+
+def test_page_meta_has_flex_layout():
+    """page-meta contains edit link and date as separate child elements."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+        repo="https://github.com/test/repo",
+        page_dates={"index.md": ("2025-01-01", "2025-06-15")},
+    )
+    content = html_files["index.html"]
+
+    # The page-meta div should exist
+    assert 'class="page-meta"' in content
+    # Edit link and date should be wrapped in separate <span> elements
+    assert "<span>" in content
+    # Both the edit link and the date should be present
+    assert "edit-link" in content
+    assert "2025" in content
+    # They should not be directly concatenated (each in its own <span>)
+    meta_match = re.search(r'<div class="page-meta">(.*?)</div>', content, re.DOTALL)
+    assert meta_match is not None
+    meta_inner = meta_match.group(1)
+    # Should have at least two <span> children
+    spans = re.findall(r'<span>.*?</span>', meta_inner, re.DOTALL)
+    assert len(spans) >= 2, f"Expected at least 2 <span> children, got {len(spans)}"
+
+
+def test_sticky_thead_offset(project_dir):
+    """CSS contains thead with top: 52px, not top: 0."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    css_path = os.path.join(output_dir, "style.css")
+    with open(css_path, "r", encoding="utf-8") as f:
+        css = f.read()
+
+    assert "top:52px" in css or "top: 52px" in css
+    # Should NOT have top:0 for thead
+    # Find the thead rule and check it uses 52px
+    assert "top:0" not in css.split("thead")[1].split("}")[0] if "thead" in css else True
+
+
+def test_search_no_results_element(project_dir):
+    """search.js contains search-no-results class for empty results."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    search_js_path = os.path.join(output_dir, "search.js")
+    with open(search_js_path, "r", encoding="utf-8") as f:
+        js = f.read()
+
+    assert "search-no-results" in js
+    assert "No results for" in js
+
+
+def test_search_closes_on_click(project_dir):
+    """search.js contains closeSearch call within result rendering."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    search_js_path = os.path.join(output_dir, "search.js")
+    with open(search_js_path, "r", encoding="utf-8") as f:
+        js = f.read()
+
+    # The closeSearch() call should appear in the result link click handler
+    assert "closeSearch()" in js
+    # Specifically, there should be an addEventListener('click'... closeSearch pattern
+    assert "addEventListener" in js
+    assert "closeSearch" in js

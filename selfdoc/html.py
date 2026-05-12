@@ -123,9 +123,16 @@ def _generate_search_js():
         "      }\n"
         "      a.appendChild(titleEl);\n"
         "      a.appendChild(snippet);\n"
+        "      a.addEventListener('click', function() { closeSearch(); });\n"
         "      li.appendChild(a);\n"
         "      resultsList.appendChild(li);\n"
         "    });\n"
+        "    if (matches.length === 0 && q) {\n"
+        "      var noLi = document.createElement('li');\n"
+        "      noLi.className = 'search-no-results';\n"
+        "      noLi.textContent = 'No results for \"' + q + '\"';\n"
+        "      resultsList.appendChild(noLi);\n"
+        "    }\n"
         "  }\n"
         "\n"
         "  function setActive(idx) {\n"
@@ -1405,7 +1412,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         meta_parts.append(f'Last updated {date_display_html}')
     if meta_parts:
         footer_parts.append(
-            f'<div class="page-meta">{"".join(meta_parts)}</div>'
+            f'<div class="page-meta">{"".join("<span>" + p + "</span>" for p in meta_parts)}</div>'
         )
     footer_parts.append(feedback_html)
     if page_nav_html:
