@@ -379,7 +379,7 @@ def test_check_docs_returns_lints_list(python_project):
 def test_print_results_no_lints(python_project, capsys):
     """print_results shows 'No lints.' when there are no lint diagnostics."""
     docs_dir = os.path.join(python_project, "docs")
-    desc = "Complete API reference for the mylib library and utilities"
+    desc = "Complete API reference for the mylib library covering all public functions, classes, and utilities with detailed usage examples included"
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write(
             f"---\ntitle: API\ndescription: {desc}\n---\n"
@@ -635,7 +635,7 @@ def test_clean_file_no_lints(lint_project):
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
-    desc = "A clean page demonstrating proper formatting and metadata usage"
+    desc = "A clean page demonstrating proper formatting and metadata usage for SEO best practices and documentation quality standards"
     # Generate a paragraph of 50 words to satisfy SEO007 (40-60 words)
     para = " ".join(["word"] * 50)
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
@@ -862,13 +862,15 @@ def test_seo008_short_page_no_lint(lint_project):
 
 
 def test_seo009_short_description(lint_project):
-    """SEO009: short frontmatter description (under 50 chars) triggers warning."""
+    """SEO009: frontmatter description under 120 chars triggers warning."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
+    # 70 chars -- above old threshold of 50 but below new threshold of 120
+    desc = "A" * 70
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write(
-            "---\ndescription: Short desc.\n---\n"
+            f"---\ndescription: {desc}\n---\n"
             "# Title\n\nContent.\n"
         )
 
@@ -877,7 +879,7 @@ def test_seo009_short_description(lint_project):
 
     assert len(seo009) == 1
     assert seo009[0].severity == "warning"
-    assert "aim for 50-155" in seo009[0].message
+    assert "aim for 120-155" in seo009[0].message
 
 
 def test_seo009_no_description_does_not_trigger(lint_project):
@@ -895,11 +897,11 @@ def test_seo009_no_description_does_not_trigger(lint_project):
 
 
 def test_seo009_normal_length_no_trigger(lint_project):
-    """SEO009: description of normal length (50-155 chars) does not trigger."""
+    """SEO009: description of normal length (120-155 chars) does not trigger."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
-    desc = "A" * 80  # 80 chars, within range
+    desc = "A" * 130  # 130 chars, within range
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write(
             f"---\ndescription: {desc}\n---\n"
@@ -1140,3 +1142,177 @@ def test_seo_lints_always_run(python_project):
     # Directive validation still works
     assert len(result.directive_results) == 1
     assert result.directive_results[0].status == "OK"
+
+
+# -- SEO013: Missing H1 --
+
+
+def test_seo013_no_h1(lint_project):
+    """SEO013: page with no H1 heading triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "## Only H2\n\nSome content here.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo013 = [r for r in results if r.code == "SEO013"]
+
+    assert len(seo013) == 1
+    assert seo013[0].severity == "warning"
+    assert "No H1" in seo013[0].message
+
+
+def test_seo013_with_h1_no_warning(lint_project):
+    """SEO013: page with an H1 heading does not trigger warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\nSome content here.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo013 = [r for r in results if r.code == "SEO013"]
+
+    assert len(seo013) == 0
+
+
+# -- SEO004: Auto-extracted title length (H1 fallback) --
+
+
+def test_seo004_long_h1_no_frontmatter_title(lint_project):
+    """SEO004: long H1 heading without frontmatter title fires warning."""
+    tmp_path, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    long_h1 = "A Very Long Page Title That Will Exceed The Sixty Character Limit"
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            f"# {long_h1}\n\nContent.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo004 = [r for r in results if r.code == "SEO004"]
+
+    # Verify that combined length exceeds 60
+    project_name = os.path.basename(str(tmp_path))
+    combined_len = len(long_h1) + len(" - ") + len(project_name)
+    assert combined_len > 60, "Test setup: combined title must exceed 60 chars"
+
+    assert len(seo004) == 1
+    assert seo004[0].file == "page.md"
+    assert seo004[0].severity == "warning"
+
+
+# -- SEO014: Meaningless alt text --
+
+
+def test_seo014_meaningless_alt(lint_project):
+    """SEO014: image with meaningless alt text triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n![image](photo.png)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo014 = [r for r in results if r.code == "SEO014"]
+
+    assert len(seo014) == 1
+    assert seo014[0].severity == "warning"
+    assert "Meaningless alt text" in seo014[0].message
+    assert "'image'" in seo014[0].message
+
+
+def test_seo014_filename_alt(lint_project):
+    """SEO014: image with filename as alt text triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n![dashboard-v2.png](assets/dashboard.png)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo014 = [r for r in results if r.code == "SEO014"]
+
+    assert len(seo014) == 1
+    assert seo014[0].severity == "warning"
+    assert "dashboard-v2.png" in seo014[0].message
+
+
+def test_seo014_descriptive_alt_no_warning(lint_project):
+    """SEO014: image with descriptive alt text does not trigger warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n![Architecture diagram showing request flow](arch.png)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo014 = [r for r in results if r.code == "SEO014"]
+
+    assert len(seo014) == 0
+
+
+# -- SEO015: Generic anchor text --
+
+
+def test_seo015_generic_anchor(lint_project):
+    """SEO015: generic anchor text triggers warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n[click here](https://example.com)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo015 = [r for r in results if r.code == "SEO015"]
+
+    assert len(seo015) == 1
+    assert seo015[0].severity == "warning"
+    assert "Generic anchor text" in seo015[0].message
+    assert "'click here'" in seo015[0].message
+
+
+def test_seo015_descriptive_anchor_no_warning(lint_project):
+    """SEO015: descriptive anchor text does not trigger warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {desc}\n---\n"
+            "# Title\n\n[selfdoc configuration reference](https://example.com/config)\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo015 = [r for r in results if r.code == "SEO015"]
+
+    assert len(seo015) == 0

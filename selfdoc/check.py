@@ -193,6 +193,7 @@ def _run_lints(docs_dir, resolver, config):
         metadata, _ = _parse_frontmatter(content)
 
         # SEO001 -- Multiple H1s
+        # SEO013 -- Missing H1
         h1_count = 0
         for line in lines:
             if re.match(r"^# (?!#)", line):
@@ -203,6 +204,14 @@ def _run_lints(docs_dir, resolver, config):
                 line=None,
                 code="SEO001",
                 message=f"Multiple H1 headings ({h1_count} found); use a single H1 per page",
+                severity="warning",
+            ))
+        elif h1_count == 0:
+            results.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="SEO013",
+                message="No H1 heading found; each page should have exactly one H1",
                 severity="warning",
             ))
 
@@ -251,6 +260,23 @@ def _run_lints(docs_dir, resolver, config):
                     ),
                     severity="warning",
                 ))
+        else:
+            # Auto-extract title from first H1 heading
+            h1_match = re.search(r"^# (.+)$", content, re.MULTILINE)
+            if h1_match:
+                h1_title = h1_match.group(1)
+                combined = f"{h1_title} - {project_name}"
+                if len(combined) > 60:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=None,
+                        code="SEO004",
+                        message=(
+                            f"Title too long for SEO ({len(combined)} chars):"
+                            f" \"{combined}\""
+                        ),
+                        severity="warning",
+                    ))
 
         # SEO006 -- Missing description
         if "description" not in metadata:
@@ -301,7 +327,7 @@ def _run_lints(docs_dir, resolver, config):
         # Only fire SEO009 when there IS a description to check.
         # When fm_description is None and no paragraph was found,
         # effective_desc is "" (falsy) -- SEO006 already covers that.
-        if effective_desc and len(effective_desc) < 50:
+        if effective_desc and len(effective_desc) < 120:
             results.append(LintResult(
                 file=rel_path,
                 line=None,
@@ -309,7 +335,7 @@ def _run_lints(docs_dir, resolver, config):
                 message=(
                     f"Effective description is only"
                     f" {len(effective_desc)} chars"
-                    f" (aim for 50-155)"
+                    f" (aim for 120-155)"
                 ),
                 severity="warning",
             ))
@@ -414,6 +440,71 @@ def _run_lints(docs_dir, resolver, config):
             elif line.strip():
                 # Non-blank, non-heading line resets tracking
                 last_heading_line = None
+
+    # SEO014 -- Meaningless alt text
+    # SEO015 -- Generic anchor text
+    _MEANINGLESS_ALT = {
+        "image", "screenshot", "photo", "picture",
+        "img", "pic", "figure", "graphic",
+    }
+    _FILENAME_EXTS = re.compile(
+        r"\.(png|jpg|jpeg|gif|svg|webp)$", re.IGNORECASE,
+    )
+    _GENERIC_ANCHORS = {
+        "click here", "here", "this link", "this page",
+        "link", "read more", "more", "learn more",
+    }
+
+    for rel_path, full_path in md_files:
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        lines = content.split("\n")
+
+        # SEO014 -- Meaningless alt text
+        for line_num, line in enumerate(lines, start=1):
+            for m in re.finditer(r"!\[([^\]]*)\]\(", line):
+                alt = m.group(1)
+                if not alt:
+                    continue  # empty alt is SEO003
+                is_meaningless = (
+                    alt.lower() in _MEANINGLESS_ALT
+                    or len(alt) == 1
+                    or _FILENAME_EXTS.search(alt.lower())
+                )
+                if is_meaningless:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=line_num,
+                        code="SEO014",
+                        message=(
+                            f"Meaningless alt text '{alt}';"
+                            f" use a descriptive alternative"
+                        ),
+                        severity="warning",
+                    ))
+
+        # SEO015 -- Generic anchor text (skip code blocks)
+        in_code_block = False
+        for line_num, line in enumerate(lines, start=1):
+            if line.startswith("```"):
+                in_code_block = not in_code_block
+                continue
+            if in_code_block:
+                continue
+            for m in re.finditer(r"\[([^\]]+)\]\(", line):
+                text = m.group(1).strip().lower()
+                if text in _GENERIC_ANCHORS:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=line_num,
+                        code="SEO015",
+                        message=(
+                            f"Generic anchor text '{m.group(1).strip()}';"
+                            f" use descriptive link text"
+                        ),
+                        severity="warning",
+                    ))
 
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
