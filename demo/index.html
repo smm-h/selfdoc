@@ -191,7 +191,7 @@
 .layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr) 200px; }
 .sidebar { width: var(--sidebar-width, 240px); }
 @media (max-width: 1280px) { .layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); } }
-@media (max-width: 768px) { .sidebar { width: var(--sidebar-width, 240px); } body.sidebar-open .content { margin-left: var(--sidebar-width, 240px); } }
+@media (max-width: 768px) { .sidebar { width: var(--sidebar-width, 240px); transform: translateX(-100%); transition: transform 0.25s ease; } body.sidebar-open .sidebar { transform: translateX(0); } }
 
 /* 2. Content width */
 .content { max-width: var(--content-max-width, 800px); }
@@ -204,14 +204,20 @@
 .copy-btn,
 .run-btn,
 .tab-bar .tab,
-.search-inner,
 .search-input,
 .search-result-item a,
 .mobile-toc,
 .feedback button,
 .api-entry,
 .theme-toggle,
-.code-annotation { border-radius: var(--radius, 4px); }
+pre,
+:not(pre) > code,
+.toc-item a,
+.page-summary,
+.code-annotation::after,
+.glossary dfn { border-radius: var(--radius, 4px); }
+.code-label { border-top-right-radius: var(--radius, 4px); border-bottom-left-radius: var(--radius, 4px); }
+.search-inner { border-radius: calc(var(--radius, 4px) * 2); }
 
 /* 4. Line height */
 body, .content p { line-height: var(--line-height-body, 1.6); }
@@ -231,14 +237,16 @@ body.heading-smallcaps .content h6 {
 }
 
 /* 6. Spacing scale */
-.content { padding: calc(2rem * var(--spacing-scale, 1)); }
-.content h2, .content h3, .content h4 { margin-top: calc(2rem * var(--spacing-scale, 1)); }
+.content { padding: calc(2.5rem * var(--spacing-scale, 1)) calc(3rem * var(--spacing-scale, 1)); }
+.content h2 { margin-top: calc(2.5rem * var(--spacing-scale, 1)); }
+.content h3 { margin-top: calc(2rem * var(--spacing-scale, 1)); }
+.content h4 { margin-top: calc(1.5rem * var(--spacing-scale, 1)); }
 .content p { margin-bottom: calc(1rem * var(--spacing-scale, 1)); }
 .content ul, .content ol { margin-bottom: calc(1rem * var(--spacing-scale, 1)); }
 .content li { margin-bottom: calc(0.25rem * var(--spacing-scale, 1)); }
-.code-block { margin: calc(1.5rem * var(--spacing-scale, 1)) 0; }
-.admonition { margin: calc(1.5rem * var(--spacing-scale, 1)) 0; padding: calc(1rem * var(--spacing-scale, 1)); }
-blockquote { margin: calc(1.5rem * var(--spacing-scale, 1)) 0; padding: calc(0.5rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1)); }
+.code-block { margin: 0 0 calc(1rem * var(--spacing-scale, 1)) 0; }
+.admonition { margin: 0 0 calc(1rem * var(--spacing-scale, 1)) 0; padding: calc(0.75rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1)); }
+blockquote { margin: 0 0 calc(1rem * var(--spacing-scale, 1)) 0; padding: calc(0.5rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1)); }
 
 /* 7. Sidebar position */
 body[data-sidebar="right"] .layout { grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px); }
@@ -702,7 +710,7 @@ export function extractModule(sourcePath: string): string {
 <button class="ds-opt" data-value="60ch">60ch</button>
 <button class="ds-opt" data-value="72ch">72ch</button>
 <button class="ds-opt" data-value="90ch">90ch</button>
-<button class="ds-opt" data-value="full">Full</button>
+<button class="ds-opt" data-value="120ch">120ch</button>
 </div>
 </div>
 </div>
@@ -1198,8 +1206,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     'content-width': {
       defaultValue: '72ch',
       apply: function(v) {
-        var val = v === 'full' ? '100%' : v;
-        document.documentElement.style.setProperty('--content-max-width', val);
+        document.documentElement.style.setProperty('--content-max-width', v);
       }
     },
     'font-kind': {
@@ -1287,20 +1294,27 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       defaultValue: 'blue',
       apply: function(v) {
         var accents = {
-          'blue':   { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37', gradient: 'linear-gradient(90deg, #0969da, #8b5cf6, #ec4899)' },
-          'green':  { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37', gradient: 'linear-gradient(90deg, #1a7f37, #2da44e, #56d364)' },
-          'purple': { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df', gradient: 'linear-gradient(90deg, #8250df, #bc8cff, #ec4899)' },
-          'orange': { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02', gradient: 'linear-gradient(90deg, #bf6a02, #e3872a, #f5a623)' },
-          'red':    { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e', gradient: 'linear-gradient(90deg, #cf222e, #f85149, #ff7b72)' }
+          'blue':   { light: { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37' }, dark: { link: '#58a6ff', hover: '#79c0ff', active: '#58a6ff', badge: '#238636' }, gradient: 'linear-gradient(90deg, #0969da, #8b5cf6, #ec4899)' },
+          'green':  { light: { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' }, dark: { link: '#3fb950', hover: '#56d364', active: '#3fb950', badge: '#238636' }, gradient: 'linear-gradient(90deg, #1a7f37, #2da44e, #56d364)' },
+          'purple': { light: { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df' }, dark: { link: '#bc8cff', hover: '#d2a8ff', active: '#bc8cff', badge: '#bc8cff' }, gradient: 'linear-gradient(90deg, #8250df, #bc8cff, #ec4899)' },
+          'orange': { light: { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02' }, dark: { link: '#e3872a', hover: '#f5a623', active: '#e3872a', badge: '#e3872a' }, gradient: 'linear-gradient(90deg, #bf6a02, #e3872a, #f5a623)' },
+          'red':    { light: { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e' }, dark: { link: '#f85149', hover: '#ff7b72', active: '#f85149', badge: '#f85149' }, gradient: 'linear-gradient(90deg, #cf222e, #f85149, #ff7b72)' }
         };
-        var a = accents[v] || accents['blue'];
+        var entry = accents[v] || accents['blue'];
+        // Detect current theme
+        var theme = document.documentElement.getAttribute('data-theme');
+        var isDark;
+        if (theme === 'dark') { isDark = true; }
+        else if (theme === 'light') { isDark = false; }
+        else { isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
+        var a = isDark ? entry.dark : entry.light;
         var r = document.documentElement.style;
         r.setProperty('--link', a.link);
         r.setProperty('--link-hover', a.hover);
         r.setProperty('--sidebar-active', a.active);
         r.setProperty('--badge-bg', a.badge);
-        // Store the gradient for the strip
-        document.documentElement.setAttribute('data-accent-gradient', a.gradient);
+        // Store the gradient for the strip (light values work on both themes)
+        document.documentElement.setAttribute('data-accent-gradient', entry.gradient);
         // Apply gradient to body::before if gradient-strip is "show"
         updateGradientStrip();
       }
@@ -1407,6 +1421,16 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     highlightActive(name, value);
   });
 
+  // Re-apply accent color when theme changes
+  var _accentObserver = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      if (m.attributeName === 'data-theme') {
+        KNOBS['accent-color'].apply(currentValues['accent-color'] || 'blue');
+      }
+    });
+  });
+  _accentObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
   // Bind click handlers on knob options
   document.querySelectorAll('.ds-knob').forEach(function(knobEl) {
     var name = knobEl.getAttribute('data-knob');
@@ -1469,7 +1493,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           rootVars.push('  --sidebar-width: ' + value + ';');
           break;
         case 'content-width':
-          rootVars.push('  --content-max-width: ' + (value === 'full' ? '100%' : value) + ';');
+          rootVars.push('  --content-max-width: ' + value + ';');
           break;
         case 'font-kind':
           var fonts = {
@@ -1499,18 +1523,18 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           rootVars.push('  --line-height-body: ' + (lineHeights[value] || 1.6) + ';');
           break;
         case 'accent-color':
-          var accents = {
-            'blue':   { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37' },
-            'green':  { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' },
-            'purple': { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df' },
-            'orange': { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02' },
-            'red':    { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e' }
+          var accentExport = {
+            'blue':   { light: { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37' }, dark: { link: '#58a6ff', hover: '#79c0ff', active: '#58a6ff', badge: '#238636' } },
+            'green':  { light: { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' }, dark: { link: '#3fb950', hover: '#56d364', active: '#3fb950', badge: '#238636' } },
+            'purple': { light: { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df' }, dark: { link: '#bc8cff', hover: '#d2a8ff', active: '#bc8cff', badge: '#bc8cff' } },
+            'orange': { light: { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02' }, dark: { link: '#e3872a', hover: '#f5a623', active: '#e3872a', badge: '#e3872a' } },
+            'red':    { light: { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e' }, dark: { link: '#f85149', hover: '#ff7b72', active: '#f85149', badge: '#f85149' } }
           };
-          var a = accents[value] || accents['blue'];
-          rootVars.push('  --link: ' + a.link + ';');
-          rootVars.push('  --link-hover: ' + a.hover + ';');
-          rootVars.push('  --sidebar-active: ' + a.active + ';');
-          rootVars.push('  --badge-bg: ' + a.badge + ';');
+          var ae = accentExport[value] || accentExport['blue'];
+          rootVars.push('  --link: ' + ae.light.link + ';');
+          rootVars.push('  --link-hover: ' + ae.light.hover + ';');
+          rootVars.push('  --sidebar-active: ' + ae.light.active + ';');
+          rootVars.push('  --badge-bg: ' + ae.light.badge + ';');
           break;
         case 'border-radius':
           var radii = { 'sharp': '0', 'subtle': '4px', 'rounded': '8px', 'pill': '16px' };

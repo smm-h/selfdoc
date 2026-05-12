@@ -141,6 +141,11 @@ _KNOB_CASES = [
                 "200px",
             ),
             (
+                "240px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim()",
+                "240px",
+            ),
+            (
                 "280px",
                 "getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim()",
                 "280px",
@@ -170,14 +175,19 @@ _KNOB_CASES = [
                 "60ch",
             ),
             (
+                "72ch",
+                "getComputedStyle(document.documentElement).getPropertyValue('--content-max-width').trim()",
+                "72ch",
+            ),
+            (
                 "90ch",
                 "getComputedStyle(document.documentElement).getPropertyValue('--content-max-width').trim()",
                 "90ch",
             ),
             (
-                "full",
+                "120ch",
                 "getComputedStyle(document.documentElement).getPropertyValue('--content-max-width').trim()",
-                "100%",
+                "120ch",
             ),
         ],
     ),
@@ -212,6 +222,7 @@ _KNOB_CASES = [
         "font-size",
         [
             ("14px", "document.documentElement.style.fontSize", "14px"),
+            ("16px", "document.documentElement.style.fontSize", "16px"),
             ("18px", "document.documentElement.style.fontSize", "18px"),
             ("20px", "document.documentElement.style.fontSize", "20px"),
         ],
