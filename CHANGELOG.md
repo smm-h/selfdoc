@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- npm package renamed from `selfdoc` to `selfdocumenting` (npm blocks `selfdoc` due to similarity with abandoned `self-doc` package). Install via `npm install -g selfdocumenting` or `npx selfdocumenting`. The CLI command remains `selfdoc`.
+
 ## 0.3.0
 
 ### Breaking Changes
