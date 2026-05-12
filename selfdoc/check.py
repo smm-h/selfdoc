@@ -743,34 +743,33 @@ def print_results(result):
     """
     if not result.directive_results:
         print("No directives found in documentation templates.")
-        return
+    else:
+        # Per-directive results
+        for dr in result.directive_results:
+            status_str = dr.status
+            if dr.error:
+                status_str = f"FAILED: {dr.error}"
+            print(f"  {dr.file}:{dr.line}  {dr.directive}  {status_str}")
 
-    # Per-directive results
-    for dr in result.directive_results:
-        status_str = dr.status
-        if dr.error:
-            status_str = f"FAILED: {dr.error}"
-        print(f"  {dr.file}:{dr.line}  {dr.directive}  {status_str}")
+        # Summary counts
+        ok_count = sum(1 for dr in result.directive_results if dr.status == "OK")
+        fail_count = sum(
+            1 for dr in result.directive_results if dr.status == "FAILED"
+        )
+        total = len(result.directive_results)
+        print(f"\n{total} directive(s): {ok_count} OK, {fail_count} FAILED")
 
-    # Summary counts
-    ok_count = sum(1 for dr in result.directive_results if dr.status == "OK")
-    fail_count = sum(
-        1 for dr in result.directive_results if dr.status == "FAILED"
-    )
-    total = len(result.directive_results)
-    print(f"\n{total} directive(s): {ok_count} OK, {fail_count} FAILED")
-
-    # Coverage stats
-    if result.coverage is not None:
-        cov = result.coverage
-        if cov.total_public > 0:
-            pct = cov.referenced * 100 // cov.total_public
-            print(
-                f"Coverage: {cov.referenced}/{cov.total_public} "
-                f"public symbols documented ({pct}%)"
-            )
-        else:
-            print("Coverage: no public symbols found in source files")
+        # Coverage stats
+        if result.coverage is not None:
+            cov = result.coverage
+            if cov.total_public > 0:
+                pct = cov.referenced * 100 // cov.total_public
+                print(
+                    f"Coverage: {cov.referenced}/{cov.total_public} "
+                    f"public symbols documented ({pct}%)"
+                )
+            else:
+                print("Coverage: no public symbols found in source files")
 
     # Lint results -- all lints are always shown
     if result.lints:

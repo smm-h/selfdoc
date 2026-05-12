@@ -279,6 +279,27 @@ def test_print_results_no_directives(capsys):
     print_results(result)
     captured = capsys.readouterr()
     assert "No directives found" in captured.out
+    assert "No lints." in captured.out
+
+
+def test_print_results_no_directives_with_lints(capsys):
+    """print_results shows lint output even when there are no directives."""
+    result = CheckResult(
+        lints=[
+            LintResult(
+                file="index.md",
+                line=None,
+                code="SEO006",
+                message="No 'description' in frontmatter",
+                severity="warning",
+            ),
+        ],
+    )
+    print_results(result)
+    captured = capsys.readouterr()
+    assert "No directives found" in captured.out
+    assert "SEO006" in captured.out
+    assert "No 'description' in frontmatter" in captured.out
 
 
 # -- Edge cases --
@@ -421,7 +442,6 @@ def test_print_results_with_lints(capsys):
             ),
         ],
     )
-    # Need at least one directive result to avoid the "No directives" path
     from selfdoc.check import DirectiveResult
 
     result.directive_results = [
