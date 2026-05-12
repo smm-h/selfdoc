@@ -2714,6 +2714,86 @@ def test_organization_schema_has_correct_name(project_dir):
     assert org_data["name"] == project_name
 
 
+# --- Phase 2B: Person schema and sameAs on homepage ---
+
+
+def test_person_schema_on_homepage_with_person_author():
+    """Config with author.type: 'Person' produces @type: Person on homepage."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+        author={"name": "Jane Doe", "type": "Person", "url": "https://jane.dev"},
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    entity = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") in ("Person", "Organization") and "potentialAction" not in data:
+            entity = data
+            break
+
+    assert entity is not None, "Person/Organization JSON-LD not found"
+    assert entity["@type"] == "Person"
+    assert entity["name"] == "Jane Doe"
+
+
+def test_same_as_twitter_on_homepage():
+    """Config with author.twitter produces sameAs with twitter URL."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+        author={"name": "Jane Doe", "type": "Person", "twitter": "@janedoe"},
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    entity = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") in ("Person", "Organization") and "potentialAction" not in data:
+            entity = data
+            break
+
+    assert entity is not None, "Person/Organization JSON-LD not found"
+    assert "sameAs" in entity
+    assert "https://twitter.com/janedoe" in entity["sameAs"]
+
+
+def test_organization_schema_still_works_on_homepage():
+    """Config with author.type: 'Organization' still produces @type: Organization (regression)."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+        author={"name": "Acme Corp", "type": "Organization", "url": "https://acme.com"},
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    entity = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") in ("Person", "Organization") and "potentialAction" not in data:
+            entity = data
+            break
+
+    assert entity is not None, "Organization JSON-LD not found"
+    assert entity["@type"] == "Organization"
+
+
 # --- Phase 4B: CSS preload hint ---
 
 

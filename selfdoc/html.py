@@ -1289,21 +1289,41 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'\n</script>'
         )
 
-    # Standalone Organization JSON-LD on homepage
+    # Standalone Organization/Person JSON-LD on homepage
     if page_path == "index.html":
+        # Use Person schema when author.type is "Person"
+        entity_type = "Organization"
+        if author and author.get("type") == "Person":
+            entity_type = "Person"
+
+        entity_name = project_name
+        if entity_type == "Person" and author and author.get("name"):
+            entity_name = author["name"]
+
         org_ld = {
             "@context": "https://schema.org",
-            "@type": "Organization",
-            "name": project_name,
+            "@type": entity_type,
+            "name": entity_name,
         }
-        # Determine URL: prefer author org URL, fall back to base_url
+        # Determine URL: prefer author URL, fall back to base_url
         org_url = None
-        if author and author.get("type") == "Organization" and author.get("url"):
+        if author and author.get("url"):
             org_url = author["url"]
         elif base_url:
             org_url = base_url
         if org_url:
             org_ld["url"] = org_url
+
+        # sameAs: collect social profile URLs
+        same_as = []
+        if author:
+            twitter_handle = author.get("twitter")
+            if twitter_handle:
+                handle = twitter_handle.lstrip("@")
+                same_as.append(f"https://twitter.com/{handle}")
+        if same_as:
+            org_ld["sameAs"] = same_as
+
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
             f'{json.dumps(org_ld)}'
