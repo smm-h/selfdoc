@@ -1,6 +1,6 @@
 {
   "name": "selfdoc",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Code-aware static site generator with directive-based content extraction",
   "bin": {
     "selfdoc": "bin/cli.js"
