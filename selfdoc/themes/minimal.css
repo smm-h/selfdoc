@@ -62,7 +62,7 @@ a {
     --badge-text: #ffffff;
     --admonition-tip: #1a7f37;
     --admonition-important: #8250df;
-    --admonition-warning: #8a5d00;
+    --admonition-warning: #6d4a00;
     --admonition-caution: #cf222e;
     --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
@@ -130,6 +130,7 @@ a {
         --heading: #000;
         --border: #000;
         --code-border: #000;
+        --admonition-warning: #5a3d00;
     }
 }
 
@@ -139,6 +140,7 @@ a {
         --heading: #fff;
         --border: #fff;
         --code-border: #fff;
+        --admonition-warning: #ffc107;
     }
 }
 
