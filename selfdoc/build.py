@@ -454,7 +454,7 @@ def _generate_sitemap(base_url, html_paths, page_dates=None):
     Args:
         base_url: Base URL for constructing full URLs.
         html_paths: List of HTML file paths (e.g. ["index.html", "guide.html"]).
-        page_dates: Optional dict mapping md paths to ISO date strings.
+        page_dates: Optional dict mapping md paths to (published, modified) tuples.
     """
     if page_dates is None:
         page_dates = {}
@@ -462,7 +462,9 @@ def _generate_sitemap(base_url, html_paths, page_dates=None):
     for path in sorted(html_paths):
         # Convert html path to md path for date lookup
         md_path = path.replace(".html", ".md") if path.endswith(".html") else path
-        date = page_dates.get(md_path)
+        date_tuple = page_dates.get(md_path)
+        # Use modified date for lastmod
+        date = date_tuple[1] if date_tuple else None
         if date:
             urls.append(
                 f"  <url><loc>{base_url}/{path}</loc>"
@@ -636,8 +638,9 @@ def _generate_atom_feed(
                 summary = _first_sentence(line)
                 break
 
-        # Get page date
-        page_date = page_dates.get(md_path, "")
+        # Get page date (modified date from tuple)
+        date_tuple = page_dates.get(md_path)
+        page_date = date_tuple[1] if date_tuple else ""
 
         # Escape for XML
         escaped_title = _escape_html(title)
@@ -655,7 +658,7 @@ def _generate_atom_feed(
         entries.append(entry)
 
     # Find most recent date for the feed-level <updated>
-    all_dates = [page_dates.get(p, "") for p in markdown_files]
+    all_dates = [page_dates.get(p, (None, ""))[1] for p in markdown_files]
     all_dates = [d for d in all_dates if d]
     most_recent = max(all_dates) if all_dates else datetime.now().strftime("%Y-%m-%d")
 
@@ -818,19 +821,30 @@ def build(dir_path=".", config=None):
             else:
                 other_files.append(rel_path)
 
-    # Build page_dates: map md_path -> ISO date string (YYYY-MM-DD)
-    # Priority: frontmatter "updated" > frontmatter "date" > file mtime
+    # Build page_dates: map md_path -> (published, modified) tuple
+    # modified: frontmatter "updated" > frontmatter "date" > file mtime
+    # published: frontmatter "date" > file mtime (never use "updated")
     page_dates = {}
     for rel_path in markdown_files:
         meta = frontmatter.get(rel_path, {})
-        if "updated" in meta:
-            page_dates[rel_path] = str(meta["updated"])
-        elif "date" in meta:
-            page_dates[rel_path] = str(meta["date"])
+        has_updated = "updated" in meta
+        has_date = "date" in meta
+        if has_updated and has_date:
+            modified = str(meta["updated"])
+            published = str(meta["date"])
+        elif has_updated:
+            modified = str(meta["updated"])
+            published = None
+        elif has_date:
+            modified = str(meta["date"])
+            published = str(meta["date"])
         else:
             full_path = os.path.join(docs_dir, rel_path)
             mtime = os.path.getmtime(full_path)
-            page_dates[rel_path] = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+            mtime_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+            modified = mtime_str
+            published = mtime_str
+        page_dates[rel_path] = (published, modified)
 
     if not markdown_files:
         raise RuntimeError(

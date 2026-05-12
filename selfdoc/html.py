@@ -121,7 +121,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         docs_dir_name: Docs directory name for constructing source paths.
         base_url: Base URL for canonical links and sitemap (optional).
         frontmatter: Dict mapping relative paths to metadata dicts (Feature 34).
-        page_dates: Dict mapping relative paths to ISO date strings (optional).
+        page_dates: Dict mapping relative paths to (published, modified) tuples (optional).
         author: Author dict from config (optional, keys: name, type, url).
         feed_url: Relative URL to the Atom feed (optional, e.g. "feed.xml").
 
@@ -190,8 +190,10 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Source path for "Edit this page" link (Feature 14)
         source_path = docs_dir_name.rstrip("/") + "/" + md_path
 
-        # Date modified for this page (Wave 2 date infrastructure)
-        date_modified = page_dates.get(md_path)
+        # Date published and modified for this page (Wave 2 date infrastructure)
+        date_tuple = page_dates.get(md_path)
+        date_published = date_tuple[0] if date_tuple else None
+        date_modified = date_tuple[1] if date_tuple else None
 
         # Compute feed href relative to this page's depth
         page_feed_url = (prefix + feed_url) if feed_url else None
@@ -213,6 +215,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             page_path=html_path,
             description=description,
             lang=lang,
+            date_published=date_published,
             date_modified=date_modified,
             author=author,
             feed_url=page_feed_url,
@@ -1033,7 +1036,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
                base_url=None, page_path=None, description="",
-               lang="en", date_modified=None, author=None,
+               lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
                schema=None, twitter_site=None):
     """Wrap converted HTML body in the full page template."""
@@ -1209,7 +1212,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             tech_article["description"] = description
         if date_modified:
             tech_article["dateModified"] = date_modified
-            tech_article["datePublished"] = date_modified
+            tech_article["datePublished"] = date_published or date_modified
 
         # Publisher must always be an Organization per Google's spec
         if author and author.get("type") == "Organization":

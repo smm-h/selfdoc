@@ -281,7 +281,10 @@ def test_html_no_highlight_js(project_dir):
 
 
 def _build_and_get_page_dates(project_dir):
-    """Helper: run build and return page_dates dict by re-parsing frontmatter and mtime."""
+    """Helper: run build and return page_dates dict by re-parsing frontmatter and mtime.
+
+    Returns dict mapping filename -> (published, modified) tuple.
+    """
     from datetime import datetime
     from selfdoc.config import load_config
     config = load_config(str(project_dir))
@@ -295,13 +298,23 @@ def _build_and_get_page_dates(project_dir):
         with open(full_path, "r", encoding="utf-8") as f:
             content = f.read()
         metadata, _ = _parse_frontmatter(content)
-        if "updated" in metadata:
-            page_dates[fname] = str(metadata["updated"])
-        elif "date" in metadata:
-            page_dates[fname] = str(metadata["date"])
+        has_updated = "updated" in metadata
+        has_date = "date" in metadata
+        if has_updated and has_date:
+            modified = str(metadata["updated"])
+            published = str(metadata["date"])
+        elif has_updated:
+            modified = str(metadata["updated"])
+            published = None
+        elif has_date:
+            modified = str(metadata["date"])
+            published = str(metadata["date"])
         else:
             mtime = os.path.getmtime(full_path)
-            page_dates[fname] = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+            mtime_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+            modified = mtime_str
+            published = mtime_str
+        page_dates[fname] = (published, modified)
     return page_dates
 
 
@@ -316,7 +329,9 @@ def test_page_date_from_updated_frontmatter(project_dir):
     build(str(project_dir))
 
     page_dates = _build_and_get_page_dates(project_dir)
-    assert page_dates["dated.md"] == "2026-05-01"
+    published, modified = page_dates["dated.md"]
+    assert modified == "2026-05-01"
+    assert published is None
 
 
 def test_page_date_from_date_frontmatter(project_dir):
@@ -329,7 +344,9 @@ def test_page_date_from_date_frontmatter(project_dir):
     build(str(project_dir))
 
     page_dates = _build_and_get_page_dates(project_dir)
-    assert page_dates["dated.md"] == "2026-01-15"
+    published, modified = page_dates["dated.md"]
+    assert published == "2026-01-15"
+    assert modified == "2026-01-15"
 
 
 def test_page_date_from_mtime(project_dir):
@@ -338,12 +355,13 @@ def test_page_date_from_mtime(project_dir):
     build(str(project_dir))
 
     page_dates = _build_and_get_page_dates(project_dir)
-    date_str = page_dates["index.md"]
-    assert re.match(r"^\d{4}-\d{2}-\d{2}$", date_str), f"Expected YYYY-MM-DD, got {date_str}"
+    published, modified = page_dates["index.md"]
+    assert re.match(r"^\d{4}-\d{2}-\d{2}$", modified), f"Expected YYYY-MM-DD, got {modified}"
+    assert published == modified
 
 
 def test_page_date_updated_takes_priority_over_date(project_dir):
-    """'updated' takes priority over 'date' in frontmatter."""
+    """'updated' takes priority over 'date' for modified date."""
     docs_dir = os.path.join(project_dir, "docs")
     page_md = os.path.join(docs_dir, "both.md")
     with open(page_md, "w", encoding="utf-8") as f:
@@ -352,7 +370,9 @@ def test_page_date_updated_takes_priority_over_date(project_dir):
     build(str(project_dir))
 
     page_dates = _build_and_get_page_dates(project_dir)
-    assert page_dates["both.md"] == "2026-05-01"
+    published, modified = page_dates["both.md"]
+    assert modified == "2026-05-01"
+    assert published == "2026-01-15"
 
 
 # --- Phase 2.1: Visible dates, JSON-LD dateModified, sitemap lastmod ---
@@ -3057,3 +3077,147 @@ def test_breadcrumbs_json_ld_nested(project_dir):
     assert items[2]["position"] == 3
     assert items[2]["name"] == "Endpoints"
     assert "item" not in items[2]
+
+
+# --- Phase 0A: Separate datePublished from dateModified ---
+
+
+def test_date_published_differs_from_modified(project_dir):
+    """Page with both 'date' and 'updated' frontmatter produces different
+    datePublished and dateModified in JSON-LD."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndate: 2025-01-15\nupdated: 2026-03-20\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content, re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert tech_article["datePublished"] == "2025-01-15"
+    assert tech_article["dateModified"] == "2026-03-20"
+
+
+def test_date_only_uses_for_both(project_dir):
+    """Page with only 'date' uses it for both datePublished and dateModified."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndate: 2025-06-01\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content, re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None
+    assert tech_article["datePublished"] == "2025-06-01"
+    assert tech_article["dateModified"] == "2025-06-01"
+
+
+def test_updated_only_uses_fallback_for_published(project_dir):
+    """Page with only 'updated' uses it for dateModified, falls back for
+    datePublished."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("---\nupdated: 2026-04-10\n---\n# Test\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content, re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None
+    assert tech_article["dateModified"] == "2026-04-10"
+    # published falls back to modified when no date frontmatter
+    assert tech_article["datePublished"] == "2026-04-10"
+
+
+def test_no_date_frontmatter_uses_mtime(project_dir):
+    """Page with no date frontmatter uses mtime for both datePublished and
+    dateModified."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content, re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None
+    # Both should be the same mtime-derived date
+    assert re.match(r"^\d{4}-\d{2}-\d{2}$", tech_article["datePublished"])
+    assert tech_article["datePublished"] == tech_article["dateModified"]
