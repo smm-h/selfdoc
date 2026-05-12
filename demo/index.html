@@ -368,9 +368,40 @@ body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent
 <nav class="sidebar" id="sidebar">
 <ul class="nav-list">
 <li><a href="index.html" class="active">Theme Showcase</a></li>
-<li><a href="#">Getting Started</a></li>
-<li><a href="#">Configuration</a></li>
-<li><a href="#">API Reference</a></li>
+<li><a href="#">FAQ</a></li>
+<li class="nav-group">
+  <details open>
+    <summary class="nav-group-title">Getting Started</summary>
+    <ul class="nav-group-items">
+      <li><a href="#">Installation</a></li>
+      <li><a href="#">Quick Start</a></li>
+      <li><a href="#">Project Structure</a></li>
+    </ul>
+  </details>
+</li>
+<li class="nav-group">
+  <details>
+    <summary class="nav-group-title">Guides</summary>
+    <ul class="nav-group-items">
+      <li><a href="#">Writing Templates</a></li>
+      <li><a href="#">Custom Directives</a></li>
+      <li><a href="#">Deploying Your Site</a></li>
+      <li><a href="#">Configuring Themes and Custom CSS for Documentation Projects</a></li>
+    </ul>
+  </details>
+</li>
+<li class="nav-group">
+  <details>
+    <summary class="nav-group-title">API Reference</summary>
+    <ul class="nav-group-items">
+      <li><a href="#">Configuration</a></li>
+      <li><a href="#">Directives</a></li>
+      <li><a href="#">Extractors</a></li>
+      <li><a href="#">HTML Generation</a></li>
+      <li><a href="#">Build Pipeline</a></li>
+    </ul>
+  </details>
+</li>
 </ul>
 </nav>
 <main class="content" id="main-content">
@@ -393,11 +424,17 @@ body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent
 <li class="toc-item toc-h3"><a href="#diff-highlighting">Diff Highlighting</a></li>
 <li class="toc-item toc-h3"><a href="#code-annotations">Code Annotations</a></li>
 <li class="toc-item toc-h3"><a href="#code-tabs">Code Tabs</a></li>
+<li class="toc-item toc-h3"><a href="#long-code-block">Long Code Block</a></li>
 <li class="toc-item"><a href="#blocks">Blocks</a></li>
 <li class="toc-item toc-h3"><a href="#blockquote">Blockquote</a></li>
+<li class="toc-item toc-h3"><a href="#nested-blockquote">Nested Blockquote</a></li>
+<li class="toc-item toc-h3"><a href="#blockquote-with-code">Blockquote with Code</a></li>
 <li class="toc-item toc-h3"><a href="#admonitions">Admonitions</a></li>
 <li class="toc-item toc-h3"><a href="#table">Table</a></li>
+<li class="toc-item toc-h3"><a href="#wide-table">Wide Table</a></li>
 <li class="toc-item"><a href="#api-entry-cards">API Entry Cards</a></li>
+<li class="toc-item"><a href="#glossary">Glossary</a></li>
+<li class="toc-item"><a href="#collapsible-sections">Collapsible Sections</a></li>
 <li class="toc-item"><a href="#images">Images</a></li>
 <li class="toc-item"><a href="#search-dialog-section">Search Dialog</a></li>
 <li class="toc-item"><a href="#page-not-found">Page Not Found</a></li>
@@ -558,6 +595,16 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
+<h3 id="long-code-block"><a class="heading-link" href="#long-code-block">#</a>Long Code Block</h3>
+
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def resolve_directives(content: str, resolver: Callable[[str, str, str], str], source_paths: list[str] | None = None) -> str:
+    """Replace all :::directive blocks in content with resolver output. Handles nested fenced code blocks correctly."""
+    directives = list(parse_directives(content))
+    for name, arg, body in sorted(directives, key=lambda d: content.index(d[2]), reverse=True):  # reverse to preserve offsets
+        replacement = resolver(name, arg, body)
+        content = content[:content.index(body)] + replacement + content[content.index(body) + len(body):]
+    return content</code></pre></div>
+
 <!-- ==================== BLOCKS ==================== -->
 
 <h2 id="blocks"><a class="heading-link" href="#blocks" aria-label="Link to section: Blocks">#</a>Blocks</h2>
@@ -565,6 +612,24 @@ export function extractModule(sourcePath: string): string {
 <h3 id="blockquote"><a class="heading-link" href="#blockquote" aria-label="Link to section: Blockquote">#</a>Blockquote</h3>
 
 <blockquote><p>selfdoc keeps your documentation in sync with your code. When you change a function signature, the docs update automatically on the next build. No more stale examples or outdated API references.</p></blockquote>
+
+<h3 id="nested-blockquote"><a class="heading-link" href="#nested-blockquote">#</a>Nested Blockquote</h3>
+
+<blockquote>
+<p>selfdoc extracts documentation from source code automatically.</p>
+<blockquote><p>The key insight is that code IS the documentation. By extracting directly from source, docs never go stale.</p></blockquote>
+</blockquote>
+
+<h3 id="blockquote-with-code"><a class="heading-link" href="#blockquote-with-code">#</a>Blockquote with Code</h3>
+
+<blockquote>
+<p>To use a custom directive, add it to your <code>selfdoc.json</code>:</p>
+<div class="code-block"><pre tabindex="0"><code>{
+  "directives": {
+    "changelog": "scripts/extract_changelog.py"
+  }
+}</code></pre></div>
+</blockquote>
 
 <h3 id="admonitions"><a class="heading-link" href="#admonitions" aria-label="Link to section: Admonitions">#</a>Admonitions</h3>
 
@@ -610,6 +675,28 @@ export function extractModule(sourcePath: string): string {
 </table>
 </div>
 
+<h3 id="wide-table"><a class="heading-link" href="#wide-table">#</a>Wide Table</h3>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Directive</th><th>Python</th><th>Go</th><th>TypeScript</th><th>Description</th><th>Output Format</th></tr>
+</thead>
+<tbody>
+<tr><td><code>module</code></td><td>ast.get_docstring</td><td>doc.Package</td><td>Leading comment</td><td>Module-level docstring</td><td>Markdown text</td></tr>
+<tr><td><code>schema</code></td><td>ast dataclass</td><td>struct fields</td><td>interface props</td><td>Data structure definition</td><td>Fenced code block</td></tr>
+<tr><td><code>test</code></td><td>ast function</td><td>func Test*</td><td>describe/it</td><td>Test function source</td><td>Fenced code block</td></tr>
+<tr><td><code>cli</code></td><td>argparse</td><td>flag.Parse</td><td>commander</td><td>CLI argument parser</td><td>Fenced code block</td></tr>
+<tr><td><code>config</code></td><td>ast loader</td><td>json.Unmarshal</td><td>dotenv parse</td><td>Configuration loading</td><td>Fenced code block</td></tr>
+<tr><td><code>custom</code></td><td>selfdoc.json</td><td>selfdoc.json</td><td>selfdoc.json</td><td>User-defined directive</td><td>Custom template</td></tr>
+<tr><td><code>module</code></td><td>ast.parse</td><td>go/parser</td><td>ts.createSourceFile</td><td>Full AST parsing</td><td>Structured data</td></tr>
+<tr><td><code>schema</code></td><td>dataclasses</td><td>reflect</td><td>zod/io-ts</td><td>Runtime validation</td><td>JSON Schema</td></tr>
+<tr><td><code>test</code></td><td>pytest</td><td>testing.T</td><td>jest/vitest</td><td>Test framework</td><td>Test report</td></tr>
+<tr><td><code>cli</code></td><td>click</td><td>cobra</td><td>yargs</td><td>Alternative CLI lib</td><td>Help text</td></tr>
+</tbody>
+</table>
+</div>
+
 <!-- ==================== API ENTRY CARDS ==================== -->
 
 <h2 id="api-entry-cards"><a class="heading-link" href="#api-entry-cards" aria-label="Link to section: API Entry Cards">#</a>API Entry Cards</h2>
@@ -631,6 +718,48 @@ export function extractModule(sourcePath: string): string {
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def md_to_html(text: str) -&gt; str</code></pre></div>
 <p>Convert Markdown text to HTML. Handles headings, code blocks (with tabs and annotations), inline code, paragraphs, unordered and ordered lists, links, bold, italic, tables, blockquotes, and admonitions. No external dependencies.</p>
 </div>
+
+<h2 id="glossary"><a class="heading-link" href="#glossary">#</a>Glossary</h2>
+
+<div class="glossary">
+<dl>
+<dt><dfn>Directive</dfn></dt>
+<dd>A <code>:::name arg</code> / <code>:::</code> block in a Markdown template that selfdoc replaces with content extracted from source code during the build process.</dd>
+
+<dt><dfn>Extractor</dfn></dt>
+<dd>A language-specific module that reads source files and returns structured content for a given directive. Python uses <code>ast</code>; Go and TypeScript use regex-based parsing.</dd>
+
+<dt><dfn>Resolver</dfn></dt>
+<dd>The component that maps a directive name and argument to the correct extractor, checking custom directives from <code>selfdoc.json</code> before falling back to built-in extractors.</dd>
+
+<dt><dfn>Template</dfn></dt>
+<dd>A Markdown file in the <code>docs/</code> directory containing directive blocks. Templates are processed during <code>selfdoc build</code> to produce the final HTML documentation pages.</dd>
+</dl>
+</div>
+
+<!-- ==================== COLLAPSIBLE SECTIONS ==================== -->
+
+<h2 id="collapsible-sections"><a class="heading-link" href="#collapsible-sections">#</a>Collapsible Sections</h2>
+
+<details>
+<summary>Click to expand: Full build pipeline</summary>
+<ol>
+<li>Load configuration from <code>selfdoc.json</code></li>
+<li>Create a resolver from the configuration</li>
+<li>Walk <code>docs/</code> for <code>.md</code> templates</li>
+<li>Parse frontmatter and resolve all directives</li>
+<li>Convert resolved Markdown to HTML</li>
+<li>Post-process: add image dimensions, generate TOC</li>
+<li>Write output files, generate auxiliary assets</li>
+<li>Compress with gzip and optional brotli</li>
+</ol>
+
+<div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def build(dir_path: str = ".") -> dict[str, str]:
+    config = load_config(dir_path)
+    resolver = make_resolver(config)
+    html_files = generate_html(markdown_files, config)
+    return html_files</code></pre></div>
+</details>
 
 <!-- ==================== IMAGES ==================== -->
 
@@ -689,17 +818,27 @@ export function extractModule(sourcePath: string): string {
 <li class="toc-item toc-h3"><a href="#diff-highlighting">Diff Highlighting</a></li>
 <li class="toc-item toc-h3"><a href="#code-annotations">Code Annotations</a></li>
 <li class="toc-item toc-h3"><a href="#code-tabs">Code Tabs</a></li>
+<li class="toc-item toc-h3"><a href="#long-code-block">Long Code Block</a></li>
 <li class="toc-item"><a href="#blocks">Blocks</a></li>
 <li class="toc-item toc-h3"><a href="#blockquote">Blockquote</a></li>
+<li class="toc-item toc-h3"><a href="#nested-blockquote">Nested Blockquote</a></li>
+<li class="toc-item toc-h3"><a href="#blockquote-with-code">Blockquote with Code</a></li>
 <li class="toc-item toc-h3"><a href="#admonitions">Admonitions</a></li>
 <li class="toc-item toc-h3"><a href="#table">Table</a></li>
+<li class="toc-item toc-h3"><a href="#wide-table">Wide Table</a></li>
 <li class="toc-item"><a href="#api-entry-cards">API Entry Cards</a></li>
+<li class="toc-item"><a href="#glossary">Glossary</a></li>
+<li class="toc-item"><a href="#collapsible-sections">Collapsible Sections</a></li>
 <li class="toc-item"><a href="#images">Images</a></li>
 <li class="toc-item"><a href="#search-dialog-section">Search Dialog</a></li>
 <li class="toc-item"><a href="#page-not-found">Page Not Found</a></li>
 </ul></nav>
 </aside>
 </div>
+
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+</footer>
 
 <!-- Design Settings Panel -->
 <div class="ds-backdrop" id="ds-backdrop"></div>
