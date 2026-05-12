@@ -3244,3 +3244,43 @@ def test_og_png_dimensions_1200x630(project_dir):
     ihdr_height = struct.unpack(">I", data[20:24])[0]
     assert ihdr_width == 1200
     assert ihdr_height == 630
+
+
+# --- Phase 1A: Google Fonts deferred loading ---
+
+
+def test_google_fonts_deferred_loading():
+    """Google Fonts stylesheet is deferred, not render-blocking."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+
+    fonts_url = "https://fonts.googleapis.com/css2?family=Inter"
+
+    # Preconnect hints must be present
+    assert '<link rel="preconnect" href="https://fonts.googleapis.com">' in content
+    assert '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' in content
+
+    # Must have preload hint for the fonts stylesheet
+    assert f'<link rel="preload" href="{fonts_url}' in content
+    assert 'as="style"' in content
+
+    # Must use media="print" with onload swap (deferred pattern)
+    assert f'href="{fonts_url}' in content
+    assert 'media="print"' in content
+    assert "onload=\"this.media='all'\"" in content
+
+    # Must have noscript fallback
+    assert f'<noscript><link rel="stylesheet" href="{fonts_url}' in content
+
+    # Must NOT have a plain render-blocking stylesheet for Google Fonts
+    # (i.e., no <link href="...fonts..." rel="stylesheet"> without media="print")
+    import re
+    blocking_pattern = re.compile(
+        r'<link\s+href="https://fonts\.googleapis\.com/[^"]*"\s+rel="stylesheet"\s*>'
+    )
+    assert not blocking_pattern.search(content), (
+        "Google Fonts link should be deferred, not render-blocking"
+    )
