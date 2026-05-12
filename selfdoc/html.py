@@ -1242,31 +1242,6 @@ def _extract_title(md_content, fallback):
     return fallback
 
 
-def _extract_first_paragraph(page_html):
-    """Extract text from the first <p> tag for use as a meta description.
-
-    Strips HTML tags, unescapes HTML entities, trims whitespace, and
-    truncates to 155 characters at a word boundary. Returns empty string
-    if no paragraph found.
-    """
-    match = re.search(r"<p>(.*?)</p>", page_html, re.DOTALL)
-    if not match:
-        return ""
-    text = re.sub(r"<[^>]+>", "", match.group(1))
-    text = html.unescape(text)
-    text = text.strip()
-    if not text:
-        return ""
-    if len(text) <= 155:
-        return text
-    # Truncate at word boundary
-    truncated = text[:155]
-    last_space = truncated.rfind(" ")
-    if last_space > 0:
-        truncated = truncated[:last_space]
-    return truncated + "..."
-
-
 def _truncate_description(description):
     """Truncate a description string for use in meta tags.
 

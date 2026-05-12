@@ -13,7 +13,7 @@ import gzip as gzip_module
 from unittest import mock
 
 from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic
-from selfdoc.html import generate_html, generate_404_page, _extract_first_paragraph, _minify_js, md_to_html
+from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
 
 
 @pytest.fixture()
@@ -723,42 +723,6 @@ def test_frontmatter_description_takes_priority(project_dir):
     assert "This is the first paragraph" not in content.split('<meta name="description"')[0].split('<meta name="description"')[-1]
     # Verify frontmatter description is used in OG tags too
     assert '<meta property="og:description" content="Custom description from frontmatter">' in content
-
-
-def test_extract_first_paragraph_basic():
-    """_extract_first_paragraph extracts text from first <p> tag."""
-    html = '<h1>Title</h1>\n<p>Hello world</p>\n<p>Second para</p>'
-    assert _extract_first_paragraph(html) == "Hello world"
-
-
-def test_extract_first_paragraph_strips_html():
-    """_extract_first_paragraph strips inner HTML tags."""
-    html = '<p>Hello <strong>bold</strong> and <em>italic</em></p>'
-    assert _extract_first_paragraph(html) == "Hello bold and italic"
-
-
-def test_extract_first_paragraph_truncates_at_word_boundary():
-    """_extract_first_paragraph truncates long text at a word boundary."""
-    long_text = "word " * 40  # 200 chars
-    html = f'<p>{long_text.strip()}</p>'
-    result = _extract_first_paragraph(html)
-    # Truncated at word boundary with "..." appended (max 155 + 3 = 158)
-    assert len(result) <= 158
-    assert result.endswith("...")
-    # Should not cut mid-word (strip "..." to check)
-    assert result[:-3].endswith("word")
-
-
-def test_extract_first_paragraph_empty():
-    """_extract_first_paragraph returns empty string when no <p> found."""
-    assert _extract_first_paragraph('<h1>Only heading</h1>') == ""
-    assert _extract_first_paragraph('') == ""
-
-
-def test_extract_first_paragraph_unescapes_html_entities():
-    """_extract_first_paragraph unescapes HTML entities to avoid double-escaping."""
-    html = '<p>Use <code>a &amp; b</code> for joining</p>'
-    assert _extract_first_paragraph(html) == "Use a & b for joining"
 
 
 # --- Phase 2.4: Atom feed generation ---

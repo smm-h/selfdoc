@@ -11,6 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 perf = ["brotli>=1.1"]
+og = ["predraw>=0.2.0"]
 
 [project.urls]
 Repository = "https://github.com/smm-h/selfdoc"
