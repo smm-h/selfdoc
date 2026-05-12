@@ -906,3 +906,118 @@ def test_live_preview_updates(page):
     )
 
     close_panel(page)
+
+
+# ---------------------------------------------------------------------------
+# 6.1 -- URL hash encodes on knob change
+# ---------------------------------------------------------------------------
+
+
+def test_url_hash_encodes_on_knob_change(page):
+    """Change a knob, verify the URL hash contains the knob name and value."""
+    open_panel(page)
+    click_knob_option(page, "border-radius", "pill")
+
+    url = page.url
+    assert "#" in url, f"Expected hash in URL, got: {url}"
+    assert "border-radius=pill" in url, (
+        f"Expected 'border-radius=pill' in URL hash, got: {url}"
+    )
+
+    close_panel(page)
+
+
+# ---------------------------------------------------------------------------
+# 6.2 -- URL hash decoded on load
+# ---------------------------------------------------------------------------
+
+
+def test_url_hash_decoded_on_load(browser_instance, http_server):
+    """Navigate to the page with a hash, verify the knob is applied."""
+    ctx = browser_instance.new_context()
+    pg = ctx.new_page()
+    pg.goto(
+        f"http://127.0.0.1:{http_server}/demo/index.html#accent-color=purple"
+    )
+    pg.wait_for_load_state("networkidle")
+
+    result = pg.evaluate(
+        "getComputedStyle(document.documentElement)"
+        ".getPropertyValue('--link').trim()"
+    )
+    assert result == "#8250df", (
+        f"Expected accent-color purple (#8250df), got: {result}"
+    )
+
+    pg.close()
+    ctx.close()
+
+
+# ---------------------------------------------------------------------------
+# 6.2 -- Hash takes priority over localStorage
+# ---------------------------------------------------------------------------
+
+
+def test_url_hash_priority_over_localstorage(browser_instance, http_server):
+    """Set a localStorage value, navigate with a different hash, verify hash wins."""
+    ctx = browser_instance.new_context()
+
+    # First page: set border-radius to "pill" in localStorage
+    pg1 = ctx.new_page()
+    pg1.goto(f"http://127.0.0.1:{http_server}/demo/index.html")
+    pg1.wait_for_load_state("networkidle")
+    pg1.evaluate(
+        "localStorage.setItem('selfdoc-design-border-radius', 'pill')"
+    )
+    pg1.close()
+
+    # Second page: fresh load with hash specifying "sharp", which should win
+    pg2 = ctx.new_page()
+    pg2.goto(
+        f"http://127.0.0.1:{http_server}/demo/index.html#border-radius=sharp"
+    )
+    pg2.wait_for_load_state("networkidle")
+
+    result = pg2.evaluate(
+        "getComputedStyle(document.documentElement)"
+        ".getPropertyValue('--radius').trim()"
+    )
+    assert result == "0", (
+        f"Expected border-radius sharp (--radius: 0), got: {result}"
+    )
+
+    pg2.close()
+    ctx.close()
+
+
+# ---------------------------------------------------------------------------
+# 6.3 -- Copy link button
+# ---------------------------------------------------------------------------
+
+
+def test_copy_link_button(page):
+    """Click 'Copy link', verify clipboard contains the URL with hash."""
+    open_panel(page)
+
+    # Change a knob so the hash is non-empty
+    click_knob_option(page, "border-radius", "pill")
+
+    # Click "Copy link"
+    page.click("#ds-copy-link")
+
+    # Wait for "Copied!" confirmation
+    page.wait_for_function(
+        'document.getElementById("ds-copy-link").textContent === "Copied!"',
+        timeout=5000,
+    )
+
+    # Verify clipboard contains the URL with the hash
+    clipboard = page.evaluate("navigator.clipboard.readText()")
+    assert "border-radius=pill" in clipboard, (
+        f"Expected 'border-radius=pill' in clipboard URL, got: {clipboard}"
+    )
+    assert clipboard.startswith("http"), (
+        f"Expected clipboard to contain a URL, got: {clipboard}"
+    )
+
+    close_panel(page)

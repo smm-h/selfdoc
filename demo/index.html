@@ -1101,6 +1101,7 @@ export function extractModule(sourcePath: string): string {
 
 <div class="ds-export">
 <button class="ds-export-btn" id="ds-export">Copy CSS to clipboard</button>
+<button class="ds-export-btn" id="ds-copy-link">Copy link</button>
 <button class="ds-reset-btn" id="ds-reset">Reset to defaults</button>
 </div>
 </div>
@@ -1701,6 +1702,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     highlightActive(name, value);
     updateModifiedIndicator();
     updatePreview();
+    updateUrlHash();
   }
 
   function highlightActive(name, value) {
@@ -1730,24 +1732,69 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     }
   }
 
-  // Initialize all knobs
+  // --- URL hash state (shareable links) ---
+
+  function parseHash() {
+    var hash = window.location.hash.substring(1);
+    if (!hash) return {};
+    var result = {};
+    hash.split('&').forEach(function(pair) {
+      var parts = pair.split('=');
+      if (parts.length === 2) {
+        result[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+      }
+    });
+    return result;
+  }
+
+  function isValidKnobValue(name, value) {
+    var knobEl = document.querySelector('.ds-knob[data-knob="' + name + '"]');
+    if (!knobEl) return false;
+    var buttons = knobEl.querySelectorAll('.ds-opt');
+    for (var i = 0; i < buttons.length; i++) {
+      if (buttons[i].getAttribute('data-value') === value) return true;
+    }
+    return false;
+  }
+
+  function updateUrlHash() {
+    var params = [];
+    Object.keys(KNOBS).forEach(function(name) {
+      var value = currentValues[name];
+      if (value !== KNOBS[name].defaultValue) {
+        params.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
+      }
+    });
+    var hash = params.length > 0 ? '#' + params.join('&') : '';
+    history.replaceState(null, '', window.location.pathname + hash);
+  }
+
+  // Initialize all knobs (hash > localStorage > default)
+  var hashValues = parseHash();
   Object.keys(KNOBS).forEach(function(name) {
-    var value = loadValue(name);
-    currentValues[name] = value;
-    // For light-dark, sync from the existing selfdoc-theme key too
-    if (name === 'light-dark') {
-      var existingTheme = localStorage.getItem('selfdoc-theme');
-      var designSaved = localStorage.getItem('selfdoc-design-light-dark');
-      if (!designSaved && existingTheme) {
-        value = (existingTheme === 'light' || existingTheme === 'dark') ? existingTheme : 'system';
-        currentValues[name] = value;
+    var value;
+    if (hashValues.hasOwnProperty(name) && isValidKnobValue(name, hashValues[name])) {
+      value = hashValues[name];
+      // Persist hash value to localStorage so subsequent visits without hash preserve it
+      saveValue(name, value);
+    } else {
+      value = loadValue(name);
+      // For light-dark, sync from the existing selfdoc-theme key too
+      if (name === 'light-dark') {
+        var existingTheme = localStorage.getItem('selfdoc-theme');
+        var designSaved = localStorage.getItem('selfdoc-design-light-dark');
+        if (!designSaved && existingTheme) {
+          value = (existingTheme === 'light' || existingTheme === 'dark') ? existingTheme : 'system';
+        }
       }
     }
+    currentValues[name] = value;
     KNOBS[name].apply(value);
     highlightActive(name, value);
   });
   updateModifiedIndicator();
   updatePreview();
+  updateUrlHash();
 
   // Re-apply accent color and sidebar-bg when theme changes
   var _accentObserver = new MutationObserver(function(mutations) {
@@ -1802,6 +1849,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
         currentValues['light-dark'] = state;
         saveValue('light-dark', state);
         highlightActive('light-dark', state);
+        updateUrlHash();
       }, 0);
     });
   }
@@ -2026,6 +2074,19 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       setTimeout(function() {
         exportBtn.textContent = 'Copy CSS to clipboard';
         exportBtn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+
+  // Copy link button
+  var copyLinkBtn = document.getElementById('ds-copy-link');
+  copyLinkBtn.addEventListener('click', function() {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+      copyLinkBtn.textContent = 'Copied!';
+      copyLinkBtn.classList.add('copied');
+      setTimeout(function() {
+        copyLinkBtn.textContent = 'Copy link';
+        copyLinkBtn.classList.remove('copied');
       }, 2000);
     });
   });
