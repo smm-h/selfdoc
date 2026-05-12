@@ -23,6 +23,7 @@ def project_dir(tmp_path):
         "source": ["src/"],
         "docs": "docs/",
         "output": "docs/_build/",
+        "base_url": "https://example.com",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -111,7 +112,8 @@ def test_build_multiple_files(project_dir):
     assert os.path.isfile(os.path.join(output_dir, "guide.html"))
     # 2 HTML + 1 style.css + 1 search-index.json + 2 OG PNGs + 2 llms files
     # + 1 404.html + 1 favicon.svg + 1 robots.txt + 1 _headers + 1 _redirects
-    assert len(written) == 13
+    # + 1 sitemap.xml + 1 feed.xml (base_url is set)
+    assert len(written) == 15
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
@@ -123,6 +125,8 @@ def test_build_multiple_files(project_dir):
     assert os.path.isfile(os.path.join(output_dir, "llms-full.txt"))
     assert os.path.isfile(os.path.join(output_dir, "404.html"))
     assert os.path.isfile(os.path.join(output_dir, "favicon.svg"))
+    assert os.path.isfile(os.path.join(output_dir, "sitemap.xml"))
+    assert os.path.isfile(os.path.join(output_dir, "feed.xml"))
 
 
 def test_build_no_config_raises(tmp_path):
@@ -133,7 +137,7 @@ def test_build_no_config_raises(tmp_path):
 
 def test_build_no_docs_dir_raises(tmp_path):
     """Build without docs/ directory raises an error."""
-    config = {"language": "python", "source": ["src/"], "docs": "docs/", "output": "docs/_build/"}
+    config = {"language": "python", "source": ["src/"], "docs": "docs/", "output": "docs/_build/", "base_url": "https://example.com"}
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -786,6 +790,7 @@ def test_atom_feed_generated_with_base_url(project_dir):
     assert os.path.isfile(feed_path)
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_atom_feed_not_generated_without_base_url(project_dir):
     """feed.xml is NOT generated when base_url is not set."""
     written = build(str(project_dir))
@@ -855,6 +860,7 @@ def test_atom_feed_link_in_html_with_base_url(project_dir):
     assert 'href="feed.xml">' in content
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_atom_feed_link_not_in_html_without_base_url(project_dir):
     """HTML pages do NOT contain Atom feed <link> tag when base_url is not set."""
     build(str(project_dir))
@@ -1998,6 +2004,7 @@ def test_no_itemlist_jsonld_without_schema_frontmatter(project_dir):
     assert '"ItemList"' not in content
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_itemlist_jsonld_emitted_without_base_url(project_dir):
     """ItemList JSON-LD is emitted without base_url when schema: itemlist is set."""
     # No base_url in config (default fixture has none)
@@ -2099,6 +2106,7 @@ def test_glossary_defined_term_set_jsonld_with_base_url(project_dir):
     assert terms[1]["description"] == "Command Line Interface"
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_glossary_jsonld_emitted_without_base_url(project_dir):
     """DefinedTermSet JSON-LD is emitted even without base_url."""
     # Default fixture has no base_url
@@ -2126,6 +2134,7 @@ def test_glossary_jsonld_emitted_without_base_url(project_dir):
 # --- Phase 0C: Structured data without base_url ---
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_structured_data_without_base_url(project_dir):
     """TechArticle, BreadcrumbList, SoftwareSourceCode JSON-LD appear without base_url."""
     # Default fixture has no base_url
@@ -2158,6 +2167,7 @@ def test_structured_data_without_base_url(project_dir):
             break
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_og_tags_without_base_url(project_dir):
     """og:title and og:type appear without base_url; og:url and og:image do not."""
     # Default fixture has no base_url
@@ -2178,6 +2188,7 @@ def test_og_tags_without_base_url(project_dir):
     assert '<link rel="canonical"' not in content
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_canonical_and_sitemap_absent_without_base_url(project_dir):
     """Canonical URL and sitemap are absent without base_url."""
     # Default fixture has no base_url
@@ -2191,6 +2202,7 @@ def test_canonical_and_sitemap_absent_without_base_url(project_dir):
     assert not os.path.isfile(os.path.join(output_dir, "sitemap.xml"))
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_website_search_action_absent_without_base_url(project_dir):
     """WebSite+SearchAction JSON-LD is absent without base_url."""
     # Default fixture has no base_url
@@ -2204,6 +2216,7 @@ def test_website_search_action_absent_without_base_url(project_dir):
     assert '"SearchAction"' not in content
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_breadcrumb_no_item_url_without_base_url(project_dir):
     """BreadcrumbList Home entry has no item URL when base_url is absent."""
     docs_dir = os.path.join(project_dir, "docs")
@@ -2727,6 +2740,7 @@ def test_twitter_card_summary_large_image_with_base_url(project_dir):
     assert '<meta name="twitter:card" content="summary_large_image">' in content
 
 
+@pytest.mark.skip(reason="base_url is now required; test removed in Phase 0c")
 def test_twitter_card_summary_without_base_url(project_dir):
     """twitter:card is summary when base_url is not set (no og:image)."""
     # Default fixture has no base_url
@@ -3222,6 +3236,7 @@ def test_twitter_site_meta_tag(project_dir):
             "source": ["src/"],
             "docs": "docs/",
             "output": "docs/_build/",
+            "base_url": "https://example.com",
             "twitter": "@selfdoc",
         }, f)
 

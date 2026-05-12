@@ -17,6 +17,7 @@ def python_project(tmp_path):
         "source": ["mylib/"],
         "docs": "docs/",
         "output": "docs/_build/",
+        "base_url": "https://example.com",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -290,6 +291,7 @@ def test_no_docs_dir_raises(tmp_path):
         "source": ["src/"],
         "docs": "docs/",
         "output": "docs/_build/",
+        "base_url": "https://example.com",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -452,6 +454,7 @@ def lint_project(tmp_path):
         "source": ["src/"],
         "docs": "docs/",
         "output": "docs/_build/",
+        "base_url": "https://example.com",
     }
     return tmp_path, docs_dir, config
 
@@ -591,6 +594,7 @@ def test_seo004_short_title_no_warning(lint_project):
     assert len(seo004) == 0
 
 
+@pytest.mark.skip(reason="base_url is now required; SEO005 removed in Phase 0c")
 def test_seo005_missing_base_url(lint_project):
     """SEO005: config without base_url triggers a warning."""
     _, docs_dir, config = lint_project
@@ -613,6 +617,7 @@ def test_seo005_missing_base_url(lint_project):
     assert seo005[0].severity == "warning"
 
 
+@pytest.mark.skip(reason="base_url is now required; SEO005 removed in Phase 0c")
 def test_seo005_with_base_url_no_warning(lint_project):
     """SEO005: config with base_url does not trigger a warning."""
     _, docs_dir, config = lint_project
@@ -1154,7 +1159,7 @@ def test_skip_seo_suppresses_lints(python_project):
     """check_docs with skip_seo=True returns an empty lints list."""
     docs_dir = os.path.join(python_project, "docs")
     # Write a file that would normally produce SEO warnings:
-    # no frontmatter description (SEO006), no base_url (SEO005)
+    # no frontmatter description (SEO006)
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write("# API\n\n:::module mylib\n:::\n")
 

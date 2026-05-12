@@ -99,6 +99,15 @@ def test_init_aborts_if_config_exists(project_dir):
         _cmd_init(Args())
 
 
+def _add_base_url(project_dir):
+    """Add base_url to selfdoc.json after init (required field)."""
+    config_path = project_dir / "selfdoc.json"
+    config = json.load(open(config_path, "r", encoding="utf-8"))
+    config["base_url"] = "https://example.com"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+
 def test_build_produces_output(project_dir):
     """selfdoc build produces HTML in the output directory."""
     from selfdoc.cli import _cmd_init, _cmd_build
@@ -108,6 +117,7 @@ def test_build_produces_output(project_dir):
 
     # First init
     _cmd_init(Args())
+    _add_base_url(project_dir)
 
     # Then build
     _cmd_build(Args())
@@ -128,6 +138,7 @@ def test_check_finds_directives(project_dir, capsys):
         pass
 
     _cmd_init(Args())
+    _add_base_url(project_dir)
 
     # The starter template has a :::module directive that resolves OK
     _cmd_check(Args())
@@ -146,6 +157,7 @@ def test_build_shows_seo_warnings(project_dir, capsys):
         pass
 
     _cmd_init(Args())
+    _add_base_url(project_dir)
 
     # The starter template has no frontmatter description,
     # so SEO006 (missing description) will fire as a warning.
@@ -164,6 +176,7 @@ def test_check_no_seo_flag(project_dir, capsys):
         pass
 
     _cmd_init(Args())
+    _add_base_url(project_dir)
 
     # Without --no-seo, SEO warnings appear (e.g. SEO006 missing description)
     class CheckArgs:
