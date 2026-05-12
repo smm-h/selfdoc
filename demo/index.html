@@ -10,6 +10,393 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../selfdoc/themes/minimal.css">
+<style id="design-settings-styles">
+/* === Design Settings Panel (demo-only) === */
+
+/* Settings gear button in topbar */
+.settings-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--topbar-text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s ease;
+}
+.settings-btn:hover {
+    border-color: var(--topbar-text);
+}
+
+/* Panel backdrop */
+.ds-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 999;
+}
+.ds-backdrop.open {
+    display: block;
+}
+
+/* Panel itself */
+.ds-panel {
+    position: fixed;
+    top: 0;
+    right: -380px;
+    width: 360px;
+    max-width: 90vw;
+    height: 100vh;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    z-index: 1000;
+    overflow-y: auto;
+    transition: right 0.25s ease;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+}
+.ds-panel.open {
+    right: 0;
+}
+.ds-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 1;
+}
+.ds-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
+    border: none;
+    color: var(--heading);
+}
+.ds-close {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    line-height: 1;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ds-close:hover {
+    border-color: var(--text);
+    color: var(--text);
+}
+
+/* Section groups */
+.ds-group {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+.ds-group-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    margin-bottom: 0.625rem;
+}
+.ds-knob {
+    margin-bottom: 0.625rem;
+}
+.ds-knob:last-child {
+    margin-bottom: 0;
+}
+.ds-knob-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.375rem;
+}
+
+/* Option buttons (radio-style) */
+.ds-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.ds-opt {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s ease;
+    font-family: var(--font-body);
+    white-space: nowrap;
+}
+.ds-opt:hover {
+    border-color: var(--link);
+    color: var(--link);
+}
+.ds-opt.active {
+    background: var(--link);
+    color: #fff;
+    border-color: var(--link);
+}
+
+/* Export section */
+.ds-export {
+    padding: 1rem 1.25rem;
+}
+.ds-export-btn {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s ease;
+}
+.ds-export-btn:hover {
+    border-color: var(--link);
+    color: var(--link);
+}
+.ds-export-btn.copied {
+    background: var(--link);
+    color: #fff;
+    border-color: var(--link);
+}
+
+/* === Knob override styles === */
+
+/* Sidebar position */
+[data-sidebar="right"] .layout {
+    grid-template-columns: minmax(0,1fr) 200px var(--sidebar-width, 240px);
+}
+[data-sidebar="right"] .sidebar {
+    left: auto;
+    right: 0;
+    border-right: none;
+    border-left: 1px solid var(--border);
+}
+[data-sidebar="right"] .content {
+    grid-column: 1;
+}
+[data-sidebar="right"] .toc {
+    grid-column: 2;
+}
+[data-sidebar="hidden"] .sidebar {
+    display: none;
+}
+[data-sidebar="hidden"] .layout {
+    grid-template-columns: minmax(0,1fr) 200px;
+}
+[data-sidebar="hidden"] .content {
+    grid-column: 1;
+}
+[data-sidebar="hidden"] .toc {
+    grid-column: 2;
+}
+
+/* Sidebar width override */
+.layout {
+    grid-template-columns: var(--sidebar-width, 240px) minmax(0,1fr) 200px;
+}
+.sidebar {
+    width: var(--sidebar-width, 240px);
+}
+
+/* TOC position */
+[data-toc="hidden"] .toc {
+    display: none;
+}
+[data-toc="hidden"] .layout {
+    grid-template-columns: var(--sidebar-width, 240px) minmax(0,1fr);
+}
+[data-toc="hidden"][data-sidebar="hidden"] .layout {
+    grid-template-columns: minmax(0,1fr);
+}
+[data-toc="hidden"][data-sidebar="right"] .layout {
+    grid-template-columns: minmax(0,1fr) var(--sidebar-width, 240px);
+}
+
+/* Content width */
+.content {
+    max-width: var(--content-max-width, 800px);
+}
+
+/* Heading transform */
+.content h1, .content h2, .content h3,
+.content h4, .content h5, .content h6 {
+    text-transform: var(--heading-transform, none);
+}
+body.heading-smallcaps .content h1,
+body.heading-smallcaps .content h2,
+body.heading-smallcaps .content h3,
+body.heading-smallcaps .content h4,
+body.heading-smallcaps .content h5,
+body.heading-smallcaps .content h6 {
+    text-transform: none;
+    font-variant: small-caps;
+}
+
+/* Heading separator */
+body.heading-sep-bottom .content h2 {
+    border-top: none;
+    padding-top: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-top: 2.5rem;
+}
+body.heading-sep-none .content h2 {
+    border-top: none;
+    padding-top: 0;
+}
+
+/* Density */
+body {
+    line-height: var(--line-height-body, 1.6);
+}
+.content {
+    padding: calc(2.5rem * var(--spacing-scale, 1)) calc(3rem * var(--spacing-scale, 1));
+}
+p {
+    margin-bottom: calc(1rem * var(--spacing-scale, 1));
+}
+h2 {
+    margin-top: calc(2.5rem * var(--spacing-scale, 1));
+    margin-bottom: calc(1rem * var(--spacing-scale, 1));
+}
+h3 {
+    margin-top: calc(2rem * var(--spacing-scale, 1));
+    margin-bottom: calc(0.75rem * var(--spacing-scale, 1));
+}
+pre {
+    padding: calc(1rem * var(--spacing-scale, 1));
+}
+.admonition {
+    padding: calc(0.75rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1));
+}
+
+/* Gradient strip */
+body.gradient-hidden::before {
+    display: none;
+}
+body.gradient-solid::before {
+    background: var(--link);
+}
+
+/* Topbar color */
+body.topbar-light .topbar {
+    background: var(--bg);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+body.topbar-light .topbar .project-name,
+body.topbar-light .topbar .theme-toggle,
+body.topbar-light .topbar .settings-btn,
+body.topbar-light .topbar .hamburger span {
+    color: var(--text);
+}
+body.topbar-accent .topbar {
+    background: var(--link);
+    color: #fff;
+}
+body.topbar-accent .topbar .project-name,
+body.topbar-accent .topbar .theme-toggle,
+body.topbar-accent .topbar .settings-btn,
+body.topbar-accent .topbar .hamburger span {
+    color: #fff;
+}
+
+/* Border radius */
+pre,
+.admonition,
+.api-entry,
+.nav-list a,
+.version-badge,
+.copy-btn,
+.run-btn,
+.feedback button,
+.ds-opt,
+.ds-close,
+.ds-export-btn,
+:not(pre) > code {
+    border-radius: var(--radius, 4px);
+}
+
+/* Code block style */
+[data-code-style="plain"] .code-block pre {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+[data-code-style="plain"] .code-block:hover {
+    box-shadow: none;
+}
+[data-code-style="plain"] .code-label {
+    border: none;
+    background: transparent;
+}
+[data-code-style="filled"] .code-block pre {
+    border: none;
+    background: var(--code-bg);
+}
+[data-code-style="floating"] .code-block pre {
+    border: none;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+[data-code-style="floating"] .code-block:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+/* Table style */
+[data-table-style="plain"] tr:nth-child(even) td {
+    background: transparent;
+}
+[data-table-style="bordered"] td,
+[data-table-style="bordered"] th {
+    border: 1px solid var(--border);
+}
+[data-table-style="bordered"] tr:nth-child(even) td {
+    background: transparent;
+}
+[data-table-style="minimal"] table {
+    border-collapse: collapse;
+}
+[data-table-style="minimal"] th {
+    border-bottom: 2px solid var(--border);
+}
+[data-table-style="minimal"] td {
+    border-bottom: none;
+}
+[data-table-style="minimal"] tr:nth-child(even) td {
+    background: transparent;
+}
+
+/* Print: hide settings panel */
+@media print {
+    .ds-panel, .ds-backdrop, .settings-btn { display: none !important; }
+}
+</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
@@ -37,6 +424,9 @@
 <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
 <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
 <svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="settings-btn" aria-label="Design settings" id="settings-toggle">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 </button>
 </div>
 </header>
@@ -376,6 +766,192 @@ export function extractModule(sourcePath: string): string {
 </ul></nav>
 </aside>
 </div>
+
+<!-- Design Settings Panel -->
+<div class="ds-backdrop" id="ds-backdrop"></div>
+<div class="ds-panel" id="ds-panel">
+<div class="ds-header">
+<h2>Design Settings</h2>
+<button class="ds-close" id="ds-close" aria-label="Close settings">&times;</button>
+</div>
+
+<div class="ds-group">
+<div class="ds-group-title">Layout</div>
+
+<div class="ds-knob" data-knob="sidebar-position">
+<div class="ds-knob-label">Sidebar position</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="left">Left</button>
+<button class="ds-opt" data-value="right">Right</button>
+<button class="ds-opt" data-value="hidden">Hidden</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="sidebar-width">
+<div class="ds-knob-label">Sidebar width</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="200px">200</button>
+<button class="ds-opt" data-value="240px">240</button>
+<button class="ds-opt" data-value="280px">280</button>
+<button class="ds-opt" data-value="320px">320</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="toc-position">
+<div class="ds-knob-label">TOC position</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="right">Right</button>
+<button class="ds-opt" data-value="hidden">Hidden</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="content-width">
+<div class="ds-knob-label">Content width</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="60ch">60ch</button>
+<button class="ds-opt" data-value="72ch">72ch</button>
+<button class="ds-opt" data-value="90ch">90ch</button>
+<button class="ds-opt" data-value="full">Full</button>
+</div>
+</div>
+</div>
+
+<div class="ds-group">
+<div class="ds-group-title">Typography</div>
+
+<div class="ds-knob" data-knob="font-kind">
+<div class="ds-knob-label">Font kind</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="system">System</button>
+<button class="ds-opt" data-value="inter">Inter</button>
+<button class="ds-opt" data-value="serif">Serif</button>
+<button class="ds-opt" data-value="monospace">Mono</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="font-size">
+<div class="ds-knob-label">Font size</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="14px">14</button>
+<button class="ds-opt" data-value="16px">16</button>
+<button class="ds-opt" data-value="18px">18</button>
+<button class="ds-opt" data-value="20px">20</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="heading-transform">
+<div class="ds-knob-label">Heading transform</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="normal">Normal</button>
+<button class="ds-opt" data-value="uppercase">Uppercase</button>
+<button class="ds-opt" data-value="small-caps">Small Caps</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="heading-separator">
+<div class="ds-knob-label">Heading separator</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="top">Top border</button>
+<button class="ds-opt" data-value="bottom">Bottom</button>
+<button class="ds-opt" data-value="none">None</button>
+</div>
+</div>
+</div>
+
+<div class="ds-group">
+<div class="ds-group-title">Spacing</div>
+
+<div class="ds-knob" data-knob="density">
+<div class="ds-knob-label">Density</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="compact">Compact</button>
+<button class="ds-opt" data-value="normal">Normal</button>
+<button class="ds-opt" data-value="relaxed">Relaxed</button>
+</div>
+</div>
+</div>
+
+<div class="ds-group">
+<div class="ds-group-title">Color</div>
+
+<div class="ds-knob" data-knob="light-dark">
+<div class="ds-knob-label">Light / Dark</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="system">System</button>
+<button class="ds-opt" data-value="light">Light</button>
+<button class="ds-opt" data-value="dark">Dark</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="accent-color">
+<div class="ds-knob-label">Accent color</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="blue">Blue</button>
+<button class="ds-opt" data-value="green">Green</button>
+<button class="ds-opt" data-value="purple">Purple</button>
+<button class="ds-opt" data-value="orange">Orange</button>
+<button class="ds-opt" data-value="red">Red</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="topbar-color">
+<div class="ds-knob-label">Topbar color</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="dark">Dark</button>
+<button class="ds-opt" data-value="light">Light</button>
+<button class="ds-opt" data-value="accent">Accent</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="gradient-strip">
+<div class="ds-knob-label">Gradient strip</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="show">Show</button>
+<button class="ds-opt" data-value="hide">Hide</button>
+<button class="ds-opt" data-value="solid">Solid</button>
+</div>
+</div>
+</div>
+
+<div class="ds-group">
+<div class="ds-group-title">Components</div>
+
+<div class="ds-knob" data-knob="border-radius">
+<div class="ds-knob-label">Border radius</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="sharp">Sharp</button>
+<button class="ds-opt" data-value="subtle">Subtle</button>
+<button class="ds-opt" data-value="rounded">Rounded</button>
+<button class="ds-opt" data-value="pill">Pill</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="code-block-style">
+<div class="ds-knob-label">Code block style</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="bordered">Bordered</button>
+<button class="ds-opt" data-value="plain">Plain</button>
+<button class="ds-opt" data-value="filled">Filled</button>
+<button class="ds-opt" data-value="floating">Floating</button>
+</div>
+</div>
+
+<div class="ds-knob" data-knob="table-style">
+<div class="ds-knob-label">Table style</div>
+<div class="ds-options">
+<button class="ds-opt" data-value="striped">Striped</button>
+<button class="ds-opt" data-value="plain">Plain</button>
+<button class="ds-opt" data-value="bordered">Bordered</button>
+<button class="ds-opt" data-value="minimal">Minimal</button>
+</div>
+</div>
+</div>
+
+<div class="ds-export">
+<button class="ds-export-btn" id="ds-export">Export as custom.css</button>
+</div>
+</div>
+
 <script>
 // Theme toggle (Feature 6)
 (function() {
@@ -692,6 +1268,386 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     }
   });
 })();
+
+// === Design Settings Panel ===
+(function() {
+  var panel = document.getElementById('ds-panel');
+  var backdrop = document.getElementById('ds-backdrop');
+  var toggleBtn = document.getElementById('settings-toggle');
+  var closeBtn = document.getElementById('ds-close');
+  var exportBtn = document.getElementById('ds-export');
+
+  // Knob definitions: name, default, apply function
+  var KNOBS = {
+    'sidebar-position': {
+      defaultValue: 'left',
+      apply: function(v) {
+        document.body.setAttribute('data-sidebar', v);
+      }
+    },
+    'sidebar-width': {
+      defaultValue: '240px',
+      apply: function(v) {
+        document.documentElement.style.setProperty('--sidebar-width', v);
+      }
+    },
+    'toc-position': {
+      defaultValue: 'right',
+      apply: function(v) {
+        document.body.setAttribute('data-toc', v);
+      }
+    },
+    'content-width': {
+      defaultValue: '72ch',
+      apply: function(v) {
+        var val = v === 'full' ? '100%' : v;
+        document.documentElement.style.setProperty('--content-max-width', val);
+      }
+    },
+    'font-kind': {
+      defaultValue: 'inter',
+      apply: function(v) {
+        var fonts = {
+          'system': '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          'inter': '"Inter", sans-serif',
+          'serif': 'Georgia, "Times New Roman", serif',
+          'monospace': '"JetBrains Mono", monospace'
+        };
+        document.documentElement.style.setProperty('--font-body', fonts[v] || fonts['inter']);
+      }
+    },
+    'font-size': {
+      defaultValue: '16px',
+      apply: function(v) {
+        document.documentElement.style.fontSize = v;
+      }
+    },
+    'heading-transform': {
+      defaultValue: 'normal',
+      apply: function(v) {
+        document.body.classList.remove('heading-smallcaps');
+        if (v === 'small-caps') {
+          document.documentElement.style.setProperty('--heading-transform', 'none');
+          document.body.classList.add('heading-smallcaps');
+        } else if (v === 'uppercase') {
+          document.documentElement.style.setProperty('--heading-transform', 'uppercase');
+        } else {
+          document.documentElement.style.setProperty('--heading-transform', 'none');
+        }
+      }
+    },
+    'heading-separator': {
+      defaultValue: 'top',
+      apply: function(v) {
+        document.body.classList.remove('heading-sep-top', 'heading-sep-bottom', 'heading-sep-none');
+        document.body.classList.add('heading-sep-' + v);
+      }
+    },
+    'density': {
+      defaultValue: 'normal',
+      apply: function(v) {
+        var scales = { 'compact': 0.8, 'normal': 1.0, 'relaxed': 1.2 };
+        var lineHeights = { 'compact': 1.4, 'normal': 1.6, 'relaxed': 1.8 };
+        document.documentElement.style.setProperty('--spacing-scale', scales[v] || 1.0);
+        document.documentElement.style.setProperty('--line-height-body', lineHeights[v] || 1.6);
+      }
+    },
+    'light-dark': {
+      defaultValue: 'system',
+      apply: function(v) {
+        // Reuse the existing theme mechanism
+        if (v === 'light' || v === 'dark') {
+          document.documentElement.setAttribute('data-theme', v);
+          localStorage.setItem('selfdoc-theme', v);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.removeItem('selfdoc-theme');
+        }
+        // Sync the theme toggle button state
+        var themeBtn = document.querySelector('.theme-toggle');
+        if (themeBtn) {
+          themeBtn.setAttribute('data-state', v);
+        }
+        // Update highlight.js stylesheets
+        var hljsLight = document.getElementById('hljs-light');
+        var hljsDark = document.getElementById('hljs-dark');
+        if (hljsLight && hljsDark) {
+          if (v === 'dark') {
+            hljsLight.media = 'not all';
+            hljsDark.media = 'all';
+          } else if (v === 'light') {
+            hljsLight.media = 'all';
+            hljsDark.media = 'not all';
+          } else {
+            hljsLight.media = '(prefers-color-scheme: light)';
+            hljsDark.media = '(prefers-color-scheme: dark)';
+          }
+        }
+      }
+    },
+    'accent-color': {
+      defaultValue: 'blue',
+      apply: function(v) {
+        var accents = {
+          'blue':   { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37', gradient: 'linear-gradient(90deg, #0969da, #8b5cf6, #ec4899)' },
+          'green':  { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37', gradient: 'linear-gradient(90deg, #1a7f37, #2da44e, #56d364)' },
+          'purple': { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df', gradient: 'linear-gradient(90deg, #8250df, #bc8cff, #ec4899)' },
+          'orange': { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02', gradient: 'linear-gradient(90deg, #bf6a02, #e3872a, #f5a623)' },
+          'red':    { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e', gradient: 'linear-gradient(90deg, #cf222e, #f85149, #ff7b72)' }
+        };
+        var a = accents[v] || accents['blue'];
+        var r = document.documentElement.style;
+        r.setProperty('--link', a.link);
+        r.setProperty('--link-hover', a.hover);
+        r.setProperty('--sidebar-active', a.active);
+        r.setProperty('--badge-bg', a.badge);
+        // Store the gradient for the strip
+        document.documentElement.setAttribute('data-accent-gradient', a.gradient);
+        // Apply gradient to body::before if gradient-strip is "show"
+        updateGradientStrip();
+      }
+    },
+    'topbar-color': {
+      defaultValue: 'dark',
+      apply: function(v) {
+        document.body.classList.remove('topbar-light', 'topbar-accent');
+        if (v === 'light') document.body.classList.add('topbar-light');
+        if (v === 'accent') document.body.classList.add('topbar-accent');
+      }
+    },
+    'gradient-strip': {
+      defaultValue: 'show',
+      apply: function(v) {
+        document.body.classList.remove('gradient-hidden', 'gradient-solid');
+        if (v === 'hide') document.body.classList.add('gradient-hidden');
+        if (v === 'solid') document.body.classList.add('gradient-solid');
+      }
+    },
+    'border-radius': {
+      defaultValue: 'subtle',
+      apply: function(v) {
+        var radii = { 'sharp': '0', 'subtle': '4px', 'rounded': '8px', 'pill': '16px' };
+        document.documentElement.style.setProperty('--radius', radii[v] || '4px');
+      }
+    },
+    'code-block-style': {
+      defaultValue: 'bordered',
+      apply: function(v) {
+        document.body.setAttribute('data-code-style', v);
+      }
+    },
+    'table-style': {
+      defaultValue: 'striped',
+      apply: function(v) {
+        document.body.setAttribute('data-table-style', v);
+      }
+    }
+  };
+
+  function updateGradientStrip() {
+    // The gradient strip appearance depends on both accent-color and gradient-strip knobs.
+    // The CSS classes handle show/hide/solid. The gradient colors are set via a dynamic
+    // style element for body::before since pseudo-elements can't be styled inline.
+    var gradientStyle = document.getElementById('ds-gradient-style');
+    if (!gradientStyle) {
+      gradientStyle = document.createElement('style');
+      gradientStyle.id = 'ds-gradient-style';
+      document.head.appendChild(gradientStyle);
+    }
+    var gradient = document.documentElement.getAttribute('data-accent-gradient') ||
+                   'linear-gradient(90deg, #0969da, #8b5cf6, #ec4899)';
+    gradientStyle.textContent = 'body::before { background: ' + gradient + '; }' +
+                                'body.gradient-solid::before { background: var(--link); }' +
+                                'body.gradient-hidden::before { display: none; }';
+  }
+
+  // Current knob values
+  var currentValues = {};
+
+  function loadValue(name) {
+    var saved = localStorage.getItem('selfdoc-design-' + name);
+    return saved || KNOBS[name].defaultValue;
+  }
+
+  function saveValue(name, value) {
+    if (value === KNOBS[name].defaultValue) {
+      localStorage.removeItem('selfdoc-design-' + name);
+    } else {
+      localStorage.setItem('selfdoc-design-' + name, value);
+    }
+  }
+
+  function applyKnob(name, value) {
+    currentValues[name] = value;
+    KNOBS[name].apply(value);
+    saveValue(name, value);
+    highlightActive(name, value);
+  }
+
+  function highlightActive(name, value) {
+    var knobEl = document.querySelector('.ds-knob[data-knob="' + name + '"]');
+    if (!knobEl) return;
+    knobEl.querySelectorAll('.ds-opt').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-value') === value);
+    });
+  }
+
+  // Initialize all knobs
+  Object.keys(KNOBS).forEach(function(name) {
+    var value = loadValue(name);
+    currentValues[name] = value;
+    // For light-dark, sync from the existing selfdoc-theme key too
+    if (name === 'light-dark') {
+      var existingTheme = localStorage.getItem('selfdoc-theme');
+      var designSaved = localStorage.getItem('selfdoc-design-light-dark');
+      if (!designSaved && existingTheme) {
+        value = (existingTheme === 'light' || existingTheme === 'dark') ? existingTheme : 'system';
+        currentValues[name] = value;
+      }
+    }
+    KNOBS[name].apply(value);
+    highlightActive(name, value);
+  });
+
+  // Bind click handlers on knob options
+  document.querySelectorAll('.ds-knob').forEach(function(knobEl) {
+    var name = knobEl.getAttribute('data-knob');
+    if (!name || !KNOBS[name]) return;
+    knobEl.querySelectorAll('.ds-opt').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        applyKnob(name, btn.getAttribute('data-value'));
+      });
+    });
+  });
+
+  // Panel open/close
+  function openPanel() {
+    panel.classList.add('open');
+    backdrop.classList.add('open');
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    backdrop.classList.remove('open');
+  }
+  toggleBtn.addEventListener('click', function() {
+    if (panel.classList.contains('open')) closePanel();
+    else openPanel();
+  });
+  closeBtn.addEventListener('click', closePanel);
+  backdrop.addEventListener('click', closePanel);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && panel.classList.contains('open')) {
+      closePanel();
+    }
+  });
+
+  // Sync: when the existing theme toggle is clicked, update our panel's light-dark knob
+  var themeToggle = document.querySelector('.theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function() {
+      // After the existing handler runs, read the new state
+      setTimeout(function() {
+        var state = themeToggle.getAttribute('data-state') || 'system';
+        currentValues['light-dark'] = state;
+        saveValue('light-dark', state);
+        highlightActive('light-dark', state);
+      }, 0);
+    });
+  }
+
+  // Export button
+  exportBtn.addEventListener('click', function() {
+    var overrides = [];
+    var rootVars = [];
+    var htmlStyle = [];
+
+    // Check each knob for non-default values
+    Object.keys(KNOBS).forEach(function(name) {
+      var value = currentValues[name];
+      if (value === KNOBS[name].defaultValue) return;
+
+      switch (name) {
+        case 'sidebar-width':
+          rootVars.push('  --sidebar-width: ' + value + ';');
+          break;
+        case 'content-width':
+          rootVars.push('  --content-max-width: ' + (value === 'full' ? '100%' : value) + ';');
+          break;
+        case 'font-kind':
+          var fonts = {
+            'system': '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            'inter': '"Inter", sans-serif',
+            'serif': 'Georgia, "Times New Roman", serif',
+            'monospace': '"JetBrains Mono", monospace'
+          };
+          rootVars.push('  --font-body: ' + (fonts[value] || fonts['inter']) + ';');
+          break;
+        case 'font-size':
+          htmlStyle.push('  font-size: ' + value + ';');
+          break;
+        case 'heading-transform':
+          if (value === 'uppercase') {
+            rootVars.push('  --heading-transform: uppercase;');
+          }
+          // small-caps needs a separate rule, added as comment
+          if (value === 'small-caps') {
+            overrides.push('/* Heading small-caps: apply font-variant: small-caps to h1-h6 */');
+          }
+          break;
+        case 'density':
+          var scales = { 'compact': 0.8, 'normal': 1.0, 'relaxed': 1.2 };
+          var lineHeights = { 'compact': 1.4, 'normal': 1.6, 'relaxed': 1.8 };
+          rootVars.push('  --spacing-scale: ' + (scales[value] || 1.0) + ';');
+          rootVars.push('  --line-height-body: ' + (lineHeights[value] || 1.6) + ';');
+          break;
+        case 'accent-color':
+          var accents = {
+            'blue':   { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37' },
+            'green':  { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' },
+            'purple': { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df' },
+            'orange': { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02' },
+            'red':    { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e' }
+          };
+          var a = accents[value] || accents['blue'];
+          rootVars.push('  --link: ' + a.link + ';');
+          rootVars.push('  --link-hover: ' + a.hover + ';');
+          rootVars.push('  --sidebar-active: ' + a.active + ';');
+          rootVars.push('  --badge-bg: ' + a.badge + ';');
+          break;
+        case 'border-radius':
+          var radii = { 'sharp': '0', 'subtle': '4px', 'rounded': '8px', 'pill': '16px' };
+          rootVars.push('  --radius: ' + (radii[value] || '4px') + ';');
+          break;
+        default:
+          overrides.push('/* ' + name + ': ' + value + ' */');
+          break;
+      }
+    });
+
+    var css = '/* Custom theme overrides generated by selfdoc design settings */\n';
+    if (rootVars.length > 0) {
+      css += ':root {\n' + rootVars.join('\n') + '\n}\n';
+    }
+    if (htmlStyle.length > 0) {
+      css += '\nhtml {\n' + htmlStyle.join('\n') + '\n}\n';
+    }
+    if (overrides.length > 0) {
+      css += '\n' + overrides.join('\n') + '\n';
+    }
+    if (rootVars.length === 0 && htmlStyle.length === 0 && overrides.length === 0) {
+      css += '/* All values are at defaults -- nothing to override. */\n';
+    }
+
+    navigator.clipboard.writeText(css).then(function() {
+      exportBtn.textContent = 'Copied!';
+      exportBtn.classList.add('copied');
+      setTimeout(function() {
+        exportBtn.textContent = 'Export as custom.css';
+        exportBtn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+})();
 </script>
 <dialog class="search-dialog" id="search-dialog">
 <div class="search-inner">
@@ -699,5 +1655,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
 <ul class="search-results"></ul>
 </div>
 </dialog>
+
 </body>
 </html>
