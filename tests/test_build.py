@@ -2482,6 +2482,76 @@ def test_itemlist_not_auto_detected_below_threshold(project_dir):
     assert '"ItemList"' not in content
 
 
+# --- Phase 2D: ItemList URL extraction ---
+
+
+def test_itemlist_extracts_urls_from_links():
+    """ListItem entries include 'item' URL when <li> contains <a> link."""
+    html_files = generate_html(
+        {"index.md": (
+            "---\nschema: itemlist\n---\n"
+            "# Links\n\n"
+            "- [Alpha](https://alpha.com)\n"
+            "- [Beta](https://beta.com)\n"
+            "- Plain item\n"
+        )},
+        project_name="Test",
+        frontmatter={"index.md": {"schema": "itemlist"}},
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    item_list = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "ItemList":
+            item_list = data
+            break
+
+    assert item_list is not None, "ItemList JSON-LD not found"
+    elements = item_list["itemListElement"]
+    # First two have links, third does not
+    assert elements[0]["item"] == "https://alpha.com"
+    assert elements[1]["item"] == "https://beta.com"
+    assert "item" not in elements[2]
+
+
+def test_itemlist_no_urls_without_links():
+    """ListItem entries without <a> links have only name, no item."""
+    html_files = generate_html(
+        {"index.md": (
+            "---\nschema: itemlist\n---\n"
+            "# Plain\n\n"
+            "- First item\n"
+            "- Second item\n"
+        )},
+        project_name="Test",
+        frontmatter={"index.md": {"schema": "itemlist"}},
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    item_list = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "ItemList":
+            item_list = data
+            break
+
+    assert item_list is not None, "ItemList JSON-LD not found"
+    for elem in item_list["itemListElement"]:
+        assert "item" not in elem
+        assert "name" in elem
+
+
 def test_glossary_terms_correctly_extracted():
     """Glossary resolver correctly parses terms and definitions."""
     from selfdoc.resolver import _resolve_glossary

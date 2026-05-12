@@ -1393,11 +1393,16 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             for pos, li_content in enumerate(li_matches, start=1):
                 # Strip HTML tags from each list item
                 plain_text = re.sub(r"<[^>]+>", "", li_content).strip()
-                item_list_elements.append({
+                entry = {
                     "@type": "ListItem",
                     "position": pos,
                     "name": plain_text,
-                })
+                }
+                # Extract URL from <a href="..."> if present
+                href_match = re.search(r'<a\s+href="([^"]+)"', li_content)
+                if href_match:
+                    entry["item"] = href_match.group(1)
+                item_list_elements.append(entry)
             item_list_ld = {
                 "@context": "https://schema.org",
                 "@type": "ItemList",
