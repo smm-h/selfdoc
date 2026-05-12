@@ -547,12 +547,13 @@ def test_export_produces_content(page):
     page.click("#ds-export")
     export_btn = page.locator("#ds-export")
     export_btn.wait_for(state="attached")
-    # Wait until the button text becomes "Copied!" (async clipboard write)
+    # Wait until the button text starts with "Copied" (async clipboard write)
     page.wait_for_function(
-        'document.getElementById("ds-export").textContent === "Copied!"',
+        'document.getElementById("ds-export").textContent.startsWith("Copied")',
         timeout=5000,
     )
-    assert export_btn.text_content() == "Copied!"
+    btn_text = export_btn.text_content()
+    assert btn_text.startswith("Copied") and "lines!" in btn_text
 
     # Verify the clipboard contains CSS with the override
     clipboard = page.evaluate("navigator.clipboard.readText()")
@@ -668,7 +669,7 @@ def test_export_contains_knob_css(page, knob_name, value, expected_fragments):
     click_knob_option(page, knob_name, value)
     page.click("#ds-export")
     page.wait_for_function(
-        'document.getElementById("ds-export").textContent === "Copied!"',
+        'document.getElementById("ds-export").textContent.startsWith("Copied")',
         timeout=5000,
     )
     clipboard = page.evaluate("navigator.clipboard.readText()")
@@ -677,4 +678,92 @@ def test_export_contains_knob_css(page, knob_name, value, expected_fragments):
             f"Knob {knob_name}={value}: expected '{frag}' in export.\n"
             f"Got:\n{clipboard}"
         )
+    close_panel(page)
+
+
+# ---------------------------------------------------------------------------
+# 0.6 -- Reset restores defaults
+# ---------------------------------------------------------------------------
+
+
+def test_reset_restores_defaults(page):
+    """Change 3 knobs, click reset, verify all returned to defaults."""
+    open_panel(page)
+
+    # Change 3 knobs away from defaults
+    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "font-size", "20px")
+    click_knob_option(page, "density", "compact")
+
+    # Verify they changed
+    assert page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()"
+    ) == "16px"
+    assert page.evaluate("document.documentElement.style.fontSize") == "20px"
+    assert page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--spacing-scale').trim()"
+    ) == "0.8"
+
+    # Click reset
+    page.click("#ds-reset")
+
+    # Verify defaults restored
+    assert page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()"
+    ) == "4px"
+    assert page.evaluate("document.documentElement.style.fontSize") == "16px"
+    assert page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--spacing-scale').trim()"
+    ) == "1"
+
+    close_panel(page)
+
+
+# ---------------------------------------------------------------------------
+# 0.7 -- Modified indicator
+# ---------------------------------------------------------------------------
+
+
+def test_modified_indicator_appears(page):
+    """Change one knob, verify indicator has class 'visible'."""
+    open_panel(page)
+    click_knob_option(page, "border-radius", "pill")
+    indicator = page.locator("#ds-indicator")
+    assert "visible" in (indicator.get_attribute("class") or "")
+    close_panel(page)
+
+
+def test_modified_indicator_disappears_on_reset(page):
+    """Change a knob, click reset, verify indicator loses 'visible'."""
+    open_panel(page)
+    click_knob_option(page, "border-radius", "pill")
+    indicator = page.locator("#ds-indicator")
+    assert "visible" in (indicator.get_attribute("class") or "")
+
+    page.click("#ds-reset")
+    assert "visible" not in (indicator.get_attribute("class") or "")
+    close_panel(page)
+
+
+# ---------------------------------------------------------------------------
+# 0.8 -- Live CSS preview
+# ---------------------------------------------------------------------------
+
+
+def test_live_preview_updates(page):
+    """Change a knob, open the preview details, verify preview contains expected CSS."""
+    open_panel(page)
+
+    # Change a knob
+    click_knob_option(page, "border-radius", "pill")
+
+    # Open the details element
+    page.click("#ds-preview summary")
+
+    # Verify preview code contains the expected CSS
+    preview_text = page.locator("#ds-preview-code").text_content()
+    assert "--radius: 16px" in preview_text, (
+        f"Expected '--radius: 16px' in preview, got: {preview_text}"
+    )
+
     close_panel(page)

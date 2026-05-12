@@ -15,6 +15,7 @@
 
 /* Settings gear button in topbar */
 .settings-btn {
+    position: relative;
     background: none;
     border: 1px solid transparent;
     border-radius: 4px;
@@ -31,6 +32,8 @@
 .settings-btn:hover {
     border-color: var(--topbar-text);
 }
+.ds-indicator { display: none; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--link); }
+.ds-indicator.visible { display: block; }
 
 /* Panel backdrop */
 .ds-backdrop {
@@ -184,6 +187,27 @@
     color: #fff;
     border-color: var(--link);
 }
+.ds-reset-btn {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s ease;
+    margin-top: 0.5rem;
+}
+.ds-reset-btn:hover {
+    border-color: var(--text);
+    color: var(--text);
+}
+.ds-preview { padding: 0 1.25rem 0.75rem; }
+.ds-preview summary { font-size: 0.8125rem; font-weight: 500; cursor: pointer; color: var(--text-secondary); padding: 0.5rem 0; }
+.ds-preview-code { max-height: 300px; overflow-y: auto; font-size: 0.75rem; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.75rem; margin: 0.5rem 0 0; white-space: pre-wrap; word-break: break-all; }
 
 /* === Knob override styles === */
 
@@ -295,6 +319,16 @@ body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent
 @media print {
     .ds-panel, .ds-backdrop, .settings-btn { display: none !important; }
 }
+
+/* Responsive panel */
+@media (max-width: 1024px) {
+    .ds-panel { width: 280px; right: -300px; }
+    .ds-panel.open { right: 0; }
+}
+@media (max-width: 480px) {
+    .ds-panel { width: 100vw; max-width: 100vw; right: -100vw; }
+    .ds-panel.open { right: 0; }
+}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" id="hljs-light">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" id="hljs-dark" media="(prefers-color-scheme: dark)">
@@ -324,8 +358,9 @@ body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent
 <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
 <svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
 </button>
-<button class="settings-btn" aria-label="Design settings" id="settings-toggle">
+<button class="settings-btn" aria-label="Design settings" title="Design settings" id="settings-toggle">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+<span class="ds-indicator" id="ds-indicator"></span>
 </button>
 </div>
 </header>
@@ -697,10 +732,10 @@ export function extractModule(sourcePath: string): string {
 </div>
 
 <div class="ds-knob" data-knob="toc-position">
-<div class="ds-knob-label">TOC position</div>
+<div class="ds-knob-label">Show TOC</div>
 <div class="ds-options">
-<button class="ds-opt" data-value="right">Right</button>
-<button class="ds-opt" data-value="hidden">Hidden</button>
+<button class="ds-opt" data-value="right">Yes</button>
+<button class="ds-opt" data-value="hidden">No</button>
 </div>
 </div>
 
@@ -846,8 +881,14 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
+<details class="ds-preview" id="ds-preview">
+<summary>CSS Preview</summary>
+<pre class="ds-preview-code"><code id="ds-preview-code"></code></pre>
+</details>
+
 <div class="ds-export">
-<button class="ds-export-btn" id="ds-export">Export as custom.css</button>
+<button class="ds-export-btn" id="ds-export">Copy CSS to clipboard</button>
+<button class="ds-reset-btn" id="ds-reset">Reset to defaults</button>
 </div>
 </div>
 
@@ -1394,6 +1435,8 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     KNOBS[name].apply(value);
     saveValue(name, value);
     highlightActive(name, value);
+    updateModifiedIndicator();
+    updatePreview();
   }
 
   function highlightActive(name, value) {
@@ -1402,6 +1445,25 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     knobEl.querySelectorAll('.ds-opt').forEach(function(btn) {
       btn.classList.toggle('active', btn.getAttribute('data-value') === value);
     });
+  }
+
+  function updateModifiedIndicator() {
+    var indicator = document.getElementById('ds-indicator');
+    var modified = Object.keys(KNOBS).some(function(name) {
+      return currentValues[name] !== KNOBS[name].defaultValue;
+    });
+    if (modified) {
+      indicator.classList.add('visible');
+    } else {
+      indicator.classList.remove('visible');
+    }
+  }
+
+  function updatePreview() {
+    var el = document.getElementById('ds-preview-code');
+    if (el) {
+      el.textContent = generateExportCSS();
+    }
   }
 
   // Initialize all knobs
@@ -1420,6 +1482,8 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     KNOBS[name].apply(value);
     highlightActive(name, value);
   });
+  updateModifiedIndicator();
+  updatePreview();
 
   // Re-apply accent color when theme changes
   var _accentObserver = new MutationObserver(function(mutations) {
@@ -1477,8 +1541,8 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     });
   }
 
-  // Export button
-  exportBtn.addEventListener('click', function() {
+  // Generate CSS string from current knob values
+  function generateExportCSS() {
     var overrides = [];
     var rootVars = [];
     var htmlStyle = [];
@@ -1644,14 +1708,30 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       css += '/* All values are at defaults -- nothing to override. */\n';
     }
 
+    return css;
+  }
+
+  // Export button
+  exportBtn.addEventListener('click', function() {
+    var css = generateExportCSS();
     navigator.clipboard.writeText(css).then(function() {
-      exportBtn.textContent = 'Copied!';
+      var lineCount = css.split('\n').length;
+      exportBtn.textContent = 'Copied ' + lineCount + ' lines!';
       exportBtn.classList.add('copied');
       setTimeout(function() {
-        exportBtn.textContent = 'Export as custom.css';
+        exportBtn.textContent = 'Copy CSS to clipboard';
         exportBtn.classList.remove('copied');
       }, 2000);
     });
+  });
+
+  // Reset button
+  var resetBtn = document.getElementById('ds-reset');
+  resetBtn.addEventListener('click', function() {
+    Object.keys(KNOBS).forEach(function(name) {
+      applyKnob(name, KNOBS[name].defaultValue);
+    });
+    updateModifiedIndicator();
   });
 })();
 </script>
