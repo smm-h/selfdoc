@@ -3223,6 +3223,38 @@ def test_no_date_frontmatter_uses_mtime(project_dir):
     assert tech_article["datePublished"] == tech_article["dateModified"]
 
 
+# --- Phase 2A: Independent datePublished in JSON-LD via generate_html ---
+
+
+def test_generate_html_independent_date_published():
+    """generate_html with different date_published and date_modified produces
+    both distinct dates in TechArticle JSON-LD."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+        base_url="https://example.com",
+        page_dates={"index.md": ("2024-06-01", "2026-03-15")},
+    )
+    content = html_files["index.html"]
+
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    tech_article = None
+    for block in ld_blocks:
+        data = json.loads(block)
+        if data.get("@type") == "TechArticle":
+            tech_article = data
+            break
+
+    assert tech_article is not None, "TechArticle JSON-LD not found"
+    assert tech_article["datePublished"] == "2024-06-01"
+    assert tech_article["dateModified"] == "2026-03-15"
+    assert tech_article["datePublished"] != tech_article["dateModified"]
+
+
 # --- Phase 0B: OG Image Size Upgrade ---
 
 
