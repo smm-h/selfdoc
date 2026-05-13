@@ -4,43 +4,30 @@ Auto-generate API documentation from source code using inline directives
 
 ## API Reference
 
-:::module selfdoc
-:::
+:-: ref path="selfdoc"
 
-:::module selfdoc.build
-:::
+:-: ref path="selfdoc.build"
 
-:::module selfdoc.check
-:::
+:-: ref path="selfdoc.check"
 
-:::module selfdoc.cli
-:::
+:-: ref path="selfdoc.cli"
 
-:::module selfdoc.config
-:::
+:-: ref path="selfdoc.config"
 
-:::module selfdoc.deploy
-:::
+:-: ref path="selfdoc.deploy"
 
-:::module selfdoc.directives
-:::
+:-: ref path="selfdoc.directives"
 
-:::module selfdoc.html
-:::
+:-: ref path="selfdoc.html"
 
-:::module selfdoc.resolver
-:::
+:-: ref path="selfdoc.resolver"
 
 ### extractors
 
-:::module selfdoc.extractors
-:::
+:-: ref path="selfdoc.extractors"
 
-:::module selfdoc.extractors.python
-:::
+:-: ref path="selfdoc.extractors.python"
 
-:::module selfdoc.extractors.go
-:::
+:-: ref path="selfdoc.extractors.go"
 
-:::module selfdoc.extractors.typescript
-:::
+:-: ref path="selfdoc.extractors.typescript"

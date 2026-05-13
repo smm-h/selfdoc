@@ -3,6 +3,7 @@
   "source": ["selfdoc/"],
   "docs": "docs/",
   "output": "docs/_build/",
+  "base_url": "https://selfdoc.pages.dev",
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "selfdoc"
