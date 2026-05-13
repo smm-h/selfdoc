@@ -1,12 +1,11 @@
 """Check command -- validate directives and report documentation coverage.
 
 Scans docs/ templates for directives, attempts to resolve each one,
-and reports per-directive status (OK or FAILED). For Python, Go, and
-TypeScript/JavaScript projects, computes coverage: how many public/exported
-symbols are referenced by :::module directives vs. the total in source files.
+and reports per-directive status (OK or FAILED). For all supported
+languages, computes coverage: how many public/exported symbols are
+referenced by directives vs. the total in source files.
 """
 
-import ast
 import os
 import sys
 from dataclasses import dataclass, field
@@ -14,8 +13,10 @@ from dataclasses import dataclass, field
 import re
 
 from selfdoc.build import _parse_frontmatter
+from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives
+from selfdoc.extractors import EXTRACTORS
 from selfdoc.resolver import make_resolver
 
 
@@ -34,8 +35,8 @@ class DirectiveResult:
 class ResolvedDirective:
     """A successfully resolved directive with its output content."""
 
-    name: str  # directive name (module, schema, test, cli, config)
-    arg: str  # directive argument
+    name: str  # directive name (ref, table-schema, code-test, etc.)
+    attrs: dict  # directive attributes
     content: str  # resolved output text
 
 
@@ -101,6 +102,9 @@ def check_docs(dir_path=".", config=None):
     resolver = make_resolver(config, dir_path)
     result = CheckResult()
 
+    # Build valid directive names for parse-time validation
+    valid_names = ALL_BUILTIN_DIRECTIVES | set(config.get("directives", {}).keys())
+
     # Track all successfully resolved directives (for coverage)
     resolved_directives = []
 
@@ -122,12 +126,15 @@ def check_docs(dir_path=".", config=None):
             with open(full_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            directives = parse_directives(content)
+            directives = parse_directives(content, valid_names=valid_names)
             for directive in directives:
-                directive_str = f":::{directive.name} {directive.arg}".strip()
+                attrs_str = " ".join(
+                    f'{k}="{v}"' for k, v in directive.attrs.items()
+                )
+                directive_str = f"{directive.name} {attrs_str}".strip()
                 try:
                     resolved = resolver(
-                        directive.name, directive.arg, directive.body
+                        directive.name, directive.attrs, directive.body
                     )
                     # Resolver returns error markers starting with "> *[selfdoc:"
                     # when something goes wrong -- detect those as failures
@@ -152,11 +159,11 @@ def check_docs(dir_path=".", config=None):
                             status="OK",
                         ))
                         # Track all successful directives for coverage
-                        if directive.arg:
+                        if directive.attrs:
                             resolved_directives.append(
                                 ResolvedDirective(
                                     name=directive.name,
-                                    arg=directive.arg,
+                                    attrs=directive.attrs,
                                     content=resolved,
                                 )
                             )
@@ -169,19 +176,12 @@ def check_docs(dir_path=".", config=None):
                         error=str(exc),
                     ))
 
-    # Compute coverage
+    # Compute coverage (language-agnostic via extractor protocol)
     language = config["language"]
-    if language == "python":
-        result.coverage = _compute_python_coverage(
-            config, dir_path, resolved_directives
-        )
-    elif language == "go":
-        result.coverage = _compute_go_coverage(
-            config, dir_path, resolved_directives
-        )
-    elif language in ("typescript", "javascript"):
-        result.coverage = _compute_ts_coverage(
-            config, dir_path, resolved_directives
+    extractor = EXTRACTORS.get(language)
+    if extractor is not None:
+        result.coverage = _compute_coverage(
+            config, dir_path, resolved_directives, extractor
         )
 
     # Run lint checks (SEO and other diagnostics)
@@ -655,24 +655,20 @@ def _check_pairs(lints, css_vars, pairs, mode_prefix):
             ))
 
 
-def _compute_python_coverage(config, base_dir, resolved_directives):
+def _compute_coverage(config, base_dir, resolved_directives, extractor):
     """Count public symbols in source files vs. those documented by directives.
 
-    A "public symbol" is a top-level function or class whose name does not
-    start with underscore. Coverage is tracked per-symbol:
-
-    - For :::module directives, each public symbol in the referenced file is
-      checked: the symbol is "documented" only if its name appears in the
-      directive's resolved content.
-    - For :::schema, :::test, :::cli, :::config directives, the arg typically
-      names a specific symbol -- that symbol is marked as documented directly.
+    Language-agnostic: uses the extractor protocol to discover public symbols
+    and resolve file paths. A symbol is "documented" if its name appears in
+    the resolved content of a directive that references its file.
     """
     base_dir = os.path.abspath(base_dir)
     source_paths = config["source"]
     stats = CoverageStats()
+    extensions = extractor.file_extensions()
 
-    # Collect all .py files and their public symbols
-    # Map: relative module path -> list of public symbol names
+    # Collect all source files and their public symbols
+    # Map: relative file path -> list of public symbol names
     all_symbols: dict[str, list[str]] = {}
 
     for sp in source_paths:
@@ -681,452 +677,70 @@ def _compute_python_coverage(config, base_dir, resolved_directives):
             continue
         for root, _dirs, files in os.walk(src_dir):
             for fname in sorted(files):
-                if not fname.endswith(".py"):
+                if not any(fname.endswith(ext) for ext in extensions):
                     continue
-                full_path = os.path.join(root, fname)
-                rel_to_base = os.path.relpath(full_path, base_dir)
-                symbols = _extract_public_symbols(full_path)
-                if symbols:
-                    all_symbols[rel_to_base] = symbols
-
-    # Build set of documented symbols (as "rel/path.py:symbol_name")
-    documented_set: set[str] = set()
-
-    for rd in resolved_directives:
-        if rd.name == "module":
-            # Resolve the module arg to a file path
-            rel_path = _resolve_module_to_relpath(
-                rd.arg, source_paths, base_dir
-            )
-            if rel_path and rel_path in all_symbols:
-                # Check each public symbol against the resolved content
-                for sym in all_symbols[rel_path]:
-                    if sym in rd.content:
-                        documented_set.add(f"{rel_path}:{sym}")
-        elif rd.name in ("schema", "test", "cli", "config"):
-            # Extract symbol name from the arg. For schema, the arg is
-            # "module_path ClassName" -- extract the class/function name.
-            # For test, the arg is "file_path [target_name]".
-            # For cli/config, the arg is a module path or file path.
-            parts = rd.arg.split()
-            if rd.name == "schema" and len(parts) >= 2:
-                # "dotted.module ClassName" -- the symbol is the class name
-                symbol_name = parts[-1]
-                module_arg = parts[0]
-            elif rd.name == "test" and len(parts) >= 2:
-                # "file_path target_name" -- the symbol is the target
-                symbol_name = parts[-1]
-                module_arg = parts[0]
-            else:
-                # cli/config or single-arg schema/test -- use the module arg
-                # to find the file's symbols and mark them via content check
-                module_arg = parts[0]
-                symbol_name = None
-
-            if symbol_name:
-                # Try to find the file for this module arg and mark
-                # the specific symbol
-                rel_path = _resolve_module_to_relpath(
-                    module_arg, source_paths, base_dir
-                )
-                if rel_path is None and module_arg.endswith(".py"):
-                    # Direct file path
-                    candidate = os.path.join(base_dir, module_arg)
-                    if os.path.isfile(candidate):
-                        rel_path = os.path.relpath(candidate, base_dir)
-                if rel_path and rel_path in all_symbols:
-                    if symbol_name in all_symbols[rel_path]:
-                        documented_set.add(f"{rel_path}:{symbol_name}")
-
-    # Tally
-    for rel_path, symbols in sorted(all_symbols.items()):
-        for sym in symbols:
-            qualified = f"{rel_path}:{sym}"
-            stats.total_public += 1
-            if qualified in documented_set:
-                stats.referenced += 1
-                stats.documented_symbols.append(qualified)
-            else:
-                stats.undocumented_symbols.append(qualified)
-
-    return stats
-
-
-def _extract_public_symbols(filepath):
-    """Parse a Python file and return names of public top-level functions/classes."""
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError):
-        return []
-
-    try:
-        tree = ast.parse(source, filename=filepath)
-    except SyntaxError:
-        return []
-
-    symbols = []
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if not node.name.startswith("_"):
-                symbols.append(node.name)
-        elif isinstance(node, ast.ClassDef):
-            if not node.name.startswith("_"):
-                symbols.append(node.name)
-    return symbols
-
-
-def _resolve_module_to_relpath(arg, source_paths, base_dir):
-    """Resolve a module argument to a path relative to base_dir.
-
-    Mirrors the resolution logic in extractors/python.py but returns
-    the relative path instead of the absolute path.
-    """
-    dotted_as_path = arg.replace(".", "/") + ".py"
-    dotted_as_pkg = arg.replace(".", "/") + "/__init__.py"
-
-    candidates = []
-    for sp in source_paths:
-        candidates.append(os.path.join(sp, dotted_as_path))
-        candidates.append(os.path.join(sp, dotted_as_pkg))
-    candidates.append(dotted_as_path)
-    candidates.append(dotted_as_pkg)
-
-    if arg.endswith(".py"):
-        candidates.append(arg)
-        for sp in source_paths:
-            candidates.append(os.path.join(sp, arg))
-
-    for candidate in candidates:
-        full = os.path.join(base_dir, candidate)
-        if os.path.isfile(full):
-            return os.path.relpath(full, base_dir)
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Go coverage
-# ---------------------------------------------------------------------------
-
-# Patterns for exported Go symbols (applied to non-comment lines)
-_GO_FUNC_RE = re.compile(r"^func\s+([A-Z]\w*)\s*\(")
-_GO_METHOD_RE = re.compile(r"^func\s+\([^)]+\)\s+([A-Z]\w*)\s*\(")
-_GO_TYPE_RE = re.compile(r"^type\s+([A-Z]\w*)\s+")
-_GO_VAR_RE = re.compile(r"^var\s+([A-Z]\w*)")
-_GO_CONST_RE = re.compile(r"^const\s+([A-Z]\w*)")
-
-
-def _extract_go_public_symbols(filepath):
-    """Parse a Go file and return names of exported (uppercase) symbols.
-
-    Skips lines inside // and /* */ comments.
-    """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError):
-        return []
-
-    lines = source.split("\n")
-    symbols = []
-    in_block_comment = False
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Handle block comments
-        if in_block_comment:
-            if "*/" in stripped:
-                in_block_comment = False
-                # Content after */ on the same line -- process it below
-                idx = stripped.index("*/")
-                stripped = stripped[idx + 2:].strip()
-                if not stripped:
+                # Skip test files (Go: *_test.go, TS/JS: *.test.* / *.spec.*)
+                if fname.endswith("_test.go"):
                     continue
-            else:
-                continue
-
-        # Check for block comment start
-        if "/*" in stripped:
-            # Handle single-line block comments: /* ... */
-            if "*/" in stripped[stripped.index("/*") + 2:]:
-                # Remove the block comment and process remainder
-                stripped = re.sub(r"/\*.*?\*/", "", stripped).strip()
-                if not stripped:
-                    continue
-            else:
-                in_block_comment = True
-                # Process content before /* on this line
-                stripped = stripped[:stripped.index("/*")].strip()
-                if not stripped:
-                    continue
-
-        # Skip line comments
-        if stripped.startswith("//"):
-            continue
-
-        # Remove trailing line comments
-        comment_idx = stripped.find("//")
-        if comment_idx >= 0:
-            stripped = stripped[:comment_idx].strip()
-
-        for pattern in (
-            _GO_METHOD_RE,  # Check method before func (method is more specific)
-            _GO_FUNC_RE,
-            _GO_TYPE_RE,
-            _GO_VAR_RE,
-            _GO_CONST_RE,
-        ):
-            m = pattern.match(stripped)
-            if m:
-                name = m.group(1)
-                if name not in symbols:
-                    symbols.append(name)
-                break
-
-    return symbols
-
-
-def _compute_go_coverage(config, base_dir, resolved_directives):
-    """Count exported symbols in Go source files vs. those documented by directives.
-
-    An exported symbol is any top-level func, type, var, or const whose name
-    starts with an uppercase letter. A symbol is "documented" if its file's
-    package directory was referenced by a :::module directive and the symbol's
-    name appears in the resolved content.
-    """
-    base_dir = os.path.abspath(base_dir)
-    source_paths = config["source"]
-    stats = CoverageStats()
-
-    # Collect all .go files (excluding _test.go) and their exported symbols
-    # Map: relative file path -> list of exported symbol names
-    all_symbols: dict[str, list[str]] = {}
-
-    for sp in source_paths:
-        src_dir = os.path.join(base_dir, sp)
-        if not os.path.isdir(src_dir):
-            continue
-        for root, _dirs, files in os.walk(src_dir):
-            for fname in sorted(files):
-                if not fname.endswith(".go") or fname.endswith("_test.go"):
-                    continue
-                full_path = os.path.join(root, fname)
-                rel_to_base = os.path.relpath(full_path, base_dir)
-                symbols = _extract_go_public_symbols(full_path)
-                if symbols:
-                    all_symbols[rel_to_base] = symbols
-
-    # Build set of documented symbols
-    # For Go, :::module arg is a package directory path (e.g. "internal/commit").
-    # We match if the file's directory (relative to base_dir) matches the arg
-    # resolved through source paths.
-    documented_set: set[str] = set()
-
-    for rd in resolved_directives:
-        if rd.name == "module":
-            # The arg is a package directory path. Find which of our collected
-            # files live in that package directory.
-            pkg_dir = _resolve_go_package_dir(rd.arg, source_paths, base_dir)
-            if pkg_dir is None:
-                continue
-            pkg_dir_abs = os.path.abspath(pkg_dir)
-            for rel_path, syms in all_symbols.items():
-                file_dir = os.path.dirname(
-                    os.path.join(base_dir, rel_path)
-                )
-                if os.path.abspath(file_dir) == pkg_dir_abs:
-                    for sym in syms:
-                        if sym in rd.content:
-                            documented_set.add(f"{rel_path}:{sym}")
-
-    # Tally
-    for rel_path, symbols in sorted(all_symbols.items()):
-        for sym in symbols:
-            qualified = f"{rel_path}:{sym}"
-            stats.total_public += 1
-            if qualified in documented_set:
-                stats.referenced += 1
-                stats.documented_symbols.append(qualified)
-            else:
-                stats.undocumented_symbols.append(qualified)
-
-    return stats
-
-
-def _resolve_go_package_dir(arg, source_paths, base_dir):
-    """Resolve a Go package path argument to an actual directory.
-
-    Mirrors the resolution logic in extractors/go.py.
-    """
-    candidates = []
-    for sp in source_paths:
-        candidates.append(os.path.join(base_dir, sp, arg))
-    candidates.append(os.path.join(base_dir, arg))
-
-    for candidate in candidates:
-        if os.path.isdir(candidate):
-            if any(f.endswith(".go") for f in os.listdir(candidate)):
-                return candidate
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# TypeScript/JavaScript coverage
-# ---------------------------------------------------------------------------
-
-# File extensions for TS/JS source files
-_TS_JS_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx")
-
-# Patterns for exported TS/JS symbols (applied to non-comment lines)
-_TS_NAMED_FUNC_RE = re.compile(
-    r"^export\s+(?:async\s+)?function\s+(\w+)"
-)
-_TS_CLASS_RE = re.compile(r"^export\s+class\s+(\w+)")
-_TS_VAR_RE = re.compile(r"^export\s+(?:const|let|var)\s+(\w+)")
-_TS_TYPE_RE = re.compile(r"^export\s+(?:interface|type|enum)\s+(\w+)")
-_TS_DEFAULT_RE = re.compile(
-    r"^export\s+default\s+(?:function|class)\s+(\w+)"
-)
-_TS_REEXPORT_RE = re.compile(r"^export\s*\{([^}]+)\}")
-
-
-def _extract_ts_public_symbols(filepath):
-    """Parse a TS/JS file and return names of exported symbols.
-
-    Skips lines inside // and /* */ comments.
-    """
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError):
-        return []
-
-    lines = source.split("\n")
-    symbols = []
-    in_block_comment = False
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Handle block comments
-        if in_block_comment:
-            if "*/" in stripped:
-                in_block_comment = False
-                idx = stripped.index("*/")
-                stripped = stripped[idx + 2:].strip()
-                if not stripped:
-                    continue
-            else:
-                continue
-
-        # Check for block comment start
-        if "/*" in stripped:
-            if "*/" in stripped[stripped.index("/*") + 2:]:
-                stripped = re.sub(r"/\*.*?\*/", "", stripped).strip()
-                if not stripped:
-                    continue
-            else:
-                in_block_comment = True
-                stripped = stripped[:stripped.index("/*")].strip()
-                if not stripped:
-                    continue
-
-        # Skip line comments
-        if stripped.startswith("//"):
-            continue
-
-        # Remove trailing line comments
-        comment_idx = stripped.find("//")
-        if comment_idx >= 0:
-            stripped = stripped[:comment_idx].strip()
-
-        # Check re-export pattern first: export { A, B, C }
-        m = _TS_REEXPORT_RE.match(stripped)
-        if m:
-            names_str = m.group(1)
-            for name_part in names_str.split(","):
-                name_part = name_part.strip()
-                # Handle "Name as Alias" -- use the exported name (Alias)
-                if " as " in name_part:
-                    name_part = name_part.split(" as ")[-1].strip()
-                if name_part and name_part not in symbols:
-                    symbols.append(name_part)
-            continue
-
-        # Check default export before other patterns (more specific)
-        m = _TS_DEFAULT_RE.match(stripped)
-        if m:
-            name = m.group(1)
-            if name not in symbols:
-                symbols.append(name)
-            continue
-
-        for pattern in (
-            _TS_NAMED_FUNC_RE,
-            _TS_CLASS_RE,
-            _TS_VAR_RE,
-            _TS_TYPE_RE,
-        ):
-            m = pattern.match(stripped)
-            if m:
-                name = m.group(1)
-                if name not in symbols:
-                    symbols.append(name)
-                break
-
-    return symbols
-
-
-def _compute_ts_coverage(config, base_dir, resolved_directives):
-    """Count exported symbols in TS/JS source files vs. those documented.
-
-    An exported symbol is anything declared with `export` (function, class,
-    const, let, var, interface, type, enum, default, re-export).
-    """
-    base_dir = os.path.abspath(base_dir)
-    source_paths = config["source"]
-    stats = CoverageStats()
-
-    # Collect all TS/JS files and their exported symbols
-    all_symbols: dict[str, list[str]] = {}
-
-    for sp in source_paths:
-        src_dir = os.path.join(base_dir, sp)
-        if not os.path.isdir(src_dir):
-            continue
-        for root, _dirs, files in os.walk(src_dir):
-            for fname in sorted(files):
-                if not any(fname.endswith(ext) for ext in _TS_JS_EXTENSIONS):
-                    continue
-                # Skip test files
                 if any(
                     fname.endswith(f".test{ext}") or fname.endswith(f".spec{ext}")
-                    for ext in _TS_JS_EXTENSIONS
+                    for ext in extensions
                 ):
                     continue
                 full_path = os.path.join(root, fname)
                 rel_to_base = os.path.relpath(full_path, base_dir)
-                symbols = _extract_ts_public_symbols(full_path)
+                symbols = extractor.public_symbols(full_path)
                 if symbols:
                     all_symbols[rel_to_base] = symbols
 
-    # Build set of documented symbols
+    # Build set of documented symbols (as "rel/path:symbol_name")
     documented_set: set[str] = set()
 
     for rd in resolved_directives:
-        if rd.name == "module":
-            # The arg is a file path (e.g. "src/utils" or "src/utils.ts").
-            # Resolve it to a relative path and check symbols.
-            rel_path = _resolve_ts_module_to_relpath(
-                rd.arg, source_paths, base_dir
-            )
-            if rel_path and rel_path in all_symbols:
-                for sym in all_symbols[rel_path]:
-                    if sym in rd.content:
-                        documented_set.add(f"{rel_path}:{sym}")
+        # Directives that reference source files have a "path" attr
+        path_arg = rd.attrs.get("path", "")
+        if not path_arg:
+            continue
+
+        # Resolve path via the extractor
+        resolved_path = extractor.resolve_path(
+            path_arg, source_paths, base_dir
+        )
+        if resolved_path is None:
+            continue
+
+        # For directory-based resolution (e.g. Go packages), resolved_path
+        # is a directory. Match all files in that directory.
+        if os.path.isdir(resolved_path):
+            dir_abs = os.path.abspath(resolved_path)
+            for rel_path, syms in all_symbols.items():
+                file_dir = os.path.dirname(
+                    os.path.join(base_dir, rel_path)
+                )
+                if os.path.abspath(file_dir) == dir_abs:
+                    for sym in syms:
+                        if sym in rd.content:
+                            documented_set.add(f"{rel_path}:{sym}")
+        else:
+            # File-based resolution
+            rel_path = os.path.relpath(resolved_path, base_dir)
+            if rel_path in all_symbols:
+                # For ref directives, check each symbol against content
+                if rd.name == "ref":
+                    for sym in all_symbols[rel_path]:
+                        if sym in rd.content:
+                            documented_set.add(f"{rel_path}:{sym}")
+                else:
+                    # For targeted directives (table-schema, code-test, etc.),
+                    # check the target attr for a specific symbol
+                    target = rd.attrs.get("target", "")
+                    if target and target in all_symbols[rel_path]:
+                        documented_set.add(f"{rel_path}:{target}")
+                    else:
+                        # No target -- check all symbols against content
+                        for sym in all_symbols[rel_path]:
+                            if sym in rd.content:
+                                documented_set.add(f"{rel_path}:{sym}")
 
     # Tally
     for rel_path, symbols in sorted(all_symbols.items()):
@@ -1140,38 +754,6 @@ def _compute_ts_coverage(config, base_dir, resolved_directives):
                 stats.undocumented_symbols.append(qualified)
 
     return stats
-
-
-def _resolve_ts_module_to_relpath(arg, source_paths, base_dir):
-    """Resolve a TypeScript/JavaScript module argument to a relative path.
-
-    Tries the arg as-is and with common extensions appended.
-    """
-    candidates = []
-
-    # Direct path attempts
-    candidates.append(arg)
-    for sp in source_paths:
-        candidates.append(os.path.join(sp, arg))
-
-    # If no recognized extension, try common ones
-    _, ext = os.path.splitext(arg)
-    if ext not in _TS_JS_EXTENSIONS:
-        for try_ext in _TS_JS_EXTENSIONS:
-            candidates.append(arg + try_ext)
-            for sp in source_paths:
-                candidates.append(os.path.join(sp, arg + try_ext))
-            # Also try index files: arg/index.ts etc.
-            candidates.append(os.path.join(arg, "index" + try_ext))
-            for sp in source_paths:
-                candidates.append(os.path.join(sp, arg, "index" + try_ext))
-
-    for candidate in candidates:
-        full = os.path.join(base_dir, candidate)
-        if os.path.isfile(full):
-            return os.path.relpath(full, base_dir)
-
-    return None
 
 
 _USE_COLOR = sys.stdout.isatty()

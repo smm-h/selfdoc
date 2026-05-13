@@ -9,6 +9,7 @@ import sys
 import threading
 
 from selfdoc import __version__
+from selfdoc.extractors import detect_language
 
 
 COMMANDS = {
@@ -20,59 +21,41 @@ COMMANDS = {
 }
 
 
-def _detect_language():
-    """Auto-detect project language from project files.
+def _detect_source_paths(language):
+    """Detect source paths for a given language.
 
-    Returns (language, source_paths) tuple or (None, None) if undetectable.
+    Returns a list of source directory paths suitable for selfdoc.json.
     """
-    if os.path.isfile("pyproject.toml") or os.path.isfile("setup.py"):
-        # Detect Python source directories
+    if language == "python":
         sources = []
         for candidate in ("src", "lib"):
             if os.path.isdir(candidate):
                 sources.append(f"{candidate}/")
                 break
         if not sources:
-            # Look for a top-level package (directory with __init__.py)
             for entry in sorted(os.listdir(".")):
                 init_path = os.path.join(entry, "__init__.py")
                 if os.path.isdir(entry) and os.path.isfile(init_path):
                     sources.append(f"{entry}/")
                     break
-        if not sources:
-            sources = ["."]
-        return "python", sources
+        return sources or ["."]
 
-    if os.path.isfile("go.mod"):
+    if language == "go":
         sources = []
         for candidate in ("pkg", "internal", "cmd"):
             if os.path.isdir(candidate):
                 sources.append(f"{candidate}/")
-        if not sources:
-            sources = ["."]
-        return "go", sources
+        return sources or ["."]
 
-    if os.path.isfile("tsconfig.json"):
+    if language in ("typescript", "javascript"):
         sources = []
         for candidate in ("src", "lib"):
             if os.path.isdir(candidate):
                 sources.append(f"{candidate}/")
                 break
-        if not sources:
-            sources = ["."]
-        return "typescript", sources
+        return sources or ["."]
 
-    if os.path.isfile("package.json"):
-        sources = []
-        for candidate in ("src", "lib"):
-            if os.path.isdir(candidate):
-                sources.append(f"{candidate}/")
-                break
-        if not sources:
-            sources = ["."]
-        return "javascript", sources
-
-    return None, None
+    return ["."]
 
 
 def _detect_main_module():
@@ -93,7 +76,7 @@ def _cmd_init(args):
         print("selfdoc.json already exists. Aborting.")
         sys.exit(1)
 
-    language, sources = _detect_language()
+    language = detect_language(".")
     if language is None:
         print(
             "Could not detect project language. "
@@ -101,6 +84,7 @@ def _cmd_init(args):
             "tsconfig.json/package.json (TypeScript/JavaScript)"
         )
         sys.exit(1)
+    sources = _detect_source_paths(language)
 
     project_name = os.path.basename(os.path.abspath("."))
     main_module = _detect_main_module()
@@ -139,8 +123,7 @@ def _cmd_init(args):
             f"\n"
             f"## API Reference\n"
             f"\n"
-            f":::module {main_module}\n"
-            f":::\n"
+            f":-: ref path=\"{main_module}\"\n"
         )
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(starter)

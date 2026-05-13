@@ -4,7 +4,9 @@ import json
 import os
 import re
 
-VALID_LANGUAGES = ("python", "go", "typescript", "javascript")
+from selfdoc.extractors import EXTRACTORS
+
+VALID_LANGUAGES = set(EXTRACTORS.keys())
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
 VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch")
 

@@ -11,6 +11,7 @@ import tempfile
 import zlib
 from datetime import datetime
 
+from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
 from selfdoc.html import (
@@ -273,9 +274,10 @@ def _minify_html(html_text):
     return "".join(result)
 
 
-def _stub_resolver(name, arg, body):
+def _stub_resolver(name, attrs, body):
     """Placeholder resolver that produces a visible unresolved marker."""
-    label = f"{name} {arg}".strip()
+    attrs_str = " ".join(f'{k}="{v}"' for k, v in attrs.items()) if attrs else ""
+    label = f"{name} {attrs_str}".strip()
     return f"> *[selfdoc: {label} — not yet resolved]*"
 
 
@@ -887,6 +889,9 @@ def build(dir_path=".", config=None):
     # otherwise fall back to the stub resolver
     resolver = make_resolver(config, dir_path)
 
+    # Build the set of valid directive names for parse-time validation
+    valid_names = ALL_BUILTIN_DIRECTIVES | set(config.get("directives", {}).keys())
+
     # Scan for .md template files
     markdown_files = {}
     frontmatter = {}  # {rel_path: metadata_dict} (Feature 34)
@@ -910,7 +915,7 @@ def build(dir_path=".", config=None):
                 # Parse frontmatter (Feature 34)
                 metadata, content = _parse_frontmatter(content)
                 # Resolve directives with the language-aware resolver
-                resolved = resolve_directives(content, resolver)
+                resolved = resolve_directives(content, resolver, valid_names=valid_names)
                 markdown_files[rel_path] = resolved
                 if metadata:
                     frontmatter[rel_path] = metadata
