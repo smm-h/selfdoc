@@ -53,7 +53,7 @@ def test_init_creates_config_and_docs(project_dir):
 
     content = index_path.read_text()
     assert "testproj" in content
-    assert ":::module testproj" in content
+    assert ':-: ref path="testproj"' in content
 
 
 def test_init_index_has_frontmatter(project_dir):
@@ -153,7 +153,7 @@ def test_check_finds_directives(project_dir, capsys):
 
     captured = capsys.readouterr()
     assert "OK" in captured.out
-    assert "module" in captured.out
+    assert "ref" in captured.out
     assert "directive(s)" in captured.out
 
 

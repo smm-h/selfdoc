@@ -67,7 +67,7 @@ def test_build_resolves_directives_with_error_for_missing(project_dir):
     docs_dir = os.path.join(project_dir, "docs")
     page_md = os.path.join(docs_dir, "api.md")
     with open(page_md, "w", encoding="utf-8") as f:
-        f.write("# API\n\n:::module mymod\n:::\n")
+        f.write('# API\n\n:-: ref path="mymod"\n')
 
     written = build(str(project_dir))
 
@@ -1944,10 +1944,11 @@ def test_glossary_directive_resolves_to_dl(project_dir):
     with open(os.path.join(docs_dir, "glossary.md"), "w", encoding="utf-8") as f:
         f.write(
             "# Glossary\n\n"
-            ":::glossary\n"
-            "**API**: Application Programming Interface\n"
-            "**SDK**: Software Development Kit\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **API**: Application Programming Interface\n"
+            "::: **SDK**: Software Development Kit\n"
+            ":>:\n"
         )
 
     build(str(project_dir))
@@ -1977,10 +1978,11 @@ def test_glossary_defined_term_set_jsonld_with_base_url(project_dir):
     with open(os.path.join(docs_dir, "glossary.md"), "w", encoding="utf-8") as f:
         f.write(
             "# Terms\n\n"
-            ":::glossary\n"
-            "**API**: Application Programming Interface\n"
-            "**CLI**: Command Line Interface\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **API**: Application Programming Interface\n"
+            "::: **CLI**: Command Line Interface\n"
+            ":>:\n"
         )
 
     build(str(project_dir))
@@ -2021,11 +2023,12 @@ def test_glossary_integration_end_to_end(project_dir):
     with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
         f.write(
             "# Glossary\n\n"
-            ":::glossary\n"
-            "**Directive**: A special block in Markdown templates\n"
-            "**Extractor**: A language-specific code parser\n"
-            "**Resolver**: The factory that dispatches directives\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Directive**: A special block in Markdown templates\n"
+            "::: **Extractor**: A language-specific code parser\n"
+            "::: **Resolver**: The factory that dispatches directives\n"
+            ":>:\n"
         )
 
     build(str(project_dir))
@@ -2336,7 +2339,7 @@ def test_itemlist_no_urls_without_links():
 
 def test_glossary_terms_correctly_extracted():
     """Glossary resolver correctly parses terms and definitions."""
-    from selfdoc.resolver import _resolve_glossary
+    from selfdoc.content import resolve_glossary
 
     body = [
         "**Router**: Handles HTTP routing",
@@ -2344,7 +2347,7 @@ def test_glossary_terms_correctly_extracted():
         "",
         "**Handler**: Processes the request",
     ]
-    result = _resolve_glossary(body)
+    result = resolve_glossary(body)
 
     assert "<dt><dfn>Router</dfn></dt>" in result
     assert "<dd>Handles HTTP routing</dd>" in result
@@ -5292,9 +5295,10 @@ def test_cross_page_term_linked(tmp_path):
     with open(os.path.join(docs_dir, "page_a.md"), "w") as f:
         f.write(
             "# Page A\n\n"
-            ":::glossary\n"
-            "**Resolver**: A component that resolves directives\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Resolver**: A component that resolves directives\n"
+            ":>:\n"
         )
     with open(os.path.join(docs_dir, "page_b.md"), "w") as f:
         f.write(
@@ -5330,9 +5334,10 @@ def test_cross_page_term_not_linked_on_same_page(tmp_path):
     with open(os.path.join(docs_dir, "page_a.md"), "w") as f:
         f.write(
             "# Page A\n\n"
-            ":::glossary\n"
-            "**Resolver**: A component that resolves directives\n"
-            ":::\n\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Resolver**: A component that resolves directives\n"
+            ":>:\n\n"
             "The Resolver is very useful.\n"
         )
 
@@ -5364,9 +5369,10 @@ def test_cross_page_term_skips_code_blocks(tmp_path):
     with open(os.path.join(docs_dir, "page_a.md"), "w") as f:
         f.write(
             "# Page A\n\n"
-            ":::glossary\n"
-            "**Widget**: A UI component\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Widget**: A UI component\n"
+            ":>:\n"
         )
     with open(os.path.join(docs_dir, "page_b.md"), "w") as f:
         f.write(
@@ -5400,16 +5406,18 @@ def test_glossary_page_generated(tmp_path):
     with open(os.path.join(docs_dir, "index.md"), "w") as f:
         f.write(
             "# Home\n\n"
-            ":::glossary\n"
-            "**Zebra**: A striped animal\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Zebra**: A striped animal\n"
+            ":>:\n"
         )
     with open(os.path.join(docs_dir, "guide.md"), "w") as f:
         f.write(
             "# Guide\n\n"
-            ":::glossary\n"
-            "**Alpha**: The first letter\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Alpha**: The first letter\n"
+            ":>:\n"
         )
 
     build(str(tmp_path))
@@ -5447,9 +5455,10 @@ def test_glossary_in_sidebar(tmp_path):
     with open(os.path.join(docs_dir, "index.md"), "w") as f:
         f.write(
             "# Home\n\n"
-            ":::glossary\n"
-            "**API**: Application Programming Interface\n"
-            ":::\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **API**: Application Programming Interface\n"
+            ":>:\n"
         )
 
     build(str(tmp_path))
