@@ -31,12 +31,21 @@ class DirectiveResult:
 
 
 @dataclass
+class ResolvedDirective:
+    """A successfully resolved directive with its output content."""
+
+    name: str  # directive name (module, schema, test, cli, config)
+    arg: str  # directive argument
+    content: str  # resolved output text
+
+
+@dataclass
 class CoverageStats:
-    """Coverage of public symbols by :::module directives."""
+    """Coverage of public symbols by directives."""
 
     total_public: int = 0
     referenced: int = 0
-    # Symbols that are documented (referenced by a :::module directive)
+    # Symbols that are documented (referenced by a directive)
     documented_symbols: list[str] = field(default_factory=list)
     # Symbols that are NOT documented
     undocumented_symbols: list[str] = field(default_factory=list)
@@ -92,8 +101,8 @@ def check_docs(dir_path=".", config=None):
     resolver = make_resolver(config, dir_path)
     result = CheckResult()
 
-    # Track which module args are referenced (for coverage)
-    referenced_modules = []
+    # Track all successfully resolved directives (for coverage)
+    resolved_directives = []
 
     # Normalize output dir so we can skip it during the walk
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
@@ -142,9 +151,15 @@ def check_docs(dir_path=".", config=None):
                             directive=directive_str,
                             status="OK",
                         ))
-                        # Track successful module references for coverage
-                        if directive.name == "module" and directive.arg:
-                            referenced_modules.append(directive.arg)
+                        # Track all successful directives for coverage
+                        if directive.arg:
+                            resolved_directives.append(
+                                ResolvedDirective(
+                                    name=directive.name,
+                                    arg=directive.arg,
+                                    content=resolved,
+                                )
+                            )
                 except Exception as exc:
                     result.directive_results.append(DirectiveResult(
                         file=rel_path,
@@ -157,7 +172,7 @@ def check_docs(dir_path=".", config=None):
     # Compute coverage for Python projects
     if config["language"] == "python":
         result.coverage = _compute_python_coverage(
-            config, dir_path, referenced_modules
+            config, dir_path, resolved_directives
         )
 
     # Run lint checks (SEO and other diagnostics)
@@ -631,12 +646,17 @@ def _check_pairs(lints, css_vars, pairs, mode_prefix):
             ))
 
 
-def _compute_python_coverage(config, base_dir, referenced_modules):
-    """Count public symbols in source files vs. those referenced by directives.
+def _compute_python_coverage(config, base_dir, resolved_directives):
+    """Count public symbols in source files vs. those documented by directives.
 
     A "public symbol" is a top-level function or class whose name does not
-    start with underscore. Each :::module directive that resolves to a file
-    counts all public symbols in that file as "documented".
+    start with underscore. Coverage is tracked per-symbol:
+
+    - For :::module directives, each public symbol in the referenced file is
+      checked: the symbol is "documented" only if its name appears in the
+      directive's resolved content.
+    - For :::schema, :::test, :::cli, :::config directives, the arg typically
+      names a specific symbol -- that symbol is marked as documented directly.
     """
     base_dir = os.path.abspath(base_dir)
     source_paths = config["source"]
@@ -660,21 +680,61 @@ def _compute_python_coverage(config, base_dir, referenced_modules):
                 if symbols:
                     all_symbols[rel_to_base] = symbols
 
-    # Determine which files are "documented" via :::module directives
-    documented_files = set()
-    for mod_arg in referenced_modules:
-        resolved = _resolve_module_to_relpath(
-            mod_arg, source_paths, base_dir
-        )
-        if resolved:
-            documented_files.add(resolved)
+    # Build set of documented symbols (as "rel/path.py:symbol_name")
+    documented_set: set[str] = set()
+
+    for rd in resolved_directives:
+        if rd.name == "module":
+            # Resolve the module arg to a file path
+            rel_path = _resolve_module_to_relpath(
+                rd.arg, source_paths, base_dir
+            )
+            if rel_path and rel_path in all_symbols:
+                # Check each public symbol against the resolved content
+                for sym in all_symbols[rel_path]:
+                    if sym in rd.content:
+                        documented_set.add(f"{rel_path}:{sym}")
+        elif rd.name in ("schema", "test", "cli", "config"):
+            # Extract symbol name from the arg. For schema, the arg is
+            # "module_path ClassName" -- extract the class/function name.
+            # For test, the arg is "file_path [target_name]".
+            # For cli/config, the arg is a module path or file path.
+            parts = rd.arg.split()
+            if rd.name == "schema" and len(parts) >= 2:
+                # "dotted.module ClassName" -- the symbol is the class name
+                symbol_name = parts[-1]
+                module_arg = parts[0]
+            elif rd.name == "test" and len(parts) >= 2:
+                # "file_path target_name" -- the symbol is the target
+                symbol_name = parts[-1]
+                module_arg = parts[0]
+            else:
+                # cli/config or single-arg schema/test -- use the module arg
+                # to find the file's symbols and mark them via content check
+                module_arg = parts[0]
+                symbol_name = None
+
+            if symbol_name:
+                # Try to find the file for this module arg and mark
+                # the specific symbol
+                rel_path = _resolve_module_to_relpath(
+                    module_arg, source_paths, base_dir
+                )
+                if rel_path is None and module_arg.endswith(".py"):
+                    # Direct file path
+                    candidate = os.path.join(base_dir, module_arg)
+                    if os.path.isfile(candidate):
+                        rel_path = os.path.relpath(candidate, base_dir)
+                if rel_path and rel_path in all_symbols:
+                    if symbol_name in all_symbols[rel_path]:
+                        documented_set.add(f"{rel_path}:{symbol_name}")
 
     # Tally
     for rel_path, symbols in sorted(all_symbols.items()):
         for sym in symbols:
             qualified = f"{rel_path}:{sym}"
             stats.total_public += 1
-            if rel_path in documented_files:
+            if qualified in documented_set:
                 stats.referenced += 1
                 stats.documented_symbols.append(qualified)
             else:

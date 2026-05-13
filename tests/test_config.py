@@ -557,3 +557,226 @@ def test_branch_non_string(config_dir):
     })
     with pytest.raises(ConfigError, match="'branch' must be a non-empty string"):
         load_config(str(config_dir))
+
+
+# -- search_engine field --
+
+
+@pytest.mark.parametrize("value", ["builtin", "fuse", "minisearch"])
+def test_search_engine_valid_values(config_dir, value):
+    """Each valid search_engine value is accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "search_engine": value,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["search_engine"] == value
+
+
+def test_search_engine_invalid_value(config_dir):
+    """Invalid search_engine value raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "search_engine": "algolia",
+    })
+    with pytest.raises(ConfigError, match="invalid search_engine value"):
+        load_config(str(config_dir))
+
+
+def test_search_engine_default_none(config_dir):
+    """Missing search_engine defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["search_engine"] is None
+
+
+# -- branding field --
+
+
+def test_branding_valid_full(config_dir):
+    """Complete branding config with all keys including features."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "Build docs fast",
+            "cta_text": "Get Started",
+            "cta_link": "/quickstart",
+            "logo": "assets/logo.svg",
+            "secondary_cta_text": "Learn More",
+            "secondary_cta_link": "/guide",
+            "features": [
+                {"title": "Fast", "description": "Lightning-fast builds"},
+                {"title": "Simple", "description": "Zero config needed"},
+            ],
+        },
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["branding"]["tagline"] == "Build docs fast"
+    assert cfg["branding"]["cta_text"] == "Get Started"
+    assert cfg["branding"]["logo"] == "assets/logo.svg"
+    assert len(cfg["branding"]["features"]) == 2
+    assert cfg["branding"]["features"][0]["title"] == "Fast"
+
+
+def test_branding_valid_minimal(config_dir):
+    """Branding with only tagline is valid."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branding": {"tagline": "Docs made easy"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["branding"]["tagline"] == "Docs made easy"
+    assert "features" not in cfg["branding"]
+
+
+def test_branding_invalid_not_dict(config_dir):
+    """Non-dict branding raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branding": "fancy",
+    })
+    with pytest.raises(ConfigError, match="'branding' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_branding_features_invalid_item(config_dir):
+    """Feature item missing title raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branding": {
+            "features": [
+                {"description": "No title here"},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="branding.features\\[0\\].title"):
+        load_config(str(config_dir))
+
+
+def test_branding_features_missing_description(config_dir):
+    """Feature item missing description raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "branding": {
+            "features": [
+                {"title": "Fast"},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="branding.features\\[0\\].description"):
+        load_config(str(config_dir))
+
+
+def test_branding_default_none(config_dir):
+    """Missing branding defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["branding"] is None
+
+
+# -- min_coverage field --
+
+
+def test_min_coverage_valid(config_dir):
+    """Integer 0-100 accepted for min_coverage."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "min_coverage": 80,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["min_coverage"] == 80
+
+
+def test_min_coverage_valid_zero(config_dir):
+    """min_coverage=0 is accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "min_coverage": 0,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["min_coverage"] == 0
+
+
+def test_min_coverage_valid_hundred(config_dir):
+    """min_coverage=100 is accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "min_coverage": 100,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["min_coverage"] == 100
+
+
+def test_min_coverage_invalid_type(config_dir):
+    """String min_coverage raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "min_coverage": "80",
+    })
+    with pytest.raises(ConfigError, match="'min_coverage' must be an integer"):
+        load_config(str(config_dir))
+
+
+def test_min_coverage_out_of_range_high(config_dir):
+    """min_coverage=101 raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "min_coverage": 101,
+    })
+    with pytest.raises(ConfigError, match="'min_coverage' must be an integer"):
+        load_config(str(config_dir))
+
+
+def test_min_coverage_out_of_range_negative(config_dir):
+    """min_coverage=-1 raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "min_coverage": -1,
+    })
+    with pytest.raises(ConfigError, match="'min_coverage' must be an integer"):
+        load_config(str(config_dir))
+
+
+def test_min_coverage_default_none(config_dir):
+    """Missing min_coverage defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["min_coverage"] is None

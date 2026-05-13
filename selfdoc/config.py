@@ -6,6 +6,7 @@ import re
 
 VALID_LANGUAGES = ("python", "go", "typescript", "javascript")
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
+VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch")
 
 
 class ConfigError(Exception):
@@ -154,6 +155,14 @@ def load_config(dir_path="."):
                 f"must be one of: {', '.join(valid_search_values)}"
             )
 
+    search_engine = raw.get("search_engine", None)
+    if search_engine is not None:
+        if not isinstance(search_engine, str) or search_engine not in VALID_SEARCH_ENGINES:
+            raise ConfigError(
+                f"invalid search_engine value {search_engine!r}; "
+                f"must be one of: {', '.join(VALID_SEARCH_ENGINES)}"
+            )
+
     feedback = raw.get("feedback", None)
     if feedback is not None:
         if not isinstance(feedback, dict):
@@ -184,6 +193,41 @@ def load_config(dir_path="."):
                 f"must match pattern SEO followed by digits (e.g. 'SEO007')"
             )
 
+    min_coverage = raw.get("min_coverage", None)
+    if min_coverage is not None:
+        if not isinstance(min_coverage, int) or isinstance(min_coverage, bool):
+            raise ConfigError("'min_coverage' must be an integer between 0 and 100")
+        if min_coverage < 0 or min_coverage > 100:
+            raise ConfigError("'min_coverage' must be an integer between 0 and 100")
+
+    branding = raw.get("branding", None)
+    if branding is not None:
+        if not isinstance(branding, dict):
+            raise ConfigError("'branding' must be an object")
+        for key in ("tagline", "cta_text", "cta_link", "logo",
+                     "secondary_cta_text", "secondary_cta_link"):
+            if key in branding and (not isinstance(branding[key], str) or not branding[key]):
+                raise ConfigError(f"'branding.{key}' must be a non-empty string")
+        features = branding.get("features", None)
+        if features is not None:
+            if not isinstance(features, list):
+                raise ConfigError("'branding.features' must be a list")
+            for i, feat in enumerate(features):
+                if not isinstance(feat, dict):
+                    raise ConfigError(f"'branding.features[{i}]' must be an object")
+                if "title" not in feat or not isinstance(feat["title"], str) or not feat["title"]:
+                    raise ConfigError(
+                        f"'branding.features[{i}].title' is required "
+                        f"and must be a non-empty string"
+                    )
+                if ("description" not in feat
+                        or not isinstance(feat["description"], str)
+                        or not feat["description"]):
+                    raise ConfigError(
+                        f"'branding.features[{i}].description' is required "
+                        f"and must be a non-empty string"
+                    )
+
     return {
         "language": language,
         "source": source,
@@ -199,7 +243,10 @@ def load_config(dir_path="."):
         "description": description,
         "twitter": twitter,
         "search": search,
+        "search_engine": search_engine,
         "feedback": feedback,
         "branch": branch,
         "lint_ignore": lint_ignore,
+        "min_coverage": min_coverage,
+        "branding": branding,
     }

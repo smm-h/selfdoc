@@ -447,7 +447,25 @@ def _cmd_check(args):
     # Determine exit code before output
     has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
     has_warnings = any(lint.severity == "warning" for lint in result.lints)
-    exit_code = 1 if (has_failures or has_warnings) else 0
+    warn_only = getattr(args, "warn_only", False)
+
+    # Coverage threshold check
+    coverage_below_threshold = False
+    min_coverage = config.get("min_coverage") if config else None
+    if (
+        min_coverage is not None
+        and result.coverage is not None
+        and result.coverage.total_public > 0
+    ):
+        actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
+        if actual_pct < min_coverage:
+            coverage_below_threshold = True
+
+    exit_code = 1 if (
+        has_failures
+        or (has_warnings and not warn_only)
+        or coverage_below_threshold
+    ) else 0
 
     if getattr(args, "format", "text") == "json":
         output = {
@@ -485,6 +503,10 @@ def _cmd_check(args):
         print(json.dumps(output, indent=2))
     else:
         print_results(result)
+
+    if coverage_below_threshold:
+        actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
+        print(f"Coverage {actual_pct}% is below minimum threshold {min_coverage}%")
 
     if exit_code != 0:
         sys.exit(1)
@@ -527,6 +549,8 @@ def run():
         help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
     sub_check.add_argument("--format", choices=["text", "json"], default="text",
         help="Output format (default: text)")
+    sub_check.add_argument("--warn-only", action="store_true", default=False,
+        help="Treat SEO lint warnings as non-fatal (only directive failures and coverage threshold violations cause exit 1)")
     sub_check.set_defaults(func=_cmd_check)
 
     args = parser.parse_args()

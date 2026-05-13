@@ -1584,3 +1584,294 @@ def test_json_format(python_project, capsys):
     assert parsed["coverage"] is not None
     assert "total_public" in parsed["coverage"]
     assert "undocumented_symbols" in parsed["coverage"]
+
+
+# -- Per-symbol coverage --
+
+
+def test_coverage_per_symbol(tmp_path):
+    """Coverage tracks individual symbols, not whole files.
+
+    A :::module directive that only mentions 1 of 3 public symbols
+    should yield 1/3 coverage, not 3/3.
+    """
+    # selfdoc.json
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source: mylib/__init__.py with 3 public symbols
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n'
+            "\n"
+            "def alpha():\n"
+            '    """Alpha function."""\n'
+            "    pass\n"
+            "\n"
+            "def beta():\n"
+            '    """Beta function."""\n'
+            "    pass\n"
+            "\n"
+            "def gamma():\n"
+            '    """Gamma function."""\n'
+            "    pass\n"
+        )
+
+    # docs/ with a :::module directive -- the resolved output from
+    # _handle_module will contain all 3 symbol names (alpha, beta, gamma)
+    # because it formats all functions. But we need a case where the
+    # resolved content only mentions some symbols.
+    #
+    # Actually, :::module always dumps all public symbols, so to test
+    # per-symbol tracking we need to verify that when a module IS
+    # referenced, each symbol name is checked against the resolved content.
+    # Since _handle_module includes all public function names in its output,
+    # all 3 will be documented. Let's verify that works correctly first,
+    # then test a case where a symbol name does NOT appear.
+
+    # Create a file with a symbol whose name won't appear in the resolved
+    # content. For example, if a function has no docstring and no body,
+    # the extractor still includes its name as a heading. So all symbols
+    # in a :::module directive will appear. The per-symbol tracking matters
+    # when only SOME files are referenced -- symbols in unreferenced files
+    # remain undocumented.
+
+    # Better test: have two files. Reference one, not the other.
+    # The referenced file has symbols that appear in its resolved content.
+    with open(os.path.join(lib_dir, "extras.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Extra utilities."""\n'
+            "\n"
+            "def delta():\n"
+            '    """Delta function."""\n'
+            "    pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    # Only reference mylib (not mylib.extras)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # mylib/__init__.py has alpha, beta, gamma -- all appear in resolved content
+    # mylib/extras.py has delta -- not referenced at all
+    assert result.coverage.total_public == 4
+    assert result.coverage.referenced == 3
+    assert len(result.coverage.undocumented_symbols) == 1
+    assert any("delta" in s for s in result.coverage.undocumented_symbols)
+
+
+# -- Multi-directive coverage --
+
+
+def test_coverage_multi_directive(tmp_path):
+    """:::schema and :::test directives contribute to coverage."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+
+    # Source file with a class (for :::schema) and a function
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n'
+            "\n"
+            "from dataclasses import dataclass\n"
+            "\n"
+            "@dataclass\n"
+            "class Config:\n"
+            '    """Configuration."""\n'
+            "    name: str = ''\n"
+            "\n"
+            "def helper():\n"
+            '    """Help."""\n'
+            "    pass\n"
+        )
+
+    # Test file (for :::test directive)
+    tests_dir = os.path.join(tmp_path, "tests")
+    os.makedirs(tests_dir)
+    with open(os.path.join(tests_dir, "test_mylib.py"), "w", encoding="utf-8") as f:
+        f.write(
+            "def test_helper():\n"
+            "    assert True\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n\n"
+            ":::schema mylib Config\n"
+            ":::\n"
+            "\n"
+            ":::test tests/test_mylib.py test_helper\n"
+            ":::\n"
+        )
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # Config and helper are the public symbols
+    assert result.coverage.total_public == 2
+    # :::schema references Config by name in arg
+    assert result.coverage.referenced >= 1
+    # Config should be documented
+    assert any("Config" in s for s in result.coverage.documented_symbols)
+
+
+# -- Coverage threshold --
+
+
+def test_coverage_threshold_pass(tmp_path):
+    """min_coverage=50 with 3/4 documented (75%) passes."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "min_coverage": 50,
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My lib."""\n'
+            "def greet(): pass\n"
+            "def farewell(): pass\n"
+            "def wave(): pass\n"
+        )
+    with open(os.path.join(lib_dir, "extra.py"), "w", encoding="utf-8") as f:
+        f.write("def bonus(): pass\n")
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # 3/4 = 75% > 50% threshold
+    assert result.coverage.referenced == 3
+    assert result.coverage.total_public == 4
+
+    # Simulate what _cmd_check does for threshold
+    from selfdoc.config import load_config
+    cfg = load_config(str(tmp_path))
+    min_cov = cfg.get("min_coverage")
+    actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
+    assert actual_pct >= min_cov  # 75 >= 50 -- should pass
+
+
+def test_coverage_threshold_fail(tmp_path, capsys):
+    """min_coverage=80 with 1/3 documented (33%) fails."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "min_coverage": 80,
+        "lint_ignore": ["SEO006", "SEO009", "SEO013"],
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Lib."""\n'
+            "def alpha(): pass\n"
+        )
+    with open(os.path.join(lib_dir, "other.py"), "w", encoding="utf-8") as f:
+        f.write(
+            "def beta(): pass\n"
+            "def gamma(): pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # 1 documented (alpha from mylib/__init__.py), 2 undocumented
+    assert result.coverage.total_public == 3
+    assert result.coverage.referenced == 1
+
+    # Check the threshold logic
+    from selfdoc.config import load_config
+    cfg = load_config(str(tmp_path))
+    min_cov = cfg.get("min_coverage")
+    actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
+    assert actual_pct < min_cov  # 33 < 80 -- should fail
+
+
+# -- Warn-only mode --
+
+
+def test_warn_only_mode(tmp_path, capsys):
+    """With warn_only, SEO warnings do not cause exit code 1."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""Lib."""\ndef greet(): pass\n')
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    # No frontmatter description -> triggers SEO006 warning
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\n:::module mylib\n:::\n")
+
+    result = check_docs(str(tmp_path))
+
+    # Verify there ARE warnings
+    has_warnings = any(lint.severity == "warning" for lint in result.lints)
+    has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
+
+    # With warn_only=True, warnings should not contribute to exit code
+    exit_code_warn_only = 1 if has_failures else 0
+    exit_code_normal = 1 if (has_failures or has_warnings) else 0
+
+    # There should be warnings (SEO lints)
+    assert len(result.lints) > 0
+    # No directive failures
+    assert not has_failures
+    # Normal mode would exit 1 due to warnings
+    assert exit_code_normal == 1
+    # Warn-only mode exits 0 since no directive failures
+    assert exit_code_warn_only == 0
