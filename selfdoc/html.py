@@ -1113,12 +1113,12 @@ def _render_code_block(lang, code_lines, annotations=None):
         label = f'<div class="code-label">{escaped_lang}</div>'
         return (
             f'<div class="code-block">{label}'
-            f'<pre tabindex="0"><code class="language-{escaped_lang}">'
+            f'<pre tabindex="0" aria-label="Code: {escaped_lang}"><code class="language-{escaped_lang}">'
             f"{code_content}</code></pre></div>"
         )
     return (
         f'<div class="code-block">'
-        f'<pre tabindex="0"><code>{code_content}</code></pre>'
+        f'<pre tabindex="0" aria-label="Code block"><code>{code_content}</code></pre>'
         f'</div>'
     )
 
@@ -1655,6 +1655,20 @@ def _truncate_description(description):
     return truncated + "..."
 
 
+def _extract_first_paragraph(body_html):
+    """Extract the text of the first ``<p>`` element from rendered HTML.
+
+    Returns the plain text (tags stripped) or an empty string if no
+    paragraph is found.
+    """
+    match = re.search(r"<p>(.*?)</p>", body_html, re.DOTALL)
+    if not match:
+        return ""
+    # Strip any inline HTML tags to get plain text
+    text = re.sub(r"<[^>]+>", "", match.group(1))
+    return text.strip()
+
+
 def _build_toc(body_html):
     """Extract h2/h3 headings from body HTML and build a TOC nested list.
 
@@ -1766,7 +1780,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         repo_url = repo.rstrip("/")
         edit_url = f"{repo_url}/edit/{branch}/{source_path}"
         edit_link_html = (
-            f'<a class="edit-link" href="{edit_url}">'
+            f'<a class="edit-link" href="{edit_url}" target="_blank" rel="noopener">'
             f'Edit this page on GitHub</a>'
         )
 
@@ -1774,21 +1788,42 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     top_edit_link_html = ""
     if edit_url:
         top_edit_link_html = (
-            f'<a class="edit-link edit-link-top" href="{edit_url}">Edit</a>'
+            f'<a class="edit-link edit-link-top" href="{edit_url}" target="_blank" rel="noopener">Edit</a>'
         )
 
-    # Content header: wraps breadcrumbs and top edit link
-    if breadcrumbs_html and top_edit_link_html:
+    # Format date_modified for content header display (e.g. "Updated May 1, 2026")
+    content_date_html = ""
+    if date_modified:
+        try:
+            dt = datetime.strptime(date_modified, "%Y-%m-%d")
+            formatted_date = dt.strftime("%B %-d, %Y")
+        except (ValueError, TypeError):
+            formatted_date = date_modified
+        content_date_html = (
+            f'<span class="content-date">Updated '
+            f'<time datetime="{_escape_html(date_modified)}">'
+            f'{_escape_html(formatted_date)}</time></span>'
+        )
+
+    # Content header: wraps breadcrumbs, top edit link, and date
+    header_right_parts = []
+    if content_date_html:
+        header_right_parts.append(content_date_html)
+    if top_edit_link_html:
+        header_right_parts.append(top_edit_link_html)
+    header_right_html = "\n".join(header_right_parts)
+
+    if breadcrumbs_html and header_right_html:
         breadcrumbs_html = (
             f'<div class="content-header">\n'
             f'{breadcrumbs_html}\n'
-            f'{top_edit_link_html}\n'
+            f'{header_right_html}\n'
             f'</div>'
         )
-    elif top_edit_link_html:
+    elif header_right_html:
         breadcrumbs_html = (
             f'<div class="content-header">\n'
-            f'{top_edit_link_html}\n'
+            f'{header_right_html}\n'
             f'</div>'
         )
 
@@ -1802,6 +1837,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             prev_label = _escape_html(prev_page["label"])
             prev_link = (
                 f'<a class="page-nav-prev" href="{prev_href}">'
+                f'<span class="page-nav-label">Previous</span>'
                 f'&larr; {prev_label}</a>'
             )
         if next_page:
@@ -1809,6 +1845,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             next_label = _escape_html(next_page["label"])
             next_link = (
                 f'<a class="page-nav-next" href="{next_href}">'
+                f'<span class="page-nav-label">Next</span>'
                 f'{next_label} &rarr;</a>'
             )
         page_nav_html = (
@@ -2149,14 +2186,16 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # OG tags -- emitted when page_path exists
     if page_path:
-        escaped_desc = _escape_html(description)
+        # Fall back to auto-extracted first paragraph when description is empty
+        og_description = description or _extract_first_paragraph(body_html)
+        escaped_desc = _escape_html(og_description)
         og_desc_tag = (
             f'\n<meta property="og:description" content="{escaped_desc}">'
-            if description else ""
+            if og_description else ""
         )
         twitter_desc_tag = (
             f'\n<meta name="twitter:description" content="{escaped_desc}">'
-            if description else ""
+            if og_description else ""
         )
 
         twitter_card_type = "summary_large_image"
@@ -2647,6 +2686,14 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             'Subscribe via RSS</a></p>'
         )
 
+    # Page title in topbar for non-index pages (Issue 51)
+    topbar_page_title_html = ""
+    if page_path and page_path != "index.html":
+        topbar_page_title_html = (
+            f'<span class="topbar-sep">/</span>'
+            f'<span class="topbar-page-title">{_escape_html(title)}</span>'
+        )
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -2681,6 +2728,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</button>\n'
         f'<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>\n'
         f'{version_badge}\n'
+        f'{topbar_page_title_html}\n'
         f'<button class="theme-toggle" aria-label="Toggle theme">\n'
         f'{sun_icon}{moon_icon}{auto_icon}\n'
         f'</button>\n'

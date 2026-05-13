@@ -242,6 +242,22 @@ body::before {
     line-height: 1.4;
 }
 
+.topbar-sep {
+    color: var(--topbar-text);
+    opacity: 0.4;
+    margin: 0 0.25rem;
+}
+
+.topbar-page-title {
+    color: var(--topbar-text);
+    opacity: 0.7;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
 /* === Layout (three-column with responsive collapse) === */
 
 .layout {
@@ -1058,6 +1074,12 @@ hr {
     margin-bottom: 0;
 }
 
+.content-date {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 .edit-link-top {
     font-size: 0.8125rem;
     white-space: nowrap;
@@ -1111,6 +1133,13 @@ hr {
 .page-nav-next {
     margin-left: auto;
     text-align: right;
+}
+
+.page-nav-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
 }
 
 /* === Theme toggle button (Feature 6) === */
@@ -1547,6 +1576,8 @@ hr {
     .search-bar-kbd {
         display: none;
     }
+
+    .topbar-sep, .topbar-page-title { display: none; }
 }
 
 /* === Print stylesheet (Feature 37) === */

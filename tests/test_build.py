@@ -4675,3 +4675,95 @@ def test_scroll_affordance_js_included(project_dir):
         content = f.read()
 
     assert "has-overflow" in content
+
+
+def test_pre_has_aria_label_with_language():
+    """Code blocks with a language get aria-label="Code: {lang}" on <pre>."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\n```python\nprint('hi')\n```\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert 'aria-label="Code: python"' in content
+
+
+def test_pre_has_aria_label_without_language():
+    """Code blocks without a language get aria-label="Code block" on <pre>."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\n```\nplain code\n```\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert 'aria-label="Code block"' in content
+
+
+def test_edit_link_target_blank():
+    """Edit links open in a new tab with target=_blank and rel=noopener."""
+    html_files = generate_html(
+        {"index.md": "# Hello\n\nWorld.\n"},
+        project_name="Test",
+        repo="https://github.com/user/repo",
+        docs_dir_name="docs",
+    )
+    content = html_files["index.html"]
+    assert 'target="_blank"' in content
+    assert 'rel="noopener"' in content
+
+
+def test_prev_next_labels():
+    """Prev/next navigation links contain page-nav-label spans."""
+    html_files = generate_html(
+        {
+            "index.md": "# Home\n\nWelcome.\n",
+            "guide.md": "# Guide\n\nA guide.\n",
+        },
+        project_name="Test",
+    )
+    content = html_files["guide.html"]
+    assert 'class="page-nav-label"' in content
+    assert ">Previous<" in content
+    content_index = html_files["index.html"]
+    assert ">Next<" in content_index
+
+
+def test_og_description_fallback():
+    """og:description uses the first paragraph when frontmatter description is empty."""
+    html_files = generate_html(
+        {"index.md": "# Title\n\nThis is the first paragraph.\n"},
+        project_name="Test",
+        base_url="https://example.com",
+    )
+    content = html_files["index.html"]
+    assert 'og:description' in content
+    assert 'This is the first paragraph.' in content
+
+
+def test_content_header_date():
+    """Content header area contains content-date when date_modified is set."""
+    html_files = generate_html(
+        {"index.md": "# Test\n\nContent.\n"},
+        project_name="Test",
+        page_dates={"index.md": ("2025-01-01", "2026-05-01")},
+    )
+    content = html_files["index.html"]
+    assert 'content-date' in content
+    assert 'Updated' in content
+    assert 'May' in content
+
+
+def test_topbar_page_title():
+    """Non-index pages show the page title in the topbar."""
+    html_files = generate_html(
+        {
+            "index.md": "# Home\n\nWelcome.\n",
+            "guide.md": "# My Guide\n\nA guide.\n",
+        },
+        project_name="Test",
+    )
+    guide_content = html_files["guide.html"]
+    assert 'topbar-page-title' in guide_content
+    assert 'topbar-sep' in guide_content
+    assert 'My Guide' in guide_content
+    # Index page should NOT have the topbar page title
+    index_content = html_files["index.html"]
+    assert 'topbar-page-title' not in index_content
