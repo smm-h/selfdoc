@@ -190,6 +190,20 @@ body::before {
     z-index: 1001;
 }
 
+/* === Reading progress bar === */
+
+.reading-progress {
+    position: fixed;
+    top: 51px;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background: var(--link);
+    z-index: 100;
+    transition: width 0.1s linear;
+    pointer-events: none;
+}
+
 /* === Top bar === */
 
 .topbar {
@@ -1135,12 +1149,20 @@ hr {
 .page-nav {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 1rem;
 }
 
 .page-nav-next {
     margin-left: auto;
     text-align: right;
+}
+
+.page-progress {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    text-align: center;
+    white-space: nowrap;
 }
 
 .page-nav-label {
@@ -1617,7 +1639,7 @@ hr {
     .search-dialog, .heading-link, .theme-toggle, .site-footer,
     .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger,
     .breadcrumbs, .page-summary, .content-header,
-    .hero, .feature-grid {
+    .hero, .feature-grid, .reading-progress {
         display: none !important;
     }
 

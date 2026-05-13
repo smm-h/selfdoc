@@ -5319,3 +5319,40 @@ def test_glossary_in_sidebar(tmp_path):
         content = f.read()
     assert "glossary.html" in content
     assert "Glossary" in content
+
+
+def test_page_progress_indicator():
+    """Multi-page builds show 'Page X of Y' in the page-nav section."""
+    html_files = generate_html(
+        {
+            "index.md": "# Home\n\nWelcome.\n",
+            "guide.md": "# Guide\n\nA guide.\n",
+            "api.md": "# API\n\nReference.\n",
+        },
+        project_name="Test",
+    )
+    # Pages are ordered alphabetically: index=1, api=2, guide=3
+    api_content = html_files["api.html"]
+    assert "Page 2 of 3" in api_content
+    assert 'class="page-progress"' in api_content
+
+
+def test_reading_progress_bar():
+    """Output HTML contains the reading progress bar element and JS."""
+    html_files = generate_html(
+        {"index.md": "# Home\n\nWelcome.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert 'id="reading-progress"' in content
+    assert 'class="reading-progress"' in content
+
+
+def test_single_page_no_progress():
+    """Single-page builds should not show a 'Page 1 of 1' indicator."""
+    html_files = generate_html(
+        {"index.md": "# Home\n\nWelcome.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert "page-progress" not in content

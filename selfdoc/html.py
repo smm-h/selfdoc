@@ -811,6 +811,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             "date_modified": date_modified,
             "page_feed_url": page_feed_url,
             "schema": schema,
+            "page_number": page_idx + 1,
+            "total_pages": len(flat_nav),
         })
 
     # --- Auto-generated glossary page ---
@@ -946,6 +948,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             branch=branch,
             search_engine=search_engine,
             site_terms=site_terms,
+            page_number=pd.get("page_number"),
+            total_pages=pd.get("total_pages"),
         )
         html_files[pd["html_path"]] = full_html
 
@@ -2065,7 +2069,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                feed_url=None, summary=None, critical_css=None,
                schema=None, twitter_site=None, search=None,
                feedback=None, branch="main", search_engine=None,
-               site_terms=None):
+               site_terms=None, page_number=None, total_pages=None):
     """Wrap converted HTML body in the full page template."""
     # Cross-page term linking: wrap first occurrence of terms defined on
     # other pages in <a class="term-link"> before template wrapping.
@@ -2166,6 +2170,14 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 f'<span class="page-nav-label">Previous</span>'
                 f'&larr; {prev_label}</a>'
             )
+        # Page progress indicator (e.g. "Page 2 of 5")
+        progress_html = ""
+        if (page_number is not None and total_pages is not None
+                and total_pages > 1):
+            progress_html = (
+                f'<span class="page-progress">'
+                f'Page {page_number} of {total_pages}</span>'
+            )
         if next_page:
             next_href = prefix + next_page["path"]
             next_label = _escape_html(next_page["label"])
@@ -2175,7 +2187,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 f'{next_label} &rarr;</a>'
             )
         page_nav_html = (
-            f'<nav class="page-nav">{prev_link}{next_link}</nav>'
+            f'<nav class="page-nav">{prev_link}{progress_html}{next_link}</nav>'
         )
 
     # Feedback widget (Feature 30): only rendered when feedback config is set
@@ -3003,6 +3015,23 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();\n"
     )
 
+    _JS_READING_PROGRESS = (
+        "// Reading progress bar\n"
+        "(function() {\n"
+        "  var bar = document.getElementById('reading-progress');\n"
+        "  if (!bar) return;\n"
+        "  function update() {\n"
+        "    var scrollTop = window.scrollY || document.documentElement.scrollTop;\n"
+        "    var docHeight = document.documentElement.scrollHeight - window.innerHeight;\n"
+        "    if (docHeight <= 0) { bar.style.width = '100%'; return; }\n"
+        "    var progress = Math.min(scrollTop / docHeight * 100, 100);\n"
+        "    bar.style.width = progress + '%';\n"
+        "  }\n"
+        "  window.addEventListener('scroll', update, { passive: true });\n"
+        "  update();\n"
+        "})();\n"
+    )
+
     # Search trigger HTML (configurable: "icon", "bar", or "hidden")
     effective_search = search if search else "icon"
     if effective_search == "icon":
@@ -3025,7 +3054,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # Assemble JS blocks: always-needed first, then conditional
     js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_NAV_GROUPS,
-                  _JS_SCROLL_AFFORDANCE]
+                  _JS_SCROLL_AFFORDANCE, _JS_READING_PROGRESS]
 
     if "<pre" in body_html:
         js_blocks.append(_JS_COPY_BUTTON)
@@ -3129,6 +3158,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{search_trigger_html}'
         f'</div>\n'
         f'</header>\n'
+        f'<div class="reading-progress" id="reading-progress"></div>\n'
         f'<div class="layout">\n'
         f'<nav class="sidebar" id="sidebar" aria-label="Site navigation">\n'
         f'<ul class="nav-list">\n'
