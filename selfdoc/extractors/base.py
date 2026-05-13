@@ -86,7 +86,7 @@ def _config_from_json(full_path, display_path):
         with open(full_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
+        return format_error(f"cannot parse '{display_path}': {exc}")
 
     if not isinstance(data, dict):
         return f"```json\n{json.dumps(data, indent=2)}\n```"
@@ -111,16 +111,16 @@ def _config_from_toml(full_path, display_path):
         try:
             import tomli as tomllib  # type: ignore[no-redef]
         except ModuleNotFoundError:
-            return (
-                "> *[selfdoc: TOML support requires Python 3.11+ "
-                "or the 'tomli' package]*"
+            return format_error(
+                "TOML support requires Python 3.11+ "
+                "or the 'tomli' package"
             )
 
     try:
         with open(full_path, "rb") as f:
             data = tomllib.load(f)
     except (OSError, Exception) as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
+        return format_error(f"cannot parse '{display_path}': {exc}")
 
     rows = []
     rows.append("| Key | Type | Value |")
