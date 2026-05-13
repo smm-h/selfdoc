@@ -4973,3 +4973,157 @@ def test_table_wrap_has_overflow_class_support(tmp_path):
     assert "has-overflow" in css_content
     assert "th:first-child" in css_content
     assert "td:first-child" in css_content
+
+
+def test_feed_excludes_pages_with_feed_false(tmp_path):
+    """Pages with feed: false in frontmatter are excluded from feed.xml."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    # index.md -- no feed key (should appear in feed)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome to the project.\n")
+
+    # guide.md -- no feed key (should appear in feed)
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nThis is the guide.\n")
+
+    # api.md -- feed: false (should NOT appear in feed)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("---\nfeed: false\n---\n# API Reference\n\nAPI details.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "feed.xml"), "r", encoding="utf-8") as f:
+        feed_content = f.read()
+
+    # index and guide should have entries
+    assert "<title>Home</title>" in feed_content
+    assert "<title>Guide</title>" in feed_content
+
+    # api should NOT have an entry
+    assert "API Reference" not in feed_content
+    assert "api.html" not in feed_content
+
+
+def test_changelog_auto_detected(tmp_path):
+    """CHANGELOG.md in project root is auto-detected and built as changelog.html."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome.\n")
+
+    # Create CHANGELOG.md in project root
+    with open(os.path.join(tmp_path, "CHANGELOG.md"), "w", encoding="utf-8") as f:
+        f.write("# Changelog\n\n## 1.0.0\n\n- Initial release\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+
+    # changelog.html should exist
+    changelog_html = os.path.join(output_dir, "changelog.html")
+    assert os.path.isfile(changelog_html)
+
+    with open(changelog_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Should have proper HTML structure
+    assert "<!DOCTYPE html>" in content
+    assert "Initial release" in content
+
+    # Should appear in sidebar navigation
+    assert "Changelog" in content
+
+    # Changelog should NOT appear in the feed (feed: false)
+    with open(os.path.join(output_dir, "feed.xml"), "r", encoding="utf-8") as f:
+        feed_content = f.read()
+    assert "changelog.html" not in feed_content
+
+
+def test_changelog_case_insensitive(tmp_path):
+    """Lowercase changelog.md in project root is also auto-detected."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome.\n")
+
+    # Create changelog.md (lowercase) in project root
+    with open(os.path.join(tmp_path, "changelog.md"), "w", encoding="utf-8") as f:
+        f.write("# Changelog\n\n## 0.1.0\n\n- First beta\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    changelog_html = os.path.join(output_dir, "changelog.html")
+    assert os.path.isfile(changelog_html)
+
+    with open(changelog_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert "First beta" in content
+
+
+def test_no_changelog_no_error(tmp_path):
+    """Build succeeds normally when no changelog file exists."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome.\n")
+
+    # No CHANGELOG.md anywhere
+    written = build(str(tmp_path))
+
+    # Build should succeed
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    assert os.path.isfile(os.path.join(output_dir, "index.html"))
+
+    # No changelog.html should exist
+    assert not os.path.isfile(os.path.join(output_dir, "changelog.html"))

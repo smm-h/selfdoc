@@ -716,10 +716,12 @@ def _generate_atom_feed(
 
     entries = []
     for md_path, content in sorted(markdown_files.items()):
-        html_path = _md_to_html_path(md_path)
-
-        # Determine page title: frontmatter > first heading > filename
+        # Skip pages with feed: false in frontmatter
         meta = frontmatter.get(md_path, {})
+        if meta.get("feed") is False:
+            continue
+
+        html_path = _md_to_html_path(md_path)
         title = meta.get("title")
         if not title:
             title = _extract_title(content, md_path.replace(".md", ""))
@@ -939,6 +941,26 @@ def build(dir_path=".", config=None):
             modified = mtime_str
             published = mtime_str
         page_dates[rel_path] = (published, modified)
+
+    # Auto-detect changelog in project root (case-insensitive)
+    changelog_path = None
+    for name in ("CHANGELOG.md", "Changelog.md", "changelog.md"):
+        candidate = os.path.join(dir_path, name)
+        if os.path.isfile(candidate):
+            changelog_path = candidate
+            break
+
+    if changelog_path is not None:
+        with open(changelog_path, "r", encoding="utf-8") as f:
+            changelog_content = f.read()
+        # Inject as if it were docs/changelog.md so it flows through
+        # the normal pipeline (nav, prev/next, HTML wrapping, etc.)
+        markdown_files["changelog.md"] = changelog_content
+        frontmatter["changelog.md"] = {
+            "title": "Changelog",
+            "order": 999,
+            "feed": False,
+        }
 
     if not markdown_files:
         raise RuntimeError(
