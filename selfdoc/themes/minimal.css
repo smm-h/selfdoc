@@ -1615,10 +1615,32 @@ hr {
     overflow-x: auto;
     margin: 1.5rem 0;
     scrollbar-width: thin;
+    position: relative;
 }
 
 .table-wrap table {
     margin: 0;
+}
+
+/* === Scroll affordance gradient === */
+
+.code-block.has-overflow::after,
+.table-wrap.has-overflow::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 40px;
+    background: linear-gradient(to right, transparent, var(--bg));
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    border-radius: 0 var(--radius, 4px) var(--radius, 4px) 0;
+}
+
+.code-block.scrolled-end::after,
+.table-wrap.scrolled-end::after {
+    opacity: 0;
 }
 
 /* === Step-by-step guides (Feature 33) === */

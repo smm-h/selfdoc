@@ -2546,6 +2546,43 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();\n"
     )
 
+    _JS_SCROLL_AFFORDANCE = (
+        "// Scroll affordance gradient on overflowing code blocks and tables\n"
+        "(function() {\n"
+        "  function setup(container, scroller) {\n"
+        "    if (scroller.scrollWidth <= scroller.clientWidth) return;\n"
+        "    container.classList.add('has-overflow');\n"
+        "    function check() {\n"
+        "      if (scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 2) {\n"
+        "        container.classList.add('scrolled-end');\n"
+        "      } else {\n"
+        "        container.classList.remove('scrolled-end');\n"
+        "      }\n"
+        "    }\n"
+        "    scroller.addEventListener('scroll', check, {passive: true});\n"
+        "    check();\n"
+        "  }\n"
+        "  function init() {\n"
+        "    document.querySelectorAll('.code-block').forEach(function(el) {\n"
+        "      var pre = el.querySelector('pre');\n"
+        "      if (pre) setup(el, pre);\n"
+        "    });\n"
+        "    document.querySelectorAll('.table-wrap').forEach(function(el) {\n"
+        "      setup(el, el);\n"
+        "    });\n"
+        "  }\n"
+        "  init();\n"
+        "  if (window.ResizeObserver) {\n"
+        "    new ResizeObserver(function() {\n"
+        "      document.querySelectorAll('.has-overflow').forEach(function(el) {\n"
+        "        el.classList.remove('has-overflow', 'scrolled-end');\n"
+        "      });\n"
+        "      init();\n"
+        "    }).observe(document.documentElement);\n"
+        "  }\n"
+        "})();\n"
+    )
+
     # Search trigger HTML (configurable: "icon", "bar", or "hidden")
     effective_search = search if search else "icon"
     if effective_search == "icon":
@@ -2567,7 +2604,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         search_trigger_html = ""
 
     # Assemble JS blocks: always-needed first, then conditional
-    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_NAV_GROUPS]
+    js_blocks = [_JS_THEME_TOGGLE, _JS_SIDEBAR_TOGGLE, _JS_NAV_GROUPS,
+                  _JS_SCROLL_AFFORDANCE]
 
     if "<pre" in body_html:
         js_blocks.append(_JS_COPY_BUTTON)

@@ -4663,3 +4663,15 @@ def test_landing_page_secondary_cta(tmp_path):
     assert "hero-cta-secondary" in content
     assert "View on GitHub" in content
     assert 'href="https://github.com/example/repo"' in content
+
+
+def test_scroll_affordance_js_included(project_dir):
+    """Build output includes scroll affordance JS for overflow detection."""
+    written = build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "has-overflow" in content
