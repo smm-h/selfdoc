@@ -4933,3 +4933,43 @@ def test_frontmatter_feed_key_parsed():
     metadata_mixed, _ = _parse_frontmatter(content_mixed)
     assert metadata_mixed["feed"] is True
     assert metadata_mixed["visible"] is False
+
+
+def test_table_wrap_has_overflow_class_support(tmp_path):
+    """Build with a table produces .table-wrap and CSS has sticky first-column rules."""
+    # Set up a project with a Markdown table
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    index_md = os.path.join(docs_dir, "index.md")
+    with open(index_md, "w", encoding="utf-8") as f:
+        f.write("# Tables\n\n| Col A | Col B | Col C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n")
+
+    written = build(str(tmp_path))
+
+    # Verify HTML output wraps the table in .table-wrap
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    assert "table-wrap" in html_content
+
+    # Find the CSS file in the output and verify sticky first-column rules
+    css_files = [f for f in written if f.endswith(".css")]
+    assert css_files, "Expected CSS file in build output"
+    with open(css_files[0], "r", encoding="utf-8") as f:
+        css_content = f.read()
+    assert "has-overflow" in css_content
+    assert "th:first-child" in css_content
+    assert "td:first-child" in css_content

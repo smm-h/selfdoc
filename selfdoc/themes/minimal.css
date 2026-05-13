@@ -1682,6 +1682,45 @@ hr {
 
 /* === Scroll affordance gradient === */
 
+/* === Sticky first column for wide tables === */
+
+.table-wrap.has-overflow th:first-child,
+.table-wrap.has-overflow td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg);
+}
+.table-wrap.has-overflow th:first-child {
+    z-index: 2; /* above both sticky header and sticky column */
+    background: var(--sidebar-bg);
+}
+.table-wrap.has-overflow td:first-child::after,
+.table-wrap.has-overflow th:first-child::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to right, rgba(0,0,0,0.06), transparent);
+    pointer-events: none;
+}
+
+/* Dark mode sticky column shadow */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .table-wrap.has-overflow td:first-child::after,
+    :root:not([data-theme="light"]) .table-wrap.has-overflow th:first-child::after {
+        background: linear-gradient(to right, rgba(255,255,255,0.06), transparent);
+    }
+}
+[data-theme="dark"] .table-wrap.has-overflow td:first-child::after,
+[data-theme="dark"] .table-wrap.has-overflow th:first-child::after {
+    background: linear-gradient(to right, rgba(255,255,255,0.06), transparent);
+}
+
+/* === Scroll affordance gradient === */
+
 .code-block.has-overflow::after,
 .table-wrap.has-overflow::after {
     content: "";
