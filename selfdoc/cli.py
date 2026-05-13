@@ -19,6 +19,7 @@ COMMANDS = {
     "deploy": "Deploy the documentation site",
     "check": "Check documentation coverage and consistency",
     "gen": "Auto-generate documentation pages from project structure",
+    "gen-data": "Generate data files by running sandboxed scripts",
 }
 
 
@@ -521,6 +522,30 @@ def _cmd_gen(args):
         print("No files generated.")
 
 
+def _cmd_gen_data(args):
+    """Generate data files by running sandboxed scripts."""
+    from selfdoc.config import load_config
+    from selfdoc.gendata import GenDataError, generate_data
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        generated = generate_data(config, base_dir=".")
+    except GenDataError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if generated:
+        print(f"Generated {len(generated)} data file(s):")
+        for path in generated:
+            print(f"  {path}")
+    else:
+        print("No gen-data scripts configured.")
+
+
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
     parser = argparse.ArgumentParser(
@@ -557,6 +582,10 @@ def run():
     # gen
     sub_gen = subparsers.add_parser("gen", help=COMMANDS["gen"])
     sub_gen.set_defaults(func=_cmd_gen)
+
+    # gen-data
+    sub_gen_data = subparsers.add_parser("gen-data", help=COMMANDS["gen-data"])
+    sub_gen_data.set_defaults(func=_cmd_gen_data)
 
     # check
     sub_check = subparsers.add_parser("check", help=COMMANDS["check"])
