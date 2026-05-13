@@ -4,7 +4,8 @@
 
 ### Breaking Changes
 
-- Directive syntax redesigned: new attribute-based format (`:-:`, `:<:`, `:>:`) with a formal directive catalog replacing the old `:::name arg` syntax. Custom directives continue to work via the new `attrs` interface. All existing directive blocks must be migrated.
+- Directive syntax redesigned: new attribute-based format (`:-:`, `:<:`, `:>:`) with a formal directive catalog replacing the old `:::name arg` syntax. All existing directive blocks must be migrated. The `glossary` directive is now `list-glossary`.
+- Custom directive scripts must update from `resolve(arg, config)` to `resolve(attrs, config, body)`. Body content is now forwarded.
 - Extractors refactored to a `LanguageExtractor` protocol with a registry. Custom extractor integrations may need updating.
 
 ### Added
@@ -19,7 +20,7 @@
 - Auto-generated glossary page: collects all `<dfn>` terms site-wide into an alphabetical glossary with source links
 - Documentation coverage for Go (exported symbols) and TypeScript/JavaScript (`export` declarations), previously Python-only
 - Per-symbol coverage tracking with configurable `min_coverage` threshold
-- Callout directives (note, tip, warning, caution, important) as first-class directive types
+- Callout directives (note, tip, warning, danger, important) as first-class directive types
 - Feed filtering via `feed: false` frontmatter; changelog pages auto-detected and excluded by default
 - Changelog auto-detection: `CHANGELOG.md` in project root is automatically included as a documentation page
 - Reading progress bar fixed below the topbar
