@@ -4767,3 +4767,34 @@ def test_topbar_page_title():
     # Index page should NOT have the topbar page title
     index_content = html_files["index.html"]
     assert 'topbar-page-title' not in index_content
+
+
+def test_scrollspy_uses_scroll_event():
+    """Scrollspy JS uses scroll event listener, not IntersectionObserver."""
+    html_files = generate_html(
+        {"index.md": "# Title\n\n## Section One\n\nText.\n\n## Section Two\n\nMore text.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert "addEventListener('scroll'" in content or 'addEventListener("scroll"' in content
+    assert "IntersectionObserver" not in content
+
+
+def test_heading_copy_toast_js():
+    """Heading copy toast JS is included when headings are present."""
+    html_files = generate_html(
+        {"index.md": "# Title\n\n## Section\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert "copy-toast" in content
+
+
+def test_smooth_scroll_disabled_initially():
+    """Head JS sets scrollBehavior to auto to prevent smooth scroll on load."""
+    html_files = generate_html(
+        {"index.md": "# Title\n\nContent.\n"},
+        project_name="Test",
+    )
+    content = html_files["index.html"]
+    assert "scrollBehavior" in content
