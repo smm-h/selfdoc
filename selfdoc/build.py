@@ -601,14 +601,20 @@ def _parse_frontmatter(content):
             continue
         key = line[:colon_pos].strip()
         value = line[colon_pos + 1:].strip()
-        # Try to convert numeric values
-        try:
-            value = int(value)
-        except ValueError:
+        # Convert boolean-like strings
+        if value.lower() == "true":
+            value = True
+        elif value.lower() == "false":
+            value = False
+        else:
+            # Try to convert numeric values
             try:
-                value = float(value)
+                value = int(value)
             except ValueError:
-                pass
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
         metadata[key] = value
 
     remaining = "\n".join(lines[end_idx + 1:]).lstrip("\n")

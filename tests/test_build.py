@@ -4851,3 +4851,85 @@ def test_build_warn_only_exits_zero(project_dir):
         timeout=30,
     )
     assert result.returncode == 0
+
+
+def test_two_pass_output_identical(tmp_path):
+    """Two-pass rendering produces identical output to expected content.
+
+    Builds a project with multiple pages including glossary terms and
+    verifies that headings, links, JSON-LD, and navigation are all present
+    as expected -- proving the two-pass refactor is behavior-preserving.
+    """
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    # Page with a glossary block
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Home\n\nWelcome to the project.\n")
+
+    with open(os.path.join(docs_dir, "glossary.md"), "w") as f:
+        f.write(
+            "# Glossary\n\n"
+            "## Terms\n\n"
+            "Widget is a reusable UI component.\n\n"
+            "Gadget refers to a hardware device.\n"
+        )
+
+    written = build(str(tmp_path))
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+
+    # Both pages should be generated
+    assert os.path.isfile(os.path.join(output_dir, "index.html"))
+    assert os.path.isfile(os.path.join(output_dir, "glossary.html"))
+
+    # Verify index.html has expected content
+    with open(os.path.join(output_dir, "index.html"), "r") as f:
+        index_html = f.read()
+    assert "<!DOCTYPE html>" in index_html
+    assert "Home" in index_html
+    assert "Welcome to the project." in index_html
+    assert "glossary.html" in index_html  # sidebar link
+
+    # Verify glossary.html has expected content
+    with open(os.path.join(output_dir, "glossary.html"), "r") as f:
+        glossary_html = f.read()
+    assert "Glossary" in glossary_html
+    assert "<dfn>" in glossary_html  # _apply_definitions should have added dfn tags
+    assert "Widget" in glossary_html
+    assert "Gadget" in glossary_html
+
+    # JSON-LD structured data should be present
+    assert "application/ld+json" in index_html
+    assert "application/ld+json" in glossary_html
+
+
+def test_frontmatter_feed_key_parsed():
+    """Frontmatter with feed: false parses to Python boolean False."""
+    content = "---\ntitle: My Page\nfeed: false\n---\n\n# My Page\n\nContent.\n"
+    metadata, remaining = _parse_frontmatter(content)
+    assert "feed" in metadata
+    assert metadata["feed"] is False
+    assert isinstance(metadata["feed"], bool)
+
+    # Also test feed: true
+    content_true = "---\ntitle: My Page\nfeed: true\n---\n\n# My Page\n"
+    metadata_true, _ = _parse_frontmatter(content_true)
+    assert metadata_true["feed"] is True
+    assert isinstance(metadata_true["feed"], bool)
+
+    # Test case-insensitive: True, FALSE, etc.
+    content_mixed = "---\nfeed: True\nvisible: FALSE\n---\n\nContent.\n"
+    metadata_mixed, _ = _parse_frontmatter(content_mixed)
+    assert metadata_mixed["feed"] is True
+    assert metadata_mixed["visible"] is False

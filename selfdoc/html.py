@@ -664,7 +664,13 @@ def generate_html(markdown_files, project_name=None, version=None,
     # Pre-compute set of all HTML paths for breadcrumb link validation
     all_html_paths = {_md_to_html_path(p) for p in markdown_files}
 
-    html_files = {}
+    # --- Pass 1: Convert and collect ---
+    # For each page, convert Markdown to HTML, apply post-processing,
+    # and extract <dfn> terms into a cross-site glossary. Store the
+    # processed body HTML and per-page metadata for pass 2.
+    page_data = []  # list of dicts with all per-page state
+    site_terms = {}  # term_text_lower -> {term, page, anchor, definition}
+
     for page_idx, (md_path, md_content) in enumerate(
         # Iterate in nav order so prev/next matches sidebar
         [(item["md_path"], markdown_files[item["md_path"]])
@@ -741,34 +747,107 @@ def generate_html(markdown_files, project_name=None, version=None,
             # Suppress page summary on the landing page (hero replaces it)
             frontmatter_description = None
 
+        # Extract <dfn> terms from processed body HTML into site_terms.
+        # Glossary terms: <dt><dfn>X</dfn></dt><dd>Y</dd>
+        if '<div class="glossary">' in body_html:
+            for term_match in re.finditer(
+                r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>", body_html,
+            ):
+                term_name = term_match.group(1)
+                term_desc = term_match.group(2)
+                key = term_name.lower()
+                if key not in site_terms:
+                    site_terms[key] = {
+                        "term": term_name,
+                        "page": html_path,
+                        "anchor": _slugify(term_name),
+                        "definition": term_desc,
+                    }
+
+        # Standalone <dfn> tags (from _apply_definitions, inside <p> tags)
+        for p_match in re.finditer(r"<p>(.*?)</p>", body_html, re.DOTALL):
+            p_content = p_match.group(1)
+            dfn_match = re.search(r"<dfn>(.*?)</dfn>", p_content)
+            if not dfn_match:
+                continue
+            # Skip if inside a glossary block
+            p_start = p_match.start()
+            glossary_open = body_html.rfind(
+                '<div class="glossary">', 0, p_start,
+            )
+            if glossary_open != -1:
+                glossary_close = body_html.find('</div>', glossary_open)
+                if glossary_close == -1 or glossary_close > p_start:
+                    continue
+            raw_term = dfn_match.group(1)
+            clean_name = re.sub(r"<[^>]+>", "", raw_term).strip()
+            key = clean_name.lower()
+            if key not in site_terms:
+                clean_desc = re.sub(r"<[^>]+>", "", p_content).strip()
+                site_terms[key] = {
+                    "term": clean_name,
+                    "page": html_path,
+                    "anchor": _slugify(clean_name),
+                    "definition": clean_desc,
+                }
+
+        # Store all per-page state for pass 2
+        page_data.append({
+            "html_path": html_path,
+            "body_html": body_html,
+            "nav_html": nav_html,
+            "title": title,
+            "description": description,
+            "frontmatter_description": frontmatter_description,
+            "css_href": css_href,
+            "custom_css_href": custom_css_href,
+            "toc_html": toc_html,
+            "breadcrumbs": breadcrumbs,
+            "prev_page": prev_page,
+            "next_page": next_page,
+            "prefix": prefix,
+            "source_path": source_path,
+            "date_published": date_published,
+            "date_modified": date_modified,
+            "page_feed_url": page_feed_url,
+            "schema": schema,
+        })
+
+    # --- Pass 2: Wrap pages ---
+    # Now that all pages are processed and site_terms is fully populated,
+    # wrap each page in the full HTML template.
+    html_files = {}
+    for pd in page_data:
         full_html = _wrap_page(
-            body_html, nav_html, title, project_name, version,
-            css_href, custom_css_href,
-            toc_html=toc_html,
-            breadcrumbs=breadcrumbs,
-            prev_page=prev_page,
-            next_page=next_page,
-            prefix=prefix,
+            pd["body_html"], pd["nav_html"], pd["title"],
+            project_name, version,
+            pd["css_href"], pd["custom_css_href"],
+            toc_html=pd["toc_html"],
+            breadcrumbs=pd["breadcrumbs"],
+            prev_page=pd["prev_page"],
+            next_page=pd["next_page"],
+            prefix=pd["prefix"],
             repo=repo,
-            source_path=source_path,
+            source_path=pd["source_path"],
             base_url=base_url,
-            page_path=html_path,
-            description=description,
+            page_path=pd["html_path"],
+            description=pd["description"],
             lang=lang,
-            date_published=date_published,
-            date_modified=date_modified,
+            date_published=pd["date_published"],
+            date_modified=pd["date_modified"],
             author=author,
-            feed_url=page_feed_url,
-            summary=frontmatter_description,
+            feed_url=pd["page_feed_url"],
+            summary=pd["frontmatter_description"],
             critical_css=critical_css,
-            schema=schema,
+            schema=pd["schema"],
             twitter_site=twitter_site,
             search=search,
             feedback=feedback,
             branch=branch,
             search_engine=search_engine,
+            site_terms=site_terms,
         )
-        html_files[html_path] = full_html
+        html_files[pd["html_path"]] = full_html
 
     return html_files
 
@@ -1784,7 +1863,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
                schema=None, twitter_site=None, search=None,
-               feedback=None, branch="main", search_engine=None):
+               feedback=None, branch="main", search_engine=None,
+               site_terms=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
