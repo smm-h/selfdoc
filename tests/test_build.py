@@ -4894,6 +4894,79 @@ def test_api_entry_with_whitespace():
     assert 'class="api-entry"' in content
 
 
+def test_api_entry_single_line_signature_wraps():
+    """h3 identifier heading + single-line code block + paragraph gets wrapped."""
+    md = (
+        "# API\n\n"
+        "### parse_directives\n\n"
+        "```python\ndef parse_directives(text): ...\n```\n\n"
+        "Extract directives from text.\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="api-entry"' in content
+
+
+def test_api_entry_multi_line_code_no_wrap():
+    """h3 identifier heading + multi-line code block (5+ lines) does NOT wrap."""
+    md = (
+        "# API\n\n"
+        "### parse_directives\n\n"
+        "```python\n"
+        "def parse_directives(text):\n"
+        "    result = []\n"
+        "    for line in text:\n"
+        "        result.append(line)\n"
+        "    return result\n"
+        "```\n\n"
+        "Extract directives from text.\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="api-entry"' not in content
+
+
+def test_api_entry_natural_language_heading_no_wrap():
+    """h3 natural-language heading + single-line code block does NOT wrap."""
+    md = (
+        "# Guide\n\n"
+        "### How to Configure\n\n"
+        "```python\nconfig = load_config()\n```\n\n"
+        "This shows how to configure the system.\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="api-entry"' not in content
+
+
+def test_api_entry_explicit_wrapper_always_works():
+    """Explicit <div class="api-entry"> in Markdown is preserved regardless."""
+    md = (
+        "# API\n\n"
+        '<div class="api-entry">\n\n'
+        "### How to Configure\n\n"
+        "```python\nconfig = load_config()\n```\n\n"
+        "Description here.\n\n"
+        "</div>\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="api-entry"' in content
+
+
+def test_api_entry_dotted_method_name_wraps():
+    """h3 dotted method name (Config.load) + single-line code block wraps."""
+    md = (
+        "# API\n\n"
+        "### Config.load\n\n"
+        "```python\ndef load(path): ...\n```\n\n"
+        "Load configuration from a file.\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="api-entry"' in content
+
+
 def test_llms_full_txt_has_page_titles(project_dir):
     """llms-full.txt includes page titles and path comments for each section."""
     build(str(project_dir))

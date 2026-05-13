@@ -1474,15 +1474,50 @@ def _wrap_api_entries(html):
     When an h3 or h4 heading is followed by a code-block div (a function/type
     signature) and a <p> (description), with optional whitespace/newlines
     between them, wrap them together in a <div class="api-entry">.
+
+    Guards:
+    - Only wraps when the heading text looks like an identifier (snake_case,
+      camelCase, PascalCase, dotted.method), not natural-language headings.
+    - Only wraps when the code block is short (at most 2 newlines / 3 lines),
+      indicating a signature rather than example code.
     """
-    return re.sub(
+    _strip_tags_re = re.compile(r'<[^>]+>')
+    _identifier_re = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*(\(.*\))?$')
+    pattern = re.compile(
         r'(<h[34]\s[^>]*>.*?</h[34]>)\s*'
         r'(<div class="code-block">.*?</div>)\s*'
         r'(<p>.*?</p>)',
-        r'<div class="api-entry">\1\n\2\n\3</div>',
-        html,
-        flags=re.DOTALL,
+        re.DOTALL,
     )
+    result = []
+    last_end = 0
+    for m in pattern.finditer(html):
+        heading_html = m.group(1)
+        code_block = m.group(2)
+
+        # Extract heading plain text (strip HTML tags)
+        inner_start = heading_html.index('>') + 1
+        inner_end = heading_html.rindex('<')
+        inner_html = heading_html[inner_start:inner_end]
+        plain_text = _strip_tags_re.sub('', inner_html).lstrip('#').strip()
+
+        # Guard: heading must look like an identifier
+        if not _identifier_re.match(plain_text):
+            continue
+
+        # Guard: code block must be short (at most 3 lines / 2 newlines)
+        if code_block.count('\n') > 2:
+            continue
+
+        result.append(html[last_end:m.start()])
+        result.append(
+            '<div class="api-entry">'
+            + m.group(1) + '\n' + m.group(2) + '\n' + m.group(3)
+            + '</div>'
+        )
+        last_end = m.end()
+    result.append(html[last_end:])
+    return ''.join(result)
 
 
 def _apply_definitions(html):
