@@ -4798,3 +4798,56 @@ def test_smooth_scroll_disabled_initially():
     )
     content = html_files["index.html"]
     assert "scrollBehavior" in content
+
+
+def test_step_guide_with_intervening_paragraph():
+    """Step guide detection works when a paragraph sits between heading and <ol>."""
+    md = (
+        "# Title\n\n"
+        "## Step Guide\n\n"
+        "Follow these steps carefully.\n\n"
+        "1. First step\n"
+        "2. Second step\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert '<ol class="steps">' in content
+
+
+def test_api_entry_with_whitespace():
+    """API entry wrapping works when whitespace/blank lines separate components."""
+    md = (
+        "# API\n\n"
+        "### my_func\n\n"
+        "```python\ndef my_func(x): ...\n```\n\n"
+        "Does something useful.\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="api-entry"' in content
+
+
+def test_llms_full_txt_has_page_titles(project_dir):
+    """llms-full.txt includes page titles and path comments for each section."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    llms_full_path = os.path.join(output_dir, "llms-full.txt")
+    assert os.path.isfile(llms_full_path)
+    with open(llms_full_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    # The project has index.md with "# Test Project"
+    assert "## Test Project" in content
+    assert "<!-- path: index.md -->" in content
+
+
+def test_build_warn_only_exits_zero(project_dir):
+    """Build with --warn-only exits 0 despite SEO warnings."""
+    import subprocess
+    result = subprocess.run(
+        ["python", "-m", "selfdoc", "build", "--warn-only"],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0

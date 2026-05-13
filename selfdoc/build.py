@@ -675,11 +675,19 @@ def _generate_llms_txt(project_name, markdown_files, base_url=None):
 def _generate_llms_full_txt(project_name, markdown_files):
     """Generate llms-full.txt: full text of all pages as plain markdown.
 
-    Strips HTML but keeps markdown text content.
+    Each page section starts with a title heading and path comment,
+    followed by the page content, separated by '---'.
     """
     parts = [f"# {project_name} Documentation", ""]
     for md_path in sorted(markdown_files.keys()):
         content = markdown_files[md_path]
+        fallback = os.path.splitext(os.path.basename(md_path))[0].replace(
+            "-", " "
+        ).replace("_", " ").title()
+        title = _extract_title(content, fallback)
+        parts.append(f"## {title}")
+        parts.append(f"<!-- path: {md_path} -->")
+        parts.append("")
         parts.append(content.strip())
         parts.append("")
         parts.append("---")

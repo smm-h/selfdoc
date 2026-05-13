@@ -1199,32 +1199,70 @@ def _apply_step_guides(html):
     """Add class="steps" to <ol> elements that follow step/guide/tutorial
     headings (Feature 33).
 
-    Detects headings (h2, h3) containing keywords "step", "guide", or
-    "tutorial" (case-insensitive) and adds the "steps" class to the
-    immediately following <ol>.
+    Uses a two-pass approach: finds each <ol> without a class, then searches
+    backward (up to 500 characters) for an h2/h3 containing "step", "guide",
+    or "tutorial" (case-insensitive). If found with no intervening h2/h3
+    between the match and the <ol>, adds class="steps".
     """
-    return re.sub(
-        r'(<h[23]\s[^>]*>.*?(?:step|guide|tutorial).*?</h[23]>)\n<ol>',
-        r'\1\n<ol class="steps">',
-        html,
-        flags=re.IGNORECASE,
+    heading_kw_re = re.compile(
+        r'<h[23]\s[^>]*>.*?(?:step|guide|tutorial).*?</h[23]>',
+        re.IGNORECASE,
     )
+    # Matches any h2/h3 (keyword or not)
+    any_heading_re = re.compile(r'<h[23]\s[^>]*>.*?</h[23]>', re.IGNORECASE)
+    # Match <ol> tags without an existing class attribute
+    ol_re = re.compile(r'<ol(?!\s[^>]*class=)(?:\s[^>]*)?>|<ol>')
+
+    result = html
+    offset = 0
+    while True:
+        ol_match = ol_re.search(result, offset)
+        if not ol_match:
+            break
+        ol_start = ol_match.start()
+        # Search backward up to 500 characters for a keyword heading
+        lookback_start = max(0, ol_start - 500)
+        preceding = result[lookback_start:ol_start]
+        # Find all keyword headings in the preceding text
+        kw_matches = list(heading_kw_re.finditer(preceding))
+        if not kw_matches:
+            offset = ol_match.end()
+            continue
+        # Use the last keyword heading found
+        last_kw = kw_matches[-1]
+        # Check for any intervening h2/h3 between the keyword heading and <ol>
+        between = preceding[last_kw.end():]
+        intervening = any_heading_re.search(between)
+        if intervening:
+            offset = ol_match.end()
+            continue
+        # Add class="steps" to this <ol>
+        old_tag = ol_match.group(0)
+        if old_tag == "<ol>":
+            new_tag = '<ol class="steps">'
+        else:
+            new_tag = old_tag.replace("<ol", '<ol class="steps"', 1)
+        result = result[:ol_start] + new_tag + result[ol_match.end():]
+        offset = ol_start + len(new_tag)
+
+    return result
 
 
 def _wrap_api_entries(html):
     """Wrap h3/h4 + code block + description paragraph in API entry cards
     (Feature 48).
 
-    When an h3 or h4 heading is immediately followed by a code-block div
-    (a function/type signature) and optionally a <p> (description), wrap
-    them together in a <div class="api-entry">.
+    When an h3 or h4 heading is followed by a code-block div (a function/type
+    signature) and a <p> (description), with optional whitespace/newlines
+    between them, wrap them together in a <div class="api-entry">.
     """
     return re.sub(
-        r'(<h[34]\s[^>]*>.*?</h[34]>)\n'
-        r'(<div class="code-block">.*?</div>)\n'
+        r'(<h[34]\s[^>]*>.*?</h[34]>)\s*'
+        r'(<div class="code-block">.*?</div>)\s*'
         r'(<p>.*?</p>)',
         r'<div class="api-entry">\1\n\2\n\3</div>',
         html,
+        flags=re.DOTALL,
     )
 
 

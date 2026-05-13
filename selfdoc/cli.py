@@ -190,7 +190,8 @@ def _cmd_build(args):
 
     if warn_count > 0:
         print(f"{warn_count} SEO warning(s) found.")
-        sys.exit(1)
+        if not getattr(args, "warn_only", False):
+            sys.exit(1)
 
 
 def _cmd_serve(args):
@@ -530,6 +531,8 @@ def run():
 
     # build
     sub_build = subparsers.add_parser("build", help=COMMANDS["build"])
+    sub_build.add_argument("--warn-only", action="store_true", default=False,
+        help="Treat SEO lint warnings as non-fatal (exit 0 despite warnings)")
     sub_build.set_defaults(func=_cmd_build)
 
     # serve
