@@ -38,22 +38,24 @@ class Directive:
     line_number: int = 0
 
 
-def parse_directives(content: str) -> list[Directive]:
-    """Extract all directive blocks from markdown content.
+def _walk_blocks(content: str):
+    """Shared state machine for fence-tracking and directive detection.
 
-    Returns a list of Directive dataclass instances in document order.
-    Directives inside fenced code blocks are ignored.
-    Raises DirectiveError if a directive is opened but never closed.
+    Yields one of three event types per logical unit:
+      ("line", line)                         — non-directive line (may be inside a fence)
+      ("directive", name, arg, body, line_num) — a complete directive block
+      ("unclosed", name, line_num)           — unclosed directive at EOF
     """
-    directives: list[Directive] = []
     lines = content.split("\n") if content else []
 
-    # State: are we inside a fenced code block?
-    fence_char: str | None = None  # the char used to open the fence (` or ~)
-    fence_len: int = 0  # minimum length needed to close
+    fence_char: str | None = None  # char used to open the fence (` or ~)
+    fence_len: int = 0  # length needed to close
 
-    # State: are we inside a directive?
-    current: Directive | None = None
+    # Directive accumulation state
+    dir_name: str | None = None
+    dir_arg: str = ""
+    dir_body: list[str] = []
+    dir_line: int = 0
 
     for line_idx, line in enumerate(lines):
         line_num = line_idx + 1  # 1-based
@@ -64,43 +66,60 @@ def parse_directives(content: str) -> list[Directive]:
         if fence_match:
             marker = fence_match.group(1)
             if fence_char is None:
-                # Opening a fence
                 fence_char = marker[0]
                 fence_len = len(marker)
             elif marker[0] == fence_char and len(marker) >= fence_len:
-                # Closing the fence (same char, at least same length)
                 fence_char = None
                 fence_len = 0
-            # If different char or shorter run, it's not a fence toggle
+            # Fence delimiters are always non-directive content
+            yield ("line", line)
             continue
 
-        # Inside a code fence: nothing is a directive
         if fence_char is not None:
-            if current is not None:
-                current.body.append(line)
+            # Inside a code fence — always non-directive
+            yield ("line", line)
             continue
 
         # --- directive parsing (outside code fences) ---
-        if current is None:
-            # Not inside a directive — look for an opening line
+        if dir_name is None:
             open_match = _OPEN_RE.match(stripped)
             if open_match:
-                name = open_match.group(1)
-                arg = (open_match.group(2) or "").strip()
-                current = Directive(name=name, arg=arg, line_number=line_num)
-        else:
-            # Inside a directive — look for closing :::
-            if _CLOSE_RE.match(stripped):
-                directives.append(current)
-                current = None
+                dir_name = open_match.group(1)
+                dir_arg = (open_match.group(2) or "").strip()
+                dir_body = []
+                dir_line = line_num
             else:
-                current.body.append(line)
+                yield ("line", line)
+        else:
+            if _CLOSE_RE.match(stripped):
+                yield ("directive", dir_name, dir_arg, dir_body, dir_line)
+                dir_name = None
+                dir_arg = ""
+                dir_body = []
+            else:
+                dir_body.append(line)
 
-    if current is not None:
-        raise DirectiveError(
-            f"Unclosed directive ':::{current.name}' opened at line {current.line_number}"
-        )
+    if dir_name is not None:
+        yield ("unclosed", dir_name, dir_line)
 
+
+def parse_directives(content: str) -> list[Directive]:
+    """Extract all directive blocks from markdown content.
+
+    Returns a list of Directive dataclass instances in document order.
+    Directives inside fenced code blocks are ignored.
+    Raises DirectiveError if a directive is opened but never closed.
+    """
+    directives: list[Directive] = []
+    for event in _walk_blocks(content):
+        if event[0] == "directive":
+            _, name, arg, body, line_num = event
+            directives.append(Directive(name=name, arg=arg, body=body, line_number=line_num))
+        elif event[0] == "unclosed":
+            _, name, line_num = event
+            raise DirectiveError(
+                f"Unclosed directive ':::{name}' opened at line {line_num}"
+            )
     return directives
 
 
@@ -110,60 +129,16 @@ def resolve_directives(content: str, resolver: callable) -> str:
     Non-directive content passes through unchanged. Directives inside fenced
     code blocks are left as-is (they are not directives).
     """
-    lines = content.split("\n") if content else []
     output: list[str] = []
-
-    fence_char: str | None = None
-    fence_len: int = 0
-
-    current_name: str | None = None
-    current_arg: str = ""
-    current_body: list[str] = []
-
-    for line in lines:
-        stripped = line.strip()
-
-        # --- code fence tracking ---
-        fence_match = _FENCE_RE.match(stripped)
-        if fence_match:
-            marker = fence_match.group(1)
-            if fence_char is None:
-                fence_char = marker[0]
-                fence_len = len(marker)
-            elif marker[0] == fence_char and len(marker) >= fence_len:
-                fence_char = None
-                fence_len = 0
-            output.append(line)
-            continue
-
-        if fence_char is not None:
-            # Inside a code fence — pass through verbatim
-            output.append(line)
-            continue
-
-        # --- directive handling ---
-        if current_name is None:
-            open_match = _OPEN_RE.match(stripped)
-            if open_match:
-                current_name = open_match.group(1)
-                current_arg = (open_match.group(2) or "").strip()
-                current_body = []
-            else:
-                output.append(line)
-        else:
-            if _CLOSE_RE.match(stripped):
-                resolved = resolver(current_name, current_arg, current_body)
-                output.append(resolved)
-                current_name = None
-                current_arg = ""
-                current_body = []
-            else:
-                current_body.append(line)
-
-    # Unclosed directive in resolve — same error as parse
-    if current_name is not None:
-        raise DirectiveError(
-            f"Unclosed directive ':::{current_name}' during resolution"
-        )
-
+    for event in _walk_blocks(content):
+        if event[0] == "line":
+            output.append(event[1])
+        elif event[0] == "directive":
+            _, name, arg, body, _line_num = event
+            output.append(resolver(name, arg, body))
+        elif event[0] == "unclosed":
+            _, name, _line_num = event
+            raise DirectiveError(
+                f"Unclosed directive ':::{name}' during resolution"
+            )
     return "\n".join(output)
