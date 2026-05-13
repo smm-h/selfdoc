@@ -4100,12 +4100,12 @@ def test_details_summary_styled():
 
 
 def test_admonition_icons():
-    """CSS contains admonition icon rules with background-image data URIs."""
+    """CSS contains admonition icon rules with mask-image data URIs."""
     from selfdoc.themes import get_theme
 
     css = get_theme("minimal")
     assert ".admonition-title::before" in css
-    assert "background-image" in css
+    assert "mask-image" in css
     # Each admonition type gets an icon
     assert ".admonition.note .admonition-title::before" in css
     assert ".admonition.tip .admonition-title::before" in css
