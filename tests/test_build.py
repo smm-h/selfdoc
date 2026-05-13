@@ -5356,3 +5356,130 @@ def test_single_page_no_progress():
     )
     content = html_files["index.html"]
     assert "page-progress" not in content
+
+
+# --- Opt-out controls for step guide detection and API entry wrapping ---
+
+
+def test_auto_steps_false_frontmatter_disables_step_detection(project_dir):
+    """Frontmatter auto_steps: false prevents step guide heuristic."""
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "guide.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write(
+            "---\nauto_steps: false\n---\n"
+            "## Step Guide\n\n"
+            "1. First step\n"
+            "2. Second step\n"
+        )
+
+    written = build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    guide_html = os.path.join(output_dir, "guide.html")
+    assert guide_html in written
+
+    with open(guide_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    # The <ol> should NOT have class="steps" because auto_steps is false
+    assert 'class="steps"' not in content
+    # But the <ol> should still exist
+    assert "<ol>" in content
+
+
+def test_auto_api_false_frontmatter_disables_api_wrapping(project_dir):
+    """Frontmatter auto_api: false prevents API entry wrapping heuristic."""
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "api.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write(
+            "---\nauto_api: false\n---\n"
+            "### my_function\n\n"
+            "```python\ndef my_function(x):\n    pass\n```\n\n"
+            "Does something useful.\n"
+        )
+
+    written = build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    api_html = os.path.join(output_dir, "api.html")
+    assert api_html in written
+
+    with open(api_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    # No api-entry wrapper should be present
+    assert 'class="api-entry"' not in content
+
+
+def test_explicit_steps_class_works_regardless_of_opt_out():
+    """Explicit <ol class="steps"> in source is preserved even with opt-out."""
+    md = (
+        "## Getting Started\n\n"
+        '<ol class="steps">\n'
+        "<li>Do this</li>\n"
+        "<li>Do that</li>\n"
+        "</ol>\n"
+    )
+    html = md_to_html(md, metadata={"auto_steps": False})
+    # The explicit class="steps" should survive because it was in the
+    # source HTML, not added by the heuristic
+    assert 'class="steps"' in html
+
+
+def test_auto_detect_config_disables_steps_globally(project_dir):
+    """Global auto_detect.steps: false disables step detection site-wide."""
+    # Rewrite config with auto_detect
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["auto_detect"] = {"steps": False}
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "guide.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        # No auto_steps frontmatter -- relies on global config
+        f.write(
+            "## Step Guide\n\n"
+            "1. First step\n"
+            "2. Second step\n"
+        )
+
+    written = build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    guide_html = os.path.join(output_dir, "guide.html")
+    assert guide_html in written
+
+    with open(guide_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert 'class="steps"' not in content
+    assert "<ol>" in content
+
+
+def test_frontmatter_overrides_global_config(project_dir):
+    """Per-page auto_steps: true overrides global auto_detect.steps: false."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["auto_detect"] = {"steps": False}
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(project_dir, "docs")
+    page_md = os.path.join(docs_dir, "guide.md")
+    with open(page_md, "w", encoding="utf-8") as f:
+        f.write(
+            "---\nauto_steps: true\n---\n"
+            "## Step Guide\n\n"
+            "1. First step\n"
+            "2. Second step\n"
+        )
+
+    written = build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    guide_html = os.path.join(output_dir, "guide.html")
+    assert guide_html in written
+
+    with open(guide_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    # Frontmatter auto_steps: true should override global steps: false
+    assert 'class="steps"' in content

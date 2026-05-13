@@ -228,6 +228,22 @@ def load_config(dir_path="."):
                         f"and must be a non-empty string"
                     )
 
+    auto_detect = raw.get("auto_detect", None)
+    if auto_detect is not None:
+        if not isinstance(auto_detect, dict):
+            raise ConfigError("'auto_detect' must be an object")
+        valid_keys = {"steps", "api_entries"}
+        for key, val in auto_detect.items():
+            if key not in valid_keys:
+                raise ConfigError(
+                    f"invalid auto_detect key {key!r}; "
+                    f"must be one of: {', '.join(sorted(valid_keys))}"
+                )
+            if not isinstance(val, bool) or isinstance(val, int) and not isinstance(val, bool):
+                raise ConfigError(
+                    f"'auto_detect.{key}' must be a boolean"
+                )
+
     return {
         "language": language,
         "source": source,
@@ -249,4 +265,5 @@ def load_config(dir_path="."):
         "lint_ignore": lint_ignore,
         "min_coverage": min_coverage,
         "branding": branding,
+        "auto_detect": auto_detect,
     }

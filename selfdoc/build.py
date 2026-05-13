@@ -1037,6 +1037,7 @@ def build(dir_path=".", config=None):
         search_engine=config.get("search_engine"),
         branding=config.get("branding"),
         config_description=config_description,
+        auto_detect=config.get("auto_detect"),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection

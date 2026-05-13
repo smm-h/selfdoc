@@ -627,7 +627,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    page_dates=None, author=None, feed_url=None,
                    critical_css=None, twitter_site=None, search=None,
                    feedback=None, branch="main", search_engine=None,
-                   branding=None, config_description=None):
+                   branding=None, config_description=None,
+                   auto_detect=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -680,7 +681,11 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Compute relative path from this file back to root for nav links
         depth = md_path.count("/")
         prefix = "../" * depth if depth > 0 else ""
-        body_html = md_to_html(md_content)
+        body_html = md_to_html(
+            md_content,
+            metadata=frontmatter.get(md_path),
+            config={"auto_detect": auto_detect} if auto_detect else None,
+        )
         # Rewrite internal .md links to .html
         body_html = body_html.replace('.md"', '.html"')
         body_html = body_html.replace(".md)", ".html)")
@@ -1022,11 +1027,21 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     )
 
 
-def md_to_html(text):
+def md_to_html(text, metadata=None, config=None):
     """Convert Markdown text to HTML.
 
     Handles: headings, code blocks (with tabs and annotations), inline code,
     paragraphs, unordered lists, ordered lists, links, bold, italic, tables.
+
+    Args:
+        text: Markdown source text.
+        metadata: Per-page frontmatter dict (optional). Keys ``auto_steps``
+            and ``auto_api`` (bool) override the corresponding global
+            settings from *config*.
+        config: Project config dict (optional). The ``auto_detect`` key
+            (an object with optional bool keys ``steps`` and
+            ``api_entries``) controls whether heuristics run globally.
+            Per-page *metadata* takes precedence over global config.
     """
     lines = text.split("\n")
     html_parts = []
@@ -1212,12 +1227,23 @@ def md_to_html(text):
     result = _group_code_tabs(result)
 
     # Post-process: add class="steps" to <ol> after step/guide/tutorial
-    # headings (Feature 33)
-    result = _apply_step_guides(result)
+    # headings (Feature 33).  Skipped when opted out via frontmatter
+    # (auto_steps: false) or global config (auto_detect.steps: false).
+    auto_detect = config.get("auto_detect", {}) if config else {}
+    auto_steps_global = auto_detect.get("steps", True) if auto_detect else True
+    auto_steps_page = metadata.get("auto_steps") if metadata else None
+    run_steps = auto_steps_page if auto_steps_page is not None else auto_steps_global
+    if run_steps:
+        result = _apply_step_guides(result)
 
     # Post-process: wrap h3/h4 + code block + description in API entry
-    # cards (Feature 48)
-    result = _wrap_api_entries(result)
+    # cards (Feature 48).  Skipped when opted out via frontmatter
+    # (auto_api: false) or global config (auto_detect.api_entries: false).
+    auto_api_global = auto_detect.get("api_entries", True) if auto_detect else True
+    auto_api_page = metadata.get("auto_api") if metadata else None
+    run_api = auto_api_page if auto_api_page is not None else auto_api_global
+    if run_api:
+        result = _wrap_api_entries(result)
 
     # Post-process: auto-detect definitional patterns after headings and
     # wrap the subject in <dfn> tags (Phase 6A)
