@@ -12,6 +12,15 @@ import json
 import os
 import re
 
+from selfdoc.extractors.base import (
+    _config_from_json,
+    _config_from_toml,
+    _json_type_name,
+    _json_value_repr,
+    format_error,
+    read_source,
+)
+
 
 def resolve_typescript(name, arg, body, source_paths, base_dir):
     """Dispatch a directive to the appropriate TypeScript/JS extraction handler.
@@ -35,7 +44,7 @@ def resolve_typescript(name, arg, body, source_paths, base_dir):
     }
     handler = handlers.get(name)
     if handler is None:
-        return f"> *[selfdoc: unknown directive '{name}' for TypeScript extractor]*"
+        return format_error(f"unknown directive '{name}' for TypeScript extractor")
     return handler(arg, body, source_paths, base_dir)
 
 
@@ -95,12 +104,6 @@ def _resolve_file_path(arg, source_paths, base_dir):
             return candidate
 
     return None
-
-
-def _read_file(filepath):
-    """Read a file and return its contents, or raise an error string."""
-    with open(filepath, "r", encoding="utf-8") as f:
-        return f.read()
 
 
 def _parse_jsdoc_text(raw_jsdoc):
@@ -224,16 +227,15 @@ def _format_jsdoc_as_markdown(jsdoc):
 def _handle_module(arg, body, source_paths, base_dir):
     """Extract module-level JSDoc and exported declarations from a TS/JS file."""
     if not arg:
-        return "> *[selfdoc: :::module requires a file path argument]*"
+        return format_error(":::module requires a file path argument")
 
     filepath = _resolve_file_path(arg, source_paths, base_dir)
     if filepath is None:
-        return f"> *[selfdoc: module '{arg}' not found]*"
+        return format_error(f"module '{arg}' not found")
 
-    try:
-        source = _read_file(filepath)
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{arg}': {err}")
 
     # Display name: strip extension, use forward slashes
     display_name = arg.replace("\\", "/")
@@ -373,7 +375,7 @@ def _handle_test(arg, body, source_paths, base_dir):
     it("TestName", ...), or test("TestName", ...) blocks.
     """
     if not arg:
-        return "> *[selfdoc: :::test requires a file path argument]*"
+        return format_error(":::test requires a file path argument")
 
     parts = arg.split(None, 1)
     file_path = parts[0]
@@ -385,12 +387,11 @@ def _handle_test(arg, body, source_paths, base_dir):
         # Try with source paths
         full_path = _resolve_file_path(file_path, source_paths, base_dir)
         if full_path is None:
-            return f"> *[selfdoc: test file '{file_path}' not found]*"
+            return format_error(f"test file '{file_path}' not found")
 
-    try:
-        source = _read_file(full_path)
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{file_path}': {exc}]*"
+    source, err = read_source(full_path)
+    if err:
+        return format_error(f"cannot read '{file_path}': {err}")
 
     lang = "typescript" if full_path.endswith((".ts", ".tsx")) else "javascript"
 
@@ -400,7 +401,7 @@ def _handle_test(arg, body, source_paths, base_dir):
     # Find the target test block by name
     block = _extract_test_block(source, target_name)
     if block is None:
-        return f"> *[selfdoc: '{target_name}' not found in '{file_path}']*"
+        return format_error(f"'{target_name}' not found in '{file_path}'")
 
     return f"```{lang}\n{block}\n```"
 
@@ -547,7 +548,7 @@ def _handle_schema(arg, body, source_paths, base_dir):
       - path/to/file.ts -> if only one interface, extract it
     """
     if not arg:
-        return "> *[selfdoc: :::schema requires an argument]*"
+        return format_error(":::schema requires an argument")
 
     parts = arg.split(None, 1)
     file_or_module = parts[0]
@@ -561,12 +562,11 @@ def _handle_schema(arg, body, source_paths, base_dir):
 
     filepath = _resolve_file_path(file_or_module, source_paths, base_dir)
     if filepath is None:
-        return f"> *[selfdoc: file '{file_or_module}' not found]*"
+        return format_error(f"file '{file_or_module}' not found")
 
-    try:
-        source = _read_file(filepath)
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{file_or_module}': {exc}]*"
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{file_or_module}': {err}")
 
     return _schema_from_ts(source, type_name, file_or_module)
 
@@ -575,13 +575,13 @@ def _schema_from_json(file_path, base_dir):
     """Render a JSON file as a documented table of keys, types, and values."""
     full_path = os.path.join(base_dir, file_path)
     if not os.path.isfile(full_path):
-        return f"> *[selfdoc: JSON file '{file_path}' not found]*"
+        return format_error(f"JSON file '{file_path}' not found")
 
     try:
         with open(full_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as exc:
-        return f"> *[selfdoc: cannot parse '{file_path}': {exc}]*"
+        return format_error(f"cannot parse '{file_path}': {exc}")
 
     if not isinstance(data, dict):
         return f"```json\n{json.dumps(data, indent=2)}\n```"
@@ -626,11 +626,10 @@ def _schema_from_ts(source, type_name, display_path):
 
     if not targets:
         if type_name:
-            return (
-                f"> *[selfdoc: type '{type_name}' not found in "
-                f"'{display_path}']*"
+            return format_error(
+                f"type '{type_name}' not found in '{display_path}'"
             )
-        return f"> *[selfdoc: no interfaces or types found in '{display_path}']*"
+        return format_error(f"no interfaces or types found in '{display_path}'")
 
     # If type_name specified, use the first match; otherwise use first found
     kind, name, match = targets[0]
@@ -639,13 +638,13 @@ def _schema_from_ts(source, type_name, display_path):
     body_start = match.end()  # position right after the opening {
     body_text = _extract_brace_block(source, body_start - 1)
     if body_text is None:
-        return f"> *[selfdoc: could not parse body of '{name}']*"
+        return format_error(f"could not parse body of '{name}'")
 
     # Parse fields from the body
     fields = _parse_interface_fields(body_text)
 
     if not fields:
-        return f"> *[selfdoc: no fields found in '{name}']*"
+        return format_error(f"no fields found in '{name}'")
 
     rows = []
     rows.append("| Field | Type | Description |")
@@ -836,16 +835,15 @@ def _handle_cli(arg, body, source_paths, base_dir):
     - yargs/commander setup patterns
     """
     if not arg:
-        return "> *[selfdoc: :::cli requires a file path argument]*"
+        return format_error(":::cli requires a file path argument")
 
     filepath = _resolve_file_path(arg, source_paths, base_dir)
     if filepath is None:
-        return f"> *[selfdoc: module '{arg}' not found]*"
+        return format_error(f"module '{arg}' not found")
 
-    try:
-        source = _read_file(filepath)
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{arg}': {err}")
 
     parts = []
 
@@ -871,7 +869,7 @@ def _handle_cli(arg, body, source_paths, base_dir):
             parts.append(f"```\n{value.strip()}\n```")
 
     if not parts:
-        return f"> *[selfdoc: no CLI documentation found in '{arg}']*"
+        return format_error(f"no CLI documentation found in '{arg}'")
 
     return "\n\n".join(parts)
 
@@ -887,11 +885,11 @@ def _handle_config(arg, body, source_paths, base_dir):
     Supports JSON, JSONC (strips // and /* */ comments), and TOML.
     """
     if not arg:
-        return "> *[selfdoc: :::config requires a file path argument]*"
+        return format_error(":::config requires a file path argument")
 
     full_path = os.path.join(base_dir, arg)
     if not os.path.isfile(full_path):
-        return f"> *[selfdoc: config file '{arg}' not found]*"
+        return format_error(f"config file '{arg}' not found")
 
     ext = os.path.splitext(arg)[1].lower()
 
@@ -903,46 +901,37 @@ def _handle_config(arg, body, source_paths, base_dir):
         return _config_from_toml(full_path, arg)
     else:
         # Unsupported format -- show as code block
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            return f"```\n{content.rstrip()}\n```"
-        except (OSError, UnicodeDecodeError) as exc:
-            return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
-
-
-def _config_from_json(full_path, display_path):
-    """Parse JSON config and render as a key-value table."""
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError) as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
-
-    if not isinstance(data, dict):
-        return f"```json\n{json.dumps(data, indent=2)}\n```"
-
-    return _render_json_table(data)
+        content, err = read_source(full_path)
+        if err:
+            return format_error(f"cannot read '{arg}': {err}")
+        return f"```\n{content.rstrip()}\n```"
 
 
 def _config_from_jsonc(full_path, display_path):
     """Parse JSONC config (strip comments) and render as a key-value table."""
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            raw = f.read()
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{display_path}': {exc}]*"
+    raw, err = read_source(full_path)
+    if err:
+        return format_error(f"cannot read '{display_path}': {err}")
 
     stripped = _strip_jsonc_comments(raw)
     try:
         data = json.loads(stripped)
     except json.JSONDecodeError as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
+        return format_error(f"cannot parse '{display_path}': {exc}")
 
     if not isinstance(data, dict):
         return f"```json\n{json.dumps(data, indent=2)}\n```"
 
-    return _render_json_table(data)
+    rows = []
+    rows.append("| Key | Type | Value |")
+    rows.append("| --- | --- | --- |")
+
+    for key, value in data.items():
+        type_name = _json_type_name(value)
+        value_repr = _json_value_repr(value)
+        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
+
+    return "\n".join(rows)
 
 
 def _strip_jsonc_comments(text):
@@ -996,98 +985,3 @@ def _strip_jsonc_comments(text):
     return re.sub(r",\s*([}\]])", r"\1", joined)
 
 
-def _config_from_toml(full_path, display_path):
-    """Parse TOML config and render as a key-value table."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ModuleNotFoundError:
-            return (
-                "> *[selfdoc: TOML support requires Python 3.11+ "
-                "or the 'tomli' package]*"
-            )
-
-    try:
-        with open(full_path, "rb") as f:
-            data = tomllib.load(f)
-    except (OSError, Exception) as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
-
-    rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-    _flatten_toml(data, "", rows)
-    return "\n".join(rows)
-
-
-def _flatten_toml(data, prefix, rows):
-    """Recursively flatten TOML data into table rows."""
-    for key, value in data.items():
-        full_key = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
-        if isinstance(value, dict):
-            _flatten_toml(value, full_key, rows)
-        else:
-            type_name = _json_type_name(value)
-            value_repr = _json_value_repr(value)
-            rows.append(f"| `{full_key}` | {type_name} | {value_repr} |")
-
-
-def _render_json_table(data):
-    """Render a JSON dict as a markdown key-value table."""
-    rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
-    for key, value in data.items():
-        type_name = _json_type_name(value)
-        value_repr = _json_value_repr(value)
-        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
-
-    return "\n".join(rows)
-
-
-# Shared JSON helpers (duplicated from python.py to avoid cross-extractor deps)
-
-
-def _json_type_name(value):
-    """Get a human-readable type name for a JSON value."""
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "boolean"
-    if isinstance(value, int):
-        return "integer"
-    if isinstance(value, float):
-        return "number"
-    if isinstance(value, str):
-        return "string"
-    if isinstance(value, list):
-        return "array"
-    if isinstance(value, dict):
-        return "object"
-    return type(value).__name__
-
-
-def _json_value_repr(value):
-    """Get a compact representation of a JSON value for table display."""
-    if value is None:
-        return "`null`"
-    if isinstance(value, bool):
-        return f"`{str(value).lower()}`"
-    if isinstance(value, str):
-        if len(value) > 40:
-            return f'`"{value[:37]}..."`'
-        return f'`"{value}"`'
-    if isinstance(value, (int, float)):
-        return f"`{value}`"
-    if isinstance(value, list):
-        if len(value) == 0:
-            return "`[]`"
-        return f"`[...] ({len(value)} items)`"
-    if isinstance(value, dict):
-        if len(value) == 0:
-            return "`{}`"
-        return f"`{{...}} ({len(value)} keys)`"
-    return f"`{value}`"

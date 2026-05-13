@@ -8,10 +8,15 @@ Uses regex-based parsing (no Go toolchain required). Handles:
 - :::config  -- extract config file contents as tables (JSON/TOML/YAML)
 """
 
-import json
 import os
 import re
 
+from selfdoc.extractors.base import (
+    _config_from_json,
+    _config_from_toml,
+    format_error,
+    read_source,
+)
 from selfdoc.extractors.python import _format_docstring
 
 
@@ -37,7 +42,7 @@ def resolve_go(name, arg, body, source_paths, base_dir):
     }
     handler = handlers.get(name)
     if handler is None:
-        return f"> *[selfdoc: unknown directive '{name}' for Go extractor]*"
+        return format_error(f"unknown directive '{name}' for Go extractor")
     return handler(arg, body, source_paths, base_dir)
 
 
@@ -54,11 +59,11 @@ def _handle_module(arg, body, source_paths, base_dir):
     extracts the package doc comment and all exported declarations.
     """
     if not arg:
-        return "> *[selfdoc: :::module requires a package path argument]*"
+        return format_error(":::module requires a package path argument")
 
     pkg_dir = _resolve_package_dir(arg, source_paths, base_dir)
     if pkg_dir is None:
-        return f"> *[selfdoc: package '{arg}' not found]*"
+        return format_error(f"package '{arg}' not found")
 
     # Collect all non-test .go files
     go_files = sorted(
@@ -68,17 +73,14 @@ def _handle_module(arg, body, source_paths, base_dir):
     )
 
     if not go_files:
-        return f"> *[selfdoc: no .go files in '{arg}']*"
+        return format_error(f"no .go files in '{arg}'")
 
     # Read all files and concatenate for processing
     file_contents = {}
     for gf in go_files:
         path = os.path.join(pkg_dir, gf)
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                file_contents[gf] = fh.read()
-        except (OSError, UnicodeDecodeError) as exc:
-            file_contents[gf] = ""
+        content, _err = read_source(path)
+        file_contents[gf] = content if content is not None else ""
 
     # Extract package doc from the first file that has a package declaration
     package_name, package_doc = _extract_package_doc(file_contents)
@@ -441,7 +443,7 @@ def _handle_test(arg, body, source_paths, base_dir):
     arg format: <file_path> [TestFuncName]
     """
     if not arg:
-        return "> *[selfdoc: :::test requires a file path argument]*"
+        return format_error(":::test requires a file path argument")
 
     parts = arg.split(None, 1)
     file_path = parts[0]
@@ -449,13 +451,11 @@ def _handle_test(arg, body, source_paths, base_dir):
 
     full_path = _resolve_file_path(file_path, source_paths, base_dir)
     if full_path is None:
-        return f"> *[selfdoc: test file '{file_path}' not found]*"
+        return format_error(f"test file '{file_path}' not found")
 
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{file_path}': {exc}]*"
+    source, err = read_source(full_path)
+    if err:
+        return format_error(f"cannot read '{file_path}': {err}")
 
     if target_name is None:
         return f"```go\n{source.rstrip()}\n```"
@@ -463,7 +463,7 @@ def _handle_test(arg, body, source_paths, base_dir):
     # Extract the specific test function
     extracted = _extract_go_function(source, target_name)
     if extracted is None:
-        return f"> *[selfdoc: '{target_name}' not found in '{file_path}']*"
+        return format_error(f"'{target_name}' not found in '{file_path}'")
 
     return f"```go\n{extracted}\n```"
 
@@ -535,7 +535,7 @@ def _handle_schema(arg, body, source_paths, base_dir):
     If TypeName is omitted, extracts the first exported struct found.
     """
     if not arg:
-        return "> *[selfdoc: :::schema requires a file path argument]*"
+        return format_error(":::schema requires a file path argument")
 
     parts = arg.split(None, 1)
     file_path = parts[0]
@@ -546,25 +546,22 @@ def _handle_schema(arg, body, source_paths, base_dir):
         # Also try as JSON/TOML/YAML config
         if file_path.endswith((".json", ".toml", ".yaml", ".yml")):
             return _handle_config(arg, body, source_paths, base_dir)
-        return f"> *[selfdoc: file '{file_path}' not found]*"
+        return format_error(f"file '{file_path}' not found")
 
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{file_path}': {exc}]*"
+    source, err = read_source(full_path)
+    if err:
+        return format_error(f"cannot read '{file_path}': {err}")
 
     structs = _extract_structs(source)
 
     if not structs:
-        return f"> *[selfdoc: no struct types found in '{file_path}']*"
+        return format_error(f"no struct types found in '{file_path}'")
 
     if type_name:
         target = next((s for s in structs if s["name"] == type_name), None)
         if target is None:
-            return (
-                f"> *[selfdoc: struct '{type_name}' not found in "
-                f"'{file_path}']*"
+            return format_error(
+                f"struct '{type_name}' not found in '{file_path}'"
             )
         return _format_struct_table(target)
 
@@ -689,17 +686,15 @@ def _handle_cli(arg, body, source_paths, base_dir):
     - flag.StringVar, flag.BoolVar, etc. calls
     """
     if not arg:
-        return "> *[selfdoc: :::cli requires a file path argument]*"
+        return format_error(":::cli requires a file path argument")
 
     full_path = _resolve_file_path(arg, source_paths, base_dir)
     if full_path is None:
-        return f"> *[selfdoc: file '{arg}' not found]*"
+        return format_error(f"file '{arg}' not found")
 
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError) as exc:
-        return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+    source, err = read_source(full_path)
+    if err:
+        return format_error(f"cannot read '{arg}': {err}")
 
     parts = []
 
@@ -726,7 +721,7 @@ def _handle_cli(arg, body, source_paths, base_dir):
             )
 
     if not parts:
-        return f"> *[selfdoc: no CLI documentation found in '{arg}']*"
+        return format_error(f"no CLI documentation found in '{arg}'")
 
     return "\n".join(parts)
 
@@ -845,11 +840,11 @@ def _handle_config(arg, body, source_paths, base_dir):
     Delegates to the same logic as the Python extractor.
     """
     if not arg:
-        return "> *[selfdoc: :::config requires a file path argument]*"
+        return format_error(":::config requires a file path argument")
 
     full_path = os.path.join(base_dir, arg)
     if not os.path.isfile(full_path):
-        return f"> *[selfdoc: config file '{arg}' not found]*"
+        return format_error(f"config file '{arg}' not found")
 
     ext = os.path.splitext(arg)[1].lower()
 
@@ -859,114 +854,9 @@ def _handle_config(arg, body, source_paths, base_dir):
         return _config_from_toml(full_path, arg)
     else:
         # Unsupported format -- show as code block
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            return f"```\n{content.rstrip()}\n```"
-        except (OSError, UnicodeDecodeError) as exc:
-            return f"> *[selfdoc: cannot read '{arg}': {exc}]*"
+        content, err = read_source(full_path)
+        if err:
+            return format_error(f"cannot read '{arg}': {err}")
+        return f"```\n{content.rstrip()}\n```"
 
 
-def _config_from_json(full_path, display_path):
-    """Parse JSON config and render as a key-value table."""
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError) as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
-
-    if not isinstance(data, dict):
-        return f"```json\n{json.dumps(data, indent=2)}\n```"
-
-    rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
-    for key, value in data.items():
-        type_name = _json_type_name(value)
-        value_repr = _json_value_repr(value)
-        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
-
-    return "\n".join(rows)
-
-
-def _config_from_toml(full_path, display_path):
-    """Parse TOML config and render as a key-value table."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ModuleNotFoundError:
-            return (
-                "> *[selfdoc: TOML support requires Python 3.11+ "
-                "or the 'tomli' package]*"
-            )
-
-    try:
-        with open(full_path, "rb") as f:
-            data = tomllib.load(f)
-    except (OSError, Exception) as exc:
-        return f"> *[selfdoc: cannot parse '{display_path}': {exc}]*"
-
-    rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
-    _flatten_toml(data, "", rows)
-
-    return "\n".join(rows)
-
-
-def _flatten_toml(data, prefix, rows):
-    """Recursively flatten TOML data into table rows."""
-    for key, value in data.items():
-        full_key = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
-        if isinstance(value, dict):
-            _flatten_toml(value, full_key, rows)
-        else:
-            type_name = _json_type_name(value)
-            value_repr = _json_value_repr(value)
-            rows.append(f"| `{full_key}` | {type_name} | {value_repr} |")
-
-
-def _json_type_name(value):
-    """Get a human-readable type name for a JSON value."""
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "boolean"
-    if isinstance(value, int):
-        return "integer"
-    if isinstance(value, float):
-        return "number"
-    if isinstance(value, str):
-        return "string"
-    if isinstance(value, list):
-        return "array"
-    if isinstance(value, dict):
-        return "object"
-    return type(value).__name__
-
-
-def _json_value_repr(value):
-    """Get a compact representation of a JSON value for table display."""
-    if value is None:
-        return "`null`"
-    if isinstance(value, bool):
-        return f"`{str(value).lower()}`"
-    if isinstance(value, str):
-        if len(value) > 40:
-            return f'`"{value[:37]}..."`'
-        return f'`"{value}"`'
-    if isinstance(value, (int, float)):
-        return f"`{value}`"
-    if isinstance(value, list):
-        if len(value) == 0:
-            return "`[]`"
-        return f"`[...] ({len(value)} items)`"
-    if isinstance(value, dict):
-        if len(value) == 0:
-            return "`{}`"
-        return f"`{{...}} ({len(value)} keys)`"
-    return f"`{value}`"
