@@ -18,6 +18,7 @@ COMMANDS = {
     "serve": "Serve the documentation site locally",
     "deploy": "Deploy the documentation site",
     "check": "Check documentation coverage and consistency",
+    "gen": "Auto-generate documentation pages from project structure",
 }
 
 
@@ -496,6 +497,30 @@ def _cmd_check(args):
         sys.exit(1)
 
 
+def _cmd_gen(args):
+    """Auto-generate documentation pages from project structure."""
+    from selfdoc.config import load_config
+    from selfdoc.gen import generate_docs
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        generated = generate_docs(config, base_dir=".")
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if generated:
+        print(f"Generated {len(generated)} file(s):")
+        for path in generated:
+            print(f"  {path}")
+    else:
+        print("No files generated.")
+
+
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
     parser = argparse.ArgumentParser(
@@ -528,6 +553,10 @@ def run():
     # deploy
     sub_deploy = subparsers.add_parser("deploy", help=COMMANDS["deploy"])
     sub_deploy.set_defaults(func=_cmd_deploy)
+
+    # gen
+    sub_gen = subparsers.add_parser("gen", help=COMMANDS["gen"])
+    sub_gen.set_defaults(func=_cmd_gen)
 
     # check
     sub_check = subparsers.add_parser("check", help=COMMANDS["check"])

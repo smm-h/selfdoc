@@ -268,4 +268,5 @@ def load_config(dir_path="."):
         "min_coverage": min_coverage,
         "branding": branding,
         "auto_detect": auto_detect,
+        "gen": raw.get("gen"),
     }
