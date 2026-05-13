@@ -20,7 +20,7 @@ class LanguageExtractor(Protocol):
     def extract(
         self,
         directive_name: str,
-        arg: str,
+        attrs: dict[str, str],
         body: list[str],
         source_paths: list[str],
         base_dir: str,

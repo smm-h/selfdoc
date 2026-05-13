@@ -44,11 +44,15 @@ class PythonExtractor(BaseExtractor):
     def extract(
         self,
         directive_name: str,
-        arg: str,
+        attrs: dict[str, str],
         body: list[str],
         source_paths: list[str],
         base_dir: str,
     ) -> str:
+        # Reconstruct the old positional arg from attrs for backward compat
+        path = attrs.get("path", "")
+        target = attrs.get("target", "")
+        arg = f"{path} {target}".strip() if target else path
         return resolve_python(directive_name, arg, body, source_paths, base_dir)
 
     def file_extensions(self) -> list[str]:
@@ -85,8 +89,12 @@ class PythonExtractor(BaseExtractor):
 def resolve_python(name, arg, body, source_paths, base_dir):
     """Dispatch a directive to the appropriate Python extraction handler.
 
+    Backward-compat wrapper: accepts old directive names (module, test,
+    schema, cli, config) and old positional arg string. New code should
+    use PythonExtractor.extract() with attrs dict instead.
+
     Args:
-        name: Directive name (module, test, schema, cli, config).
+        name: Directive name (old or new).
         arg: Directive argument (path, module name, etc.).
         body: Body lines of the directive block.
         source_paths: List of source directories from selfdoc.json.
@@ -95,12 +103,17 @@ def resolve_python(name, arg, body, source_paths, base_dir):
     Returns:
         Markdown string with the extracted content.
     """
+    from selfdoc.catalog import DIRECTIVE_NAME_MAPPING
+
+    # Remap old directive names to new canonical names
+    name = DIRECTIVE_NAME_MAPPING.get(name, name)
+
     handlers = {
-        "module": _handle_module,
-        "test": _handle_test,
-        "schema": _handle_schema,
-        "cli": _handle_cli,
-        "config": _handle_config,
+        "ref": _handle_module,
+        "code-test": _handle_test,
+        "table-schema": _handle_schema,
+        "code-help": _handle_cli,
+        "table-config": _handle_config,
     }
     handler = handlers.get(name)
     if handler is None:

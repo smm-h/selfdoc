@@ -4,6 +4,8 @@ import importlib.util
 import os
 import re
 
+from selfdoc.extractors import EXTRACTORS
+
 
 def _resolve_glossary(body):
     """Parse glossary body lines and return HTML with <dl>/<dt>/<dd> elements.
@@ -83,14 +85,14 @@ def make_resolver(config, base_dir="."):
 
     Custom directives from config["directives"] take priority over built-in
     language extractors. Each entry maps a directive name to a relative path
-    (from project root) of a Python script that exports resolve(arg, config).
+    (from project root) of a Python script that exports resolve(attrs, config, body).
 
     Args:
         config: Validated config dict from selfdoc.json.
         base_dir: Project root directory (for resolving relative paths).
 
     Returns:
-        A callable(name, arg, body) -> str that resolves directives to markdown.
+        A callable(name, attrs, body) -> str that resolves directives to markdown.
     """
     language = config["language"]
     source_paths = config["source"]
@@ -98,38 +100,33 @@ def make_resolver(config, base_dir="."):
     # Normalize base_dir to absolute for consistent path resolution
     base_dir = os.path.abspath(base_dir)
 
-    def resolve(name, arg, body):
-        # Built-in content-formatting directives (not language-specific)
-        if name == "glossary":
-            return _resolve_glossary(body)
+    # Look up the language extractor from the registry
+    extractor = EXTRACTORS.get(language)
 
+    def resolve(name, attrs, body):
         # Custom directives take priority over built-in names
         if name in custom_directives:
             script_rel = custom_directives[name]
             script_path = os.path.join(base_dir, script_rel)
             try:
                 module = _load_custom_directive(script_path, name)
-                return module.resolve(arg, config)
+                return module.resolve(attrs, config, body)
             except Exception as exc:
                 return (
                     f"> *[selfdoc: custom directive '{name}' failed: {exc}]*"
                 )
 
-        if language == "python":
-            from .extractors.python import resolve_python
+        # Built-in content-formatting directives (not language-specific)
+        if name == "list-glossary":
+            return _resolve_glossary(body)
 
-            return resolve_python(name, arg, body, source_paths, base_dir)
-        if language == "go":
-            from .extractors.go import resolve_go
+        # Dispatch to the language extractor
+        if extractor is None:
+            return (
+                f"> *[selfdoc: unsupported language '{language}' "
+                f"for :::{name}]*"
+            )
 
-            return resolve_go(name, arg, body, source_paths, base_dir)
-        if language in ("typescript", "javascript"):
-            from .extractors.typescript import resolve_typescript
-
-            return resolve_typescript(name, arg, body, source_paths, base_dir)
-        return (
-            f"> *[selfdoc: unsupported language '{language}' "
-            f"for :::{name} {arg}]*"
-        )
+        return extractor.extract(name, attrs, body, source_paths, base_dir)
 
     return resolve
