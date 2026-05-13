@@ -1,80 +1,170 @@
-"""Tests for selfdoc.directives."""
+"""Tests for selfdoc.directives — new marker syntax."""
 
 import pytest
 
 from selfdoc.directives import Directive, DirectiveError, parse_directives, resolve_directives
 
 
-# -- parse: single directive --
+# -- One-liner (:-:) ---------------------------------------------------------
 
 
-def test_parse_single_directive():
-    content = ":::module selfdoc.config\n:::"
+def test_oneliner_no_attrs():
+    content = ':-: ref'
     result = parse_directives(content)
     assert len(result) == 1
-    assert result[0].name == "module"
-    assert result[0].arg == "selfdoc.config"
+    assert result[0].name == "ref"
+    assert result[0].attrs == {}
+    assert result[0].body == []
     assert result[0].line_number == 1
 
 
-def test_parse_directive_no_arg():
-    """Directive with no arg should have arg as empty string."""
-    content = ":::module\n:::"
+def test_oneliner_with_attrs():
+    content = ':-: ref src="selfdoc.config" lang="python"'
     result = parse_directives(content)
     assert len(result) == 1
-    assert result[0].name == "module"
-    assert result[0].arg == ""
+    assert result[0].name == "ref"
+    assert result[0].attrs == {"src": "selfdoc.config", "lang": "python"}
+    assert result[0].body == []
 
 
-# -- parse: multiple directives --
+def test_oneliner_single_attr():
+    content = ':-: code-help cmd="selfdoc --help"'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].attrs == {"cmd": "selfdoc --help"}
 
 
-def test_parse_multiple_directives():
+# -- Block (:<: ... :>:) — attrs only ----------------------------------------
+
+
+def test_block_attrs_only():
+    content = (
+        ":<: ref\n"
+        ':@: src="selfdoc.config"\n'
+        ':@: lang="python"\n'
+        ":>:"
+    )
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].name == "ref"
+    assert result[0].attrs == {"src": "selfdoc.config", "lang": "python"}
+    assert result[0].body == []
+
+
+def test_block_inline_attrs():
+    content = (
+        ':<: ref src="selfdoc.config"\n'
+        ":>:"
+    )
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].attrs == {"src": "selfdoc.config"}
+    assert result[0].body == []
+
+
+def test_block_inline_and_line_attrs_merged():
+    content = (
+        ':<: ref src="selfdoc.config"\n'
+        ':@: lang="python"\n'
+        ":>:"
+    )
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].attrs == {"src": "selfdoc.config", "lang": "python"}
+
+
+# -- Block — body only -------------------------------------------------------
+
+
+def test_block_body_only():
+    content = (
+        ":<: callout-note\n"
+        ":=:\n"
+        "::: This is a note.\n"
+        "::: Second line.\n"
+        ":>:"
+    )
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].attrs == {}
+    assert result[0].body == ["This is a note.", "Second line."]
+
+
+def test_body_line_prefix_stripped():
+    """Body lines have exactly '::: ' (4 chars) stripped."""
+    content = (
+        ":<: callout-note\n"
+        ":=:\n"
+        "::: Hello world\n"
+        ":>:"
+    )
+    result = parse_directives(content)
+    assert result[0].body == ["Hello world"]
+
+
+# -- Block — attrs and body --------------------------------------------------
+
+
+def test_block_attrs_and_body():
+    content = (
+        ':<: code-test\n'
+        ':@: file="tests/test_config.py"\n'
+        ':@: class="TestValidConfig"\n'
+        ':=:\n'
+        '::: Extra context here.\n'
+        ':>:'
+    )
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].name == "code-test"
+    assert result[0].attrs == {"file": "tests/test_config.py", "class": "TestValidConfig"}
+    assert result[0].body == ["Extra context here."]
+
+
+# -- Block — empty (no attrs, no body) ---------------------------------------
+
+
+def test_empty_block():
+    content = ":<: ref\n:>:"
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].name == "ref"
+    assert result[0].attrs == {}
+    assert result[0].body == []
+
+
+# -- Multiple directives -----------------------------------------------------
+
+
+def test_multiple_directives():
     content = (
         "# Heading\n"
         "\n"
-        ":::module selfdoc.config\n"
-        ":::\n"
+        ':-: ref src="selfdoc.config"\n'
         "\n"
         "Some text.\n"
         "\n"
-        ":::test tests/test_config.py TestValidConfig\n"
-        ":::\n"
+        ":<: code-test\n"
+        ':@: file="tests/test_config.py"\n'
+        ":>:\n"
     )
     result = parse_directives(content)
     assert len(result) == 2
-    assert result[0].name == "module"
-    assert result[0].arg == "selfdoc.config"
+    assert result[0].name == "ref"
+    assert result[0].attrs == {"src": "selfdoc.config"}
     assert result[0].line_number == 3
-    assert result[1].name == "test"
-    assert result[1].arg == "tests/test_config.py TestValidConfig"
-    assert result[1].line_number == 8
+    assert result[1].name == "code-test"
+    assert result[1].attrs == {"file": "tests/test_config.py"}
+    assert result[1].line_number == 7
 
 
-# -- parse: body --
+# -- Fence tracking -----------------------------------------------------------
 
 
-def test_parse_directive_body():
-    content = (
-        ":::schema selfdoc.json\n"
-        "line one\n"
-        "line two\n"
-        ":::\n"
-    )
-    result = parse_directives(content)
-    assert len(result) == 1
-    assert result[0].body == ["line one", "line two"]
-
-
-# -- parse: code fence --
-
-
-def test_directive_inside_code_fence_ignored():
-    """:::name inside a fenced code block is NOT a directive."""
+def test_directive_inside_backtick_fence_ignored():
     content = (
         "```\n"
-        ":::module selfdoc.config\n"
-        ":::\n"
+        ':-: ref src="selfdoc.config"\n'
         "```\n"
     )
     result = parse_directives(content)
@@ -82,51 +172,110 @@ def test_directive_inside_code_fence_ignored():
 
 
 def test_directive_inside_tilde_fence_ignored():
-    """:::name inside a ~~~ fenced code block is NOT a directive."""
     content = (
         "~~~\n"
-        ":::module selfdoc.config\n"
-        ":::\n"
+        ":<: ref\n"
+        ":>:\n"
         "~~~\n"
     )
     result = parse_directives(content)
     assert result == []
 
 
-def test_real_directive_after_code_fence():
-    """A directive after a closed code fence should be parsed normally."""
+def test_block_markers_inside_fence_ignored():
     content = (
         "```\n"
-        ":::fake inside.fence\n"
-        ":::\n"
+        ":<: ref\n"
+        ':@: src="foo"\n'
+        ":=:\n"
+        "::: body\n"
+        ":>:\n"
+        "```\n"
+    )
+    result = parse_directives(content)
+    assert result == []
+
+
+def test_directive_after_closed_fence():
+    content = (
+        "```\n"
+        ':-: ref src="inside"\n'
         "```\n"
         "\n"
-        ":::real outside.fence\n"
-        ":::\n"
+        ':-: ref src="outside"\n'
     )
     result = parse_directives(content)
     assert len(result) == 1
-    assert result[0].name == "real"
-    assert result[0].arg == "outside.fence"
+    assert result[0].attrs == {"src": "outside"}
 
 
-# -- parse: unclosed directive --
+def test_longer_fence_required_to_close():
+    """A fence opened with ```` requires at least 4 backticks to close."""
+    content = (
+        "````\n"
+        ':-: ref src="inside"\n'
+        "```\n"  # not enough to close
+        ':-: ref src="still_inside"\n'
+        "````\n"
+    )
+    result = parse_directives(content)
+    assert result == []
 
 
-def test_unclosed_directive_raises():
-    content = ":::module selfdoc.config\nsome body\n"
+# -- Unclosed block -----------------------------------------------------------
+
+
+def test_unclosed_block_raises():
+    content = ":<: ref\n:@: src=\"foo\""
     with pytest.raises(DirectiveError, match="line 1"):
         parse_directives(content)
 
 
-# -- parse: empty file --
+def test_unclosed_block_in_body_raises():
+    content = ":<: ref\n:=:\n::: body line"
+    with pytest.raises(DirectiveError, match="line 1"):
+        parse_directives(content)
 
 
-def test_empty_file_no_directives():
+# -- Name validation ----------------------------------------------------------
+
+
+def test_valid_names_accepts_known():
+    valid = {"ref", "code-test"}
+    content = ':-: ref src="foo"'
+    result = parse_directives(content, valid_names=valid)
+    assert len(result) == 1
+
+
+def test_valid_names_rejects_unknown():
+    valid = {"ref", "code-test"}
+    content = ':-: unknown-thing src="foo"'
+    with pytest.raises(DirectiveError, match="Unknown directive 'unknown-thing'"):
+        parse_directives(content, valid_names=valid)
+
+
+def test_valid_names_rejects_unknown_block():
+    valid = {"ref"}
+    content = ":<: bad-name\n:>:"
+    with pytest.raises(DirectiveError, match="Unknown directive 'bad-name'"):
+        parse_directives(content, valid_names=valid)
+
+
+def test_valid_names_none_accepts_anything():
+    content = ':-: totally-made-up-name src="whatever"'
+    result = parse_directives(content, valid_names=None)
+    assert len(result) == 1
+    assert result[0].name == "totally-made-up-name"
+
+
+# -- Empty file ---------------------------------------------------------------
+
+
+def test_empty_file():
     assert parse_directives("") == []
 
 
-# -- parse: non-directive content --
+# -- Non-directive content ----------------------------------------------------
 
 
 def test_non_directive_content():
@@ -134,68 +283,179 @@ def test_non_directive_content():
     assert parse_directives(content) == []
 
 
-# -- resolve_directives --
+# -- resolve_directives -------------------------------------------------------
 
 
-def test_resolve_replaces_directives():
+def test_resolve_replaces_oneliner():
     content = (
         "# Title\n"
         "\n"
-        ":::module selfdoc.config\n"
-        ":::\n"
+        ':-: ref src="selfdoc.config"\n'
         "\n"
         "Footer.\n"
     )
 
-    def resolver(name, arg, body):
-        return f"[RESOLVED {name}: {arg}]"
+    def resolver(name, attrs, body):
+        return f"[RESOLVED {name}: {attrs.get('src', '')}]"
 
     result = resolve_directives(content, resolver)
-    assert "[RESOLVED module: selfdoc.config]" in result
-    assert ":::module" not in result
+    assert "[RESOLVED ref: selfdoc.config]" in result
+    assert ":-:" not in result
     assert "# Title" in result
     assert "Footer." in result
 
 
-def test_resolve_passes_body_to_resolver():
+def test_resolve_replaces_block():
     content = (
-        ":::schema selfdoc.json\n"
-        "option_a\n"
-        "option_b\n"
-        ":::\n"
+        ":<: code-test\n"
+        ':@: file="tests/test_foo.py"\n'
+        ":>:\n"
+    )
+
+    def resolver(name, attrs, body):
+        return f"[{name} file={attrs.get('file', '')}]"
+
+    result = resolve_directives(content, resolver)
+    assert "[code-test file=tests/test_foo.py]" in result
+    assert ":<:" not in result
+
+
+def test_resolve_passes_attrs_and_body():
+    content = (
+        ":<: callout-note\n"
+        ':@: style="info"\n'
+        ":=:\n"
+        "::: Important note here.\n"
+        ":>:\n"
     )
     captured = {}
 
-    def resolver(name, arg, body):
+    def resolver(name, attrs, body):
+        captured["name"] = name
+        captured["attrs"] = attrs
         captured["body"] = body
         return "replaced"
 
     resolve_directives(content, resolver)
-    assert captured["body"] == ["option_a", "option_b"]
+    assert captured["name"] == "callout-note"
+    assert captured["attrs"] == {"style": "info"}
+    assert captured["body"] == ["Important note here."]
 
 
 def test_resolve_non_directive_passthrough():
     content = "# Just markdown\n\nNo directives here.\n"
 
-    def resolver(name, arg, body):
+    def resolver(name, attrs, body):
         raise AssertionError("Should not be called")
 
     result = resolve_directives(content, resolver)
-    # split/join round-trip preserves trailing newlines, so output == input
     assert result == content
 
 
-def test_resolve_code_fence_passthrough():
-    """Directives inside code fences pass through without resolving."""
+def test_resolve_fence_passthrough():
     content = (
         "```\n"
-        ":::module selfdoc.config\n"
-        ":::\n"
+        ':-: ref src="inside"\n'
         "```\n"
     )
 
-    def resolver(name, arg, body):
+    def resolver(name, attrs, body):
         raise AssertionError("Should not be called for fenced content")
 
     result = resolve_directives(content, resolver)
-    assert ":::module selfdoc.config" in result
+    assert ':-: ref src="inside"' in result
+
+
+def test_resolve_with_valid_names():
+    content = ':-: ref src="foo"'
+
+    def resolver(name, attrs, body):
+        return "ok"
+
+    result = resolve_directives(content, resolver, valid_names={"ref"})
+    assert result == "ok"
+
+
+def test_resolve_unclosed_raises():
+    content = ":<: ref"
+    with pytest.raises(DirectiveError, match="Unclosed"):
+        resolve_directives(content, lambda n, a, b: "")
+
+
+# -- Error cases: unexpected lines in block -----------------------------------
+
+
+def test_attr_after_body_sep_raises():
+    """:@: after :=: is an error."""
+    content = (
+        ":<: ref\n"
+        ":=:\n"
+        ':@: src="foo"\n'
+        ":>:"
+    )
+    with pytest.raises(DirectiveError, match="Unexpected line"):
+        parse_directives(content)
+
+
+def test_body_line_before_sep_raises():
+    """::: before :=: is an error (in attrs state)."""
+    content = (
+        ":<: ref\n"
+        "::: body without separator\n"
+        ":>:"
+    )
+    with pytest.raises(DirectiveError, match="Unexpected line"):
+        parse_directives(content)
+
+
+def test_plain_text_in_block_attrs_raises():
+    content = (
+        ":<: ref\n"
+        "just some random text\n"
+        ":>:"
+    )
+    with pytest.raises(DirectiveError, match="Unexpected line"):
+        parse_directives(content)
+
+
+def test_plain_text_in_block_body_raises():
+    content = (
+        ":<: ref\n"
+        ":=:\n"
+        "text without ::: prefix\n"
+        ":>:"
+    )
+    with pytest.raises(DirectiveError, match="Unexpected line"):
+        parse_directives(content)
+
+
+# -- Multiple attributes parsed correctly ------------------------------------
+
+
+def test_multiple_attrs_on_one_line():
+    content = ':-: ref src="a.py" lang="python" version="3"'
+    result = parse_directives(content)
+    assert result[0].attrs == {"src": "a.py", "lang": "python", "version": "3"}
+
+
+# -- Directive dataclass has no 'arg' field -----------------------------------
+
+
+def test_directive_has_no_arg_field():
+    d = Directive(name="ref")
+    assert not hasattr(d, "arg")
+    assert hasattr(d, "attrs")
+
+
+# -- Body line with empty content after prefix --------------------------------
+
+
+def test_body_line_empty_after_prefix():
+    content = (
+        ":<: callout-note\n"
+        ":=:\n"
+        "::: \n"
+        ":>:"
+    )
+    result = parse_directives(content)
+    assert result[0].body == [""]
