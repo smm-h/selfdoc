@@ -12,12 +12,111 @@ import os
 import re
 
 from selfdoc.extractors.base import (
+    BaseExtractor,
     _config_from_json,
     _config_from_toml,
     format_error,
     read_source,
 )
 from selfdoc.extractors.python import _format_docstring
+
+# Patterns for exported Go symbols (used by GoExtractor.public_symbols)
+_GO_FUNC_RE = re.compile(r"^func\s+([A-Z]\w*)\s*\(")
+_GO_METHOD_RE = re.compile(r"^func\s+\([^)]+\)\s+([A-Z]\w*)\s*\(")
+_GO_TYPE_RE = re.compile(r"^type\s+([A-Z]\w*)\s+")
+_GO_VAR_RE = re.compile(r"^var\s+([A-Z]\w*)")
+_GO_CONST_RE = re.compile(r"^const\s+([A-Z]\w*)")
+
+
+class GoExtractor(BaseExtractor):
+    """Go language extractor implementing LanguageExtractor protocol."""
+
+    @property
+    def name(self) -> str:
+        return "go"
+
+    def detect(self, dir_path: str) -> bool:
+        return os.path.isfile(os.path.join(dir_path, "go.mod"))
+
+    def resolve_path(
+        self, path_arg: str, source_paths: list[str], base_dir: str
+    ) -> str | None:
+        return _resolve_package_dir(path_arg, source_paths, base_dir)
+
+    def extract(
+        self,
+        directive_name: str,
+        arg: str,
+        body: list[str],
+        source_paths: list[str],
+        base_dir: str,
+    ) -> str:
+        return resolve_go(directive_name, arg, body, source_paths, base_dir)
+
+    def file_extensions(self) -> list[str]:
+        return [".go"]
+
+    def public_symbols(self, file_path: str) -> list[str]:
+        """Extract exported (capitalized) symbols from a Go source file.
+
+        Skips lines inside // and /* */ comments.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return []
+
+        lines = source.split("\n")
+        symbols = []
+        in_block_comment = False
+
+        for line in lines:
+            stripped = line.strip()
+
+            if in_block_comment:
+                if "*/" in stripped:
+                    in_block_comment = False
+                    idx = stripped.index("*/")
+                    stripped = stripped[idx + 2:].strip()
+                    if not stripped:
+                        continue
+                else:
+                    continue
+
+            if "/*" in stripped:
+                if "*/" in stripped[stripped.index("/*") + 2:]:
+                    stripped = re.sub(r"/\*.*?\*/", "", stripped).strip()
+                    if not stripped:
+                        continue
+                else:
+                    in_block_comment = True
+                    stripped = stripped[:stripped.index("/*")].strip()
+                    if not stripped:
+                        continue
+
+            if stripped.startswith("//"):
+                continue
+
+            comment_idx = stripped.find("//")
+            if comment_idx >= 0:
+                stripped = stripped[:comment_idx].strip()
+
+            for pattern in (
+                _GO_METHOD_RE,
+                _GO_FUNC_RE,
+                _GO_TYPE_RE,
+                _GO_VAR_RE,
+                _GO_CONST_RE,
+            ):
+                m = pattern.match(stripped)
+                if m:
+                    sym_name = m.group(1)
+                    if sym_name not in symbols:
+                        symbols.append(sym_name)
+                    break
+
+        return symbols
 
 
 def resolve_go(name, arg, body, source_paths, base_dir):

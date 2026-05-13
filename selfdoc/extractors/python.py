@@ -14,6 +14,7 @@ import os
 import textwrap
 
 from selfdoc.extractors.base import (
+    BaseExtractor,
     _config_from_json,
     _config_from_toml,
     _json_type_name,
@@ -21,6 +22,64 @@ from selfdoc.extractors.base import (
     format_error,
     read_source,
 )
+
+
+class PythonExtractor(BaseExtractor):
+    """Python language extractor implementing LanguageExtractor protocol."""
+
+    @property
+    def name(self) -> str:
+        return "python"
+
+    def detect(self, dir_path: str) -> bool:
+        return os.path.isfile(os.path.join(dir_path, "pyproject.toml")) or os.path.isfile(
+            os.path.join(dir_path, "setup.py")
+        )
+
+    def resolve_path(
+        self, path_arg: str, source_paths: list[str], base_dir: str
+    ) -> str | None:
+        return _resolve_module_path(path_arg, source_paths, base_dir)
+
+    def extract(
+        self,
+        directive_name: str,
+        arg: str,
+        body: list[str],
+        source_paths: list[str],
+        base_dir: str,
+    ) -> str:
+        return resolve_python(directive_name, arg, body, source_paths, base_dir)
+
+    def file_extensions(self) -> list[str]:
+        return [".py"]
+
+    def public_symbols(self, file_path: str) -> list[str]:
+        """Extract public top-level functions and classes from a Python file.
+
+        A public symbol is a top-level function or class whose name does
+        not start with underscore.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return []
+
+        try:
+            tree = ast.parse(source, filename=file_path)
+        except SyntaxError:
+            return []
+
+        symbols = []
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not node.name.startswith("_"):
+                    symbols.append(node.name)
+            elif isinstance(node, ast.ClassDef):
+                if not node.name.startswith("_"):
+                    symbols.append(node.name)
+        return symbols
 
 
 def resolve_python(name, arg, body, source_paths, base_dir):

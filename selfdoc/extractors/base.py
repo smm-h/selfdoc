@@ -3,6 +3,9 @@
 Contains functions that were duplicated across python.py, go.py, and
 typescript.py: JSON value helpers, TOML flattening, config file readers,
 source file reading, and error formatting.
+
+Also provides BaseExtractor with default implementations of optional
+LanguageExtractor methods.
 """
 
 import json
@@ -101,6 +104,25 @@ def _config_from_json(full_path, display_path):
         rows.append(f"| `{key}` | {type_name} | {value_repr} |")
 
     return "\n".join(rows)
+
+
+class BaseExtractor:
+    """Base class for language extractors.
+
+    Provides default implementations for optional LanguageExtractor
+    methods. Subclasses must implement name, detect, and extract.
+    """
+
+    def file_extensions(self) -> list[str]:
+        return []
+
+    def public_symbols(self, file_path: str) -> list[str]:
+        return []
+
+    def resolve_path(
+        self, path_arg: str, source_paths: list[str], base_dir: str
+    ) -> str | None:
+        return None
 
 
 def _config_from_toml(full_path, display_path):

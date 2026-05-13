@@ -13,6 +13,7 @@ import os
 import re
 
 from selfdoc.extractors.base import (
+    BaseExtractor,
     _config_from_json,
     _config_from_toml,
     _json_type_name,
@@ -20,6 +21,128 @@ from selfdoc.extractors.base import (
     format_error,
     read_source,
 )
+
+# Patterns for exported TS/JS symbols (used by TypeScriptExtractor.public_symbols)
+_TS_NAMED_FUNC_RE = re.compile(
+    r"^export\s+(?:async\s+)?function\s+(\w+)"
+)
+_TS_CLASS_RE = re.compile(r"^export\s+class\s+(\w+)")
+_TS_VAR_RE = re.compile(r"^export\s+(?:const|let|var)\s+(\w+)")
+_TS_TYPE_RE = re.compile(r"^export\s+(?:interface|type|enum)\s+(\w+)")
+_TS_DEFAULT_RE = re.compile(
+    r"^export\s+default\s+(?:function|class)\s+(\w+)"
+)
+_TS_REEXPORT_RE = re.compile(r"^export\s*\{([^}]+)\}")
+
+
+class TypeScriptExtractor(BaseExtractor):
+    """TypeScript/JavaScript language extractor implementing LanguageExtractor protocol."""
+
+    @property
+    def name(self) -> str:
+        return "typescript"
+
+    def detect(self, dir_path: str) -> bool:
+        return os.path.isfile(os.path.join(dir_path, "tsconfig.json"))
+
+    def resolve_path(
+        self, path_arg: str, source_paths: list[str], base_dir: str
+    ) -> str | None:
+        return _resolve_file_path(path_arg, source_paths, base_dir)
+
+    def extract(
+        self,
+        directive_name: str,
+        arg: str,
+        body: list[str],
+        source_paths: list[str],
+        base_dir: str,
+    ) -> str:
+        return resolve_typescript(directive_name, arg, body, source_paths, base_dir)
+
+    def file_extensions(self) -> list[str]:
+        return [".ts", ".tsx", ".js", ".jsx"]
+
+    def public_symbols(self, file_path: str) -> list[str]:
+        """Extract exported symbols from a TypeScript/JavaScript file.
+
+        Skips lines inside // and /* */ comments.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return []
+
+        lines = source.split("\n")
+        symbols = []
+        in_block_comment = False
+
+        for line in lines:
+            stripped = line.strip()
+
+            if in_block_comment:
+                if "*/" in stripped:
+                    in_block_comment = False
+                    idx = stripped.index("*/")
+                    stripped = stripped[idx + 2:].strip()
+                    if not stripped:
+                        continue
+                else:
+                    continue
+
+            if "/*" in stripped:
+                if "*/" in stripped[stripped.index("/*") + 2:]:
+                    stripped = re.sub(r"/\*.*?\*/", "", stripped).strip()
+                    if not stripped:
+                        continue
+                else:
+                    in_block_comment = True
+                    stripped = stripped[:stripped.index("/*")].strip()
+                    if not stripped:
+                        continue
+
+            if stripped.startswith("//"):
+                continue
+
+            comment_idx = stripped.find("//")
+            if comment_idx >= 0:
+                stripped = stripped[:comment_idx].strip()
+
+            # Check re-export pattern first: export { A, B, C }
+            m = _TS_REEXPORT_RE.match(stripped)
+            if m:
+                names_str = m.group(1)
+                for name_part in names_str.split(","):
+                    name_part = name_part.strip()
+                    if " as " in name_part:
+                        name_part = name_part.split(" as ")[-1].strip()
+                    if name_part and name_part not in symbols:
+                        symbols.append(name_part)
+                continue
+
+            # Check default export before other patterns
+            m = _TS_DEFAULT_RE.match(stripped)
+            if m:
+                sym_name = m.group(1)
+                if sym_name not in symbols:
+                    symbols.append(sym_name)
+                continue
+
+            for pattern in (
+                _TS_NAMED_FUNC_RE,
+                _TS_CLASS_RE,
+                _TS_VAR_RE,
+                _TS_TYPE_RE,
+            ):
+                m = pattern.match(stripped)
+                if m:
+                    sym_name = m.group(1)
+                    if sym_name not in symbols:
+                        symbols.append(sym_name)
+                    break
+
+        return symbols
 
 
 def resolve_typescript(name, arg, body, source_paths, base_dir):
