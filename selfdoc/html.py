@@ -51,37 +51,221 @@ def _minify_js(js_text):
     return js_text
 
 
-def _generate_search_js():
+def _generate_search_js(engine="builtin"):
     """Return the search JS as a standalone IIFE string.
 
-    Reads the path prefix from ``data-search-prefix`` on the search dialog
-    element so the script is page-independent.  The search index is fetched
-    lazily on first dialog open (not on page load).
+    Composes the search engine implementation (builtin, fuse, or minisearch)
+    with the shared dialog UI code. The engine must implement two functions:
+    ``initSearchEngine(entries)`` and ``searchEntries(query)`` returning
+    ``[{title, path, snippet, score, highlights}]``.
+
+    Args:
+        engine: One of "builtin", "fuse", or "minisearch".
     """
-    return (
-        "// Cmd+K search (Feature 19)\n"
+    # --- Engine implementations ---
+    _ENGINE_BUILTIN = (
+        "// Built-in search engine\n"
+        "var _searchEntries = null;\n"
+        "function initSearchEngine(entries) {\n"
+        "  _searchEntries = entries;\n"
+        "}\n"
+        "function searchEntries(query) {\n"
+        "  if (!_searchEntries || !query) return [];\n"
+        "  var tokens = query.toLowerCase().split(/\\s+/).filter(Boolean);\n"
+        "  if (!tokens.length) return [];\n"
+        "  var results = [];\n"
+        "  _searchEntries.forEach(function(entry) {\n"
+        "    var score = 0;\n"
+        "    var highlights = [];\n"
+        "    var titleLower = entry.title.toLowerCase();\n"
+        "    var bodyLower = entry.body.toLowerCase();\n"
+        "    tokens.forEach(function(token) {\n"
+        "      var re = new RegExp('\\\\b' + token.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'gi');\n"
+        "      var titleMatches = [];\n"
+        "      var m;\n"
+        "      while ((m = re.exec(entry.title)) !== null) {\n"
+        "        titleMatches.push(m.index);\n"
+        "      }\n"
+        "      if (titleLower === query.toLowerCase()) {\n"
+        "        score += 100;\n"
+        "      }\n"
+        "      if (titleMatches.length > 0) {\n"
+        "        score += 50 * titleMatches.length;\n"
+        "        highlights.push({field: 'title', indices: titleMatches});\n"
+        "      }\n"
+        "      re.lastIndex = 0;\n"
+        "      var bodyMatches = [];\n"
+        "      while ((m = re.exec(entry.body)) !== null) {\n"
+        "        bodyMatches.push(m.index);\n"
+        "      }\n"
+        "      if (bodyMatches.length > 0) {\n"
+        "        score += 10 * bodyMatches.length;\n"
+        "        highlights.push({field: 'body', indices: bodyMatches});\n"
+        "      }\n"
+        "    });\n"
+        "    if (score > 0) {\n"
+        "      var snippet = '';\n"
+        "      var bodyHL = highlights.filter(function(h) { return h.field === 'body'; });\n"
+        "      if (bodyHL.length && bodyHL[0].indices.length) {\n"
+        "        var pos = bodyHL[0].indices[0];\n"
+        "        var start = Math.max(0, pos - 40);\n"
+        "        var end = Math.min(entry.body.length, pos + tokens[0].length + 60);\n"
+        "        snippet = (start > 0 ? '...' : '') +\n"
+        "          entry.body.substring(start, end) +\n"
+        "          (end < entry.body.length ? '...' : '');\n"
+        "      } else {\n"
+        "        snippet = entry.body.substring(0, 100) +\n"
+        "          (entry.body.length > 100 ? '...' : '');\n"
+        "      }\n"
+        "      results.push({\n"
+        "        title: entry.title,\n"
+        "        path: entry.path,\n"
+        "        snippet: snippet,\n"
+        "        score: score,\n"
+        "        highlights: highlights\n"
+        "      });\n"
+        "    }\n"
+        "  });\n"
+        "  results.sort(function(a, b) { return b.score - a.score; });\n"
+        "  return results.slice(0, 10);\n"
+        "}\n"
+    )
+
+    _ENGINE_FUSE = (
+        "// Fuse.js search engine adapter\n"
+        "var _fuse = null;\n"
+        "function initSearchEngine(entries) {\n"
+        "  _fuse = new Fuse(entries, {\n"
+        "    keys: [{name: 'title', weight: 2}, {name: 'body', weight: 1}],\n"
+        "    threshold: 0.3,\n"
+        "    includeMatches: true,\n"
+        "    includeScore: true\n"
+        "  });\n"
+        "}\n"
+        "function searchEntries(query) {\n"
+        "  if (!_fuse || !query) return [];\n"
+        "  return _fuse.search(query).slice(0, 10).map(function(result) {\n"
+        "    var highlights = [];\n"
+        "    if (result.matches) {\n"
+        "      result.matches.forEach(function(m) {\n"
+        "        var indices = m.indices.map(function(pair) { return pair[0]; });\n"
+        "        highlights.push({field: m.key, indices: indices});\n"
+        "      });\n"
+        "    }\n"
+        "    var entry = result.item;\n"
+        "    var snippet = entry.body ? entry.body.substring(0, 100) +\n"
+        "      (entry.body.length > 100 ? '...' : '') : '';\n"
+        "    return {\n"
+        "      title: entry.title,\n"
+        "      path: entry.path,\n"
+        "      snippet: snippet,\n"
+        "      score: 1 - (result.score || 0),\n"
+        "      highlights: highlights\n"
+        "    };\n"
+        "  });\n"
+        "}\n"
+    )
+
+    _ENGINE_MINISEARCH = (
+        "// MiniSearch search engine adapter\n"
+        "var _miniSearch = null;\n"
+        "function initSearchEngine(entries) {\n"
+        "  _miniSearch = new MiniSearch({\n"
+        "    fields: ['title', 'body'],\n"
+        "    storeFields: ['title', 'path', 'body'],\n"
+        "    searchOptions: { fuzzy: 0.2, prefix: true }\n"
+        "  });\n"
+        "  entries.forEach(function(entry, idx) {\n"
+        "    entry.id = idx;\n"
+        "  });\n"
+        "  _miniSearch.addAll(entries);\n"
+        "}\n"
+        "function searchEntries(query) {\n"
+        "  if (!_miniSearch || !query) return [];\n"
+        "  return _miniSearch.search(query).slice(0, 10).map(function(result) {\n"
+        "    var highlights = [];\n"
+        "    if (result.match) {\n"
+        "      Object.keys(result.match).forEach(function(term) {\n"
+        "        result.match[term].forEach(function(field) {\n"
+        "          highlights.push({field: field, indices: []});\n"
+        "        });\n"
+        "      });\n"
+        "    }\n"
+        "    var snippet = result.body ? result.body.substring(0, 100) +\n"
+        "      (result.body.length > 100 ? '...' : '') : '';\n"
+        "    return {\n"
+        "      title: result.title,\n"
+        "      path: result.path,\n"
+        "      snippet: snippet,\n"
+        "      score: result.score || 0,\n"
+        "      highlights: highlights\n"
+        "    };\n"
+        "  });\n"
+        "}\n"
+    )
+
+    engines = {
+        "builtin": _ENGINE_BUILTIN,
+        "fuse": _ENGINE_FUSE,
+        "minisearch": _ENGINE_MINISEARCH,
+    }
+    engine_js = engines.get(engine, _ENGINE_BUILTIN)
+
+    # --- Shared dialog UI code ---
+    _DIALOG_UI = (
+        "// Search dialog UI (shared across all engines)\n"
         "(function() {\n"
         "  var dialog = document.getElementById('search-dialog');\n"
         "  if (!dialog) return;\n"
         "  var searchPrefix = dialog.getAttribute('data-search-prefix') || '';\n"
         "  var input = dialog.querySelector('.search-input');\n"
         "  var resultsList = dialog.querySelector('.search-results');\n"
-        "  var searchIndex = null;\n"
+        "  var closeBtn = dialog.querySelector('.search-close');\n"
+        "  var indexLoaded = false;\n"
+        "  var indexLoading = false;\n"
         "  var activeIdx = -1;\n"
         "\n"
+        "  // Platform detection for keyboard shortcut label\n"
+        "  var isMac = false;\n"
+        "  if (navigator.userAgentData && navigator.userAgentData.platform) {\n"
+        "    isMac = /mac/i.test(navigator.userAgentData.platform);\n"
+        "  } else if (navigator.platform) {\n"
+        "    isMac = /mac/i.test(navigator.platform);\n"
+        "  }\n"
+        "  var shortcutLabel = isMac ? 'Cmd+K' : 'Ctrl+K';\n"
+        "\n"
+        "  // Update placeholder and trigger labels with correct shortcut\n"
+        "  input.placeholder = 'Search docs... (' + shortcutLabel + ')';\n"
+        "  var kbdEls = document.querySelectorAll('.search-bar-kbd');\n"
+        "  kbdEls.forEach(function(el) { el.textContent = shortcutLabel; });\n"
+        "  var triggerBtns = document.querySelectorAll('.search-trigger');\n"
+        "  triggerBtns.forEach(function(el) {\n"
+        "    el.title = 'Search (' + shortcutLabel + ')';\n"
+        "  });\n"
+        "\n"
         "  function loadIndex() {\n"
-        "    if (searchIndex) return Promise.resolve(searchIndex);\n"
-        "    return fetch(searchPrefix + 'search-index.json')\n"
+        "    if (indexLoaded) return Promise.resolve();\n"
+        "    if (indexLoading) return indexLoading;\n"
+        "    indexLoading = fetch(searchPrefix + 'search-index.json')\n"
         "      .then(function(r) { return r.json(); })\n"
-        "      .then(function(data) { searchIndex = data; return data; });\n"
+        "      .then(function(data) {\n"
+        "        initSearchEngine(data);\n"
+        "        indexLoaded = true;\n"
+        "        // Re-render with current query after loading\n"
+        "        if (input.value) renderResults(input.value);\n"
+        "      });\n"
+        "    return indexLoading;\n"
         "  }\n"
         "\n"
         "  function openSearch() {\n"
-        "    loadIndex();\n"
         "    dialog.showModal();\n"
         "    input.value = '';\n"
         "    resultsList.innerHTML = '';\n"
         "    activeIdx = -1;\n"
+        "    if (!indexLoaded) {\n"
+        "      resultsList.innerHTML = '<li class=\"search-loading\">Loading...</li>';\n"
+        "    }\n"
+        "    loadIndex();\n"
         "    input.focus();\n"
         "  }\n"
         "\n"
@@ -89,49 +273,73 @@ def _generate_search_js():
         "    dialog.close();\n"
         "  }\n"
         "\n"
+        "  function highlightText(text, highlights, field) {\n"
+        "    var fieldHL = highlights.filter(function(h) { return h.field === field; });\n"
+        "    if (!fieldHL.length) return document.createTextNode(text);\n"
+        "    var allIndices = [];\n"
+        "    fieldHL.forEach(function(h) {\n"
+        "      h.indices.forEach(function(idx) { allIndices.push(idx); });\n"
+        "    });\n"
+        "    if (!allIndices.length) return document.createTextNode(text);\n"
+        "    allIndices.sort(function(a, b) { return a - b; });\n"
+        "    var frag = document.createDocumentFragment();\n"
+        "    var lastEnd = 0;\n"
+        "    var q = input.value.toLowerCase().split(/\\s+/).filter(Boolean);\n"
+        "    allIndices.forEach(function(idx) {\n"
+        "      if (idx < lastEnd || idx >= text.length) return;\n"
+        "      // Find which token matches at this position\n"
+        "      var matchLen = 1;\n"
+        "      q.forEach(function(token) {\n"
+        "        if (text.substring(idx, idx + token.length).toLowerCase() === token) {\n"
+        "          matchLen = Math.max(matchLen, token.length);\n"
+        "        }\n"
+        "      });\n"
+        "      if (idx > lastEnd) {\n"
+        "        frag.appendChild(document.createTextNode(text.substring(lastEnd, idx)));\n"
+        "      }\n"
+        "      var mark = document.createElement('mark');\n"
+        "      mark.textContent = text.substring(idx, idx + matchLen);\n"
+        "      frag.appendChild(mark);\n"
+        "      lastEnd = idx + matchLen;\n"
+        "    });\n"
+        "    if (lastEnd < text.length) {\n"
+        "      frag.appendChild(document.createTextNode(text.substring(lastEnd)));\n"
+        "    }\n"
+        "    return frag;\n"
+        "  }\n"
+        "\n"
         "  function renderResults(query) {\n"
         "    resultsList.innerHTML = '';\n"
         "    activeIdx = -1;\n"
-        "    if (!query || !searchIndex) return;\n"
-        "    var q = query.toLowerCase();\n"
-        "    var matches = searchIndex.filter(function(entry) {\n"
-        "      return entry.title.toLowerCase().indexOf(q) !== -1 ||\n"
-        "             entry.body.toLowerCase().indexOf(q) !== -1;\n"
-        "    }).slice(0, 10);\n"
-        "    matches.forEach(function(entry, idx) {\n"
+        "    if (!query) return;\n"
+        "    if (!indexLoaded) {\n"
+        "      resultsList.innerHTML = '<li class=\"search-loading\">Loading...</li>';\n"
+        "      return;\n"
+        "    }\n"
+        "    var matches = searchEntries(query);\n"
+        "    matches.forEach(function(result, idx) {\n"
         "      var li = document.createElement('li');\n"
         "      li.className = 'search-result-item';\n"
         "      li.setAttribute('role', 'option');\n"
         "      li.id = 'search-result-' + idx;\n"
         "      var a = document.createElement('a');\n"
-        "      a.href = searchPrefix + entry.path;\n"
+        "      a.href = searchPrefix + result.path;\n"
         "      var titleEl = document.createElement('div');\n"
         "      titleEl.className = 'search-result-title';\n"
-        "      titleEl.textContent = entry.title;\n"
+        "      titleEl.appendChild(highlightText(result.title, result.highlights, 'title'));\n"
         "      var snippet = document.createElement('div');\n"
         "      snippet.className = 'search-result-snippet';\n"
-        "      var bodyLower = entry.body.toLowerCase();\n"
-        "      var pos = bodyLower.indexOf(q);\n"
-        "      if (pos !== -1) {\n"
-        "        var start = Math.max(0, pos - 40);\n"
-        "        var end = Math.min(entry.body.length, pos + q.length + 60);\n"
-        "        snippet.textContent = (start > 0 ? '...' : '') +\n"
-        "          entry.body.substring(start, end) +\n"
-        "          (end < entry.body.length ? '...' : '');\n"
-        "      } else {\n"
-        "        snippet.textContent = entry.body.substring(0, 100) +\n"
-        "          (entry.body.length > 100 ? '...' : '');\n"
-        "      }\n"
+        "      snippet.appendChild(highlightText(result.snippet, result.highlights, 'body'));\n"
         "      a.appendChild(titleEl);\n"
         "      a.appendChild(snippet);\n"
         "      a.addEventListener('click', function() { closeSearch(); });\n"
         "      li.appendChild(a);\n"
         "      resultsList.appendChild(li);\n"
         "    });\n"
-        "    if (matches.length === 0 && q) {\n"
+        "    if (matches.length === 0 && query) {\n"
         "      var noLi = document.createElement('li');\n"
         "      noLi.className = 'search-no-results';\n"
-        "      noLi.textContent = 'No results for \"' + q + '\"';\n"
+        "      noLi.textContent = 'No results for \"' + query + '\". Try different terms or browse the sidebar.';\n"
         "      resultsList.appendChild(noLi);\n"
         "    }\n"
         "  }\n"
@@ -154,6 +362,12 @@ def _generate_search_js():
         "    trigger.addEventListener('click', function(e) {\n"
         "      e.preventDefault();\n"
         "      openSearch();\n"
+        "    });\n"
+        "  }\n"
+        "\n"
+        "  if (closeBtn) {\n"
+        "    closeBtn.addEventListener('click', function() {\n"
+        "      closeSearch();\n"
         "    });\n"
         "  }\n"
         "\n"
@@ -191,6 +405,8 @@ def _generate_search_js():
         "  });\n"
         "})();\n"
     )
+
+    return engine_js + "\n" + _DIALOG_UI
 
 
 def _slugify(text):
@@ -275,7 +491,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    base_url=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
                    critical_css=None, twitter_site=None, search=None,
-                   feedback=None, branch="main"):
+                   feedback=None, branch="main", search_engine=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -399,6 +615,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             search=search,
             feedback=feedback,
             branch=branch,
+            search_engine=search_engine,
         )
         html_files[html_path] = full_html
 
@@ -1364,7 +1581,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
                schema=None, twitter_site=None, search=None,
-               feedback=None, branch="main"):
+               feedback=None, branch="main", search_engine=None):
     """Wrap converted HTML body in the full page template."""
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
@@ -2263,6 +2480,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{custom_css_tag}{feed_tag}{seo_tags}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
+        f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
+        f'{"<script src=\"https://cdn.jsdelivr.net/npm/minisearch@7.1.1/dist/umd/index.min.js\"></script>" + chr(10) if search_engine == "minisearch" else ""}'
         f'</head>\n'
         f'<body>\n'
         f'<a class="skip-link" href="#main-content">Skip to content</a>\n'
@@ -2303,8 +2522,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<script>{body_js}</script>\n'
         f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}" aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
+        f'<div class="search-header">\n'
         f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'
-        f'<ul class="search-results" id="search-results" role="listbox"></ul>\n'
+        f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
+        f'</div>\n'
+        f'<ul class="search-results" id="search-results" role="listbox" aria-live="polite"></ul>\n'
         f'</div>\n'
         f'</dialog>\n'
         f'<script defer src="{prefix}search.js"></script>\n'

@@ -998,6 +998,7 @@ def build(dir_path=".", config=None):
         search=config.get("search"),
         feedback=config.get("feedback"),
         branch=branch,
+        search_engine=config.get("search_engine"),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
@@ -1031,10 +1032,11 @@ def build(dir_path=".", config=None):
         json.dump(search_index, f, ensure_ascii=False)
     written[search_index_path] = True
 
-    # Generate external search JS (Feature 19 -- externalized)
+    # Generate external search JS (Feature 19 -- externalized, pluggable engine)
+    search_engine = config.get("search_engine") or "builtin"
     search_js_path = os.path.join(output_dir, "search.js")
     with open(search_js_path, "w", encoding="utf-8") as f:
-        f.write(_minify_js(_generate_search_js()))
+        f.write(_minify_js(_generate_search_js(engine=search_engine)))
     written[search_js_path] = True
 
     # Copy custom.css to output if it exists

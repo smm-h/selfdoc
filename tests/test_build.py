@@ -4316,3 +4316,95 @@ def test_sidebar_escape_handler():
     source = open(html_mod.__file__, "r").read()
     # Check for Escape key handling in sidebar toggle code
     assert "Escape" in source
+
+
+# --- Pluggable search engine tests ---
+
+
+def test_search_engine_builtin_default(project_dir):
+    """Build with no search_engine config uses builtin engine in search.js."""
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    search_js = os.path.join(output_dir, "search.js")
+    assert os.path.isfile(search_js)
+    with open(search_js, "r", encoding="utf-8") as f:
+        content = f.read()
+    # Builtin engine uses word-boundary scoring
+    assert "initSearchEngine" in content
+    assert "searchEntries" in content
+
+
+def test_search_engine_fuse_config(project_dir):
+    """Build with search_engine=fuse includes Fuse.js CDN tag in HTML head."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["search_engine"] = "fuse"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert "cdn.jsdelivr.net/npm/fuse.js@7.0.0" in content
+
+
+def test_search_engine_minisearch_config(project_dir):
+    """Build with search_engine=minisearch includes MiniSearch CDN tag in HTML head."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["search_engine"] = "minisearch"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert "cdn.jsdelivr.net/npm/minisearch@7.1.1" in content
+
+
+def test_search_loading_indicator():
+    """Search JS contains a loading indicator element."""
+    from selfdoc.html import _generate_search_js
+    js = _generate_search_js()
+    assert "Loading..." in js
+
+
+def test_search_close_button():
+    """Search dialog HTML contains a close button."""
+    from selfdoc.html import _wrap_page
+    html = _wrap_page(
+        "<p>test</p>", "", "Test", "Project", "",
+        prefix="",
+    )
+    assert 'class="search-close"' in html
+    assert ">X</button>" in html
+
+
+def test_search_aria_live():
+    """Search results list has aria-live=polite for screen readers."""
+    from selfdoc.html import _wrap_page
+    html = _wrap_page(
+        "<p>test</p>", "", "Test", "Project", "",
+        prefix="",
+    )
+    assert 'aria-live="polite"' in html
+
+
+def test_search_no_results_guidance():
+    """Search JS contains guidance text for empty results."""
+    from selfdoc.html import _generate_search_js
+    js = _generate_search_js()
+    assert "Try different terms or browse the sidebar" in js
+
+
+def test_search_platform_detection():
+    """Search JS contains platform detection for keyboard shortcut labels."""
+    from selfdoc.html import _generate_search_js
+    js = _generate_search_js()
+    assert "navigator.platform" in js or "navigator.userAgentData" in js
+    assert "Cmd+K" in js
+    assert "Ctrl+K" in js
