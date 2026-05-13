@@ -1409,16 +1409,16 @@ def _apply_step_guides(html):
     headings (Feature 33).
 
     Uses a two-pass approach: finds each <ol> without a class, then searches
-    backward (up to 500 characters) for an h2/h3 containing "step", "guide",
-    or "tutorial" (case-insensitive). If found with no intervening h2/h3
-    between the match and the <ol>, adds class="steps".
+    backward (up to 200 characters) for an h2/h3 whose plain text starts with
+    "step", "guide", or "tutorial" (case-insensitive). If found with no
+    intervening h2/h3 between the match and the <ol>, adds class="steps".
     """
-    heading_kw_re = re.compile(
-        r'<h[23]\s[^>]*>.*?(?:step|guide|tutorial).*?</h[23]>',
-        re.IGNORECASE,
-    )
-    # Matches any h2/h3 (keyword or not)
+    # Matches any h2/h3 heading
     any_heading_re = re.compile(r'<h[23]\s[^>]*>.*?</h[23]>', re.IGNORECASE)
+    # Pattern to strip HTML tags for plain-text extraction
+    strip_tags_re = re.compile(r'<[^>]+>')
+    # Keyword must be the first word of the heading's plain text
+    kw_start_re = re.compile(r'^(step|guide|tutorial)\b', re.IGNORECASE)
     # Match <ol> tags without an existing class attribute
     ol_re = re.compile(r'<ol(?!\s[^>]*class=)(?:\s[^>]*)?>|<ol>')
 
@@ -1429,11 +1429,21 @@ def _apply_step_guides(html):
         if not ol_match:
             break
         ol_start = ol_match.start()
-        # Search backward up to 500 characters for a keyword heading
-        lookback_start = max(0, ol_start - 500)
+        # Search backward up to 200 characters for a keyword heading
+        lookback_start = max(0, ol_start - 200)
         preceding = result[lookback_start:ol_start]
-        # Find all keyword headings in the preceding text
-        kw_matches = list(heading_kw_re.finditer(preceding))
+        # Find all headings in the preceding text, then filter by keyword
+        all_headings = list(any_heading_re.finditer(preceding))
+        kw_matches = []
+        for m in all_headings:
+            heading_html = m.group(0)
+            # Extract text between opening and closing tags
+            inner_start = heading_html.index('>') + 1
+            inner_end = heading_html.rindex('<')
+            inner_html = heading_html[inner_start:inner_end]
+            plain_text = strip_tags_re.sub('', inner_html).lstrip('#').strip()
+            if kw_start_re.search(plain_text):
+                kw_matches.append(m)
         if not kw_matches:
             offset = ol_match.end()
             continue

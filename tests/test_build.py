@@ -4814,6 +4814,73 @@ def test_step_guide_with_intervening_paragraph():
     assert '<ol class="steps">' in content
 
 
+def test_step_guide_heading_at_start_triggers():
+    """Heading 'Step-by-Step Guide' triggers step guide detection."""
+    md = (
+        "# Title\n\n"
+        "## Step-by-Step Guide\n\n"
+        "1. First step\n"
+        "2. Second step\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert '<ol class="steps">' in content
+
+
+def test_step_guide_heading_next_steps_no_trigger():
+    """Heading 'Next Steps' does NOT trigger step guide detection."""
+    md = (
+        "# Title\n\n"
+        "## Next Steps\n\n"
+        "1. First item\n"
+        "2. Second item\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert '<ol class="steps">' not in content
+
+
+def test_step_guide_heading_troubleshooting_steps_no_trigger():
+    """Heading 'Troubleshooting Steps' does NOT trigger step guide detection."""
+    md = (
+        "# Title\n\n"
+        "## Troubleshooting Steps\n\n"
+        "1. Check logs\n"
+        "2. Restart service\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert '<ol class="steps">' not in content
+
+
+def test_step_guide_heading_tutorial_at_start_triggers():
+    """Heading 'Tutorial: Getting Started' triggers step guide detection."""
+    md = (
+        "# Title\n\n"
+        "## Tutorial: Getting Started\n\n"
+        "1. Install the tool\n"
+        "2. Run the demo\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert '<ol class="steps">' in content
+
+
+def test_step_guide_explicit_class_always_works():
+    """Explicit <ol class='steps'> in Markdown is preserved regardless of heading."""
+    md = (
+        "# Title\n\n"
+        "## Unrelated Heading\n\n"
+        '<ol class="steps">\n'
+        "<li>Do this</li>\n"
+        "<li>Do that</li>\n"
+        "</ol>\n"
+    )
+    html_files = generate_html({"index.md": md}, project_name="Test")
+    content = html_files["index.html"]
+    assert 'class="steps"' in content
+
+
 def test_api_entry_with_whitespace():
     """API entry wrapping works when whitespace/blank lines separate components."""
     md = (
