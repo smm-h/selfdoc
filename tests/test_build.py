@@ -4407,4 +4407,259 @@ def test_search_platform_detection():
     js = _generate_search_js()
     assert "navigator.platform" in js or "navigator.userAgentData" in js
     assert "Cmd+K" in js
-    assert "Ctrl+K" in js
+
+
+# === Landing page tests ===
+
+
+def test_landing_page_hero_with_branding(tmp_path):
+    """Landing page renders hero section when branding config is present."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "Build docs fast",
+            "cta_text": "Read the Docs",
+            "cta_link": "guide.html",
+        },
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# My Project\n\nWelcome.\n")
+    with open(os.path.join(docs_dir, "guide.md"), "w") as f:
+        f.write("# Guide\n\nGet started here.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    assert index_html in written
+
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="hero"' in content
+    assert 'class="hero-title"' in content
+    assert 'class="hero-cta"' in content
+    assert "Build docs fast" in content
+    assert "Read the Docs" in content
+    assert 'href="guide.html"' in content
+
+
+def test_landing_page_cta_default_link(tmp_path):
+    """CTA defaults to the first non-index page when cta_link is not set."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "Hello world",
+        },
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Project\n\nWelcome.\n")
+    with open(os.path.join(docs_dir, "quickstart.md"), "w") as f:
+        f.write("# Quickstart\n\nStart here.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Default CTA should link to the first non-index page
+    assert 'href="quickstart.html"' in content
+    # Default CTA text
+    assert "Get Started" in content
+
+
+def test_landing_page_features_auto_from_nav_groups(tmp_path):
+    """Feature cards auto-generated from nav groups when features not set."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "Great docs",
+        },
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Project\n\nWelcome.\n")
+
+    # Create nav groups via subdirectories
+    guide_dir = os.path.join(docs_dir, "guide")
+    os.makedirs(guide_dir)
+    with open(os.path.join(guide_dir, "intro.md"), "w") as f:
+        f.write("# Intro\n\nIntroduction.\n")
+    with open(os.path.join(guide_dir, "setup.md"), "w") as f:
+        f.write("# Setup\n\nSetup instructions.\n")
+
+    api_dir = os.path.join(docs_dir, "api")
+    os.makedirs(api_dir)
+    with open(os.path.join(api_dir, "reference.md"), "w") as f:
+        f.write("# Reference\n\nAPI reference.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="feature-grid"' in content
+    assert 'class="feature-card"' in content
+    # Nav groups: "Api" and "Guide" (titlecased from dir names)
+    assert "Api" in content
+    assert "Guide" in content
+    # Page counts
+    assert "2 pages" in content
+    assert "1 page" in content
+
+
+def test_landing_page_features_explicit(tmp_path):
+    """Explicit features in branding config are used instead of auto-generated."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "Test",
+            "features": [
+                {"title": "Fast", "description": "Lightning fast builds"},
+                {"title": "Simple", "description": "Zero config needed"},
+            ],
+        },
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Project\n\nWelcome.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="feature-grid"' in content
+    assert "Fast" in content
+    assert "Lightning fast builds" in content
+    assert "Simple" in content
+    assert "Zero config needed" in content
+
+
+def test_landing_page_no_branding_no_hero(tmp_path):
+    """Without branding config, index.html does NOT contain hero section."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Project\n\nWelcome.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="hero"' not in content
+    assert 'class="feature-grid"' not in content
+
+
+def test_landing_page_logo(tmp_path):
+    """Landing page renders logo image when branding.logo is set."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "With logo",
+            "logo": "logo.svg",
+        },
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Project\n\nWelcome.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'class="hero-logo"' in content
+    assert 'src="logo.svg"' in content
+
+
+def test_landing_page_secondary_cta(tmp_path):
+    """Landing page renders secondary CTA when configured."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "branding": {
+            "tagline": "Dual CTA",
+            "cta_text": "Get Started",
+            "cta_link": "guide.html",
+            "secondary_cta_text": "View on GitHub",
+            "secondary_cta_link": "https://github.com/example/repo",
+        },
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Project\n\nWelcome.\n")
+
+    written = build(str(tmp_path))
+    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "hero-cta-secondary" in content
+    assert "View on GitHub" in content
+    assert 'href="https://github.com/example/repo"' in content

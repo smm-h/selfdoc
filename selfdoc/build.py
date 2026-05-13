@@ -999,6 +999,8 @@ def build(dir_path=".", config=None):
         feedback=config.get("feedback"),
         branch=branch,
         search_engine=config.get("search_engine"),
+        branding=config.get("branding"),
+        config_description=config_description,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection

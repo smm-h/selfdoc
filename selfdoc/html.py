@@ -486,12 +486,148 @@ def generate_pygments_css():
     return f"{light}\n\n{dark_css}"
 
 
+def _generate_hero_html(branding, project_name, config_description, nav_items):
+    """Generate the hero section HTML for the landing page.
+
+    Args:
+        branding: Branding config dict (must not be None).
+        project_name: Project name for the hero title.
+        config_description: Project-level description from config.
+        nav_items: Navigation items list, used to derive default CTA link.
+
+    Returns:
+        HTML string for the hero section.
+    """
+    parts = []
+    parts.append('<section class="hero">')
+    parts.append('<div class="hero-inner">')
+
+    # Logo
+    logo = branding.get("logo")
+    if logo:
+        parts.append(
+            f'<img class="hero-logo" src="{_escape_html(logo)}" alt="{_escape_html(project_name)} logo">'
+        )
+
+    # Title
+    parts.append(
+        f'<h1 class="hero-title">{_escape_html(project_name)}</h1>'
+    )
+
+    # Tagline
+    tagline = branding.get("tagline")
+    if tagline:
+        parts.append(f'<p class="hero-tagline">{_escape_html(tagline)}</p>')
+
+    # Description from config
+    if config_description:
+        parts.append(
+            f'<p class="hero-description">{_escape_html(config_description)}</p>'
+        )
+
+    # CTA link: explicit or default to first non-index page in nav
+    cta_link = branding.get("cta_link")
+    if not cta_link:
+        flat = _flatten_nav(nav_items)
+        for item in flat:
+            if item.get("md_path") != "index.md":
+                cta_link = item["path"]
+                break
+    if not cta_link:
+        cta_link = "#"
+
+    cta_text = branding.get("cta_text") or "Get Started"
+
+    parts.append('<div class="hero-actions">')
+    parts.append(
+        f'<a class="hero-cta" href="{_escape_html(cta_link)}">'
+        f'{_escape_html(cta_text)}</a>'
+    )
+
+    # Secondary CTA
+    secondary_text = branding.get("secondary_cta_text")
+    secondary_link = branding.get("secondary_cta_link")
+    if secondary_text and secondary_link:
+        parts.append(
+            f'<a class="hero-cta hero-cta-secondary" '
+            f'href="{_escape_html(secondary_link)}">'
+            f'{_escape_html(secondary_text)}</a>'
+        )
+
+    parts.append('</div>')  # hero-actions
+    parts.append('</div>')  # hero-inner
+    parts.append('</section>')
+
+    return "\n".join(parts)
+
+
+def _generate_features_html(branding, nav_items):
+    """Generate the feature grid HTML for the landing page.
+
+    When branding.features is set, uses those explicitly. Otherwise
+    auto-generates one feature card per nav group (subdirectory).
+
+    Args:
+        branding: Branding config dict (must not be None).
+        nav_items: Navigation items list from _build_nav.
+
+    Returns:
+        HTML string for the feature grid, or empty string if no features.
+    """
+    features = branding.get("features")
+
+    if features is None:
+        # Auto-generate from nav groups
+        features = []
+        for item in nav_items:
+            if "group" not in item:
+                continue
+            group_title = item["group"]
+            group_items = item["items"]
+            count = len(group_items)
+            link = group_items[0]["path"] if group_items else None
+            features.append({
+                "title": group_title,
+                "description": f"{count} page{'s' if count != 1 else ''}",
+                "link": link,
+            })
+
+    if not features:
+        return ""
+
+    parts = ['<section class="feature-grid">']
+    for feat in features:
+        title = feat.get("title", "")
+        description = feat.get("description", "")
+        link = feat.get("link")
+
+        parts.append('<div class="feature-card">')
+        if link:
+            parts.append(
+                f'<h3 class="feature-title">'
+                f'<a href="{_escape_html(link)}">'
+                f'{_escape_html(title)}</a></h3>'
+            )
+        else:
+            parts.append(
+                f'<h3 class="feature-title">{_escape_html(title)}</h3>'
+            )
+        parts.append(
+            f'<p class="feature-description">{_escape_html(description)}</p>'
+        )
+        parts.append('</div>')
+
+    parts.append('</section>')
+    return "\n".join(parts)
+
+
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
                    base_url=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
                    critical_css=None, twitter_site=None, search=None,
-                   feedback=None, branch="main", search_engine=None):
+                   feedback=None, branch="main", search_engine=None,
+                   branding=None, config_description=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -589,6 +725,21 @@ def generate_html(markdown_files, project_name=None, version=None,
 
         # Schema type from frontmatter (e.g. "itemlist" for ItemList JSON-LD)
         schema = page_meta.get("schema")
+
+        # Landing page: inject hero + features for index.html when branding
+        # is configured. The hero replaces the page summary block.
+        if html_path == "index.html" and branding is not None:
+            hero_html = _generate_hero_html(
+                branding, project_name,
+                config_description or "", nav_items,
+            )
+            features_html = _generate_features_html(branding, nav_items)
+            landing_prefix = hero_html
+            if features_html:
+                landing_prefix += "\n" + features_html
+            body_html = landing_prefix + "\n" + body_html
+            # Suppress page summary on the landing page (hero replaces it)
+            frontmatter_description = None
 
         full_html = _wrap_page(
             body_html, nav_html, title, project_name, version,
