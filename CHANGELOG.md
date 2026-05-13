@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.4.0
+
+### Breaking Changes
+
+- Directive syntax redesigned: new attribute-based format (`:-:`, `:<:`, `:>:`) with a formal directive catalog replacing the old `:::name arg` syntax. Custom directives continue to work via the new `attrs` interface. All existing directive blocks must be migrated.
+- Extractors refactored to a `LanguageExtractor` protocol with a registry. Custom extractor integrations may need updating.
+
+### Added
+
+- `selfdoc gen` command: auto-generates documentation pages from source code structure, with exclusion patterns, `generated: true` frontmatter, and stale file cleanup
+- `selfdoc gen-data` command: runs sandboxed scripts (via bubblewrap) to generate CSV/JSON data files for documentation
+- First-class strictcli support: auto-detects strictcli usage and generates CLI documentation pages
+- Description staleness detection: `selfdoc check` warns (STALE001) when a page description no longer matches page content, tracked via content hashing in `.selfdoc/hashes/`
+- Pluggable search engine: choose `"builtin"`, `"fuse"`, or `"minisearch"` via the `search_engine` config field
+- Landing page template: hero section with tagline, CTA button, and feature cards, configured via `branding` config field
+- Cross-page term linking: `<dfn>` definitions automatically linked across pages with dotted-underline `.term-link` styling
+- Auto-generated glossary page: collects all `<dfn>` terms site-wide into an alphabetical glossary with source links
+- Documentation coverage for Go (exported symbols) and TypeScript/JavaScript (`export` declarations), previously Python-only
+- Per-symbol coverage tracking with configurable `min_coverage` threshold
+- Callout directives (note, tip, warning, caution, important) as first-class directive types
+- Feed filtering via `feed: false` frontmatter; changelog pages auto-detected and excluded by default
+- Changelog auto-detection: `CHANGELOG.md` in project root is automatically included as a documentation page
+- Reading progress bar fixed below the topbar
+- Scroll affordance gradients on overflowing code blocks and tables
+- Sticky first column on horizontally-scrolling tables
+- `auto_detect` config field to disable step guide and API entry heuristics globally or per-page via `auto_steps`/`auto_api` frontmatter
+- `selfdoc build --warn-only` flag to treat lint warnings as non-fatal
+- Page progress indicator ("Page X of Y") between prev/next links
+- Current page title shown in the topbar on non-index pages
+
+### Fixed
+
+- Heading anchor IDs now deduplicate (appends `-1`, `-2` for repeated headings) and preserve Unicode characters
+- Code tab sync no longer infinite-loops with 3+ tab groups sharing a language
+- Scrollspy correctly tracks headings when scrolling in both directions
+- Step guide detection tightened: keyword must appear at start of heading text, 200-char lookback (no more false positives on "Next Steps" or "Troubleshooting Steps")
+- API entry wrapping tightened: requires identifier-like heading and single-line code block (no more false positives on tutorial sections)
+- Heading copy-to-clipboard shows a toast notification
+- Prev/next links show directional labels ("Previous" / "Next") above page titles
+- Edit link opens in a new tab
+- OG description falls back to first paragraph when no frontmatter description
+- Admonition icons use CSS mask-image technique, adapting correctly to dark mode
+- Each admonition type has a distinct background color
+- Focus indicators use `:focus-visible` throughout (keyboard-only, no mouse outlines)
+- Sidebar active link has a visible background highlight
+- Mobile sidebar traps focus within the overlay
+- Mobile sidebar closes on Escape key
+- Table rows highlight on hover
+- Diff highlighting uses `+`/`-` prefix symbols in addition to color
+- Cmd+K label adapts to platform (shows Ctrl+K on Windows/Linux)
+- "Last updated" date shown at the top of the page alongside breadcrumbs
+- Search "no results" message includes guidance ("Try different terms or browse the sidebar")
+- Feedback "No" response prompts for written feedback instead of just "Thanks"
+- Negative feedback provides a text input for follow-up
+- Collapsible section indicators replaced with 16x16px SVG chevrons (previously 8x12px CSS triangles)
+- `<summary>` elements have `:focus-visible` outlines
+- `<pre>` elements have `aria-label` describing the code language
+- `llms-full.txt` includes page boundaries with title headings and path comments
+
+### Improved
+
+- Theme toggle shows descriptive ARIA labels indicating current state and next action
+- Smooth scroll disabled on initial page load to prevent fragment target delay
+- Target highlight animation uses 20% accent color (previously 12%, too faint)
+- `<dfn>` tags visually distinct from inline `<code>` (dotted underline vs border)
+- Page summary block visually distinct from blockquotes (card style vs left border)
+
 ## 0.3.1
 
 - npm package renamed from `selfdoc` to `selfdocumenting` (npm blocks `selfdoc` due to similarity with abandoned `self-doc` package). Install via `npm install -g selfdocumenting` or `npx selfdocumenting`. The CLI command remains `selfdoc`.
