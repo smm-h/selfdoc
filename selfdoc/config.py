@@ -269,4 +269,5 @@ def load_config(dir_path="."):
         "branding": branding,
         "auto_detect": auto_detect,
         "gen": raw.get("gen"),
+        "gen_data": raw.get("gen_data"),
     }

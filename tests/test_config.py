@@ -780,3 +780,29 @@ def test_min_coverage_default_none(config_dir):
     })
     cfg = load_config(str(config_dir))
     assert cfg["min_coverage"] is None
+
+
+# -- gen_data field --
+
+
+def test_gen_data_passed_through(config_dir):
+    """gen_data is passed through when present in the config."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {"output": "data/api.json", "format": "json"},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["gen_data"] == {"output": "data/api.json", "format": "json"}
+
+
+def test_gen_data_absent_is_none(config_dir):
+    """Missing gen_data defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["gen_data"] is None
