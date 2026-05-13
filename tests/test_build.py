@@ -5127,3 +5127,195 @@ def test_no_changelog_no_error(tmp_path):
 
     # No changelog.html should exist
     assert not os.path.isfile(os.path.join(output_dir, "changelog.html"))
+
+
+# --- Cross-page term linking and auto-generated glossary ---
+
+
+def test_cross_page_term_linked(tmp_path):
+    """Term defined on page A is linked on page B with class='term-link'."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Home\n\nWelcome.\n")
+    with open(os.path.join(docs_dir, "page_a.md"), "w") as f:
+        f.write(
+            "# Page A\n\n"
+            ":::glossary\n"
+            "**Resolver**: A component that resolves directives\n"
+            ":::\n"
+        )
+    with open(os.path.join(docs_dir, "page_b.md"), "w") as f:
+        f.write(
+            "# Page B\n\n"
+            "The Resolver handles all incoming requests.\n"
+        )
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "page_b.html"), "r") as f:
+        content_b = f.read()
+    assert 'page_a.html#resolver" class="term-link"' in content_b
+
+
+def test_cross_page_term_not_linked_on_same_page(tmp_path):
+    """Term is NOT wrapped in a term-link on the page where it is defined."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Home\n\nWelcome.\n")
+    with open(os.path.join(docs_dir, "page_a.md"), "w") as f:
+        f.write(
+            "# Page A\n\n"
+            ":::glossary\n"
+            "**Resolver**: A component that resolves directives\n"
+            ":::\n\n"
+            "The Resolver is very useful.\n"
+        )
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "page_a.html"), "r") as f:
+        content_a = f.read()
+    assert "term-link" not in content_a
+
+
+def test_cross_page_term_skips_code_blocks(tmp_path):
+    """Term inside a <code> element is NOT linked."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("# Home\n\nWelcome.\n")
+    with open(os.path.join(docs_dir, "page_a.md"), "w") as f:
+        f.write(
+            "# Page A\n\n"
+            ":::glossary\n"
+            "**Widget**: A UI component\n"
+            ":::\n"
+        )
+    with open(os.path.join(docs_dir, "page_b.md"), "w") as f:
+        f.write(
+            "# Page B\n\n"
+            "Use `Widget` in your code.\n"
+        )
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "page_b.html"), "r") as f:
+        content_b = f.read()
+    assert "term-link" not in content_b
+
+
+def test_glossary_page_generated(tmp_path):
+    """Auto-generated glossary.html contains all terms sorted alphabetically."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write(
+            "# Home\n\n"
+            ":::glossary\n"
+            "**Zebra**: A striped animal\n"
+            ":::\n"
+        )
+    with open(os.path.join(docs_dir, "guide.md"), "w") as f:
+        f.write(
+            "# Guide\n\n"
+            ":::glossary\n"
+            "**Alpha**: The first letter\n"
+            ":::\n"
+        )
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    glossary_path = os.path.join(output_dir, "glossary.html")
+    assert os.path.isfile(glossary_path)
+
+    with open(glossary_path, "r") as f:
+        content = f.read()
+    # Both terms should appear
+    assert "Alpha" in content
+    assert "Zebra" in content
+    # Alpha should come before Zebra (alphabetical order)
+    alpha_pos = content.index("Alpha")
+    zebra_pos = content.index("Zebra")
+    assert alpha_pos < zebra_pos
+
+
+def test_glossary_in_sidebar(tmp_path):
+    """Sidebar nav includes a 'Glossary' link when terms exist."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write(
+            "# Home\n\n"
+            ":::glossary\n"
+            "**API**: Application Programming Interface\n"
+            ":::\n"
+        )
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r") as f:
+        content = f.read()
+    assert "glossary.html" in content
+    assert "Glossary" in content

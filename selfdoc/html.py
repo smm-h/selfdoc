@@ -813,6 +813,106 @@ def generate_html(markdown_files, project_name=None, version=None,
             "schema": schema,
         })
 
+    # --- Auto-generated glossary page ---
+    # If site_terms were collected from any page, synthesize a glossary
+    # page so all terms appear in one alphabetically-sorted definition list.
+    # Skip if the user already has a glossary.md in their docs.
+    existing_html_paths = {pd["html_path"] for pd in page_data}
+    if site_terms and "glossary.html" not in existing_html_paths:
+        # Build glossary body HTML
+        sorted_terms = sorted(site_terms.values(), key=lambda t: t["term"].lower())
+        glossary_dl_items = []
+        for info in sorted_terms:
+            anchor = info["anchor"]
+            term_name = _escape_html(info["term"])
+            definition = info["definition"]
+            source_page = info["page"]
+            source_label = source_page.replace(".html", "").replace("-", " ").replace("_", " ").title()
+            glossary_dl_items.append(
+                f'<dt id="{anchor}"><dfn>{term_name}</dfn></dt>'
+                f'<dd>{definition} '
+                f'<a href="{source_page}">Source</a></dd>'
+            )
+        glossary_body = (
+            '<h1 id="glossary">'
+            '<a class="heading-link" href="#glossary" '
+            'aria-label="Link to section: Glossary">#</a>'
+            'Glossary</h1>\n'
+            '<div class="glossary"><dl>\n'
+            + "\n".join(glossary_dl_items)
+            + "\n</dl></div>"
+        )
+
+        # DefinedTermSet JSON-LD for the glossary page
+        glossary_defined_terms = []
+        for info in sorted_terms:
+            glossary_defined_terms.append({
+                "@type": "DefinedTerm",
+                "name": info["term"],
+                "description": re.sub(r"<[^>]+>", "", info["definition"]).strip(),
+            })
+        glossary_jsonld = {
+            "@context": "https://schema.org",
+            "@type": "DefinedTermSet",
+            "name": f"{project_name} Glossary",
+            "hasDefinedTerm": glossary_defined_terms,
+        }
+        glossary_jsonld_tag = (
+            '<script type="application/ld+json">\n'
+            + json.dumps(glossary_jsonld)
+            + '\n</script>'
+        )
+        # Inject the JSON-LD into the body so _wrap_page's seo_tags section
+        # picks it up naturally (it will be in the body, but we handle it
+        # by appending after the glossary body).
+        glossary_body += "\n" + glossary_jsonld_tag
+
+        # Add "Glossary" to nav_items as a top-level link at the bottom
+        glossary_nav_item = {
+            "label": "Glossary",
+            "path": "glossary.html",
+            "md_path": "glossary.md",
+        }
+        nav_items.append(glossary_nav_item)
+
+        # Re-render nav HTML for the glossary page and rebuild nav for
+        # existing pages (since the glossary link is now in the sidebar)
+        glossary_nav_html = _render_nav(
+            nav_items, prefix="", current_path="glossary.html",
+        )
+
+        # Update nav_html for all previously collected page_data entries
+        for pd in page_data:
+            pd["nav_html"] = _render_nav(
+                nav_items, prefix=pd["prefix"],
+                current_path=pd["html_path"],
+            )
+
+        # Build page_data entry for the glossary page
+        glossary_toc_html = _build_toc(glossary_body)
+        page_data.append({
+            "html_path": "glossary.html",
+            "body_html": glossary_body,
+            "nav_html": glossary_nav_html,
+            "title": "Glossary",
+            "description": "",
+            "frontmatter_description": None,
+            "css_href": "style.css",
+            "custom_css_href": ("custom.css" if has_custom_css else None),
+            "toc_html": glossary_toc_html,
+            "breadcrumbs": _build_breadcrumbs(
+                "glossary.html", "Glossary", "", all_html_paths,
+            ),
+            "prev_page": None,
+            "next_page": None,
+            "prefix": "",
+            "source_path": None,
+            "date_published": None,
+            "date_modified": None,
+            "page_feed_url": feed_url,
+            "schema": None,
+        })
+
     # --- Pass 2: Wrap pages ---
     # Now that all pages are processed and site_terms is fully populated,
     # wrap each page in the full HTML template.
@@ -1557,6 +1657,107 @@ def _inline_format(text):
     return "".join(parts)
 
 
+def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
+    """Link the first occurrence of each cross-page term in body HTML.
+
+    For every term defined on a DIFFERENT page, finds the first occurrence
+    in *body_html* that is NOT inside ``<a>``, ``<code>``, ``<pre>``,
+    ``<dfn>``, ``<dt>``, or ``<h1>``-``<h6>`` tags, and wraps it in an
+    ``<a class="term-link">`` pointing to the definition page.
+
+    Only the first match per term is linked to avoid link spam.
+    """
+    if not site_terms:
+        return body_html
+
+    # Tags whose content must be skipped
+    _SKIP_TAGS = {"a", "code", "pre", "dfn", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
+
+    # Collect terms defined on other pages, sorted longest-first so longer
+    # multi-word terms match before shorter substrings.
+    cross_terms = [
+        info for info in site_terms.values()
+        if info["page"] != current_page
+    ]
+    cross_terms.sort(key=lambda t: -len(t["term"]))
+
+    for info in cross_terms:
+        term_text = info["term"]
+        target_page = info["page"]
+        anchor = info["anchor"]
+
+        # Compute relative path from current page to target page
+        current_depth = current_page.count("/")
+        rel_prefix = "../" * current_depth if current_depth > 0 else ""
+        href = f"{rel_prefix}{target_page}#{anchor}"
+
+        # Page title for the tooltip: derive from target_page filename
+        page_title = target_page.replace(".html", "").replace("-", " ").replace("_", " ").title()
+
+        # Build a pattern that matches the term text (case-insensitive for
+        # the first character so "resolver" matches "Resolver"), but only
+        # outside of HTML tags we want to skip.
+        # Strategy: walk the HTML splitting on tags, only replace in text
+        # segments that are not inside a skipped tag.
+        result_parts = []
+        replaced = False
+        # Track nesting of skipped tags
+        skip_depth = 0
+        # Split HTML into tags and text segments
+        segments = re.split(r"(<[^>]+>)", body_html)
+        skip_stack = []
+
+        for segment in segments:
+            if replaced:
+                result_parts.append(segment)
+                continue
+
+            if segment.startswith("<"):
+                # Check if this is an opening or closing tag
+                close_match = re.match(r"^</(\w+)", segment)
+                open_match = re.match(r"^<(\w+)", segment)
+                if close_match:
+                    tag_name = close_match.group(1).lower()
+                    if skip_stack and skip_stack[-1] == tag_name:
+                        skip_stack.pop()
+                elif open_match:
+                    tag_name = open_match.group(1).lower()
+                    # Self-closing tags (like <br/>, <img/>) don't need tracking
+                    if tag_name in _SKIP_TAGS and not segment.endswith("/>"):
+                        skip_stack.append(tag_name)
+                result_parts.append(segment)
+                continue
+
+            # Text segment -- only replace if not inside a skipped tag
+            if skip_stack:
+                result_parts.append(segment)
+                continue
+
+            # Try to find the term in this text segment (case-insensitive
+            # match but preserve original casing in the link text)
+            pattern = re.compile(re.escape(term_text), re.IGNORECASE)
+            match = pattern.search(segment)
+            if match:
+                original_text = match.group(0)
+                escaped_title = _escape_html(f"Defined in: {page_title}")
+                link = (
+                    f'<a href="{href}" class="term-link" '
+                    f'title="{escaped_title}">{original_text}</a>'
+                )
+                # Replace only the first occurrence
+                new_segment = segment[:match.start()] + link + segment[match.end():]
+                result_parts.append(new_segment)
+                replaced = True
+                continue
+
+            result_parts.append(segment)
+
+        if replaced:
+            body_html = "".join(result_parts)
+
+    return body_html
+
+
 def _escape_html(text):
     """Escape HTML special characters."""
     return (
@@ -1866,6 +2067,13 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                feedback=None, branch="main", search_engine=None,
                site_terms=None):
     """Wrap converted HTML body in the full page template."""
+    # Cross-page term linking: wrap first occurrence of terms defined on
+    # other pages in <a class="term-link"> before template wrapping.
+    if site_terms and page_path:
+        body_html = _apply_cross_page_terms(
+            body_html, site_terms, page_path, prefix,
+        )
+
     version_badge = (
         f'<span class="version-badge">v{_escape_html(version)}</span>'
         if version else ""
