@@ -922,6 +922,26 @@ def build(dir_path=".", config=None):
             else:
                 other_files.append(rel_path)
 
+    # Save content/description hashes for staleness detection.
+    # Build always proceeds -- staleness is only enforced at check time.
+    from selfdoc.staleness import (
+        compute_content_hash,
+        compute_description_hash,
+        load_hashes,
+        save_hashes,
+    )
+    stored_hashes = load_hashes(dir_path)
+    for rel_path, resolved_content in markdown_files.items():
+        meta = frontmatter.get(rel_path, {})
+        description = meta.get("description")
+        if description is None:
+            continue
+        stored_hashes[rel_path] = {
+            "content": compute_content_hash(resolved_content),
+            "description": compute_description_hash(str(description)),
+        }
+    save_hashes(stored_hashes, dir_path)
+
     # Build page_dates: map md_path -> (published, modified) tuple
     # modified: frontmatter "updated" > frontmatter "date" > file mtime
     # published: frontmatter "date" > file mtime (never use "updated")
