@@ -8,6 +8,7 @@ Syntax highlighting uses Pygments when available (optional dependency).
 import html
 import json
 import re
+import unicodedata
 from datetime import datetime
 
 from selfdoc.themes import get_theme
@@ -195,14 +196,18 @@ def _generate_search_js():
 def _slugify(text):
     """Convert heading text to a URL-friendly slug for deep linking.
 
-    Strips HTML tags first, then: lowercase, spaces to hyphens,
-    remove non-alphanumeric characters except hyphens.
+    Strips HTML tags first, then: NFKD-normalize to decompose accented
+    characters, strip combining marks, lowercase, spaces to hyphens,
+    remove non-word characters except hyphens (preserves CJK/Cyrillic).
     """
     # Strip HTML tags (e.g. <code>, <strong>, <a>)
     text = re.sub(r"<[^>]+>", "", text)
+    # Decompose accented characters and strip combining marks
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
     text = text.lower()
     text = text.replace(" ", "-")
-    text = re.sub(r"[^a-z0-9-]", "", text)
+    text = re.sub(r"[^\w-]", "", text)
     # Collapse multiple hyphens
     text = re.sub(r"-+", "-", text)
     return text.strip("-")
@@ -220,6 +225,33 @@ def get_css(theme_name="minimal"):
     return get_theme(theme_name)
 
 
+def _flatten_dark_css(dark_rules):
+    """Convert dark mode CSS rules to flat selectors.
+
+    Pygments ``get_style_defs`` returns rules like ``.code-block code .hll { ... }``.
+    We need to wrap each rule individually for both ``@media`` and ``[data-theme]``
+    contexts instead of nesting them (which is invalid CSS without native nesting).
+    """
+    rules = re.findall(r'([^{]+)\{([^}]+)\}', dark_rules)
+    media_lines = []
+    attr_lines = []
+    for selector, body in rules:
+        selector = selector.strip()
+        media_lines.append(
+            f"  :root:not([data-theme='light']) {selector} {{ {body.strip()} }}"
+        )
+        attr_lines.append(
+            f"[data-theme='dark'] {selector} {{ {body.strip()} }}"
+        )
+    media_block = (
+        "@media (prefers-color-scheme: dark) {\n"
+        + "\n".join(media_lines)
+        + "\n}"
+    )
+    attr_block = "\n".join(attr_lines)
+    return f"{media_block}\n\n{attr_block}"
+
+
 def generate_pygments_css():
     """Generate Pygments CSS rules for light and dark mode.
 
@@ -234,17 +266,8 @@ def generate_pygments_css():
     scope = ".code-block code"
     light = HtmlFormatter(style="default").get_style_defs(scope)
     dark = HtmlFormatter(style="monokai").get_style_defs(scope)
-    return (
-        f"{light}\n\n"
-        f"@media (prefers-color-scheme: dark) {{\n"
-        f"  :root:not([data-theme='light']) {{\n"
-        f"    {dark}\n"
-        f"  }}\n"
-        f"}}\n\n"
-        f"[data-theme='dark'] {{\n"
-        f"  {dark}\n"
-        f"}}"
-    )
+    dark_css = _flatten_dark_css(dark)
+    return f"{light}\n\n{dark_css}"
 
 
 def generate_html(markdown_files, project_name=None, version=None,
@@ -456,6 +479,7 @@ def md_to_html(text):
     """
     lines = text.split("\n")
     html_parts = []
+    seen_slugs = {}  # slug -> count, for deduplicating heading IDs
     i = 0
 
     while i < len(lines):
@@ -492,6 +516,11 @@ def md_to_html(text):
             level = len(heading_match.group(1))
             content = _inline_format(heading_match.group(2))
             slug = _slugify(content)
+            if slug in seen_slugs:
+                seen_slugs[slug] += 1
+                slug = f"{slug}-{seen_slugs[slug]}"
+            else:
+                seen_slugs[slug] = 0
             readable = re.sub(r"<[^>]+>", "", content).replace("_", " ")
             anchor = (
                 f'<a class="heading-link" href="#{slug}"'
@@ -1898,16 +1927,42 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "  function openSidebar() {\n"
         "    document.body.classList.add('sidebar-open');\n"
         "    toggle.setAttribute('aria-expanded', 'true');\n"
+        "    var focusable = sidebar.querySelectorAll('a, button, input, [tabindex]');\n"
+        "    if (focusable.length) {\n"
+        "      focusable[0].focus();\n"
+        "      sidebar.addEventListener('keydown', trapFocus);\n"
+        "    }\n"
         "  }\n"
         "  function closeSidebar() {\n"
         "    document.body.classList.remove('sidebar-open');\n"
         "    toggle.setAttribute('aria-expanded', 'false');\n"
+        "    sidebar.removeEventListener('keydown', trapFocus);\n"
+        "    toggle.focus();\n"
+        "  }\n"
+        "  function trapFocus(e) {\n"
+        "    if (e.key !== 'Tab') return;\n"
+        "    var focusable = sidebar.querySelectorAll('a, button, input, [tabindex]');\n"
+        "    if (!focusable.length) return;\n"
+        "    var first = focusable[0];\n"
+        "    var last = focusable[focusable.length - 1];\n"
+        "    if (e.shiftKey && document.activeElement === first) {\n"
+        "      e.preventDefault();\n"
+        "      last.focus();\n"
+        "    } else if (!e.shiftKey && document.activeElement === last) {\n"
+        "      e.preventDefault();\n"
+        "      first.focus();\n"
+        "    }\n"
         "  }\n"
         "  toggle.addEventListener('click', function() {\n"
         "    if (document.body.classList.contains('sidebar-open')) {\n"
         "      closeSidebar();\n"
         "    } else {\n"
         "      openSidebar();\n"
+        "    }\n"
+        "  });\n"
+        "  document.addEventListener('keydown', function(e) {\n"
+        "    if (e.key === 'Escape' && document.body.classList.contains('sidebar-open')) {\n"
+        "      closeSidebar();\n"
         "    }\n"
         "  });\n"
         "  document.addEventListener('click', function(e) {\n"
@@ -1957,6 +2012,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "        if (entry.isIntersecting) {\n"
         "          tocLinks.forEach(function(a) { a.classList.remove('active'); });\n"
         "          link.classList.add('active');\n"
+        "          link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });\n"
         "        }\n"
         "      }\n"
         "    });\n"
@@ -2010,11 +2066,13 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     _JS_CODE_TABS = (
         "// Code tabs: switch between language panels (Feature 31)\n"
         "(function() {\n"
+        "  var syncing = false;\n"
         "  document.querySelectorAll('.code-tabs').forEach(function(tabGroup) {\n"
         "    var buttons = tabGroup.querySelectorAll('.tab-bar .tab');\n"
         "    var panels = tabGroup.querySelectorAll('.tab-panel');\n"
         "    buttons.forEach(function(btn) {\n"
         "      btn.addEventListener('click', function() {\n"
+        "        if (syncing) return;\n"
         "        var lang = btn.getAttribute('data-lang');\n"
         "        buttons.forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); b.setAttribute('tabindex', '-1'); });\n"
         "        panels.forEach(function(p) { p.classList.remove('active'); });\n"
@@ -2024,11 +2082,13 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "        var panel = tabGroup.querySelector('.tab-panel[data-lang=\"' + lang + '\"');\n"
         "        if (panel) panel.classList.add('active');\n"
         "        localStorage.setItem('selfdoc-tab-' + lang, 'true');\n"
+        "        syncing = true;\n"
         "        document.querySelectorAll('.code-tabs').forEach(function(otherGroup) {\n"
         "          if (otherGroup === tabGroup) return;\n"
         "          var otherBtn = otherGroup.querySelector('.tab-bar .tab[data-lang=\"' + lang + '\"');\n"
         "          if (otherBtn) otherBtn.click();\n"
         "        });\n"
+        "        syncing = false;\n"
         "      });\n"
         "    });\n"
         "    buttons.forEach(function(btn) {\n"

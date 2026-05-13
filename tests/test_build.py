@@ -4244,3 +4244,75 @@ def test_no_search_action_in_jsonld(project_dir):
     assert '"SearchAction"' not in index_html
     assert "search_term_string" not in index_html
     assert "potentialAction" not in index_html
+
+
+def test_heading_id_deduplication():
+    """Two headings with same text produce id='usage' and id='usage-1'."""
+    result = md_to_html("## Usage\n\n## Usage\n")
+    assert 'id="usage"' in result
+    assert 'id="usage-1"' in result
+
+
+def test_heading_id_deduplication_triple():
+    """Three identical headings produce usage, usage-1, usage-2."""
+    result = md_to_html("## Usage\n\n## Usage\n\n## Usage\n")
+    assert 'id="usage"' in result
+    assert 'id="usage-1"' in result
+    assert 'id="usage-2"' in result
+
+
+def test_slugify_unicode_accents():
+    """Heading with accented characters produces decomposed ASCII slug."""
+    result = md_to_html("## Deploiement\n")
+    assert 'id="deploiement"' in result
+    # Also test actual accented character
+    result2 = md_to_html("## Déploiement\n")
+    assert 'id="deploiement"' in result2
+
+
+def test_slugify_unicode_cjk():
+    """Heading with CJK characters produces a non-empty id containing those characters."""
+    result = md_to_html("## 设置\n")
+    # The slug should contain the CJK characters
+    assert 'id="设置"' in result
+
+
+def test_pygments_dark_css_no_nesting():
+    """Pygments dark CSS uses flat selectors, not nested rule blocks."""
+    from selfdoc.html import generate_pygments_css, HAS_PYGMENTS
+    if not HAS_PYGMENTS:
+        pytest.skip("Pygments not installed")
+    css = generate_pygments_css()
+    # Find the dark mode section (after the light rules)
+    dark_start = css.find("@media (prefers-color-scheme: dark)")
+    assert dark_start != -1
+    dark_section = css[dark_start:]
+    # There should be no nested braces: { ... { ... } ... }
+    # Each rule inside @media should have exactly one level of braces
+    # Check that :root:not(...) is followed directly by a selector, not a {
+    assert ":root:not([data-theme='light']) {" not in dark_section
+
+
+def test_scrollspy_includes_scrollintoview():
+    """Scrollspy JS includes scrollIntoView call."""
+    from selfdoc.html import _wrap_page
+    # Access the JS constant indirectly by checking it's in the module
+    import selfdoc.html as html_mod
+    # The scrollspy JS is built inline; check the source
+    source = open(html_mod.__file__, "r").read()
+    assert "scrollIntoView" in source
+
+
+def test_tab_sync_has_guard():
+    """Code tabs JS includes syncing re-entrancy guard."""
+    import selfdoc.html as html_mod
+    source = open(html_mod.__file__, "r").read()
+    assert "syncing" in source
+
+
+def test_sidebar_escape_handler():
+    """Sidebar JS includes Escape key handler."""
+    import selfdoc.html as html_mod
+    source = open(html_mod.__file__, "r").read()
+    # Check for Escape key handling in sidebar toggle code
+    assert "Escape" in source
