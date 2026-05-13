@@ -1875,3 +1875,320 @@ def test_warn_only_mode(tmp_path, capsys):
     assert exit_code_normal == 1
     # Warn-only mode exits 0 since no directive failures
     assert exit_code_warn_only == 0
+
+
+# -- Go coverage --
+
+
+from selfdoc.check import _extract_go_public_symbols
+
+
+def test_go_extracts_exported_functions(tmp_path):
+    """Unit test for _extract_go_public_symbols with exported and unexported symbols."""
+    go_file = os.path.join(tmp_path, "main.go")
+    with open(go_file, "w", encoding="utf-8") as f:
+        f.write(
+            'package main\n'
+            '\n'
+            '// Greet says hello.\n'
+            'func Greet(name string) string {\n'
+            '    return "Hello, " + name\n'
+            '}\n'
+            '\n'
+            'func (s *Server) Handle(w http.ResponseWriter, r *http.Request) {\n'
+            '}\n'
+            '\n'
+            'type Config struct {\n'
+            '    Name string\n'
+            '}\n'
+            '\n'
+            'type Runner interface {\n'
+            '    Run() error\n'
+            '}\n'
+            '\n'
+            'var DefaultTimeout = 30\n'
+            '\n'
+            'const MaxRetries = 3\n'
+        )
+
+    symbols = _extract_go_public_symbols(go_file)
+    assert "Greet" in symbols
+    assert "Handle" in symbols
+    assert "Config" in symbols
+    assert "Runner" in symbols
+    assert "DefaultTimeout" in symbols
+    assert "MaxRetries" in symbols
+
+
+def test_go_skips_unexported(tmp_path):
+    """Verify lowercase symbols are not counted as public."""
+    go_file = os.path.join(tmp_path, "internal.go")
+    with open(go_file, "w", encoding="utf-8") as f:
+        f.write(
+            'package internal\n'
+            '\n'
+            'func helper() {}\n'
+            '\n'
+            'type config struct {\n'
+            '    name string\n'
+            '}\n'
+            '\n'
+            'var defaultVal = 10\n'
+            '\n'
+            'const maxItems = 5\n'
+            '\n'
+            '// Public is exported.\n'
+            'func Public() {}\n'
+        )
+
+    symbols = _extract_go_public_symbols(go_file)
+    assert symbols == ["Public"]
+
+
+def test_go_skips_comments(tmp_path):
+    """Symbols inside comments should not be extracted."""
+    go_file = os.path.join(tmp_path, "commented.go")
+    with open(go_file, "w", encoding="utf-8") as f:
+        f.write(
+            'package pkg\n'
+            '\n'
+            '// func FakeExport() {}\n'
+            '\n'
+            '/*\n'
+            'func BlockCommented() {}\n'
+            'type Hidden struct {}\n'
+            '*/\n'
+            '\n'
+            'func RealExport() {}\n'
+        )
+
+    symbols = _extract_go_public_symbols(go_file)
+    assert symbols == ["RealExport"]
+
+
+def test_go_coverage_basic(tmp_path):
+    """Create a Go project with exported and unexported symbols, verify coverage."""
+    # selfdoc.json
+    config = {
+        "language": "go",
+        "source": ["pkg/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source: pkg/server/server.go with exported symbols
+    pkg_dir = os.path.join(tmp_path, "pkg", "server")
+    os.makedirs(pkg_dir)
+    with open(os.path.join(pkg_dir, "server.go"), "w", encoding="utf-8") as f:
+        f.write(
+            'package server\n'
+            '\n'
+            '// Start starts the server.\n'
+            'func Start() {}\n'
+            '\n'
+            '// Stop stops the server.\n'
+            'func Stop() {}\n'
+            '\n'
+            'func helper() {}\n'
+        )
+
+    # Source: pkg/util/util.go with more exports
+    util_dir = os.path.join(tmp_path, "pkg", "util")
+    os.makedirs(util_dir)
+    with open(os.path.join(util_dir, "util.go"), "w", encoding="utf-8") as f:
+        f.write(
+            'package util\n'
+            '\n'
+            'func Format() string { return "" }\n'
+        )
+
+    # docs/ directory with a directive referencing only pkg/server
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n"
+            "\n"
+            ":::module pkg/server\n"
+            ":::\n"
+        )
+
+    result = check_docs(str(tmp_path))
+
+    assert result.coverage is not None
+    # pkg/server/server.go has Start, Stop (2 exported; helper is unexported)
+    # pkg/util/util.go has Format (1 exported)
+    # Total: 3 exported symbols
+    assert result.coverage.total_public == 3
+    # Only pkg/server is documented (Start and Stop appear in resolved content)
+    assert result.coverage.referenced == 2
+    # Format from util is undocumented
+    assert len(result.coverage.undocumented_symbols) == 1
+    assert any("Format" in s for s in result.coverage.undocumented_symbols)
+
+
+# -- TypeScript/JavaScript coverage --
+
+
+from selfdoc.check import _extract_ts_public_symbols
+
+
+def test_ts_extracts_exports(tmp_path):
+    """Unit test for _extract_ts_public_symbols with various export forms."""
+    ts_file = os.path.join(tmp_path, "module.ts")
+    with open(ts_file, "w", encoding="utf-8") as f:
+        f.write(
+            'export function greet(name: string): string {\n'
+            '    return `Hello, ${name}`;\n'
+            '}\n'
+            '\n'
+            'export async function fetchData(): Promise<void> {}\n'
+            '\n'
+            'export class Widget {\n'
+            '    name: string;\n'
+            '}\n'
+            '\n'
+            'export const VERSION = "1.0";\n'
+            '\n'
+            'export interface Config {\n'
+            '    name: string;\n'
+            '}\n'
+            '\n'
+            'export type ID = string;\n'
+            '\n'
+            'export enum Color {\n'
+            '    Red,\n'
+            '    Blue,\n'
+            '}\n'
+            '\n'
+            'export default class App {}\n'
+            '\n'
+            'function internal() {}\n'
+        )
+
+    symbols = _extract_ts_public_symbols(ts_file)
+    assert "greet" in symbols
+    assert "fetchData" in symbols
+    assert "Widget" in symbols
+    assert "VERSION" in symbols
+    assert "Config" in symbols
+    assert "ID" in symbols
+    assert "Color" in symbols
+    assert "App" in symbols
+    # Non-exported function should not be included
+    assert "internal" not in symbols
+
+
+def test_ts_handles_reexports(tmp_path):
+    """Verify export { A, B } extracts both names."""
+    ts_file = os.path.join(tmp_path, "reexport.ts")
+    with open(ts_file, "w", encoding="utf-8") as f:
+        f.write(
+            'const alpha = 1;\n'
+            'const beta = 2;\n'
+            'const gamma = 3;\n'
+            '\n'
+            'export { alpha, beta }\n'
+        )
+
+    symbols = _extract_ts_public_symbols(ts_file)
+    assert "alpha" in symbols
+    assert "beta" in symbols
+    assert "gamma" not in symbols
+
+
+def test_ts_handles_reexport_as(tmp_path):
+    """Verify export { A as B } extracts the alias name."""
+    ts_file = os.path.join(tmp_path, "alias.ts")
+    with open(ts_file, "w", encoding="utf-8") as f:
+        f.write(
+            'const internal = 1;\n'
+            'export { internal as publicName }\n'
+        )
+
+    symbols = _extract_ts_public_symbols(ts_file)
+    assert "publicName" in symbols
+    assert "internal" not in symbols
+
+
+def test_ts_skips_comments(tmp_path):
+    """Symbols inside comments should not be extracted."""
+    ts_file = os.path.join(tmp_path, "commented.ts")
+    with open(ts_file, "w", encoding="utf-8") as f:
+        f.write(
+            '// export function fake() {}\n'
+            '\n'
+            '/*\n'
+            'export function blocked() {}\n'
+            'export class Hidden {}\n'
+            '*/\n'
+            '\n'
+            'export function real(): void {}\n'
+        )
+
+    symbols = _extract_ts_public_symbols(ts_file)
+    assert symbols == ["real"]
+
+
+def test_ts_coverage_basic(tmp_path):
+    """Create a TypeScript project with exports, verify coverage."""
+    config = {
+        "language": "typescript",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source: src/utils.ts with exports
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "utils.ts"), "w", encoding="utf-8") as f:
+        f.write(
+            'export function format(s: string): string {\n'
+            '    return s.trim();\n'
+            '}\n'
+            '\n'
+            'export function parse(s: string): number {\n'
+            '    return parseInt(s);\n'
+            '}\n'
+        )
+
+    # Source: src/config.ts with more exports
+    with open(os.path.join(src_dir, "config.ts"), "w", encoding="utf-8") as f:
+        f.write(
+            'export interface Settings {\n'
+            '    name: string;\n'
+            '}\n'
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    # Only document src/utils.ts
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n"
+            "\n"
+            ":::module src/utils.ts\n"
+            ":::\n"
+        )
+
+    result = check_docs(str(tmp_path))
+
+    assert result.coverage is not None
+    # src/utils.ts has format, parse (2 exported)
+    # src/config.ts has Settings (1 exported)
+    # Total: 3 exported symbols
+    assert result.coverage.total_public == 3
+    # Only src/utils.ts is documented (format, parse in resolved content)
+    assert result.coverage.referenced == 2
+    # Settings from config.ts is undocumented
+    assert len(result.coverage.undocumented_symbols) == 1
+    assert any("Settings" in s for s in result.coverage.undocumented_symbols)
