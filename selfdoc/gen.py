@@ -308,4 +308,17 @@ def generate_docs(config, base_dir="."):
     _atomic_write(index_path, index_content, permissions=0o444)
     generated.append("gen-index.md")
 
+    # strictcli support: auto-generate CLI documentation pages
+    from selfdoc.strictcli_support import (
+        uses_strictcli,
+        extract_cli_structure,
+        generate_cli_pages,
+    )
+
+    if uses_strictcli(source_paths, base_dir):
+        cli_structure = extract_cli_structure(source_paths, base_dir)
+        if cli_structure is not None:
+            cli_pages = generate_cli_pages(cli_structure, docs_dir)
+            generated.extend(cli_pages)
+
     return generated
