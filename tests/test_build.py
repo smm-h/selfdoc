@@ -5727,7 +5727,7 @@ def test_clean_theme_builds_successfully(project_dir):
     assert "fonts.gstatic.com" not in content
 
     # Accent color from clean.json is used in favicon
-    assert "#635bff" in content
+    assert "#5046e4" in content
 
     # CSS is present in the output
     style_css = os.path.join(output_dir, "style.css")
