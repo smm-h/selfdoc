@@ -45,23 +45,23 @@ a {
 :root {
     --bg: #ffffff;
     --text: #1a1f36;
-    --text-secondary: #697386;
+    --text-secondary: #5e697b;
     --heading: #0a2540;
-    --link: #635bff;
-    --link-hover: #4b45c6;
+    --link: #5046e4;
+    --link-hover: #3b35a8;
     --sidebar-bg: #ffffff;
-    --sidebar-text: #697386;
-    --sidebar-active: #635bff;
+    --sidebar-text: #5e697b;
+    --sidebar-active: #5046e4;
     --sidebar-hover-bg: #f7f8fa;
     --code-bg: #f7f8fa;
     --code-border: transparent;
     --border: #e3e8ee;
     --topbar-bg: #ffffff;
     --topbar-text: #0a2540;
-    --badge-bg: #635bff;
+    --badge-bg: #5046e4;
     --badge-text: #ffffff;
     --admonition-tip: #1ea672;
-    --admonition-important: #635bff;
+    --admonition-important: #5046e4;
     --admonition-warning: #c4841d;
     --admonition-caution: #cd3d64;
     --shadow-sm: rgba(0, 0, 0, 0.04);
@@ -80,21 +80,21 @@ a {
         --text: #e3e8ee;
         --text-secondary: #9ca3b0;
         --heading: #ffffff;
-        --link: #7a73ff;
-        --link-hover: #9d97ff;
+        --link: #9b93ff;
+        --link-hover: #b5aeff;
         --sidebar-bg: #0a2540;
         --sidebar-text: #9ca3b0;
-        --sidebar-active: #7a73ff;
+        --sidebar-active: #9b93ff;
         --sidebar-hover-bg: #0d2e4f;
         --code-bg: #0d2e4f;
         --code-border: transparent;
         --border: #2a2f45;
         --topbar-bg: #07192b;
         --topbar-text: #e3e8ee;
-        --badge-bg: #7a73ff;
-        --badge-text: #ffffff;
+        --badge-bg: #9b93ff;
+        --badge-text: #0a2540;
         --admonition-tip: #3ecf8e;
-        --admonition-important: #7a73ff;
+        --admonition-important: #9b93ff;
         --admonition-warning: #f5a623;
         --admonition-caution: #e25c73;
         --shadow-sm: rgba(0, 0, 0, 0.2);
@@ -108,21 +108,21 @@ a {
     --text: #e3e8ee;
     --text-secondary: #9ca3b0;
     --heading: #ffffff;
-    --link: #7a73ff;
-    --link-hover: #9d97ff;
+    --link: #9b93ff;
+    --link-hover: #b5aeff;
     --sidebar-bg: #0a2540;
     --sidebar-text: #9ca3b0;
-    --sidebar-active: #7a73ff;
+    --sidebar-active: #9b93ff;
     --sidebar-hover-bg: #0d2e4f;
     --code-bg: #0d2e4f;
     --code-border: transparent;
     --border: #2a2f45;
     --topbar-bg: #07192b;
     --topbar-text: #e3e8ee;
-    --badge-bg: #7a73ff;
-    --badge-text: #ffffff;
+    --badge-bg: #9b93ff;
+    --badge-text: #0a2540;
     --admonition-tip: #3ecf8e;
-    --admonition-important: #7a73ff;
+    --admonition-important: #9b93ff;
     --admonition-warning: #f5a623;
     --admonition-caution: #e25c73;
     --shadow-sm: rgba(0, 0, 0, 0.2);
@@ -137,6 +137,11 @@ a {
         --heading: #000;
         --border: #000;
         --code-border: #000;
+        --link: #1a0a91;
+        --link-hover: #0f064f;
+        --text-secondary: #333;
+        --sidebar-text: #333;
+        --sidebar-active: #1a0a91;
         --admonition-warning: #8a5c00;
     }
 }
@@ -147,6 +152,11 @@ a {
         --heading: #fff;
         --border: #fff;
         --code-border: #fff;
+        --link: #d4d0ff;
+        --link-hover: #eae8ff;
+        --text-secondary: #ccc;
+        --sidebar-text: #ccc;
+        --sidebar-active: #d4d0ff;
         --admonition-warning: #ffc107;
     }
 }
@@ -1645,10 +1655,10 @@ hr {
     :root {
         --bg: #ffffff;
         --text: #1a1f36;
-        --text-secondary: #697386;
+        --text-secondary: #5e697b;
         --heading: #0a2540;
-        --link: #635bff;
-        --link-hover: #4b45c6;
+        --link: #5046e4;
+        --link-hover: #3b35a8;
         --code-bg: #f7f8fa;
         --code-border: #e3e8ee;
         --border: #e3e8ee;
