@@ -134,6 +134,7 @@ def _cmd_init():
     print(f"  Created: docs/index.md")
     print(f"  Source:  {', '.join(sources)}")
     print(f"\nRun 'selfdoc build' to generate documentation.")
+    return 0
 
 
 @app.command("build", help="Build the documentation site")
@@ -178,6 +179,7 @@ def _cmd_build(warn_only=False):
         print(f"{warn_count} SEO warning(s) found.")
         if not warn_only:
             sys.exit(1)
+    return 0
 
 
 @app.command("serve", help="Serve the documentation site locally")
@@ -326,6 +328,7 @@ def _cmd_serve(port=8000):
         print("\nStopped.")
         _shutdown_flag.set()
         server.shutdown()
+    return 0
 
 
 @app.command("deploy", help="Deploy the documentation site")
@@ -378,6 +381,7 @@ def _cmd_deploy():
     except DeployError as e:
         print(f"Deploy error: {e}", file=sys.stderr)
         sys.exit(1)
+    return 0
 
 
 def _detect_version():
@@ -500,6 +504,7 @@ def _cmd_check(ignore="", format="text", warn_only=False):
 
     if exit_code != 0:
         sys.exit(1)
+    return 0
 
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
@@ -525,6 +530,7 @@ def _cmd_gen():
             print(f"  {path}")
     else:
         print("No files generated.")
+    return 0
 
 
 @app.command("gen-data", help="Generate data files by running sandboxed scripts")
@@ -550,6 +556,7 @@ def _cmd_gen_data():
             print(f"  {path}")
     else:
         print("No gen-data scripts configured.")
+    return 0
 
 
 def run():
