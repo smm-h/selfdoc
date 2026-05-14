@@ -976,3 +976,80 @@ def test_gen_exclude_item_not_string(config_dir):
     })
     with pytest.raises(ConfigError, match="gen.exclude\\[0\\].*must be a string"):
         load_config(str(config_dir))
+
+
+def test_gen_valid_config(config_dir):
+    """Valid gen config with exclude list passes validation."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": {"exclude": ["*.pyc", "tests/"]},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["gen"]["exclude"] == ["*.pyc", "tests/"]
+
+
+def test_gen_invalid_type(config_dir):
+    """gen must be an object, not a string."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": "auto",
+    })
+    with pytest.raises(ConfigError, match="'gen' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_gen_invalid_key(config_dir):
+    """Unknown keys in gen are rejected."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": {"exclude": [], "bogus": True},
+    })
+    with pytest.raises(ConfigError, match="invalid gen key 'bogus'"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_valid_config(config_dir):
+    """Valid gen_data config with scripts passes validation."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {
+            "scripts": [
+                {"command": "python gen.py", "output": "out.json", "mounts": ["/src"]},
+            ],
+        },
+    })
+    cfg = load_config(str(config_dir))
+    assert len(cfg["gen_data"]["scripts"]) == 1
+    assert cfg["gen_data"]["scripts"][0]["command"] == "python gen.py"
+
+
+def test_gen_data_invalid_type(config_dir):
+    """gen_data must be an object, not a list."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": ["scripts"],
+    })
+    with pytest.raises(ConfigError, match="'gen_data' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_invalid_key(config_dir):
+    """Unknown keys in gen_data are rejected."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {"scripts": [], "timeout": 30},
+    })
+    with pytest.raises(ConfigError, match="invalid gen_data key 'timeout'"):
+        load_config(str(config_dir))

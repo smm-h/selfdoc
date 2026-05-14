@@ -250,6 +250,13 @@ def load_config(dir_path="."):
     if gen is not None:
         if not isinstance(gen, dict):
             raise ConfigError("'gen' must be an object")
+        valid_gen_keys = {"exclude"}
+        for key in gen:
+            if key not in valid_gen_keys:
+                raise ConfigError(
+                    f"invalid gen key {key!r}; "
+                    f"must be one of: {', '.join(sorted(valid_gen_keys))}"
+                )
         gen_exclude = gen.get("exclude", None)
         if gen_exclude is not None:
             if not isinstance(gen_exclude, list):
@@ -264,6 +271,13 @@ def load_config(dir_path="."):
     if gen_data is not None:
         if not isinstance(gen_data, dict):
             raise ConfigError("'gen_data' must be an object")
+        valid_gen_data_keys = {"scripts"}
+        for key in gen_data:
+            if key not in valid_gen_data_keys:
+                raise ConfigError(
+                    f"invalid gen_data key {key!r}; "
+                    f"must be one of: {', '.join(sorted(valid_gen_data_keys))}"
+                )
         scripts = gen_data.get("scripts", None)
         if scripts is not None:
             if not isinstance(scripts, list):
