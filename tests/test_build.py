@@ -2841,6 +2841,7 @@ def test_inline_dfn_produces_defined_term_jsonld():
     produces a DefinedTerm JSON-LD entry."""
     html_files = generate_html(
         {"index.md": (
+            "# Test Page\n\n"
             "## Overview\n\n"
             "Selfdoc is a static site generator.\n"
         )},
@@ -2871,6 +2872,7 @@ def test_glossary_and_inline_dfn_no_duplicates():
     entries for both without duplicates."""
     html_files = generate_html(
         {"index.md": (
+            "# Test Page\n\n"
             "## Overview\n\n"
             "Parser is a core component.\n\n"
             "Parser\n"
@@ -5517,7 +5519,7 @@ def test_auto_steps_false_frontmatter_disables_step_detection(project_dir):
     page_md = os.path.join(docs_dir, "guide.md")
     with open(page_md, "w", encoding="utf-8") as f:
         f.write(
-            "---\nauto_steps: false\n---\n"
+            "---\ntitle: Guide\nauto_steps: false\n---\n"
             "## Step Guide\n\n"
             "1. First step\n"
             "2. Second step\n"
@@ -5542,7 +5544,7 @@ def test_auto_api_false_frontmatter_disables_api_wrapping(project_dir):
     page_md = os.path.join(docs_dir, "api.md")
     with open(page_md, "w", encoding="utf-8") as f:
         f.write(
-            "---\nauto_api: false\n---\n"
+            "---\ntitle: API Reference\nauto_api: false\n---\n"
             "### my_function\n\n"
             "```python\ndef my_function(x):\n    pass\n```\n\n"
             "Does something useful.\n"
@@ -5589,6 +5591,7 @@ def test_auto_detect_config_disables_steps_globally(project_dir):
     with open(page_md, "w", encoding="utf-8") as f:
         # No auto_steps frontmatter -- relies on global config
         f.write(
+            "# Guide\n\n"
             "## Step Guide\n\n"
             "1. First step\n"
             "2. Second step\n"
@@ -5618,7 +5621,7 @@ def test_frontmatter_overrides_global_config(project_dir):
     page_md = os.path.join(docs_dir, "guide.md")
     with open(page_md, "w", encoding="utf-8") as f:
         f.write(
-            "---\nauto_steps: true\n---\n"
+            "---\ntitle: Guide\nauto_steps: true\n---\n"
             "## Step Guide\n\n"
             "1. First step\n"
             "2. Second step\n"

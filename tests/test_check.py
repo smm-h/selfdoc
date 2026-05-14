@@ -474,7 +474,7 @@ def lint_project(tmp_path):
 
 
 def test_seo001_multiple_h1s(lint_project):
-    """SEO001: file with two H1 headings triggers a warning."""
+    """SEO001: file with two H1 headings triggers an error."""
     _, docs_dir, config = lint_project
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write(
@@ -487,7 +487,7 @@ def test_seo001_multiple_h1s(lint_project):
 
     assert len(seo001) == 1
     assert seo001[0].file == "page.md"
-    assert seo001[0].severity == "warning"
+    assert seo001[0].severity == "error"
     assert "2" in seo001[0].message
 
 
@@ -1162,7 +1162,7 @@ def test_seo_lints_always_run(python_project):
 
 
 def test_seo013_no_h1(lint_project):
-    """SEO013: page with no H1 heading triggers warning."""
+    """SEO013: page with no H1 heading and no frontmatter title triggers error."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -1177,12 +1177,12 @@ def test_seo013_no_h1(lint_project):
     seo013 = [r for r in results if r.code == "SEO013"]
 
     assert len(seo013) == 1
-    assert seo013[0].severity == "warning"
-    assert "No H1" in seo013[0].message
+    assert seo013[0].severity == "error"
+    assert "No title source" in seo013[0].message
 
 
 def test_seo013_with_h1_no_warning(lint_project):
-    """SEO013: page with an H1 heading does not trigger warning."""
+    """SEO013: page with an H1 heading does not trigger error."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -1191,6 +1191,24 @@ def test_seo013_with_h1_no_warning(lint_project):
         f.write(
             f"---\ndescription: {desc}\n---\n"
             "# Title\n\nSome content here.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo013 = [r for r in results if r.code == "SEO013"]
+
+    assert len(seo013) == 0
+
+
+def test_seo013_with_frontmatter_title_no_h1(lint_project):
+    """SEO013: page with frontmatter title but no H1 does not trigger error."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    desc = "A" * 130
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ntitle: My Page\ndescription: {desc}\n---\n"
+            "## Section\n\nSome content here.\n"
         )
 
     results = _run_lints(docs_dir, None, config)

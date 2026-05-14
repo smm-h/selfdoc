@@ -283,8 +283,8 @@ def _run_lints(docs_dir, resolver, config):
         lines = content.split("\n")
         metadata, _ = _parse_frontmatter(content)
 
-        # SEO001 -- Multiple H1s
-        # SEO013 -- Missing H1
+        # SEO001 -- Multiple H1 headings in Markdown source
+        # SEO013 -- No title source (neither frontmatter title nor # heading)
         h1_count = 0
         for line in lines:
             if re.match(r"^# (?!#)", line):
@@ -294,16 +294,17 @@ def _run_lints(docs_dir, resolver, config):
                 file=rel_path,
                 line=None,
                 code="SEO001",
-                message=f"Multiple H1 headings ({h1_count} found); use a single H1 per page",
-                severity="warning",
+                message=f"Multiple H1 headings ({h1_count} found); use a single '# ' heading per page",
+                severity="error",
             ))
-        elif h1_count == 0:
+        has_frontmatter_title = bool(metadata.get("title"))
+        if h1_count == 0 and not has_frontmatter_title:
             results.append(LintResult(
                 file=rel_path,
                 line=None,
                 code="SEO013",
-                message="No H1 heading found; each page should have exactly one H1",
-                severity="warning",
+                message="No title source: add a '# Heading' or set 'title:' in frontmatter",
+                severity="error",
             ))
 
         # SEO002 -- Heading level gaps
