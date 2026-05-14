@@ -4,7 +4,7 @@ Code-aware static site generator that resolves `:::directive` blocks in Markdown
 
 ## Conventions
 
-- Pure Python, zero runtime dependencies (stdlib only)
+- Pure Python, one runtime dependency (`strictcli>=0.2.0`)
 - Build system: hatchling
 - Development: `uv` for all Python tooling (`uv sync`, `uv run`, `uv add`)
 - Local development install: `uv pip install -e .`
