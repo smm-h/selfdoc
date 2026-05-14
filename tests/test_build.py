@@ -12,8 +12,9 @@ import gzip as gzip_module
 
 from unittest import mock
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
+from selfdoc.themes import get_theme_meta
 
 
 @pytest.fixture()
@@ -5632,3 +5633,99 @@ def test_frontmatter_overrides_global_config(project_dir):
         content = f.read()
     # Frontmatter auto_steps: true should override global steps: false
     assert 'class="steps"' in content
+
+
+def test_theme_meta_loaded(project_dir):
+    """Build with minimal theme uses font URL from minimal.json metadata."""
+    written = build(str(project_dir))
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    meta = get_theme_meta("minimal")
+    # The output HTML should contain the fonts URL from theme metadata
+    assert meta["fonts_url"] in content
+
+
+def test_theme_meta_no_fonts(project_dir):
+    """Theme with fonts_url=null produces no Google Fonts tags in output."""
+    # Create a bare theme CSS and JSON with no fonts
+    import selfdoc.themes as themes_mod
+    themes_dir = os.path.dirname(themes_mod.__file__)
+    # Write a minimal CSS file
+    bare_css = os.path.join(themes_dir, "bare.css")
+    bare_json = os.path.join(themes_dir, "bare.json")
+    try:
+        with open(bare_css, "w", encoding="utf-8") as f:
+            f.write("body { margin: 0; }\n")
+        with open(bare_json, "w", encoding="utf-8") as f:
+            json.dump({
+                "fonts_url": None,
+                "fonts_preconnect": [],
+                "accent_color": "#ff0000",
+                "pygments_light": "default",
+                "pygments_dark": "monokai",
+            }, f)
+
+        # Update config to use the bare theme
+        config_path = os.path.join(project_dir, "selfdoc.json")
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        config["theme"] = "bare"
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f)
+
+        written = build(str(project_dir))
+        output_dir = os.path.join(project_dir, "docs", "_build")
+        index_html = os.path.join(output_dir, "index.html")
+        with open(index_html, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # No Google Fonts references at all
+        assert "fonts.googleapis.com" not in content
+        assert "fonts.gstatic.com" not in content
+    finally:
+        # Clean up the bare theme files
+        for path in (bare_css, bare_json):
+            if os.path.exists(path):
+                os.unlink(path)
+
+
+def test_theme_meta_accent_in_favicon(project_dir):
+    """Favicon SVG uses accent color from theme metadata."""
+    meta = get_theme_meta("minimal")
+    favicon_svg = _generate_favicon_svg("TestProject", meta["accent_color"])
+    assert meta["accent_color"] in favicon_svg
+    assert 'fill="' + meta["accent_color"] + '"' in favicon_svg
+
+    # With a different accent color
+    custom_svg = _generate_favicon_svg("TestProject", "#ff5500")
+    assert "#ff5500" in custom_svg
+    assert "#0969da" not in custom_svg
+
+
+def test_theme_meta_default_when_no_json(tmp_path):
+    """Theme with no companion JSON uses default metadata."""
+    import selfdoc.themes as themes_mod
+    themes_dir = os.path.dirname(themes_mod.__file__)
+    # Create a theme CSS without a companion JSON
+    orphan_css = os.path.join(themes_dir, "orphan.css")
+    orphan_json = os.path.join(themes_dir, "orphan.json")
+    try:
+        with open(orphan_css, "w", encoding="utf-8") as f:
+            f.write("body { margin: 0; }\n")
+        # Ensure no JSON file exists
+        if os.path.exists(orphan_json):
+            os.unlink(orphan_json)
+
+        meta = get_theme_meta("orphan")
+        # Should return defaults
+        assert meta["accent_color"] == "#0969da"
+        assert meta["pygments_light"] == "default"
+        assert meta["pygments_dark"] == "monokai"
+        assert "fonts.googleapis.com" in meta["fonts_url"]
+        assert len(meta["fonts_preconnect"]) == 2
+    finally:
+        if os.path.exists(orphan_css):
+            os.unlink(orphan_css)

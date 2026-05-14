@@ -11,7 +11,7 @@ import re
 import unicodedata
 from datetime import datetime
 
-from selfdoc.themes import get_theme
+from selfdoc.themes import get_theme, get_theme_meta
 
 # Pygments is optional: when available, code blocks get build-time syntax
 # highlighting.  When missing, code blocks render as plain text.
@@ -468,10 +468,13 @@ def _flatten_dark_css(dark_rules):
     return f"{media_block}\n\n{attr_block}"
 
 
-def generate_pygments_css():
+def generate_pygments_css(light_style="default", dark_style="monokai"):
     """Generate Pygments CSS rules for light and dark mode.
 
-    Uses 'default' style for light mode and 'monokai' for dark mode.
+    Args:
+        light_style: Pygments style name for light mode.
+        dark_style: Pygments style name for dark mode.
+
     Scoped to ``.code-block code`` to match the HTML structure produced
     by ``_render_code_block()``.
 
@@ -480,8 +483,8 @@ def generate_pygments_css():
     if not HAS_PYGMENTS:
         return ""
     scope = ".code-block code"
-    light = HtmlFormatter(style="default").get_style_defs(scope)
-    dark = HtmlFormatter(style="monokai").get_style_defs(scope)
+    light = HtmlFormatter(style=light_style).get_style_defs(scope)
+    dark = HtmlFormatter(style=dark_style).get_style_defs(scope)
     dark_css = _flatten_dark_css(dark)
     return f"{light}\n\n{dark_css}"
 
@@ -628,7 +631,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    critical_css=None, twitter_site=None, search=None,
                    feedback=None, branch="main", search_engine=None,
                    branding=None, config_description=None,
-                   auto_detect=None):
+                   auto_detect=None, theme_meta=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -955,6 +958,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             site_terms=site_terms,
             page_number=pd.get("page_number"),
             total_pages=pd.get("total_pages"),
+            theme_meta=theme_meta,
         )
         html_files[pd["html_path"]] = full_html
 
@@ -963,7 +967,7 @@ def generate_html(markdown_files, project_name=None, version=None,
 
 def generate_404_page(project_name=None, version=None, has_custom_css=False,
                       nav_items=None, repo=None, base_url=None, lang="en",
-                      feed_url=None, critical_css=None):
+                      feed_url=None, critical_css=None, theme_meta=None):
     """Generate a custom 404 page using the standard page template (Feature 39).
 
     Returns the full HTML string for 404.html.
@@ -1024,6 +1028,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         lang=lang,
         feed_url=feed_url,
         critical_css=critical_css,
+        theme_meta=theme_meta,
     )
 
 
@@ -2140,8 +2145,13 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                feed_url=None, summary=None, critical_css=None,
                schema=None, twitter_site=None, search=None,
                feedback=None, branch="main", search_engine=None,
-               site_terms=None, page_number=None, total_pages=None):
+               site_terms=None, page_number=None, total_pages=None,
+               theme_meta=None):
     """Wrap converted HTML body in the full page template."""
+    # Use default theme metadata when none provided (backward compatible)
+    if theme_meta is None:
+        theme_meta = get_theme_meta("minimal")
+
     # Cross-page term linking: wrap first occurrence of terms defined on
     # other pages in <a class="term-link"> before template wrapping.
     if site_terms and page_path:
@@ -3188,6 +3198,29 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<span class="topbar-page-title">{_escape_html(title)}</span>'
         )
 
+    # Build font loading tags from theme metadata (or omit when no fonts_url)
+    font_tags = ""
+    if theme_meta and theme_meta.get("fonts_url"):
+        fonts_url = theme_meta["fonts_url"]
+        preconnect_lines = ""
+        for pc_url in theme_meta.get("fonts_preconnect") or []:
+            # The first preconnect is same-origin; subsequent ones get crossorigin
+            if pc_url == (theme_meta.get("fonts_preconnect") or [None])[0]:
+                preconnect_lines += (
+                    f'<link rel="preconnect" href="{pc_url}">\n'
+                )
+            else:
+                preconnect_lines += (
+                    f'<link rel="preconnect" href="{pc_url}" crossorigin>\n'
+                )
+        font_tags = (
+            f'{preconnect_lines}'
+            f'<link rel="preload" href="{fonts_url}" as="style">\n'
+            f'<link rel="stylesheet" href="{fonts_url}" media="print"'
+            f" onload=\"this.media='all'\">"
+            f'<noscript><link rel="stylesheet" href="{fonts_url}"></noscript>\n'
+        )
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -3196,12 +3229,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
         f'<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{description_tag}\n'
         f'<link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">\n'
-        f'<link rel="preconnect" href="https://fonts.googleapis.com">\n'
-        f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-        f'<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">\n'
-        f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print"'
-        f" onload=\"this.media='all'\">"
-        f'<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>\n'
+        f'{font_tags}'
         f'{"<style>" + critical_css + "</style>" + chr(10) if critical_css else ""}'
         f'<link rel="preload" href="{css_href}" as="style">\n'
         f'<link rel="stylesheet" href="{css_href}" media="print"'

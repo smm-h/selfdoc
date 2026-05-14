@@ -20,6 +20,7 @@ from selfdoc.html import (
     _extract_title, _escape_html, _build_nav,
     _generate_search_js, _minify_js,
 )
+from selfdoc.themes import get_theme_meta
 from selfdoc.resolver import make_resolver
 
 try:
@@ -1034,9 +1035,12 @@ def build(dir_path=".", config=None):
     # Atom feed link in HTML <head>
     feed_url = "feed.xml"
 
-    # Extract critical CSS from raw theme (before minification) for inlining
+    # Load theme CSS and metadata
     theme_name = config.get("theme", "minimal")
     raw_theme_css = get_css(theme_name)
+    theme_meta = get_theme_meta(theme_name)
+
+    # Extract critical CSS from raw theme (before minification) for inlining
     critical_css, _ = _extract_critical_css(raw_theme_css)
     critical_css = _minify_css(critical_css)
 
@@ -1063,6 +1067,7 @@ def build(dir_path=".", config=None):
         branding=config.get("branding"),
         config_description=config_description,
         auto_detect=config.get("auto_detect"),
+        theme_meta=theme_meta,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
@@ -1081,7 +1086,10 @@ def build(dir_path=".", config=None):
     # Write the theme CSS file (with Pygments syntax highlighting rules appended)
     css_path = os.path.join(output_dir, "style.css")
     theme_css = raw_theme_css
-    pygments_css = generate_pygments_css()
+    pygments_css = generate_pygments_css(
+        light_style=theme_meta.get("pygments_light", "default"),
+        dark_style=theme_meta.get("pygments_dark", "monokai"),
+    )
     if pygments_css:
         theme_css = theme_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
     theme_css = _minify_css(theme_css)
@@ -1141,6 +1149,8 @@ def build(dir_path=".", config=None):
         description=config_description,
         feed_url=feed_url,
         critical_css=critical_css,
+        accent_color=theme_meta.get("accent_color", "#0969da"),
+        theme_meta=theme_meta,
     )
     written.update(aux_written)
 
@@ -1166,6 +1176,7 @@ def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
     base_url, has_custom_css, repo, lang="en", page_dates=None,
     frontmatter=None, description="", feed_url=None, critical_css=None,
+    accent_color="#0969da", theme_meta=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
@@ -1179,7 +1190,7 @@ def _generate_auxiliary_files(
         html_path = _md_to_html_path(md_path)
         slug = html_path.replace(".html", "")
         page_title = _extract_title(content, slug)
-        png_bytes = _generate_og_png(project_name, page_title)
+        png_bytes = _generate_og_png(project_name, page_title, accent_color)
         png_path = os.path.join(output_dir, f"og-{slug}.png")
         os.makedirs(os.path.dirname(png_path), exist_ok=True)
         with open(png_path, "wb") as f:
@@ -1230,6 +1241,7 @@ def _generate_auxiliary_files(
         lang=lang,
         feed_url=feed_url,
         critical_css=critical_css,
+        theme_meta=theme_meta,
     )
     not_found_path = os.path.join(output_dir, "404.html")
     with open(not_found_path, "w", encoding="utf-8") as f:
@@ -1237,7 +1249,7 @@ def _generate_auxiliary_files(
     written[not_found_path] = True
 
     # Generate favicon.svg from project initials (Feature 40)
-    favicon_svg = _generate_favicon_svg(project_name)
+    favicon_svg = _generate_favicon_svg(project_name, accent_color)
     favicon_path = os.path.join(output_dir, "favicon.svg")
     with open(favicon_path, "w", encoding="utf-8") as f:
         f.write(favicon_svg)
@@ -1329,7 +1341,7 @@ def _generate_redirects(output_dir):
     return path
 
 
-def _generate_favicon_svg(project_name):
+def _generate_favicon_svg(project_name, accent_color="#0969da"):
     """Generate a simple SVG favicon from the project name's initial (Feature 40).
 
     Uses the first letter (uppercase) of the project name, with the accent
@@ -1338,7 +1350,7 @@ def _generate_favicon_svg(project_name):
     initial = project_name[0].upper() if project_name else "D"
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-        f'<rect width="32" height="32" rx="4" fill="#0969da"/>'
+        f'<rect width="32" height="32" rx="4" fill="{accent_color}"/>'
         f'<text x="16" y="22" text-anchor="middle" fill="white" '
         f'font-family="system-ui" font-size="18" font-weight="700">'
         f'{_escape_html(initial)}</text>'
