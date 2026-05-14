@@ -678,8 +678,8 @@ def test_twitter_card_and_title_present(project_dir):
     assert re.search(r'<meta name="twitter:title" content="Test Project - [^"]+">', content)
 
 
-def test_no_auto_generated_description(project_dir):
-    """Without frontmatter description, meta description is empty (no auto-extraction)."""
+def test_auto_generated_description_from_first_paragraph(project_dir):
+    """Without frontmatter description, meta description is auto-extracted from first paragraph."""
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -697,8 +697,8 @@ def test_no_auto_generated_description(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    # No auto-extraction: no meta description tag should be emitted
-    assert '<meta name="description"' not in content
+    # Auto-extracted first paragraph used as meta description
+    assert '<meta name="description" content="This is the first paragraph of the page.">' in content
 
 
 def test_frontmatter_description_takes_priority(project_dir):
@@ -5765,3 +5765,90 @@ def test_theme_meta_default_when_no_json(tmp_path):
     finally:
         if os.path.exists(orphan_css):
             os.unlink(orphan_css)
+
+
+# --- Phase 4: meta description fallback ---
+
+
+def test_frontmatter_description_in_meta_tag(project_dir):
+    """A page WITH frontmatter description gets that description in the meta tag."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Explicit frontmatter description\n---\n"
+            "# Test\n\nFirst paragraph text.\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="description" content="Explicit frontmatter description">' in content
+
+
+def test_auto_meta_description_truncated_to_155_chars(project_dir):
+    """Auto-generated descriptions from first paragraph are truncated to 155 chars."""
+    docs_dir = os.path.join(project_dir, "docs")
+    # Build a paragraph longer than 155 characters
+    long_text = (
+        "This is a very long first paragraph that exceeds the one hundred "
+        "and fifty five character limit for meta descriptions and should be "
+        "truncated at a word boundary with an ellipsis appended to the end "
+        "of the resulting string"
+    )
+    assert len(long_text) > 155  # sanity check
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(f"# Test\n\n{long_text}\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract the meta description content
+    import re
+    match = re.search(r'<meta name="description" content="([^"]*)">', content)
+    assert match is not None, "meta description tag should be present"
+    meta_desc = match.group(1)
+    assert len(meta_desc) <= 158  # 155 + "..."
+    assert meta_desc.endswith("...")
+
+
+def test_auto_meta_description_matches_og_description(project_dir):
+    """Auto-generated meta description matches og:description when no frontmatter."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nAuto generated description text for both tags.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    import re
+    meta_match = re.search(r'<meta name="description" content="([^"]*)">', content)
+    og_match = re.search(r'<meta property="og:description" content="([^"]*)">', content)
+
+    assert meta_match is not None, "meta description tag should be present"
+    assert og_match is not None, "og:description tag should be present"
+    assert meta_match.group(1) == og_match.group(1)
+
+
+def test_no_meta_description_without_paragraphs(project_dir):
+    """When page has no paragraphs, no auto-generated meta description is emitted."""
+    docs_dir = os.path.join(project_dir, "docs")
+    # A page with only a heading and no paragraph content
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Just a Heading\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta name="description"' not in content

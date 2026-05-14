@@ -2203,10 +2203,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'title="{_escape_html(project_name)} Feed" href="{feed_url}">'
         )
     # Meta description tag (Feature 34)
+    # Fall back to auto-extracted first paragraph when frontmatter description
+    # is absent, matching the og:description behaviour.
+    meta_description = description or _truncate_description(
+        _extract_first_paragraph(body_html)
+    )
     description_tag = ""
-    if description:
+    if meta_description:
         description_tag = (
-            f'\n<meta name="description" content="{_escape_html(description)}">'
+            f'\n<meta name="description" content="{_escape_html(meta_description)}">'
         )
 
     # Breadcrumbs (Feature 9)
