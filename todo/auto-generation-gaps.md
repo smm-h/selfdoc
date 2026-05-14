@@ -11,39 +11,57 @@ A thorough design review and ASKME session produced a comprehensive redesign cov
 
 ## 1. Directive syntax overhaul
 
-Replace the old `:::name arg` / `:::` syntax with symmetric colon-bracket delimiters:
+Replace the old `:::name arg` / `:::` syntax with symmetric colon-bracket delimiters and structured attributes:
 
-- `:-: name attr="value"` -- one-liner, no body
-- `:<: name attr="value"` -- block open
-- `::: ` -- body line prefix (strip prefix, remainder is Markdown)
-- `:>:` -- block close
+| Marker | Meaning |
+|--------|---------|
+| `:-: name key="value"` | One-liner: no body, no closer |
+| `:<: name [key="value"]` | Block open (inline attrs optional) |
+| `:@: key="value"` | Attribute line (block only, before separator) |
+| `:=:` | Separator between attributes and body |
+| `::: content` | Body line (prefix stripped, remainder is Markdown) |
+| `:>:` | Block close |
 
 Examples:
 
 ```markdown
-:-: code-source path="selfdoc/config.py" target="load_config"
+:-: code-help path="selfdoc/cli.py"
 
-:<: table-schema path="selfdoc/config.py" target="Config"
+:<: table-schema
+:@: path="selfdoc/config.py"
+:@: target="Config"
+:=:
 ::: exclude: _private_field
 ::: exclude: _internal_method
 :>:
 
 :<: list-glossary
+:=:
 ::: **directive**: a block in Markdown that selfdoc resolves from source code
 ::: **extractor**: language-specific module that reads code structure
 :>:
 
-:-: callout-warning
+:<: callout-warning
+:=:
 ::: This is a breaking change from v1.
 :>:
 ```
 
 Parsing rules:
-- `:<:` followed by word chars = block open
-- `:-:` followed by word chars = one-liner (no body, no closer)
+- `:-:` followed by word chars = one-liner (no body, no closer, no continuation)
+- `:<:` followed by word chars = block open (optional inline attrs on same line)
+- `:@: key="value"` = attribute line, only valid inside blocks, before `:=:`
+- `:=:` alone on a line = separator between attributes and body
 - `::: ` (colon-colon-colon-space) = body line, strip prefix
 - `:>:` alone on a line = block close
 - No nesting (`:>:` always closes the nearest open block)
+- `:=:` is required whenever a block has body lines, even if there are no attributes
+
+Attribute parsing:
+- All values must be quoted: `key="value"` (no bare values)
+- Attribute names are bare words
+- Inline attrs on `:<:` opener are allowed for brevity when they fit on one line
+- `:@:` continuation lines add more attributes in blocks
 
 ## 2. Directive naming: contenttype-semantic
 
