@@ -786,15 +786,19 @@ def test_min_coverage_default_none(config_dir):
 
 
 def test_gen_data_passed_through(config_dir):
-    """gen_data is passed through when present in the config."""
+    """gen_data with valid scripts is accepted."""
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
         "base_url": "https://example.com",
-        "gen_data": {"output": "data/api.json", "format": "json"},
+        "gen_data": {
+            "scripts": [
+                {"command": "python gen.py", "output": "data/api.json", "mounts": ["/src"]},
+            ],
+        },
     })
     cfg = load_config(str(config_dir))
-    assert cfg["gen_data"] == {"output": "data/api.json", "format": "json"}
+    assert cfg["gen_data"]["scripts"][0]["command"] == "python gen.py"
 
 
 def test_gen_data_absent_is_none(config_dir):
@@ -806,3 +810,169 @@ def test_gen_data_absent_is_none(config_dir):
     })
     cfg = load_config(str(config_dir))
     assert cfg["gen_data"] is None
+
+
+def test_gen_data_not_dict(config_dir):
+    """Non-dict gen_data raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": "bad",
+    })
+    with pytest.raises(ConfigError, match="'gen_data' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_scripts_not_list(config_dir):
+    """Non-list gen_data.scripts raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {"scripts": "bad"},
+    })
+    with pytest.raises(ConfigError, match="'gen_data.scripts' must be a list"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_script_missing_command(config_dir):
+    """Script missing 'command' raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {
+            "scripts": [
+                {"output": "out.json", "mounts": ["/src"]},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="gen_data.scripts\\[0\\].command.*required"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_script_missing_output(config_dir):
+    """Script missing 'output' raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {
+            "scripts": [
+                {"command": "echo hi", "mounts": ["/src"]},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="gen_data.scripts\\[0\\].output.*required"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_script_missing_mounts(config_dir):
+    """Script missing 'mounts' raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {
+            "scripts": [
+                {"command": "echo hi", "output": "out.json"},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="gen_data.scripts\\[0\\].mounts.*required"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_script_command_not_string(config_dir):
+    """Non-string command raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {
+            "scripts": [
+                {"command": 42, "output": "out.json", "mounts": ["/src"]},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="gen_data.scripts\\[0\\].command.*must be a string"):
+        load_config(str(config_dir))
+
+
+def test_gen_data_script_mounts_not_list(config_dir):
+    """Non-list mounts raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen_data": {
+            "scripts": [
+                {"command": "echo hi", "output": "out.json", "mounts": "/src"},
+            ],
+        },
+    })
+    with pytest.raises(ConfigError, match="gen_data.scripts\\[0\\].mounts.*must be a list"):
+        load_config(str(config_dir))
+
+
+# -- gen field --
+
+
+def test_gen_valid(config_dir):
+    """Valid gen config with exclude list is accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": {"exclude": ["test_*.py", "__pycache__"]},
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["gen"]["exclude"] == ["test_*.py", "__pycache__"]
+
+
+def test_gen_absent_is_none(config_dir):
+    """Missing gen defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["gen"] is None
+
+
+def test_gen_not_dict(config_dir):
+    """Non-dict gen raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": "bad",
+    })
+    with pytest.raises(ConfigError, match="'gen' must be an object"):
+        load_config(str(config_dir))
+
+
+def test_gen_exclude_not_list(config_dir):
+    """Non-list gen.exclude raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": {"exclude": "*.pyc"},
+    })
+    with pytest.raises(ConfigError, match="'gen.exclude' must be a list"):
+        load_config(str(config_dir))
+
+
+def test_gen_exclude_item_not_string(config_dir):
+    """Non-string item in gen.exclude raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "gen": {"exclude": [42]},
+    })
+    with pytest.raises(ConfigError, match="gen.exclude\\[0\\].*must be a string"):
+        load_config(str(config_dir))

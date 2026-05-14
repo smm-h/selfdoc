@@ -246,6 +246,54 @@ def load_config(dir_path="."):
                     f"'auto_detect.{key}' must be a boolean"
                 )
 
+    gen = raw.get("gen", None)
+    if gen is not None:
+        if not isinstance(gen, dict):
+            raise ConfigError("'gen' must be an object")
+        gen_exclude = gen.get("exclude", None)
+        if gen_exclude is not None:
+            if not isinstance(gen_exclude, list):
+                raise ConfigError("'gen.exclude' must be a list of strings")
+            for i, item in enumerate(gen_exclude):
+                if not isinstance(item, str):
+                    raise ConfigError(
+                        f"'gen.exclude[{i}]' must be a string"
+                    )
+
+    gen_data = raw.get("gen_data", None)
+    if gen_data is not None:
+        if not isinstance(gen_data, dict):
+            raise ConfigError("'gen_data' must be an object")
+        scripts = gen_data.get("scripts", None)
+        if scripts is not None:
+            if not isinstance(scripts, list):
+                raise ConfigError("'gen_data.scripts' must be a list")
+            for i, script in enumerate(scripts):
+                if not isinstance(script, dict):
+                    raise ConfigError(f"'gen_data.scripts[{i}]' must be an object")
+                for key in ("command", "output", "mounts"):
+                    if key not in script:
+                        raise ConfigError(
+                            f"'gen_data.scripts[{i}].{key}' is required"
+                        )
+                if not isinstance(script["command"], str):
+                    raise ConfigError(
+                        f"'gen_data.scripts[{i}].command' must be a string"
+                    )
+                if not isinstance(script["output"], str):
+                    raise ConfigError(
+                        f"'gen_data.scripts[{i}].output' must be a string"
+                    )
+                if not isinstance(script["mounts"], list):
+                    raise ConfigError(
+                        f"'gen_data.scripts[{i}].mounts' must be a list of strings"
+                    )
+                for j, mount in enumerate(script["mounts"]):
+                    if not isinstance(mount, str):
+                        raise ConfigError(
+                            f"'gen_data.scripts[{i}].mounts[{j}]' must be a string"
+                        )
+
     return {
         "language": language,
         "source": source,
@@ -268,6 +316,6 @@ def load_config(dir_path="."):
         "min_coverage": min_coverage,
         "branding": branding,
         "auto_detect": auto_detect,
-        "gen": raw.get("gen"),
-        "gen_data": raw.get("gen_data"),
+        "gen": gen,
+        "gen_data": gen_data,
     }
