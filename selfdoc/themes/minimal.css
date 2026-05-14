@@ -133,6 +133,11 @@ a {
         --heading: #000;
         --border: #000;
         --code-border: #000;
+        --link: #023b95;
+        --link-hover: #012e78;
+        --text-secondary: #333;
+        --sidebar-text: #222;
+        --sidebar-active: #023b95;
         --admonition-warning: #5a3d00;
     }
 }
@@ -143,6 +148,11 @@ a {
         --heading: #fff;
         --border: #fff;
         --code-border: #fff;
+        --link: #a8d4ff;
+        --link-hover: #bfe0ff;
+        --text-secondary: #ddd;
+        --sidebar-text: #ddd;
+        --sidebar-active: #a8d4ff;
         --admonition-warning: #ffc107;
     }
 }
