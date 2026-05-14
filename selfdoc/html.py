@@ -257,20 +257,28 @@ def _generate_search_js(engine="builtin"):
         "    return indexLoading;\n"
         "  }\n"
         "\n"
-        "  function openSearch() {\n"
+        "  function openSearch(initialQuery) {\n"
         "    dialog.showModal();\n"
-        "    input.value = '';\n"
+        "    input.value = initialQuery || '';\n"
         "    resultsList.innerHTML = '';\n"
         "    activeIdx = -1;\n"
         "    if (!indexLoaded) {\n"
         "      resultsList.innerHTML = '<li class=\"search-loading\">Loading...</li>';\n"
         "    }\n"
-        "    loadIndex();\n"
+        "    loadIndex().then(function() {\n"
+        "      if (input.value) renderResults(input.value);\n"
+        "    });\n"
         "    input.focus();\n"
         "  }\n"
         "\n"
         "  function closeSearch() {\n"
         "    dialog.close();\n"
+        "    // Clear ?q= parameter from URL\n"
+        "    var url = new URL(window.location);\n"
+        "    if (url.searchParams.has('q')) {\n"
+        "      url.searchParams.delete('q');\n"
+        "      history.replaceState(null, '', url.pathname + url.search + url.hash);\n"
+        "    }\n"
         "  }\n"
         "\n"
         "  function highlightText(text, highlights, field) {\n"
@@ -403,6 +411,12 @@ def _generate_search_js(engine="builtin"):
         "      closeSearch();\n"
         "    }\n"
         "  });\n"
+        "\n"
+        "  // Open search with ?q= parameter if present\n"
+        "  var urlQ = new URLSearchParams(window.location.search).get('q');\n"
+        "  if (urlQ) {\n"
+        "    openSearch(urlQ);\n"
+        "  }\n"
         "})();\n"
     )
 
@@ -2473,6 +2487,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             "@type": "WebSite",
             "name": project_name,
             "url": f"{base_url}/",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": f"{base_url}/?q={{search_term_string}}",
+                "query-input": "required name=search_term_string",
+            },
         }
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
