@@ -1,6 +1,5 @@
 """CLI interface for selfdoc."""
 
-import argparse
 import datetime
 import http.server
 import json
@@ -8,19 +7,16 @@ import os
 import sys
 import threading
 
+import strictcli
+
 from selfdoc import __version__
-from selfdoc.extractors import detect_language
 
 
-COMMANDS = {
-    "init": "Initialize selfdoc in the current project",
-    "build": "Build the documentation site",
-    "serve": "Serve the documentation site locally",
-    "deploy": "Deploy the documentation site",
-    "check": "Check documentation coverage and consistency",
-    "gen": "Auto-generate documentation pages from project structure",
-    "gen-data": "Generate data files by running sandboxed scripts",
-}
+app = strictcli.App(
+    name="selfdoc",
+    version=__version__,
+    help="Code-aware static site generator with directive-based content extraction",
+)
 
 
 def _detect_source_paths(language):
@@ -72,8 +68,11 @@ def _detect_main_module():
     return os.path.basename(os.path.abspath("."))
 
 
-def _cmd_init(args):
+@app.command("init", help="Initialize selfdoc in the current project")
+def _cmd_init():
     """Initialize selfdoc in the current project."""
+    from selfdoc.extractors import detect_language
+
     if os.path.isfile("selfdoc.json"):
         print("selfdoc.json already exists. Aborting.")
         sys.exit(1)
@@ -125,7 +124,7 @@ def _cmd_init(args):
             f"\n"
             f"## API Reference\n"
             f"\n"
-            f":-: ref path=\"{main_module}\"\n"
+            f':-: ref path="{main_module}"\n'
         )
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(starter)
@@ -137,7 +136,9 @@ def _cmd_init(args):
     print(f"\nRun 'selfdoc build' to generate documentation.")
 
 
-def _cmd_build(args):
+@app.command("build", help="Build the documentation site")
+@strictcli.flag("warn-only", type=bool, help="Treat SEO lint warnings as non-fatal (exit 0 despite warnings)")
+def _cmd_build(warn_only=False):
     """Build the documentation site."""
     from selfdoc.build import build
 
@@ -175,11 +176,13 @@ def _cmd_build(args):
 
     if warn_count > 0:
         print(f"{warn_count} SEO warning(s) found.")
-        if not getattr(args, "warn_only", False):
+        if not warn_only:
             sys.exit(1)
 
 
-def _cmd_serve(args):
+@app.command("serve", help="Serve the documentation site locally")
+@strictcli.flag("port", short="p", type=int, default=8000, help="Port to serve on (default: 8000)")
+def _cmd_serve(port=8000):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
 
@@ -196,8 +199,6 @@ def _cmd_serve(args):
             file=sys.stderr,
         )
         sys.exit(1)
-
-    port = args.port
 
     # JS snippet injected into HTML responses to enable live reload
     _RELOAD_SCRIPT = (
@@ -327,7 +328,8 @@ def _cmd_serve(args):
         server.shutdown()
 
 
-def _cmd_deploy(args):
+@app.command("deploy", help="Deploy the documentation site")
+def _cmd_deploy():
     """Deploy the documentation site."""
     from selfdoc.config import load_config
     from selfdoc.deploy import (
@@ -405,7 +407,11 @@ def _detect_version():
     return "0.0.0"
 
 
-def _cmd_check(args):
+@app.command("check", help="Check documentation coverage and consistency")
+@strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
+@strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format (default: text)")
+@strictcli.flag("warn-only", type=bool, help="Treat SEO lint warnings as non-fatal (only directive failures and coverage threshold violations cause exit 1)")
+def _cmd_check(ignore="", format="text", warn_only=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
@@ -418,10 +424,9 @@ def _cmd_check(args):
 
     # Build combined ignore set from CLI --ignore and config lint_ignore
     ignore_codes = set()
-    cli_ignore = getattr(args, "ignore", "")
-    if cli_ignore:
+    if ignore:
         ignore_codes.update(
-            code.strip() for code in cli_ignore.split(",") if code.strip()
+            code.strip() for code in ignore.split(",") if code.strip()
         )
     config = load_config(".")
     if config:
@@ -433,7 +438,6 @@ def _cmd_check(args):
     # Determine exit code before output
     has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
     has_warnings = any(lint.severity == "warning" for lint in result.lints)
-    warn_only = getattr(args, "warn_only", False)
 
     # Coverage threshold check
     coverage_below_threshold = False
@@ -453,7 +457,7 @@ def _cmd_check(args):
         or coverage_below_threshold
     ) else 0
 
-    if getattr(args, "format", "text") == "json":
+    if format == "json":
         output = {
             "directives": [
                 {
@@ -498,7 +502,8 @@ def _cmd_check(args):
         sys.exit(1)
 
 
-def _cmd_gen(args):
+@app.command("gen", help="Auto-generate documentation pages from project structure")
+def _cmd_gen():
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
     from selfdoc.gen import generate_docs
@@ -522,7 +527,8 @@ def _cmd_gen(args):
         print("No files generated.")
 
 
-def _cmd_gen_data(args):
+@app.command("gen-data", help="Generate data files by running sandboxed scripts")
+def _cmd_gen_data():
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config
     from selfdoc.gendata import GenDataError, generate_data
@@ -548,59 +554,4 @@ def _cmd_gen_data(args):
 
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
-    parser = argparse.ArgumentParser(
-        prog="selfdoc",
-        description="Code-aware static site generator with directive-based content extraction",
-    )
-    parser.add_argument(
-        "--version", "-v", action="version", version=f"selfdoc {__version__}"
-    )
-
-    subparsers = parser.add_subparsers(dest="command", title="commands")
-
-    # init
-    sub_init = subparsers.add_parser("init", help=COMMANDS["init"])
-    sub_init.set_defaults(func=_cmd_init)
-
-    # build
-    sub_build = subparsers.add_parser("build", help=COMMANDS["build"])
-    sub_build.add_argument("--warn-only", action="store_true", default=False,
-        help="Treat SEO lint warnings as non-fatal (exit 0 despite warnings)")
-    sub_build.set_defaults(func=_cmd_build)
-
-    # serve
-    sub_serve = subparsers.add_parser("serve", help=COMMANDS["serve"])
-    sub_serve.add_argument(
-        "--port", "-p", type=int, default=8000, help="Port to serve on (default: 8000)"
-    )
-    sub_serve.set_defaults(func=_cmd_serve)
-
-    # deploy
-    sub_deploy = subparsers.add_parser("deploy", help=COMMANDS["deploy"])
-    sub_deploy.set_defaults(func=_cmd_deploy)
-
-    # gen
-    sub_gen = subparsers.add_parser("gen", help=COMMANDS["gen"])
-    sub_gen.set_defaults(func=_cmd_gen)
-
-    # gen-data
-    sub_gen_data = subparsers.add_parser("gen-data", help=COMMANDS["gen-data"])
-    sub_gen_data.set_defaults(func=_cmd_gen_data)
-
-    # check
-    sub_check = subparsers.add_parser("check", help=COMMANDS["check"])
-    sub_check.add_argument("--ignore", type=str, default="",
-        help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
-    sub_check.add_argument("--format", choices=["text", "json"], default="text",
-        help="Output format (default: text)")
-    sub_check.add_argument("--warn-only", action="store_true", default=False,
-        help="Treat SEO lint warnings as non-fatal (only directive failures and coverage threshold violations cause exit 1)")
-    sub_check.set_defaults(func=_cmd_check)
-
-    args = parser.parse_args()
-
-    if not args.command:
-        parser.print_help()
-        sys.exit(0)
-
-    args.func(args)
+    app.run()

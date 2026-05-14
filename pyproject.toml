@@ -7,7 +7,7 @@ authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
-dependencies = []
+dependencies = ["strictcli>=0.2.0"]
 
 [project.optional-dependencies]
 perf = ["brotli>=1.1"]
