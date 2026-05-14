@@ -5705,6 +5705,39 @@ def test_theme_meta_accent_in_favicon(project_dir):
     assert "#0969da" not in custom_svg
 
 
+def test_clean_theme_builds_successfully(project_dir):
+    """Build with clean theme produces output without errors."""
+    config_path = os.path.join(project_dir, "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["theme"] = "clean"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    written = build(str(project_dir))
+    assert len(written) > 0
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    index_html = os.path.join(output_dir, "index.html")
+    with open(index_html, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Clean theme has no Google Fonts
+    assert "fonts.googleapis.com" not in content
+    assert "fonts.gstatic.com" not in content
+
+    # Accent color from clean.json is used in favicon
+    assert "#635bff" in content
+
+    # CSS is present in the output
+    style_css = os.path.join(output_dir, "style.css")
+    assert os.path.exists(style_css)
+    with open(style_css, "r", encoding="utf-8") as f:
+        css_content = f.read()
+    # Verify Stripe-inspired navy dark mode background is in the CSS
+    assert "#0a2540" in css_content
+
+
 def test_theme_meta_default_when_no_json(tmp_path):
     """Theme with no companion JSON uses default metadata."""
     import selfdoc.themes as themes_mod
