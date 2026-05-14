@@ -679,23 +679,53 @@ def _check_contrast(lints, config, base_dir):
 
     # Extract :root block variables (light mode)
     root_match = re.search(r":root\s*\{([^}]+)\}", css_content)
-    if root_match:
-        light_vars = _extract_css_vars(root_match.group(1))
-        _check_pairs(lints, light_vars, pairs, "")
+    light_vars = _extract_css_vars(root_match.group(1)) if root_match else {}
 
     # Extract [data-theme="dark"] block variables
     dark_match = re.search(
         r'\[data-theme="dark"\]\s*\{([^}]+)\}', css_content
     )
-    if dark_match:
-        dark_vars = _extract_css_vars(dark_match.group(1))
+    dark_vars = _extract_css_vars(dark_match.group(1)) if dark_match else {}
+
+    # Check theme defaults
+    if light_vars:
+        _check_pairs(lints, light_vars, pairs, "")
+    if dark_vars:
         _check_pairs(lints, dark_vars, pairs, "dark mode ")
 
+    # Check custom.css overrides (if present)
+    custom_css_path = os.path.join(base_dir, "custom.css")
+    if os.path.isfile(custom_css_path):
+        with open(custom_css_path, "r", encoding="utf-8") as f:
+            custom_content = f.read()
 
-def _check_pairs(lints, css_vars, pairs, mode_prefix):
+        # Extract custom :root overrides and merge onto theme defaults
+        custom_root_match = re.search(
+            r":root\s*\{([^}]+)\}", custom_content
+        )
+        if custom_root_match and light_vars:
+            custom_light = _extract_css_vars(custom_root_match.group(1))
+            merged_light = {**light_vars, **custom_light}
+            _check_pairs(
+                lints, merged_light, pairs, "",
+                css_file="custom.css",
+            )
+
+        # Extract custom dark mode overrides and merge onto theme defaults
+        custom_dark_match = re.search(
+            r'\[data-theme="dark"\]\s*\{([^}]+)\}', custom_content
+        )
+        if custom_dark_match and dark_vars:
+            custom_dark = _extract_css_vars(custom_dark_match.group(1))
+            merged_dark = {**dark_vars, **custom_dark}
+            _check_pairs(
+                lints, merged_dark, pairs, "dark mode ",
+                css_file="custom.css",
+            )
+
+
+def _check_pairs(lints, css_vars, pairs, mode_prefix, css_file="theme CSS"):
     """Check contrast ratio for each pair and emit SEO012 if below threshold."""
-    css_file = "theme CSS"
-
     for fg_var, bg_var, name, threshold in pairs:
         fg_hex = css_vars.get(fg_var)
         bg_hex = css_vars.get(bg_var)

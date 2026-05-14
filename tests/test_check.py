@@ -2013,3 +2013,122 @@ def test_ts_coverage_basic(tmp_path):
     # Settings from config.ts is undocumented
     assert len(result.coverage.undocumented_symbols) == 1
     assert any("Settings" in s for s in result.coverage.undocumented_symbols)
+
+
+# -- SEO012: custom.css contrast override checks --
+
+
+from selfdoc.check import _extract_css_vars
+
+
+def test_seo012_custom_css_low_contrast_link(lint_project):
+    """SEO012 fires when custom.css overrides --link with a low-contrast color."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+    config["theme"] = "minimal"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    # Write a custom.css that overrides --link with a near-white color
+    with open(os.path.join(docs_dir, "custom.css"), "w", encoding="utf-8") as f:
+        f.write(
+            ":root {\n"
+            "    --link: #eeeeee;\n"
+            "}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo012 = [r for r in results if r.code == "SEO012"]
+
+    # Should have at least one SEO012 from custom.css for the link pair
+    custom_lints = [r for r in seo012 if r.file == "custom.css"]
+    assert len(custom_lints) >= 1
+    assert any("links" in r.message for r in custom_lints)
+
+
+def test_seo012_custom_css_high_contrast_link(lint_project):
+    """SEO012 does NOT fire when custom.css overrides --link with a high-contrast color."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+    config["theme"] = "minimal"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    # Write a custom.css that overrides --link with a dark, high-contrast color
+    with open(os.path.join(docs_dir, "custom.css"), "w", encoding="utf-8") as f:
+        f.write(
+            ":root {\n"
+            "    --link: #0000cc;\n"
+            "}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo012 = [r for r in results if r.code == "SEO012"]
+
+    # No SEO012 should fire from custom.css
+    custom_lints = [r for r in seo012 if r.file == "custom.css"]
+    assert len(custom_lints) == 0
+
+
+def test_seo012_no_custom_css(lint_project):
+    """SEO012 still works when no custom.css exists (baseline theme only)."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+    config["theme"] = "minimal"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    # Ensure no custom.css exists
+    custom_path = os.path.join(docs_dir, "custom.css")
+    assert not os.path.exists(custom_path)
+
+    results = _run_lints(docs_dir, None, config)
+    seo012 = [r for r in results if r.code == "SEO012"]
+
+    # Default minimal theme should pass all contrast checks
+    assert len(seo012) == 0
+
+
+def test_seo012_custom_css_dark_mode_override(lint_project):
+    """SEO012 fires when custom.css overrides dark mode variables with low contrast."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+    config["theme"] = "minimal"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\nContent.\n"
+        )
+
+    # Override dark mode --text with a very dark color on a dark background
+    # Dark mode --bg is #0d1117 -- using a similarly dark text color
+    with open(os.path.join(docs_dir, "custom.css"), "w", encoding="utf-8") as f:
+        f.write(
+            '[data-theme="dark"] {\n'
+            "    --text: #0e1218;\n"
+            "}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo012 = [r for r in results if r.code == "SEO012"]
+
+    # Should have SEO012 from custom.css for dark mode body text
+    custom_dark = [
+        r for r in seo012
+        if r.file == "custom.css" and "dark mode" in r.message
+    ]
+    assert len(custom_dark) >= 1
+    assert any("body text" in r.message for r in custom_dark)
