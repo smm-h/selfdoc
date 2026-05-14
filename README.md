@@ -1,6 +1,6 @@
 # selfdoc
 
-Code-aware static site generator that resolves `:::directive` blocks in Markdown templates into live content extracted from your source code.
+Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from your source code.
 
 Supports Python, Go, and TypeScript/JavaScript. Zero runtime dependencies -- pure Python stdlib.
 
@@ -36,39 +36,36 @@ selfdoc serve
 
 ## Directive syntax
 
-Directives are fenced blocks in your Markdown templates. They get replaced with content extracted from your source code at build time.
+Directives are inline blocks in your Markdown templates. They get replaced with content extracted from your source code at build time.
 
 ```
-:::name arg
-:::
+:-: directive-name path="arg"
 ```
 
-Everything between `:::name arg` and the closing `:::` is the directive body (optional, depends on the directive). Directives inside fenced code blocks are ignored.
+Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` to open, `:>:` to close, with `:=:` and `:::` to delimit sections inside. Directives inside fenced code blocks are ignored.
 
 ## Built-in directives
 
-| Directive | Arg | Description |
-| --------- | --- | ----------- |
-| `module` | dotted.path or file path | Extract module/package docstrings, exported functions, classes |
-| `schema` | file.json or module ClassName | Extract dataclass fields or JSON keys as a table |
-| `test` | file_path [TestName] | Embed test source code (whole file or specific function/class) |
-| `cli` | module path | Extract CLI help/usage text and flag definitions |
-| `config` | file path | Render JSON/TOML config files as key-value tables |
+| Directive | Attributes | Description |
+| --------- | ---------- | ----------- |
+| `ref` | `path` | Extract module/package docstrings, exported functions, classes |
+| `table-schema` | `path`, `target` | Extract dataclass fields or JSON keys as a table |
+| `code-test` | `path`, `target` | Embed test source code (whole file or specific function/class) |
+| `code-help` | `path` | Extract CLI help/usage text and flag definitions |
+| `table-config` | `path` | Render JSON/TOML config files as key-value tables |
 
 Example -- embed the API docs for a Python module:
 
 ```markdown
 ## API Reference
 
-:::module selfdoc.config
-:::
+:-: ref path="selfdoc.config"
 ```
 
 Example -- show a JSON schema as a table:
 
 ```markdown
-:::schema selfdoc.json
-:::
+:-: table-schema path="selfdoc.json"
 ```
 
 ## Custom directives
@@ -94,8 +91,7 @@ def resolve(arg: str, config: dict) -> str:
 Use in templates:
 
 ```markdown
-:::changelog v1.0.0
-:::
+:-: changelog path="v1.0.0"
 ```
 
 Custom directives take priority over built-in names.
