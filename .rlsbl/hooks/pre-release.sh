@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Pre-release validation hook.
-# Runs before rlsbl creates a release. Exit non-zero to abort.
-# Detects project type and runs appropriate checks automatically.
-
 set -euo pipefail
+<<<<<<< /home/m/Projects/selfdoc/tmprkrd0xsx.ours
 
 echo "Running pre-release checks..."
 
@@ -25,3 +22,11 @@ if [ -f package.json ] && node -e "process.exit(require('./package.json').script
 fi
 
 echo "Pre-release checks passed."
+=======
+# Project-specific pre-release checks.
+# Built-in checks (tests, lint) run automatically before this hook.
+# Add custom validation here, e.g.:
+#   - Check for uncommitted documentation
+#   - Verify external service connectivity
+#   - Run integration tests not covered by the test suite
+>>>>>>> /home/m/Projects/selfdoc/tmp60ztcla5.theirs

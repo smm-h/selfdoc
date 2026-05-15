@@ -1,4 +1,4 @@
-# selfdoc
+# selfdocumenting
 
 Code-aware static site generator that resolves `:::directive` blocks in Markdown templates into content extracted from source code. Supports Python, Go, and TypeScript/JavaScript.
 

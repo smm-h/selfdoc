@@ -1,4 +1,4 @@
-# selfdoc
+# selfdocumenting
 
 ## Release workflow
 
