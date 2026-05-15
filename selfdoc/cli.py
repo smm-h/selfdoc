@@ -146,7 +146,7 @@ def _cmd_init(no_commit=False):
 
 
 @app.command("build", help="Build the documentation site")
-@strictcli.flag("warn-only", type=bool, help="Treat SEO lint warnings as non-fatal (exit 0 despite warnings)")
+@strictcli.flag("warn-only", type=bool, help="(deprecated, no-op) Warnings are now non-fatal by default")
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
 def _cmd_build(warn_only=False, no_commit=False):
     """Build the documentation site."""
@@ -183,6 +183,7 @@ def _cmd_build(warn_only=False, no_commit=False):
     check_result = check_docs(".")
     lints = filter_lints(check_result.lints, ignore_codes)
     warn_count = 0
+    error_count = 0
     for lint in lints:
         line_part = f":{lint.line}" if lint.line is not None else ""
         print(
@@ -191,11 +192,14 @@ def _cmd_build(warn_only=False, no_commit=False):
         )
         if lint.severity == "warning":
             warn_count += 1
+        elif lint.severity == "error":
+            error_count += 1
 
     if warn_count > 0:
         print(f"{warn_count} SEO warning(s) found.")
-        if not warn_only:
-            sys.exit(1)
+    if error_count > 0:
+        print(f"{error_count} error(s) found.")
+        sys.exit(1)
     return 0
 
 
@@ -431,7 +435,7 @@ def _detect_version():
 @app.command("check", help="Check documentation coverage and consistency")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format (default: text)")
-@strictcli.flag("warn-only", type=bool, help="Treat SEO lint warnings as non-fatal (only directive failures and coverage threshold violations cause exit 1)")
+@strictcli.flag("warn-only", type=bool, help="(deprecated, no-op) Warnings are now non-fatal by default")
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
 def _cmd_check(ignore="", format="text", warn_only=False, no_commit=False):
     """Check documentation coverage and consistency."""
@@ -467,7 +471,7 @@ def _cmd_check(ignore="", format="text", warn_only=False, no_commit=False):
 
     # Determine exit code before output
     has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
-    has_warnings = any(lint.severity == "warning" for lint in result.lints)
+    has_errors = any(lint.severity == "error" for lint in result.lints)
 
     # Coverage threshold check
     coverage_below_threshold = False
@@ -483,7 +487,7 @@ def _cmd_check(ignore="", format="text", warn_only=False, no_commit=False):
 
     exit_code = 1 if (
         has_failures
-        or (has_warnings and not warn_only)
+        or has_errors
         or coverage_below_threshold
     ) else 0
 

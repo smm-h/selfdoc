@@ -5021,17 +5021,44 @@ def test_llms_full_txt_has_page_titles(project_dir):
     assert "<!-- path: index.md -->" in content
 
 
-def test_build_warn_only_exits_zero(project_dir):
-    """Build with --warn-only exits 0 despite SEO warnings."""
+def test_build_exits_zero_with_only_warnings(project_dir):
+    """Build exits 0 when only warnings (not errors) exist."""
     import subprocess
+
+    # Add frontmatter with a short description so we get SEO009 (warning)
+    # but not SEO006 (error for missing description).
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Short desc\n---\n"
+            "# Test Project\n\nWelcome.\n"
+        )
+
     result = subprocess.run(
-        ["python", "-m", "selfdoc", "build", "--warn-only"],
+        ["python", "-m", "selfdoc", "build"],
         cwd=str(project_dir),
         capture_output=True,
         text=True,
         timeout=30,
     )
     assert result.returncode == 0
+    assert "warning" in result.stdout.lower()
+
+
+def test_build_exits_one_with_errors(project_dir):
+    """Build exits 1 when lint errors (e.g. missing description) exist."""
+    import subprocess
+
+    # index.md from fixture has no frontmatter -> SEO006 error
+    result = subprocess.run(
+        ["python", "-m", "selfdoc", "build"],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 1
+    assert "error" in result.stdout.lower()
 
 
 def test_two_pass_output_identical(tmp_path):

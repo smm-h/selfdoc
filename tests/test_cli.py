@@ -143,18 +143,15 @@ def test_check_finds_directives(project_dir, capsys):
 
 
 def test_build_shows_seo_warnings(project_dir, capsys):
-    """selfdoc build exits non-zero and shows individual lint messages."""
+    """selfdoc build shows warnings but exits 0 when only warnings exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
     _cmd_init()
     _add_base_url(project_dir)
 
-    # The starter template has no frontmatter description,
-    # so SEO006 (missing description) will fire as a warning.
-    with pytest.raises(SystemExit) as exc_info:
-        _cmd_build()
-
-    assert exc_info.value.code == 1
+    # The starter template triggers SEO warnings (e.g. SEO009 short
+    # description) but no errors, so build exits 0.
+    _cmd_build()
 
     captured = capsys.readouterr()
     # Build output is still written
@@ -165,6 +162,27 @@ def test_build_shows_seo_warnings(project_dir, capsys):
     assert "SEO warning(s) found" in captured.out
 
 
+def test_build_exits_1_on_errors(project_dir, capsys):
+    """selfdoc build exits 1 when lint errors (not just warnings) exist."""
+    from selfdoc.cli import _cmd_init, _cmd_build
+
+    _cmd_init()
+    _add_base_url(project_dir)
+
+    # Remove the description from frontmatter to trigger SEO006 (error)
+    index_path = project_dir / "docs" / "index.md"
+    index_path.write_text("# Test\n\nContent.\n")
+
+    with pytest.raises(SystemExit) as exc_info:
+        _cmd_build()
+
+    assert exc_info.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "error:" in captured.out
+    assert "SEO006" in captured.out
+
+
 def test_check_always_runs_seo_lints(project_dir, capsys):
     """selfdoc check always runs SEO lints (no --no-seo flag)."""
     from selfdoc.cli import _cmd_init, _cmd_check
@@ -172,14 +190,32 @@ def test_check_always_runs_seo_lints(project_dir, capsys):
     _cmd_init()
     _add_base_url(project_dir)
 
-    # SEO warnings always appear (e.g. SEO006 missing description)
+    # SEO warnings appear (e.g. SEO009 short description) but only
+    # warnings, so check exits 0.
+    _cmd_check()
+
+    captured = capsys.readouterr()
+    assert "SEO" in captured.out
+
+
+def test_check_exits_1_on_errors(project_dir, capsys):
+    """selfdoc check exits 1 when lint errors exist."""
+    from selfdoc.cli import _cmd_init, _cmd_check
+
+    _cmd_init()
+    _add_base_url(project_dir)
+
+    # Remove the description to trigger SEO006 (error severity)
+    index_path = project_dir / "docs" / "index.md"
+    index_path.write_text("# Test\n\nContent.\n")
+
     with pytest.raises(SystemExit) as exc_info:
         _cmd_check()
 
     assert exc_info.value.code == 1
 
     captured = capsys.readouterr()
-    assert "SEO" in captured.out
+    assert "SEO006" in captured.out
 
 
 def test_build_without_init_fails(project_dir):

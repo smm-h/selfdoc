@@ -2009,11 +2009,11 @@ def test_coverage_threshold_fail(tmp_path, capsys):
     assert actual_pct < min_cov  # 33 < 80 -- should fail
 
 
-# -- Warn-only mode --
+# -- Exit code severity --
 
 
-def test_warn_only_mode(tmp_path, capsys):
-    """With warn_only, SEO warnings do not cause exit code 1."""
+def test_exit_code_0_when_only_warnings(tmp_path, capsys):
+    """Exit code is 0 when only warnings (no errors) exist."""
     config = {
         "language": "python",
         "source": ["mylib/"],
@@ -2031,28 +2031,63 @@ def test_warn_only_mode(tmp_path, capsys):
 
     docs_dir = os.path.join(tmp_path, "docs")
     os.makedirs(docs_dir)
-    # No frontmatter description -> triggers SEO006 warning
+    # Has description (no SEO006 error) but description is short (SEO009 warning)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            '---\ndescription: Short desc\n---\n'
+            '# API\n\n:-: ref path="mylib"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+
+    has_warnings = any(lint.severity == "warning" for lint in result.lints)
+    has_errors = any(lint.severity == "error" for lint in result.lints)
+    has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
+
+    # There should be warnings but no errors
+    assert has_warnings
+    assert not has_errors
+    assert not has_failures
+
+    # Exit code: only errors and failures cause exit 1
+    exit_code = 1 if (has_failures or has_errors) else 0
+    assert exit_code == 0
+
+
+def test_exit_code_1_when_errors_exist(tmp_path, capsys):
+    """Exit code is 1 when lint errors exist."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""Lib."""\ndef greet(): pass\n')
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    # No frontmatter description -> triggers SEO006 (error severity)
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write('# API\n\n:-: ref path="mylib"\n')
 
     result = check_docs(str(tmp_path))
 
-    # Verify there ARE warnings
-    has_warnings = any(lint.severity == "warning" for lint in result.lints)
+    has_errors = any(lint.severity == "error" for lint in result.lints)
     has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
 
-    # With warn_only=True, warnings should not contribute to exit code
-    exit_code_warn_only = 1 if has_failures else 0
-    exit_code_normal = 1 if (has_failures or has_warnings) else 0
-
-    # There should be warnings (SEO lints)
-    assert len(result.lints) > 0
-    # No directive failures
+    # SEO006 is an error
+    assert has_errors
     assert not has_failures
-    # Normal mode would exit 1 due to warnings
-    assert exit_code_normal == 1
-    # Warn-only mode exits 0 since no directive failures
-    assert exit_code_warn_only == 0
+
+    exit_code = 1 if (has_failures or has_errors) else 0
+    assert exit_code == 1
 
 
 # -- Go coverage --
