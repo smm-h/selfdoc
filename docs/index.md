@@ -1,3 +1,7 @@
+---
+description: "selfdoc auto-generates API documentation from source code using inline directives. Supports Python, Go, and TypeScript extractors."
+---
+
 # selfdoc
 
 Auto-generate API documentation from source code using inline directives
