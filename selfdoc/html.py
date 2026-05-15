@@ -12,6 +12,7 @@ import unicodedata
 from datetime import datetime
 
 from selfdoc.themes import get_theme, get_theme_meta
+from selfdoc.tokenizer import tokenize as tokenize_md, Heading as TokHeading
 
 # Pygments is optional: when available, code blocks get build-time syntax
 # highlighting.  When missing, code blocks render as plain text.
@@ -699,10 +700,11 @@ def generate_html(markdown_files, project_name=None, version=None,
 
         # Phase 3: validate H1 headings in Markdown source
         page_meta = frontmatter.get(md_path, {})
+        _md_tokens = tokenize_md(md_content)
         h1_lines = [
-            (line_num, line)
-            for line_num, line in enumerate(md_content.split("\n"), 1)
-            if re.match(r"^# (?!#)", line)
+            (tok.start, tok.text)
+            for tok in _md_tokens
+            if isinstance(tok, TokHeading) and tok.level == 1
         ]
         if len(h1_lines) > 1:
             locations = ", ".join(f"line {ln}" for ln, _ in h1_lines)
@@ -2135,10 +2137,11 @@ def _render_nav(nav_items, prefix, current_path=""):
 
 
 def _extract_title(md_content, fallback):
-    """Extract the first heading from markdown content as the page title."""
-    match = re.match(r"^#\s+(.+)$", md_content, re.MULTILINE)
-    if match:
-        return match.group(1)
+    """Extract the first H1 heading from markdown content as the page title."""
+    tokens = tokenize_md(md_content)
+    for tok in tokens:
+        if isinstance(tok, TokHeading) and tok.level == 1:
+            return tok.text
     return fallback
 
 
