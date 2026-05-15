@@ -14,6 +14,10 @@ import re
 
 from selfdoc.build import _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
+from selfdoc.tokenizer import (
+    tokenize, Heading, Paragraph, BlankLine, CodeBlock,
+    UnorderedList, OrderedList, Blockquote, DefinitionList,
+)
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, resolve_directives
 from selfdoc.extractors import EXTRACTORS
@@ -256,6 +260,25 @@ def check_docs(dir_path=".", config=None):
     return result
 
 
+def _token_text_lines(tok):
+    """Extract text lines from a content-bearing token.
+
+    Returns a list of strings (one per source line) so the caller can
+    compute per-line offsets from ``tok.start``.
+    """
+    if isinstance(tok, (Paragraph, Blockquote)):
+        return tok.lines
+    if isinstance(tok, (UnorderedList, OrderedList)):
+        return tok.items
+    if isinstance(tok, DefinitionList):
+        lines = []
+        for term, defs in tok.entries:
+            lines.append(term)
+            lines.extend(defs)
+        return lines
+    return []
+
+
 def _run_lints(docs_dir, resolver, config):
     """Run lint checks on documentation templates.
 
@@ -280,15 +303,26 @@ def _run_lints(docs_dir, resolver, config):
         with open(full_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        lines = content.split("\n")
-        metadata, _ = _parse_frontmatter(content)
+        metadata, body_content = _parse_frontmatter(content)
+        tokens = tokenize(body_content)
+
+        # Compute line offset: number of frontmatter lines consumed,
+        # so token.start (1-based in body) maps to the original file
+        fm_offset = len(content.split("\n")) - len(body_content.split("\n"))
+
+        # Collect heading tokens for reuse across checks
+        heading_tokens = [t for t in tokens if isinstance(t, Heading)]
+        h1_tokens = [t for t in heading_tokens if t.level == 1]
+
+        # Token types that carry prose content (not code blocks)
+        _TEXT_TYPES = (
+            Paragraph, UnorderedList, OrderedList, Blockquote,
+            DefinitionList,
+        )
 
         # SEO001 -- Multiple H1 headings in Markdown source
         # SEO013 -- No title source (neither frontmatter title nor # heading)
-        h1_count = 0
-        for line in lines:
-            if re.match(r"^# (?!#)", line):
-                h1_count += 1
+        h1_count = len(h1_tokens)
         if h1_count > 1:
             results.append(LintResult(
                 file=rel_path,
@@ -309,33 +343,36 @@ def _run_lints(docs_dir, resolver, config):
 
         # SEO002 -- Heading level gaps
         prev_level = 0
-        for line_num, line in enumerate(lines, start=1):
-            m = re.match(r"^(#{1,6})\s", line)
-            if m:
-                level = len(m.group(1))
-                if prev_level > 0 and level > prev_level + 1:
-                    results.append(LintResult(
-                        file=rel_path,
-                        line=line_num,
-                        code="SEO002",
-                        message=(
-                            f"Heading level jumps from H{prev_level} to H{level}"
-                            f" (skips H{prev_level + 1})"
-                        ),
-                        severity="warning",
-                    ))
-                prev_level = level
-
-        # SEO003 -- Empty alt text
-        for line_num, line in enumerate(lines, start=1):
-            if "![](" in line:
+        for ht in heading_tokens:
+            level = ht.level
+            if prev_level > 0 and level > prev_level + 1:
                 results.append(LintResult(
                     file=rel_path,
-                    line=line_num,
-                    code="SEO003",
-                    message="Image with empty alt text",
+                    line=ht.start + fm_offset,
+                    code="SEO002",
+                    message=(
+                        f"Heading level jumps from H{prev_level} to H{level}"
+                        f" (skips H{prev_level + 1})"
+                    ),
                     severity="warning",
                 ))
+            prev_level = level
+
+        # SEO003 -- Empty alt text (only in text-bearing tokens)
+        for tok in tokens:
+            if not isinstance(tok, _TEXT_TYPES):
+                continue
+            # Get text lines from the token
+            tok_lines = _token_text_lines(tok)
+            for offset, line in enumerate(tok_lines):
+                if "![](" in line:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=tok.start + offset + fm_offset,
+                        code="SEO003",
+                        message="Image with empty alt text",
+                        severity="warning",
+                    ))
 
         # SEO004 -- Title too long
         title = metadata.get("title")
@@ -353,10 +390,9 @@ def _run_lints(docs_dir, resolver, config):
                     severity="warning",
                 ))
         else:
-            # Auto-extract title from first H1 heading
-            h1_match = re.search(r"^# (.+)$", content, re.MULTILINE)
-            if h1_match:
-                h1_title = h1_match.group(1)
+            # Auto-extract title from first H1 heading token
+            if h1_tokens:
+                h1_title = h1_tokens[0].text
                 combined = f"{h1_title} - {project_name}"
                 if len(combined) > 60:
                     results.append(LintResult(
@@ -398,22 +434,22 @@ def _run_lints(docs_dir, resolver, config):
                 ))
             effective_desc = str(fm_description)
         else:
-            # Auto-extract from first paragraph (first non-heading,
-            # non-blank line), take first sentence
+            # Auto-extract from first Paragraph token (skipping
+            # initial Heading, BlankLine, CodeBlock tokens)
             effective_desc = ""
-            _, body_content = _parse_frontmatter(content)
-            for body_line in body_content.split("\n"):
-                stripped = body_line.strip()
-                if not stripped:
+            for tok in tokens:
+                if isinstance(tok, (Heading, BlankLine, CodeBlock)):
                     continue
-                if stripped.startswith("#"):
-                    continue
-                # Found first paragraph line; take first sentence
-                match = re.search(r"[.!?]", stripped)
-                if match:
-                    effective_desc = stripped[:match.end()]
-                else:
-                    effective_desc = stripped[:155]
+                if isinstance(tok, Paragraph):
+                    first_line = tok.lines[0].strip() if tok.lines else ""
+                    if first_line:
+                        match = re.search(r"[.!?]", first_line)
+                        if match:
+                            effective_desc = first_line[:match.end()]
+                        else:
+                            effective_desc = first_line[:155]
+                    break
+                # Stop at any other content block type
                 break
 
         # Only fire SEO009 when there IS a description to check.
@@ -433,40 +469,28 @@ def _run_lints(docs_dir, resolver, config):
             ))
 
         # SEO007 -- Paragraph length after headings
-        for line_num, line in enumerate(lines, start=1):
-            m = re.match(r"^(#{2,3})\s+(.+)", line)
-            if not m:
+        for i, tok in enumerate(tokens):
+            if not isinstance(tok, Heading):
                 continue
-            heading_text = m.group(2).strip()
-            # Look at the next non-empty line after the heading
-            next_idx = line_num  # 0-based index of line after heading
-            if next_idx >= len(lines):
+            if tok.level not in (2, 3):
                 continue
-            # Skip blank lines between heading and content
-            content_start = next_idx
-            while content_start < len(lines) and lines[content_start].strip() == "":
-                content_start += 1
-            if content_start >= len(lines):
-                continue
-            first_content_line = lines[content_start].strip()
-            # Skip if followed by a list, code block, or another heading
-            if (first_content_line.startswith(("-", "*", "+", "1."))
-                    or first_content_line.startswith("```")
-                    or first_content_line.startswith("#")):
-                continue
-            # Collect the paragraph (lines until blank line or heading)
-            para_lines = []
-            for pi in range(content_start, len(lines)):
-                pl = lines[pi].strip()
-                if pl == "" or pl.startswith("#"):
+            heading_text = tok.text.strip()
+            # Find the next non-BlankLine token
+            next_tok = None
+            for j in range(i + 1, len(tokens)):
+                if not isinstance(tokens[j], BlankLine):
+                    next_tok = tokens[j]
                     break
-                para_lines.append(pl)
-            paragraph = " ".join(para_lines)
+            if next_tok is None:
+                continue
+            if not isinstance(next_tok, Paragraph):
+                continue
+            paragraph = " ".join(line.strip() for line in next_tok.lines)
             word_count = len(paragraph.split())
             if word_count < 30 or word_count > 80:
                 results.append(LintResult(
                     file=rel_path,
-                    line=line_num,
+                    line=tok.start + fm_offset,
                     code="SEO007",
                     message=(
                         f"First paragraph after '{heading_text}' is"
@@ -475,24 +499,28 @@ def _run_lints(docs_dir, resolver, config):
                     severity="warning",
                 ))
 
-        # SEO008 -- Statistics density
-        # Strip frontmatter for counting
-        body = content
-        if content.startswith("---"):
-            fm_lines = content.split("\n")
-            end_idx = None
-            for idx in range(1, len(fm_lines)):
-                if fm_lines[idx].strip() == "---":
-                    end_idx = idx
-                    break
-            if end_idx is not None:
-                body = "\n".join(fm_lines[end_idx + 1:])
+        # SEO008 -- Statistics density (count only prose content tokens)
+        prose_words = []
+        for tok in tokens:
+            if isinstance(tok, Paragraph):
+                for line in tok.lines:
+                    prose_words.extend(line.split())
+            elif isinstance(tok, (UnorderedList, OrderedList)):
+                for item in tok.items:
+                    prose_words.extend(item.split())
+            elif isinstance(tok, Blockquote):
+                for line in tok.lines:
+                    prose_words.extend(line.split())
+            elif isinstance(tok, DefinitionList):
+                for term, defs in tok.entries:
+                    prose_words.extend(term.split())
+                    for d in defs:
+                        prose_words.extend(d.split())
 
-        words = body.split()
-        total_words = len(words)
+        total_words = len(prose_words)
         if total_words >= 200:
             numeric_count = sum(
-                1 for w in words if any(c.isdigit() for c in w)
+                1 for w in prose_words if any(c.isdigit() for c in w)
             )
             expected = max(1, total_words // 200)
             if numeric_count < expected:
@@ -511,20 +539,16 @@ def _run_lints(docs_dir, resolver, config):
 
         # SEO011 -- Empty heading section (heading followed by same-or-higher
         # level heading with no content between)
-        last_heading_line = None  # (line_number, level)
-        for line_num, line in enumerate(lines, start=1):
-            heading_match = re.match(r"^(#{2,3})\s", line)
-            if heading_match:
-                level = len(heading_match.group(1))
-                if last_heading_line is not None:
-                    prev_line_num, prev_level = last_heading_line
-                    # Warn if next heading is same or higher level
-                    # (fewer or equal #'s), meaning the previous section
-                    # was empty
+        last_heading_info = None  # (start_line, level)
+        for tok in tokens:
+            if isinstance(tok, Heading) and tok.level in (2, 3):
+                level = tok.level
+                if last_heading_info is not None:
+                    prev_line_num, prev_level = last_heading_info
                     if level <= prev_level:
                         results.append(LintResult(
                             file=rel_path,
-                            line=prev_line_num,
+                            line=prev_line_num + fm_offset,
                             code="SEO011",
                             message=(
                                 f"H{prev_level} heading has no content"
@@ -532,10 +556,10 @@ def _run_lints(docs_dir, resolver, config):
                             ),
                             severity="warning",
                         ))
-                last_heading_line = (line_num, level)
-            elif line.strip():
-                # Non-blank, non-heading line resets tracking
-                last_heading_line = None
+                last_heading_info = (tok.start, level)
+            elif not isinstance(tok, (BlankLine, Heading)):
+                # Non-blank, non-heading token resets tracking
+                last_heading_info = None
 
     # SEO014 -- Meaningless alt text
     # SEO015 -- Generic anchor text
@@ -555,52 +579,62 @@ def _run_lints(docs_dir, resolver, config):
         with open(full_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        lines = content.split("\n")
+        _, body_content = _parse_frontmatter(content)
+        tokens = tokenize(body_content)
+        fm_offset = len(content.split("\n")) - len(body_content.split("\n"))
 
-        # SEO014 -- Meaningless alt text
-        for line_num, line in enumerate(lines, start=1):
-            for m in re.finditer(r"!\[([^\]]*)\]\(", line):
-                alt = m.group(1)
-                if not alt:
-                    continue  # empty alt is SEO003
-                is_meaningless = (
-                    alt.lower() in _MEANINGLESS_ALT
-                    or len(alt) == 1
-                    or _FILENAME_EXTS.search(alt.lower())
-                )
-                if is_meaningless:
-                    results.append(LintResult(
-                        file=rel_path,
-                        line=line_num,
-                        code="SEO014",
-                        message=(
-                            f"Meaningless alt text '{alt}';"
-                            f" use a descriptive alternative"
-                        ),
-                        severity="warning",
-                    ))
+        # Token types that carry prose content
+        _TEXT_TYPES = (
+            Paragraph, UnorderedList, OrderedList, Blockquote,
+            DefinitionList,
+        )
 
-        # SEO015 -- Generic anchor text (skip code blocks)
-        in_code_block = False
-        for line_num, line in enumerate(lines, start=1):
-            if line.startswith("```"):
-                in_code_block = not in_code_block
+        # SEO014 -- Meaningless alt text (only in text-bearing tokens)
+        for tok in tokens:
+            if not isinstance(tok, _TEXT_TYPES):
                 continue
-            if in_code_block:
+            tok_lines = _token_text_lines(tok)
+            for offset, line in enumerate(tok_lines):
+                for m in re.finditer(r"!\[([^\]]*)\]\(", line):
+                    alt = m.group(1)
+                    if not alt:
+                        continue  # empty alt is SEO003
+                    is_meaningless = (
+                        alt.lower() in _MEANINGLESS_ALT
+                        or len(alt) == 1
+                        or _FILENAME_EXTS.search(alt.lower())
+                    )
+                    if is_meaningless:
+                        results.append(LintResult(
+                            file=rel_path,
+                            line=tok.start + offset + fm_offset,
+                            code="SEO014",
+                            message=(
+                                f"Meaningless alt text '{alt}';"
+                                f" use a descriptive alternative"
+                            ),
+                            severity="warning",
+                        ))
+
+        # SEO015 -- Generic anchor text (only in text-bearing tokens)
+        for tok in tokens:
+            if not isinstance(tok, _TEXT_TYPES):
                 continue
-            for m in re.finditer(r"\[([^\]]+)\]\(", line):
-                text = m.group(1).strip().lower()
-                if text in _GENERIC_ANCHORS:
-                    results.append(LintResult(
-                        file=rel_path,
-                        line=line_num,
-                        code="SEO015",
-                        message=(
-                            f"Generic anchor text '{m.group(1).strip()}';"
-                            f" use descriptive link text"
-                        ),
-                        severity="warning",
-                    ))
+            tok_lines = _token_text_lines(tok)
+            for offset, line in enumerate(tok_lines):
+                for m in re.finditer(r"\[([^\]]+)\]\(", line):
+                    text = m.group(1).strip().lower()
+                    if text in _GENERIC_ANCHORS:
+                        results.append(LintResult(
+                            file=rel_path,
+                            line=tok.start + offset + fm_offset,
+                            code="SEO015",
+                            message=(
+                                f"Generic anchor text '{m.group(1).strip()}';"
+                                f" use descriptive link text"
+                            ),
+                            severity="warning",
+                        ))
 
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
