@@ -12,7 +12,19 @@ import unicodedata
 from datetime import datetime
 
 from selfdoc.themes import get_theme, get_theme_meta
-from selfdoc.tokenizer import tokenize as tokenize_md, Heading as TokHeading
+from selfdoc.tokenizer import (
+    tokenize as tokenize_md,
+    Heading as TokHeading,
+    CodeBlock as TokCodeBlock,
+    Table as TokTable,
+    UnorderedList as TokUnorderedList,
+    OrderedList as TokOrderedList,
+    Blockquote as TokBlockquote,
+    DefinitionList as TokDefinitionList,
+    ThematicBreak as TokThematicBreak,
+    BlankLine as TokBlankLine,
+    Paragraph as TokParagraph,
+)
 
 # Pygments is optional: when available, code blocks get build-time syntax
 # highlighting.  When missing, code blocks render as plain text.
@@ -1090,6 +1102,117 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     )
 
 
+def _render_heading(token, seen_slugs, first_h1_consumed_ref):
+    """Render a Heading token to HTML.
+
+    Returns the HTML string, or empty string if this is the first H1
+    (which is consumed as the page title by _wrap_page).
+    """
+    if token.level == 1 and not first_h1_consumed_ref[0]:
+        first_h1_consumed_ref[0] = True
+        return None
+    content = _inline_format(token.text)
+    slug = _slugify(content)
+    if slug in seen_slugs:
+        seen_slugs[slug] += 1
+        slug = f"{slug}-{seen_slugs[slug]}"
+    else:
+        seen_slugs[slug] = 0
+    readable = re.sub(r"<[^>]+>", "", content).replace("_", " ")
+    anchor = (
+        f'<a class="heading-link" href="#{slug}"'
+        f' aria-label="Link to section: {_escape_html(readable)}">#</a>'
+    )
+    return f'<h{token.level} id="{slug}">{anchor}{content}</h{token.level}>'
+
+
+def _render_table(token, tokens, idx):
+    """Render a Table token to HTML, wrapped in .table-wrap with caption."""
+    table_html = _parse_table(token.rows)
+    # Add caption from most recent heading for accessibility
+    caption_text = ""
+    for prev_idx in range(idx - 1, -1, -1):
+        prev_tok = tokens[prev_idx]
+        if isinstance(prev_tok, TokHeading):
+            # Get plain text from heading (apply inline format then strip tags)
+            rendered = _inline_format(prev_tok.text)
+            caption_text = re.sub(r"<[^>]+>", "", rendered).strip()
+            break
+    if caption_text:
+        table_html = table_html.replace(
+            "<table>",
+            f'<table><caption class="sr-only">'
+            f"{_escape_html(caption_text)}</caption>",
+            1,
+        )
+    return (
+        '<div class="table-wrap">'
+        + table_html
+        + '</div>'
+    )
+
+
+def _render_definition_list(token):
+    """Render a DefinitionList token to HTML."""
+    dl_items = []
+    for term, defs in token.entries:
+        term_html = _inline_format(term)
+        dl_items.append(f"<dt><dfn>{term_html}</dfn></dt>")
+        for defn_text in defs:
+            dl_items.append(f"<dd>{_inline_format(defn_text)}</dd>")
+    return (
+        '<div class="glossary">\n<dl>\n'
+        + "\n".join(dl_items)
+        + "\n</dl>\n</div>"
+    )
+
+
+def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref):
+    """Dispatch a single block token to its HTML renderer.
+
+    Returns the HTML string, or None if the token produces no output
+    (e.g. BlankLine, or the first H1).
+    """
+    if isinstance(token, TokHeading):
+        return _render_heading(token, seen_slugs, first_h1_consumed_ref)
+
+    if isinstance(token, TokCodeBlock):
+        return _render_code_block(token.lang, token.lines, token.annotations)
+
+    if isinstance(token, TokTable):
+        return _render_table(token, tokens, idx)
+
+    if isinstance(token, TokUnorderedList):
+        items = "".join(
+            f"<li>{_inline_format(item)}</li>" for item in token.items
+        )
+        return f"<ul>{items}</ul>"
+
+    if isinstance(token, TokOrderedList):
+        items = "".join(
+            f"<li>{_inline_format(item)}</li>" for item in token.items
+        )
+        return f"<ol>{items}</ol>"
+
+    if isinstance(token, TokBlockquote):
+        return _parse_blockquote(token.lines)
+
+    if isinstance(token, TokDefinitionList):
+        return _render_definition_list(token)
+
+    if isinstance(token, TokThematicBreak):
+        return "<hr>"
+
+    if isinstance(token, TokBlankLine):
+        return None
+
+    if isinstance(token, TokParagraph):
+        para_content = _inline_format(" ".join(token.lines))
+        return f"<p>{para_content}</p>"
+
+    return None
+
+
 def md_to_html(text, metadata=None, config=None):
     """Convert Markdown text to HTML.
 
@@ -1106,190 +1229,17 @@ def md_to_html(text, metadata=None, config=None):
             ``api_entries``) controls whether heuristics run globally.
             Per-page *metadata* takes precedence over global config.
     """
-    lines = text.split("\n")
+    tokens = tokenize_md(text)
     html_parts = []
     seen_slugs = {}  # slug -> count, for deduplicating heading IDs
-    first_h1_consumed = False  # Phase 3: skip the first H1 (consumed as title)
-    i = 0
+    first_h1_consumed_ref = [False]  # mutable ref: skip the first H1
 
-    while i < len(lines):
-        line = lines[i]
-
-        # Fenced code blocks (with annotation support -- Feature 32)
-        if line.startswith("```"):
-            lang = line[3:].strip()
-            code_lines = []
-            i += 1
-            while i < len(lines) and not lines[i].startswith("```"):
-                code_lines.append(lines[i])
-                i += 1
-            i += 1  # skip closing ```
-
-            # Collect annotation definitions after code block (Feature 32)
-            # Lines like [1]: explanation text
-            annotations = {}
-            annotation_start = i
-            while i < len(lines) and re.match(r"^\[(\d+)\]:\s*(.+)$", lines[i]):
-                m = re.match(r"^\[(\d+)\]:\s*(.+)$", lines[i])
-                annotations[m.group(1)] = m.group(2)
-                i += 1
-
-            code_block_html = _render_code_block(
-                lang, code_lines, annotations
-            )
-            html_parts.append(code_block_html)
-            continue
-
-        # Headings
-        heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
-        if heading_match:
-            level = len(heading_match.group(1))
-            # Phase 3: skip the first H1 -- it is consumed as the page title
-            # and auto-generated by _wrap_page(). Do not render it in the body.
-            if level == 1 and not first_h1_consumed:
-                first_h1_consumed = True
-                i += 1
-                continue
-            content = _inline_format(heading_match.group(2))
-            slug = _slugify(content)
-            if slug in seen_slugs:
-                seen_slugs[slug] += 1
-                slug = f"{slug}-{seen_slugs[slug]}"
-            else:
-                seen_slugs[slug] = 0
-            readable = re.sub(r"<[^>]+>", "", content).replace("_", " ")
-            anchor = (
-                f'<a class="heading-link" href="#{slug}"'
-                f' aria-label="Link to section: {_escape_html(readable)}">#</a>'
-            )
-            html_parts.append(
-                f'<h{level} id="{slug}">{anchor}{content}</h{level}>'
-            )
-            i += 1
-            continue
-
-        # Tables: detect | col | col | pattern (Feature 38: wrap in .table-wrap)
-        if re.match(r"^\|.+\|$", line.strip()):
-            table_lines = []
-            while i < len(lines) and re.match(r"^\|.+\|$", lines[i].strip()):
-                table_lines.append(lines[i].strip())
-                i += 1
-            table_html = _parse_table(table_lines)
-            # Add caption from most recent heading for accessibility
-            caption_text = ""
-            for prev_part in reversed(html_parts):
-                heading_m = re.search(
-                    r"<h[1-6][^>]*>.*?</a>(.*?)</h[1-6]>", prev_part
-                )
-                if heading_m:
-                    caption_text = re.sub(r"<[^>]+>", "", heading_m.group(1)).strip()
-                    break
-            if caption_text:
-                table_html = table_html.replace(
-                    "<table>",
-                    f'<table><caption class="sr-only">'
-                    f"{_escape_html(caption_text)}</caption>",
-                    1,
-                )
-            html_parts.append(
-                '<div class="table-wrap">'
-                + table_html
-                + '</div>'
-            )
-            continue
-
-        # Unordered list items (collect consecutive)
-        if re.match(r"^[-*]\s+", line):
-            list_items = []
-            while i < len(lines) and re.match(r"^[-*]\s+", lines[i]):
-                item_text = re.sub(r"^[-*]\s+", "", lines[i])
-                list_items.append(f"<li>{_inline_format(item_text)}</li>")
-                i += 1
-            html_parts.append("<ul>" + "".join(list_items) + "</ul>")
-            continue
-
-        # Ordered list items
-        if re.match(r"^\d+\.\s+", line):
-            list_items = []
-            while i < len(lines) and re.match(r"^\d+\.\s+", lines[i]):
-                item_text = re.sub(r"^\d+\.\s+", "", lines[i])
-                list_items.append(f"<li>{_inline_format(item_text)}</li>")
-                i += 1
-            html_parts.append("<ol>" + "".join(list_items) + "</ol>")
-            continue
-
-        # Blockquotes (including admonitions)
-        if line.startswith(">"):
-            bq_lines = []
-            while i < len(lines) and lines[i].startswith(">"):
-                # Strip leading '> ' or '>'
-                stripped = re.sub(r"^>\s?", "", lines[i])
-                bq_lines.append(stripped)
-                i += 1
-            html_parts.append(_parse_blockquote(bq_lines))
-            continue
-
-        # Empty lines (skip, they separate paragraphs)
-        if not line.strip():
-            i += 1
-            continue
-
-        # Definition list: a non-blank line followed by `: ` definition lines
-        if (line.strip()
-                and i + 1 < len(lines)
-                and lines[i + 1].startswith(": ")):
-            dl_items = []
-            while i < len(lines):
-                term_line = lines[i].strip()
-                if not term_line:
-                    break
-                # Check that next line is a definition
-                if i + 1 >= len(lines) or not lines[i + 1].startswith(": "):
-                    break
-                term_html = _inline_format(term_line)
-                dl_items.append(f"<dt><dfn>{term_html}</dfn></dt>")
-                i += 1
-                # Collect one or more `: ` definition lines
-                while i < len(lines) and lines[i].startswith(": "):
-                    defn_text = lines[i][2:]
-                    dl_items.append(f"<dd>{_inline_format(defn_text)}</dd>")
-                    i += 1
-                # Skip blank lines between term/definition pairs
-                while i < len(lines) and not lines[i].strip():
-                    i += 1
-            html_parts.append(
-                '<div class="glossary">\n<dl>\n'
-                + "\n".join(dl_items)
-                + "\n</dl>\n</div>"
-            )
-            continue
-
-        # Paragraph: collect consecutive non-empty, non-special lines
-        para_lines = []
-        while i < len(lines):
-            current = lines[i]
-            if not current.strip():
-                break
-            if current.startswith("```"):
-                break
-            if re.match(r"^#{1,6}\s+", current):
-                break
-            if re.match(r"^[-*]\s+", current):
-                break
-            if re.match(r"^\d+\.\s+", current):
-                break
-            if re.match(r"^\|.+\|$", current.strip()):
-                break
-            if current.startswith(">"):
-                break
-            # Don't absorb a line if the next line starts a definition
-            if (i + 1 < len(lines)
-                    and lines[i + 1].startswith(": ")):
-                break
-            para_lines.append(current)
-            i += 1
-        para_content = _inline_format(" ".join(para_lines))
-        html_parts.append(f"<p>{para_content}</p>")
+    for idx, token in enumerate(tokens):
+        rendered = _render_block(
+            token, tokens, idx, seen_slugs, first_h1_consumed_ref
+        )
+        if rendered is not None:
+            html_parts.append(rendered)
 
     result = "\n".join(html_parts)
 
