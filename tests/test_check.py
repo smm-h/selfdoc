@@ -809,6 +809,89 @@ def test_seo007_normal_paragraph_no_lint(lint_project):
     assert len(seo007) == 0
 
 
+def test_seo007_suppressed_when_directive_follows_heading(lint_project):
+    """SEO007: heading followed directly by a :::directive block does not trigger."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            "## release\n\n"
+            ":::cli rlsbl.commands.release\n"
+            ":::\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 0
+
+
+def test_seo007_suppressed_when_directive_follows_short_paragraph(lint_project):
+    """SEO007: short paragraph followed by a directive suppresses the warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            "## release\n\n"
+            "Orchestrate a release: bump version, validate changelog.\n\n"
+            ":::cli rlsbl.commands.release\n"
+            ":::\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 0
+
+
+def test_seo007_still_fires_without_directive(lint_project):
+    """SEO007: short paragraph without a following directive still triggers."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            "## Section\n\n"
+            "Short intro text only.\n\n"
+            "Some other paragraph.\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 1
+    assert "Section" in seo007[0].message
+
+
+def test_seo001_does_not_count_directive_as_heading(lint_project):
+    """SEO001: a :::module directive does not count as an H1 heading."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Real Title\n\n"
+            "Some content.\n\n"
+            ":::module mylib\n"
+            ":::\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo001 = [r for r in results if r.code == "SEO001"]
+
+    # Only one H1 (the real one), directive is not counted
+    assert len(seo001) == 0
+
+
 # -- SEO008: Statistics density --
 
 

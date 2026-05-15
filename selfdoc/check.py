@@ -17,6 +17,7 @@ from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
     tokenize, Heading, Paragraph, BlankLine, CodeBlock,
     UnorderedList, OrderedList, Blockquote, DefinitionList,
+    Directive,
 )
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, resolve_directives
@@ -489,19 +490,36 @@ def _run_lints(docs_dir, resolver, config):
             if tok.level not in (2, 3):
                 continue
             heading_text = tok.text.strip()
-            # Find the next non-BlankLine token
+            # Collect non-BlankLine tokens after this heading
             next_tok = None
+            next_tok_idx = None
             for j in range(i + 1, len(tokens)):
                 if not isinstance(tokens[j], BlankLine):
                     next_tok = tokens[j]
+                    next_tok_idx = j
                     break
             if next_tok is None:
+                continue
+            # Heading followed directly by a Directive: suppress SEO007
+            if isinstance(next_tok, Directive):
                 continue
             if not isinstance(next_tok, Paragraph):
                 continue
             paragraph = " ".join(line.strip() for line in next_tok.lines)
             word_count = len(paragraph.split())
             if word_count < 30 or word_count > 80:
+                # Check if a Directive follows the short paragraph
+                # (possibly with BlankLines between). If so, the
+                # directive will expand into content, so suppress.
+                has_directive_after = False
+                for k in range(next_tok_idx + 1, len(tokens)):
+                    if isinstance(tokens[k], BlankLine):
+                        continue
+                    if isinstance(tokens[k], Directive):
+                        has_directive_after = True
+                    break
+                if has_directive_after:
+                    continue
                 results.append(LintResult(
                     file=rel_path,
                     line=tok.start + fm_offset,
