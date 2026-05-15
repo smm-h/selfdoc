@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.0
+
+### Breaking Changes
+
+- URL scheme changed from flat (`guide.html`) to directory-index (`guide/index.html`, served as `guide/`). All canonical URLs, sitemap entries, and internal links updated. External links pointing to old `.html` URLs will 404.
+- H1 headings are now auto-generated from the page title. The first `# heading` in Markdown is consumed as the title source (not rendered as-is). Multiple `#` headings in a single page now cause a build error.
+- `selfdoc build` no longer exits 1 for lint warnings. Exit 1 is reserved for errors only. The `--warn-only` flag is deprecated (warnings are non-fatal by default).
+- `_redirects` file is no longer generated (directory-index URLs don't need trailing-slash redirects)
+- `_headers` file is now only generated for `cloudflare-pages` deploy target
+
+### Added
+
+- Markdown block tokenizer (`selfdoc/tokenizer.py`): standalone module with zero dependencies, 10 token types. Used internally for both HTML rendering and lint analysis.
+- Auto-commit system: `selfdoc build`, `check`, `init`, `gen`, and `gen-data` now auto-commit changed project files (hashes, generated docs, generated data). Disable with `--no-commit`. Uses `safegit` when available, falls back to git.
+- Directive token support in tokenizer: `:::name arg` / `:::` blocks are recognized as structured tokens
+- SearchAction in WebSite JSON-LD on the homepage, enabling Google sitelinks search
+- URL-triggered search: navigate to `?q=term` to open search pre-filled with results
+- GitHub Pages security headers: `<meta http-equiv>` tags for X-Content-Type-Options, X-Frame-Options, and Content-Security-Policy injected when deploy target is `github-pages`
+- Meta description auto-generation: pages without frontmatter `description` now get `<meta name="description">` auto-extracted from the first paragraph
+- Horizontal rule support: `---`, `***`, and `___` in Markdown now render as `<hr>`
+- WCAG contrast validation for user `custom.css`: SEO012 checks CSS variable overrides in `docs/custom.css` against theme backgrounds
+- High-contrast mode overrides: both themes override `--link`, `--text-secondary`, `--sidebar-text`, and `--sidebar-active` in `prefers-contrast: more` media query
+
+### Fixed
+
+- Clean theme link color (`#635bff`) barely passed WCAG AA in light mode (4.70:1) and failed in dark mode (4.23:1). New color `#5046e4` passes comfortably (6.29:1 light, 5.93:1 dark).
+- SEO lint false positives from fenced code blocks: heading counts (SEO001), heading level gaps (SEO002), empty alt text (SEO003), paragraph length (SEO007), empty sections (SEO011), and all other checks now use the tokenizer, making them immune to code block content
+- SEO007 false positives on directive-heavy pages: when a heading is followed by a `:::directive` block, the short-paragraph warning is suppressed
+- `_extract_title()` no longer matches `# comment` lines inside fenced code blocks
+- Statistics density check (SEO008) now evaluates prose content only, excluding code blocks
+
+### Improved
+
+- `md_to_html()` refactored from a 180-line line-walking loop into a clean tokenize-then-render pipeline
+
 ## 0.4.0
 
 ### Breaking Changes
