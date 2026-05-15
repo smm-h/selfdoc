@@ -3,7 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-<<<<<<< /home/m/Projects/selfdoc/tmpuk0dn0gk.ours
 dist/
 build/
 *.egg
@@ -32,8 +31,6 @@ docs/_build/
 .wrangler/
 
 # rlsbl
-.rlsbl/lock
-=======
 .rlsbl-notes-*.tmp
 .rlsbl/lock
 .credentials.json
@@ -41,4 +38,3 @@ docs/_build/
 .env
 .env.local
 *.local-only
->>>>>>> /home/m/Projects/selfdoc/tmpb5f105ju.theirs
