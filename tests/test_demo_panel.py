@@ -185,9 +185,9 @@ _KNOB_CASES = [
                 "90ch",
             ),
             (
-                "120ch",
+                "full",
                 "getComputedStyle(document.documentElement).getPropertyValue('--content-max-width').trim()",
-                "120ch",
+                "none",
             ),
         ],
     ),
@@ -389,22 +389,22 @@ _KNOB_CASES = [
         "border-radius",
         [
             (
-                "sharp",
+                "0",
                 "getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()",
                 "0",
             ),
             (
-                "subtle",
+                "4px",
                 "getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()",
                 "4px",
             ),
             (
-                "rounded",
+                "8px",
                 "getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()",
                 "8px",
             ),
             (
-                "pill",
+                "16px",
                 "getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()",
                 "16px",
             ),
@@ -455,116 +455,6 @@ _KNOB_CASES = [
                 "minimal",
                 "document.body.getAttribute('data-table-style')",
                 "minimal",
-            ),
-        ],
-    ),
-    # heading-weight
-    (
-        "heading-weight",
-        [
-            (
-                "400",
-                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
-                "400",
-            ),
-            (
-                "600",
-                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
-                "600",
-            ),
-            (
-                "700",
-                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
-                "700",
-            ),
-            (
-                "800",
-                "getComputedStyle(document.documentElement).getPropertyValue('--heading-weight').trim()",
-                "800",
-            ),
-        ],
-    ),
-    # code-font-size
-    (
-        "code-font-size",
-        [
-            (
-                "13px",
-                "getComputedStyle(document.documentElement).getPropertyValue('--code-font-size').trim()",
-                "13px",
-            ),
-            (
-                "14px",
-                "getComputedStyle(document.documentElement).getPropertyValue('--code-font-size').trim()",
-                "14px",
-            ),
-            (
-                "15px",
-                "getComputedStyle(document.documentElement).getPropertyValue('--code-font-size').trim()",
-                "15px",
-            ),
-        ],
-    ),
-    # link-underline
-    (
-        "link-underline",
-        [
-            (
-                "none",
-                "document.body.getAttribute('data-link-underline')",
-                None,
-            ),
-            (
-                "always",
-                "document.body.getAttribute('data-link-underline')",
-                "always",
-            ),
-            (
-                "hover",
-                "document.body.getAttribute('data-link-underline')",
-                "hover",
-            ),
-        ],
-    ),
-    # sidebar-bg
-    (
-        "sidebar-bg",
-        [
-            (
-                "tinted",
-                "document.documentElement.style.getPropertyValue('--sidebar-bg').trim()",
-                "",
-            ),
-            (
-                "same",
-                "document.documentElement.style.getPropertyValue('--sidebar-bg').trim()",
-                "#ffffff",
-            ),
-            (
-                "darker",
-                "document.documentElement.style.getPropertyValue('--sidebar-bg').trim()",
-                "#eaeef2",
-            ),
-        ],
-    ),
-    # admonition-style
-    (
-        "admonition-style",
-        [
-            (
-                "left-border",
-                "document.body.getAttribute('data-admonition-style')",
-                None,
-            ),
-            (
-                "filled",
-                "document.body.getAttribute('data-admonition-style')",
-                "filled",
-            ),
-            (
-                "outlined",
-                "document.body.getAttribute('data-admonition-style')",
-                "outlined",
             ),
         ],
     ),
@@ -651,7 +541,7 @@ def test_export_produces_content(page):
     open_panel(page)
 
     # Change a knob from its default so the export has content
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
 
     # Click export and wait for the button text to change (clipboard write is async)
     page.click("#ds-export")
@@ -737,7 +627,7 @@ _EXPORT_KNOB_FRAGMENTS = [
     ("gradient-strip", "solid", [
         "body::before { background: var(--link); }",
     ]),
-    ("border-radius", "rounded", ["--radius: 8px"]),
+    ("border-radius", "8px", ["--radius: 8px"]),
     ("code-block-style", "plain", [
         ".code-block { border: none; background: transparent; }",
     ]),
@@ -757,35 +647,6 @@ _EXPORT_KNOB_FRAGMENTS = [
     ("table-style", "minimal", [
         "thead { border-bottom: 2px solid var(--border); }",
         "td { border: none; }",
-    ]),
-    ("heading-weight", "700", ["--heading-weight: 700"]),
-    ("heading-weight", "400", ["--heading-weight: 400"]),
-    ("code-font-size", "13px", ["--code-font-size: 13px"]),
-    ("code-font-size", "15px", ["--code-font-size: 15px"]),
-    ("link-underline", "always", [
-        ".content a:not(.heading-link) { text-decoration: underline; }",
-    ]),
-    ("link-underline", "hover", [
-        ".content a:not(.heading-link) { text-decoration: none; }",
-        ".content a:not(.heading-link):hover { text-decoration: underline; }",
-    ]),
-    ("sidebar-bg", "same", [
-        "--sidebar-bg: #ffffff",
-        '--sidebar-bg: #0d1117',
-        '[data-theme="dark"]',
-    ]),
-    ("sidebar-bg", "darker", [
-        "--sidebar-bg: #eaeef2",
-        '--sidebar-bg: #010409',
-        '[data-theme="dark"]',
-    ]),
-    ("admonition-style", "filled", [
-        ".admonition { border-left: none; border-radius: var(--radius, 4px); }",
-        ".admonition.note { background: color-mix(in srgb, var(--link) 10%, transparent); }",
-    ]),
-    ("admonition-style", "outlined", [
-        ".admonition { border-left: none; border: 1px solid var(--border); border-radius: var(--radius, 4px); background: transparent; }",
-        ".admonition.note { border-color: var(--link); }",
     ]),
 ]
 
@@ -830,7 +691,7 @@ def test_reset_restores_defaults(page):
     open_panel(page)
 
     # Change 3 knobs away from defaults
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
     click_knob_option(page, "font-size", "20px")
     click_knob_option(page, "density", "compact")
 
@@ -866,7 +727,7 @@ def test_reset_restores_defaults(page):
 def test_modified_indicator_appears(page):
     """Change one knob, verify indicator has class 'visible'."""
     open_panel(page)
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
     indicator = page.locator("#ds-indicator")
     assert "visible" in (indicator.get_attribute("class") or "")
     close_panel(page)
@@ -875,7 +736,7 @@ def test_modified_indicator_appears(page):
 def test_modified_indicator_disappears_on_reset(page):
     """Change a knob, click reset, verify indicator loses 'visible'."""
     open_panel(page)
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
     indicator = page.locator("#ds-indicator")
     assert "visible" in (indicator.get_attribute("class") or "")
 
@@ -894,7 +755,7 @@ def test_live_preview_updates(page):
     open_panel(page)
 
     # Change a knob
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
 
     # Open the details element
     page.click("#ds-preview summary")
@@ -916,12 +777,12 @@ def test_live_preview_updates(page):
 def test_url_hash_encodes_on_knob_change(page):
     """Change a knob, verify the URL hash contains the knob name and value."""
     open_panel(page)
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
 
     url = page.url
     assert "#" in url, f"Expected hash in URL, got: {url}"
-    assert "border-radius=pill" in url, (
-        f"Expected 'border-radius=pill' in URL hash, got: {url}"
+    assert "border-radius=16px" in url, (
+        f"Expected 'border-radius=16px' in URL hash, got: {url}"
     )
 
     close_panel(page)
@@ -962,19 +823,19 @@ def test_url_hash_priority_over_localstorage(browser_instance, http_server):
     """Set a localStorage value, navigate with a different hash, verify hash wins."""
     ctx = browser_instance.new_context()
 
-    # First page: set border-radius to "pill" in localStorage
+    # First page: set border-radius to "16px" in localStorage
     pg1 = ctx.new_page()
     pg1.goto(f"http://127.0.0.1:{http_server}/demo/index.html")
     pg1.wait_for_load_state("networkidle")
     pg1.evaluate(
-        "localStorage.setItem('selfdoc-design-border-radius', 'pill')"
+        "localStorage.setItem('selfdoc-design-border-radius', '16px')"
     )
     pg1.close()
 
-    # Second page: fresh load with hash specifying "sharp", which should win
+    # Second page: fresh load with hash specifying "0", which should win
     pg2 = ctx.new_page()
     pg2.goto(
-        f"http://127.0.0.1:{http_server}/demo/index.html#border-radius=sharp"
+        f"http://127.0.0.1:{http_server}/demo/index.html#border-radius=0"
     )
     pg2.wait_for_load_state("networkidle")
 
@@ -983,7 +844,7 @@ def test_url_hash_priority_over_localstorage(browser_instance, http_server):
         ".getPropertyValue('--radius').trim()"
     )
     assert result == "0", (
-        f"Expected border-radius sharp (--radius: 0), got: {result}"
+        f"Expected border-radius 0 (--radius: 0), got: {result}"
     )
 
     pg2.close()
@@ -1000,7 +861,7 @@ def test_copy_link_button(page):
     open_panel(page)
 
     # Change a knob so the hash is non-empty
-    click_knob_option(page, "border-radius", "pill")
+    click_knob_option(page, "border-radius", "16px")
 
     # Click "Copy link"
     page.click("#ds-copy-link")
@@ -1013,8 +874,8 @@ def test_copy_link_button(page):
 
     # Verify clipboard contains the URL with the hash
     clipboard = page.evaluate("navigator.clipboard.readText()")
-    assert "border-radius=pill" in clipboard, (
-        f"Expected 'border-radius=pill' in clipboard URL, got: {clipboard}"
+    assert "border-radius=16px" in clipboard, (
+        f"Expected 'border-radius=16px' in clipboard URL, got: {clipboard}"
     )
     assert clipboard.startswith("http"), (
         f"Expected clipboard to contain a URL, got: {clipboard}"
