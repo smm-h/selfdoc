@@ -69,7 +69,8 @@ def _detect_main_module():
 
 
 @app.command("init", help="Initialize selfdoc in the current project")
-def _cmd_init():
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+def _cmd_init(no_commit=False):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_language
 
@@ -134,12 +135,20 @@ def _cmd_init():
     print(f"  Created: docs/index.md")
     print(f"  Source:  {', '.join(sources)}")
     print(f"\nRun 'selfdoc build' to generate documentation.")
+
+    if not no_commit:
+        from selfdoc.git import auto_commit
+        auto_commit(
+            ["selfdoc.json", "docs/index.md"], "selfdoc init", os.getcwd(),
+        )
+
     return 0
 
 
 @app.command("build", help="Build the documentation site")
 @strictcli.flag("warn-only", type=bool, help="Treat SEO lint warnings as non-fatal (exit 0 despite warnings)")
-def _cmd_build(warn_only=False):
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+def _cmd_build(warn_only=False, no_commit=False):
     """Build the documentation site."""
     from selfdoc.build import build
 
@@ -154,6 +163,14 @@ def _cmd_build(warn_only=False):
 
     config = load_config(".")
     output_dir = config["output"] if config else "docs/_build/"
+
+    if not no_commit:
+        from selfdoc.git import auto_commit
+        auto_commit(
+            [".selfdoc/hashes/hashes.json"],
+            "selfdoc: update content hashes",
+            ".",
+        )
 
     print(f"Built {len(written)} file(s) to {output_dir}")
 
@@ -415,7 +432,8 @@ def _detect_version():
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format (default: text)")
 @strictcli.flag("warn-only", type=bool, help="Treat SEO lint warnings as non-fatal (only directive failures and coverage threshold violations cause exit 1)")
-def _cmd_check(ignore="", format="text", warn_only=False):
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+def _cmd_check(ignore="", format="text", warn_only=False, no_commit=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
@@ -425,6 +443,14 @@ def _cmd_check(ignore="", format="text", warn_only=False):
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
+    if not no_commit:
+        from selfdoc.git import auto_commit
+        auto_commit(
+            [".selfdoc/hashes/hashes.json"],
+            "selfdoc: update content hashes",
+            ".",
+        )
 
     # Build combined ignore set from CLI --ignore and config lint_ignore
     ignore_codes = set()
@@ -508,7 +534,8 @@ def _cmd_check(ignore="", format="text", warn_only=False):
 
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
-def _cmd_gen():
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+def _cmd_gen(no_commit=False):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
     from selfdoc.gen import generate_docs
@@ -528,13 +555,23 @@ def _cmd_gen():
         print(f"Generated {len(generated)} file(s):")
         for path in generated:
             print(f"  {path}")
+        if not no_commit:
+            from selfdoc.git import auto_commit
+            docs_rel = config.get("docs", "docs/").rstrip("/")
+            written_files = [
+                os.path.join(docs_rel, f) for f in generated
+            ]
+            auto_commit(
+                written_files, "selfdoc gen: update generated docs", ".",
+            )
     else:
         print("No files generated.")
     return 0
 
 
 @app.command("gen-data", help="Generate data files by running sandboxed scripts")
-def _cmd_gen_data():
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+def _cmd_gen_data(no_commit=False):
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config
     from selfdoc.gendata import GenDataError, generate_data
@@ -554,6 +591,16 @@ def _cmd_gen_data():
         print(f"Generated {len(generated)} data file(s):")
         for path in generated:
             print(f"  {path}")
+        if not no_commit:
+            from selfdoc.git import auto_commit
+            written_files = [
+                os.path.relpath(p, ".") for p in generated
+            ]
+            auto_commit(
+                written_files,
+                "selfdoc gen-data: update generated data",
+                ".",
+            )
     else:
         print("No gen-data scripts configured.")
     return 0
