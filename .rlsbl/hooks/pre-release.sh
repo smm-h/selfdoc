@@ -16,11 +16,7 @@ fi
 
 if [ -f pyproject.toml ]; then
   echo "  Python: pytest"
-  if command -v uv &>/dev/null; then
-    uv run pytest
-  elif command -v pytest &>/dev/null; then
-    pytest
-  fi
+  python3 -m pytest -x -q
 fi
 
 if [ -f package.json ] && node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)" 2>/dev/null; then
