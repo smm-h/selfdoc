@@ -299,6 +299,20 @@ def _run_lints(docs_dir, resolver, config):
 
     project_name = os.path.basename(os.path.dirname(os.path.abspath(docs_dir)))
 
+    # SEO014 -- Meaningless alt text
+    # SEO015 -- Generic anchor text
+    _MEANINGLESS_ALT = {
+        "image", "screenshot", "photo", "picture",
+        "img", "pic", "figure", "graphic",
+    }
+    _FILENAME_EXTS = re.compile(
+        r"\.(png|jpg|jpeg|gif|svg|webp)$", re.IGNORECASE,
+    )
+    _GENERIC_ANCHORS = {
+        "click here", "here", "this link", "this page",
+        "link", "read more", "more", "learn more",
+    }
+
     for rel_path, full_path in md_files:
         with open(full_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -560,34 +574,6 @@ def _run_lints(docs_dir, resolver, config):
             elif not isinstance(tok, (BlankLine, Heading)):
                 # Non-blank, non-heading token resets tracking
                 last_heading_info = None
-
-    # SEO014 -- Meaningless alt text
-    # SEO015 -- Generic anchor text
-    _MEANINGLESS_ALT = {
-        "image", "screenshot", "photo", "picture",
-        "img", "pic", "figure", "graphic",
-    }
-    _FILENAME_EXTS = re.compile(
-        r"\.(png|jpg|jpeg|gif|svg|webp)$", re.IGNORECASE,
-    )
-    _GENERIC_ANCHORS = {
-        "click here", "here", "this link", "this page",
-        "link", "read more", "more", "learn more",
-    }
-
-    for rel_path, full_path in md_files:
-        with open(full_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        _, body_content = _parse_frontmatter(content)
-        tokens = tokenize(body_content)
-        fm_offset = len(content.split("\n")) - len(body_content.split("\n"))
-
-        # Token types that carry prose content
-        _TEXT_TYPES = (
-            Paragraph, UnorderedList, OrderedList, Blockquote,
-            DefinitionList,
-        )
 
         # SEO014 -- Meaningless alt text (only in text-bearing tokens)
         for tok in tokens:
