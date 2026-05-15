@@ -199,7 +199,7 @@ class TestNonHeroH1:
             },
             project_name="TestProject",
         )
-        guide_content = html_files["guide.html"]
+        guide_content = html_files["guide/index.html"]
         h1_matches = re.findall(r"<h1[^>]*>.*?</h1>", guide_content)
         assert len(h1_matches) == 1
         assert "Guide" in h1_matches[0]
@@ -214,7 +214,7 @@ class TestNonHeroH1:
             project_name="TestProject",
             frontmatter={"ref.md": {"title": "API Reference"}},
         )
-        ref_content = html_files["ref.html"]
+        ref_content = html_files["ref/index.html"]
         h1_matches = re.findall(r"<h1[^>]*>.*?</h1>", ref_content)
         assert len(h1_matches) == 1
         assert "API Reference" in h1_matches[0]

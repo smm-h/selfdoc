@@ -73,7 +73,7 @@ def test_build_resolves_directives_with_error_for_missing(project_dir):
     written = build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    api_html = os.path.join(output_dir, "api.html")
+    api_html = os.path.join(output_dir, "api", "index.html")
     assert api_html in written
 
     with open(api_html, "r", encoding="utf-8") as f:
@@ -112,11 +112,12 @@ def test_build_multiple_files(project_dir):
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
-    assert os.path.isfile(os.path.join(output_dir, "guide.html"))
+    assert os.path.isfile(os.path.join(output_dir, "guide", "index.html"))
     # 2 HTML + 1 style.css + 1 search-index.json + 1 search.js + 2 OG PNGs
     # + 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt
-    # + 1 _headers + 1 _redirects + 1 sitemap.xml + 1 feed.xml (base_url is set)
-    assert len(written) == 16
+    # + 1 sitemap.xml + 1 feed.xml (base_url is set)
+    # (_headers and _redirects no longer generated without cloudflare-pages deploy)
+    assert len(written) == 14
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
@@ -162,8 +163,8 @@ def test_build_generates_sidebar(project_dir):
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Sidebar should link to guide.html
-    assert "guide.html" in content
+    # Sidebar should link to guide/ (directory-style URL)
+    assert 'href="guide/"' in content
     assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
 
 
@@ -385,7 +386,7 @@ def test_last_updated_visible_in_html(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "dated.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "dated", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "Last updated" in content
@@ -411,7 +412,7 @@ def test_json_ld_date_modified(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "dated.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "dated", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"dateModified": "2026-05-01"' in content
@@ -462,7 +463,7 @@ def test_breadcrumb_list_on_non_index_page(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
 
     # Non-index page should have BreadcrumbList
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
         guide_html = f.read()
     assert '"BreadcrumbList"' in guide_html
     assert '"Home"' in guide_html
@@ -499,7 +500,7 @@ def test_website_on_index_only(project_dir):
     assert "https://example.com/" in index_html
 
     # Non-index page should NOT have WebSite
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
         guide_html = f.read()
     assert '"WebSite"' not in guide_html
 
@@ -780,8 +781,8 @@ def test_atom_feed_contains_valid_structure(project_dir):
     assert "<entry>" in content
     assert "</entry>" in content
     assert "<title>Guide Page</title>" in content
-    assert '<link href="https://example.com/guide.html"/>' in content
-    assert "<id>https://example.com/guide.html</id>" in content
+    assert '<link href="https://example.com/guide/"/>' in content
+    assert "<id>https://example.com/guide/</id>" in content
     assert "<updated>2026-05-01T00:00:00Z</updated>" in content
     assert "<summary>This is a guide.</summary>" in content
 
@@ -820,7 +821,7 @@ def test_page_summary_shown_with_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "summary.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "summary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' in content
@@ -852,7 +853,7 @@ def test_page_summary_text_matches_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "detailed.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "detailed", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert f"<p>{desc_text}</p>" in content
@@ -883,7 +884,7 @@ def test_no_auto_summary_from_first_paragraph(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "autosummary.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "autosummary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' not in content
@@ -901,7 +902,7 @@ def test_explicit_summary_takes_precedence(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "explicit.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "explicit", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' in content
@@ -919,7 +920,7 @@ def test_no_summary_for_short_content(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "short.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "short", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' not in content
@@ -1010,7 +1011,7 @@ def test_404_contains_sidebar_navigation(project_dir):
         content = f.read()
 
     assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
-    assert "guide.html" in content
+    assert 'href="guide/"' in content
     assert "index.html" in content
 
 
@@ -1042,8 +1043,8 @@ def test_404_contains_popular_page_links(project_dir):
         content = f.read()
 
     assert "Popular pages" in content
-    assert "guide.html" in content
-    assert "api.html" in content
+    assert 'href="guide/"' in content
+    assert 'href="api/"' in content
     assert "index.html" in content
 
 
@@ -1858,7 +1859,7 @@ def test_itemlist_jsonld_with_schema_frontmatter(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "features", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' in content
@@ -1887,7 +1888,7 @@ def test_itemlist_jsonld_contains_correct_items(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "features", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Extract the ItemList JSON-LD block
@@ -1955,7 +1956,7 @@ def test_glossary_directive_resolves_to_dl(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "glossary.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "glossary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="glossary">' in content
@@ -1989,7 +1990,7 @@ def test_glossary_defined_term_set_jsonld_with_base_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "glossary.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "glossary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"DefinedTermSet"' in content
@@ -2241,7 +2242,7 @@ def test_itemlist_explicit_schema_still_works(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "features", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' in content
@@ -2544,7 +2545,7 @@ def test_organization_schema_absent_on_non_index(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -2908,25 +2909,44 @@ def test_glossary_and_inline_dfn_no_duplicates():
 # --- Phase 7A: Trailing slash redirect rules ---
 
 
-def test_redirects_file_exists_after_build(project_dir):
-    """After build, _redirects file exists in the output directory."""
+def test_redirects_file_not_generated(project_dir):
+    """_redirects file is no longer generated (directory-index URLs don't need it)."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     redirects_path = os.path.join(output_dir, "_redirects")
-    assert os.path.isfile(redirects_path)
+    assert not os.path.isfile(redirects_path)
 
 
-def test_redirects_contains_trailing_slash_rule(project_dir):
-    """_redirects file contains the trailing slash redirect rule."""
-    build(str(project_dir))
+def test_headers_only_for_cloudflare_pages(tmp_path):
+    """_headers file is only generated when deploy target is cloudflare-pages."""
+    # Without cloudflare-pages deploy: no _headers
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
 
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    redirects_path = os.path.join(output_dir, "_redirects")
-    with open(redirects_path, "r", encoding="utf-8") as f:
-        content = f.read()
+    build(str(tmp_path))
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    assert not os.path.isfile(os.path.join(output_dir, "_headers"))
 
-    assert "/:path/ /:path 301" in content
+    # With cloudflare-pages deploy: _headers generated
+    config["deploy"] = {"provider": "cloudflare-pages", "project": "test"}
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(tmp_path))
+    assert os.path.isfile(os.path.join(output_dir, "_headers"))
 
 
 def test_heading_anchor_aria_label():
@@ -2966,7 +2986,7 @@ def test_og_type_article_on_other_pages(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide.html")
+    guide_html = os.path.join(output_dir, "guide", "index.html")
     with open(guide_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -3021,11 +3041,11 @@ def test_breadcrumbs_flat_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
-    assert '<a href="index.html">Home</a>' in content
+    assert '<a href="../index.html">Home</a>' in content
     assert '<span>Guide</span>' in content
     assert " / " in content
 
@@ -3041,14 +3061,14 @@ def test_breadcrumbs_subdirectory_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    endpoints_html = os.path.join(output_dir, "api", "endpoints.html")
+    endpoints_html = os.path.join(output_dir, "api", "endpoints", "index.html")
     assert os.path.isfile(endpoints_html)
 
     with open(endpoints_html, "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
-    assert '<a href="../index.html">Home</a>' in content
+    assert '<a href="../../index.html">Home</a>' in content
     # No api/index.md exists, so intermediate breadcrumb is a span not a link
     assert '<span>Api</span>' in content
     assert '<span>Endpoints</span>' in content
@@ -3076,7 +3096,7 @@ def test_breadcrumbs_json_ld_nested(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    endpoints_html = os.path.join(output_dir, "api", "endpoints.html")
+    endpoints_html = os.path.join(output_dir, "api", "endpoints", "index.html")
     with open(endpoints_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -3538,8 +3558,8 @@ def test_subdirectory_pages_grouped_in_nav(project_dir):
     assert 'class="nav-group-title"' in content
     assert "Guides" in content
     assert 'class="nav-group-items"' in content
-    assert 'href="guides/intro.html"' in content
-    assert 'href="guides/setup.html"' in content
+    assert 'href="guides/intro/"' in content
+    assert 'href="guides/setup/"' in content
 
 
 def test_top_level_pages_ungrouped(project_dir):
@@ -3555,7 +3575,7 @@ def test_top_level_pages_ungrouped(project_dir):
         content = f.read()
 
     # FAQ link should exist as a direct nav-list child, not inside a group
-    assert 'href="faq.html"' in content
+    assert 'href="faq/"' in content
     # The nav-list should not contain any nav-group since there are no subdirs
     assert 'class="nav-group"' not in content
 
@@ -3597,8 +3617,8 @@ def test_nav_order_frontmatter(project_dir):
         content = f.read()
 
     # Find positions of the two links within the nav-group-items
-    setup_pos = content.find('guides/setup.html')
-    intro_pos = content.find('guides/intro.html')
+    setup_pos = content.find('guides/setup/')
+    intro_pos = content.find('guides/intro/')
     assert setup_pos < intro_pos, "Setup (nav_order=1) should appear before Introduction (nav_order=2)"
 
 
@@ -3614,7 +3634,7 @@ def test_active_group_auto_expands(project_dir):
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     # Check the intro page itself -- its group should be open
-    with open(os.path.join(output_dir, "guides", "intro.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "guides", "intro", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<details open>' in content
@@ -3979,7 +3999,7 @@ def test_content_header_flex():
         repo="https://github.com/user/repo",
         docs_dir_name="docs",
     )
-    content = html_files["guide.html"]
+    content = html_files["guide/index.html"]
     assert 'class="content-header"' in content
     assert 'class="breadcrumbs"' in content
     assert 'edit-link-top' in content
@@ -4220,7 +4240,7 @@ def test_breadcrumb_no_broken_links(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    setup_html = os.path.join(output_dir, "guides", "setup.html")
+    setup_html = os.path.join(output_dir, "guides", "setup", "index.html")
     assert os.path.isfile(setup_html)
 
     with open(setup_html, "r", encoding="utf-8") as f:
@@ -4228,7 +4248,7 @@ def test_breadcrumb_no_broken_links(project_dir):
 
     # Intermediate "Guides" should be a span (no index page), not a link
     assert '<span>Guides</span>' in content
-    assert '<a href="../guides/index.html">' not in content
+    assert '<a href="../../guides/index.html">' not in content
 
 
 def test_search_action_in_jsonld(project_dir):
@@ -4429,7 +4449,7 @@ def test_landing_page_hero_with_branding(tmp_path):
         "branding": {
             "tagline": "Build docs fast",
             "cta_text": "Read the Docs",
-            "cta_link": "guide.html",
+            "cta_link": "guide/",
         },
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
@@ -4455,7 +4475,7 @@ def test_landing_page_hero_with_branding(tmp_path):
     assert 'class="hero-cta"' in content
     assert "Build docs fast" in content
     assert "Read the Docs" in content
-    assert 'href="guide.html"' in content
+    assert 'href="guide/"' in content
 
 
 def test_landing_page_cta_default_link(tmp_path):
@@ -4486,8 +4506,8 @@ def test_landing_page_cta_default_link(tmp_path):
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Default CTA should link to the first non-index page
-    assert 'href="quickstart.html"' in content
+    # Default CTA should link to the first non-index page (directory URL)
+    assert 'href="quickstart/"' in content
     # Default CTA text
     assert "Get Started" in content
 
@@ -4647,7 +4667,7 @@ def test_landing_page_secondary_cta(tmp_path):
         "branding": {
             "tagline": "Dual CTA",
             "cta_text": "Get Started",
-            "cta_link": "guide.html",
+            "cta_link": "guide/",
             "secondary_cta_text": "View on GitHub",
             "secondary_cta_link": "https://github.com/example/repo",
         },
@@ -4725,7 +4745,7 @@ def test_prev_next_labels():
         },
         project_name="Test",
     )
-    content = html_files["guide.html"]
+    content = html_files["guide/index.html"]
     assert 'class="page-nav-label"' in content
     assert ">Previous<" in content
     content_index = html_files["index.html"]
@@ -4766,7 +4786,7 @@ def test_topbar_page_title():
         },
         project_name="Test",
     )
-    guide_content = html_files["guide.html"]
+    guide_content = html_files["guide/index.html"]
     assert 'topbar-page-title' in guide_content
     assert 'topbar-sep' in guide_content
     assert 'My Guide' in guide_content
@@ -5037,7 +5057,7 @@ def test_two_pass_output_identical(tmp_path):
 
     # Both pages should be generated
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
-    assert os.path.isfile(os.path.join(output_dir, "glossary.html"))
+    assert os.path.isfile(os.path.join(output_dir, "glossary", "index.html"))
 
     # Verify index.html has expected content
     with open(os.path.join(output_dir, "index.html"), "r") as f:
@@ -5045,10 +5065,10 @@ def test_two_pass_output_identical(tmp_path):
     assert "<!DOCTYPE html>" in index_html
     assert "Home" in index_html
     assert "Welcome to the project." in index_html
-    assert "glossary.html" in index_html  # sidebar link
+    assert 'href="glossary/"' in index_html  # sidebar link
 
-    # Verify glossary.html has expected content
-    with open(os.path.join(output_dir, "glossary.html"), "r") as f:
+    # Verify glossary page has expected content
+    with open(os.path.join(output_dir, "glossary", "index.html"), "r") as f:
         glossary_html = f.read()
     assert "Glossary" in glossary_html
     assert "<dfn>" in glossary_html  # _apply_definitions should have added dfn tags
@@ -5161,7 +5181,7 @@ def test_feed_excludes_pages_with_feed_false(tmp_path):
 
     # api should NOT have an entry
     assert "API Reference" not in feed_content
-    assert "api.html" not in feed_content
+    assert "api/" not in feed_content
 
 
 def test_changelog_auto_detected(tmp_path):
@@ -5191,8 +5211,8 @@ def test_changelog_auto_detected(tmp_path):
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
 
-    # changelog.html should exist
-    changelog_html = os.path.join(output_dir, "changelog.html")
+    # changelog page should exist
+    changelog_html = os.path.join(output_dir, "changelog", "index.html")
     assert os.path.isfile(changelog_html)
 
     with open(changelog_html, "r", encoding="utf-8") as f:
@@ -5208,7 +5228,7 @@ def test_changelog_auto_detected(tmp_path):
     # Changelog should NOT appear in the feed (feed: false)
     with open(os.path.join(output_dir, "feed.xml"), "r", encoding="utf-8") as f:
         feed_content = f.read()
-    assert "changelog.html" not in feed_content
+    assert "changelog/" not in feed_content
 
 
 def test_changelog_case_insensitive(tmp_path):
@@ -5237,7 +5257,7 @@ def test_changelog_case_insensitive(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    changelog_html = os.path.join(output_dir, "changelog.html")
+    changelog_html = os.path.join(output_dir, "changelog", "index.html")
     assert os.path.isfile(changelog_html)
 
     with open(changelog_html, "r", encoding="utf-8") as f:
@@ -5272,7 +5292,7 @@ def test_no_changelog_no_error(tmp_path):
     assert os.path.isfile(os.path.join(output_dir, "index.html"))
 
     # No changelog.html should exist
-    assert not os.path.isfile(os.path.join(output_dir, "changelog.html"))
+    assert not os.path.isfile(os.path.join(output_dir, "changelog", "index.html"))
 
 
 # --- Cross-page term linking and auto-generated glossary ---
@@ -5312,9 +5332,9 @@ def test_cross_page_term_linked(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "page_b.html"), "r") as f:
+    with open(os.path.join(output_dir, "page_b", "index.html"), "r") as f:
         content_b = f.read()
-    assert 'page_a.html#resolver" class="term-link"' in content_b
+    assert 'page_a/#resolver" class="term-link"' in content_b
 
 
 def test_cross_page_term_not_linked_on_same_page(tmp_path):
@@ -5347,7 +5367,7 @@ def test_cross_page_term_not_linked_on_same_page(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "page_a.html"), "r") as f:
+    with open(os.path.join(output_dir, "page_a", "index.html"), "r") as f:
         content_a = f.read()
     assert "term-link" not in content_a
 
@@ -5386,7 +5406,7 @@ def test_cross_page_term_skips_code_blocks(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "page_b.html"), "r") as f:
+    with open(os.path.join(output_dir, "page_b", "index.html"), "r") as f:
         content_b = f.read()
     assert "term-link" not in content_b
 
@@ -5426,7 +5446,7 @@ def test_glossary_page_generated(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    glossary_path = os.path.join(output_dir, "glossary.html")
+    glossary_path = os.path.join(output_dir, "glossary", "index.html")
     assert os.path.isfile(glossary_path)
 
     with open(glossary_path, "r") as f:
@@ -5469,7 +5489,7 @@ def test_glossary_in_sidebar(tmp_path):
     output_dir = os.path.join(tmp_path, "docs", "_build")
     with open(os.path.join(output_dir, "index.html"), "r") as f:
         content = f.read()
-    assert "glossary.html" in content
+    assert 'href="glossary/"' in content
     assert "Glossary" in content
 
 
@@ -5484,7 +5504,7 @@ def test_page_progress_indicator():
         project_name="Test",
     )
     # Pages are ordered alphabetically: index=1, api=2, guide=3
-    api_content = html_files["api.html"]
+    api_content = html_files["api/index.html"]
     assert "Page 2 of 3" in api_content
     assert 'class="page-progress"' in api_content
 
@@ -5527,7 +5547,7 @@ def test_auto_steps_false_frontmatter_disables_step_detection(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide.html")
+    guide_html = os.path.join(output_dir, "guide", "index.html")
     assert guide_html in written
 
     with open(guide_html, "r", encoding="utf-8") as f:
@@ -5552,7 +5572,7 @@ def test_auto_api_false_frontmatter_disables_api_wrapping(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    api_html = os.path.join(output_dir, "api.html")
+    api_html = os.path.join(output_dir, "api", "index.html")
     assert api_html in written
 
     with open(api_html, "r", encoding="utf-8") as f:
@@ -5599,7 +5619,7 @@ def test_auto_detect_config_disables_steps_globally(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide.html")
+    guide_html = os.path.join(output_dir, "guide", "index.html")
     assert guide_html in written
 
     with open(guide_html, "r", encoding="utf-8") as f:
@@ -5629,7 +5649,7 @@ def test_frontmatter_overrides_global_config(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide.html")
+    guide_html = os.path.join(output_dir, "guide", "index.html")
     assert guide_html in written
 
     with open(guide_html, "r", encoding="utf-8") as f:
@@ -5836,6 +5856,80 @@ def test_auto_meta_description_matches_og_description(project_dir):
     assert meta_match is not None, "meta description tag should be present"
     assert og_match is not None, "og:description tag should be present"
     assert meta_match.group(1) == og_match.group(1)
+
+
+# --- Phase 6: Directory-index URL scheme ---
+
+
+def test_directory_index_guide_outputs_to_subdir(project_dir):
+    """guide.md outputs to guide/index.html, not guide.html."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nA guide page.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    assert os.path.isfile(os.path.join(output_dir, "guide", "index.html"))
+    assert not os.path.isfile(os.path.join(output_dir, "guide.html"))
+
+
+def test_directory_index_root_index_stays_flat(project_dir):
+    """index.md outputs to index.html, not index/index.html."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    assert os.path.isfile(os.path.join(output_dir, "index.html"))
+    assert not os.path.isdir(os.path.join(output_dir, "index"))
+
+
+def test_directory_index_internal_links_use_dir_paths():
+    """Internal links use directory paths (e.g., href="guide/")."""
+    html_files = generate_html(
+        {
+            "index.md": "# Home\n\nWelcome.\n",
+            "guide.md": "# Guide\n\nContent.\n",
+        },
+        project_name="Test",
+    )
+    index_content = html_files["index.html"]
+    assert 'href="guide/"' in index_content
+    assert 'href="guide.html"' not in index_content
+    assert 'href="guide/index.html"' not in index_content
+
+
+def test_directory_index_canonical_urls_use_dir_paths(project_dir):
+    """Canonical URLs use directory paths for non-index pages."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert 'href="https://example.com/guide/"' in content
+    assert 'href="https://example.com/guide.html"' not in content
+
+
+def test_directory_index_sitemap_uses_dir_paths(project_dir):
+    """Sitemap URLs use directory paths for non-index pages."""
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("# Guide\n\nContent.\n")
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "sitemap.xml"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "https://example.com/guide/" in content
+    assert "https://example.com/guide.html" not in content
+    # Root index still uses index.html
+    assert "https://example.com/index.html" in content
 
 
 def test_no_meta_description_without_paragraphs(project_dir):

@@ -101,7 +101,7 @@ def test_non_homepage_no_website_jsonld(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
         guide_html = f.read()
 
     assert '"WebSite"' not in guide_html
