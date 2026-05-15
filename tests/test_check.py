@@ -813,7 +813,7 @@ def test_seo007_normal_paragraph_no_lint(lint_project):
 
 
 def test_seo008_no_numbers_long_page(lint_project):
-    """SEO008: page with >200 words and no numbers triggers warning lint."""
+    """SEO008: page with 250 words and no numbers triggers warning (expected 1)."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -831,11 +831,12 @@ def test_seo008_no_numbers_long_page(lint_project):
     assert len(seo008) == 1
     assert seo008[0].severity == "warning"
     assert "words" in seo008[0].message
-    assert "no numeric" in seo008[0].message
+    assert "0 numeric" in seo008[0].message
+    assert "recommend at least 1" in seo008[0].message
 
 
 def test_seo008_with_numbers_no_lint(lint_project):
-    """SEO008: page with numbers does not trigger a lint."""
+    """SEO008: page with enough numbers does not trigger a lint."""
     _, docs_dir, config = lint_project
     config["base_url"] = "https://example.com"
 
@@ -859,6 +860,91 @@ def test_seo008_short_page_no_lint(lint_project):
     config["base_url"] = "https://example.com"
 
     words = " ".join(["word"] * 100)
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 0
+
+
+def test_seo008_1000_words_insufficient_numbers(lint_project):
+    """SEO008: 1000-word page with 2 numbers triggers warning (expected 5, got 2)."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # 998 plain words + 2 numeric tokens = 1000 total words
+    words = " ".join(["word"] * 998) + " 42 99"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 1
+    assert seo008[0].severity == "warning"
+    assert "2 numeric" in seo008[0].message
+    assert "recommend at least 5" in seo008[0].message
+
+
+def test_seo008_1000_words_sufficient_numbers(lint_project):
+    """SEO008: 1000-word page with 5 numbers does NOT trigger warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # 995 plain words + 5 numeric tokens = 1000 total words
+    words = " ".join(["word"] * 995) + " 1 2 3 4 5"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 0
+
+
+def test_seo008_200_words_zero_numbers(lint_project):
+    """SEO008: 200-word page with 0 numbers triggers warning (expected 1)."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    words = " ".join(["word"] * 200)
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words}\n"
+        )
+
+    results = _run_lints(docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 1
+    assert seo008[0].severity == "warning"
+    assert "0 numeric" in seo008[0].message
+    assert "recommend at least 1" in seo008[0].message
+
+
+def test_seo008_200_words_one_number(lint_project):
+    """SEO008: 200-word page with 1 number does NOT trigger warning."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # 199 plain words + 1 numeric token = 200 total words
+    words = " ".join(["word"] * 199) + " 42"
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write(
             "---\ndescription: test\n---\n"

@@ -490,20 +490,24 @@ def _run_lints(docs_dir, resolver, config):
 
         words = body.split()
         total_words = len(words)
-        numeric_tokens = sum(
-            1 for w in words if any(c.isdigit() for c in w)
-        )
-        if total_words > 200 and numeric_tokens == 0:
-            results.append(LintResult(
-                file=rel_path,
-                line=None,
-                code="SEO008",
-                message=(
-                    f"Page has {total_words} words but no numeric data"
-                    f" points (statistics improve AI citation)"
-                ),
-                severity="warning",
-            ))
+        if total_words >= 200:
+            numeric_count = sum(
+                1 for w in words if any(c.isdigit() for c in w)
+            )
+            expected = max(1, total_words // 200)
+            if numeric_count < expected:
+                results.append(LintResult(
+                    file=rel_path,
+                    line=None,
+                    code="SEO008",
+                    message=(
+                        f"Page has {total_words} words but only"
+                        f" {numeric_count} numeric data points"
+                        f" (recommend at least {expected}"
+                        f" for AI citation)"
+                    ),
+                    severity="warning",
+                ))
 
         # SEO011 -- Empty heading section (heading followed by same-or-higher
         # level heading with no content between)
