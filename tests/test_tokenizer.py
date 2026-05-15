@@ -5,6 +5,7 @@ from selfdoc.tokenizer import (
     Blockquote,
     CodeBlock,
     DefinitionList,
+    Directive,
     Heading,
     OrderedList,
     Paragraph,
@@ -285,6 +286,9 @@ class TestMixedDocument:
             "> [!NOTE]",
             "> Take note",
             "",
+            ":::cli my.module",
+            ":::",
+            "",
             "Term",
             ": Its definition",
         ])
@@ -298,6 +302,7 @@ class TestMixedDocument:
         assert "UnorderedList" in types
         assert "OrderedList" in types
         assert "Blockquote" in types
+        assert "Directive" in types
         assert "DefinitionList" in types
         assert "BlankLine" in types
 
@@ -310,6 +315,70 @@ class TestMixedDocument:
         tokens = tokenize("\n\n\n")
         assert all(isinstance(t, BlankLine) for t in tokens)
         assert len(tokens) == 4  # 4 lines from 3 newlines
+
+
+class TestDirective:
+    def test_basic(self):
+        md = ":::cli rlsbl.commands.release\n:::"
+        tokens = tokenize(md)
+        assert len(tokens) == 1
+        t = tokens[0]
+        assert isinstance(t, Directive)
+        assert t.name == "cli"
+        assert t.arg == "rlsbl.commands.release"
+        assert t.body == []
+        assert t.start == 1
+        assert t.end == 2
+
+    def test_with_body(self):
+        md = ":::module mylib.config\nsome body line\nanother line\n:::"
+        tokens = tokenize(md)
+        assert len(tokens) == 1
+        t = tokens[0]
+        assert isinstance(t, Directive)
+        assert t.name == "module"
+        assert t.arg == "mylib.config"
+        assert t.body == ["some body line", "another line"]
+        assert t.start == 1
+        assert t.end == 4
+
+    def test_no_arg(self):
+        md = ":::config\n:::"
+        tokens = tokenize(md)
+        assert len(tokens) == 1
+        t = tokens[0]
+        assert isinstance(t, Directive)
+        assert t.name == "config"
+        assert t.arg == ""
+        assert t.body == []
+
+    def test_directive_after_heading(self):
+        md = "## Section\n\n:::cli my.module\n:::"
+        tokens = tokenize(md)
+        types = [type(t).__name__ for t in tokens]
+        assert types == ["Heading", "BlankLine", "Directive"]
+
+    def test_directive_between_paragraphs(self):
+        md = "Some intro text.\n\n:::module foo\n:::\n\nMore text."
+        tokens = tokenize(md)
+        types = [type(t).__name__ for t in tokens]
+        assert types == ["Paragraph", "BlankLine", "Directive", "BlankLine", "Paragraph"]
+
+    def test_paragraph_stops_before_directive(self):
+        """A paragraph must not absorb a directive opening line."""
+        md = "Intro paragraph.\n:::cli my.module\n:::"
+        tokens = tokenize(md)
+        assert isinstance(tokens[0], Paragraph)
+        assert tokens[0].lines == ["Intro paragraph."]
+        assert isinstance(tokens[1], Directive)
+        assert tokens[1].name == "cli"
+
+    def test_directive_not_confused_with_thematic_break(self):
+        """:::word is a directive, not a thematic break or paragraph."""
+        md = ":::test\n:::"
+        tokens = tokenize(md)
+        assert len(tokens) == 1
+        assert isinstance(tokens[0], Directive)
 
 
 class TestLineCoverage:
@@ -358,6 +427,9 @@ class TestLineCoverage:
             "2. b",
             "",
             "> quote",
+            "",
+            ":::cli my.mod",
+            ":::",
             "",
             "Term",
             ": def",

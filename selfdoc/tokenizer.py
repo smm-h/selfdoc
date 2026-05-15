@@ -84,6 +84,15 @@ class BlankLine:
 
 
 @dataclass(eq=True, slots=True)
+class Directive:
+    name: str
+    arg: str
+    body: list[str]
+    start: int
+    end: int
+
+
+@dataclass(eq=True, slots=True)
 class Paragraph:
     lines: list[str]
     start: int
@@ -100,6 +109,7 @@ Block = (
     | DefinitionList
     | ThematicBreak
     | BlankLine
+    | Directive
     | Paragraph
 )
 
@@ -115,6 +125,8 @@ _RE_UNORDERED = re.compile(r"^[-*]\s+")
 _RE_ORDERED = re.compile(r"^\d+\.\s+")
 _RE_ANNOTATION = re.compile(r"^\[(\d+)\]:\s*(.+)$")
 _RE_ADMONITION = re.compile(r"^\[!(\w+)\]")
+_RE_DIRECTIVE_OPEN = re.compile(r"^:::(\w+)(?:\s+(.+))?$")
+_RE_DIRECTIVE_CLOSE = re.compile(r"^:::$")
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +195,29 @@ def tokenize(content: str) -> list[Block]:
             i += 1
             continue
 
-        # 4. Table
+        # 4. Directive (:::name arg ... :::)
+        m_directive = _RE_DIRECTIVE_OPEN.match(line)
+        if m_directive:
+            start = i
+            d_name = m_directive.group(1)
+            d_arg = m_directive.group(2) or ""
+            d_body: list[str] = []
+            i += 1
+            while i < n and not _RE_DIRECTIVE_CLOSE.match(lines[i]):
+                d_body.append(lines[i])
+                i += 1
+            if i < n:
+                i += 1  # skip closing :::
+            tokens.append(Directive(
+                name=d_name,
+                arg=d_arg,
+                body=d_body,
+                start=start + 1,
+                end=i,
+            ))
+            continue
+
+        # 5. Table
         if _RE_TABLE_ROW.match(line.strip()):
             start = i
             rows: list[str] = []
@@ -193,7 +227,7 @@ def tokenize(content: str) -> list[Block]:
             tokens.append(Table(rows=rows, start=start + 1, end=i))
             continue
 
-        # 5. Unordered list
+        # 6. Unordered list
         if _RE_UNORDERED.match(line):
             start = i
             items: list[str] = []
@@ -203,7 +237,7 @@ def tokenize(content: str) -> list[Block]:
             tokens.append(UnorderedList(items=items, start=start + 1, end=i))
             continue
 
-        # 6. Ordered list
+        # 7. Ordered list
         if _RE_ORDERED.match(line):
             start = i
             items_ol: list[str] = []
@@ -213,7 +247,7 @@ def tokenize(content: str) -> list[Block]:
             tokens.append(OrderedList(items=items_ol, start=start + 1, end=i))
             continue
 
-        # 7. Blockquote
+        # 8. Blockquote
         if line.startswith(">"):
             start = i
             bq_lines: list[str] = []
@@ -234,13 +268,13 @@ def tokenize(content: str) -> list[Block]:
             ))
             continue
 
-        # 8. Blank line
+        # 9. Blank line
         if not line.strip():
             tokens.append(BlankLine(start=i + 1, end=i + 1))
             i += 1
             continue
 
-        # 9. Definition list
+        # 10. Definition list
         if line.strip() and i + 1 < n and lines[i + 1].startswith(": "):
             start = i
             entries: list[tuple[str, list[str]]] = []
@@ -280,7 +314,7 @@ def tokenize(content: str) -> list[Block]:
             ))
             continue
 
-        # 10. Paragraph (fallback)
+        # 11. Paragraph (fallback)
         start = i
         para_lines: list[str] = []
         while i < n:
@@ -300,6 +334,8 @@ def tokenize(content: str) -> list[Block]:
             if _RE_TABLE_ROW.match(current.strip()):
                 break
             if current.startswith(">"):
+                break
+            if _RE_DIRECTIVE_OPEN.match(current):
                 break
             # Definition list guard: don't absorb a line whose next line
             # starts a definition
