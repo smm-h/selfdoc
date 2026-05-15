@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Note: selfdoc sets og:type="website" on index.html, "article" on other pages, none on 404 -->
-<meta name="twitter:site" content="@selfdoc_dev">
 <title>Theme Showcase - selfdoc demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -316,34 +314,6 @@ body[data-table-style="minimal"] thead { border-bottom: 2px solid var(--border);
 body[data-table-style="minimal"] td { border: none; }
 body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent; }
 
-/* 14. Heading weight */
-.content h1, .content h2, .content h3, .content h4, .content h5, .content h6 { font-weight: var(--heading-weight, 600); }
-
-/* 15. Code font size */
-pre code, :not(pre) > code { font-size: var(--code-font-size, 14px); }
-
-/* 16. Link underline */
-body[data-link-underline="always"] .content a:not(.heading-link):not(.nav-list a):not(.page-nav a):not(.breadcrumbs a) { text-decoration: underline; }
-body[data-link-underline="hover"] .content a:not(.heading-link):not(.nav-list a):not(.page-nav a):not(.breadcrumbs a) { text-decoration: none; }
-body[data-link-underline="hover"] .content a:not(.heading-link):not(.nav-list a):not(.page-nav a):not(.breadcrumbs a):hover { text-decoration: underline; }
-
-/* 17. Sidebar background */
-.sidebar { background: var(--sidebar-bg); }
-
-/* 18. Admonition style */
-body[data-admonition-style="filled"] .admonition { border-left: none; border-radius: var(--radius, 4px); }
-body[data-admonition-style="filled"] .admonition.note { background: color-mix(in srgb, var(--link) 10%, transparent); }
-body[data-admonition-style="filled"] .admonition.tip { background: color-mix(in srgb, var(--admonition-tip) 10%, transparent); }
-body[data-admonition-style="filled"] .admonition.warning { background: color-mix(in srgb, var(--admonition-warning) 10%, transparent); }
-body[data-admonition-style="filled"] .admonition.caution { background: color-mix(in srgb, var(--admonition-caution) 10%, transparent); }
-body[data-admonition-style="filled"] .admonition.important { background: color-mix(in srgb, var(--admonition-important) 10%, transparent); }
-body[data-admonition-style="outlined"] .admonition { border-left: none; border: 1px solid var(--border); border-radius: var(--radius, 4px); background: transparent; }
-body[data-admonition-style="outlined"] .admonition.note { border-color: var(--link); }
-body[data-admonition-style="outlined"] .admonition.tip { border-color: var(--admonition-tip); }
-body[data-admonition-style="outlined"] .admonition.warning { border-color: var(--admonition-warning); }
-body[data-admonition-style="outlined"] .admonition.caution { border-color: var(--admonition-caution); }
-body[data-admonition-style="outlined"] .admonition.important { border-color: var(--admonition-important); }
-
 /* Print: hide settings panel */
 @media print {
     .ds-panel, .ds-backdrop, .settings-btn { display: none !important; }
@@ -370,6 +340,7 @@ body[data-admonition-style="outlined"] .admonition.important { border-color: var
   if (saved === 'light' || saved === 'dark') {
     document.documentElement.setAttribute('data-theme', saved);
   }
+  document.documentElement.style.scrollBehavior = 'auto';
 })();
 </script>
 </head>
@@ -397,8 +368,9 @@ body[data-admonition-style="outlined"] .admonition.important { border-color: var
 </button>
 </div>
 </header>
+<div class="reading-progress" id="reading-progress"></div>
 <div class="layout">
-<nav class="sidebar" id="sidebar">
+<nav class="sidebar" id="sidebar" aria-label="Site navigation">
 <ul class="nav-list">
 <li><a href="index.html" class="active">Theme Showcase</a></li>
 <li><a href="#">FAQ</a></li>
@@ -438,6 +410,7 @@ body[data-admonition-style="outlined"] .admonition.important { border-color: var
 </ul>
 </nav>
 <main class="content" id="main-content">
+<article>
 
 <nav class="breadcrumbs" aria-label="Breadcrumbs"><a href="index.html">Home</a> / <span>Theme Showcase</span></nav>
 
@@ -478,15 +451,14 @@ body[data-admonition-style="outlined"] .admonition.important { border-color: var
   <p>This page demonstrates every HTML element and CSS class that selfdoc's minimal theme styles. Use it for design iteration -- open this file in a browser, edit the CSS, and see every component update at once.</p>
 </div>
 
-<!-- ==================== TYPOGRAPHY ==================== -->
-
 <h1 id="theme-showcase"><a class="heading-link" href="#theme-showcase" aria-label="Link to section: Theme Showcase">#</a>Theme Showcase</h1>
+
+<!-- ==================== TYPOGRAPHY ==================== -->
 
 <h2 id="typography"><a class="heading-link" href="#typography" aria-label="Link to section: Typography">#</a>Typography</h2>
 
 <h3 id="headings"><a class="heading-link" href="#headings" aria-label="Link to section: Headings">#</a>Headings</h3>
 
-<h1 id="heading-level-1"><a class="heading-link" href="#heading-level-1" aria-label="Link to section: Heading Level 1">#</a>Heading Level 1</h1>
 <h2 id="heading-level-2"><a class="heading-link" href="#heading-level-2" aria-label="Link to section: Heading Level 2">#</a>Heading Level 2</h2>
 <h3 id="heading-level-3"><a class="heading-link" href="#heading-level-3" aria-label="Link to section: Heading Level 3">#</a>Heading Level 3</h3>
 <h4 id="heading-level-4"><a class="heading-link" href="#heading-level-4" aria-label="Link to section: Heading Level 4">#</a>Heading Level 4</h4>
@@ -533,7 +505,7 @@ body[data-admonition-style="outlined"] .admonition.important { border-color: var
 <li>Run <code>selfdoc build</code> to generate your documentation site</li>
 </ol>
 
-<h2 id="step-guide"><a class="heading-link" href="#step-guide" aria-label="Link to section: Step Guide">#</a>Step Guide</h2>
+<h3 id="step-guide"><a class="heading-link" href="#step-guide" aria-label="Link to section: Step Guide">#</a>Step Guide</h3>
 
 <ol class="steps">
 <li>Install selfdoc using <code>pip install selfdoc</code> or <code>npm install -g selfdoc</code>. The npm package is a thin Node wrapper that delegates to <code>python3 -m selfdoc</code>.</li>
@@ -628,7 +600,7 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
-<h3 id="long-code-block"><a class="heading-link" href="#long-code-block">#</a>Long Code Block</h3>
+<h3 id="long-code-block"><a class="heading-link" href="#long-code-block" aria-label="Link to section: Long Code Block">#</a>Long Code Block</h3>
 
 <div class="code-block"><div class="code-label">python</div><pre tabindex="0"><code class="language-python">def resolve_directives(content: str, resolver: Callable[[str, str, str], str], source_paths: list[str] | None = None) -> str:
     """Replace all directives in content with resolver output. Handles nested fenced code blocks correctly."""
@@ -646,14 +618,14 @@ export function extractModule(sourcePath: string): string {
 
 <blockquote><p>selfdoc keeps your documentation in sync with your code. When you change a function signature, the docs update automatically on the next build. No more stale examples or outdated API references.</p></blockquote>
 
-<h3 id="nested-blockquote"><a class="heading-link" href="#nested-blockquote">#</a>Nested Blockquote</h3>
+<h3 id="nested-blockquote"><a class="heading-link" href="#nested-blockquote" aria-label="Link to section: Nested Blockquote">#</a>Nested Blockquote</h3>
 
 <blockquote>
 <p>selfdoc extracts documentation from source code automatically.</p>
 <blockquote><p>The key insight is that code IS the documentation. By extracting directly from source, docs never go stale.</p></blockquote>
 </blockquote>
 
-<h3 id="blockquote-with-code"><a class="heading-link" href="#blockquote-with-code">#</a>Blockquote with Code</h3>
+<h3 id="blockquote-with-code"><a class="heading-link" href="#blockquote-with-code" aria-label="Link to section: Blockquote with Code">#</a>Blockquote with Code</h3>
 
 <blockquote>
 <p>To use a custom directive, add it to your <code>selfdoc.json</code>:</p>
@@ -708,7 +680,7 @@ export function extractModule(sourcePath: string): string {
 </table>
 </div>
 
-<h3 id="wide-table"><a class="heading-link" href="#wide-table">#</a>Wide Table</h3>
+<h3 id="wide-table"><a class="heading-link" href="#wide-table" aria-label="Link to section: Wide Table">#</a>Wide Table</h3>
 
 <div class="table-wrap">
 <table>
@@ -752,7 +724,7 @@ export function extractModule(sourcePath: string): string {
 <p>Convert Markdown text to HTML. Handles headings, code blocks (with tabs and annotations), inline code, paragraphs, unordered and ordered lists, links, bold, italic, tables, blockquotes, and admonitions. No external dependencies.</p>
 </div>
 
-<h2 id="glossary"><a class="heading-link" href="#glossary">#</a>Glossary</h2>
+<h2 id="glossary"><a class="heading-link" href="#glossary" aria-label="Link to section: Glossary">#</a>Glossary</h2>
 
 <div class="glossary">
 <dl>
@@ -772,7 +744,7 @@ export function extractModule(sourcePath: string): string {
 
 <!-- ==================== COLLAPSIBLE SECTIONS ==================== -->
 
-<h2 id="collapsible-sections"><a class="heading-link" href="#collapsible-sections">#</a>Collapsible Sections</h2>
+<h2 id="collapsible-sections"><a class="heading-link" href="#collapsible-sections" aria-label="Link to section: Collapsible Sections">#</a>Collapsible Sections</h2>
 
 <details>
 <summary>Click to expand: Full build pipeline</summary>
@@ -826,15 +798,16 @@ export function extractModule(sourcePath: string): string {
 <!-- ==================== PAGE FOOTER ==================== -->
 
 <footer class="page-footer">
-<div class="page-meta"><a class="edit-link" href="https://github.com/smm-h/selfdoc/edit/main/docs/showcase.md">Edit this page on GitHub</a></div>
+<div class="page-meta"><span><a class="edit-link" href="https://github.com/smm-h/selfdoc/edit/main/docs/showcase.md">Edit this page on GitHub</a></span></div>
 <div class="feedback">
 <span>Was this page helpful?</span>
 <button class="feedback-yes" aria-label="Yes">Yes</button>
 <button class="feedback-no" aria-label="No">No</button>
 </div>
-<nav class="page-nav"><a class="page-nav-prev" href="#">&larr; Getting Started</a><a class="page-nav-next" href="#">Configuration &rarr;</a></nav>
+<nav class="page-nav"><a class="page-nav-prev" href="#"><span class="page-nav-label">Previous</span>&larr; Getting Started</a><span class="page-progress">Page 1 of 5</span><a class="page-nav-next" href="#"><span class="page-nav-label">Next</span>Configuration &rarr;</a></nav>
 </footer>
 
+</article>
 </main>
 <aside class="toc">
 <nav class="toc-nav"><ul>
@@ -897,17 +870,20 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-knob-label">Sidebar width</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="200px">200</button>
+<button class="ds-opt" data-value="220px">220</button>
 <button class="ds-opt" data-value="240px">240</button>
+<button class="ds-opt" data-value="260px">260</button>
 <button class="ds-opt" data-value="280px">280</button>
+<button class="ds-opt" data-value="300px">300</button>
 <button class="ds-opt" data-value="320px">320</button>
 </div>
 </div>
 
 <div class="ds-knob" data-knob="toc-position">
-<div class="ds-knob-label">Show TOC</div>
+<div class="ds-knob-label">TOC position</div>
 <div class="ds-options">
-<button class="ds-opt" data-value="right">Yes</button>
-<button class="ds-opt" data-value="hidden">No</button>
+<button class="ds-opt" data-value="right">Right</button>
+<button class="ds-opt" data-value="hidden">Hidden</button>
 </div>
 </div>
 
@@ -917,7 +893,7 @@ export function extractModule(sourcePath: string): string {
 <button class="ds-opt" data-value="60ch">60ch</button>
 <button class="ds-opt" data-value="72ch">72ch</button>
 <button class="ds-opt" data-value="90ch">90ch</button>
-<button class="ds-opt" data-value="120ch">120ch</button>
+<button class="ds-opt" data-value="full">Full</button>
 </div>
 </div>
 </div>
@@ -938,24 +914,15 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-knob" data-knob="font-size">
 <div class="ds-knob-label">Font size</div>
 <div class="ds-options">
-<button class="ds-opt" data-value="14px">14</button>
-<button class="ds-opt" data-value="16px">16</button>
-<button class="ds-opt" data-value="18px">18</button>
-<button class="ds-opt" data-value="20px">20</button>
-</div>
-</div>
-
-<div class="ds-knob" data-knob="code-font-size">
-<div class="ds-knob-label">Code font size</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="13px">13</button>
-<button class="ds-opt" data-value="14px">14</button>
-<button class="ds-opt" data-value="15px">15</button>
+<button class="ds-opt" data-value="14px">14px</button>
+<button class="ds-opt" data-value="16px">16px</button>
+<button class="ds-opt" data-value="18px">18px</button>
+<button class="ds-opt" data-value="20px">20px</button>
 </div>
 </div>
 
 <div class="ds-knob" data-knob="heading-transform">
-<div class="ds-knob-label">Heading transform</div>
+<div class="ds-knob-label">Heading style</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="normal">Normal</button>
 <button class="ds-opt" data-value="uppercase">Uppercase</button>
@@ -963,22 +930,12 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
-<div class="ds-knob" data-knob="heading-weight">
-<div class="ds-knob-label">Heading weight</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="400">Light</button>
-<button class="ds-opt" data-value="600">Semi-bold</button>
-<button class="ds-opt" data-value="700">Bold</button>
-<button class="ds-opt" data-value="800">Extra-bold</button>
-</div>
-</div>
-
 <div class="ds-knob" data-knob="heading-separator">
 <div class="ds-knob-label">Heading separator</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="top">Top border</button>
-<button class="ds-opt" data-value="bottom">Bottom</button>
 <button class="ds-opt" data-value="none">None</button>
+<button class="ds-opt" data-value="bottom">Bottom</button>
 </div>
 </div>
 </div>
@@ -987,7 +944,7 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-group-title">Spacing</div>
 
 <div class="ds-knob" data-knob="density">
-<div class="ds-knob-label">Density</div>
+<div class="ds-knob-label">Spacing density</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="compact">Compact</button>
 <button class="ds-opt" data-value="normal">Normal</button>
@@ -1012,8 +969,8 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-knob-label">Accent color</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="blue">Blue</button>
-<button class="ds-opt" data-value="green">Green</button>
 <button class="ds-opt" data-value="purple">Purple</button>
+<button class="ds-opt" data-value="green">Green</button>
 <button class="ds-opt" data-value="orange">Orange</button>
 <button class="ds-opt" data-value="red">Red</button>
 </div>
@@ -1025,15 +982,6 @@ export function extractModule(sourcePath: string): string {
 <button class="ds-opt" data-value="dark">Dark</button>
 <button class="ds-opt" data-value="light">Light</button>
 <button class="ds-opt" data-value="accent">Accent</button>
-</div>
-</div>
-
-<div class="ds-knob" data-knob="sidebar-bg">
-<div class="ds-knob-label">Sidebar background</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="tinted">Tinted</button>
-<button class="ds-opt" data-value="same">Same</button>
-<button class="ds-opt" data-value="darker">Darker</button>
 </div>
 </div>
 
@@ -1053,18 +1001,18 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-knob" data-knob="border-radius">
 <div class="ds-knob-label">Border radius</div>
 <div class="ds-options">
-<button class="ds-opt" data-value="sharp">Sharp</button>
-<button class="ds-opt" data-value="subtle">Subtle</button>
-<button class="ds-opt" data-value="rounded">Rounded</button>
-<button class="ds-opt" data-value="pill">Pill</button>
+<button class="ds-opt" data-value="0">0</button>
+<button class="ds-opt" data-value="4px">4px</button>
+<button class="ds-opt" data-value="8px">8px</button>
+<button class="ds-opt" data-value="16px">16px</button>
 </div>
 </div>
 
 <div class="ds-knob" data-knob="code-block-style">
 <div class="ds-knob-label">Code block style</div>
 <div class="ds-options">
-<button class="ds-opt" data-value="bordered">Bordered</button>
 <button class="ds-opt" data-value="plain">Plain</button>
+<button class="ds-opt" data-value="bordered">Bordered</button>
 <button class="ds-opt" data-value="filled">Filled</button>
 <button class="ds-opt" data-value="floating">Floating</button>
 </div>
@@ -1077,24 +1025,6 @@ export function extractModule(sourcePath: string): string {
 <button class="ds-opt" data-value="plain">Plain</button>
 <button class="ds-opt" data-value="bordered">Bordered</button>
 <button class="ds-opt" data-value="minimal">Minimal</button>
-</div>
-</div>
-
-<div class="ds-knob" data-knob="link-underline">
-<div class="ds-knob-label">Link underline</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="none">None</button>
-<button class="ds-opt" data-value="always">Always</button>
-<button class="ds-opt" data-value="hover">Hover</button>
-</div>
-</div>
-
-<div class="ds-knob" data-knob="admonition-style">
-<div class="ds-knob-label">Admonition style</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="left-border">Left border</button>
-<button class="ds-opt" data-value="filled">Filled</button>
-<button class="ds-opt" data-value="outlined">Outlined</button>
 </div>
 </div>
 </div>
@@ -1111,10 +1041,13 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
-<dialog class="search-dialog" id="search-dialog">
+<dialog class="search-dialog" id="search-dialog" data-search-prefix="" aria-label="Search documentation">
 <div class="search-inner">
-<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" autofocus>
-<ul class="search-results"></ul>
+<div class="search-header">
+<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results" autofocus>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<ul class="search-results" id="search-results" role="listbox" aria-live="polite"></ul>
 </div>
 </dialog>
 
@@ -1160,6 +1093,21 @@ export function extractModule(sourcePath: string): string {
   });
 })();
 
+// Reading progress bar
+(function() {
+  var bar = document.getElementById('reading-progress');
+  if (!bar) return;
+  function update() {
+    var scrollTop = window.scrollY || document.documentElement.scrollTop;
+    var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    if (docHeight <= 0) { bar.style.width = '100%'; return; }
+    var progress = Math.min(scrollTop / docHeight * 100, 100);
+    bar.style.width = progress + '%';
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+})();
+
 // Copy button on code blocks (Feature 5)
 document.querySelectorAll('pre').forEach(function(pre) {
   var code = pre.querySelector('code');
@@ -1181,21 +1129,35 @@ document.querySelectorAll('pre').forEach(function(pre) {
 (function() {
   var tocLinks = document.querySelectorAll('.toc a');
   if (!tocLinks.length) return;
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      var id = entry.target.getAttribute('id');
-      var link = document.querySelector('.toc a[href="#' + id + '"]');
-      if (link) {
-        if (entry.isIntersecting) {
-          tocLinks.forEach(function(a) { a.classList.remove('active'); });
-          link.classList.add('active');
-        }
-      }
-    });
-  }, { rootMargin: '-80px 0px -80% 0px' });
-  document.querySelectorAll('main h2[id], main h3[id]').forEach(function(h) {
-    observer.observe(h);
+  var headings = [];
+  tocLinks.forEach(function(link) {
+    var id = link.getAttribute('href').substring(1);
+    var el = document.getElementById(id);
+    if (el) headings.push({ el: el, link: link });
   });
+  var ticking = false;
+  function update() {
+    var scrollTop = window.scrollY + 100;
+    var active = null;
+    for (var i = 0; i < headings.length; i++) {
+      if (headings[i].el.offsetTop <= scrollTop) {
+        active = headings[i];
+      }
+    }
+    tocLinks.forEach(function(a) { a.classList.remove('active'); });
+    if (active) {
+      active.link.classList.add('active');
+      active.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    ticking = false;
+  }
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      requestAnimationFrame(update);
+      ticking = true;
+    }
+  }, { passive: true });
+  update();
 })();
 
 // Mobile sidebar toggle (Feature 25)
@@ -1218,14 +1180,12 @@ document.querySelectorAll('pre').forEach(function(pre) {
       openSidebar();
     }
   });
-  // Close when clicking outside (overlay area)
   document.addEventListener('click', function(e) {
     if (document.body.classList.contains('sidebar-open') &&
         !sidebar.contains(e.target) && !toggle.contains(e.target)) {
       closeSidebar();
     }
   });
-  // Close when a nav link is clicked
   sidebar.querySelectorAll('a').forEach(function(link) {
     link.addEventListener('click', function() {
       closeSidebar();
@@ -1233,15 +1193,15 @@ document.querySelectorAll('pre').forEach(function(pre) {
   });
 })();
 
-// Cmd+K search (Feature 19)
+// Cmd+K search (Feature 19) - demo mode with static results
 (function() {
   var dialog = document.getElementById('search-dialog');
   if (!dialog) return;
   var input = dialog.querySelector('.search-input');
   var resultsList = dialog.querySelector('.search-results');
+  var closeBtn = dialog.querySelector('.search-close');
   var activeIdx = -1;
 
-  // Static demo results instead of fetching search-index.json
   var demoResults = [
     { title: "Getting Started", path: "#", body: "Install selfdoc and create your first documentation site. Run selfdoc init to scaffold a new project." },
     { title: "Configuration", path: "#", body: "The selfdoc.json file controls language, output directory, deploy provider, and custom directives." },
@@ -1308,6 +1268,12 @@ document.querySelectorAll('pre').forEach(function(pre) {
       items[idx].classList.add('active');
       items[idx].scrollIntoView({ block: 'nearest' });
     }
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      closeSearch();
+    });
   }
 
   document.addEventListener('keydown', function(e) {
@@ -1382,16 +1348,12 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     buttons.forEach(function(btn) {
       btn.addEventListener('click', function() {
         var lang = btn.getAttribute('data-lang');
-        // Deactivate all tabs and panels in this group
         buttons.forEach(function(b) { b.classList.remove('active'); });
         panels.forEach(function(p) { p.classList.remove('active'); });
-        // Activate the selected tab and panel
         btn.classList.add('active');
         var panel = tabGroup.querySelector('.tab-panel[data-lang="' + lang + '"]');
         if (panel) panel.classList.add('active');
-        // Persist preference in localStorage
         localStorage.setItem('selfdoc-tab-' + lang, 'true');
-        // Sync same-language tabs across all tab groups on the page
         document.querySelectorAll('.code-tabs').forEach(function(otherGroup) {
           if (otherGroup === tabGroup) return;
           var otherBtn = otherGroup.querySelector('.tab-bar .tab[data-lang="' + lang + '"]');
@@ -1399,7 +1361,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
         });
       });
     });
-    // Restore persisted language preference
     buttons.forEach(function(btn) {
       var lang = btn.getAttribute('data-lang');
       if (localStorage.getItem('selfdoc-tab-' + lang)) {
@@ -1435,7 +1396,14 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
   });
 })();
 
-// === Design Settings Panel ===
+// Re-enable smooth scroll after initial load
+requestAnimationFrame(function() {
+  requestAnimationFrame(function() {
+    document.documentElement.style.scrollBehavior = '';
+  });
+});
+
+// === Design Settings Panel (16 knobs) ===
 (function() {
   var panel = document.getElementById('ds-panel');
   var backdrop = document.getElementById('ds-backdrop');
@@ -1443,7 +1411,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
   var closeBtn = document.getElementById('ds-close');
   var exportBtn = document.getElementById('ds-export');
 
-  // Knob definitions: name, default, apply function
+  // 16 knob definitions: name, default, apply function
   var KNOBS = {
     'sidebar-position': {
       defaultValue: 'left',
@@ -1466,7 +1434,8 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     'content-width': {
       defaultValue: '72ch',
       apply: function(v) {
-        document.documentElement.style.setProperty('--content-max-width', v);
+        var val = v === 'full' ? 'none' : v;
+        document.documentElement.style.setProperty('--content-max-width', val);
       }
     },
     'font-kind': {
@@ -1520,7 +1489,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     'light-dark': {
       defaultValue: 'system',
       apply: function(v) {
-        // Reuse the existing theme mechanism
         if (v === 'light' || v === 'dark') {
           document.documentElement.setAttribute('data-theme', v);
           localStorage.setItem('selfdoc-theme', v);
@@ -1528,12 +1496,10 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           document.documentElement.removeAttribute('data-theme');
           localStorage.removeItem('selfdoc-theme');
         }
-        // Sync the theme toggle button state
         var themeBtn = document.querySelector('.theme-toggle');
         if (themeBtn) {
           themeBtn.setAttribute('data-state', v);
         }
-        // Update highlight.js stylesheets
         var hljsLight = document.getElementById('hljs-light');
         var hljsDark = document.getElementById('hljs-dark');
         if (hljsLight && hljsDark) {
@@ -1555,13 +1521,12 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       apply: function(v) {
         var accents = {
           'blue':   { light: { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37' }, dark: { link: '#58a6ff', hover: '#79c0ff', active: '#58a6ff', badge: '#238636' }, gradient: 'linear-gradient(90deg, #0969da, #8b5cf6, #ec4899)' },
-          'green':  { light: { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' }, dark: { link: '#3fb950', hover: '#56d364', active: '#3fb950', badge: '#238636' }, gradient: 'linear-gradient(90deg, #1a7f37, #2da44e, #56d364)' },
           'purple': { light: { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df' }, dark: { link: '#bc8cff', hover: '#d2a8ff', active: '#bc8cff', badge: '#bc8cff' }, gradient: 'linear-gradient(90deg, #8250df, #bc8cff, #ec4899)' },
+          'green':  { light: { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' }, dark: { link: '#3fb950', hover: '#56d364', active: '#3fb950', badge: '#238636' }, gradient: 'linear-gradient(90deg, #1a7f37, #2da44e, #56d364)' },
           'orange': { light: { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02' }, dark: { link: '#e3872a', hover: '#f5a623', active: '#e3872a', badge: '#e3872a' }, gradient: 'linear-gradient(90deg, #bf6a02, #e3872a, #f5a623)' },
           'red':    { light: { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e' }, dark: { link: '#f85149', hover: '#ff7b72', active: '#f85149', badge: '#f85149' }, gradient: 'linear-gradient(90deg, #cf222e, #f85149, #ff7b72)' }
         };
         var entry = accents[v] || accents['blue'];
-        // Detect current theme
         var theme = document.documentElement.getAttribute('data-theme');
         var isDark;
         if (theme === 'dark') { isDark = true; }
@@ -1573,9 +1538,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
         r.setProperty('--link-hover', a.hover);
         r.setProperty('--sidebar-active', a.active);
         r.setProperty('--badge-bg', a.badge);
-        // Store the gradient for the strip (light values work on both themes)
         document.documentElement.setAttribute('data-accent-gradient', entry.gradient);
-        // Apply gradient to body::before if gradient-strip is "show"
         updateGradientStrip();
       }
     },
@@ -1596,10 +1559,9 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       }
     },
     'border-radius': {
-      defaultValue: 'subtle',
+      defaultValue: '4px',
       apply: function(v) {
-        var radii = { 'sharp': '0', 'subtle': '4px', 'rounded': '8px', 'pill': '16px' };
-        document.documentElement.style.setProperty('--radius', radii[v] || '4px');
+        document.documentElement.style.setProperty('--radius', v);
       }
     },
     'code-block-style': {
@@ -1613,64 +1575,10 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
       apply: function(v) {
         document.body.setAttribute('data-table-style', v);
       }
-    },
-    'heading-weight': {
-      defaultValue: '600',
-      apply: function(v) {
-        document.documentElement.style.setProperty('--heading-weight', v);
-      }
-    },
-    'code-font-size': {
-      defaultValue: '14px',
-      apply: function(v) {
-        document.documentElement.style.setProperty('--code-font-size', v);
-      }
-    },
-    'link-underline': {
-      defaultValue: 'none',
-      apply: function(v) {
-        if (v === 'none') {
-          document.body.removeAttribute('data-link-underline');
-        } else {
-          document.body.setAttribute('data-link-underline', v);
-        }
-      }
-    },
-    'sidebar-bg': {
-      defaultValue: 'tinted',
-      apply: function(v) {
-        if (v === 'tinted') {
-          document.documentElement.style.removeProperty('--sidebar-bg');
-        } else {
-          var theme = document.documentElement.getAttribute('data-theme');
-          var isDark;
-          if (theme === 'dark') { isDark = true; }
-          else if (theme === 'light') { isDark = false; }
-          else { isDark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
-          if (v === 'same') {
-            document.documentElement.style.setProperty('--sidebar-bg', isDark ? '#0d1117' : '#ffffff');
-          } else if (v === 'darker') {
-            document.documentElement.style.setProperty('--sidebar-bg', isDark ? '#010409' : '#eaeef2');
-          }
-        }
-      }
-    },
-    'admonition-style': {
-      defaultValue: 'left-border',
-      apply: function(v) {
-        if (v === 'left-border') {
-          document.body.removeAttribute('data-admonition-style');
-        } else {
-          document.body.setAttribute('data-admonition-style', v);
-        }
-      }
     }
   };
 
   function updateGradientStrip() {
-    // The gradient strip appearance depends on both accent-color and gradient-strip knobs.
-    // The CSS classes handle show/hide/solid. The gradient colors are set via a dynamic
-    // style element for body::before since pseudo-elements can't be styled inline.
     var gradientStyle = document.getElementById('ds-gradient-style');
     if (!gradientStyle) {
       gradientStyle = document.createElement('style');
@@ -1684,7 +1592,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
                                 'body.gradient-hidden::before { display: none; }';
   }
 
-  // Current knob values
   var currentValues = {};
 
   function loadValue(name) {
@@ -1780,11 +1687,9 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     var value;
     if (hashValues.hasOwnProperty(name) && isValidKnobValue(name, hashValues[name])) {
       value = hashValues[name];
-      // Persist hash value to localStorage so subsequent visits without hash preserve it
       saveValue(name, value);
     } else {
       value = loadValue(name);
-      // For light-dark, sync from the existing selfdoc-theme key too
       if (name === 'light-dark') {
         var existingTheme = localStorage.getItem('selfdoc-theme');
         var designSaved = localStorage.getItem('selfdoc-design-light-dark');
@@ -1801,12 +1706,11 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
   updatePreview();
   updateUrlHash();
 
-  // Re-apply accent color and sidebar-bg when theme changes
+  // Re-apply accent color when theme changes
   var _accentObserver = new MutationObserver(function(mutations) {
     mutations.forEach(function(m) {
       if (m.attributeName === 'data-theme') {
         KNOBS['accent-color'].apply(currentValues['accent-color'] || 'blue');
-        KNOBS['sidebar-bg'].apply(currentValues['sidebar-bg'] || 'tinted');
       }
     });
   });
@@ -1848,7 +1752,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
   var themeToggle = document.querySelector('.theme-toggle');
   if (themeToggle) {
     themeToggle.addEventListener('click', function() {
-      // After the existing handler runs, read the new state
       setTimeout(function() {
         var state = themeToggle.getAttribute('data-state') || 'system';
         currentValues['light-dark'] = state;
@@ -1865,7 +1768,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
     var rootVars = [];
     var htmlStyle = [];
 
-    // Check each knob for non-default values
     Object.keys(KNOBS).forEach(function(name) {
       var value = currentValues[name];
       if (value === KNOBS[name].defaultValue) return;
@@ -1892,7 +1794,8 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           }
           break;
         case 'content-width':
-          rootVars.push('  --content-max-width: ' + value + ';');
+          var widthVal = value === 'full' ? 'none' : value;
+          rootVars.push('  --content-max-width: ' + widthVal + ';');
           break;
         case 'font-kind':
           var fonts = {
@@ -1943,8 +1846,8 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
         case 'accent-color':
           var accentExport = {
             'blue':   { light: { link: '#0969da', hover: '#0550ae', active: '#0969da', badge: '#1a7f37' }, dark: { link: '#58a6ff', hover: '#79c0ff', active: '#58a6ff', badge: '#238636' } },
-            'green':  { light: { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' }, dark: { link: '#3fb950', hover: '#56d364', active: '#3fb950', badge: '#238636' } },
             'purple': { light: { link: '#8250df', hover: '#6639ba', active: '#8250df', badge: '#8250df' }, dark: { link: '#bc8cff', hover: '#d2a8ff', active: '#bc8cff', badge: '#bc8cff' } },
+            'green':  { light: { link: '#1a7f37', hover: '#116329', active: '#1a7f37', badge: '#1a7f37' }, dark: { link: '#3fb950', hover: '#56d364', active: '#3fb950', badge: '#238636' } },
             'orange': { light: { link: '#bf6a02', hover: '#9a5600', active: '#bf6a02', badge: '#bf6a02' }, dark: { link: '#e3872a', hover: '#f5a623', active: '#e3872a', badge: '#e3872a' } },
             'red':    { light: { link: '#cf222e', hover: '#a40e26', active: '#cf222e', badge: '#cf222e' }, dark: { link: '#f85149', hover: '#ff7b72', active: '#f85149', badge: '#f85149' } }
           };
@@ -1983,8 +1886,7 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
           }
           break;
         case 'border-radius':
-          var radii = { 'sharp': '0', 'subtle': '4px', 'rounded': '8px', 'pill': '16px' };
-          rootVars.push('  --radius: ' + (radii[value] || '4px') + ';');
+          rootVars.push('  --radius: ' + value + ';');
           break;
         case 'code-block-style':
           if (value === 'plain') {
@@ -2007,46 +1909,6 @@ document.querySelectorAll('.sidebar a, .page-nav a').forEach(function(link) {
             overrides.push('thead { border-bottom: 2px solid var(--border); }');
             overrides.push('td { border: none; }');
             overrides.push('tr:nth-child(even) td { background: transparent; }');
-          }
-          break;
-        case 'heading-weight':
-          rootVars.push('  --heading-weight: ' + value + ';');
-          break;
-        case 'code-font-size':
-          rootVars.push('  --code-font-size: ' + value + ';');
-          break;
-        case 'link-underline':
-          if (value === 'always') {
-            overrides.push('.content a:not(.heading-link) { text-decoration: underline; }');
-          } else if (value === 'hover') {
-            overrides.push('.content a:not(.heading-link) { text-decoration: none; }');
-            overrides.push('.content a:not(.heading-link):hover { text-decoration: underline; }');
-          }
-          break;
-        case 'sidebar-bg':
-          if (value === 'same') {
-            rootVars.push('  --sidebar-bg: #ffffff;');
-            overrides.push('[data-theme="dark"] { --sidebar-bg: #0d1117; }');
-          } else if (value === 'darker') {
-            rootVars.push('  --sidebar-bg: #eaeef2;');
-            overrides.push('[data-theme="dark"] { --sidebar-bg: #010409; }');
-          }
-          break;
-        case 'admonition-style':
-          if (value === 'filled') {
-            overrides.push('.admonition { border-left: none; border-radius: var(--radius, 4px); }');
-            overrides.push('.admonition.note { background: color-mix(in srgb, var(--link) 10%, transparent); }');
-            overrides.push('.admonition.tip { background: color-mix(in srgb, var(--admonition-tip) 10%, transparent); }');
-            overrides.push('.admonition.warning { background: color-mix(in srgb, var(--admonition-warning) 10%, transparent); }');
-            overrides.push('.admonition.caution { background: color-mix(in srgb, var(--admonition-caution) 10%, transparent); }');
-            overrides.push('.admonition.important { background: color-mix(in srgb, var(--admonition-important) 10%, transparent); }');
-          } else if (value === 'outlined') {
-            overrides.push('.admonition { border-left: none; border: 1px solid var(--border); border-radius: var(--radius, 4px); background: transparent; }');
-            overrides.push('.admonition.note { border-color: var(--link); }');
-            overrides.push('.admonition.tip { border-color: var(--admonition-tip); }');
-            overrides.push('.admonition.warning { border-color: var(--admonition-warning); }');
-            overrides.push('.admonition.caution { border-color: var(--admonition-caution); }');
-            overrides.push('.admonition.important { border-color: var(--admonition-important); }');
           }
           break;
       }
