@@ -1332,18 +1332,6 @@ def _generate_headers(output_dir):
     return path
 
 
-def _generate_redirects(output_dir):
-    """Generate _redirects file (Cloudflare Pages format) with trailing slash rules."""
-    content = (
-        "# Strip trailing slashes (except root)\n"
-        "/:path/ /:path 301\n"
-    )
-    path = os.path.join(output_dir, "_redirects")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    return path
-
-
 def _generate_favicon_svg(project_name, accent_color="#0969da"):
     """Generate a simple SVG favicon from the project name's initial (Feature 40).
 

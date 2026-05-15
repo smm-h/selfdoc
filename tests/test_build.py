@@ -12,7 +12,7 @@ import gzip as gzip_module
 
 from unittest import mock
 
-from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_redirects, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg
+from selfdoc.build import build, _parse_frontmatter, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
 from selfdoc.themes import get_theme_meta
 
