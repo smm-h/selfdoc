@@ -2160,6 +2160,21 @@ def test_definition_list_no_false_match_on_paragraphs():
     assert "<dd>Definition</dd>" in result
 
 
+def test_thematic_break_renders_hr():
+    """A standalone '---' renders as <hr>."""
+    result = md_to_html("---")
+    assert "<hr>" in result
+
+
+def test_thematic_break_between_paragraphs():
+    """A '---' between paragraphs renders as <hr> separating two <p> tags."""
+    md = "Above the break.\n\n---\n\nBelow the break.\n"
+    result = md_to_html(md)
+    assert "<p>Above the break.</p>" in result
+    assert "<hr>" in result
+    assert "<p>Below the break.</p>" in result
+
+
 def test_itemlist_auto_detected_on_list_heavy_page(project_dir):
     """Page with 8 list items and 2 paragraphs gets ItemList JSON-LD automatically."""
     docs_dir = os.path.join(project_dir, "docs")
