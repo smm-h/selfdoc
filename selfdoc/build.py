@@ -16,7 +16,7 @@ from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
 from selfdoc.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
-    _md_to_html_path, _slugify,
+    _md_to_html_path, _html_path_to_url, _html_to_md_path, _slugify,
     _extract_title, _escape_html, _build_nav,
     _generate_search_js, _minify_js,
 )
@@ -326,7 +326,7 @@ def _build_search_index(markdown_files):
     """
     entries = []
     for md_path, content in markdown_files.items():
-        html_path = _md_to_html_path(md_path)
+        url_path = _html_path_to_url(_md_to_html_path(md_path))
         lines = content.split("\n")
         current_title = None
         current_slug = None
@@ -340,9 +340,9 @@ def _build_search_index(markdown_files):
                 body_text = re.sub(r"\*(.+?)\*", r"\1", body_text)
                 body_text = re.sub(r"`([^`]+)`", r"\1", body_text)
                 body_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", body_text)
-                path = html_path
+                path = url_path
                 if current_slug:
-                    path = f"{html_path}#{current_slug}"
+                    path = f"{url_path}#{current_slug}"
                 entries.append({
                     "title": current_title,
                     "path": path,
@@ -551,17 +551,18 @@ def _generate_sitemap(base_url, html_paths, page_dates=None):
     urls = []
     for path in sorted(html_paths):
         # Convert html path to md path for date lookup
-        md_path = path.replace(".html", ".md") if path.endswith(".html") else path
+        md_path = _html_to_md_path(path)
+        url = _html_path_to_url(path)
         date_tuple = page_dates.get(md_path)
         # Use modified date for lastmod
         date = date_tuple[1] if date_tuple else None
         if date:
             urls.append(
-                f"  <url><loc>{base_url}/{path}</loc>"
+                f"  <url><loc>{base_url}/{url}</loc>"
                 f"<lastmod>{date}</lastmod></url>"
             )
         else:
-            urls.append(f"  <url><loc>{base_url}/{path}</loc></url>")
+            urls.append(f"  <url><loc>{base_url}/{url}</loc></url>")
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -665,7 +666,7 @@ def _generate_llms_txt(project_name, markdown_files, base_url=None):
     for md_path in sorted(markdown_files.keys()):
         content = markdown_files[md_path]
         title = _extract_title(content, md_path.replace(".md", ""))
-        html_path = _md_to_html_path(md_path)
+        url_path = _html_path_to_url(_md_to_html_path(md_path))
 
         # Get first non-heading, non-empty line as summary
         first = ""
@@ -675,7 +676,7 @@ def _generate_llms_txt(project_name, markdown_files, base_url=None):
                 first = _first_sentence(line)
                 break
 
-        url = f"{base_url}/{html_path}"
+        url = f"{base_url}/{url_path}"
         lines.append(f"- [{title}]({url}): {first}")
 
     return "\n".join(lines) + "\n"
@@ -724,7 +725,7 @@ def _generate_atom_feed(
         if meta.get("feed") is False:
             continue
 
-        html_path = _md_to_html_path(md_path)
+        url_path = _html_path_to_url(_md_to_html_path(md_path))
         title = meta.get("title")
         if not title:
             title = _extract_title(content, md_path.replace(".md", ""))
@@ -748,8 +749,8 @@ def _generate_atom_feed(
         entry = (
             f"  <entry>\n"
             f"    <title>{escaped_title}</title>\n"
-            f"    <link href=\"{base_url}/{html_path}\"/>\n"
-            f"    <id>{base_url}/{html_path}</id>\n"
+            f"    <link href=\"{base_url}/{url_path}\"/>\n"
+            f"    <id>{base_url}/{url_path}</id>\n"
             f"    <updated>{page_date}T00:00:00Z</updated>\n"
             f"    <summary>{escaped_summary}</summary>\n"
             f"  </entry>"
@@ -1071,9 +1072,9 @@ def build(dir_path=".", config=None):
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
-    # (Phase 3.3). Convert md_path keys to html_path keys for lookup.
+    # (Phase 3.3). Convert html_path keys back to md_path for lookup.
     for html_path in list(html_files):
-        md_path = html_path.replace(".html", ".md") if html_path.endswith(".html") else html_path
+        md_path = _html_to_md_path(html_path)
         html_files[html_path] = _add_image_dimensions(
             html_files[html_path], docs_dir, md_path,
         )
@@ -1151,6 +1152,7 @@ def build(dir_path=".", config=None):
         critical_css=critical_css,
         accent_color=theme_meta.get("accent_color", "#0969da"),
         theme_meta=theme_meta,
+        deploy=config.get("deploy"),
     )
     written.update(aux_written)
 
@@ -1176,7 +1178,7 @@ def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
     base_url, has_custom_css, repo, lang="en", page_dates=None,
     frontmatter=None, description="", feed_url=None, critical_css=None,
-    accent_color="#0969da", theme_meta=None,
+    accent_color="#0969da", theme_meta=None, deploy=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
@@ -1187,8 +1189,7 @@ def _generate_auxiliary_files(
 
     # Generate OG social card PNGs (Feature 21)
     for md_path, content in markdown_files.items():
-        html_path = _md_to_html_path(md_path)
-        slug = html_path.replace(".html", "")
+        slug = md_path.replace(".md", "") if md_path.endswith(".md") else md_path
         page_title = _extract_title(content, slug)
         png_bytes = _generate_og_png(project_name, page_title, accent_color)
         png_path = os.path.join(output_dir, f"og-{slug}.png")
@@ -1259,13 +1260,14 @@ def _generate_auxiliary_files(
     robots_path = _generate_robots_txt(output_dir, base_url)
     written[robots_path] = True
 
-    # Generate _headers (Cloudflare Pages security headers)
-    headers_path = _generate_headers(output_dir)
-    written[headers_path] = True
+    # Generate _headers only for Cloudflare Pages deploy target
+    deploy_provider = (deploy or {}).get("provider")
+    if deploy_provider == "cloudflare-pages":
+        headers_path = _generate_headers(output_dir)
+        written[headers_path] = True
 
-    # Generate _redirects (Cloudflare Pages trailing slash rules)
-    redirects_path = _generate_redirects(output_dir)
-    written[redirects_path] = True
+    # _redirects no longer needed: directory-index URLs work without
+    # trailing-slash redirects on all hosting platforms.
 
     return written
 
