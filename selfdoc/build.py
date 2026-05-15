@@ -1069,6 +1069,7 @@ def build(dir_path=".", config=None):
         config_description=config_description,
         auto_detect=config.get("auto_detect"),
         theme_meta=theme_meta,
+        deploy_target=(config.get("deploy") or {}).get("provider"),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection

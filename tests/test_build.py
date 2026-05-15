@@ -5946,3 +5946,86 @@ def test_no_meta_description_without_paragraphs(project_dir):
         content = f.read()
 
     assert '<meta name="description"' not in content
+
+
+def test_github_pages_security_meta_tags(tmp_path):
+    """GitHub Pages builds include security meta http-equiv tags."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "deploy": {"provider": "github-pages"},
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta http-equiv="X-Content-Type-Options" content="nosniff">' in content
+    assert '<meta http-equiv="X-Frame-Options" content="DENY">' in content
+    assert '<meta http-equiv="Content-Security-Policy"' in content
+
+
+def test_cloudflare_pages_no_security_meta_tags(tmp_path):
+    """Cloudflare Pages builds do NOT include security meta http-equiv tags."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "deploy": {"provider": "cloudflare-pages", "project": "test"},
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta http-equiv="X-Content-Type-Options"' not in content
+    assert '<meta http-equiv="X-Frame-Options"' not in content
+    assert '<meta http-equiv="Content-Security-Policy"' not in content
+
+
+def test_no_deploy_config_no_security_meta_tags(tmp_path):
+    """Builds with no deploy config do NOT include security meta tags."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '<meta http-equiv="X-Content-Type-Options"' not in content
+    assert '<meta http-equiv="X-Frame-Options"' not in content
+    assert '<meta http-equiv="Content-Security-Policy"' not in content

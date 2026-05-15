@@ -645,7 +645,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    critical_css=None, twitter_site=None, search=None,
                    feedback=None, branch="main", search_engine=None,
                    branding=None, config_description=None,
-                   auto_detect=None, theme_meta=None):
+                   auto_detect=None, theme_meta=None,
+                   deploy_target=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -1013,6 +1014,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             total_pages=pd.get("total_pages"),
             theme_meta=theme_meta,
             has_hero=pd.get("has_hero", False),
+            deploy_target=deploy_target,
         )
         html_files[pd["html_path"]] = full_html
 
@@ -2255,7 +2257,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                schema=None, twitter_site=None, search=None,
                feedback=None, branch="main", search_engine=None,
                site_terms=None, page_number=None, total_pages=None,
-               theme_meta=None, has_hero=False):
+               theme_meta=None, has_hero=False, deploy_target=None):
     """Wrap converted HTML body in the full page template."""
     # Use default theme metadata when none provided (backward compatible)
     if theme_meta is None:
@@ -2793,6 +2795,24 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     # Canonical URL -- needs base_url
     if canonical_url:
         seo_tags += f'\n<link rel="canonical" href="{canonical_url}">'
+
+    # Security meta tags for GitHub Pages (Phase 7.1)
+    # Cloudflare Pages uses _headers file instead; HSTS and Permissions-Policy
+    # are not supported as meta tags.
+    security_meta = ""
+    if deploy_target == "github-pages":
+        security_meta = (
+            '\n<meta http-equiv="X-Content-Type-Options" content="nosniff">'
+            '\n<meta http-equiv="X-Frame-Options" content="DENY">'
+            '\n<meta http-equiv="Content-Security-Policy" content="'
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self'"
+            '">'
+        )
 
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
@@ -3374,7 +3394,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<link rel="stylesheet" href="{css_href}" media="print"'
         f" onload=\"this.media='all'\">"
         f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
-        f'{custom_css_tag}{feed_tag}{seo_tags}\n'
+        f'{custom_css_tag}{feed_tag}{seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
