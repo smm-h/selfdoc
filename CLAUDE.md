@@ -37,8 +37,10 @@ Tests live in `tests/` and cover config loading, directive parsing, the build pi
 - **Resolver** (`selfdoc/resolver.py`): factory that returns a `(name, arg, body) -> str` callable. Custom directives (from `selfdoc.json`) are checked first; otherwise dispatches to the language-specific extractor.
 - **Extractors** (`selfdoc/extractors/`): per-language modules (`python.py`, `go.py`, `typescript.py`). Python uses `ast`; Go and TypeScript use regex-based parsing. Each extractor handles all 5 built-in directives (module, schema, test, cli, config).
 - **Build** (`selfdoc/build.py`): scans `docs/` for `.md` templates, runs `resolve_directives` on each, converts to HTML, writes to output directory.
-- **HTML** (`selfdoc/html.py`): built-in Markdown-to-HTML converter (no dependencies). Produces a static site with sidebar navigation and responsive CSS.
+- **HTML** (`selfdoc/html.py`): built-in Markdown-to-HTML converter (no dependencies). Uses a tokenize -> render -> post-process pipeline: the tokenizer splits Markdown into block tokens, each token is rendered to HTML, then post-processing passes apply code tabs, step guides, API entry cards, and definitions. Produces a static site with sidebar navigation and responsive CSS.
+- **Tokenizer** (`selfdoc/tokenizer.py`): standalone Markdown block tokenizer with zero selfdoc imports, 10 token types (CodeBlock, Heading, Table, UnorderedList, OrderedList, Blockquote, DefinitionList, ThematicBreak, BlankLine, Paragraph). Used by both the HTML converter and the lint/check system.
 - **Config** (`selfdoc/config.py`): loads and validates `selfdoc.json`. Valid languages: python, go, typescript, javascript. Valid deploy providers: cloudflare-pages, github-pages.
 - **Deploy** (`selfdoc/deploy.py`): Cloudflare Pages (via wrangler CLI) and GitHub Pages (force-push to gh-pages branch).
-- **Check** (`selfdoc/check.py`): validates all directives resolve without error; computes documentation coverage (Python only: public symbol count vs. documented symbols).
-- **CLI** (`selfdoc/cli.py`): argparse-based, subcommands: init, build, serve, deploy, check. Serve uses SSE-based live reload with mtime polling.
+- **Check** (`selfdoc/check.py`): validates all directives resolve without error; computes documentation coverage (language-agnostic via extractor protocol: public/exported symbol count vs. documented symbols). Includes lint diagnostics (SEO, contrast, etc.).
+- **Auto-commit** (`selfdoc/git.py`): centralized git commit helper with safegit preference, used by CLI commands (build, init, gen, gen-data) to auto-commit generated files.
+- **CLI** (`selfdoc/cli.py`): uses `strictcli`, subcommands: init, build, serve, deploy, check, gen, gen-data. Serve uses SSE-based live reload with mtime polling.
