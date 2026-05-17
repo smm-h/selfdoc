@@ -257,6 +257,11 @@ def generate_docs(config, base_dir="."):
                 if module_path is None:
                     continue
 
+                # Also check exclude patterns against the computed module path
+                # (supports dotted module names like "selfdoc.staleness")
+                if _is_excluded(module_path, exclude_patterns):
+                    continue
+
                 md_filename = _module_to_filename(module_path, language)
 
                 # Skip if a hand-written page already exists

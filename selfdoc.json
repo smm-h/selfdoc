@@ -5,6 +5,17 @@
   "output": "docs/_build/",
   "base_url": "https://selfdoc.pages.dev",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
+  "gen": {
+    "exclude": [
+      "selfdoc.staleness",
+      "selfdoc.git",
+      "selfdoc.catalog",
+      "selfdoc.content",
+      "selfdoc.extractors.base",
+      "selfdoc.extractors.protocol",
+      "selfdoc.themes"
+    ]
+  },
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "selfdoc"
