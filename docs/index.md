@@ -1,37 +1,50 @@
 ---
-description: "selfdoc auto-generates API documentation from source code using inline directives. Supports Python, Go, and TypeScript extractors."
+title: selfdoc
+description: "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code."
 ---
 
-# selfdoc
+## Quick Start
 
-Auto-generate API documentation from source code using inline directives
+Install selfdoc and generate your first documentation site in three commands:
 
+```bash
+pip install selfdoc
+selfdoc init
+selfdoc build
+selfdoc serve
+```
+
+## How It Works
+
+Write Markdown templates with directive blocks that reference your source code. selfdoc resolves them at build time into live content:
+
+```markdown
 ## API Reference
 
-:-: ref path="selfdoc"
+:-: ref path="mypackage.core"
 
-:-: ref path="selfdoc.build"
+## CLI Usage
 
-:-: ref path="selfdoc.check"
+:-: code-help path="mypackage.cli"
 
-:-: ref path="selfdoc.cli"
+## Configuration Schema
 
-:-: ref path="selfdoc.config"
+:-: code-schema path="mypackage.config" target="Settings"
+```
 
-:-: ref path="selfdoc.deploy"
+Directives pull docstrings, function signatures, CLI help text, dataclass schemas, and test cases directly from your codebase. When your code changes, your docs update automatically on the next build.
 
-:-: ref path="selfdoc.directives"
+## What You Get
 
-:-: ref path="selfdoc.html"
+Every selfdoc site includes — with zero configuration:
 
-:-: ref path="selfdoc.resolver"
-
-### extractors
-
-:-: ref path="selfdoc.extractors"
-
-:-: ref path="selfdoc.extractors.python"
-
-:-: ref path="selfdoc.extractors.go"
-
-:-: ref path="selfdoc.extractors.typescript"
+- Full-text search with keyboard navigation
+- Dark mode with system preference detection
+- Responsive layout for mobile and desktop
+- Print stylesheet for clean PDF export
+- Atom feed for documentation updates
+- XML sitemap for search engine indexing
+- Structured data (JSON-LD) for rich snippets
+- llms.txt for AI agent discoverability
+- Sidebar navigation generated from file structure
+- Syntax-highlighted code blocks

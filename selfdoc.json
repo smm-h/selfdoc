@@ -8,5 +8,32 @@
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "selfdoc"
+  },
+  "branding": {
+    "tagline": "Your code is the documentation.",
+    "cta_text": "Get Started",
+    "cta_link": "getting-started/",
+    "features": [
+      {
+        "title": "Code-Aware Directives",
+        "description": "Embed live API references, schemas, tests, and CLI help directly from source code. Content stays in sync automatically."
+      },
+      {
+        "title": "Multi-Language Support",
+        "description": "Python (AST-based), Go, and TypeScript extractors handle all five built-in directive types out of the box."
+      },
+      {
+        "title": "Zero Dependencies",
+        "description": "Pure Python stdlib with one lightweight dependency. No JavaScript frameworks, no build tools, no configuration overhead."
+      },
+      {
+        "title": "SEO & AI Optimized",
+        "description": "Structured data, meta tags, sitemaps, llms.txt, Atom feeds, and 50+ SEO best practices built into every generated page."
+      },
+      {
+        "title": "Themeable & Accessible",
+        "description": "Two built-in themes with dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation."
+      }
+    ]
   }
 }
