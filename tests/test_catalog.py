@@ -4,6 +4,7 @@ from selfdoc.catalog import (
     ALL_BUILTIN_DIRECTIVES,
     CORE_DIRECTIVES,
     DIRECTIVE_NAME_MAPPING,
+    DirectiveSpec,
     FUTURE_DIRECTIVES,
     directive_status,
     is_valid_directive,
@@ -14,12 +15,12 @@ from selfdoc.catalog import (
 
 
 def test_core_and_future_do_not_overlap():
-    overlap = CORE_DIRECTIVES & FUTURE_DIRECTIVES
+    overlap = set(CORE_DIRECTIVES) & FUTURE_DIRECTIVES
     assert overlap == set(), f"overlapping directives: {overlap}"
 
 
 def test_all_builtin_is_core_union_future():
-    assert ALL_BUILTIN_DIRECTIVES == CORE_DIRECTIVES | FUTURE_DIRECTIVES
+    assert ALL_BUILTIN_DIRECTIVES == set(CORE_DIRECTIVES) | FUTURE_DIRECTIVES
 
 
 # -- is_valid_directive -------------------------------------------------------
@@ -81,3 +82,62 @@ def test_mapping_targets_are_core_directives():
 def test_mapping_covers_all_old_names():
     expected_old = {"module", "schema", "test", "cli", "config", "glossary"}
     assert set(DIRECTIVE_NAME_MAPPING.keys()) == expected_old
+
+
+# -- DirectiveSpec metadata ---------------------------------------------------
+
+EXPECTED_CORE_NAMES = {
+    "ref",
+    "table-schema",
+    "code-test",
+    "code-help",
+    "table-config",
+    "callout-note",
+    "callout-warning",
+    "callout-tip",
+    "callout-danger",
+    "callout-important",
+    "list-glossary",
+}
+
+
+def test_all_11_core_directives_have_metadata():
+    assert set(CORE_DIRECTIVES) == EXPECTED_CORE_NAMES
+
+
+def test_directive_spec_fields_populated():
+    for name, spec in CORE_DIRECTIVES.items():
+        assert isinstance(spec, DirectiveSpec), f"{name}: not a DirectiveSpec"
+        assert spec.description, f"{name}: empty description"
+        assert spec.category in ("code", "content"), (
+            f"{name}: invalid category {spec.category!r}"
+        )
+        assert spec.example, f"{name}: empty example"
+
+
+def test_code_directives_require_path():
+    for name, spec in CORE_DIRECTIVES.items():
+        if spec.category == "code":
+            assert "path" in spec.required_attrs, (
+                f"{name}: code directive missing required 'path' attr"
+            )
+
+
+def test_content_directives_have_no_required_attrs():
+    for name, spec in CORE_DIRECTIVES.items():
+        if spec.category == "content":
+            assert spec.required_attrs == [], (
+                f"{name}: content directive should have no required attrs"
+            )
+
+
+def test_is_valid_directive_with_dict_core():
+    """is_valid_directive still works after CORE_DIRECTIVES became a dict."""
+    for name in CORE_DIRECTIVES:
+        assert is_valid_directive(name) is True
+
+
+def test_directive_status_core_with_dict():
+    """directive_status returns 'core' for all core directives (dict keys)."""
+    for name in CORE_DIRECTIVES:
+        assert directive_status(name) == "core", f"{name} should be core"
