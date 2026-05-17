@@ -1,6 +1,6 @@
 ---
 title: selfdoc serve
-description: Documentation for the serve command
+description: "Reference for the selfdoc serve command — usage, flags, arguments, and examples for the serve subcommand of the selfdoc CLI."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 7

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.build
-description: Documentation for selfdoc.build
+description: "API reference for the selfdoc.build module — auto-generated documentation covering public functions, classes, and type signatures."
 generated: true
 nav_group: "API Reference"
 nav_order: 3

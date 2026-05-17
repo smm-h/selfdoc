@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.python
-description: Documentation for selfdoc.extractors.python
+description: "API reference for the selfdoc.extractors.python module — auto-generated documentation covering public functions, classes, and type signatures."
 generated: true
 nav_group: "API Reference"
 nav_order: 11

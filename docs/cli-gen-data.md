@@ -1,6 +1,6 @@
 ---
 title: selfdoc gen-data
-description: Documentation for the gen-data command
+description: "Reference for the selfdoc gen-data command — usage, flags, arguments, and examples for the gen-data subcommand of the selfdoc CLI."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 5

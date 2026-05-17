@@ -1,6 +1,6 @@
 ---
 title: selfdoc build
-description: Documentation for the build command
+description: "Reference for the selfdoc build command — usage, flags, arguments, and examples for the build subcommand of the selfdoc CLI."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 1

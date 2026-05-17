@@ -1,6 +1,6 @@
 ---
 title: selfdoc check
-description: Documentation for the check command
+description: "Reference for the selfdoc check command — usage, flags, arguments, and examples for the check subcommand of the selfdoc CLI."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 2

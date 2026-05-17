@@ -1,6 +1,6 @@
 ---
 title: selfdoc init
-description: Documentation for the init command
+description: "Reference for the selfdoc init command — usage, flags, arguments, and examples for the init subcommand of the selfdoc CLI."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 6

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.tokenizer
-description: Documentation for selfdoc.tokenizer
+description: "API reference for the selfdoc.tokenizer module — auto-generated documentation covering public functions, classes, and type signatures."
 generated: true
 nav_group: "API Reference"
 nav_order: 18

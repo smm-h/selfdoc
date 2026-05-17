@@ -1,6 +1,6 @@
 ---
 title: selfdoc.resolver
-description: Documentation for selfdoc.resolver
+description: "API reference for the selfdoc.resolver module — auto-generated documentation covering public functions, classes, and type signatures."
 generated: true
 nav_group: "API Reference"
 nav_order: 16
