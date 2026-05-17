@@ -104,8 +104,25 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     env = os.environ.copy()
     env["SELFDOC_AUTO_COMMIT"] = "1"
 
-    # Try safegit first, fall back to plain git
-    if shutil.which("safegit"):
+    # Try rlsbl first, then safegit, fall back to plain git
+    if shutil.which("rlsbl"):
+        cmd = ["rlsbl", "commit", "-m", message, "--"] + committable
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=cwd,
+                capture_output=True,
+                env=env,
+                timeout=30,
+            )
+            return result.returncode == 0
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            print(
+                f"selfdoc: auto-commit failed (rlsbl): {exc}",
+                file=sys.stderr,
+            )
+            return False
+    elif shutil.which("safegit"):
         cmd = ["safegit", "commit", "-m", message, "--"] + committable
         try:
             result = subprocess.run(

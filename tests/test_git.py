@@ -101,16 +101,43 @@ def test_auto_commit_loop_guard(tmp_path, monkeypatch):
     assert result is False
 
 
-def test_auto_commit_uses_safegit_when_available(tmp_path):
-    """auto_commit calls safegit when it is on PATH."""
+def test_auto_commit_uses_rlsbl_when_available(tmp_path):
+    """auto_commit calls rlsbl commit when it is on PATH."""
     _init_git_repo(tmp_path)
     (tmp_path / "file.txt").write_text("data")
 
-    with mock.patch("shutil.which", return_value="/usr/bin/safegit"):
+    with mock.patch("shutil.which", return_value="/usr/bin/rlsbl"):
         with mock.patch("subprocess.run") as mock_run:
-            # First two calls: git rev-parse, git check-ignore
-            # Then: git ls-files, git diff (for untracked: ls-files returns empty)
-            # Then: safegit commit
+            mock_run.side_effect = [
+                mock.Mock(returncode=0),      # git rev-parse --git-dir
+                mock.Mock(returncode=1),       # git check-ignore (not ignored)
+                mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
+                mock.Mock(returncode=0),       # rlsbl commit
+            ]
+
+            result = auto_commit(["file.txt"], "msg", str(tmp_path))
+
+        # Verify rlsbl was called
+        last_call = mock_run.call_args_list[-1]
+        assert last_call[0][0][0] == "rlsbl"
+        assert last_call[0][0][1] == "commit"
+        assert result is True
+
+
+def test_auto_commit_uses_safegit_when_available(tmp_path):
+    """auto_commit calls safegit when rlsbl is not available."""
+    _init_git_repo(tmp_path)
+    (tmp_path / "file.txt").write_text("data")
+
+    def which_side_effect(cmd):
+        if cmd == "rlsbl":
+            return None
+        if cmd == "safegit":
+            return "/usr/bin/safegit"
+        return None
+
+    with mock.patch("shutil.which", side_effect=which_side_effect):
+        with mock.patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
                 mock.Mock(returncode=1),       # git check-ignore (not ignored)
@@ -120,14 +147,15 @@ def test_auto_commit_uses_safegit_when_available(tmp_path):
 
             result = auto_commit(["file.txt"], "msg", str(tmp_path))
 
-        # Verify safegit was called
+        # Verify safegit was called (not rlsbl)
         last_call = mock_run.call_args_list[-1]
-        assert "safegit" in last_call[0][0][0]
+        assert last_call[0][0][0] == "safegit"
+        assert last_call[0][0][1] == "commit"
         assert result is True
 
 
 def test_auto_commit_falls_back_to_git(tmp_path):
-    """auto_commit uses plain git when safegit is not available."""
+    """auto_commit uses plain git when neither rlsbl nor safegit is available."""
     _init_git_repo(tmp_path)
     (tmp_path / "file.txt").write_text("data")
 
@@ -143,7 +171,7 @@ def test_auto_commit_falls_back_to_git(tmp_path):
 
             result = auto_commit(["file.txt"], "msg", str(tmp_path))
 
-        # Verify git add and git commit were called (not safegit)
+        # Verify git add and git commit were called (not rlsbl or safegit)
         add_call = mock_run.call_args_list[-2]
         assert add_call[0][0][0] == "git"
         assert add_call[0][0][1] == "add"
