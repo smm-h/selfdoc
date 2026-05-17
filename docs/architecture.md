@@ -10,7 +10,7 @@ This page documents the internal design of selfdoc for contributors and anyone i
 
 ## Overview
 
-The build pipeline transforms Markdown templates into a static HTML site through a sequence of well-separated stages:
+The selfdoc build pipeline transforms Markdown templates containing directive markers into a fully-featured static HTML site through a sequence of well-separated stages. Each stage receives the output of the previous one and produces a deterministic result, making the overall system straightforward to test, debug, and extend:
 
 1. **Scan** -- walk `docs/` for `.md` files, parse frontmatter
 2. **Resolve directives** -- replace directive markers with generated Markdown content (from source code or content transforms)
@@ -24,13 +24,11 @@ Each stage is a pure function of its input, making the system easy to test and r
 
 ## Tokenizer
 
-**Module:** `selfdoc/tokenizer.py`
-
-The tokenizer is a standalone, zero-dependency module that splits Markdown source into a flat list of typed block tokens. It has no imports from selfdoc -- it is designed for reuse outside the project.
+**Module:** `selfdoc/tokenizer.py` -- the tokenizer is a standalone, zero-dependency module that splits Markdown source into a flat list of typed block tokens. It has no imports from selfdoc and is designed for reuse outside the project. The tokenizer guarantees that every source line belongs to exactly one token, with no gaps or overlaps between adjacent tokens.
 
 ### Token types
 
-The tokenizer produces 11 token types, each a `@dataclass` with `start` and `end` line numbers (1-based):
+The tokenizer produces 11 token types, each represented as a `@dataclass` with `start` and `end` line numbers (1-based). These types cover the full range of Markdown block-level constructs that selfdoc supports, from headings and code blocks to tables, lists, and directives:
 
 | Token | Represents |
 |-------|-----------|
@@ -50,16 +48,14 @@ All tokens are combined into a `Block` union type. The tokenizer guarantees full
 
 ### Design rationale
 
-The tokenizer exists as a separate module (rather than inline parsing within the renderer) for two reasons:
+The tokenizer exists as a separate module rather than being embedded as inline parsing logic within the HTML renderer. This separation serves two important purposes and keeps the architecture clean by ensuring that parsing concerns are decoupled from rendering concerns:
 
 - **Dual consumers:** both the rendering pipeline and the lint system operate on tokens. The lint system needs line numbers for diagnostics, and the renderer needs structured data for dispatch.
 - **Testability:** tokenization can be tested in isolation without invoking HTML generation or directive resolution.
 
 ## Rendering Pipeline
 
-**Module:** `selfdoc/html.py`, function `md_to_html`
-
-The rendering pipeline converts resolved Markdown to HTML through a three-phase process:
+**Module:** `selfdoc/html.py`, function `md_to_html` -- the rendering pipeline converts resolved Markdown to HTML through a three-phase process that cleanly separates tokenization, block-level rendering, and heuristic post-processing into distinct stages. Each phase has a single responsibility, which makes the pipeline easy to test and debug independently.
 
 ### Phase 1: Tokenize and render blocks
 
@@ -67,7 +63,7 @@ The rendering pipeline converts resolved Markdown to HTML through a three-phase 
 
 ### Phase 2: Post-processors
 
-After block rendering produces a joined HTML string, a series of regex-based post-processors transform the output:
+After block rendering produces a joined HTML string, a series of regex-based post-processors transform the output to detect cross-block patterns and apply semantic enhancements that cannot be determined from individual tokens alone:
 
 - **Code tabs** (`_group_code_tabs`): consecutive code blocks with different languages are wrapped in a tabbed interface
 - **Step guides** (`_apply_step_guides`): ordered lists following headings containing "step", "guide", or "tutorial" receive a `class="steps"` for special styling
@@ -77,7 +73,7 @@ After block rendering produces a joined HTML string, a series of regex-based pos
 
 ### Phase 3: Page assembly
 
-`generate_html` wraps the per-page HTML in a full document shell: sidebar navigation, breadcrumbs, canonical URLs, OpenGraph tags, structured data, theme CSS, and JavaScript for code tabs and search.
+The `generate_html` function wraps the per-page HTML in a full document shell that includes sidebar navigation, breadcrumbs, canonical URLs, OpenGraph tags, structured data (JSON-LD), theme CSS, and JavaScript for interactive features like code tabs and full-text search.
 
 ### Why post-processors operate on HTML strings
 
@@ -85,13 +81,11 @@ Post-processors run after block rendering rather than on tokens because they det
 
 ## Directive System
 
-**Modules:** `selfdoc/directives.py` (parser), `selfdoc/resolver.py` (dispatch), `selfdoc/content.py` (content directives)
-
-Directives are the core mechanism for pulling live information from source code into documentation.
+**Modules:** `selfdoc/directives.py` (parser), `selfdoc/resolver.py` (dispatch), `selfdoc/content.py` (content directives) -- directives are the core mechanism for pulling live information from source code into documentation. They bridge the gap between your codebase and your Markdown templates, ensuring that documentation content always reflects the current state of the implementation.
 
 ### Syntax
 
-The directive parser recognizes a structured marker syntax:
+The directive parser recognizes a structured marker syntax that supports both self-closing one-liner directives and multi-line block directives with attributes and body content. Directives inside fenced code blocks are automatically ignored, and unclosed block directives at end-of-file produce a clear error:
 
 | Marker | Purpose |
 |--------|---------|
@@ -106,7 +100,7 @@ Directives inside fenced code blocks are ignored. Unclosed block directives at E
 
 ### Resolver dispatch chain
 
-When a directive is encountered during the build, the resolver (`make_resolver`) processes it through a three-level dispatch chain:
+When a directive is encountered during the build, the resolver created by `make_resolver` processes it through a three-level dispatch chain that tries each handler in order and stops at the first match:
 
 1. **Content directives** -- `resolve_content` handles callouts (`callout-note`, `callout-warning`, etc.) and `list-glossary`. These transform body content into styled HTML without needing source code access. If the directive matches a content type, resolution stops here.
 
@@ -118,7 +112,7 @@ If none of these can handle the directive, the resolver emits an inline error ma
 
 ### Built-in directives
 
-The directive catalog (`selfdoc/catalog.py`) defines two categories:
+The directive catalog in `selfdoc/catalog.py` defines two categories of directives, cleanly separating what is currently functional and shipped from what is declared as a valid name but planned for future implementation. This approach allows documentation authors to reference future directives without triggering parse errors:
 
 - **Core directives** (shipped and functional): `ref`, `table-schema`, `code-test`, `code-help`, `table-config`, callouts, and `list-glossary`
 - **Future directives** (declared, parse-valid, not yet implemented): a large set organized by prefix -- `table-*`, `code-*`, `list-*`, `callout-*`, `prose-*`
@@ -127,9 +121,7 @@ Declaring future directives means the parser accepts them without error, allowin
 
 ## Language Extractors
 
-**Module:** `selfdoc/extractors/`
-
-Each language has a dedicated extractor implementing the `LanguageExtractor` protocol:
+**Module:** `selfdoc/extractors/` -- each supported language has a dedicated extractor module that implements the `LanguageExtractor` protocol, providing language-specific logic for resolving directives, detecting source files, and enumerating public symbols for coverage analysis.
 
 ### The protocol
 
@@ -168,13 +160,11 @@ The Python extractor uses the `ast` module because Python's grammar makes regex-
 
 ### Language detection
 
-The extractor registry also provides auto-detection: `detect_language` probes for marker files (`pyproject.toml` for Python, `go.mod` for Go, `package.json`/`tsconfig.json` for TypeScript) in priority order. This powers the `selfdoc init` command.
+The extractor registry also provides auto-detection through the `detect_language` function, which probes for marker files (`pyproject.toml` for Python, `go.mod` for Go, `package.json` or `tsconfig.json` for TypeScript) in a fixed priority order. This powers the `selfdoc init` command, allowing it to automatically configure the correct language without user input.
 
 ## Build Pipeline
 
-**Module:** `selfdoc/build.py`, function `build`
-
-The `build` function orchestrates the full site generation:
+**Module:** `selfdoc/build.py`, function `build` -- the build function orchestrates the full site generation from Markdown templates to a deployable static site, coordinating directive resolution, HTML rendering, auxiliary file generation, and asset copying.
 
 ### Main pipeline
 
@@ -187,7 +177,7 @@ The `build` function orchestrates the full site generation:
 
 ### Auxiliary file generation
 
-After the main pipeline completes, the build generates:
+After the main HTML pipeline completes, the build generates several companion files that enhance discoverability, accessibility, and performance of the published site. These auxiliary outputs are all derived from the same page metadata and content used by the HTML renderer, ensuring consistency across formats:
 
 - **Sitemap** (`sitemap.xml`): standard sitemap with page URLs and last-modified dates
 - **Atom feed** (`feed.xml`): full Atom feed for RSS readers, respecting per-page `feed: false` frontmatter
@@ -206,13 +196,11 @@ File writes to shared state use atomic write patterns (write to a temporary file
 
 ## Lint System
 
-**Module:** `selfdoc/check.py`
-
-The `check` command validates documentation quality across three dimensions: directive correctness, documentation coverage, and SEO best practices.
+**Module:** `selfdoc/check.py` -- the `check` command validates documentation quality across three dimensions: directive correctness, documentation coverage, and SEO best practices. It operates on the tokenized representation of each page, giving it access to structured information without needing to re-parse raw Markdown.
 
 ### Directive validation
 
-For every directive in every docs template, the checker:
+For every directive in every documentation template file, the checker performs a full resolution attempt using the project's configured language extractor to verify that the directive would succeed at build time. This catches broken module paths, missing symbols, and malformed attributes before they reach production:
 
 1. Parses the directive (validating syntax and name against the catalog)
 2. Attempts full resolution using the project's extractor
@@ -226,7 +214,7 @@ Coverage measures how many public symbols in the source code are referenced by a
 
 ### SEO lint checks
 
-The lint system operates on tokens (not raw Markdown), which gives it access to structured information like heading levels, image alt text, and link targets. There are 14 checks:
+The lint system operates on tokens rather than raw Markdown, which gives it access to structured information like heading levels, image alt text, and link targets without re-parsing. There are currently 14 checks covering metadata, content structure, and accessibility:
 
 | Code | Check |
 |------|-------|

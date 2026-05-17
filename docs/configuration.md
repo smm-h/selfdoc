@@ -12,6 +12,8 @@ Three fields are required: `language`, `source`, and `base_url`. Everything else
 
 ## Config Reference
 
+The table below lists every field recognized by `selfdoc.json`, including the field type, whether it is required, and a description of what it controls. Required fields have no default and must be provided explicitly.
+
 :-: config-schema
 
 ## Common Configurations

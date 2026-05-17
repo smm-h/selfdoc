@@ -10,7 +10,7 @@ selfdoc generates a fully static site that can be deployed anywhere. Two provide
 
 ## Configuration
 
-Add a `deploy` section to your `selfdoc.json`:
+To enable deployment, add a `deploy` section to your `selfdoc.json` file specifying which hosting provider to use and any provider-specific settings such as the project name. The provider field determines the deployment strategy, while the project field identifies the target on the hosting platform:
 
 ```json
 {
@@ -68,7 +68,7 @@ selfdoc deploy
 
 ### Environment Variables
 
-For non-interactive environments (CI, post-release hooks), provide credentials via environment variables instead of `wrangler login`:
+For non-interactive environments such as CI pipelines and post-release hooks, you must provide Cloudflare credentials via environment variables instead of running `wrangler login` interactively. selfdoc reads these variables and bridges them to the names that wrangler expects internally:
 
 | Variable | Description |
 | -------- | ----------- |
@@ -117,7 +117,7 @@ selfdoc deploy
 
 ### How It Works
 
-`selfdoc deploy` for GitHub Pages:
+The `selfdoc deploy` command for GitHub Pages performs a clean force-push to the `gh-pages` branch without touching your working tree or local branches. The entire process uses a temporary directory, keeping your repository state unchanged throughout the deployment:
 
 1. Reads the `origin` remote URL from your local git config.
 2. Creates a fresh temporary directory with a new git repo.
@@ -129,7 +129,7 @@ This approach keeps the `gh-pages` branch clean (a single commit with the latest
 
 ### Security Headers
 
-GitHub Pages does not support custom HTTP headers via a config file. Instead, selfdoc injects `<meta http-equiv>` tags into every HTML page when the deploy target is `github-pages`:
+GitHub Pages does not support custom HTTP headers via a configuration file like Cloudflare's `_headers`. Instead, selfdoc injects `<meta http-equiv>` tags into every generated HTML page when the deploy target is `github-pages`:
 
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
@@ -139,7 +139,7 @@ HTTPS and HSTS are handled by the GitHub Pages platform itself -- no configurati
 
 ## Directory-Index URLs
 
-selfdoc generates directory-index URLs for all pages. For example, a page at `docs/guide.md` becomes `guide/index.html` in the output, which is served as `/guide/` by the web server.
+selfdoc generates directory-index URLs for all pages by default, which produces clean URLs without file extensions and avoids trailing-slash redirect chains. For example, a page at `docs/guide.md` becomes `guide/index.html` in the output, which is served as `/guide/` by any standard web server.
 
 This approach:
 
@@ -151,11 +151,11 @@ No configuration is required. All internal navigation links already use the dire
 
 ## CI Integration
 
-The recommended approach is to use an rlsbl post-release hook that builds and deploys docs automatically after each release.
+The recommended approach is to use an rlsbl post-release hook that builds and deploys documentation automatically after each release, keeping your published docs in sync with tagged versions without manual intervention.
 
 ### Post-release hook example
 
-In `.rlsbl/hooks/post-release.sh`:
+Create a post-release hook at `.rlsbl/hooks/post-release.sh` that sources your deploy credentials from a shared environment file and runs the full build-and-deploy pipeline automatically every time a new version tag is pushed to your remote repository:
 
 ```bash
 #!/usr/bin/env bash
@@ -175,7 +175,7 @@ The `RLSBL_VERSION` variable is set by rlsbl to the version being released. The 
 
 ### Manual CI
 
-If you are not using rlsbl, run these two commands in your CI pipeline after your tests pass:
+If you are not using rlsbl for release orchestration, you can integrate selfdoc directly into your existing CI pipeline by running these two commands after your test suite passes. Make sure the required environment variables for your chosen provider are set as CI secrets:
 
 ```bash
 selfdoc build
@@ -186,7 +186,7 @@ For Cloudflare Pages, ensure `CF_PAGES_API_TOKEN` and `CF_ACCOUNT_ID` are set as
 
 ## Custom Domain
 
-Both platforms support custom domains, but configuration is done on the platform side -- selfdoc does not manage DNS or domain settings.
+Both Cloudflare Pages and GitHub Pages support custom domains, but domain configuration is done on the platform side through their respective dashboards -- selfdoc does not manage DNS records or domain settings directly.
 
 - **Cloudflare Pages**: Add a custom domain in the Cloudflare dashboard under your Pages project settings. See [Cloudflare Pages custom domains](https://developers.cloudflare.com/pages/configuration/custom-domains/).
 - **GitHub Pages**: Add a custom domain in your repository's Settings > Pages section. See [GitHub Pages custom domains](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site).

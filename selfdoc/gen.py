@@ -122,10 +122,15 @@ def _is_excluded(rel_path, exclude_patterns):
 
 def _generate_page_content(module_name, module_path, nav_order):
     """Build the Markdown content for a generated documentation page."""
+    desc = (
+        f"API reference for the {module_name} module — "
+        f"auto-generated documentation covering public functions, "
+        f"classes, and type signatures."
+    )
     return (
         f"---\n"
         f"title: {module_name}\n"
-        f"description: Documentation for {module_name}\n"
+        f"description: \"{desc}\"\n"
         f"generated: true\n"
         f'nav_group: "API Reference"\n'
         f"nav_order: {nav_order}\n"
@@ -147,7 +152,7 @@ def _generate_index_content(generated_pages):
     lines = [
         "---",
         "title: API Reference",
-        "description: Auto-generated API reference index",
+        'description: "Complete auto-generated API reference index — browse all modules, classes, and functions with their signatures and docstrings."',
         "generated: true",
         'nav_group: "API Reference"',
         "nav_order: 0",

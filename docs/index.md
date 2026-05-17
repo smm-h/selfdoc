@@ -5,7 +5,7 @@ description: "Code-aware static site generator that resolves directive blocks in
 
 ## Quick Start
 
-Install selfdoc and generate your first documentation site in three commands:
+Install selfdoc from PyPI and generate your first documentation site in three commands. The `init` command detects your project language automatically from manifest files and scaffolds a starter Markdown template with a directive pointing at your main module:
 
 ```bash
 pip install selfdoc
@@ -16,7 +16,7 @@ selfdoc serve
 
 ## How It Works
 
-Write Markdown templates with directive blocks that reference your source code. selfdoc resolves them at build time into live content:
+Write Markdown templates with directive blocks that reference your source code by module path, function name, or config key. selfdoc resolves these directives at build time by extracting live content directly from your codebase:
 
 ```markdown
 ## API Reference
@@ -36,7 +36,7 @@ Directives pull docstrings, function signatures, CLI help text, dataclass schema
 
 ## What You Get
 
-Every selfdoc site includes — with zero configuration:
+Every selfdoc site includes the following features out of the box, with no additional configuration, no runtime dependencies, and no third-party services required beyond the base install. The generated output is a self-contained static site:
 
 - Full-text search with keyboard navigation
 - Dark mode with system preference detection

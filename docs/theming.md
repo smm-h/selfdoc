@@ -10,7 +10,7 @@ selfdoc ships with two built-in themes and a comprehensive set of CSS custom pro
 
 ## Choosing a Theme
 
-Set the `theme` field in `selfdoc.json`:
+Set the `theme` field in your `selfdoc.json` configuration to select which built-in theme to use for your documentation site. The theme controls colors, typography, layout, and component styling. If omitted, the minimal theme is used by default:
 
 ```json
 {
@@ -85,7 +85,7 @@ Every visual aspect of a selfdoc site is controlled by CSS custom properties def
 
 ### Layout (clean only)
 
-The clean theme defines two extra properties not present in minimal:
+The clean theme defines two extra CSS custom properties not present in the minimal theme, controlling shadow depth and border radius for a more polished, card-like appearance. The minimal theme accesses these via CSS fallback syntax so they can still be overridden in `custom.css`:
 
 | Property | clean default |
 |---|---|
@@ -96,7 +96,7 @@ Minimal uses these via CSS fallbacks (e.g., `var(--radius, 4px)`) so they can st
 
 ## Custom Styles
 
-Create a `docs/custom.css` file in your project. selfdoc automatically detects it during build and injects it after the theme stylesheet, so your rules take precedence.
+Create a `docs/custom.css` file in your project to override any CSS custom property or add your own styling rules. selfdoc automatically detects this file during build and injects it after the theme stylesheet, so your rules take precedence over the built-in theme values.
 
 Example -- change the accent color and body font:
 
@@ -114,21 +114,21 @@ No build configuration is needed. Just save the file and run `selfdoc build`.
 
 ## Dark Mode
 
-Both themes ship with a complete dark color palette. Dark mode activates in two ways:
+Both themes ship with a complete dark color palette that covers every CSS custom property, ensuring consistent contrast and readability across all page elements including code blocks, tables, and admonitions. Dark mode activates in two ways:
 
 1. **Automatic** -- the `prefers-color-scheme: dark` media query matches the user's OS setting. This is the default behavior with no configuration needed.
 2. **Manual toggle** -- clicking the theme toggle button in the topbar sets `data-theme="dark"` (or `"light"`) on the root element, overriding the OS preference.
 
 ### How the selectors work
 
-The theme CSS uses a layered selector strategy:
+The theme CSS uses a layered selector strategy with two complementary rules that handle both automatic OS-preference detection via the `prefers-color-scheme` media query and explicit user toggle interactions via the `data-theme` attribute on the root element:
 
 - `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ... } }` -- applies dark colors when the OS prefers dark, unless the user has explicitly toggled to light.
 - `[data-theme="dark"] { ... }` -- applies dark colors unconditionally when the toggle is set to dark, regardless of OS preference.
 
 ### Overriding dark mode colors
 
-To customize dark colors in `custom.css`, mirror the same selector pattern:
+To customize dark mode colors in your `custom.css` file, you must mirror the same dual-selector pattern used by the built-in themes so that your overrides apply in both automatic and manual dark mode:
 
 ```css
 /* Override dark mode accent */
@@ -146,7 +146,7 @@ To customize dark colors in `custom.css`, mirror the same selector pattern:
 
 ### Dark mode property values
 
-Selected dark mode defaults for reference:
+The following table shows selected dark mode defaults for both the minimal and clean themes, useful as a reference when deciding which CSS custom properties to override in your `custom.css` dark mode rules:
 
 | Property | minimal dark | clean dark |
 |---|---|---|
@@ -161,7 +161,7 @@ Selected dark mode defaults for reference:
 
 ## High Contrast
 
-Both themes respond to `prefers-contrast: more` for users who need stronger visual contrast. This is a browser/OS-level setting and requires no configuration.
+Both themes respond to the `prefers-contrast: more` media query for users who need stronger visual contrast between text, borders, and backgrounds. This is a browser or OS-level accessibility setting that requires no configuration on your part.
 
 In light mode, high contrast overrides strengthen text and borders:
 
@@ -195,7 +195,7 @@ To override high contrast values in `custom.css`, nest your rules in the matchin
 
 ## Design Tool
 
-The `demo/index.html` file is a standalone design tool for visually experimenting with theme settings. Open it in a browser to see a full documentation page with a settings panel.
+The `demo/index.html` file is a standalone design tool for visually experimenting with theme settings without modifying any project files. Open it in a browser to see a full documentation page with an interactive settings panel that updates in real time.
 
 Click the gear icon in the topbar to open the panel. It provides 16 knobs organized by category:
 
@@ -207,13 +207,13 @@ Click the gear icon in the topbar to open the panel. It provides 16 knobs organi
 
 ### Exporting settings
 
-After adjusting the knobs, click **Copy CSS to clipboard**. The tool generates a `custom.css` snippet containing only the properties you changed. Paste it into your `docs/custom.css` file.
+After adjusting the design knobs to your liking, click **Copy CSS to clipboard** to export your changes. The tool generates a `custom.css` snippet containing only the CSS custom properties you modified, ready to paste into your project's `docs/custom.css` file.
 
 You can also click **Copy link** to get a URL that encodes all current settings, making it easy to share a design with collaborators.
 
 ## Print Stylesheet
 
-Both themes include a `@media print` block that produces clean printed output. The following elements are hidden when printing:
+Both themes include a comprehensive `@media print` block that produces clean, readable printed output suitable for PDF export. The layout switches to single-column with no max-width constraint, and all interactive and navigation elements are hidden when printing:
 
 - Sidebar, table of contents, mobile TOC
 - Topbar and hamburger menu

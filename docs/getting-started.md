@@ -10,7 +10,7 @@ This guide walks you through installing selfdoc, setting up a project, writing y
 
 ## Installation
 
-selfdoc requires **Python 3.11 or later**.
+selfdoc requires **Python 3.11 or later** and has zero runtime dependencies beyond the standard library. You can install it via pip from PyPI or via npm as a thin Node wrapper.
 
 Install via pip:
 
@@ -32,7 +32,7 @@ selfdoc --version
 
 ## Initialize a Project
 
-Navigate to the root of an existing codebase and run:
+Navigate to the root of an existing codebase that you want to document. The `init` command detects your project language, creates the configuration file, and scaffolds a starter documentation template:
 
 ```bash
 selfdoc init
@@ -50,7 +50,7 @@ The `init` command also auto-commits the generated files unless you pass `--no-c
 
 ## Project Structure
 
-After initialization, your project will have:
+After initialization, your project will have a `selfdoc.json` configuration file at the project root and a `docs/` directory containing a starter Markdown template with a `ref` directive already pointing at your main module. Your existing source code is not modified:
 
 ```
 your-project/
@@ -62,7 +62,7 @@ your-project/
 
 ### selfdoc.json
 
-The configuration file controls how selfdoc finds and processes your code:
+The configuration file controls how selfdoc finds your source code, where to look for documentation templates, and where to write the generated HTML output. Only `language` and `source` are required -- everything else has sensible defaults that work for most projects:
 
 ```json
 {
@@ -84,7 +84,7 @@ The configuration file controls how selfdoc finds and processes your code:
 
 ### The docs directory
 
-Every `.md` file in `docs/` is a documentation page. Each file should start with YAML frontmatter:
+Every `.md` file in `docs/` is a documentation page that selfdoc will process during the build. Each file should start with YAML frontmatter containing at least a title and description for SEO metadata:
 
 ```markdown
 ---
@@ -106,7 +106,7 @@ Files are organized into a flat structure. The filename (minus `.md`) becomes th
 
 ## Writing Your First Directive
 
-Directives are the core of selfdoc. They are inline markers in your Markdown templates that get replaced with content extracted from source code at build time.
+Directives are the core feature of selfdoc -- inline markers in your Markdown templates that get replaced with content extracted from your source code at build time. They keep your documentation in sync with the implementation automatically.
 
 Open `docs/index.md` (created by `selfdoc init`) and you will see something like:
 
@@ -133,7 +133,7 @@ The line `:-: ref path="myproject"` is a self-closing directive. At build time, 
 
 ### Adding more directives
 
-Here are examples of each built-in directive:
+selfdoc ships with several built-in directives for common documentation patterns, from extracting module-level API references to rendering configuration schemas as tables. Each directive uses a `path` attribute to identify the source file or module, and some accept additional attributes like `target` for specific symbols. Here are examples of each:
 
 **Module reference** -- extract docstrings and public API:
 
@@ -169,7 +169,7 @@ Directives inside fenced code blocks (triple backticks) are ignored, so you can 
 
 ## Building
 
-Generate the HTML site:
+Once you have written your Markdown templates with directive markers, generate the complete static HTML site with a single command. The build resolves all directives, converts Markdown to HTML, generates navigation and search indexes, and writes everything to the output directory:
 
 ```bash
 selfdoc build
@@ -197,7 +197,7 @@ Any SEO warnings or directive errors are printed after the build summary. Errors
 
 ## Local Development
 
-Preview your docs site locally with live reload:
+Preview your documentation site locally with automatic live reload using Server-Sent Events. The development server watches the output directory for changes and pushes reload notifications to connected browsers, so your pages update instantly after each build:
 
 ```bash
 selfdoc serve
@@ -222,7 +222,7 @@ Press `Ctrl+C` to stop the server.
 
 ## Checking Your Docs
 
-Validate that all directives resolve correctly and review documentation coverage:
+Validate that all directives resolve correctly, review documentation coverage against your public API surface, and catch SEO issues before publishing. The check command runs three categories of analysis and reports results with file locations and actionable diagnostic codes:
 
 ```bash
 selfdoc check
@@ -261,7 +261,7 @@ selfdoc check --format json
 
 ## Next Steps
 
-Now that you have a working documentation site, explore these topics:
+Now that you have a working documentation site with live directives, full-text search, and dark mode, explore these topics to learn about advanced configuration, theming, deployment to production hosting, and the full directive reference:
 
 - **[Directives Reference](directives/)** -- complete reference for all built-in directives, block syntax, and custom directives.
 - **[Configuration](selfdoc-config/)** -- all `selfdoc.json` options including deploy providers, coverage thresholds, and lint suppression.

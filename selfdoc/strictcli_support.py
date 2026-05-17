@@ -402,10 +402,15 @@ def generate_cli_pages(cli_structure, docs_dir):
     groups = cli_structure.get("groups", [])
 
     # -- Index page --
+    cli_index_desc = (
+        f"Complete CLI reference for {app_name} — "
+        f"all available commands, subcommands, flags, arguments, "
+        f"and usage examples with detailed descriptions."
+    )
     index_lines = [
         "---",
         f"title: {app_name} CLI Reference",
-        f"description: CLI reference for {app_name}",
+        f'description: "{cli_index_desc}"',
         "generated: true",
         'nav_group: "CLI Reference"',
         "nav_order: 0",
@@ -499,10 +504,15 @@ def _render_command_page(cmd, app_name, nav_order):
     flags = cmd.get("flags", [])
     args = cmd.get("args", [])
 
+    cmd_desc = (
+        f"Reference for the {app_name} {name} command — "
+        f"usage, flags, arguments, and examples for the {name} subcommand "
+        f"of the {app_name} CLI."
+    )
     lines = [
         "---",
         f"title: {app_name} {name}",
-        f"description: Documentation for the {name} command",
+        f'description: "{cmd_desc}"',
         "generated: true",
         'nav_group: "CLI Reference"',
         f"nav_order: {nav_order}",
@@ -551,10 +561,15 @@ def _render_group_page(grp, app_name, nav_order):
     ghelp = grp.get("help", "")
     subcmds = grp.get("commands", [])
 
+    grp_desc = (
+        f"Reference for the {app_name} {gname} command group — "
+        f"subcommands, flags, arguments, and usage details "
+        f"for the {gname} group in the {app_name} CLI."
+    )
     lines = [
         "---",
         f"title: {app_name} {gname}",
-        f"description: Documentation for the {gname} command group",
+        f'description: "{grp_desc}"',
         "generated: true",
         'nav_group: "CLI Reference"',
         f"nav_order: {nav_order}",

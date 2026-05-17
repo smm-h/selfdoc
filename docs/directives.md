@@ -1,6 +1,6 @@
 ---
 title: Directives Reference
-description: "Complete reference for all built-in selfdoc directives including code extraction and content block types."
+description: "Complete reference for all built-in selfdoc directives including code extraction, content blocks, and custom directive authoring."
 order: 30
 ---
 
@@ -10,7 +10,7 @@ selfdoc directives are inline blocks in Markdown templates that get resolved int
 
 ## Syntax
 
-Directives come in two forms:
+Directives come in two forms, depending on whether the directive is self-contained with just attributes or needs to include additional body content that gets passed to the resolver function. Directives placed inside fenced code blocks are ignored, so you can safely document directive syntax in your pages:
 
 **One-liner** (self-closing, no body):
 
@@ -39,11 +39,13 @@ Block directives can also include additional attributes and a body separator:
 
 ## Built-in Directives
 
+The following table shows all built-in directives that selfdoc recognizes, their current implementation status (shipped or planned for a future release), and a brief description of what each directive extracts from source code or generates as content.
+
 :-: catalog
 
 ## Custom Directives
 
-You can extend selfdoc with custom directives by adding entries to `selfdoc.json`:
+You can extend selfdoc with project-specific custom directives by registering them in your `selfdoc.json` configuration file, pointing each directive name to a Python script that implements the resolution logic. Custom directives take priority over built-in directives of the same name:
 
 ```json
 {
