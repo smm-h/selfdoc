@@ -17,7 +17,8 @@
     ]
   },
   "directives": {
-    "catalog": "scripts/catalog-directive.py"
+    "catalog": "scripts/catalog-directive.py",
+    "config-schema": "scripts/config-schema-directive.py"
   },
   "deploy": {
     "provider": "cloudflare-pages",
