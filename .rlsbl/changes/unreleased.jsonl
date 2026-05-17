@@ -1,3 +1,4 @@
 {"commits":["a3a79e095f830e86e3af6e0c91f332c2d0e3329b"],"user_facing":true,"description":"Directive catalog now includes descriptions, attribute specs, and usage examples for all core directives","type":"feature"}
 {"commits":["4824bea604f4201072dc404ee7f82b13a1ef1967"],"user_facing":true,"description":"Generated API and CLI reference pages now appear in organized sidebar groups","type":"feature"}
 {"commits":["7ef991c8f04d43572d00c26063511cafd5b26204"],"user_facing":false}
+{"commits":["4576e3a555693e2c8276917f5dbfc5dbb8038244"],"user_facing":false}
