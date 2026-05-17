@@ -1,6 +1,6 @@
 {
   "architecture.md": {
-    "content": "6b3f5e18fdf267ba8c92bcbe21b26a778004cbc00b49c2b320cd937a4ffe9a4a",
+    "content": "fc65c48b75f2d0f3f7aad3a402174473c1b64bec70db83bcd1b5b395b7be3629",
     "description": "464747f099e75e988a325270cbdbb36c693ea208de0b2d943ff24b5f5252392c"
   },
   "cli-build.md": {
@@ -40,11 +40,11 @@
     "description": "d30e4e9e4c1b60a8bc5b61174320ec4ea58b7d7f378bd60584d9ec2d0299e0cd"
   },
   "deployment.md": {
-    "content": "84da5672abdf12aaea788a20c547f66c8c1567f3e5dd39c9b11a1b147811fe0d",
+    "content": "496d3905a141686a3e00caa8b133f3e3340e46598789202590a35c81d1059427",
     "description": "f9f30e6caa4ef2763b8df268eea782c65657392ebee25c2f806caaa8a1e9c269"
   },
   "directives.md": {
-    "content": "237de7d0276e720004ca1b22c7839c7c4eadd8b882a296e1758b54b89d945316",
+    "content": "a4f4410da54796aa0054f1947929f55d7e42a4c73bb55053bda4d7ffcd7384eb",
     "description": "85994821a561754f8f44d5f9726876a05998ae9ba9dff245d958f7fbbddd7dc2"
   },
   "gen-index.md": {
@@ -52,11 +52,11 @@
     "description": "bc0df72d8e79b08f319aad256d06b946ee719ef2bfc5beab3544f708f1725922"
   },
   "getting-started.md": {
-    "content": "340b66d50078f1573a9b621b285bc04dfd716532af997d59b2327b26c338918f",
+    "content": "1a220d72194fde13e4adbcf07ac15affabf61b67b130c45d9538a96cec398127",
     "description": "071f168a9369107d2eab946a88d6cee06f098c7fb97f1cdf7285356e961a2b75"
   },
   "index.md": {
-    "content": "af21fa51e3371f4d2d03681c20d58f452e2c2f8b463ac0c36c47e22eda63984f",
+    "content": "0215ae1728fae958fced933434f5d4d782965d8c384b326e94b15ccdc9a3806f",
     "description": "fc5340d9da34d6f4b4d6aab857b5e533907bd2222539b52cf388475ff11c81d1"
   },
   "selfdoc-__main__.md": {
@@ -132,7 +132,7 @@
     "description": "4b2eeed0350ea775619b4bdffaf63dbb7b4e1f7c618c81630cb1ea79a7e535b0"
   },
   "theming.md": {
-    "content": "1dc2b4760dbf50c666aa06099a7333da8e4262f2b0543069b17b3bdde4a22f3f",
+    "content": "bb327170ca977b166a27223ee5ab21c8049fafc85f34519aeef10d1aac7e1506",
     "description": "47828070bf38ec6e6e1ec94a0bd10af2f813ffe77625fbe6a5cac232beae9d2e"
   }
 }
