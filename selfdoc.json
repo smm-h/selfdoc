@@ -16,6 +16,9 @@
       "selfdoc.themes"
     ]
   },
+  "directives": {
+    "catalog": "scripts/catalog-directive.py"
+  },
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "selfdoc"
