@@ -2,6 +2,13 @@
 
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Directive catalog now includes descriptions, attribute specs, and usage examples for all core directives
+- Generated API and CLI reference pages now appear in organized sidebar groups
+
 ## 0.4.2
 
 ### Features
