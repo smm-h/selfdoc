@@ -84,7 +84,7 @@ class TestBasicGeneration:
             content = f.read()
 
         assert "title: mylib.core" in content
-        assert "description: Documentation for mylib.core" in content
+        assert "API reference for the mylib.core module" in content
         assert "# mylib.core" in content
         assert ':-: ref path="mylib.core"' in content
 
