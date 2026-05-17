@@ -117,6 +117,38 @@ class TestFrontmatter:
 
         assert not _has_generated_marker(handwritten)
 
+    def test_has_nav_group(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "mylib-core.md"), "r") as f:
+            content = f.read()
+
+        assert 'nav_group: "API Reference"' in content
+
+    def test_has_nav_order(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "mylib-core.md"), "r") as f:
+            content = f.read()
+
+        assert "nav_order:" in content
+
+    def test_gen_index_nav_order_zero(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "gen-index.md"), "r") as f:
+            content = f.read()
+
+        assert 'nav_group: "API Reference"' in content
+        assert "nav_order: 0" in content
+        assert "order: 90" in content
+
 
 class TestHtmlComment:
     """Test that generated pages contain the HTML comment marker."""
@@ -275,6 +307,9 @@ class TestIndexPage:
 
         assert "# API Reference" in content
         assert "generated: true" in content
+        assert 'nav_group: "API Reference"' in content
+        assert "nav_order: 0" in content
+        assert "order: 90" in content
         assert "mylib.core" in content
         assert "mylib-core.html" in content
 

@@ -339,6 +339,29 @@ class TestGenerateCliPages:
         assert content.startswith("---\n")
         assert "generated: true" in content
         assert "title:" in content
+        assert 'nav_group: "CLI Reference"' in content
+        assert "nav_order: 0" in content
+        assert "order: 91" in content
+
+    def test_command_page_nav_group(self, tmp_path, cli_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
+            content = f.read()
+
+        assert 'nav_group: "CLI Reference"' in content
+        assert "nav_order:" in content
+
+    def test_group_page_nav_group(self, tmp_path, cli_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
+            content = f.read()
+
+        assert 'nav_group: "CLI Reference"' in content
+        assert "nav_order:" in content
 
     def test_html_comment_marker(self, tmp_path, cli_structure):
         docs_dir = os.path.join(tmp_path, "docs")
