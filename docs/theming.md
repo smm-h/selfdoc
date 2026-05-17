@@ -1,0 +1,240 @@
+---
+title: Theming
+description: "Customize your selfdoc site with built-in themes, CSS custom properties, dark mode support, and a visual design tool for iterating on styles."
+order: 40
+---
+
+# Theming
+
+selfdoc ships with two built-in themes and a comprehensive set of CSS custom properties that you can override without touching theme internals. Dark mode, high contrast, and print stylesheets work out of the box.
+
+## Choosing a Theme
+
+Set the `theme` field in `selfdoc.json`:
+
+```json
+{
+  "theme": "minimal"
+}
+```
+
+Two themes are available:
+
+- **minimal** (default) -- GitHub-inspired styling with Inter and JetBrains Mono fonts. Blue accent color (`#0969da`), light sidebar background, dark topbar. Content-focused and familiar.
+- **clean** -- Stripe-inspired styling with system fonts and a purple accent (`#5046e4`). White topbar, borderless code blocks, slightly taller line height (1.7 vs 1.6). Feels more polished and modern.
+
+Both themes include full dark mode, high contrast, reduced motion, and print support.
+
+## CSS Custom Properties
+
+Every visual aspect of a selfdoc site is controlled by CSS custom properties defined in `:root`. Override any of them in a `custom.css` file (see next section) to change colors, fonts, or spacing without forking the theme.
+
+### Colors
+
+| Property | minimal | clean |
+|---|---|---|
+| `--bg` | `#ffffff` | `#ffffff` |
+| `--text` | `#1a1a1a` | `#1a1f36` |
+| `--text-secondary` | `#555` | `#5e697b` |
+| `--heading` | `#111` | `#0a2540` |
+| `--link` | `#0969da` | `#5046e4` |
+| `--link-hover` | `#0550ae` | `#3b35a8` |
+| `--border` | `#d0d7de` | `#e3e8ee` |
+| `--shadow-sm` | `rgba(0,0,0,0.08)` | `rgba(0,0,0,0.04)` |
+
+### Sidebar
+
+| Property | minimal | clean |
+|---|---|---|
+| `--sidebar-bg` | `#f6f8fa` | `#ffffff` |
+| `--sidebar-text` | `#444` | `#5e697b` |
+| `--sidebar-active` | `#0969da` | `#5046e4` |
+| `--sidebar-hover-bg` | `#e8ecef` | `#f7f8fa` |
+
+### Topbar
+
+| Property | minimal | clean |
+|---|---|---|
+| `--topbar-bg` | `#24292f` | `#ffffff` |
+| `--topbar-text` | `#ffffff` | `#0a2540` |
+
+### Code
+
+| Property | minimal | clean |
+|---|---|---|
+| `--code-bg` | `#f4f4f8` | `#f7f8fa` |
+| `--code-border` | `#e0e0e0` | `transparent` |
+
+### Components
+
+| Property | minimal | clean |
+|---|---|---|
+| `--badge-bg` | `#1a7f37` | `#5046e4` |
+| `--badge-text` | `#ffffff` | `#ffffff` |
+| `--admonition-tip` | `#1a7f37` | `#1ea672` |
+| `--admonition-important` | `#8250df` | `#5046e4` |
+| `--admonition-warning` | `#6d4a00` | `#c4841d` |
+| `--admonition-caution` | `#cf222e` | `#cd3d64` |
+
+### Typography
+
+| Property | minimal | clean |
+|---|---|---|
+| `--font-body` | `'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif` |
+| `--font-mono` | `'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace` | `"SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace` |
+
+### Layout (clean only)
+
+The clean theme defines two extra properties not present in minimal:
+
+| Property | clean default |
+|---|---|
+| `--shadow-md` | `0 1px 3px rgba(0,0,0,0.04)` |
+| `--radius` | `6px` |
+
+Minimal uses these via CSS fallbacks (e.g., `var(--radius, 4px)`) so they can still be overridden in custom.css for either theme.
+
+## Custom Styles
+
+Create a `docs/custom.css` file in your project. selfdoc automatically detects it during build and injects it after the theme stylesheet, so your rules take precedence.
+
+Example -- change the accent color and body font:
+
+```css
+:root {
+    --link: #e63946;
+    --link-hover: #c1121f;
+    --sidebar-active: #e63946;
+    --badge-bg: #e63946;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+}
+```
+
+No build configuration is needed. Just save the file and run `selfdoc build`.
+
+## Dark Mode
+
+Both themes ship with a complete dark color palette. Dark mode activates in two ways:
+
+1. **Automatic** -- the `prefers-color-scheme: dark` media query matches the user's OS setting. This is the default behavior with no configuration needed.
+2. **Manual toggle** -- clicking the theme toggle button in the topbar sets `data-theme="dark"` (or `"light"`) on the root element, overriding the OS preference.
+
+### How the selectors work
+
+The theme CSS uses a layered selector strategy:
+
+- `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ... } }` -- applies dark colors when the OS prefers dark, unless the user has explicitly toggled to light.
+- `[data-theme="dark"] { ... }` -- applies dark colors unconditionally when the toggle is set to dark, regardless of OS preference.
+
+### Overriding dark mode colors
+
+To customize dark colors in `custom.css`, mirror the same selector pattern:
+
+```css
+/* Override dark mode accent */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --link: #ff6b6b;
+        --sidebar-active: #ff6b6b;
+    }
+}
+[data-theme="dark"] {
+    --link: #ff6b6b;
+    --sidebar-active: #ff6b6b;
+}
+```
+
+### Dark mode property values
+
+Selected dark mode defaults for reference:
+
+| Property | minimal dark | clean dark |
+|---|---|---|
+| `--bg` | `#0d1117` | `#0a2540` |
+| `--text` | `#c9d1d9` | `#e3e8ee` |
+| `--heading` | `#e6edf3` | `#ffffff` |
+| `--link` | `#58a6ff` | `#9b93ff` |
+| `--sidebar-bg` | `#161b22` | `#0a2540` |
+| `--code-bg` | `#161b22` | `#0d2e4f` |
+| `--border` | `#30363d` | `#2a2f45` |
+| `--topbar-bg` | `#010409` | `#07192b` |
+
+## High Contrast
+
+Both themes respond to `prefers-contrast: more` for users who need stronger visual contrast. This is a browser/OS-level setting and requires no configuration.
+
+In light mode, high contrast overrides strengthen text and borders:
+
+| Property | minimal HC | clean HC |
+|---|---|---|
+| `--text` | `#000` | `#000` |
+| `--heading` | `#000` | `#000` |
+| `--border` | `#000` | `#000` |
+| `--code-border` | `#000` | `#000` |
+| `--link` | `#023b95` | `#1a0a91` |
+| `--text-secondary` | `#333` | `#333` |
+
+In dark mode with high contrast, the overrides flip to maximum brightness:
+
+| Property | minimal HC dark | clean HC dark |
+|---|---|---|
+| `--text` | `#fff` | `#fff` |
+| `--heading` | `#fff` | `#fff` |
+| `--border` | `#fff` | `#fff` |
+| `--link` | `#a8d4ff` | `#d4d0ff` |
+
+To override high contrast values in `custom.css`, nest your rules in the matching media query:
+
+```css
+@media (prefers-contrast: more) {
+    :root {
+        --link: #0000cc;
+    }
+}
+```
+
+## Design Tool
+
+The `demo/index.html` file is a standalone design tool for visually experimenting with theme settings. Open it in a browser to see a full documentation page with a settings panel.
+
+Click the gear icon in the topbar to open the panel. It provides 16 knobs organized by category:
+
+- **Layout** -- sidebar position (left/right/hidden), sidebar width, TOC position (right/inline), content width
+- **Typography** -- font kind (sans/serif/mono/system), font size, heading transform (none/uppercase/small-caps), heading separator (none/line/dots)
+- **Spacing** -- density (compact/default/relaxed)
+- **Colors** -- light/dark mode, accent color, topbar color, gradient strip (on/off)
+- **Components** -- border radius, code block style (default/minimal/bordered), table style (default/striped/bordered)
+
+### Exporting settings
+
+After adjusting the knobs, click **Copy CSS to clipboard**. The tool generates a `custom.css` snippet containing only the properties you changed. Paste it into your `docs/custom.css` file.
+
+You can also click **Copy link** to get a URL that encodes all current settings, making it easy to share a design with collaborators.
+
+## Print Stylesheet
+
+Both themes include a `@media print` block that produces clean printed output. The following elements are hidden when printing:
+
+- Sidebar, table of contents, mobile TOC
+- Topbar and hamburger menu
+- Navigation links (previous/next), breadcrumbs
+- Search dialog and triggers
+- Copy/run buttons on code blocks
+- Theme toggle, feedback widget, edit links
+- Hero section, feature grid, reading progress bar
+- Site footer
+
+The layout switches to single-column with no max-width constraint. Colors reset to the light-mode palette for legibility on paper. Page breaks are avoided inside code blocks, tables, images, API entries, admonitions, and blockquotes.
+
+To add custom print rules in `custom.css`:
+
+```css
+@media print {
+    :root {
+        --text: #000;
+    }
+    .my-custom-element {
+        display: none !important;
+    }
+}
+```
