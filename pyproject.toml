@@ -1,6 +1,6 @@
 [project]
 name = "selfdoc"
-version = "0.4.4"
+version = "0.4.5"
 description = "Code-aware static site generator with directive-based content extraction"
 license = "MIT"
 authors = [{ name = "smm-h" }]

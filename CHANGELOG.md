@@ -2,6 +2,16 @@
 
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- Removed deprecated --warn-only flag (warnings are non-fatal by default since 0.4.0)
+
+### Features
+
+- JSON schema for `selfdoc check --format json` output (schemas/check-output.schema.json)
+
 ## 0.4.4
 
 ### Fixes
