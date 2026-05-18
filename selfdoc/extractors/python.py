@@ -368,8 +368,56 @@ def _format_function(node, heading_level=2):
     return "\n".join(parts)
 
 
+def _is_dataclass(node):
+    """Check whether a class node has a ``@dataclass`` decorator."""
+    for dec in node.decorator_list:
+        if isinstance(dec, ast.Name) and dec.id == "dataclass":
+            return True
+        if isinstance(dec, ast.Call):
+            func = dec.func
+            if isinstance(func, ast.Name) and func.id == "dataclass":
+                return True
+            # Handle dataclasses.dataclass
+            if (isinstance(func, ast.Attribute)
+                    and func.attr == "dataclass"
+                    and isinstance(func.value, ast.Name)
+                    and func.value.id == "dataclasses"):
+                return True
+    return False
+
+
+def _format_dataclass_fields(node):
+    """Format dataclass fields as a Markdown field table.
+
+    Returns a table string or None if the class has no annotated fields.
+    """
+    rows = []
+    for child in ast.iter_child_nodes(node):
+        if not isinstance(child, ast.AnnAssign):
+            continue
+        if not isinstance(child.target, ast.Name):
+            continue
+        name = child.target.id
+        if name.startswith("_"):
+            continue
+        type_str = ast.unparse(child.annotation) if child.annotation else ""
+        default_str = ast.unparse(child.value) if child.value else ""
+        default_cell = f"`{default_str}`" if default_str else ""
+        rows.append(f"| `{name}` | `{type_str}` | {default_cell} |")
+
+    if not rows:
+        return None
+
+    header = "| Field | Type | Default |\n| --- | --- | --- |"
+    return header + "\n" + "\n".join(rows)
+
+
 def _format_class(node):
-    """Format a class node as markdown, including its public methods."""
+    """Format a class node as markdown, including its public methods.
+
+    Dataclass classes without docstrings are rendered with a field table
+    so their names appear in coverage and the generated docs are useful.
+    """
     docstring = ast.get_docstring(node)
 
     # Skip private classes without docstrings
@@ -383,8 +431,13 @@ def _format_class(node):
             if method_md:
                 methods.append(method_md)
 
-    # Skip undocumented classes with no documented methods
-    if not docstring and not methods:
+    # For dataclasses without docstrings or methods, render a field table
+    dataclass_fields = None
+    if not docstring and not methods and _is_dataclass(node):
+        dataclass_fields = _format_dataclass_fields(node)
+
+    # Skip undocumented classes with no documented methods and no fields
+    if not docstring and not methods and dataclass_fields is None:
         return None
 
     parts = []
@@ -393,6 +446,10 @@ def _format_class(node):
     if docstring:
         parts.append("")
         parts.append(_format_docstring(docstring))
+
+    if dataclass_fields:
+        parts.append("")
+        parts.append(dataclass_fields)
 
     for method_md in methods:
         parts.append("")

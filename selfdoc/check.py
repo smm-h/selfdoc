@@ -800,11 +800,21 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
     Language-agnostic: uses the extractor protocol to discover public symbols
     and resolve file paths. A symbol is "documented" if its name appears in
     the resolved content of a directive that references its file.
+
+    Files whose module path matches a ``gen.exclude`` pattern are skipped
+    so that intentionally-internal modules do not drag down coverage.
     """
+    from selfdoc.gen import _file_to_module_path, _is_excluded
+
     base_dir = os.path.abspath(base_dir)
     source_paths = config["source"]
+    language = config["language"]
     stats = CoverageStats()
     extensions = extractor.file_extensions()
+
+    # Build gen-exclude list from config
+    gen_config = config.get("gen") or {}
+    gen_excludes = list(gen_config.get("exclude", []))
 
     # Collect all source files and their public symbols
     # Map: relative file path -> list of public symbol names
@@ -828,6 +838,13 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
                     continue
                 full_path = os.path.join(root, fname)
                 rel_to_base = os.path.relpath(full_path, base_dir)
+                # Skip files excluded from doc generation
+                if gen_excludes:
+                    mod_path = _file_to_module_path(
+                        full_path, base_dir, language,
+                    )
+                    if mod_path and _is_excluded(mod_path, gen_excludes):
+                        continue
                 symbols = extractor.public_symbols(full_path)
                 if symbols:
                     all_symbols[rel_to_base] = symbols
