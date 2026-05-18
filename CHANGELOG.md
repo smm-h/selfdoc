@@ -2,6 +2,12 @@
 
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Build now cleans the output directory before writing, preventing stale files from previous builds
+
 ## 0.4.3
 
 ### Features
