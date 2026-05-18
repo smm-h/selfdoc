@@ -2,6 +2,12 @@
 
 # Changelog
 
+## 0.5.2
+
+### Fixes
+
+- **CLI page preservation fix end-to-end.** Handwritten CLI page descriptions now actually survive `selfdoc gen` (the 0.5.1 preservation logic was defeated by stale-file cleanup deleting CLI pages before they could be read for preservation).
+
 ## 0.5.1
 
 ### Features
