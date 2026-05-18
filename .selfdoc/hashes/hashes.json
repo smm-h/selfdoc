@@ -44,7 +44,7 @@
     "description": "f9f30e6caa4ef2763b8df268eea782c65657392ebee25c2f806caaa8a1e9c269"
   },
   "directives.md": {
-    "content": "d3aeef12366410c37d9559bff81e56f09ffa97193afe8cebd12b3fd6575bb0d6",
+    "content": "be302133f15cc289f055cd36dbd4f4c35afd16cbe22f86f9bfbd944d8acad8fa",
     "description": "85994821a561754f8f44d5f9726876a05998ae9ba9dff245d958f7fbbddd7dc2"
   },
   "gen-index.md": {
@@ -88,15 +88,15 @@
     "description": "49d75691be8336bd4b491b6be99439cd0e19c8cbe0deb76146c5dd038d94149c"
   },
   "selfdoc-extractors-go.md": {
-    "content": "6ffac666c85a3c0d19d558395b088b85a5399c3c0c26e74df90cba5bca13c7ae",
+    "content": "614e2764a5fffe95125a4472336018bdc91f6509a87352eb7c8a5ef7f2e04469",
     "description": "5165de519d0ec8ad6f401a64d0cc7b34fce376f6c40021f7a02215d87683d814"
   },
   "selfdoc-extractors-python.md": {
-    "content": "c29918481801ee32a1997ccdb899948470a255b37203d12d7f9fdb09febcd4a6",
+    "content": "9171a5a26e52978d019369dea38d3b5aba843b3a99e8577e4a3b33de9a8a4782",
     "description": "59015b730d7770ead6707d7442e18a896ff8833268db7d8f2f4872d1614a2ac8"
   },
   "selfdoc-extractors-typescript.md": {
-    "content": "aa2b774c7f01c53f696f6c1e79b73ebfa868483b4e59958b8beea7acc4c74cb9",
+    "content": "ed037150438ddcea03e17cb7d91d30dc0f957d2ee950decd914bf0f6b5da6cff",
     "description": "f452e7c33e92de442795ae1e50ead8d17c0be8541a63e1d78db54b002fb513e2"
   },
   "selfdoc-extractors.md": {
@@ -104,7 +104,7 @@
     "description": "f9fafcab95df9229d672f91ffe5d6ca766958dcfe3c1638302d824621f962ff2"
   },
   "selfdoc-gen.md": {
-    "content": "b21477fe438d6743531de0c2a74524eb0d9e28969a10d728ecb921244939e5cf",
+    "content": "fdf0fe5b1cf5cf6604cc54e1ec14506b1bdaae78d09dc45cc955ebe0239e043e",
     "description": "03f8cccc2ca955e46a9a08bb9cb50e5f9ffaf3c46bf2c01d24106e1f8a9eb45f"
   },
   "selfdoc-gendata.md": {
@@ -112,7 +112,7 @@
     "description": "516999e8f3c505e0f46146652e521a0667d6a4fcc3132afcc12ba273fc1cf111"
   },
   "selfdoc-html.md": {
-    "content": "b56b50df5396c1e8f2633ba3def2011e4b34500c712caca6dc5e4153df18a843",
+    "content": "0aaf85d3491540940f52d0a6584fe22d22822bf7239ef52b98355052e4686e18",
     "description": "7cabc6a2a59f70a50a02132568e6cfd45ca58aad267764fda8120add86f8de89"
   },
   "selfdoc-resolver.md": {
@@ -124,7 +124,7 @@
     "description": "0c1d40804347c9e9783377363c6268adb29a83f82fb4a8cd07c362082b845837"
   },
   "selfdoc-tokenizer.md": {
-    "content": "f8465f066f71b055db504d3ae60d56443a988b91876a276a57a8f5dc86d85c1f",
+    "content": "46c221bfa3be2e7140ce503c11beda01355a8dccce26366ed612f476ef52371e",
     "description": "d2a949819b783e024b634f56c0cd49533fcaa40a67dfb67c39b5b99314899029"
   },
   "selfdoc.md": {
