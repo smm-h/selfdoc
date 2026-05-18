@@ -84,7 +84,8 @@ class TestBasicGeneration:
             content = f.read()
 
         assert "title: mylib.core" in content
-        assert "API reference for the mylib.core module" in content
+        # Module has a docstring ("Core module."), so it should be used
+        assert "Core module." in content
         assert "# mylib.core" in content
         assert ':-: ref path="mylib.core"' in content
 
@@ -362,19 +363,25 @@ class TestDescriptionPreservation:
         assert "auto-generated documentation" not in content
 
     def test_regenerates_default_description(self, python_project):
+        """Modules without a docstring get the default template description."""
+        # Create a module with no docstring
+        lib_dir = os.path.join(python_project, "mylib")
+        with open(os.path.join(lib_dir, "nodoc.py"), "w") as f:
+            f.write("def something(): pass\n")
+
         config = _load_config(python_project)
         generate_docs(config, base_dir=str(python_project))
 
         docs_dir = os.path.join(python_project, "docs")
-        core_path = os.path.join(docs_dir, "mylib-core.md")
+        nodoc_path = os.path.join(docs_dir, "mylib-nodoc.md")
 
         # Do NOT touch the description -- it remains the default template.
         generate_docs(config, base_dir=str(python_project))
 
-        with open(core_path, "r", encoding="utf-8") as f:
+        with open(nodoc_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        assert "API reference for the mylib.core module" in content
+        assert "API reference for the mylib.nodoc module" in content
         assert "auto-generated documentation" in content
 
     def test_preserves_description_across_multiple_regenerations(self, python_project):
@@ -397,28 +404,89 @@ class TestDescriptionPreservation:
         assert "auto-generated documentation" not in content
 
     def test_empty_existing_file_uses_default(self, python_project):
+        """A module with no docstring falls back to the default template."""
+        lib_dir = os.path.join(python_project, "mylib")
+        # Create a module with no docstring
+        with open(os.path.join(lib_dir, "nodoc.py"), "w") as f:
+            f.write("def something(): pass\n")
+
         docs_dir = os.path.join(python_project, "docs")
-        core_path = os.path.join(docs_dir, "mylib-core.md")
+        nodoc_path = os.path.join(docs_dir, "mylib-nodoc.md")
 
         # Pre-create a generated-marked file with frontmatter but NO description key.
-        with open(core_path, "w", encoding="utf-8") as f:
+        with open(nodoc_path, "w", encoding="utf-8") as f:
             f.write(
                 "---\n"
-                "title: mylib.core\n"
+                "title: mylib.nodoc\n"
                 "generated: true\n"
                 'nav_group: "API Reference"\n'
                 "nav_order: 1\n"
                 "---\n"
-                "# mylib.core\n"
+                "# mylib.nodoc\n"
             )
 
         config = _load_config(python_project)
         generate_docs(config, base_dir=str(python_project))
 
+        with open(nodoc_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert "API reference for the mylib.nodoc module" in content
+        assert "auto-generated documentation" in content
+
+    def test_docstring_used_as_description(self, python_project):
+        """A module with a docstring uses it as the page description."""
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        # mylib/core.py has docstring "Core module."
+        core_path = os.path.join(docs_dir, "mylib-core.md")
         with open(core_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        assert "API reference for the mylib.core module" in content
+        assert 'description: "Core module."' in content
+        assert "auto-generated documentation" not in content
+
+    def test_docstring_truncated_to_155_chars(self, python_project):
+        """A module with a very long docstring is truncated to 155 chars."""
+        lib_dir = os.path.join(python_project, "mylib")
+        long_doc = "A" * 200
+        with open(os.path.join(lib_dir, "longdoc.py"), "w") as f:
+            f.write(f'"""{long_doc}"""\ndef func(): pass\n')
+
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        longdoc_path = os.path.join(docs_dir, "mylib-longdoc.md")
+        with open(longdoc_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Description should be truncated (152 chars + "...")
+        assert "auto-generated documentation" not in content
+        assert "..." in content
+        # Extract the description value
+        for line in content.split("\n"):
+            if line.startswith("description:"):
+                desc = line.split(":", 1)[1].strip().strip('"')
+                assert len(desc) <= 155
+
+    def test_no_docstring_uses_template(self, python_project):
+        """A module with no docstring falls back to the API reference template."""
+        lib_dir = os.path.join(python_project, "mylib")
+        with open(os.path.join(lib_dir, "bare.py"), "w") as f:
+            f.write("x = 1\n")
+
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        bare_path = os.path.join(docs_dir, "mylib-bare.md")
+        with open(bare_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert "API reference for the mylib.bare module" in content
         assert "auto-generated documentation" in content
 
 

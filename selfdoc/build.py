@@ -605,6 +605,13 @@ def _parse_frontmatter(content):
             continue
         key = line[:colon_pos].strip()
         value = line[colon_pos + 1:].strip()
+        # Strip wrapping quotes (single or double) from string values
+        if (
+            len(value) >= 2
+            and value[0] == value[-1]
+            and value[0] in ('"', "'")
+        ):
+            value = value[1:-1]
         # Convert boolean-like strings
         if value.lower() == "true":
             value = True

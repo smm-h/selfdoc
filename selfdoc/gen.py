@@ -1,5 +1,6 @@
 """Auto-generate documentation pages from project structure."""
 
+import ast
 import fnmatch
 import os
 import re
@@ -29,6 +30,46 @@ _DEFAULT_EXCLUDES = [
     "__pycache__",
     "tests",
 ]
+
+
+def _extract_module_docstring(filepath):
+    """Extract the first line of a Python module's docstring.
+
+    Uses ``ast.parse`` and ``ast.get_docstring`` to read the module-level
+    docstring.  Returns the first sentence (up to the first period followed
+    by whitespace/end, or the first newline), truncated to 155 characters.
+    Returns ``None`` if the file is not Python, cannot be parsed, or has
+    no module docstring.
+    """
+    if not filepath.endswith(".py"):
+        return None
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            source = f.read()
+    except OSError:
+        return None
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError:
+        return None
+    docstring = ast.get_docstring(tree)
+    if not docstring:
+        return None
+    # Take the first line
+    first_line = docstring.split("\n", 1)[0].strip()
+    if not first_line:
+        return None
+    # Take up to the first sentence-ending period (period followed by
+    # whitespace or end-of-string)
+    match = re.search(r"\.\s", first_line)
+    if match:
+        first_line = first_line[: match.start() + 1]
+    elif first_line.endswith("."):
+        pass  # already ends with period
+    # Truncate to 155 chars
+    if len(first_line) > 155:
+        first_line = first_line[:152] + "..."
+    return first_line
 
 
 def _has_generated_marker(filepath):
@@ -165,15 +206,20 @@ def _read_existing_description(filepath):
     return value
 
 
-def _generate_page_content(module_name, module_path, nav_order, existing_description=None):
+def _generate_page_content(module_name, module_path, nav_order,
+                           existing_description=None,
+                           docstring_description=None):
     """Build the Markdown content for a generated documentation page.
 
     If ``existing_description`` is provided, it is used verbatim as the page's
-    ``description`` frontmatter value; otherwise the default auto-generated
-    template is used.
+    ``description`` frontmatter value.  Otherwise, if ``docstring_description``
+    is provided (extracted from the module's docstring), it is used.  Finally,
+    if neither is available, the default auto-generated template is used.
     """
     if existing_description is not None:
         desc = existing_description
+    elif docstring_description is not None:
+        desc = docstring_description
     else:
         desc = (
             f"API reference for the {module_name} module — "
@@ -329,7 +375,7 @@ def generate_docs(config, base_dir="."):
                 ):
                     continue
 
-                modules.append((module_path, module_path, md_filename))
+                modules.append((module_path, module_path, md_filename, full_path))
 
     # Sort for deterministic output
     modules.sort(key=lambda t: t[0])
@@ -337,14 +383,14 @@ def generate_docs(config, base_dir="."):
     # Deduplicate by md_filename (in case multiple source paths yield the same module)
     seen = set()
     unique_modules = []
-    for mod_path, mod_name, md_fname in modules:
+    for mod_path, mod_name, md_fname, src_path in modules:
         if md_fname not in seen:
             seen.add(md_fname)
-            unique_modules.append((mod_path, mod_name, md_fname))
+            unique_modules.append((mod_path, mod_name, md_fname, src_path))
     modules = unique_modules
 
     # Collect all filenames we will write (pages + index) for stale cleanup
-    all_filenames = [md_fname for _, _, md_fname in modules]
+    all_filenames = [md_fname for _, _, md_fname, _ in modules]
     all_filenames.append("gen-index.md")
 
     # Remove stale generated files before writing new ones
@@ -352,12 +398,17 @@ def generate_docs(config, base_dir="."):
 
     generated = []
 
-    for nav_order, (mod_path, mod_name, md_fname) in enumerate(modules, start=1):
+    for nav_order, (mod_path, mod_name, md_fname, src_path) in enumerate(modules, start=1):
         out_path = os.path.join(docs_dir, md_fname)
         existing_description = _read_existing_description(out_path)
+        # Try module docstring when no custom description exists
+        docstring_description = None
+        if existing_description is None:
+            docstring_description = _extract_module_docstring(src_path)
         content = _generate_page_content(
             mod_name, mod_path, nav_order,
             existing_description=existing_description,
+            docstring_description=docstring_description,
         )
         # Make writable if it already exists with 0o444
         if os.path.isfile(out_path):
@@ -369,7 +420,7 @@ def generate_docs(config, base_dir="."):
         generated.append(md_fname)
 
     # Generate index page
-    index_pages = [(mod_name, md_fname) for _, mod_name, md_fname in modules]
+    index_pages = [(mod_name, md_fname) for _, mod_name, md_fname, _ in modules]
     index_content = _generate_index_content(index_pages)
     index_path = os.path.join(docs_dir, "gen-index.md")
     if os.path.isfile(index_path):
