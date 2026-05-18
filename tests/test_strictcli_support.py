@@ -431,6 +431,176 @@ class TestGenerateCliPages:
         assert "new help text" in content
 
 
+class TestDescriptionPreservation:
+    """Test that user-customized CLI page descriptions survive regeneration."""
+
+    @pytest.fixture()
+    def cli_structure(self):
+        return {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [
+                {
+                    "name": "deploy",
+                    # >= 50 chars so the default uses the chelp[:155] form
+                    "help": (
+                        "Deploy the application to one or more configured "
+                        "remote environments with health checks."
+                    ),
+                    "flags": [],
+                    "args": [],
+                },
+                {
+                    "name": "ping",
+                    # < 50 chars so the default uses the long-form template
+                    "help": "ping a host",
+                    "flags": [],
+                    "args": [],
+                },
+            ],
+            "groups": [
+                {
+                    "name": "config",
+                    "help": (
+                        "Manage configuration files for the application "
+                        "across multiple environments."
+                    ),
+                    "commands": [],
+                },
+                {
+                    "name": "log",
+                    "help": "show logs",
+                    "commands": [],
+                },
+            ],
+        }
+
+    def _rewrite_description(self, filepath, new_description):
+        """Replace the ``description:`` line in a CLI page's frontmatter.
+
+        Handles the read-only permissions selfdoc sets on generated files.
+        """
+        os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR)
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        new_lines = []
+        for line in content.split("\n"):
+            if line.startswith("description:"):
+                new_lines.append(f'description: "{new_description}"')
+            else:
+                new_lines.append(line)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_lines))
+
+    def test_preserves_handwritten_command_description(self, tmp_path, cli_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        deploy_path = os.path.join(docs_dir, "cli-deploy.md")
+        custom = "Handwritten deployment description with full sentence ending."
+        self._rewrite_description(deploy_path, custom)
+
+        generate_cli_pages(cli_structure, docs_dir)
+
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+
+    def test_preserves_handwritten_group_description(self, tmp_path, cli_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        config_path = os.path.join(docs_dir, "cli-config.md")
+        custom = "Handwritten config group description with explicit purpose."
+        self._rewrite_description(config_path, custom)
+
+        generate_cli_pages(cli_structure, docs_dir)
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+
+    def test_preserves_handwritten_index_description(self, tmp_path, cli_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        index_path = os.path.join(docs_dir, "cli-index.md")
+        custom = "Handwritten CLI index landing description for testapp."
+        self._rewrite_description(index_path, custom)
+
+        generate_cli_pages(cli_structure, docs_dir)
+
+        with open(index_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+
+    def test_regenerates_default_description(self, tmp_path, cli_structure):
+        """When the description still matches the default, it gets regenerated."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        # Change the command's help text and re-generate without touching
+        # the page's description. Because the existing description is the
+        # default chelp[:155], it must be overwritten with the new help.
+        cli_structure["commands"][0]["help"] = (
+            "Updated deploy help text long enough to trigger truncation "
+            "of the description so the regeneration is observable."
+        )
+        generate_cli_pages(cli_structure, docs_dir)
+
+        deploy_path = os.path.join(docs_dir, "cli-deploy.md")
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert "Updated deploy help text" in content
+
+    def test_regenerates_truncated_default_when_help_grows(
+        self, tmp_path, cli_structure,
+    ):
+        """A stale chelp[:155] truncation must not be mistaken for handwritten."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        # Help text grows: the previous default truncation is now a prefix
+        # of the new default. Preservation must treat the old value as default
+        # (prefix match) and recompute, not preserve the stale prefix.
+        cli_structure["commands"][0]["help"] = (
+            cli_structure["commands"][0]["help"] + " Now with extra detail "
+            "about the deploy lifecycle and rollback behavior on failure."
+        )
+        generate_cli_pages(cli_structure, docs_dir)
+
+        deploy_path = os.path.join(docs_dir, "cli-deploy.md")
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # The new chelp[:155] (which extends the old prefix) should appear.
+        expected_prefix = cli_structure["commands"][0]["help"][:155]
+        assert f'description: "{expected_prefix}"' in content
+
+    def test_preserves_description_across_multiple_regenerations(
+        self, tmp_path, cli_structure,
+    ):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure, docs_dir)
+
+        deploy_path = os.path.join(docs_dir, "cli-deploy.md")
+        custom = "Persistent handwritten deploy description spanning runs."
+        self._rewrite_description(deploy_path, custom)
+
+        for _ in range(3):
+            generate_cli_pages(cli_structure, docs_dir)
+
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+
+
 # ---------------------------------------------------------------------------
 # Check integration tests
 # ---------------------------------------------------------------------------

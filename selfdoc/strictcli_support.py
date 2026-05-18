@@ -7,8 +7,44 @@ for documentation.
 
 import ast
 import os
+import re
 import stat
 import tempfile
+
+from selfdoc.build import _parse_frontmatter
+
+
+# Matches the default per-command/per-group description templates so we can
+# detect when a CLI page still has its auto-generated description (and should
+# be recomputed) versus when a user has hand-edited the description (and we
+# should preserve it).
+#
+# Templates produced by _render_command_page / _render_group_page when the
+# command/group's help text is shorter than 50 characters:
+#   "Reference for the {app_name} {name} command — usage, flags, arguments,
+#    and examples for the {name} subcommand of the {app_name} CLI."
+#   "Reference for the {app_name} {gname} command group — subcommands, flags,
+#    arguments, and usage details for the {gname} group in the {app_name} CLI."
+#
+# And the CLI index template:
+#   "Complete CLI reference for {app_name} — all available commands,
+#    subcommands, flags, arguments, and usage examples with detailed
+#    descriptions."
+_DEFAULT_CLI_COMMAND_DESC_RE = re.compile(
+    r"^Reference for the \S+ \S+ command — "
+    r"usage, flags, arguments, and examples for the \S+ subcommand "
+    r"of the \S+ CLI\.?$"
+)
+_DEFAULT_CLI_GROUP_DESC_RE = re.compile(
+    r"^Reference for the \S+ \S+ command group — "
+    r"subcommands, flags, arguments, and usage details "
+    r"for the \S+ group in the \S+ CLI\.?$"
+)
+_DEFAULT_CLI_INDEX_DESC_RE = re.compile(
+    r"^Complete CLI reference for \S+ — "
+    r"all available commands, subcommands, flags, arguments, "
+    r"and usage examples with detailed descriptions\.?$"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +419,57 @@ def _parse_arg_decorator(dec_call):
 # ---------------------------------------------------------------------------
 
 
+def _read_existing_cli_description(filepath, default_pattern):
+    """Return the user-customized ``description`` from a CLI page.
+
+    Returns ``None`` if the file does not exist, has no ``description`` key,
+    has an empty description, or still has the default auto-generated
+    description matching *default_pattern* (in which case the caller should
+    recompute it).
+
+    Truncated default descriptions (e.g. ``chelp[:155]`` cut mid-sentence)
+    are also treated as default-and-overwritable: they are detected by
+    checking whether the existing description is a prefix of the freshly
+    computed default. The caller passes the freshly computed default via
+    *default_pattern* when it is a plain string, or a compiled regex for the
+    fallback template form. To support both, this helper accepts either a
+    compiled regex (matched against the value) or a plain string (compared
+    as a prefix match against the value).
+    """
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return None
+
+    metadata, _ = _parse_frontmatter(content)
+    raw = metadata.get("description")
+    if raw is None or not isinstance(raw, str):
+        return None
+
+    # Strip wrapping quotes (single or double) that may survive the simple
+    # parser in build.py.
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1].strip()
+
+    if not value:
+        return None
+
+    if hasattr(default_pattern, "match"):
+        if default_pattern.match(value):
+            return None
+    else:
+        # Plain string: treat as default when the existing value is the
+        # current default (exact) OR is a prefix of it (truncated default
+        # from a prior ``chelp[:155]`` run). This prevents stale truncated
+        # defaults from being treated as handwritten.
+        if value == default_pattern or default_pattern.startswith(value):
+            return None
+
+    return value
+
+
 def generate_cli_pages(cli_structure, docs_dir):
     """Generate Markdown documentation pages from *cli_structure*.
 
@@ -402,10 +489,19 @@ def generate_cli_pages(cli_structure, docs_dir):
     groups = cli_structure.get("groups", [])
 
     # -- Index page --
-    cli_index_desc = (
+    default_index_desc = (
         f"Complete CLI reference for {app_name} — "
         f"all available commands, subcommands, flags, arguments, "
         f"and usage examples with detailed descriptions."
+    )
+    index_path = os.path.join(docs_dir, "cli-index.md")
+    existing_index_desc = _read_existing_cli_description(
+        index_path, _DEFAULT_CLI_INDEX_DESC_RE,
+    )
+    cli_index_desc = (
+        existing_index_desc
+        if existing_index_desc is not None
+        else default_index_desc
     )
     index_lines = [
         "---",
@@ -460,15 +556,23 @@ def generate_cli_pages(cli_structure, docs_dir):
     # -- One page per top-level command --
     for cmd in commands:
         fname = f"cli-{cmd['name']}.md"
-        content = _render_command_page(cmd, app_name, name_to_nav_order[cmd["name"]])
-        _write_page(os.path.join(docs_dir, fname), content)
+        out_path = os.path.join(docs_dir, fname)
+        content = _render_command_page(
+            cmd, app_name, name_to_nav_order[cmd["name"]],
+            existing_path=out_path,
+        )
+        _write_page(out_path, content)
         generated.append(fname)
 
     # -- One page per group --
     for grp in groups:
         fname = f"cli-{grp['name']}.md"
-        content = _render_group_page(grp, app_name, name_to_nav_order[grp["name"]])
-        _write_page(os.path.join(docs_dir, fname), content)
+        out_path = os.path.join(docs_dir, fname)
+        content = _render_group_page(
+            grp, app_name, name_to_nav_order[grp["name"]],
+            existing_path=out_path,
+        )
+        _write_page(out_path, content)
         generated.append(fname)
 
     return generated
@@ -497,21 +601,36 @@ def _write_page(filepath, content):
         raise
 
 
-def _render_command_page(cmd, app_name, nav_order):
-    """Render a Markdown page for a single command."""
+def _render_command_page(cmd, app_name, nav_order, existing_path=None):
+    """Render a Markdown page for a single command.
+
+    If *existing_path* points to an existing page whose ``description``
+    frontmatter has been hand-edited (i.e. is neither the default
+    ``chelp[:155]`` truncation nor the long-form default template), that
+    description is preserved instead of recomputing it.
+    """
     name = cmd["name"]
     chelp = cmd.get("help", "")
     flags = cmd.get("flags", [])
     args = cmd.get("args", [])
 
     if chelp and len(chelp) >= 50:
-        cmd_desc = chelp[:155]
+        default_desc = chelp[:155]
+        default_pattern = default_desc
     else:
-        cmd_desc = (
+        default_desc = (
             f"Reference for the {app_name} {name} command — "
             f"usage, flags, arguments, and examples for the {name} subcommand "
             f"of the {app_name} CLI."
         )
+        default_pattern = _DEFAULT_CLI_COMMAND_DESC_RE
+
+    existing_desc = None
+    if existing_path is not None:
+        existing_desc = _read_existing_cli_description(
+            existing_path, default_pattern,
+        )
+    cmd_desc = existing_desc if existing_desc is not None else default_desc
     lines = [
         "---",
         f"title: {app_name} {name}",
@@ -558,20 +677,35 @@ def _render_command_page(cmd, app_name, nav_order):
     return "\n".join(lines)
 
 
-def _render_group_page(grp, app_name, nav_order):
-    """Render a Markdown page for a command group and its subcommands."""
+def _render_group_page(grp, app_name, nav_order, existing_path=None):
+    """Render a Markdown page for a command group and its subcommands.
+
+    If *existing_path* points to an existing page whose ``description``
+    frontmatter has been hand-edited (i.e. is neither the default
+    ``ghelp[:155]`` truncation nor the long-form default template), that
+    description is preserved instead of recomputing it.
+    """
     gname = grp["name"]
     ghelp = grp.get("help", "")
     subcmds = grp.get("commands", [])
 
     if ghelp and len(ghelp) >= 50:
-        grp_desc = ghelp[:155]
+        default_desc = ghelp[:155]
+        default_pattern = default_desc
     else:
-        grp_desc = (
+        default_desc = (
             f"Reference for the {app_name} {gname} command group — "
             f"subcommands, flags, arguments, and usage details "
             f"for the {gname} group in the {app_name} CLI."
         )
+        default_pattern = _DEFAULT_CLI_GROUP_DESC_RE
+
+    existing_desc = None
+    if existing_path is not None:
+        existing_desc = _read_existing_cli_description(
+            existing_path, default_pattern,
+        )
+    grp_desc = existing_desc if existing_desc is not None else default_desc
     lines = [
         "---",
         f"title: {app_name} {gname}",
