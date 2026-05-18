@@ -771,17 +771,38 @@ def _handle_cli(arg, body, source_paths, base_dir):
     Looks for:
     - String constants named usage, helpText, usageText (case-insensitive match)
     - flag.StringVar, flag.BoolVar, etc. calls
+    - strictcli BoolFlag/StringFlag/Command calls
+
+    The arg can be a file path or a package directory path (like :::module).
+    Resolves via _resolve_package_dir first, then _resolve_file_path as fallback.
     """
     if not arg:
         return format_error(":::cli requires a file path argument")
 
-    full_path = _resolve_file_path(arg, source_paths, base_dir)
-    if full_path is None:
-        return format_error(f"file '{arg}' not found")
+    # Try resolving as a package directory first (handles "." and package paths)
+    pkg_dir = _resolve_package_dir(arg, source_paths, base_dir)
+    if pkg_dir is not None:
+        # Read all non-test .go files in the package
+        go_files = sorted(
+            f
+            for f in os.listdir(pkg_dir)
+            if f.endswith(".go") and not f.endswith("_test.go")
+        )
+        sources = []
+        for gf in go_files:
+            content, _err = read_source(os.path.join(pkg_dir, gf))
+            if content is not None:
+                sources.append(content)
+        source = "\n".join(sources)
+    else:
+        # Fall back to single file resolution
+        full_path = _resolve_file_path(arg, source_paths, base_dir)
+        if full_path is None:
+            return format_error(f"file '{arg}' not found")
 
-    source, err = read_source(full_path)
-    if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        source, err = read_source(full_path)
+        if err:
+            return format_error(f"cannot read '{arg}': {err}")
 
     parts = []
 
@@ -793,8 +814,13 @@ def _handle_cli(arg, body, source_paths, base_dir):
             parts.append("")
             parts.append(f"```\n{text.strip()}\n```")
 
-    # Extract flag definitions
+    # Extract flag definitions (stdlib flag package)
     flags = _extract_flag_calls(source)
+
+    # Extract strictcli flag and command definitions
+    strictcli_flags = _extract_strictcli_flags(source)
+    flags.extend(strictcli_flags)
+
     if flags:
         parts.append("")
         parts.append("**Flags:**")
@@ -806,6 +832,17 @@ def _handle_cli(arg, body, source_paths, base_dir):
                 f"| `{flag['name']}` | {flag['type']} "
                 f"| {flag['default']} | {flag['desc']} |"
             )
+
+    # Extract strictcli commands
+    commands = _extract_strictcli_commands(source)
+    if commands:
+        parts.append("")
+        parts.append("**Commands:**")
+        parts.append("")
+        parts.append("| Command | Description |")
+        parts.append("| --- | --- |")
+        for cmd in commands:
+            parts.append(f"| `{cmd['name']}` | {cmd['desc']} |")
 
     if not parts:
         return format_error(f"no CLI documentation found in '{arg}'")
@@ -913,6 +950,69 @@ def _extract_flag_calls(source):
         )
 
     return flags
+
+
+def _extract_strictcli_flags(source):
+    """Extract strictcli flag definitions from Go source.
+
+    Matches patterns like:
+    - app.BoolFlag("name", "description")
+    - app.StringFlag("name", "description")
+    - cli.BoolFlag("name", "description")
+    - <identifier>.BoolFlag("name", "description")
+
+    Returns list of {name, type, default, desc}.
+    """
+    flags = []
+
+    # Match <var>.BoolFlag("name", "help") and <var>.StringFlag("name", "help")
+    flag_re = re.compile(
+        r"\w+\.(Bool|String|Int|Float|Duration)Flag\s*\(\s*"
+        r'"([^"]*?)"\s*,\s*'    # flag name
+        r'"([^"]*?)"\s*\)',     # description
+    )
+
+    for match in flag_re.finditer(source):
+        flag_type = match.group(1).lower()
+        flags.append(
+            {
+                "name": match.group(2),
+                "type": flag_type,
+                "default": "",
+                "desc": match.group(3),
+            }
+        )
+
+    return flags
+
+
+def _extract_strictcli_commands(source):
+    """Extract strictcli command definitions from Go source.
+
+    Matches patterns like:
+    - app.Command("name", "description", ...)
+    - cli.Command("name", "description", ...)
+
+    Returns list of {name, desc}.
+    """
+    commands = []
+
+    # Match <var>.Command("name", "help", ...)
+    cmd_re = re.compile(
+        r"\w+\.Command\s*\(\s*"
+        r'"([^"]*?)"\s*,\s*'    # command name
+        r'"([^"]*?)"\s*[,)]',   # description
+    )
+
+    for match in cmd_re.finditer(source):
+        commands.append(
+            {
+                "name": match.group(1),
+                "desc": match.group(2),
+            }
+        )
+
+    return commands
 
 
 # ---------------------------------------------------------------------------
