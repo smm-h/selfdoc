@@ -1,3 +1,4 @@
 {"commits":["8d67295d5cc763d71d474aaa75f5599b5390442f"],"user_facing":true,"description":"**CLI page description preservation.** Handwritten `description` frontmatter on CLI pages (per-command, per-group, and the CLI index) now survives `selfdoc gen` runs, matching the behavior added for module pages in 0.5.0.","type":"fix"}
 {"commits":["772f894c0c1c1090f9f33122ab047aa79423666d"],"user_facing":false}
 {"commits":["40868fba5c03a8c5e818d587e485282f07b5aae3"],"user_facing":false}
+{"commits":["c70ff1b54e734797bf6ef89665c364cc3bcf4540"],"user_facing":false}
