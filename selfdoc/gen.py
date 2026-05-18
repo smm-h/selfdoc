@@ -393,6 +393,22 @@ def generate_docs(config, base_dir="."):
     all_filenames = [md_fname for _, _, md_fname, _ in modules]
     all_filenames.append("gen-index.md")
 
+    # Resolve the strictcli structure up front so the CLI page names can
+    # join all_filenames before the stale-cleanup pass — otherwise the
+    # cleanup deletes every cli-*.md file (they have ``generated: true``)
+    # and the per-page description preservation has no existing file to
+    # read from when generate_cli_pages re-renders them.
+    from selfdoc.strictcli_support import (
+        uses_strictcli,
+        extract_cli_structure,
+        generate_cli_pages,
+        expected_cli_page_filenames,
+    )
+    cli_structure = None
+    if uses_strictcli(source_paths, base_dir):
+        cli_structure = extract_cli_structure(source_paths, base_dir)
+    all_filenames.extend(expected_cli_page_filenames(cli_structure))
+
     # Remove stale generated files before writing new ones
     _remove_stale_generated(docs_dir, all_filenames)
 
@@ -432,16 +448,10 @@ def generate_docs(config, base_dir="."):
     generated.append("gen-index.md")
 
     # strictcli support: auto-generate CLI documentation pages
-    from selfdoc.strictcli_support import (
-        uses_strictcli,
-        extract_cli_structure,
-        generate_cli_pages,
-    )
-
-    if uses_strictcli(source_paths, base_dir):
-        cli_structure = extract_cli_structure(source_paths, base_dir)
-        if cli_structure is not None:
-            cli_pages = generate_cli_pages(cli_structure, docs_dir)
-            generated.extend(cli_pages)
+    # (cli_structure was resolved earlier so its page names could be
+    # excluded from the stale-cleanup pass)
+    if cli_structure is not None:
+        cli_pages = generate_cli_pages(cli_structure, docs_dir)
+        generated.extend(cli_pages)
 
     return generated

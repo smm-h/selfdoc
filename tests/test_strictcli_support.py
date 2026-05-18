@@ -601,6 +601,94 @@ class TestDescriptionPreservation:
         assert f'description: "{custom}"' in content
 
 
+class TestGenerateDocsPreservesCliDescriptions:
+    """Regression test: generate_docs must not delete cli-*.md files as stale
+    before regeneration, otherwise per-page description preservation breaks
+    (the preservation logic reads the existing file, which would not exist).
+    """
+
+    def test_handwritten_cli_description_survives_generate_docs(self, tmp_path):
+        from selfdoc.gen import generate_docs
+
+        # Set up a project with a strictcli app
+        src_dir = os.path.join(tmp_path, "myapp")
+        os.makedirs(src_dir)
+        with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+            f.write("")
+        cli_src = textwrap.dedent('''\
+            import strictcli
+
+            app = strictcli.App(name="myapp", version="1.0", help="A test app")
+
+            @app.command("deploy", help="Deploy the app to one or more configured remote environments with health checks and rollback.")
+            def deploy():
+                pass
+        ''')
+        with open(os.path.join(src_dir, "cli.py"), "w") as f:
+            f.write(cli_src)
+
+        docs_dir = os.path.join(tmp_path, "docs")
+        os.makedirs(docs_dir)
+
+        config = {
+            "language": "python",
+            "source": ["myapp/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+        }
+
+        # First gen creates the CLI page with the default chelp[:155] description
+        generate_docs(config, base_dir=str(tmp_path))
+
+        deploy_path = os.path.join(docs_dir, "cli-deploy.md")
+        assert os.path.isfile(deploy_path)
+
+        # Hand-edit the description
+        os.chmod(deploy_path, stat.S_IRUSR | stat.S_IWUSR)
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        custom = "Handwritten deploy description that must survive generate_docs."
+        new_lines = []
+        for line in content.split("\n"):
+            if line.startswith("description:"):
+                new_lines.append(f'description: "{custom}"')
+            else:
+                new_lines.append(line)
+        with open(deploy_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_lines))
+
+        # Second gen must preserve the handwritten description
+        generate_docs(config, base_dir=str(tmp_path))
+
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+
+
+class TestExpectedCliPageFilenames:
+    """Test the helper that lists CLI page filenames for stale-cleanup gating."""
+
+    def test_returns_empty_for_none_structure(self):
+        from selfdoc.strictcli_support import expected_cli_page_filenames
+
+        assert expected_cli_page_filenames(None) == []
+
+    def test_includes_index_commands_and_groups(self):
+        from selfdoc.strictcli_support import expected_cli_page_filenames
+
+        structure = {
+            "commands": [{"name": "deploy"}, {"name": "ping"}],
+            "groups": [{"name": "config"}],
+        }
+        result = expected_cli_page_filenames(structure)
+        assert "cli-index.md" in result
+        assert "cli-deploy.md" in result
+        assert "cli-ping.md" in result
+        assert "cli-config.md" in result
+
+
 # ---------------------------------------------------------------------------
 # Check integration tests
 # ---------------------------------------------------------------------------

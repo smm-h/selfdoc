@@ -419,6 +419,23 @@ def _parse_arg_decorator(dec_call):
 # ---------------------------------------------------------------------------
 
 
+def expected_cli_page_filenames(cli_structure):
+    """Return the list of filenames ``generate_cli_pages`` would write.
+
+    Used by the stale-file cleanup pass to know which CLI page names are
+    "current" so the generated pages from a prior run are not deleted as
+    stale before the new pages have been written.
+    """
+    if cli_structure is None:
+        return []
+    names = ["cli-index.md"]
+    for cmd in cli_structure.get("commands", []):
+        names.append(f"cli-{cmd['name']}.md")
+    for grp in cli_structure.get("groups", []):
+        names.append(f"cli-{grp['name']}.md")
+    return names
+
+
 def _read_existing_cli_description(filepath, default_pattern):
     """Return the user-customized ``description`` from a CLI page.
 
