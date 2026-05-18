@@ -69,6 +69,7 @@ a {
     --radius: 6px;
     --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+    --mark-bg: rgba(80, 70, 228, 0.12);
 }
 
 /* === Dark variant === */
@@ -99,6 +100,7 @@ a {
         --admonition-caution: #e25c73;
         --shadow-sm: rgba(0, 0, 0, 0.2);
         --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.2);
+        --mark-bg: rgba(155, 147, 255, 0.18);
     }
 }
 
@@ -127,6 +129,7 @@ a {
     --admonition-caution: #e25c73;
     --shadow-sm: rgba(0, 0, 0, 0.2);
     --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --mark-bg: rgba(155, 147, 255, 0.18);
 }
 
 /* === High contrast variant === */
@@ -681,6 +684,75 @@ strong {
 
 em {
     font-style: italic;
+}
+
+/* === Inline semantic elements === */
+
+mark {
+    background: var(--mark-bg);
+    color: var(--text);
+    padding: 0.125em 0.25em;
+    border-radius: 2px;
+}
+
+kbd {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.125em 0.375em;
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    box-shadow: 0 1px 0 var(--border);
+}
+
+abbr[title] {
+    text-decoration: underline dotted var(--text-secondary);
+    cursor: help;
+}
+
+del {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+    text-decoration-color: var(--text-secondary);
+}
+
+ins {
+    text-decoration: underline;
+    text-decoration-color: var(--link);
+}
+
+small {
+    font-size: 0.875em;
+    color: var(--text-secondary);
+}
+
+figure {
+    margin: 1.5rem 0;
+}
+
+figcaption {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+var {
+    font-style: italic;
+    color: var(--text);
+}
+
+samp {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+cite {
+    font-style: italic;
+    color: var(--text-secondary);
 }
 
 /* === Skip-to-content link === */
