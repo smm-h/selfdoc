@@ -4103,23 +4103,18 @@ def test_search_input_no_autofocus():
     assert "autofocus" not in search_input_match.group(0)
 
 
-def test_copy_button_always_visible():
-    """Copy button CSS uses opacity 0.5 (always visible), not opacity 0."""
+def test_copy_button_hidden_until_hover():
+    """Copy button starts invisible and appears on code block hover."""
     from selfdoc.themes import get_theme
 
     css = get_theme("minimal")
-    # The .copy-btn rule should use opacity: 0.5, not opacity: 0
-    assert "opacity: 0.5" in css
-    # There should be no bare "opacity: 0;" for .copy-btn.
-    # Extract the .copy-btn block and verify it does not contain "opacity: 0;"
     import re
 
     copy_btn_match = re.search(r"\.copy-btn\s*\{([^}]+)\}", css)
     assert copy_btn_match is not None
     copy_btn_body = copy_btn_match.group(1)
-    # Should contain opacity: 0.5, not opacity: 0
-    assert "opacity: 0.5" in copy_btn_body
-    assert "opacity: 0;" not in copy_btn_body
+    assert "opacity: 0" in copy_btn_body
+    assert ".code-block:hover .copy-btn" in css
 
 
 def test_table_has_caption():
