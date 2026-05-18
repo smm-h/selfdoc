@@ -33,7 +33,7 @@ def test_is_valid_core_directive():
 
 def test_is_valid_future_directive():
     assert is_valid_directive("code-source") is True
-    assert is_valid_directive("prose-desc") is True
+    assert is_valid_directive("prose-summary") is True
 
 
 def test_is_valid_custom_directive():
@@ -98,10 +98,14 @@ EXPECTED_CORE_NAMES = {
     "callout-danger",
     "callout-important",
     "list-glossary",
+    "prose-desc",
+    "list-tree",
+    "table-dep",
+    "list-features",
 }
 
 
-def test_all_11_core_directives_have_metadata():
+def test_all_core_directives_have_metadata():
     assert set(CORE_DIRECTIVES) == EXPECTED_CORE_NAMES
 
 
@@ -123,12 +127,30 @@ def test_code_directives_require_path():
             )
 
 
-def test_content_directives_have_no_required_attrs():
-    for name, spec in CORE_DIRECTIVES.items():
-        if spec.category == "content":
-            assert spec.required_attrs == [], (
-                f"{name}: content directive should have no required attrs"
-            )
+# Content directives that take body content (callouts, glossary) have no
+# required attrs.  Filesystem-aware content directives (list-tree, table-dep,
+# list-features) require a path attribute.
+_BODY_ONLY_CONTENT = {
+    "callout-note", "callout-warning", "callout-tip",
+    "callout-danger", "callout-important", "list-glossary",
+}
+
+
+def test_body_only_content_directives_have_no_required_attrs():
+    for name in _BODY_ONLY_CONTENT:
+        spec = CORE_DIRECTIVES[name]
+        assert spec.required_attrs == [], (
+            f"{name}: body-only content directive should have no required attrs"
+        )
+
+
+def test_filesystem_content_directives_require_path():
+    fs_content = {"list-tree", "table-dep", "list-features"}
+    for name in fs_content:
+        spec = CORE_DIRECTIVES[name]
+        assert "path" in spec.required_attrs, (
+            f"{name}: filesystem content directive should require 'path'"
+        )
 
 
 def test_is_valid_directive_with_dict_core():

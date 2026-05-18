@@ -62,6 +62,7 @@ class GoExtractor(BaseExtractor):
             "table-schema": _handle_schema,
             "code-help": _handle_cli,
             "table-config": _handle_config,
+            "prose-desc": _handle_prose_desc,
         }
         handler = handlers.get(directive_name)
         if handler is None:
@@ -1047,3 +1048,43 @@ def _handle_config(arg, body, source_paths, base_dir):
         return f"```\n{content.rstrip()}\n```"
 
 
+# ---------------------------------------------------------------------------
+# :::prose-desc
+# ---------------------------------------------------------------------------
+
+
+def _handle_prose_desc(arg, body, source_paths, base_dir):
+    """Extract only the package doc comment as prose markdown.
+
+    Unlike :::module which also lists exported declarations, this directive
+    returns just the package-level doc comment.
+    """
+    if not arg:
+        return format_error(":::prose-desc requires a package path argument")
+
+    pkg_dir = _resolve_package_dir(arg, source_paths, base_dir)
+    if pkg_dir is None:
+        return format_error(f"package '{arg}' not found")
+
+    # Collect all non-test .go files
+    go_files = sorted(
+        f
+        for f in os.listdir(pkg_dir)
+        if f.endswith(".go") and not f.endswith("_test.go")
+    )
+
+    if not go_files:
+        return format_error(f"no .go files in '{arg}'")
+
+    file_contents = {}
+    for gf in go_files:
+        path = os.path.join(pkg_dir, gf)
+        content, _err = read_source(path)
+        file_contents[gf] = content if content is not None else ""
+
+    _package_name, package_doc = _extract_package_doc(file_contents)
+
+    if not package_doc:
+        return format_error(f"no package doc comment found in '{arg}'")
+
+    return _format_docstring(package_doc)

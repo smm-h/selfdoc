@@ -69,6 +69,7 @@ class TypeScriptExtractor(BaseExtractor):
             "table-schema": _handle_schema,
             "code-help": _handle_cli,
             "table-config": _handle_config,
+            "prose-desc": _handle_prose_desc,
         }
         handler = handlers.get(directive_name)
         if handler is None:
@@ -1096,3 +1097,30 @@ def _strip_jsonc_comments(text):
     return re.sub(r",\s*([}\]])", r"\1", joined)
 
 
+# ---------------------------------------------------------------------------
+# :::prose-desc
+# ---------------------------------------------------------------------------
+
+
+def _handle_prose_desc(arg, body, source_paths, base_dir):
+    """Extract only the module-level JSDoc as prose markdown.
+
+    Unlike :::module which also lists exported declarations, this directive
+    returns just the module-level JSDoc description.
+    """
+    if not arg:
+        return format_error(":::prose-desc requires a file path argument")
+
+    filepath = _resolve_file_path(arg, source_paths, base_dir)
+    if filepath is None:
+        return format_error(f"module '{arg}' not found")
+
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{arg}': {err}")
+
+    module_jsdoc = _extract_module_jsdoc(source)
+    if not module_jsdoc or not module_jsdoc["description"]:
+        return format_error(f"no module-level JSDoc found in '{arg}'")
+
+    return module_jsdoc["description"]

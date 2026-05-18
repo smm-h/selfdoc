@@ -60,6 +60,7 @@ class PythonExtractor(BaseExtractor):
             "table-schema": _handle_schema,
             "code-help": _handle_cli,
             "table-config": _handle_config,
+            "prose-desc": _handle_prose_desc,
         }
         handler = handlers.get(directive_name)
         if handler is None:
@@ -823,3 +824,35 @@ def _handle_config(arg, body, source_paths, base_dir):
         return f"```\n{content.rstrip()}\n```"
 
 
+# ---------------------------------------------------------------------------
+# :::prose-desc
+# ---------------------------------------------------------------------------
+
+
+def _handle_prose_desc(arg, body, source_paths, base_dir):
+    """Extract only the module docstring as prose markdown.
+
+    Unlike :::module which also lists functions and classes, this directive
+    returns just the module-level docstring formatted as prose text.
+    """
+    if not arg:
+        return format_error(":::prose-desc requires a module path argument")
+
+    filepath = _resolve_module_path(arg, source_paths, base_dir)
+    if filepath is None:
+        return format_error(f"module '{arg}' not found")
+
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{arg}': {err}")
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return format_error(f"syntax error in '{arg}': {exc}")
+
+    module_doc = ast.get_docstring(tree)
+    if not module_doc:
+        return format_error(f"no docstring found in '{arg}'")
+
+    return _format_docstring(module_doc)

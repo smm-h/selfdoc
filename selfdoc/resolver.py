@@ -63,8 +63,8 @@ def make_resolver(config, base_dir="."):
     extractor = EXTRACTORS.get(language)
 
     def resolve(name, attrs, body):
-        # Content directives (callouts, glossary) are handled first
-        content_result = resolve_content(name, attrs, body)
+        # Content directives (callouts, glossary, tree, deps, features) are handled first
+        content_result = resolve_content(name, attrs, body, base_dir)
         if content_result is not None:
             return content_result
 

@@ -82,6 +82,31 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         category="content",
         example=":::list-glossary\n**API**: Application Programming Interface\n:::",
     ),
+    "prose-desc": DirectiveSpec(
+        description="Extract module/package docstring as prose text",
+        category="code",
+        required_attrs=["path"],
+        example=':::prose-desc path="mymodule"',
+    ),
+    "list-tree": DirectiveSpec(
+        description="File/directory tree listing",
+        category="content",
+        required_attrs=["path"],
+        optional_attrs=["depth"],
+        example=':::list-tree path="src/"',
+    ),
+    "table-dep": DirectiveSpec(
+        description="Dependencies table from pyproject.toml",
+        category="content",
+        required_attrs=["path"],
+        example=':::table-dep path="pyproject.toml"',
+    ),
+    "list-features": DirectiveSpec(
+        description="Module summaries from docstring first lines",
+        category="content",
+        required_attrs=["path"],
+        example=':::list-features path="src/"',
+    ),
 }
 
 # -- Future directives (declared, not yet implemented) ------------------------
@@ -92,7 +117,6 @@ FUTURE_DIRECTIVES: set[str] = {
     "table-endpoint",
     "table-env",
     "table-compare",
-    "table-dep",
     "table-error",
     "table-shortcut",
     "table-status",
@@ -120,8 +144,6 @@ FUTURE_DIRECTIVES: set[str] = {
     "list-check",
     "list-steps",
     "list-faq",
-    "list-features",
-    "list-tree",
     "list-deps",
     "list-breadcrumb",
     "list-related",
@@ -142,7 +164,6 @@ FUTURE_DIRECTIVES: set[str] = {
     "callout-success",
     "callout-quote",
     # Prose
-    "prose-desc",
     "prose-summary",
     "prose-caption",
     "prose-rationale",
