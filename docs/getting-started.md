@@ -133,7 +133,7 @@ The line `:-: ref path="myproject"` is a self-closing directive. At build time, 
 
 ### Adding more directives
 
-selfdoc ships with several built-in directives for common documentation patterns, from extracting module-level API references to rendering configuration schemas as tables. Each directive uses a `path` attribute to identify the source file or module, and some accept additional attributes like `target` for specific symbols. Here are examples of each:
+selfdoc ships with 5 built-in directives for common documentation patterns, from extracting module-level API references to rendering configuration schemas as tables. Each directive uses a `path` attribute to identify the source file or module, and some accept additional attributes like `target` for specific symbols. Here are examples of each:
 
 **Module reference** -- extract docstrings and public API:
 
