@@ -8,3 +8,4 @@
 {"commits":["e9990345982517646b58c3cf0e9358b70d22049b"],"user_facing":false}
 {"commits":["dc0155afee416f593be04160552d62bd4796fc32"],"user_facing":false}
 {"commits":["263025008882f040b61171321fb2b675ddf41168"],"user_facing":true,"description":"JSON schema for `selfdoc check --format json` output (schemas/check-output.schema.json)","type":"feature"}
+{"commits":["31154de79f262ae88dadba08a2d4bc78cf19c151"],"user_facing":false}
