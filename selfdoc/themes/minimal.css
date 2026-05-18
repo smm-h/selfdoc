@@ -1878,6 +1878,12 @@ hr {
     z-index: 2; /* above both sticky header and sticky column */
     background: var(--sidebar-bg);
 }
+.table-wrap.has-overflow tr:nth-child(even) td:first-child {
+    background: var(--sidebar-bg);
+}
+.table-wrap.has-overflow tr:hover td:first-child {
+    background: var(--sidebar-hover-bg);
+}
 .table-wrap.has-overflow td:first-child::after,
 .table-wrap.has-overflow th:first-child::after {
     content: "";
