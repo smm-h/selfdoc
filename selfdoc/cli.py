@@ -146,9 +146,8 @@ def _cmd_init(no_commit=False):
 
 
 @app.command("build", help="Build the documentation site")
-@strictcli.flag("warn-only", type=bool, help="(deprecated, no-op) Warnings are now non-fatal by default")
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
-def _cmd_build(warn_only=False, no_commit=False):
+def _cmd_build(no_commit=False):
     """Build the documentation site."""
     from selfdoc.build import build
 
@@ -435,9 +434,8 @@ def _detect_version():
 @app.command("check", help="Check documentation coverage and consistency")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format (default: text)")
-@strictcli.flag("warn-only", type=bool, help="(deprecated, no-op) Warnings are now non-fatal by default")
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
-def _cmd_check(ignore="", format="text", warn_only=False, no_commit=False):
+def _cmd_check(ignore="", format="text", no_commit=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
