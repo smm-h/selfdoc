@@ -2,3 +2,4 @@
 {"commits":["772f894c0c1c1090f9f33122ab047aa79423666d"],"user_facing":false}
 {"commits":["40868fba5c03a8c5e818d587e485282f07b5aae3"],"user_facing":false}
 {"commits":["c70ff1b54e734797bf6ef89665c364cc3bcf4540"],"user_facing":false}
+{"commits":["b2bbb8f6a67bc48bffa0324d274315bfdfcf4bf1"],"user_facing":true,"description":"**Module page descriptions from docstrings.** `selfdoc gen` now seeds new module pages with the first line of the module's docstring instead of the generic 'API reference for X' template; quote-wrapping length is also fixed.","type":"feature"}
