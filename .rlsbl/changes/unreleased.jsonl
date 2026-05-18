@@ -1,1 +1,2 @@
 {"commits":["6cd03dc853fa500406102598611dbe0a1a45ad20"],"user_facing":false}
+{"commits":["a358937ff0e79f27e169bdf816bb24494b3a4b2a"],"user_facing":true,"description":"Removed deprecated --warn-only flag (warnings are non-fatal by default since 0.4.0)","type":"breaking"}
