@@ -1070,6 +1070,9 @@ def build(dir_path=".", config=None):
         auto_detect=config.get("auto_detect"),
         theme_meta=theme_meta,
         deploy_target=(config.get("deploy") or {}).get("provider"),
+        run_button=config.get("run_button", False),
+        page_nav=config.get("page_nav", True),
+        page_progress=config.get("page_progress", True),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection

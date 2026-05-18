@@ -25,6 +25,7 @@ class CodeBlock:
     annotations: dict[str, str]
     start: int
     end: int
+    run: bool = False
 
 
 @dataclass(eq=True, slots=True)
@@ -150,7 +151,11 @@ def tokenize(content: str) -> list[Block]:
         # 1. Fenced code block
         if line.startswith("```"):
             start = i
-            lang = line[3:].strip()
+            info_string = line[3:].strip()
+            # Parse optional flags from the info string (e.g. "python run")
+            info_parts = info_string.split()
+            lang = info_parts[0] if info_parts else ""
+            run_flag = "run" in info_parts[1:]
             code_lines: list[str] = []
             i += 1
             while i < n and not lines[i].startswith("```"):
@@ -174,6 +179,7 @@ def tokenize(content: str) -> list[Block]:
                 annotations=annotations,
                 start=start + 1,
                 end=i,
+                run=run_flag,
             ))
             continue
 

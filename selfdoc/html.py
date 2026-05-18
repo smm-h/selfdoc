@@ -659,7 +659,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    feedback=None, branch="main", search_engine=None,
                    branding=None, config_description=None,
                    auto_detect=None, theme_meta=None,
-                   deploy_target=None):
+                   deploy_target=None, run_button=False,
+                   page_nav=True, page_progress=True):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -735,10 +736,15 @@ def generate_html(markdown_files, project_name=None, version=None,
         # (e.g. guide.md -> guide/index.html), so add 1 for those.
         depth = html_path.count("/")
         prefix = "../" * depth if depth > 0 else ""
+        md_config = {}
+        if auto_detect:
+            md_config["auto_detect"] = auto_detect
+        if run_button:
+            md_config["run_button"] = True
         body_html = md_to_html(
             md_content,
             metadata=page_meta,
-            config={"auto_detect": auto_detect} if auto_detect else None,
+            config=md_config or None,
         )
         # Rewrite internal .md links to directory-style URLs.
         # index.md links stay as index.html; others become dir/ paths.
@@ -1029,6 +1035,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             theme_meta=theme_meta,
             has_hero=pd.get("has_hero", False),
             deploy_target=deploy_target,
+            page_nav=page_nav,
+            page_progress=page_progress,
         )
         html_files[pd["html_path"]] = full_html
 
@@ -1167,7 +1175,8 @@ def _render_definition_list(token):
     )
 
 
-def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref):
+def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref,
+                  run_button=False):
     """Dispatch a single block token to its HTML renderer.
 
     Returns the HTML string, or None if the token produces no output
@@ -1177,7 +1186,11 @@ def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref):
         return _render_heading(token, seen_slugs, first_h1_consumed_ref)
 
     if isinstance(token, TokCodeBlock):
-        return _render_code_block(token.lang, token.lines, token.annotations)
+        # Per-block run annotation or global run_button config
+        block_run = token.run or run_button
+        return _render_code_block(
+            token.lang, token.lines, token.annotations, run=block_run,
+        )
 
     if isinstance(token, TokTable):
         return _render_table(token, tokens, idx)
@@ -1233,10 +1246,12 @@ def md_to_html(text, metadata=None, config=None):
     html_parts = []
     seen_slugs = {}  # slug -> count, for deduplicating heading IDs
     first_h1_consumed_ref = [False]  # mutable ref: skip the first H1
+    cfg_run_button = config.get("run_button", False) if config else False
 
     for idx, token in enumerate(tokens):
         rendered = _render_block(
-            token, tokens, idx, seen_slugs, first_h1_consumed_ref
+            token, tokens, idx, seen_slugs, first_h1_consumed_ref,
+            run_button=cfg_run_button,
         )
         if rendered is not None:
             html_parts.append(rendered)
@@ -1282,7 +1297,7 @@ def md_to_html(text, metadata=None, config=None):
     return result
 
 
-def _render_code_block(lang, code_lines, annotations=None):
+def _render_code_block(lang, code_lines, annotations=None, run=False):
     """Render a single fenced code block to HTML.
 
     Handles diff highlighting (Feature 27), inline code annotations
@@ -1337,19 +1352,25 @@ def _render_code_block(lang, code_lines, annotations=None):
                 f"# [{_escape_html(num)}]", badge
             )
 
+    run_attr = ' data-run="true"' if run else ""
     if lang:
         escaped_lang = _escape_html(lang)
         label = f'<div class="code-label">{escaped_lang}</div>'
         return (
-            f'<div class="code-block">{label}'
+            f'<div class="code-block"{run_attr}>{label}'
             f'<pre tabindex="0" aria-label="Code: {escaped_lang}"><code class="language-{escaped_lang}">'
             f"{code_content}</code></pre></div>"
         )
     return (
-        f'<div class="code-block">'
+        f'<div class="code-block"{run_attr}>'
         f'<pre tabindex="0" aria-label="Code block"><code>{code_content}</code></pre>'
         f'</div>'
     )
+
+
+_RE_CODE_BLOCK_WITH_LABEL = re.compile(
+    r'<div class="code-block"[^>]*><div class="code-label">'
+)
 
 
 def _group_code_tabs(html):
@@ -1366,12 +1387,11 @@ def _group_code_tabs(html):
     while i < len(parts):
         part = parts[i]
         # Check if this is a code block with a language label
-        if '<div class="code-block"><div class="code-label">' in part:
+        if _RE_CODE_BLOCK_WITH_LABEL.search(part):
             # Collect consecutive code blocks with language labels
             group = [part]
             j = i + 1
-            while (j < len(parts) and
-                   '<div class="code-block"><div class="code-label">' in parts[j]):
+            while j < len(parts) and _RE_CODE_BLOCK_WITH_LABEL.search(parts[j]):
                 group.append(parts[j])
                 j += 1
 
@@ -2210,7 +2230,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                schema=None, twitter_site=None, search=None,
                feedback=None, branch="main", search_engine=None,
                site_terms=None, page_number=None, total_pages=None,
-               theme_meta=None, has_hero=False, deploy_target=None):
+               theme_meta=None, has_hero=False, deploy_target=None,
+               page_nav=True, page_progress=True):
     """Wrap converted HTML body in the full page template."""
     # Use default theme metadata when none provided (backward compatible)
     if theme_meta is None:
@@ -2309,7 +2330,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # Prev/next page navigation (Feature 8)
     page_nav_html = ""
-    if prev_page or next_page:
+    if page_nav and (prev_page or next_page):
         prev_link = ""
         next_link = ""
         if prev_page:
@@ -2322,8 +2343,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             )
         # Page progress indicator (e.g. "Page 2 of 5")
         progress_html = ""
-        if (page_number is not None and total_pages is not None
-                and total_pages > 1):
+        if (page_progress and page_number is not None
+                and total_pages is not None and total_pages > 1):
             progress_html = (
                 f'<span class="page-progress">'
                 f'Page {page_number} of {total_pages}</span>'
@@ -3090,7 +3111,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     _JS_RUN_BUTTON = (
         "// Embedded live code playground (Feature 41)\n"
         "(function() {\n"
-        "  document.querySelectorAll('.code-block').forEach(function(block) {\n"
+        "  document.querySelectorAll('.code-block[data-run=\"true\"]').forEach(function(block) {\n"
         "    var label = block.querySelector('.code-label');\n"
         "    if (!label) return;\n"
         "    var lang = label.textContent.trim().toLowerCase();\n"
@@ -3243,7 +3264,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         js_blocks.append(_JS_FEEDBACK)
     if 'class="code-tabs"' in body_html:
         js_blocks.append(_JS_CODE_TABS)
-    if 'class="code-label"' in body_html:
+    if 'data-run="true"' in body_html:
         js_blocks.append(_JS_RUN_BUTTON)
     if 'class="heading-link"' in body_html:
         js_blocks.append(_JS_HEADING_COPY)

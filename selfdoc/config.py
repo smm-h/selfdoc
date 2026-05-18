@@ -267,6 +267,18 @@ def load_config(dir_path="."):
                         f"'gen.exclude[{i}]' must be a string"
                     )
 
+    run_button = raw.get("run_button", False)
+    if not isinstance(run_button, bool) or isinstance(run_button, int) and not isinstance(run_button, bool):
+        raise ConfigError("'run_button' must be a boolean")
+
+    page_nav = raw.get("page_nav", True)
+    if not isinstance(page_nav, bool) or isinstance(page_nav, int) and not isinstance(page_nav, bool):
+        raise ConfigError("'page_nav' must be a boolean")
+
+    page_progress = raw.get("page_progress", True)
+    if not isinstance(page_progress, bool) or isinstance(page_progress, int) and not isinstance(page_progress, bool):
+        raise ConfigError("'page_progress' must be a boolean")
+
     gen_data = raw.get("gen_data", None)
     if gen_data is not None:
         if not isinstance(gen_data, dict):
@@ -332,4 +344,7 @@ def load_config(dir_path="."):
         "auto_detect": auto_detect,
         "gen": gen,
         "gen_data": gen_data,
+        "run_button": run_button,
+        "page_nav": page_nav,
+        "page_progress": page_progress,
     }

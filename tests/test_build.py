@@ -2790,6 +2790,7 @@ def test_conditional_js_includes_all_when_needed():
     html_files = generate_html(
         {"index.md": md},
         project_name="Test",
+        run_button=True,
     )
     content = html_files["index.html"]
 
@@ -2797,7 +2798,7 @@ def test_conditional_js_includes_all_when_needed():
     assert "copy-btn" in content
     # code-tabs JS present (has code-tabs)
     assert "code-tabs" in content
-    # run-btn JS present (has code-label)
+    # run-btn JS present (run_button=True enables it for labeled blocks)
     assert "run-btn" in content
     # Always-present JS blocks
     assert "theme-toggle" in content
