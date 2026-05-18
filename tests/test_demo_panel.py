@@ -122,15 +122,6 @@ def test_page_loads_without_js_errors(browser_instance, http_server):
 # it specially below.
 
 _KNOB_CASES = [
-    # sidebar-position
-    (
-        "sidebar-position",
-        [
-            ("left", "document.body.getAttribute('data-sidebar')", "left"),
-            ("right", "document.body.getAttribute('data-sidebar')", "right"),
-            ("hidden", "document.body.getAttribute('data-sidebar')", "hidden"),
-        ],
-    ),
     # sidebar-width
     (
         "sidebar-width",
@@ -141,28 +132,41 @@ _KNOB_CASES = [
                 "200px",
             ),
             (
+                "220px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim()",
+                "220px",
+            ),
+            (
                 "240px",
                 "getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim()",
                 "240px",
-            ),
-            (
-                "280px",
-                "getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim()",
-                "280px",
-            ),
-            (
-                "320px",
-                "getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim()",
-                "320px",
             ),
         ],
     ),
-    # toc-position
+    # toc-width
     (
-        "toc-position",
+        "toc-width",
         [
-            ("right", "document.body.getAttribute('data-toc')", "right"),
-            ("hidden", "document.body.getAttribute('data-toc')", "hidden"),
+            (
+                "180px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--toc-width').trim()",
+                "180px",
+            ),
+            (
+                "200px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--toc-width').trim()",
+                "200px",
+            ),
+            (
+                "220px",
+                "getComputedStyle(document.documentElement).getPropertyValue('--toc-width').trim()",
+                "220px",
+            ),
+            (
+                "hidden",
+                "document.body.getAttribute('data-toc')",
+                "hidden",
+            ),
         ],
     ),
     # content-width
@@ -206,14 +210,19 @@ _KNOB_CASES = [
                 "Inter",
             ),
             (
-                "serif",
+                "source-sans",
                 "getComputedStyle(document.documentElement).getPropertyValue('--font-body').trim()",
-                "Georgia",
+                "Source Sans 3",
             ),
             (
-                "monospace",
+                "dm-sans",
                 "getComputedStyle(document.documentElement).getPropertyValue('--font-body').trim()",
-                "JetBrains Mono",
+                "DM Sans",
+            ),
+            (
+                "ibm-plex",
+                "getComputedStyle(document.documentElement).getPropertyValue('--font-body').trim()",
+                "IBM Plex Sans",
             ),
         ],
     ),
@@ -225,48 +234,6 @@ _KNOB_CASES = [
             ("16px", "document.documentElement.style.fontSize", "16px"),
             ("18px", "document.documentElement.style.fontSize", "18px"),
             ("20px", "document.documentElement.style.fontSize", "20px"),
-        ],
-    ),
-    # heading-transform
-    (
-        "heading-transform",
-        [
-            (
-                "uppercase",
-                "getComputedStyle(document.documentElement).getPropertyValue('--heading-transform').trim()",
-                "uppercase",
-            ),
-            (
-                "small-caps",
-                "document.body.classList.contains('heading-smallcaps')",
-                True,
-            ),
-            (
-                "normal",
-                "getComputedStyle(document.documentElement).getPropertyValue('--heading-transform').trim()",
-                "none",
-            ),
-        ],
-    ),
-    # heading-separator
-    (
-        "heading-separator",
-        [
-            (
-                "top",
-                "document.body.classList.contains('heading-sep-top')",
-                True,
-            ),
-            (
-                "bottom",
-                "document.body.classList.contains('heading-sep-bottom')",
-                True,
-            ),
-            (
-                "none",
-                "document.body.classList.contains('heading-sep-none')",
-                True,
-            ),
         ],
     ),
     # density
@@ -432,32 +399,6 @@ _KNOB_CASES = [
             ),
         ],
     ),
-    # table-style
-    (
-        "table-style",
-        [
-            (
-                "striped",
-                "document.body.getAttribute('data-table-style')",
-                "striped",
-            ),
-            (
-                "plain",
-                "document.body.getAttribute('data-table-style')",
-                "plain",
-            ),
-            (
-                "bordered",
-                "document.body.getAttribute('data-table-style')",
-                "bordered",
-            ),
-            (
-                "minimal",
-                "document.body.getAttribute('data-table-style')",
-                "minimal",
-            ),
-        ],
-    ),
 ]
 
 
@@ -570,36 +511,15 @@ def test_export_produces_content(page):
 
 # Each entry: (knob_name, value_to_set, list_of_expected_css_fragments)
 _EXPORT_KNOB_FRAGMENTS = [
-    ("sidebar-position", "right", [
-        "grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px)",
-        ".sidebar { order: 3; }",
-        ".content { order: 1; }",
-    ]),
-    ("sidebar-position", "hidden", [
-        ".sidebar { display: none; }",
-        "grid-template-columns: minmax(0, 1fr) 200px",
-    ]),
-    ("sidebar-width", "280px", ["--sidebar-width: 280px"]),
-    ("toc-position", "hidden", [
+    ("sidebar-width", "200px", ["--sidebar-width: 200px"]),
+    ("toc-width", "hidden", [
         ".toc { display: none; }",
         "grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr)",
     ]),
+    ("toc-width", "220px", ["--toc-width: 220px"]),
     ("content-width", "90ch", ["--content-max-width: 90ch"]),
-    ("font-kind", "serif", ['--font-body: Georgia, "Times New Roman", serif']),
+    ("font-kind", "source-sans", ['--font-body: "Source Sans 3", sans-serif']),
     ("font-size", "18px", ["font-size: 18px"]),
-    ("heading-transform", "uppercase", ["--heading-transform: uppercase"]),
-    ("heading-transform", "small-caps", [
-        "font-variant: small-caps",
-        "text-transform: none",
-    ]),
-    ("heading-separator", "bottom", [
-        "border-bottom: 1px solid var(--border)",
-        "border-top: none",
-    ]),
-    ("heading-separator", "none", [
-        "border-top: none",
-        "padding-top: 0",
-    ]),
     ("density", "compact", [
         "--spacing-scale: 0.8",
         "--line-height-body: 1.4",
@@ -637,16 +557,6 @@ _EXPORT_KNOB_FRAGMENTS = [
     ]),
     ("code-block-style", "floating", [
         "box-shadow: 0 2px 8px rgba(0,0,0,0.12)",
-    ]),
-    ("table-style", "plain", [
-        "tr:nth-child(even) td { background: transparent; }",
-    ]),
-    ("table-style", "bordered", [
-        "td, th { border: 1px solid var(--border); }",
-    ]),
-    ("table-style", "minimal", [
-        "thead { border-bottom: 2px solid var(--border); }",
-        "td { border: none; }",
     ]),
 ]
 
