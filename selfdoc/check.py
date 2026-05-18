@@ -856,7 +856,7 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
                 file_dir = os.path.dirname(
                     os.path.join(base_dir, rel_path)
                 )
-                if os.path.abspath(file_dir) == dir_abs:
+                if os.path.abspath(file_dir).startswith(dir_abs):
                     for sym in syms:
                         if sym in rd.content:
                             documented_set.add(f"{rel_path}:{sym}")
