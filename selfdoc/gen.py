@@ -2,10 +2,22 @@
 
 import fnmatch
 import os
+import re
 import stat
 import tempfile
 
+from selfdoc.build import _parse_frontmatter
 from selfdoc.extractors import EXTRACTORS
+
+
+# Matches the default per-module description template so we can detect when a
+# page still has its auto-generated description (and recompute it) versus when
+# a user has hand-edited the description (and we should preserve it).
+_DEFAULT_DESCRIPTION_RE = re.compile(
+    r"^API reference for (the )?[\w.]+( module)? — "
+    r"auto-generated documentation covering public functions, "
+    r"classes, and type signatures\.?$"
+)
 
 
 # Default exclusion patterns (always applied in addition to user-configured ones).
@@ -120,13 +132,54 @@ def _is_excluded(rel_path, exclude_patterns):
     return False
 
 
-def _generate_page_content(module_name, module_path, nav_order):
-    """Build the Markdown content for a generated documentation page."""
-    desc = (
-        f"API reference for the {module_name} module — "
-        f"auto-generated documentation covering public functions, "
-        f"classes, and type signatures."
-    )
+def _read_existing_description(filepath):
+    """Return the user-customized ``description`` from a page's frontmatter.
+
+    Returns ``None`` if the file does not exist, has no ``description`` key,
+    or still has the default auto-generated description (in which case the
+    caller should recompute it from the current module name).
+    """
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return None
+
+    metadata, _ = _parse_frontmatter(content)
+    raw = metadata.get("description")
+    if raw is None or not isinstance(raw, str):
+        return None
+
+    # Strip wrapping quotes (single or double) that may survive the simple
+    # parser in build.py.
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1].strip()
+
+    if not value:
+        return None
+
+    if _DEFAULT_DESCRIPTION_RE.match(value):
+        return None
+
+    return value
+
+
+def _generate_page_content(module_name, module_path, nav_order, existing_description=None):
+    """Build the Markdown content for a generated documentation page.
+
+    If ``existing_description`` is provided, it is used verbatim as the page's
+    ``description`` frontmatter value; otherwise the default auto-generated
+    template is used.
+    """
+    if existing_description is not None:
+        desc = existing_description
+    else:
+        desc = (
+            f"API reference for the {module_name} module — "
+            f"auto-generated documentation covering public functions, "
+            f"classes, and type signatures."
+        )
     return (
         f"---\n"
         f"title: {module_name}\n"
@@ -300,8 +353,12 @@ def generate_docs(config, base_dir="."):
     generated = []
 
     for nav_order, (mod_path, mod_name, md_fname) in enumerate(modules, start=1):
-        content = _generate_page_content(mod_name, mod_path, nav_order)
         out_path = os.path.join(docs_dir, md_fname)
+        existing_description = _read_existing_description(out_path)
+        content = _generate_page_content(
+            mod_name, mod_path, nav_order,
+            existing_description=existing_description,
+        )
         # Make writable if it already exists with 0o444
         if os.path.isfile(out_path):
             try:

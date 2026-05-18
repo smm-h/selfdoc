@@ -323,6 +323,105 @@ class TestIndexPage:
         assert not (mode & stat.S_IWUSR)
 
 
+class TestDescriptionPreservation:
+    """Test that user-customized frontmatter descriptions survive regeneration."""
+
+    def _rewrite_description(self, filepath, new_description):
+        """Replace the ``description:`` line in a page's frontmatter.
+
+        Handles the read-only permissions selfdoc sets on generated files.
+        """
+        os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR)
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        new_lines = []
+        for line in content.split("\n"):
+            if line.startswith("description:"):
+                new_lines.append(f'description: "{new_description}"')
+            else:
+                new_lines.append(line)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_lines))
+
+    def test_preserves_custom_description(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        core_path = os.path.join(docs_dir, "mylib-core.md")
+
+        custom = "Handwritten one-line description of the core module."
+        self._rewrite_description(core_path, custom)
+
+        generate_docs(config, base_dir=str(python_project))
+
+        with open(core_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+        assert "auto-generated documentation" not in content
+
+    def test_regenerates_default_description(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        core_path = os.path.join(docs_dir, "mylib-core.md")
+
+        # Do NOT touch the description -- it remains the default template.
+        generate_docs(config, base_dir=str(python_project))
+
+        with open(core_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert "API reference for the mylib.core module" in content
+        assert "auto-generated documentation" in content
+
+    def test_preserves_description_across_multiple_regenerations(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        utils_path = os.path.join(docs_dir, "mylib-utils.md")
+
+        custom = "Utility helpers shared across mylib."
+        self._rewrite_description(utils_path, custom)
+
+        for _ in range(3):
+            generate_docs(config, base_dir=str(python_project))
+
+        with open(utils_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert f'description: "{custom}"' in content
+        assert "auto-generated documentation" not in content
+
+    def test_empty_existing_file_uses_default(self, python_project):
+        docs_dir = os.path.join(python_project, "docs")
+        core_path = os.path.join(docs_dir, "mylib-core.md")
+
+        # Pre-create a generated-marked file with frontmatter but NO description key.
+        with open(core_path, "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib.core\n"
+                "generated: true\n"
+                'nav_group: "API Reference"\n'
+                "nav_order: 1\n"
+                "---\n"
+                "# mylib.core\n"
+            )
+
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        with open(core_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert "API reference for the mylib.core module" in content
+        assert "auto-generated documentation" in content
+
+
 class TestStaleCleanup:
     """Test that stale generated files are removed on re-run."""
 
