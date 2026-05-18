@@ -112,7 +112,7 @@ If none of these can handle the directive, the resolver emits an inline error ma
 
 ### Built-in directives
 
-The directive catalog in `selfdoc/catalog.py` defines two categories of directives, cleanly separating what is currently functional and shipped from what is declared as a valid name but planned for future implementation. This approach allows documentation authors to reference future directives without triggering parse errors:
+The directive catalog in `selfdoc/catalog.py` defines 76 built-in directives across two categories, cleanly separating what is currently functional and shipped from what is declared as a valid name but planned for future implementation. This approach allows documentation authors to reference future directives without triggering parse errors:
 
 - **Core directives** (shipped and functional): `ref`, `table-schema`, `code-test`, `code-help`, `table-config`, callouts, and `list-glossary`
 - **Future directives** (declared, parse-valid, not yet implemented): a large set organized by prefix -- `table-*`, `code-*`, `list-*`, `callout-*`, `prose-*`
@@ -121,7 +121,7 @@ Declaring future directives means the parser accepts them without error, allowin
 
 ## Language Extractors
 
-**Module:** `selfdoc/extractors/` -- each supported language has a dedicated extractor module that implements the `LanguageExtractor` protocol, providing language-specific logic for resolving directives, detecting source files, and enumerating public symbols for coverage analysis.
+**Module:** `selfdoc/extractors/` -- 3 extractor modules (Python, Go, TypeScript) each implement the `LanguageExtractor` protocol, providing language-specific logic for resolving directives, detecting source files, and enumerating public symbols for coverage analysis.
 
 ### The protocol
 

@@ -79,7 +79,7 @@ selfdoc bridges these to the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` 
 
 ### Security Headers
 
-When the deploy provider is `cloudflare-pages`, the build automatically generates a `_headers` file in the output directory. This file instructs Cloudflare's edge to serve the following headers on every response:
+When the deploy provider is `cloudflare-pages`, the build automatically generates a `_headers` file in the output directory. This file instructs Cloudflare's edge to serve 6 security headers on every response:
 
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
 - `X-Content-Type-Options: nosniff`
