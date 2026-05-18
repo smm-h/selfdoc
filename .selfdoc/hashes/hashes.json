@@ -4,11 +4,11 @@
     "description": "464747f099e75e988a325270cbdbb36c693ea208de0b2d943ff24b5f5252392c"
   },
   "cli-build.md": {
-    "content": "4f441939ec1d3d8343c42044480f4801e8e206e9f773412450b8856fe6ff7479",
+    "content": "f2a67102dfb8a050399d715af902a6fefd3e024d1cb99d7832a866f0fcfd73ce",
     "description": "11a0aaee6da7ee4c35003138aab30c0da61a8dd3bf5e044018aa70f6bfbf0ec1"
   },
   "cli-check.md": {
-    "content": "947cf39b048aaee0ac9690c1adc4ce51d9e97312e20c9ee555e68cc26924e823",
+    "content": "495266af4cc9c57cba5084443575781e5b8172adf934423eaa0a8f2246d0d9b6",
     "description": "83e8642d203e66ffba0b975b220466ca1b8b7c46c931b3a8a1bdbd0a07b1d3a3"
   },
   "cli-deploy.md": {
@@ -72,7 +72,7 @@
     "description": "a8203524aa4a4dd2203eed62ad2fa11c802265649e05559b4f06c2ade06cb530"
   },
   "selfdoc-cli.md": {
-    "content": "580f2ec3b7a0badb7e03a3a71a4699d43aa3ff8698f7408560f11ecc11d0f857",
+    "content": "880355a1431236a3e4771ecad5bcbda7b20460cedaf1ae1332ea14e71b9858ab",
     "description": "1ed3e1bca9ce5f9dd1cda9b7438f1814723fdc809ba1e565199ef3e6ce34f847"
   },
   "selfdoc-config.md": {
@@ -88,15 +88,15 @@
     "description": "49d75691be8336bd4b491b6be99439cd0e19c8cbe0deb76146c5dd038d94149c"
   },
   "selfdoc-extractors-go.md": {
-    "content": "837dc9c718e1645f4a73f19e4c1d0d0a5c86f64ccd905a0263e7c0227300fdcd",
+    "content": "553f60f562927d7d42bc498089c3b18ff3ef767a6946eb11f23a9508efdfc9f3",
     "description": "5165de519d0ec8ad6f401a64d0cc7b34fce376f6c40021f7a02215d87683d814"
   },
   "selfdoc-extractors-python.md": {
-    "content": "5036efd3be125c1b6ff24ee9d2872611dad0812c3daee6be7f96d82e90e75307",
+    "content": "6e01a6044dc1fbc00923477a8acfe0e8823e0114c00a6c12d6a4094588bc1fac",
     "description": "59015b730d7770ead6707d7442e18a896ff8833268db7d8f2f4872d1614a2ac8"
   },
   "selfdoc-extractors-typescript.md": {
-    "content": "26e8c76b2bb4ab115b891eb6690012804c2d9cb41d29b4ced08cb55b66b214d5",
+    "content": "aa2b774c7f01c53f696f6c1e79b73ebfa868483b4e59958b8beea7acc4c74cb9",
     "description": "f452e7c33e92de442795ae1e50ead8d17c0be8541a63e1d78db54b002fb513e2"
   },
   "selfdoc-extractors.md": {
