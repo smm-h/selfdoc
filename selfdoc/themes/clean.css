@@ -908,7 +908,8 @@ cite {
 /* === Tables === */
 
 table {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     border-collapse: collapse;
     margin: 1.5rem 0;
     font-size: 0.9rem;
@@ -932,8 +933,36 @@ td {
     border-bottom: 1px solid var(--border);
 }
 
-tr:hover td {
+tr:nth-child(even) td {
     background: var(--sidebar-hover-bg);
+}
+
+tr:hover td {
+    background: color-mix(in srgb, var(--link) 6%, var(--bg));
+}
+
+/* === Sort indicators for sortable tables === */
+
+article th {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+}
+
+article th:hover {
+    color: var(--link);
+}
+
+article th.sort-asc::after {
+    content: " \25B2";
+    font-size: 0.7em;
+    opacity: 0.5;
+}
+
+article th.sort-desc::after {
+    content: " \25BC";
+    font-size: 0.7em;
+    opacity: 0.5;
 }
 
 /* === Blockquotes === */

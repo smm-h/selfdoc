@@ -3270,6 +3270,43 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         "})();\n"
     )
 
+    _JS_SORTABLE_TABLES = (
+        "// Sortable tables in article content\n"
+        "(function() {\n"
+        "  var article = document.querySelector('article');\n"
+        "  if (!article) return;\n"
+        "  article.querySelectorAll('table').forEach(function(table) {\n"
+        "    var thead = table.querySelector('thead');\n"
+        "    if (!thead) return;\n"
+        "    var ths = thead.querySelectorAll('th');\n"
+        "    ths.forEach(function(th, colIdx) {\n"
+        "      th.addEventListener('click', function() {\n"
+        "        var tbody = table.querySelector('tbody');\n"
+        "        if (!tbody) return;\n"
+        "        var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));\n"
+        "        var asc = !th.classList.contains('sort-asc');\n"
+        "        ths.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });\n"
+        "        th.classList.add(asc ? 'sort-asc' : 'sort-desc');\n"
+        "        var allNum = rows.every(function(r) {\n"
+        "          var c = r.children[colIdx];\n"
+        "          if (!c) return false;\n"
+        "          var t = c.textContent.trim();\n"
+        "          return t !== '' && !isNaN(t);\n"
+        "        });\n"
+        "        rows.sort(function(a, b) {\n"
+        "          var ac = a.children[colIdx], bc = b.children[colIdx];\n"
+        "          if (!ac || !bc) return 0;\n"
+        "          var at = ac.textContent.trim(), bt = bc.textContent.trim();\n"
+        "          if (allNum) return asc ? at - bt : bt - at;\n"
+        "          return asc ? at.localeCompare(bt) : bt.localeCompare(at);\n"
+        "        });\n"
+        "        rows.forEach(function(r) { tbody.appendChild(r); });\n"
+        "      });\n"
+        "    });\n"
+        "  });\n"
+        "})();\n"
+    )
+
     # Search trigger HTML (configurable: "icon", "bar", or "hidden")
     effective_search = search if search else "icon"
     if effective_search == "icon":
@@ -3306,6 +3343,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         js_blocks.append(_JS_RUN_BUTTON)
     if 'class="heading-link"' in body_html:
         js_blocks.append(_JS_HEADING_COPY)
+    if 'class="table-wrap"' in body_html:
+        js_blocks.append(_JS_SORTABLE_TABLES)
 
     # Re-enable smooth scroll after initial paint + fragment scroll (Issue 32)
     _JS_SMOOTH_SCROLL_RESTORE = (
