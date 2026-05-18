@@ -49,11 +49,22 @@ class PythonExtractor(BaseExtractor):
         source_paths: list[str],
         base_dir: str,
     ) -> str:
-        # Reconstruct the old positional arg from attrs for backward compat
+        # Reconstruct the old positional arg from attrs
         path = attrs.get("path", "")
         target = attrs.get("target", "")
         arg = f"{path} {target}".strip() if target else path
-        return resolve_python(directive_name, arg, body, source_paths, base_dir)
+
+        handlers = {
+            "ref": _handle_module,
+            "code-test": _handle_test,
+            "table-schema": _handle_schema,
+            "code-help": _handle_cli,
+            "table-config": _handle_config,
+        }
+        handler = handlers.get(directive_name)
+        if handler is None:
+            return format_error(f"unknown directive '{directive_name}' for Python extractor")
+        return handler(arg, body, source_paths, base_dir)
 
     def file_extensions(self) -> list[str]:
         return [".py"]
