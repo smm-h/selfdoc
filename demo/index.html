@@ -6,7 +6,7 @@
 <title>Theme Showcase - selfdoc demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../selfdoc/themes/minimal.css" id="theme-css">
 <style id="design-settings-styles">
 /* === Design Settings Panel (demo-only) === */
@@ -210,7 +210,6 @@
 /* === Knob override styles === */
 
 /* 1. Sidebar width */
-.layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr) 200px; }
 .sidebar { width: var(--sidebar-width, 240px); }
 @media (max-width: 1280px) { .layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); } }
 @media (max-width: 768px) { .sidebar { width: var(--sidebar-width, 240px); transform: translateX(-100%); transition: transform 0.25s ease; } body.sidebar-open .sidebar { transform: translateX(0); } }
@@ -244,21 +243,7 @@ pre,
 /* 4. Line height */
 body, .content p { line-height: var(--line-height-body, 1.6); }
 
-/* 5. Heading transform */
-.content h1, .content h2, .content h3, .content h4, .content h5, .content h6 {
-  text-transform: var(--heading-transform, none);
-}
-body.heading-smallcaps .content h1,
-body.heading-smallcaps .content h2,
-body.heading-smallcaps .content h3,
-body.heading-smallcaps .content h4,
-body.heading-smallcaps .content h5,
-body.heading-smallcaps .content h6 {
-  text-transform: none;
-  font-variant: small-caps;
-}
-
-/* 6. Spacing scale */
+/* 5. Spacing scale */
 .content { padding: calc(2.5rem * var(--spacing-scale, 1)) calc(3rem * var(--spacing-scale, 1)); }
 .content h2 { margin-top: calc(2.5rem * var(--spacing-scale, 1)); }
 .content h3 { margin-top: calc(2rem * var(--spacing-scale, 1)); }
@@ -270,28 +255,21 @@ body.heading-smallcaps .content h6 {
 .admonition { margin: 0 0 calc(1rem * var(--spacing-scale, 1)) 0; padding: calc(0.75rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1)); }
 blockquote { margin: 0 0 calc(1rem * var(--spacing-scale, 1)) 0; padding: calc(0.5rem * var(--spacing-scale, 1)) calc(1rem * var(--spacing-scale, 1)); }
 
-/* 7. Sidebar position */
-body[data-sidebar="right"] .layout { grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px); }
-body[data-sidebar="right"] .sidebar { order: 3; }
-body[data-sidebar="right"] .content { order: 1; }
-body[data-sidebar="right"] .toc { order: 2; }
-body[data-sidebar="hidden"] .sidebar { display: none; }
-body[data-sidebar="hidden"] .layout { grid-template-columns: minmax(0, 1fr) 200px; }
-
-/* 8. TOC position */
+/* 7. TOC width */
+.toc { width: var(--toc-width, 200px); }
+.layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr) var(--toc-width, 200px); }
 body[data-toc="hidden"] .toc { display: none; }
 body[data-toc="hidden"] .layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); }
 
-/* 9. Heading separator */
-body.heading-sep-none .content h2 { border-top: none; padding-top: 0; }
-body.heading-sep-bottom .content h2 { border-top: none; padding-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+/* 9. Heading separator: settled on bottom border */
+.content h2 { border-top: none; padding-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
 
 /* 10. Topbar color */
 body.topbar-light .topbar { background: var(--bg); border-bottom: 1px solid var(--border); }
 body.topbar-light .topbar .project-name,
 body.topbar-light .topbar .theme-toggle,
 body.topbar-light .topbar .settings-btn,
-body.topbar-light .topbar #theme-switcher,
+body.topbar-light .topbar #theme-switcher { color: var(--text); }
 body.topbar-light .topbar .hamburger span { color: var(--text); background-color: var(--text); }
 body.topbar-accent .topbar { background: var(--link); }
 
@@ -307,12 +285,8 @@ body[data-code-style="filled"] .code-block pre { background: transparent; }
 body[data-code-style="floating"] .code-block { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 body[data-code-style="floating"] .code-block:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.16); }
 
-/* 13. Table style */
-body[data-table-style="plain"] tr:nth-child(even) td { background: transparent; }
-body[data-table-style="bordered"] td, body[data-table-style="bordered"] th { border: 1px solid var(--border); }
-body[data-table-style="minimal"] thead { border-bottom: 2px solid var(--border); }
-body[data-table-style="minimal"] td { border: none; }
-body[data-table-style="minimal"] tr:nth-child(even) td { background: transparent; }
+/* 13. Table style: settled on striped + bordered */
+td, th { border: 1px solid var(--border); }
 
 /* Print: hide settings panel */
 @media print {
@@ -857,32 +831,21 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-group">
 <div class="ds-group-title">Layout</div>
 
-<div class="ds-knob" data-knob="sidebar-position">
-<div class="ds-knob-label">Sidebar position</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="left">Left</button>
-<button class="ds-opt" data-value="right">Right</button>
-<button class="ds-opt" data-value="hidden">Hidden</button>
-</div>
-</div>
-
 <div class="ds-knob" data-knob="sidebar-width">
-<div class="ds-knob-label">Sidebar width</div>
+<div class="ds-knob-label">Left sidebar width</div>
 <div class="ds-options">
 <button class="ds-opt" data-value="200px">200</button>
 <button class="ds-opt" data-value="220px">220</button>
 <button class="ds-opt" data-value="240px">240</button>
-<button class="ds-opt" data-value="260px">260</button>
-<button class="ds-opt" data-value="280px">280</button>
-<button class="ds-opt" data-value="300px">300</button>
-<button class="ds-opt" data-value="320px">320</button>
 </div>
 </div>
 
-<div class="ds-knob" data-knob="toc-position">
-<div class="ds-knob-label">TOC position</div>
+<div class="ds-knob" data-knob="toc-width">
+<div class="ds-knob-label">Right sidebar width</div>
 <div class="ds-options">
-<button class="ds-opt" data-value="right">Right</button>
+<button class="ds-opt" data-value="180px">180</button>
+<button class="ds-opt" data-value="200px">200</button>
+<button class="ds-opt" data-value="220px">220</button>
 <button class="ds-opt" data-value="hidden">Hidden</button>
 </div>
 </div>
@@ -906,8 +869,9 @@ export function extractModule(sourcePath: string): string {
 <div class="ds-options">
 <button class="ds-opt" data-value="system">System</button>
 <button class="ds-opt" data-value="inter">Inter</button>
-<button class="ds-opt" data-value="serif">Serif</button>
-<button class="ds-opt" data-value="monospace">Mono</button>
+<button class="ds-opt" data-value="source-sans">Source Sans</button>
+<button class="ds-opt" data-value="dm-sans">DM Sans</button>
+<button class="ds-opt" data-value="ibm-plex">IBM Plex</button>
 </div>
 </div>
 
@@ -921,23 +885,6 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
-<div class="ds-knob" data-knob="heading-transform">
-<div class="ds-knob-label">Heading style</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="normal">Normal</button>
-<button class="ds-opt" data-value="uppercase">Uppercase</button>
-<button class="ds-opt" data-value="small-caps">Small Caps</button>
-</div>
-</div>
-
-<div class="ds-knob" data-knob="heading-separator">
-<div class="ds-knob-label">Heading separator</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="top">Top border</button>
-<button class="ds-opt" data-value="none">None</button>
-<button class="ds-opt" data-value="bottom">Bottom</button>
-</div>
-</div>
 </div>
 
 <div class="ds-group">
@@ -1018,15 +965,6 @@ export function extractModule(sourcePath: string): string {
 </div>
 </div>
 
-<div class="ds-knob" data-knob="table-style">
-<div class="ds-knob-label">Table style</div>
-<div class="ds-options">
-<button class="ds-opt" data-value="striped">Striped</button>
-<button class="ds-opt" data-value="plain">Plain</button>
-<button class="ds-opt" data-value="bordered">Bordered</button>
-<button class="ds-opt" data-value="minimal">Minimal</button>
-</div>
-</div>
 </div>
 
 <details class="ds-preview" id="ds-preview">
@@ -1411,24 +1349,23 @@ requestAnimationFrame(function() {
   var closeBtn = document.getElementById('ds-close');
   var exportBtn = document.getElementById('ds-export');
 
-  // 16 knob definitions: name, default, apply function
+  // Knob definitions: name, default, apply function
   var KNOBS = {
-    'sidebar-position': {
-      defaultValue: 'left',
-      apply: function(v) {
-        document.body.setAttribute('data-sidebar', v);
-      }
-    },
     'sidebar-width': {
       defaultValue: '240px',
       apply: function(v) {
         document.documentElement.style.setProperty('--sidebar-width', v);
       }
     },
-    'toc-position': {
-      defaultValue: 'right',
+    'toc-width': {
+      defaultValue: '200px',
       apply: function(v) {
-        document.body.setAttribute('data-toc', v);
+        if (v === 'hidden') {
+          document.body.setAttribute('data-toc', 'hidden');
+        } else {
+          document.body.removeAttribute('data-toc');
+          document.documentElement.style.setProperty('--toc-width', v);
+        }
       }
     },
     'content-width': {
@@ -1444,8 +1381,9 @@ requestAnimationFrame(function() {
         var fonts = {
           'system': '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           'inter': '"Inter", sans-serif',
-          'serif': 'Georgia, "Times New Roman", serif',
-          'monospace': '"JetBrains Mono", monospace'
+          'source-sans': '"Source Sans 3", sans-serif',
+          'dm-sans': '"DM Sans", sans-serif',
+          'ibm-plex': '"IBM Plex Sans", sans-serif'
         };
         document.documentElement.style.setProperty('--font-body', fonts[v] || fonts['inter']);
       }
@@ -1454,27 +1392,6 @@ requestAnimationFrame(function() {
       defaultValue: '16px',
       apply: function(v) {
         document.documentElement.style.fontSize = v;
-      }
-    },
-    'heading-transform': {
-      defaultValue: 'normal',
-      apply: function(v) {
-        document.body.classList.remove('heading-smallcaps');
-        if (v === 'small-caps') {
-          document.documentElement.style.setProperty('--heading-transform', 'none');
-          document.body.classList.add('heading-smallcaps');
-        } else if (v === 'uppercase') {
-          document.documentElement.style.setProperty('--heading-transform', 'uppercase');
-        } else {
-          document.documentElement.style.setProperty('--heading-transform', 'none');
-        }
-      }
-    },
-    'heading-separator': {
-      defaultValue: 'top',
-      apply: function(v) {
-        document.body.classList.remove('heading-sep-top', 'heading-sep-bottom', 'heading-sep-none');
-        document.body.classList.add('heading-sep-' + v);
       }
     },
     'density': {
@@ -1568,12 +1485,6 @@ requestAnimationFrame(function() {
       defaultValue: 'bordered',
       apply: function(v) {
         document.body.setAttribute('data-code-style', v);
-      }
-    },
-    'table-style': {
-      defaultValue: 'striped',
-      apply: function(v) {
-        document.body.setAttribute('data-table-style', v);
       }
     }
   };
@@ -1773,24 +1684,15 @@ requestAnimationFrame(function() {
       if (value === KNOBS[name].defaultValue) return;
 
       switch (name) {
-        case 'sidebar-position':
-          if (value === 'right') {
-            overrides.push('.layout { grid-template-columns: minmax(0, 1fr) 200px var(--sidebar-width, 240px); }');
-            overrides.push('.sidebar { order: 3; }');
-            overrides.push('.content { order: 1; }');
-            overrides.push('.toc { order: 2; }');
-          } else if (value === 'hidden') {
-            overrides.push('.sidebar { display: none; }');
-            overrides.push('.layout { grid-template-columns: minmax(0, 1fr) 200px; }');
-          }
-          break;
         case 'sidebar-width':
           rootVars.push('  --sidebar-width: ' + value + ';');
           break;
-        case 'toc-position':
+        case 'toc-width':
           if (value === 'hidden') {
             overrides.push('.toc { display: none; }');
             overrides.push('.layout { grid-template-columns: var(--sidebar-width, 240px) minmax(0, 1fr); }');
+          } else {
+            rootVars.push('  --toc-width: ' + value + ';');
           }
           break;
         case 'content-width':
@@ -1801,38 +1703,14 @@ requestAnimationFrame(function() {
           var fonts = {
             'system': '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             'inter': '"Inter", sans-serif',
-            'serif': 'Georgia, "Times New Roman", serif',
-            'monospace': '"JetBrains Mono", monospace'
+            'source-sans': '"Source Sans 3", sans-serif',
+            'dm-sans': '"DM Sans", sans-serif',
+            'ibm-plex': '"IBM Plex Sans", sans-serif'
           };
           rootVars.push('  --font-body: ' + (fonts[value] || fonts['inter']) + ';');
           break;
         case 'font-size':
           htmlStyle.push('  font-size: ' + value + ';');
-          break;
-        case 'heading-transform':
-          if (value === 'uppercase') {
-            rootVars.push('  --heading-transform: uppercase;');
-          } else if (value === 'small-caps') {
-            overrides.push('.content h1, .content h2, .content h3, .content h4, .content h5, .content h6 {');
-            overrides.push('  text-transform: none;');
-            overrides.push('  font-variant: small-caps;');
-            overrides.push('}');
-          }
-          break;
-        case 'heading-separator':
-          if (value === 'bottom') {
-            overrides.push('.content h2 {');
-            overrides.push('  border-top: none;');
-            overrides.push('  padding-top: 0;');
-            overrides.push('  border-bottom: 1px solid var(--border);');
-            overrides.push('  padding-bottom: 0.5rem;');
-            overrides.push('}');
-          } else if (value === 'none') {
-            overrides.push('.content h2 {');
-            overrides.push('  border-top: none;');
-            overrides.push('  padding-top: 0;');
-            overrides.push('}');
-          }
           break;
         case 'density':
           var scales = { 'compact': 0.8, 'normal': 1.0, 'relaxed': 1.2 };
@@ -1898,17 +1776,6 @@ requestAnimationFrame(function() {
           } else if (value === 'floating') {
             overrides.push('.code-block { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }');
             overrides.push('.code-block:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.16); }');
-          }
-          break;
-        case 'table-style':
-          if (value === 'plain') {
-            overrides.push('tr:nth-child(even) td { background: transparent; }');
-          } else if (value === 'bordered') {
-            overrides.push('td, th { border: 1px solid var(--border); }');
-          } else if (value === 'minimal') {
-            overrides.push('thead { border-bottom: 2px solid var(--border); }');
-            overrides.push('td { border: none; }');
-            overrides.push('tr:nth-child(even) td { background: transparent; }');
           }
           break;
       }
