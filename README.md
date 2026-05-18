@@ -70,7 +70,7 @@ Example -- show a JSON schema as a table:
 
 ## Custom directives
 
-Register custom directives in `selfdoc.json` under the `directives` key. Each entry maps a directive name to a Python script (relative to project root) that exports a `resolve(arg, config)` function returning a Markdown string.
+Register custom directives in `selfdoc.json` under the `directives` key. Each entry maps a directive name to a Python script (relative to project root) that exports a `resolve(attrs, config, body)` function returning a Markdown string.
 
 ```json
 {
@@ -83,8 +83,14 @@ Register custom directives in `selfdoc.json` under the `directives` key. Each en
 Script interface:
 
 ```python
-def resolve(arg: str, config: dict) -> str:
-    """Return Markdown string to replace the directive block."""
+def resolve(attrs: dict, config: dict, body: list) -> str:
+    """Return Markdown string to replace the directive block.
+
+    attrs  -- directive attributes as str->str dict (e.g. {"path": "v1.0.0"})
+    config -- the full selfdoc.json config dict
+    body   -- body lines from the directive block (empty list for one-liners)
+    """
+    version = attrs.get("path")
     ...
 ```
 
