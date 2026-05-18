@@ -1,6 +1,6 @@
 {
   "architecture.md": {
-    "content": "fc65c48b75f2d0f3f7aad3a402174473c1b64bec70db83bcd1b5b395b7be3629",
+    "content": "f307cce276356a4ba8a960e6ac309660e02eec387c78ccd8fab597ae16157656",
     "description": "464747f099e75e988a325270cbdbb36c693ea208de0b2d943ff24b5f5252392c"
   },
   "cli-build.md": {
@@ -40,11 +40,11 @@
     "description": "d30e4e9e4c1b60a8bc5b61174320ec4ea58b7d7f378bd60584d9ec2d0299e0cd"
   },
   "deployment.md": {
-    "content": "496d3905a141686a3e00caa8b133f3e3340e46598789202590a35c81d1059427",
+    "content": "4e00714202613ee638ad9d36e607d3f775b982e810028d0342f4a716a7618995",
     "description": "f9f30e6caa4ef2763b8df268eea782c65657392ebee25c2f806caaa8a1e9c269"
   },
   "directives.md": {
-    "content": "a4f4410da54796aa0054f1947929f55d7e42a4c73bb55053bda4d7ffcd7384eb",
+    "content": "d3aeef12366410c37d9559bff81e56f09ffa97193afe8cebd12b3fd6575bb0d6",
     "description": "85994821a561754f8f44d5f9726876a05998ae9ba9dff245d958f7fbbddd7dc2"
   },
   "gen-index.md": {
@@ -52,7 +52,7 @@
     "description": "bc0df72d8e79b08f319aad256d06b946ee719ef2bfc5beab3544f708f1725922"
   },
   "getting-started.md": {
-    "content": "1a220d72194fde13e4adbcf07ac15affabf61b67b130c45d9538a96cec398127",
+    "content": "3d2a62b0ae3841fc144fb6dafb4569169f93d5aa8c4af574c79c5ddb127f52c0",
     "description": "071f168a9369107d2eab946a88d6cee06f098c7fb97f1cdf7285356e961a2b75"
   },
   "index.md": {
