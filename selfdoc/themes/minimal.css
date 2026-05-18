@@ -415,7 +415,7 @@ body::before {
     align-self: start;
     max-height: calc(100vh - 80px);
     overflow-y: auto;
-    padding: 1rem 0.75rem;
+    padding: 1rem 1.5rem 1rem 0.75rem;
     font-size: 0.8125rem;
     border-left: 1px solid var(--border);
 }
@@ -521,13 +521,13 @@ a:hover {
 /* === Heading anchor links === */
 
 .heading-link {
-    opacity: 0.5;
+    opacity: 0;
     margin-left: -1.2em;
     padding-right: 0.3em;
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 400;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.15s ease, color 0.15s ease;
 }
 
 h1:hover .heading-link,
@@ -537,6 +537,7 @@ h4:hover .heading-link,
 h5:hover .heading-link,
 h6:hover .heading-link {
     opacity: 1;
+    color: var(--text-secondary);
 }
 
 .heading-link:hover {
@@ -984,6 +985,8 @@ blockquote p:last-child {
 .code-block {
     position: relative;
     margin-bottom: 1rem;
+    background: var(--code-bg);
+    border-radius: 4px;
     transition: box-shadow 0.15s ease;
 }
 
@@ -994,6 +997,7 @@ blockquote p:last-child {
 .code-block pre {
     margin-bottom: 0;
     scrollbar-width: thin;
+    background: var(--code-bg);
 }
 
 .code-label {
@@ -2015,7 +2019,7 @@ article details:not(.mobile-toc)[open] > summary::before {
 }
 
 article details:not(.mobile-toc) > :not(summary) {
-    padding: 0 1rem 0.75rem;
+    padding: 0.75rem 1rem 0.75rem;
 }
 
 /* === Admonition icons (Feature 9.2) === */
