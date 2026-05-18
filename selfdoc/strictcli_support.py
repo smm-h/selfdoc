@@ -504,11 +504,14 @@ def _render_command_page(cmd, app_name, nav_order):
     flags = cmd.get("flags", [])
     args = cmd.get("args", [])
 
-    cmd_desc = (
-        f"Reference for the {app_name} {name} command — "
-        f"usage, flags, arguments, and examples for the {name} subcommand "
-        f"of the {app_name} CLI."
-    )
+    if chelp and len(chelp) >= 50:
+        cmd_desc = chelp[:155]
+    else:
+        cmd_desc = (
+            f"Reference for the {app_name} {name} command — "
+            f"usage, flags, arguments, and examples for the {name} subcommand "
+            f"of the {app_name} CLI."
+        )
     lines = [
         "---",
         f"title: {app_name} {name}",
@@ -561,11 +564,14 @@ def _render_group_page(grp, app_name, nav_order):
     ghelp = grp.get("help", "")
     subcmds = grp.get("commands", [])
 
-    grp_desc = (
-        f"Reference for the {app_name} {gname} command group — "
-        f"subcommands, flags, arguments, and usage details "
-        f"for the {gname} group in the {app_name} CLI."
-    )
+    if ghelp and len(ghelp) >= 50:
+        grp_desc = ghelp[:155]
+    else:
+        grp_desc = (
+            f"Reference for the {app_name} {gname} command group — "
+            f"subcommands, flags, arguments, and usage details "
+            f"for the {gname} group in the {app_name} CLI."
+        )
     lines = [
         "---",
         f"title: {app_name} {gname}",
