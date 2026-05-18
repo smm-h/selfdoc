@@ -1078,6 +1078,14 @@ blockquote p:last-child {
     transition: opacity 0.15s ease;
 }
 
+.code-label svg {
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+    margin-right: 0.25rem;
+    display: inline;
+}
+
 .code-block:hover .code-label {
     opacity: 1;
 }

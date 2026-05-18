@@ -283,6 +283,14 @@ def load_config(dir_path="."):
     if not isinstance(page_progress, bool) or isinstance(page_progress, int) and not isinstance(page_progress, bool):
         raise ConfigError("'page_progress' must be a boolean")
 
+    valid_code_icon_modes = ("colorful", "monochrome", "none")
+    code_icons = raw.get("code_icons", "colorful")
+    if not isinstance(code_icons, str) or code_icons not in valid_code_icon_modes:
+        raise ConfigError(
+            f"invalid code_icons value {code_icons!r}; "
+            f"must be one of: {', '.join(valid_code_icon_modes)}"
+        )
+
     gen_data = raw.get("gen_data", None)
     if gen_data is not None:
         if not isinstance(gen_data, dict):
@@ -352,4 +360,5 @@ def load_config(dir_path="."):
         "run_button": run_button,
         "page_nav": page_nav,
         "page_progress": page_progress,
+        "code_icons": code_icons,
     }

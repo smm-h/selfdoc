@@ -11,6 +11,7 @@ import re
 import unicodedata
 from datetime import datetime
 
+from selfdoc.icons import get_icon
 from selfdoc.themes import get_theme, get_theme_meta
 from selfdoc.tokenizer import (
     tokenize as tokenize_md,
@@ -661,7 +662,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    auto_detect=None, theme_meta=None,
                    deploy_target=None, run_button=False,
                    line_numbers=False,
-                   page_nav=True, page_progress=True):
+                   page_nav=True, page_progress=True,
+                   code_icons="colorful"):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -744,6 +746,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             md_config["run_button"] = True
         if line_numbers:
             md_config["line_numbers"] = True
+        if code_icons != "colorful":
+            md_config["code_icons"] = code_icons
         body_html = md_to_html(
             md_content,
             metadata=page_meta,
@@ -1179,7 +1183,7 @@ def _render_definition_list(token):
 
 
 def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref,
-                  run_button=False, line_numbers=False):
+                  run_button=False, line_numbers=False, code_icons="colorful"):
     """Dispatch a single block token to its HTML renderer.
 
     Returns the HTML string, or None if the token produces no output
@@ -1196,6 +1200,7 @@ def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref,
         return _render_code_block(
             token.lang, token.lines, token.annotations, run=block_run,
             line_numbers=block_line_numbers, line_start=token.line_start,
+            code_icons=code_icons,
         )
 
     if isinstance(token, TokTable):
@@ -1254,12 +1259,14 @@ def md_to_html(text, metadata=None, config=None):
     first_h1_consumed_ref = [False]  # mutable ref: skip the first H1
     cfg_run_button = config.get("run_button", False) if config else False
     cfg_line_numbers = config.get("line_numbers", False) if config else False
+    cfg_code_icons = config.get("code_icons", "colorful") if config else "colorful"
 
     for idx, token in enumerate(tokens):
         rendered = _render_block(
             token, tokens, idx, seen_slugs, first_h1_consumed_ref,
             run_button=cfg_run_button,
             line_numbers=cfg_line_numbers,
+            code_icons=cfg_code_icons,
         )
         if rendered is not None:
             html_parts.append(rendered)
@@ -1306,12 +1313,12 @@ def md_to_html(text, metadata=None, config=None):
 
 
 def _render_code_block(lang, code_lines, annotations=None, run=False,
-                       line_numbers=False, line_start=1):
+                       line_numbers=False, line_start=1, code_icons="colorful"):
     """Render a single fenced code block to HTML.
 
     Handles diff highlighting (Feature 27), inline code annotations
     (Feature 32), build-time syntax highlighting via Pygments
-    (Wave 3 Phase 0), and optional line numbers.
+    (Wave 3 Phase 0), optional line numbers, and language icons.
     """
     if annotations is None:
         annotations = {}
@@ -1378,7 +1385,9 @@ def _render_code_block(lang, code_lines, annotations=None, run=False,
     ln_style = f' style="counter-reset:line-number {line_start - 1}"' if has_ln else ""
     if lang:
         escaped_lang = _escape_html(lang)
-        label = f'<div class="code-label">{escaped_lang}</div>'
+        icon_svg = get_icon(lang, code_icons) if code_icons != "none" else None
+        icon_html = icon_svg + " " if icon_svg else ""
+        label = f'<div class="code-label">{icon_html}{escaped_lang}</div>'
         return (
             f'<div class="code-block{ln_class}"{run_attr}>{label}'
             f'<pre tabindex="0" aria-label="Code: {escaped_lang}"{ln_attr}>'
@@ -1425,11 +1434,15 @@ def _group_code_tabs(html):
                 tabs = []
                 panels = []
                 for idx, block_html in enumerate(group):
-                    # Extract language from the code-label div
+                    # Extract language text from the code-label div.
+                    # The label may contain an SVG icon before the text,
+                    # so we match the last text node (after any SVG).
                     label_match = re.search(
-                        r'<div class="code-label">([^<]+)</div>', block_html
+                        r'<div class="code-label">(?:<svg[^>]*>.*?</svg>\s*)?([^<]+)</div>',
+                        block_html,
+                        re.DOTALL,
                     )
-                    lang = label_match.group(1) if label_match else f"Tab {idx + 1}"
+                    lang = label_match.group(1).strip() if label_match else f"Tab {idx + 1}"
                     lang_id = lang.lower().replace(" ", "-")
                     active = " active" if idx == 0 else ""
                     selected = "true" if idx == 0 else "false"

@@ -1074,6 +1074,7 @@ def build(dir_path=".", config=None):
         line_numbers=config.get("line_numbers", False),
         page_nav=config.get("page_nav", True),
         page_progress=config.get("page_progress", True),
+        code_icons=config.get("code_icons", "colorful"),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
