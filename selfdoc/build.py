@@ -1153,7 +1153,7 @@ def build(dir_path=".", config=None):
         description=config_description,
         feed_url=feed_url,
         critical_css=critical_css,
-        accent_color=theme_meta.get("accent_color", "#0969da"),
+        accent_color=theme_meta["accent_color"],
         theme_meta=theme_meta,
         deploy=config.get("deploy"),
     )
