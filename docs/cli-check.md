@@ -17,5 +17,4 @@ Check documentation coverage and consistency
 |------|-------|------|---------|-----|-------------|
 | `--ignore` |  | str |  |  | Comma-separated SEO codes to suppress (e.g., SEO007,SEO008) |
 | `--format` |  | str | text |  | Output format (default: text) |
-| `--warn-only` |  | bool |  |  | (deprecated, no-op) Warnings are now non-fatal by default |
 | `--no-commit` |  | bool |  |  | Skip auto-committing changed files |

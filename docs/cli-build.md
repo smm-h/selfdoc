@@ -15,5 +15,4 @@ Build the documentation site
 
 | Name | Short | Type | Default | Env | Description |
 |------|-------|------|---------|-----|-------------|
-| `--warn-only` |  | bool |  |  | (deprecated, no-op) Warnings are now non-fatal by default |
 | `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
