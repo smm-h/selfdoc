@@ -4926,7 +4926,10 @@ def test_api_entry_with_whitespace():
         "```python\ndef my_func(x): ...\n```\n\n"
         "Does something useful.\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html(
+        {"index.md": md}, project_name="Test",
+        auto_detect={"api_entries": True},
+    )
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
 
@@ -4939,7 +4942,10 @@ def test_api_entry_single_line_signature_wraps():
         "```python\ndef parse_directives(text): ...\n```\n\n"
         "Extract directives from text.\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html(
+        {"index.md": md}, project_name="Test",
+        auto_detect={"api_entries": True},
+    )
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
 
@@ -4999,7 +5005,10 @@ def test_api_entry_dotted_method_name_wraps():
         "```python\ndef load(path): ...\n```\n\n"
         "Load configuration from a file.\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html(
+        {"index.md": md}, project_name="Test",
+        auto_detect={"api_entries": True},
+    )
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
 

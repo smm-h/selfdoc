@@ -1282,7 +1282,7 @@ def md_to_html(text, metadata=None, config=None):
     # Post-process: wrap h3/h4 + code block + description in API entry
     # cards (Feature 48).  Skipped when opted out via frontmatter
     # (auto_api: false) or global config (auto_detect.api_entries: false).
-    auto_api_global = auto_detect.get("api_entries", True) if auto_detect else True
+    auto_api_global = auto_detect.get("api_entries", False) if auto_detect else False
     auto_api_page = metadata.get("auto_api") if metadata else None
     run_api = auto_api_page if auto_api_page is not None else auto_api_global
     if run_api:
