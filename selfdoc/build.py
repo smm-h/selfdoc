@@ -1080,7 +1080,9 @@ def build(dir_path=".", config=None):
             html_files[html_path], docs_dir, md_path,
         )
 
-    # Ensure output directory exists
+    # Clean output directory to prevent stale files from previous builds
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     written = {}
