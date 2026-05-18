@@ -1,14 +1,10 @@
 """Tests for the LanguageExtractor protocol, registry, and detection."""
 
-import os
-
-import pytest
-
 from selfdoc.extractors import EXTRACTORS, detect_language
-from selfdoc.extractors.go import GoExtractor, resolve_go
+from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
-from selfdoc.extractors.python import PythonExtractor, resolve_python
-from selfdoc.extractors.typescript import TypeScriptExtractor, resolve_typescript
+from selfdoc.extractors.python import PythonExtractor
+from selfdoc.extractors.typescript import TypeScriptExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -273,63 +269,3 @@ class TestDetectLanguage:
         (tmp_path / "go.mod").touch()
         (tmp_path / "tsconfig.json").touch()
         assert detect_language(str(tmp_path)) == "go"
-
-
-# ---------------------------------------------------------------------------
-# Backward-compat wrappers
-# ---------------------------------------------------------------------------
-
-
-class TestBackwardCompat:
-    @pytest.fixture()
-    def python_project(self, tmp_path):
-        src_dir = tmp_path / "mylib"
-        src_dir.mkdir()
-        (src_dir / "core.py").write_text(
-            '"""Core module."""\n\ndef greet(): pass\n',
-            encoding="utf-8",
-        )
-        return tmp_path
-
-    @pytest.fixture()
-    def go_project(self, tmp_path):
-        pkg_dir = tmp_path / "pkg"
-        pkg_dir.mkdir()
-        (pkg_dir / "main.go").write_text(
-            "// Package pkg does things.\n"
-            "package pkg\n\n"
-            "// Hello says hi.\n"
-            "func Hello() {}\n",
-            encoding="utf-8",
-        )
-        return tmp_path
-
-    @pytest.fixture()
-    def ts_project(self, tmp_path):
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "core.ts").write_text(
-            "export function hello(): void {}\n",
-            encoding="utf-8",
-        )
-        return tmp_path
-
-    def test_resolve_python_still_works(self, python_project):
-        result = resolve_python(
-            "module", "core", [], ["mylib/"], str(python_project)
-        )
-        assert "## core" in result
-        assert "Core module." in result
-
-    def test_resolve_go_still_works(self, go_project):
-        result = resolve_go(
-            "module", "pkg", [], [], str(go_project)
-        )
-        assert "## pkg" in result
-        assert "Package pkg does things." in result
-
-    def test_resolve_typescript_still_works(self, ts_project):
-        result = resolve_typescript(
-            "module", "core.ts", [], ["src/"], str(ts_project)
-        )
-        assert "### hello" in result

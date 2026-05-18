@@ -96,42 +96,6 @@ class PythonExtractor(BaseExtractor):
                     symbols.append(node.name)
         return symbols
 
-
-def resolve_python(name, arg, body, source_paths, base_dir):
-    """Dispatch a directive to the appropriate Python extraction handler.
-
-    Backward-compat wrapper: accepts old directive names (module, test,
-    schema, cli, config) and old positional arg string. New code should
-    use PythonExtractor.extract() with attrs dict instead.
-
-    Args:
-        name: Directive name (old or new).
-        arg: Directive argument (path, module name, etc.).
-        body: Body lines of the directive block.
-        source_paths: List of source directories from selfdoc.json.
-        base_dir: Project root directory.
-
-    Returns:
-        Markdown string with the extracted content.
-    """
-    from selfdoc.catalog import DIRECTIVE_NAME_MAPPING
-
-    # Remap old directive names to new canonical names
-    name = DIRECTIVE_NAME_MAPPING.get(name, name)
-
-    handlers = {
-        "ref": _handle_module,
-        "code-test": _handle_test,
-        "table-schema": _handle_schema,
-        "code-help": _handle_cli,
-        "table-config": _handle_config,
-    }
-    handler = handlers.get(name)
-    if handler is None:
-        return format_error(f"unknown directive '{name}' for Python extractor")
-    return handler(arg, body, source_paths, base_dir)
-
-
 # ---------------------------------------------------------------------------
 # :::module
 # ---------------------------------------------------------------------------
