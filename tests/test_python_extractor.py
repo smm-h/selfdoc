@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from selfdoc.extractors.python import resolve_python
+from selfdoc.extractors.python import PythonExtractor
 
 
 @pytest.fixture()
@@ -82,24 +82,24 @@ def source_paths():
 
 class TestModuleDirective:
     def test_extracts_module_docstring(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         assert "## core" in result
         assert "Core module for mylib." in result
         assert "Provides essential utilities." in result
 
     def test_extracts_public_function(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         assert "### greet" in result
         assert "def greet(name: str, loud: bool=False) -> str" in result
         assert "Say hello to someone." in result
 
     def test_extracts_class(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         assert "### Processor" in result
         assert "Processes items in a pipeline." in result
@@ -107,14 +107,14 @@ class TestModuleDirective:
         assert "Run the pipeline on items." in result
 
     def test_skips_private_without_docstring(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         assert "_private_helper" not in result
 
     def test_includes_private_with_docstring(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         assert "_documented_private" in result
         assert "A private function that has a docstring" in result
@@ -122,8 +122,8 @@ class TestModuleDirective:
     def test_skips_private_method_without_docstring(
         self, sample_project, source_paths
     ):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         # _transform has no docstring -- should not appear
         assert "_transform" not in result or "_special_transform" in result
@@ -136,23 +136,23 @@ class TestModuleDirective:
     def test_includes_private_method_with_docstring(
         self, sample_project, source_paths
     ):
-        result = resolve_python(
-            "module", "core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
         assert "_special_transform" in result
         assert "Internal but documented transform." in result
 
     def test_missing_module_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "nonexistent.module", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "nonexistent.module"}, [], source_paths, str(sample_project)
         )
         assert "not found" in result
         assert "nonexistent.module" in result
 
     def test_dotted_path_resolution(self, sample_project, source_paths):
         """mylib.core should resolve to mylib/core.py."""
-        result = resolve_python(
-            "module", "mylib.core", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "mylib.core"}, [], source_paths, str(sample_project)
         )
         # When source_paths is ["mylib/"], "mylib.core" would look for
         # mylib/mylib/core.py which won't exist. But direct resolution
@@ -161,8 +161,8 @@ class TestModuleDirective:
         assert "Core module for mylib." in result
 
     def test_empty_arg_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "module", "", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {}, [], source_paths, str(sample_project)
         )
         assert "requires" in result
 
@@ -209,9 +209,9 @@ class TestProcessor:
         return sample_project
 
     def test_extract_specific_function(self, test_file, source_paths):
-        result = resolve_python(
-            "test",
-            "tests/test_core.py test_greet_basic",
+        result = PythonExtractor().extract(
+            "code-test",
+            {"path": "tests/test_core.py", "target": "test_greet_basic"},
             [],
             source_paths,
             str(test_file),
@@ -221,9 +221,9 @@ class TestProcessor:
         assert 'greet("World")' in result
 
     def test_extract_specific_class(self, test_file, source_paths):
-        result = resolve_python(
-            "test",
-            "tests/test_core.py TestProcessor",
+        result = PythonExtractor().extract(
+            "code-test",
+            {"path": "tests/test_core.py", "target": "TestProcessor"},
             [],
             source_paths,
             str(test_file),
@@ -233,8 +233,8 @@ class TestProcessor:
         assert "test_run_empty" in result
 
     def test_whole_file(self, test_file, source_paths):
-        result = resolve_python(
-            "test", "tests/test_core.py", [], source_paths, str(test_file)
+        result = PythonExtractor().extract(
+            "code-test", {"path": "tests/test_core.py"}, [], source_paths, str(test_file)
         )
         assert "```python" in result
         assert "test_greet_basic" in result
@@ -242,9 +242,9 @@ class TestProcessor:
         assert "TestProcessor" in result
 
     def test_missing_file_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "test",
-            "tests/nonexistent.py",
+        result = PythonExtractor().extract(
+            "code-test",
+            {"path": "tests/nonexistent.py"},
             [],
             source_paths,
             str(sample_project),
@@ -252,9 +252,9 @@ class TestProcessor:
         assert "not found" in result
 
     def test_target_not_found_error(self, test_file, source_paths):
-        result = resolve_python(
-            "test",
-            "tests/test_core.py nonexistent_test",
+        result = PythonExtractor().extract(
+            "code-test",
+            {"path": "tests/test_core.py", "target": "nonexistent_test"},
             [],
             source_paths,
             str(test_file),
@@ -278,8 +278,8 @@ class TestSchemaDirective:
                 f,
             )
 
-        result = resolve_python(
-            "schema", "schema.json", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "table-schema", {"path": "schema.json"}, [], source_paths, str(sample_project)
         )
         assert "| Key | Type | Value |" in result
         assert "| --- | --- | --- |" in result
@@ -310,9 +310,9 @@ class Config:
     debug: bool = False  # Enable debug mode
 ''')
 
-        result = resolve_python(
-            "schema",
-            "models Config",
+        result = PythonExtractor().extract(
+            "table-schema",
+            {"path": "models", "target": "Config"},
             [],
             source_paths,
             str(sample_project),
@@ -326,15 +326,15 @@ class Config:
         assert "`int`" in result
 
     def test_missing_json_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "schema", "missing.json", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "table-schema", {"path": "missing.json"}, [], source_paths, str(sample_project)
         )
         assert "not found" in result
 
     def test_missing_class_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "schema",
-            "core NoSuchClass",
+        result = PythonExtractor().extract(
+            "table-schema",
+            {"path": "core", "target": "NoSuchClass"},
             [],
             source_paths,
             str(sample_project),
@@ -364,16 +364,16 @@ Commands:
 """
 ''')
 
-        result = resolve_python(
-            "cli", "cli", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "code-help", {"path": "cli"}, [], source_paths, str(sample_project)
         )
         assert "Command-line interface for mylib." in result
         assert "```" in result
         assert "Usage: mylib [options] <command>" in result
 
     def test_missing_module_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "cli", "nonexistent", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "code-help", {"path": "nonexistent"}, [], source_paths, str(sample_project)
         )
         assert "not found" in result
 
@@ -390,8 +390,8 @@ class TestConfigDirective:
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump({"host": "localhost", "port": 3000, "ssl": False}, f)
 
-        result = resolve_python(
-            "config", "config.json", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "table-config", {"path": "config.json"}, [], source_paths, str(sample_project)
         )
         assert "| Key | Type | Value |" in result
         assert "`host`" in result
@@ -407,16 +407,16 @@ class TestConfigDirective:
         with open(config_path, "w", encoding="utf-8") as f:
             f.write('[server]\nhost = "localhost"\nport = 3000\n')
 
-        result = resolve_python(
-            "config", "config.toml", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "table-config", {"path": "config.toml"}, [], source_paths, str(sample_project)
         )
         assert "| Key | Type | Value |" in result
         assert "`server.host`" in result or "`host`" in result
         assert "string" in result
 
     def test_missing_file_error(self, sample_project, source_paths):
-        result = resolve_python(
-            "config", "missing.json", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "table-config", {"path": "missing.json"}, [], source_paths, str(sample_project)
         )
         assert "not found" in result
 
@@ -426,8 +426,8 @@ class TestConfigDirective:
         with open(ini_path, "w", encoding="utf-8") as f:
             f.write("[section]\nkey = value\n")
 
-        result = resolve_python(
-            "config", "app.ini", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "table-config", {"path": "app.ini"}, [], source_paths, str(sample_project)
         )
         assert "```" in result
         assert "[section]" in result
@@ -441,8 +441,8 @@ class TestConfigDirective:
 class TestEdgeCases:
     def test_unknown_directive(self, sample_project, source_paths):
         """Unknown directive name should produce an error message."""
-        result = resolve_python(
-            "unknown", "arg", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "unknown", {"path": "arg"}, [], source_paths, str(sample_project)
         )
         assert "unknown directive" in result
 
@@ -452,7 +452,7 @@ class TestEdgeCases:
         with open(bad_py, "w", encoding="utf-8") as f:
             f.write("def broken(\n")  # Syntax error
 
-        result = resolve_python(
-            "module", "bad", [], source_paths, str(sample_project)
+        result = PythonExtractor().extract(
+            "ref", {"path": "bad"}, [], source_paths, str(sample_project)
         )
         assert "syntax error" in result

@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from selfdoc.extractors.go import resolve_go
+from selfdoc.extractors.go import GoExtractor
 
 
 @pytest.fixture()
@@ -188,81 +188,81 @@ def source_paths():
 
 class TestModuleDirective:
     def test_extracts_package_doc(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "## internal/commit" in result
         assert "Package commit implements the two-phase commit pipeline." in result
         assert "Phase A is parallel-safe" in result
 
     def test_extracts_exported_func(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "### NewPipeline" in result
         assert "func NewPipeline(dir string) *Pipeline" in result
         assert "creates a new Pipeline with defaults" in result
 
     def test_extracts_exported_type(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "### CommitError" in result
         assert "type CommitError struct" in result
         assert "carries a structured exit code" in result
 
     def test_extracts_exported_const(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "### ExitCASExhausted" in result
         assert "Exit codes for commit-specific errors." in result
 
     def test_extracts_single_const(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "### DefaultTimeout" in result
         assert "const DefaultTimeout = 30" in result
 
     def test_extracts_method(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "### Pipeline.Execute" in result
         assert "runs the full two-phase commit pipeline" in result
 
     def test_skips_unexported(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "unexportedHelper" not in result
 
     def test_excludes_test_files(self, go_project, source_paths):
         """_test.go files should not be included in module extraction."""
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "TestNewPipeline" not in result
         assert "TestExecute" not in result
 
     def test_multi_file_types(self, go_project, source_paths):
         """Types from types.go should also appear."""
-        result = resolve_go(
-            "module", "internal/commit", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "internal/commit"}, [], source_paths, str(go_project)
         )
         assert "### Request" in result
         assert "### Result" in result
 
     def test_missing_package_error(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "nonexistent/pkg", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {"path": "nonexistent/pkg"}, [], source_paths, str(go_project)
         )
         assert "not found" in result
 
     def test_empty_arg_error(self, go_project, source_paths):
-        result = resolve_go(
-            "module", "", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "ref", {}, [], source_paths, str(go_project)
         )
         assert "requires" in result
 
@@ -274,9 +274,9 @@ class TestModuleDirective:
 
 class TestTestDirective:
     def test_extract_whole_file(self, go_project, source_paths):
-        result = resolve_go(
-            "test",
-            "internal/commit/commit_test.go",
+        result = GoExtractor().extract(
+            "code-test",
+            {"path": "internal/commit/commit_test.go"},
             [],
             source_paths,
             str(go_project),
@@ -286,9 +286,9 @@ class TestTestDirective:
         assert "TestExecute" in result
 
     def test_extract_specific_function(self, go_project, source_paths):
-        result = resolve_go(
-            "test",
-            "internal/commit/commit_test.go TestNewPipeline",
+        result = GoExtractor().extract(
+            "code-test",
+            {"path": "internal/commit/commit_test.go", "target": "TestNewPipeline"},
             [],
             source_paths,
             str(go_project),
@@ -300,9 +300,9 @@ class TestTestDirective:
         assert "TestExecute" not in result
 
     def test_includes_doc_comment(self, go_project, source_paths):
-        result = resolve_go(
-            "test",
-            "internal/commit/commit_test.go TestNewPipeline",
+        result = GoExtractor().extract(
+            "code-test",
+            {"path": "internal/commit/commit_test.go", "target": "TestNewPipeline"},
             [],
             source_paths,
             str(go_project),
@@ -310,9 +310,9 @@ class TestTestDirective:
         assert "verifies default construction" in result
 
     def test_missing_file_error(self, go_project, source_paths):
-        result = resolve_go(
-            "test",
-            "nonexistent_test.go",
+        result = GoExtractor().extract(
+            "code-test",
+            {"path": "nonexistent_test.go"},
             [],
             source_paths,
             str(go_project),
@@ -320,9 +320,9 @@ class TestTestDirective:
         assert "not found" in result
 
     def test_target_not_found_error(self, go_project, source_paths):
-        result = resolve_go(
-            "test",
-            "internal/commit/commit_test.go NonExistentTest",
+        result = GoExtractor().extract(
+            "code-test",
+            {"path": "internal/commit/commit_test.go", "target": "NonExistentTest"},
             [],
             source_paths,
             str(go_project),
@@ -338,9 +338,9 @@ class TestTestDirective:
 
 class TestSchemaDirective:
     def test_extracts_struct_fields(self, go_project, source_paths):
-        result = resolve_go(
-            "schema",
-            "internal/models/models.go Config",
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "internal/models/models.go", "target": "Config"},
             [],
             source_paths,
             str(go_project),
@@ -352,9 +352,9 @@ class TestSchemaDirective:
         assert "Server hostname" in result
 
     def test_extracts_tags(self, go_project, source_paths):
-        result = resolve_go(
-            "schema",
-            "internal/models/models.go Config",
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "internal/models/models.go", "target": "Config"},
             [],
             source_paths,
             str(go_project),
@@ -363,9 +363,9 @@ class TestSchemaDirective:
         assert "json:" in result
 
     def test_extracts_all_structs_when_no_name(self, go_project, source_paths):
-        result = resolve_go(
-            "schema",
-            "internal/models/models.go",
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "internal/models/models.go"},
             [],
             source_paths,
             str(go_project),
@@ -376,9 +376,9 @@ class TestSchemaDirective:
         assert "`Message`" in result
 
     def test_missing_struct_error(self, go_project, source_paths):
-        result = resolve_go(
-            "schema",
-            "internal/models/models.go NonExistent",
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "internal/models/models.go", "target": "NonExistent"},
             [],
             source_paths,
             str(go_project),
@@ -387,9 +387,9 @@ class TestSchemaDirective:
         assert "NonExistent" in result
 
     def test_missing_file_error(self, go_project, source_paths):
-        result = resolve_go(
-            "schema",
-            "nonexistent.go SomeType",
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "nonexistent.go", "target": "SomeType"},
             [],
             source_paths,
             str(go_project),
@@ -398,9 +398,9 @@ class TestSchemaDirective:
 
     def test_struct_with_json_tags(self, go_project, source_paths):
         """Result struct from types.go should have json tags extracted."""
-        result = resolve_go(
-            "schema",
-            "internal/commit/types.go Result",
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "internal/commit/types.go", "target": "Result"},
             [],
             source_paths,
             str(go_project),
@@ -417,9 +417,9 @@ class TestSchemaDirective:
 
 class TestCliDirective:
     def test_extracts_usage_function(self, go_project, source_paths):
-        result = resolve_go(
-            "cli",
-            "cmd/myapp/main.go",
+        result = GoExtractor().extract(
+            "code-help",
+            {"path": "cmd/myapp/main.go"},
             [],
             source_paths,
             str(go_project),
@@ -429,9 +429,9 @@ class TestCliDirective:
         assert "```" in result
 
     def test_extracts_flag_definitions(self, go_project, source_paths):
-        result = resolve_go(
-            "cli",
-            "cmd/myapp/main.go",
+        result = GoExtractor().extract(
+            "code-help",
+            {"path": "cmd/myapp/main.go"},
             [],
             source_paths,
             str(go_project),
@@ -443,9 +443,9 @@ class TestCliDirective:
         assert "Output file path" in result
 
     def test_missing_file_error(self, go_project, source_paths):
-        result = resolve_go(
-            "cli",
-            "nonexistent.go",
+        result = GoExtractor().extract(
+            "code-help",
+            {"path": "nonexistent.go"},
             [],
             source_paths,
             str(go_project),
@@ -460,9 +460,9 @@ class TestCliDirective:
 
 class TestConfigDirective:
     def test_json_config_table(self, go_project, source_paths):
-        result = resolve_go(
-            "config",
-            "config.json",
+        result = GoExtractor().extract(
+            "table-config",
+            {"path": "config.json"},
             [],
             source_paths,
             str(go_project),
@@ -474,9 +474,9 @@ class TestConfigDirective:
         assert "integer" in result
 
     def test_missing_file_error(self, go_project, source_paths):
-        result = resolve_go(
-            "config",
-            "missing.json",
+        result = GoExtractor().extract(
+            "table-config",
+            {"path": "missing.json"},
             [],
             source_paths,
             str(go_project),
@@ -491,31 +491,31 @@ class TestConfigDirective:
 
 class TestEdgeCases:
     def test_unknown_directive(self, go_project, source_paths):
-        result = resolve_go(
-            "unknown", "arg", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "unknown", {"path": "arg"}, [], source_paths, str(go_project)
         )
         assert "unknown directive" in result
 
     def test_empty_arg_for_test(self, go_project, source_paths):
-        result = resolve_go(
-            "test", "", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "code-test", {}, [], source_paths, str(go_project)
         )
         assert "requires" in result
 
     def test_empty_arg_for_schema(self, go_project, source_paths):
-        result = resolve_go(
-            "schema", "", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "table-schema", {}, [], source_paths, str(go_project)
         )
         assert "requires" in result
 
     def test_empty_arg_for_cli(self, go_project, source_paths):
-        result = resolve_go(
-            "cli", "", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "code-help", {}, [], source_paths, str(go_project)
         )
         assert "requires" in result
 
     def test_empty_arg_for_config(self, go_project, source_paths):
-        result = resolve_go(
-            "config", "", [], source_paths, str(go_project)
+        result = GoExtractor().extract(
+            "table-config", {}, [], source_paths, str(go_project)
         )
         assert "requires" in result
