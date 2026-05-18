@@ -1071,6 +1071,7 @@ def build(dir_path=".", config=None):
         theme_meta=theme_meta,
         deploy_target=(config.get("deploy") or {}).get("provider"),
         run_button=config.get("run_button", False),
+        line_numbers=config.get("line_numbers", False),
         page_nav=config.get("page_nav", True),
         page_progress=config.get("page_progress", True),
     )

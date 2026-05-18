@@ -1567,6 +1567,32 @@ hr {
     user-select: none;
 }
 
+/* === Line numbers === */
+
+.has-line-numbers code {
+    counter-reset: line-number 0;
+}
+
+.has-line-numbers .code-line {
+    display: block;
+}
+
+.has-line-numbers .code-line::before {
+    counter-increment: line-number;
+    content: counter(line-number);
+    display: inline-block;
+    width: 3ch;
+    margin-right: 1.25ch;
+    text-align: right;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    font-family: var(--font-mono);
+    font-size: inherit;
+    user-select: none;
+    position: sticky;
+    left: 0;
+}
+
 /* === Mobile TOC disclosure (Feature 26) === */
 
 .mobile-toc {

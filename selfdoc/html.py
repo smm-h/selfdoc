@@ -660,6 +660,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    branding=None, config_description=None,
                    auto_detect=None, theme_meta=None,
                    deploy_target=None, run_button=False,
+                   line_numbers=False,
                    page_nav=True, page_progress=True):
     """Convert Markdown files to static HTML.
 
@@ -741,6 +742,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             md_config["auto_detect"] = auto_detect
         if run_button:
             md_config["run_button"] = True
+        if line_numbers:
+            md_config["line_numbers"] = True
         body_html = md_to_html(
             md_content,
             metadata=page_meta,
@@ -1176,7 +1179,7 @@ def _render_definition_list(token):
 
 
 def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref,
-                  run_button=False):
+                  run_button=False, line_numbers=False):
     """Dispatch a single block token to its HTML renderer.
 
     Returns the HTML string, or None if the token produces no output
@@ -1188,8 +1191,11 @@ def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref,
     if isinstance(token, TokCodeBlock):
         # Per-block run annotation or global run_button config
         block_run = token.run or run_button
+        # Per-block line numbers annotation or global line_numbers config
+        block_line_numbers = token.line_numbers or line_numbers
         return _render_code_block(
             token.lang, token.lines, token.annotations, run=block_run,
+            line_numbers=block_line_numbers, line_start=token.line_start,
         )
 
     if isinstance(token, TokTable):
@@ -1247,11 +1253,13 @@ def md_to_html(text, metadata=None, config=None):
     seen_slugs = {}  # slug -> count, for deduplicating heading IDs
     first_h1_consumed_ref = [False]  # mutable ref: skip the first H1
     cfg_run_button = config.get("run_button", False) if config else False
+    cfg_line_numbers = config.get("line_numbers", False) if config else False
 
     for idx, token in enumerate(tokens):
         rendered = _render_block(
             token, tokens, idx, seen_slugs, first_h1_consumed_ref,
             run_button=cfg_run_button,
+            line_numbers=cfg_line_numbers,
         )
         if rendered is not None:
             html_parts.append(rendered)
@@ -1297,12 +1305,13 @@ def md_to_html(text, metadata=None, config=None):
     return result
 
 
-def _render_code_block(lang, code_lines, annotations=None, run=False):
+def _render_code_block(lang, code_lines, annotations=None, run=False,
+                       line_numbers=False, line_start=1):
     """Render a single fenced code block to HTML.
 
     Handles diff highlighting (Feature 27), inline code annotations
-    (Feature 32), and build-time syntax highlighting via Pygments
-    (Wave 3 Phase 0).
+    (Feature 32), build-time syntax highlighting via Pygments
+    (Wave 3 Phase 0), and optional line numbers.
     """
     if annotations is None:
         annotations = {}
@@ -1352,18 +1361,34 @@ def _render_code_block(lang, code_lines, annotations=None, run=False):
                 f"# [{_escape_html(num)}]", badge
             )
 
+    # Wrap each line in a <span class="code-line"> for line numbers
+    if line_numbers and not is_diff:
+        wrapped_lines = []
+        for raw_line in code_content.split("\n"):
+            wrapped_lines.append(f'<span class="code-line">{raw_line}</span>')
+        code_content = "\n".join(wrapped_lines)
+
     run_attr = ' data-run="true"' if run else ""
+    has_ln = line_numbers and not is_diff
+    ln_class = " has-line-numbers" if has_ln else ""
+    ln_attr = f' data-line-start="{line_start}"' if has_ln else ""
+    # Inline counter-reset so line numbering starts at the right value.
+    # counter-reset sets the initial value; counter-increment fires
+    # before display, so reset to (line_start - 1).
+    ln_style = f' style="counter-reset:line-number {line_start - 1}"' if has_ln else ""
     if lang:
         escaped_lang = _escape_html(lang)
         label = f'<div class="code-label">{escaped_lang}</div>'
         return (
-            f'<div class="code-block"{run_attr}>{label}'
-            f'<pre tabindex="0" aria-label="Code: {escaped_lang}"><code class="language-{escaped_lang}">'
+            f'<div class="code-block{ln_class}"{run_attr}>{label}'
+            f'<pre tabindex="0" aria-label="Code: {escaped_lang}"{ln_attr}>'
+            f'<code class="language-{escaped_lang}"{ln_style}>'
             f"{code_content}</code></pre></div>"
         )
     return (
-        f'<div class="code-block"{run_attr}>'
-        f'<pre tabindex="0" aria-label="Code block"><code>{code_content}</code></pre>'
+        f'<div class="code-block{ln_class}"{run_attr}>'
+        f'<pre tabindex="0" aria-label="Code block"{ln_attr}>'
+        f'<code{ln_style}>{code_content}</code></pre>'
         f'</div>'
     )
 

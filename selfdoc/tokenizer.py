@@ -26,6 +26,8 @@ class CodeBlock:
     start: int
     end: int
     run: bool = False
+    line_numbers: bool = False
+    line_start: int = 1
 
 
 @dataclass(eq=True, slots=True)
@@ -156,6 +158,18 @@ def tokenize(content: str) -> list[Block]:
             info_parts = info_string.split()
             lang = info_parts[0] if info_parts else ""
             run_flag = "run" in info_parts[1:]
+            # Parse line numbers annotation: "lines" or "lines=N"
+            ln_flag = False
+            ln_start = 1
+            for part in info_parts[1:]:
+                if part == "lines":
+                    ln_flag = True
+                elif part.startswith("lines="):
+                    ln_flag = True
+                    try:
+                        ln_start = int(part[6:])
+                    except ValueError:
+                        pass
             code_lines: list[str] = []
             i += 1
             while i < n and not lines[i].startswith("```"):
@@ -180,6 +194,8 @@ def tokenize(content: str) -> list[Block]:
                 start=start + 1,
                 end=i,
                 run=run_flag,
+                line_numbers=ln_flag,
+                line_start=ln_start,
             ))
             continue
 

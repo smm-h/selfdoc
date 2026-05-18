@@ -267,6 +267,10 @@ def load_config(dir_path="."):
                         f"'gen.exclude[{i}]' must be a string"
                     )
 
+    line_numbers = raw.get("line_numbers", False)
+    if not isinstance(line_numbers, bool) or isinstance(line_numbers, int) and not isinstance(line_numbers, bool):
+        raise ConfigError("'line_numbers' must be a boolean")
+
     run_button = raw.get("run_button", False)
     if not isinstance(run_button, bool) or isinstance(run_button, int) and not isinstance(run_button, bool):
         raise ConfigError("'run_button' must be a boolean")
@@ -344,6 +348,7 @@ def load_config(dir_path="."):
         "auto_detect": auto_detect,
         "gen": gen,
         "gen_data": gen_data,
+        "line_numbers": line_numbers,
         "run_button": run_button,
         "page_nav": page_nav,
         "page_progress": page_progress,
