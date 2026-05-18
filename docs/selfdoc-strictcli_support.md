@@ -1,6 +1,6 @@
 ---
 title: selfdoc.strictcli_support
-description: "API reference for the selfdoc.strictcli_support module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Detect strictcli usage, extract CLI structure (apps, commands, groups, flags, args) via AST, and generate Markdown CLI reference pages with preservation of handwritten frontmatter descriptions."
 generated: true
 nav_group: "API Reference"
 nav_order: 17
