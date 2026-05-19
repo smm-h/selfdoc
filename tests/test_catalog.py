@@ -102,6 +102,11 @@ EXPECTED_CORE_NAMES = {
     "list-tree",
     "table-dep",
     "list-features",
+    "list-modules",
+    "table-commands",
+    "table-directives",
+    "table-config-schema",
+    "var",
 }
 
 

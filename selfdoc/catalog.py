@@ -107,6 +107,34 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         required_attrs=["path"],
         example=':::list-features path="src/"',
     ),
+    "list-modules": DirectiveSpec(
+        description="List source modules with file paths and docstring summaries",
+        category="content",
+        required_attrs=["path"],
+        example=':-: list-modules path="selfdoc/"',
+    ),
+    "table-commands": DirectiveSpec(
+        description="CLI command summary table from strictcli structure",
+        category="content",
+        required_attrs=["path"],
+        example=':-: table-commands path="selfdoc/"',
+    ),
+    "table-directives": DirectiveSpec(
+        description="Table of all core built-in directives",
+        category="content",
+        example=':-: table-directives',
+    ),
+    "table-config-schema": DirectiveSpec(
+        description="Configuration field reference table from schema",
+        category="content",
+        example=':-: table-config-schema',
+    ),
+    "var": DirectiveSpec(
+        description="Interpolate project metadata value",
+        category="content",
+        required_attrs=["key"],
+        example=':-: var key="project.name"',
+    ),
 }
 
 # -- Future directives (declared, not yet implemented) ------------------------

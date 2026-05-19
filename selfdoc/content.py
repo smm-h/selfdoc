@@ -294,6 +294,8 @@ CONTENT_DIRECTIVES: set[str] = {
     "callout-note", "callout-warning", "callout-tip",
     "callout-danger", "callout-important", "list-glossary",
     "list-tree", "table-dep", "list-features",
+    "list-modules", "table-commands", "table-directives",
+    "table-config-schema", "var",
 }
 
 
