@@ -20,6 +20,7 @@
     "catalog": "scripts/catalog-directive.py",
     "config-schema": "scripts/config-schema-directive.py"
   },
+  "root_files": ["docs/_CLAUDE.md", "docs/_README.md"],
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "selfdoc"
