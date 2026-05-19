@@ -1061,3 +1061,34 @@ def test_root_files_invalid_item(config_dir):
     })
     with pytest.raises(ConfigError):
         load_config(str(config_dir))
+
+
+# -- cross-project config validation --
+
+_CROSS_PROJECT_CONFIGS = [
+    "/home/m/Projects/claudestream/selfdoc.json",
+    "/home/m/Projects/claudewheel/selfdoc.json",
+    "/home/m/Projects/codehome/selfdoc.json",
+    "/home/m/Projects/go-toml-edit/selfdoc.json",
+    "/home/m/Projects/howmuchleft/selfdoc.json",
+    "/home/m/Projects/migrable/selfdoc.json",
+    "/home/m/Projects/predraw/selfdoc.json",
+    "/home/m/Projects/rlsbl/selfdoc.json",
+    "/home/m/Projects/safegit/selfdoc.json",
+    "/home/m/Projects/saferm/selfdoc.json",
+    "/home/m/Projects/selfdoc/selfdoc.json",
+    "/home/m/Projects/WWW/selfdoc.json",
+]
+
+
+@pytest.mark.parametrize(
+    "config_path",
+    _CROSS_PROJECT_CONFIGS,
+    ids=[os.path.basename(os.path.dirname(p)) for p in _CROSS_PROJECT_CONFIGS],
+)
+def test_cross_project_config_loads(config_path):
+    """Each real selfdoc.json across all consumer projects loads without error."""
+    if not os.path.isfile(config_path):
+        pytest.skip(f"{config_path} not found")
+    cfg = load_config(os.path.dirname(config_path))
+    assert isinstance(cfg, dict)
