@@ -7,3 +7,4 @@
 {"commits":["6edcd4741a1dc09af29b0311d32f1762939ceae9","29bf767d81407a7d6e07ead4bb61ac308c1c53d8","12627ed47a61820c36f22e476360ed2f4cdf4d69","d1b6c6b7c973da39ca3c14dd6546fb3a8d45a353"],"user_facing":true,"description":"**Root file generation.** `selfdoc gen` can now produce root-level Markdown files (CLAUDE.md, README.md, etc.) from underscore-prefixed templates in docs/. Configure via `root_files` in selfdoc.json. Generated files are read-only (0o444) with an auto-generated header.","type":"feature"}
 {"commits":["4feaf98c70d705f2a5dbeee246b8dd022d546365","f3b3570a6fbd2054af50fb7ed8f248ab78966c16","e6f09ead57c88403f2012105cb8406e1ecbe2f5b","cfc6b4256c28e19d66823bacf3bc0df30935a0e0"],"user_facing":false}
 {"commits":["28f48c9faee8dd0876c3acc30bd6e1b4cfcd37c1","c5dd07d5e434787e977839948e3698c5e1b6a78f","fc11f02005d45753ecbd5e52500ddee79f24d9b1"],"user_facing":false}
+{"commits":["fabfc6f4e82bf79ea14c52e3f793aceaab3395ad"],"user_facing":false}
