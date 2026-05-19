@@ -79,7 +79,7 @@ def test_missing_source(config_dir):
 
 def test_missing_base_url(config_dir):
     _write_config(config_dir, {"language": "python", "source": ["src/"]})
-    with pytest.raises(ConfigError, match="'base_url' is required"):
+    with pytest.raises(ConfigError, match="missing required field 'base_url'"):
         load_config(str(config_dir))
 
 
@@ -117,9 +117,10 @@ def test_invalid_deploy_provider(config_dir):
     _write_config(config_dir, {
         "language": "typescript",
         "source": ["src/"],
+        "base_url": "https://example.com",
         "deploy": {"provider": "netlify"},
     })
-    with pytest.raises(ConfigError, match="invalid deploy provider"):
+    with pytest.raises(ConfigError, match="invalid deploy.provider"):
         load_config(str(config_dir))
 
 
@@ -127,6 +128,7 @@ def test_cloudflare_requires_project(config_dir):
     _write_config(config_dir, {
         "language": "javascript",
         "source": ["lib/"],
+        "base_url": "https://example.com",
         "deploy": {"provider": "cloudflare-pages"},
     })
     with pytest.raises(ConfigError, match="'deploy.project' is required"):
@@ -227,7 +229,7 @@ def test_author_invalid_type(config_dir):
         "base_url": "https://example.com",
         "author": {"name": "Jane", "type": "Bot"},
     })
-    with pytest.raises(ConfigError, match="'author.type' must be 'Person' or 'Organization'"):
+    with pytest.raises(ConfigError, match="invalid author.type"):
         load_config(str(config_dir))
 
 
@@ -302,7 +304,7 @@ def test_twitter_invalid(config_dir):
         "base_url": "https://example.com",
         "twitter": "test",
     })
-    with pytest.raises(ConfigError, match="'twitter' must start with '@'"):
+    with pytest.raises(ConfigError, match="invalid twitter"):
         load_config(str(config_dir))
 
 
@@ -469,7 +471,7 @@ def test_feedback_webhook_non_string(config_dir):
         "base_url": "https://example.com",
         "feedback": {"webhook": 123},
     })
-    with pytest.raises(ConfigError, match="'feedback.webhook' must be a non-empty string"):
+    with pytest.raises(ConfigError, match="'feedback.webhook' must be a string"):
         load_config(str(config_dir))
 
 
@@ -493,7 +495,7 @@ def test_feedback_ga_non_string(config_dir):
         "base_url": "https://example.com",
         "feedback": {"ga": 42},
     })
-    with pytest.raises(ConfigError, match="'feedback.ga' must be a non-empty string"):
+    with pytest.raises(ConfigError, match="'feedback.ga' must be a string"):
         load_config(str(config_dir))
 
 
@@ -555,7 +557,7 @@ def test_branch_non_string(config_dir):
         "base_url": "https://example.com",
         "branch": 42,
     })
-    with pytest.raises(ConfigError, match="'branch' must be a non-empty string"):
+    with pytest.raises(ConfigError, match="'branch' must be a string"):
         load_config(str(config_dir))
 
 
@@ -1015,4 +1017,47 @@ def test_gen_data_invalid_key(config_dir):
         "gen_data": {"scripts": [], "timeout": 30},
     })
     with pytest.raises(ConfigError, match="invalid gen_data key 'timeout'"):
+        load_config(str(config_dir))
+
+
+# -- unknown top-level keys --
+
+
+def test_unknown_top_level_key(config_dir):
+    """Unknown top-level key raises ConfigError mentioning the key name."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "foo": "bar",
+    })
+    with pytest.raises(ConfigError, match="foo"):
+        load_config(str(config_dir))
+
+
+# -- root_files field --
+
+
+def test_root_files_valid(config_dir):
+    """Valid root_files list is accepted and present in loaded config."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "root_files": ["docs/_CLAUDE.md"],
+    })
+    cfg = load_config(str(config_dir))
+    assert isinstance(cfg["root_files"], list)
+    assert cfg["root_files"] == ["docs/_CLAUDE.md"]
+
+
+def test_root_files_invalid_item(config_dir):
+    """Non-string item in root_files raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "root_files": [123],
+    })
+    with pytest.raises(ConfigError):
         load_config(str(config_dir))
