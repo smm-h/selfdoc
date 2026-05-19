@@ -132,6 +132,8 @@ def check_docs(dir_path=".", config=None):
         for fname in sorted(files):
             if not fname.endswith(".md"):
                 continue
+            if fname.startswith("_"):
+                continue
             full_path = os.path.join(root, fname)
             rel_path = os.path.relpath(full_path, docs_dir)
 
@@ -225,6 +227,8 @@ def check_docs(dir_path=".", config=None):
         for fname in sorted(files):
             if not fname.endswith(".md"):
                 continue
+            if fname.startswith("_"):
+                continue
             full_path = os.path.join(root, fname)
             rel_path = os.path.relpath(full_path, docs_dir)
             with open(full_path, "r", encoding="utf-8") as f:
@@ -293,7 +297,7 @@ def _run_lints(docs_dir, resolver, config):
     md_files = []
     for root, _dirs, files in os.walk(docs_dir):
         for fname in sorted(files):
-            if fname.endswith(".md"):
+            if fname.endswith(".md") and not fname.startswith("_"):
                 full_path = os.path.join(root, fname)
                 rel_path = os.path.relpath(full_path, docs_dir)
                 md_files.append((rel_path, full_path))
