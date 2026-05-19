@@ -540,7 +540,7 @@ def _cmd_check(ignore="", format="text", no_commit=False):
 def _cmd_gen(no_commit=False):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
-    from selfdoc.gen import generate_docs
+    from selfdoc.gen import generate_docs, generate_root_files
 
     config = load_config(".")
     if config is None:
@@ -553,20 +553,38 @@ def _cmd_gen(no_commit=False):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Generate root files (e.g. CLAUDE.md from docs/_CLAUDE.md)
+    try:
+        root_generated = generate_root_files(config, base_dir=".")
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if root_generated:
+        print(f"Generated {len(root_generated)} root file(s):")
+        for path in root_generated:
+            print(f"  {path}")
+
+    all_commit_files = []
+
     if generated:
-        print(f"Generated {len(generated)} file(s):")
+        print(f"Generated {len(generated)} doc file(s):")
         for path in generated:
             print(f"  {path}")
-        if not no_commit:
-            from selfdoc.git import auto_commit
-            docs_rel = config.get("docs", "docs/").rstrip("/")
-            written_files = [
-                os.path.join(docs_rel, f) for f in generated
-            ]
-            auto_commit(
-                written_files, "selfdoc gen: update generated docs", ".",
-            )
-    else:
+        docs_rel = config.get("docs", "docs/").rstrip("/")
+        all_commit_files.extend(
+            os.path.join(docs_rel, f) for f in generated
+        )
+
+    all_commit_files.extend(root_generated)
+
+    if all_commit_files and not no_commit:
+        from selfdoc.git import auto_commit
+        auto_commit(
+            all_commit_files, "selfdoc gen: update generated docs", ".",
+        )
+
+    if not generated and not root_generated:
         print("No files generated.")
     return 0
 
