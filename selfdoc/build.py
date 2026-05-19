@@ -919,6 +919,9 @@ def build(dir_path=".", config=None):
             rel_path = os.path.relpath(full_path, docs_dir)
 
             if fname.endswith(".md"):
+                # Skip underscore-prefixed template files (partials, includes)
+                if fname.startswith("_"):
+                    continue
                 with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read()
                 # Parse frontmatter (Feature 34)
