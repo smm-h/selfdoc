@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.typescript
-description: "API reference for the selfdoc.extractors.typescript module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "TypeScript/JavaScript source extractor -- resolves directives by extracting from .ts/.js files."
 generated: true
 nav_group: "API Reference"
 nav_order: 12

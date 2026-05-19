@@ -1,6 +1,6 @@
 ---
 title: selfdoc.html
-description: "API reference for the selfdoc.html module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Convert Markdown files to static HTML with a built-in minimal converter."
 generated: true
 nav_group: "API Reference"
 nav_order: 15

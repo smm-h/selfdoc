@@ -25,6 +25,8 @@ order: 90
 - [selfdoc.gen](selfdoc-gen.html)
 - [selfdoc.gendata](selfdoc-gendata.html)
 - [selfdoc.html](selfdoc-html.html)
+- [selfdoc.icons](selfdoc-icons.html)
 - [selfdoc.resolver](selfdoc-resolver.html)
 - [selfdoc.strictcli_support](selfdoc-strictcli_support.html)
 - [selfdoc.tokenizer](selfdoc-tokenizer.html)
+- [selfdoc.utils](selfdoc-utils.html)

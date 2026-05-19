@@ -1,6 +1,6 @@
 ---
 title: selfdoc.check
-description: "API reference for the selfdoc.check module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Check command -- validate directives and report documentation coverage."
 generated: true
 nav_group: "API Reference"
 nav_order: 4

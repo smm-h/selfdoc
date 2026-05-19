@@ -1,6 +1,6 @@
 ---
 title: selfdoc.directives
-description: "API reference for the selfdoc.directives module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Directive parser for selfdoc's structured marker syntax."
 generated: true
 nav_group: "API Reference"
 nav_order: 8

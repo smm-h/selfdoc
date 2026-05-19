@@ -1,6 +1,6 @@
 ---
 title: selfdoc.deploy
-description: "API reference for the selfdoc.deploy module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Deploy providers for selfdoc documentation sites."
 generated: true
 nav_group: "API Reference"
 nav_order: 7

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.build
-description: "API reference for the selfdoc.build module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Build pipeline for selfdoc: template scanning, directive resolution, HTML output."
 generated: true
 nav_group: "API Reference"
 nav_order: 3

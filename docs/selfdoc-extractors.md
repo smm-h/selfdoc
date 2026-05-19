@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors
-description: "API reference for the selfdoc.extractors module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Language extractor registry and auto-detection."
 generated: true
 nav_group: "API Reference"
 nav_order: 9

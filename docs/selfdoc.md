@@ -1,6 +1,6 @@
 ---
 title: selfdoc
-description: "API reference for the selfdoc module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "selfdoc: Code-aware static site generator with directive-based content extraction."
 generated: true
 nav_group: "API Reference"
 nav_order: 1

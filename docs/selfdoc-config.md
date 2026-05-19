@@ -1,6 +1,6 @@
 ---
 title: selfdoc.config
-description: "API reference for the selfdoc.config module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Config loader for selfdoc.json."
 generated: true
 nav_group: "API Reference"
 nav_order: 6

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.gendata
-description: "API reference for the selfdoc.gendata module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Generate data files by running sandboxed scripts via bubblewrap (bwrap)."
 generated: true
 nav_group: "API Reference"
 nav_order: 14

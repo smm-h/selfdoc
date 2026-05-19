@@ -1,6 +1,6 @@
 ---
 title: selfdoc.cli
-description: "API reference for the selfdoc.cli module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "CLI interface for selfdoc."
 generated: true
 nav_group: "API Reference"
 nav_order: 5

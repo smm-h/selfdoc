@@ -44,11 +44,11 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "directives.md": {
-    "content": "be302133f15cc289f055cd36dbd4f4c35afd16cbe22f86f9bfbd944d8acad8fa",
+    "content": "bbdfe1785fcce6cbe2c2744f4ccad7582b0e8ccdb6e2cfc9ba1efa303b3eb27f",
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "gen-index.md": {
-    "content": "b9a34b4f67c1d3c80a949b39ec62bb6ffcc946f1b9c7efd1a3374b59518edd8e",
+    "content": "46af85e07eb28d7dd3d60f6239c215db33b344b6ea604d44346f64b6c2d4b212",
     "description": "bb3cd9d34f014c0674a9285c25ee14b5b4abc5cf941f0d83594c301405e8f3b6"
   },
   "getting-started.md": {
@@ -65,59 +65,63 @@
   },
   "selfdoc-build.md": {
     "content": "21a93bac9ec86685860f63d50cf78bc87951236530fdf0794709c4d52872352c",
-    "description": "7a72665df4c9aa9006d521bc606ac3603fd79789ae0c6e8c36374e3425c7e6bc"
+    "description": "25ec3ea53419eb4126b309ad81d0c2e78e1347f29201a7f1574f6e38e90e4621"
   },
   "selfdoc-check.md": {
     "content": "3c47444d8e3ae327c8dfc7f34cdbbe5fe44cd3a66c866d671882f93c93fc1d9f",
-    "description": "794a9326b6ca57477f223c7a5c92a4daf64558ee677ff16137592388e36a6ebd"
+    "description": "a458cccd01e54fe1e2266244fbbc15683400273f7f951c31c1392bc998151d6d"
   },
   "selfdoc-cli.md": {
     "content": "880355a1431236a3e4771ecad5bcbda7b20460cedaf1ae1332ea14e71b9858ab",
-    "description": "1ba311ee0ea7095ad80086e071e6f33c15506ea2aec8d92a3cdaee9b89137dbf"
+    "description": "ee2400812c86e36d0188ddc98abf76fe402479955e087db0b33b5016e1f500ad"
   },
   "selfdoc-config.md": {
-    "content": "9df82b5c322f48946bdac68f0bbfd2e8d8c4e2fe43112f31c7a1c871362ef7a7",
-    "description": "877235edacabac0e9d18e6bfba4418eaf61998a6167bf0bbcd7b548da13bd36b"
+    "content": "e6346ad8a4024c28d54073fa33287212152fe87e0363bc8d5951390d639368e4",
+    "description": "0de91696b5053d2d39f731671dc1cd70cc0b4c0150586abf30d3346ee0da952d"
   },
   "selfdoc-deploy.md": {
     "content": "d753004c1be5186890f34d42342bd4d4d9a0d35d45dc48eb74bb9eadf1036fe3",
-    "description": "32b71a5952b0e1d211b1a7d3ed98e7ef414b33474c43ffd37f13af3ab5bcee00"
+    "description": "93a17af98499afc17c0adb017c41e304783cc76f8f474b4656483f1d5ea3595a"
   },
   "selfdoc-directives.md": {
     "content": "284db842f12b44acc1a7e8b0d043571a0c587b59e474a13858291beb389484c3",
-    "description": "66c20577a5b0714037d09ca907481f4e500af42bdcaf2c1ceed818520d34e737"
+    "description": "4349c5d3d01b37655615897c7e8cf33df5aad10bfe4d4a99f4bee95947406e2c"
   },
   "selfdoc-extractors-go.md": {
     "content": "614e2764a5fffe95125a4472336018bdc91f6509a87352eb7c8a5ef7f2e04469",
-    "description": "7a460a4f47e6dd0a90f88c6b4e490913bfa3f8b44c76ac45e7afceab755bdac9"
+    "description": "765787f8ad1d5011e0cc2990a0ac939663194d85ed56279ee7d37ccc49141e4a"
   },
   "selfdoc-extractors-python.md": {
     "content": "9171a5a26e52978d019369dea38d3b5aba843b3a99e8577e4a3b33de9a8a4782",
-    "description": "e4a810daa1f6ada057b7b2e6434b11909aaa244f8c742d4d4cc8aa3b41537546"
+    "description": "eee365e917adb22ebe95fd8ed6322cf23316bc777e88d0b503618f4b199358ff"
   },
   "selfdoc-extractors-typescript.md": {
     "content": "ed037150438ddcea03e17cb7d91d30dc0f957d2ee950decd914bf0f6b5da6cff",
-    "description": "e94ae996a8a87b8c66382bd0b03568180eeb0cf882db397defe34800910dd16f"
+    "description": "7b9cfae65be6a84e3612b5ccd5e4751053d1945f539b42050cd3d5031ee491a3"
   },
   "selfdoc-extractors.md": {
     "content": "585b695cab232ab64f87ef0b28c8547612e34192dbca6079a0eed522871d8cd1",
-    "description": "1ece1664561302314e740b7152cf3cc80b81b27cfdec00142e64beb6aa8cbd49"
+    "description": "f5f7ee5341943072e3d458ed7f3e03bf6ea9479ef2410ee2dc07deadd32bfadb"
   },
   "selfdoc-gen.md": {
-    "content": "cda2ade2e46df269791314f5eb86ddcf57b93eea09e404abb605b358cd732cb2",
-    "description": "8a73b5ffff03f37c5b5289d81eb4fc9b6fdb17234f68e3f45d712046fe492168"
+    "content": "35d948386f50c635ad876d973cbde438540c2a813bcbc0357661a580f2514aa7",
+    "description": "ab944a7d47b5ef1e0bdcab2670bbd62d3e0bc902798ad1ca10bc3c06c6e78be9"
   },
   "selfdoc-gendata.md": {
     "content": "54e9a0a6aee2b422ced3b860c872362c65d940dae28ba3d0b79c3117bc234b62",
-    "description": "6430b80740f48e37c397d5319d31c2678c29f9b7dc59ca58387a345d7c4b7e2e"
+    "description": "b808518c126f2f07a0b93986584b7fc20ae87cb76fc5f973b579c4066354a16d"
   },
   "selfdoc-html.md": {
     "content": "0aaf85d3491540940f52d0a6584fe22d22822bf7239ef52b98355052e4686e18",
-    "description": "9d51466e9f880063e7acf362bfa98b6f8f8640dfb146a962615845d226553916"
+    "description": "e9c373874ce0bf9eaa4716a7b9a6f1e2ee94014b24f14c95df960e94cd780c59"
+  },
+  "selfdoc-icons.md": {
+    "content": "6d3a4944698f6bef54f3eccc01b221f0f09799a30006d9765dec7284dff72c46",
+    "description": "abfb38a84d98475211dd86e7621b5dd329d2189f88dcafa085a3d8299bd0da97"
   },
   "selfdoc-resolver.md": {
     "content": "4158312182ee977769882e9a4552ac2613f31bfa0dadb71be8bed0848861063d",
-    "description": "2c516b214162dfd2230961238bf5e8d3f8cf35c8838d57112addb8c19484a8b0"
+    "description": "273c26abce985442107be1fb321e5d51068124691b7631754cf0267af4c03adf"
   },
   "selfdoc-strictcli_support.md": {
     "content": "1a2ca0ffff713e4aff94058cecf194342c24b7fcc15de2f50cf72db64a5de0dc",
@@ -125,11 +129,15 @@
   },
   "selfdoc-tokenizer.md": {
     "content": "46c221bfa3be2e7140ce503c11beda01355a8dccce26366ed612f476ef52371e",
-    "description": "a45cb451a64d7e774195c7dea890afd21d3e5b18679fcac212154b79f670f867"
+    "description": "d89fda0bd6354be7a60574c8cd7fa2433bcbaf315c8f165e3e06f904e9949589"
+  },
+  "selfdoc-utils.md": {
+    "content": "9279dc668ca705cc1a6c7bbcb7b8c356eac318b3a3d3bfcf63bca0b25921b067",
+    "description": "af261d72c93a904f34d57a84f012c8ab805532e62c581aa0361873265cf7680e"
   },
   "selfdoc.md": {
     "content": "740137aa79607266cf4710eda34a20f09e042eb59aa74d888e1ce1c21e49b8d4",
-    "description": "9cba9e52f4148dfa56b8f928b4f8d58783024d503e46b23d5de07451c186f12c"
+    "description": "878a8caa74c228e469b5a7ec4f769308f83ba4b2b21b568fcb6c38756d17b8e1"
   },
   "theming.md": {
     "content": "bb327170ca977b166a27223ee5ab21c8049fafc85f34519aeef10d1aac7e1506",

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.gen
-description: "API reference for the selfdoc.gen module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Auto-generate documentation pages from project structure."
 generated: true
 nav_group: "API Reference"
 nav_order: 13

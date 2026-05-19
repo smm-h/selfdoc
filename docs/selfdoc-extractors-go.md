@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.go
-description: "API reference for the selfdoc.extractors.go module — auto-generated documentation covering public functions, classes, and type signatures."
+description: "Go source extractor -- resolves directives by extracting from .go files."
 generated: true
 nav_group: "API Reference"
 nav_order: 10
