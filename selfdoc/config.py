@@ -1,10 +1,48 @@
 """Config loader for selfdoc.json."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Callable
 
 from selfdoc.extractors import EXTRACTORS
+
+
+class FieldType(Enum):
+    """Supported field types for config validation."""
+
+    STR = "str"
+    BOOL = "bool"
+    INT = "int"
+    DICT = "dict"
+    LIST = "list"
+
+
+@dataclass(frozen=True, slots=True)
+class FieldSpec:
+    """Specification for a single configuration field."""
+
+    name: str
+    type: FieldType
+    required: bool = False
+    default: Any = None
+    default_factory: Callable[[], Any] | None = None
+    choices: tuple[Any, ...] | None = None
+    pattern: str | None = None
+    description: str = ""
+    non_empty: bool = True
+    min_val: int | None = None
+    max_val: int | None = None
+    min_length: int | None = None
+    children: tuple[FieldSpec, ...] | None = None
+    item_spec: FieldSpec | None = None
+    strict_keys: bool = False
+    transform: Callable[[Any], Any] | None = None
+    internal: bool = False
 
 VALID_LANGUAGES = set(EXTRACTORS.keys())
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
