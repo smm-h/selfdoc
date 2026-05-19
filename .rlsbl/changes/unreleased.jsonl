@@ -9,3 +9,4 @@
 {"commits":["28f48c9faee8dd0876c3acc30bd6e1b4cfcd37c1","c5dd07d5e434787e977839948e3698c5e1b6a78f","fc11f02005d45753ecbd5e52500ddee79f24d9b1"],"user_facing":false}
 {"commits":["fabfc6f4e82bf79ea14c52e3f793aceaab3395ad"],"user_facing":false}
 {"commits":["416002f8c8f593439fd3d98d9e9c993b6785fb68","7e25995dd928d6ae98d779be1a23e6a33a23b5d5"],"user_facing":false}
+{"commits":["3a19eb6185f43ffb5ee8f44364eb7066b69eec2f"],"user_facing":true,"description":"**Underscore-prefixed templates excluded from lint.** `selfdoc check` now skips `_*.md` files in docs/, matching the existing build exclusion.","type":"fix"}
