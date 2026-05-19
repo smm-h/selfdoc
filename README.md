@@ -1,22 +1,24 @@
-# selfdoc
+# selfdocumenting
 
-Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from your source code.
+Code-aware documentation site generator. Builds full static sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, theming, search, SEO, and deploy to Cloudflare Pages or GitHub Pages.
 
-Supports Python, Go, and TypeScript/JavaScript. Zero runtime dependencies -- pure Python stdlib.
+Supports Python, Go, and TypeScript/JavaScript. One runtime dependency (strictcli). Pure Python.
 
 ## Install
 
 ```
-pip install selfdoc
+pip install selfdocumenting
 ```
 
 or via npm (delegates to Python under the hood):
 
 ```
-npm install -g selfdoc
+npm install -g selfdocumenting
 ```
 
 Requires Python 3.11+.
+
+The npm package is named `selfdocumenting` (npm blocks `selfdoc` due to name similarity). The CLI command remains `selfdoc`.
 
 ## Quick start
 
@@ -24,15 +26,36 @@ Requires Python 3.11+.
 # Initialize in an existing project (auto-detects language)
 selfdoc init
 
-# Edit docs/index.md -- add directives referencing your code
-# (see Directive syntax below)
+# Auto-generate API and CLI reference pages
+selfdoc gen
+
+# Edit docs/ pages -- add directives referencing your code
 
 # Build HTML output
 selfdoc build
 
+# Validate directives, coverage, and SEO lint
+selfdoc check
+
 # Serve locally with live reload
 selfdoc serve
 ```
+
+## Features
+
+- Attribute-based directive syntax (`:-:`, `:<:`, `:>:`) for embedding code-extracted content
+- Auto-generated API reference and CLI docs from source code structure (`selfdoc gen`)
+- Sandboxed data generation scripts (`selfdoc gen-data`)
+- Theming with dark mode, accent colors, and custom CSS overrides
+- Pluggable search (builtin, Fuse.js, or MiniSearch)
+- 15+ SEO lint rules, WCAG contrast validation, JSON-LD structured data
+- Per-symbol documentation coverage tracking with configurable thresholds
+- Build-time Pygments syntax highlighting, code tabs, sortable tables
+- CSS/JS/HTML minification, critical CSS inlining, gzip and Brotli pre-compression
+- Atom feed, `robots.txt` with AI crawler controls, `llms.txt` / `llms-full.txt`
+- Landing page with hero section, tagline, and feature cards
+- SSE-based live reload dev server
+- Auto-commit of generated files (prefers safegit)
 
 ## Directive syntax
 
@@ -46,13 +69,23 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 
 ## Built-in directives
 
-| Directive | Attributes | Description |
-| --------- | ---------- | ----------- |
-| `ref` | `path` | Extract module/package docstrings, exported functions, classes |
-| `table-schema` | `path`, `target` | Extract dataclass fields or JSON keys as a table |
-| `code-test` | `path`, `target` | Embed test source code (whole file or specific function/class) |
-| `code-help` | `path` | Extract CLI help/usage text and flag definitions |
-| `table-config` | `path` | Render JSON/TOML config files as key-value tables |
+| Directive | Description |
+| --------- | ----------- |
+| `ref` | Extract module/package docstrings, exported functions, classes |
+| `table-schema` | Extract dataclass fields or JSON keys as a table |
+| `code-test` | Embed test source code (whole file or specific function/class) |
+| `code-help` | Extract CLI help/usage text and flag definitions |
+| `table-config` | Render JSON/TOML config files as key-value tables |
+| `callout-note` | Info callout |
+| `callout-tip` | Tip callout |
+| `callout-warning` | Warning callout |
+| `callout-danger` | Danger callout |
+| `callout-important` | Important callout |
+| `list-glossary` | Glossary definition list |
+| `prose-desc` | Prose description block |
+| `list-tree` | Tree-structured list |
+| `table-dep` | Dependency table |
+| `list-features` | Feature list |
 
 Example -- embed the API docs for a Python module:
 
@@ -120,14 +153,27 @@ Custom directives take priority over built-in names.
 }
 ```
 
-| Field | Required | Default | Description |
-| ----- | -------- | ------- | ----------- |
-| `language` | yes | -- | `python`, `go`, `typescript`, or `javascript` |
-| `source` | yes | -- | List of source directories to scan |
-| `docs` | no | `docs/` | Directory containing Markdown templates |
-| `output` | no | `docs/_build/` | Directory for generated HTML output |
-| `deploy` | no | -- | Deploy provider config (see Deploy below) |
-| `directives` | no | `{}` | Custom directive script mappings |
+| Field | Required | Description |
+| ----- | -------- | ----------- |
+| `language` | yes | `python`, `go`, `typescript`, or `javascript` |
+| `source` | yes | List of source directories to scan |
+| `base_url` | yes | Base URL of the deployed site |
+| `docs` | no | Markdown template directory (default: `docs/`) |
+| `output` | no | HTML output directory (default: `docs/_build/`) |
+| `deploy` | no | Deploy provider config |
+| `directives` | no | Custom directive script mappings |
+| `theme` | no | Theme name and accent color |
+| `search_engine` | no | `builtin`, `fuse`, or `minisearch` |
+| `feedback` | no | Feedback widget config (webhook, analytics) |
+| `branding` | no | Landing page hero, tagline, CTA |
+| `auto_detect` | no | Toggle step guides, API entries, etc. |
+| `gen` | no | Page generation config (exclusion patterns) |
+| `gen_data` | no | Data generation config |
+| `min_coverage` | no | Minimum documentation coverage threshold |
+| `lint_ignore` | no | SEO lint rules to suppress project-wide |
+| `lang` | no | BCP 47 language tag |
+| `author` | no | Author name for metadata |
+| `repo` | no | Repository URL for edit links |
 
 `selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json).
 
@@ -135,11 +181,13 @@ Custom directives take priority over built-in names.
 
 | Command | Description |
 | ------- | ----------- |
-| `selfdoc init` | Initialize selfdoc in the current project (creates selfdoc.json + starter template) |
-| `selfdoc build` | Resolve directives and generate HTML to the output directory |
-| `selfdoc serve [--port PORT]` | Serve built docs locally with SSE-based live reload (default port 8000) |
-| `selfdoc deploy` | Deploy docs to the configured provider |
-| `selfdoc check` | Validate all directives resolve successfully; report documentation coverage |
+| `selfdoc init` | Initialize selfdoc in the current project |
+| `selfdoc build` | Resolve directives and generate HTML |
+| `selfdoc serve` | Serve locally with SSE-based live reload |
+| `selfdoc deploy` | Deploy to the configured provider |
+| `selfdoc check` | Validate directives, report coverage, run SEO lint |
+| `selfdoc gen` | Auto-generate API and CLI reference pages from source code |
+| `selfdoc gen-data` | Run sandboxed scripts to produce data files for docs |
 
 ## Deploy
 
