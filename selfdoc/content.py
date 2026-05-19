@@ -2,12 +2,14 @@
 
 These directives do not need language extractors. They handle callouts
 (note, warning, tip, danger, important), the glossary list, and
-filesystem/project-metadata directives (list-tree, table-dep, list-features).
+filesystem/project-metadata directives (list-tree, table-dep, list-features,
+list-modules, table-commands, table-directives, table-config-schema, var).
 """
 
 from __future__ import annotations
 
 import ast
+import json
 import os
 import re
 
@@ -288,6 +290,272 @@ def _extract_module_first_line(file_path: str) -> str:
     return first_line
 
 
+# -- list-modules directive ----------------------------------------------------
+
+
+def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
+    """List source modules with file paths and docstring summaries."""
+    path = attrs.get("path", "")
+    if not path:
+        return "> *[selfdoc: list-modules requires a path attribute]*"
+
+    full_path = os.path.join(base_dir, path)
+    if not os.path.isdir(full_path):
+        return f"> *[selfdoc: directory '{path}' not found]*"
+
+    from selfdoc.extractors import EXTRACTORS
+
+    language = config["language"]
+    extractor = EXTRACTORS.get(language)
+    if extractor is None:
+        return f"> *[selfdoc: unsupported language '{language}']*"
+
+    extensions = set(extractor.file_extensions())
+
+    modules: list[tuple[str, str, str | None]] = []  # (module_name, rel_path, docstring)
+    for dirpath, _dirnames, filenames in os.walk(full_path):
+        for fname in sorted(filenames):
+            _root, ext = os.path.splitext(fname)
+            if ext not in extensions:
+                continue
+            file_path = os.path.join(dirpath, fname)
+            rel_path = os.path.relpath(file_path, base_dir)
+            module_name = _file_to_module_name(rel_path, language)
+            if module_name is None:
+                continue
+            docstring = _extract_first_line_any(file_path, language)
+            modules.append((module_name, rel_path, docstring))
+
+    modules.sort(key=lambda t: t[0])
+
+    if not modules:
+        return f"> *[selfdoc: no modules found in '{path}']*"
+
+    lines = []
+    for module_name, rel_path, docstring in modules:
+        if docstring:
+            lines.append(f"- **{module_name}** (`{rel_path}`): {docstring}")
+        else:
+            lines.append(f"- **{module_name}** (`{rel_path}`)")
+
+    return "\n".join(lines)
+
+
+def _file_to_module_name(rel_path: str, language: str) -> str | None:
+    """Convert a relative file path to a module name.
+
+    For Python: ``selfdoc/config.py`` -> ``selfdoc.config``.
+    For Go/TypeScript/JavaScript: ``pkg/handler.go`` -> ``pkg/handler``.
+    """
+    root, _ext = os.path.splitext(rel_path)
+    if language == "python":
+        if root.endswith("/__init__") or root == "__init__":
+            root = root.rsplit("/__init__", 1)[0] if "/" in root else ""
+        if not root:
+            return None
+        return root.replace(os.sep, ".").replace("/", ".")
+    return root.replace(os.sep, "/")
+
+
+def _extract_first_line_any(file_path: str, language: str) -> str | None:
+    """Extract the first line of a module docstring, language-aware.
+
+    For Python, uses AST. For other languages, returns None (no docstring
+    convention that can be reliably extracted without parsing).
+    """
+    if language == "python":
+        from selfdoc.utils import extract_module_docstring
+        return extract_module_docstring(file_path)
+    return None
+
+
+# -- table-commands directive --------------------------------------------------
+
+
+def resolve_table_commands(attrs: dict, config: dict, base_dir: str) -> str:
+    """Produce a Markdown table of CLI commands from strictcli structure."""
+    path = attrs.get("path", "")
+    if not path:
+        return "> *[selfdoc: table-commands requires a path attribute]*"
+
+    from selfdoc.strictcli_support import extract_cli_structure
+
+    source_paths = [path]
+    cli = extract_cli_structure(source_paths, base_dir)
+    if cli is None:
+        return f"> *[selfdoc: no strictcli app found in '{path}']*"
+
+    rows = []
+    rows.append("| Command | Description |")
+    rows.append("| --- | --- |")
+
+    for cmd in cli.get("commands", []):
+        rows.append(f"| `{cmd['name']}` | {cmd.get('help', '')} |")
+
+    for grp in cli.get("groups", []):
+        gname = grp["name"]
+        ghelp = grp.get("help", "")
+        rows.append(f"| **{gname}** | {ghelp} |")
+        for cmd in grp.get("commands", []):
+            rows.append(f"| `{gname} {cmd['name']}` | {cmd.get('help', '')} |")
+
+    if len(rows) == 2:
+        return f"> *[selfdoc: no commands found in '{path}']*"
+
+    return "\n".join(rows)
+
+
+# -- table-directives directive ------------------------------------------------
+
+
+def resolve_table_directives() -> str:
+    """Produce a Markdown table of all core built-in directives."""
+    from selfdoc.catalog import CORE_DIRECTIVES
+
+    rows = []
+    rows.append("| Directive | Description |")
+    rows.append("| --- | --- |")
+
+    for name in sorted(CORE_DIRECTIVES):
+        spec = CORE_DIRECTIVES[name]
+        rows.append(f"| `{name}` | {spec.description} |")
+
+    return "\n".join(rows)
+
+
+# -- table-config-schema directive ---------------------------------------------
+
+
+def resolve_table_config_schema() -> str:
+    """Produce a Markdown table of selfdoc.json configuration fields."""
+    from selfdoc.config import CONFIG_SCHEMA
+
+    rows = []
+    rows.append("| Field | Required | Description |")
+    rows.append("| --- | --- | --- |")
+
+    for spec in CONFIG_SCHEMA:
+        if spec.internal:
+            continue
+        required = "yes" if spec.required else "no"
+        rows.append(f"| `{spec.name}` | {required} | {spec.description} |")
+
+    return "\n".join(rows)
+
+
+# -- var directive -------------------------------------------------------------
+
+
+def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
+    """Interpolate a project metadata value."""
+    key = attrs.get("key", "")
+    if not key:
+        return "> *[selfdoc: var requires a key attribute]*"
+
+    if key == "project.language":
+        return config.get("language", "unknown")
+
+    if key == "project.description":
+        desc = config.get("description")
+        if desc:
+            return desc
+        # Fall through to pyproject.toml/package.json
+        return _read_project_description(base_dir)
+
+    if key == "project.name":
+        return _read_project_field(base_dir, "name")
+
+    if key == "project.version":
+        return _read_project_field(base_dir, "version")
+
+    return f"> *[selfdoc: unknown var key '{key}']*"
+
+
+def _read_project_field(base_dir: str, field: str) -> str:
+    """Read a project metadata field from pyproject.toml, package.json, or go.mod."""
+    # Try pyproject.toml
+    pyproject = os.path.join(base_dir, "pyproject.toml")
+    if os.path.isfile(pyproject):
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            try:
+                import tomli as tomllib  # type: ignore[no-redef]
+            except ModuleNotFoundError:
+                pass
+            else:
+                return _read_toml_field(pyproject, field, tomllib)
+        else:
+            return _read_toml_field(pyproject, field, tomllib)
+
+    # Try package.json
+    pkg_json = os.path.join(base_dir, "package.json")
+    if os.path.isfile(pkg_json):
+        try:
+            with open(pkg_json, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return str(data.get(field, "unknown"))
+        except (OSError, json.JSONDecodeError):
+            return "unknown"
+
+    # Try go.mod (only for "name")
+    go_mod = os.path.join(base_dir, "go.mod")
+    if os.path.isfile(go_mod):
+        if field == "name":
+            try:
+                with open(go_mod, "r", encoding="utf-8") as f:
+                    for line in f:
+                        m = re.match(r"^module\s+(.+)", line.strip())
+                        if m:
+                            return m.group(1).strip()
+            except OSError:
+                pass
+        # Go doesn't have a version field in go.mod
+        return "unknown"
+
+    return "unknown"
+
+
+def _read_toml_field(path: str, field: str, tomllib) -> str:
+    """Read a field from pyproject.toml's [project] table."""
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        return str(data.get("project", {}).get(field, "unknown"))
+    except Exception:
+        return "unknown"
+
+
+def _read_project_description(base_dir: str) -> str:
+    """Read the project description from pyproject.toml or package.json."""
+    pyproject = os.path.join(base_dir, "pyproject.toml")
+    if os.path.isfile(pyproject):
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            try:
+                import tomli as tomllib  # type: ignore[no-redef]
+            except ModuleNotFoundError:
+                return "unknown"
+        try:
+            with open(pyproject, "rb") as f:
+                data = tomllib.load(f)
+            return str(data.get("project", {}).get("description", "unknown"))
+        except Exception:
+            return "unknown"
+
+    pkg_json = os.path.join(base_dir, "package.json")
+    if os.path.isfile(pkg_json):
+        try:
+            with open(pkg_json, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return str(data.get("description", "unknown"))
+        except (OSError, json.JSONDecodeError):
+            return "unknown"
+
+    return "unknown"
+
+
 # -- Dispatch -----------------------------------------------------------------
 
 CONTENT_DIRECTIVES: set[str] = {
@@ -300,7 +568,8 @@ CONTENT_DIRECTIVES: set[str] = {
 
 
 def resolve_content(
-    name: str, attrs: dict, body: list[str], base_dir: str = "."
+    name: str, attrs: dict, body: list[str], base_dir: str = ".",
+    *, config: dict | None = None,
 ) -> str | None:
     """Resolve a content directive. Returns None if name is not a content directive."""
     if name in _CALLOUT_TYPES:
@@ -313,4 +582,20 @@ def resolve_content(
         return resolve_table_dep(attrs, base_dir)
     if name == "list-features":
         return resolve_list_features(attrs, base_dir)
+    if name == "list-modules":
+        if config is None:
+            return "> *[selfdoc: list-modules requires project config]*"
+        return resolve_list_modules(attrs, config, base_dir)
+    if name == "table-commands":
+        if config is None:
+            return "> *[selfdoc: table-commands requires project config]*"
+        return resolve_table_commands(attrs, config, base_dir)
+    if name == "table-directives":
+        return resolve_table_directives()
+    if name == "table-config-schema":
+        return resolve_table_config_schema()
+    if name == "var":
+        if config is None:
+            return "> *[selfdoc: var requires project config]*"
+        return resolve_var(attrs, config, base_dir)
     return None
