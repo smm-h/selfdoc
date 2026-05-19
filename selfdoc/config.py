@@ -48,6 +48,411 @@ VALID_LANGUAGES = set(EXTRACTORS.keys())
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
 VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch")
 
+_S = FieldType.STR
+_B = FieldType.BOOL
+_I = FieldType.INT
+_D = FieldType.DICT
+_L = FieldType.LIST
+
+CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
+    # --- required fields ---
+    FieldSpec(
+        name="language",
+        type=_S,
+        required=True,
+        description="Programming language of the documented project.",
+    ),
+    FieldSpec(
+        name="source",
+        type=_L,
+        required=True,
+        min_length=1,
+        item_spec=FieldSpec(name="<item>", type=_S, description="Source path."),
+        description="List of source directories or files to extract documentation from.",
+    ),
+    FieldSpec(
+        name="base_url",
+        type=_S,
+        required=True,
+        transform=lambda s: s.rstrip("/"),
+        description="Base URL of the generated site, used for canonical links and SEO.",
+    ),
+    # --- optional string fields ---
+    FieldSpec(
+        name="docs",
+        type=_S,
+        default="docs/",
+        description="Directory containing Markdown documentation templates.",
+    ),
+    FieldSpec(
+        name="output",
+        type=_S,
+        default="docs/_build/",
+        description="Output directory for generated HTML files.",
+    ),
+    FieldSpec(
+        name="theme",
+        type=_S,
+        default="minimal",
+        description="Visual theme for the generated site.",
+    ),
+    FieldSpec(
+        name="repo",
+        type=_S,
+        default=None,
+        non_empty=True,
+        description="GitHub repository URL shown in the site header.",
+    ),
+    FieldSpec(
+        name="lang",
+        type=_S,
+        default=None,
+        pattern=r"^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$",
+        description="BCP 47 language tag for the site content (e.g. 'en', 'pt-BR').",
+    ),
+    FieldSpec(
+        name="description",
+        type=_S,
+        default=None,
+        description="Short description of the project, used in meta tags and SEO.",
+    ),
+    FieldSpec(
+        name="branch",
+        type=_S,
+        default=None,
+        description="Git branch used for source links in the generated site.",
+    ),
+    FieldSpec(
+        name="search",
+        type=_S,
+        default=None,
+        choices=("icon", "bar", "hidden"),
+        description="Search UI mode: icon button, full bar, or hidden.",
+    ),
+    FieldSpec(
+        name="search_engine",
+        type=_S,
+        default=None,
+        choices=("builtin", "fuse", "minisearch"),
+        description="Client-side search engine implementation to use.",
+    ),
+    FieldSpec(
+        name="code_icons",
+        type=_S,
+        default="colorful",
+        choices=("colorful", "monochrome", "none"),
+        description="Style of language icons shown on code blocks.",
+    ),
+    # --- optional boolean fields ---
+    FieldSpec(
+        name="line_numbers",
+        type=_B,
+        default=False,
+        description="Show line numbers in code blocks.",
+    ),
+    FieldSpec(
+        name="run_button",
+        type=_B,
+        default=False,
+        description="Show a run button on code blocks for supported languages.",
+    ),
+    FieldSpec(
+        name="page_nav",
+        type=_B,
+        default=True,
+        description="Show previous/next navigation links between pages.",
+    ),
+    FieldSpec(
+        name="page_progress",
+        type=_B,
+        default=True,
+        description="Show a reading progress bar at the top of each page.",
+    ),
+    # --- optional int field ---
+    FieldSpec(
+        name="min_coverage",
+        type=_I,
+        default=None,
+        min_val=0,
+        max_val=100,
+        description="Minimum documentation coverage percentage required by the check command.",
+    ),
+    # --- optional list fields ---
+    FieldSpec(
+        name="lint_ignore",
+        type=_L,
+        default_factory=list,
+        non_empty=False,
+        item_spec=FieldSpec(
+            name="<item>",
+            type=_S,
+            pattern=r"^SEO\d+$",
+            description="Lint rule ID to ignore.",
+        ),
+        description="List of lint rule IDs to suppress (e.g. 'SEO007').",
+    ),
+    FieldSpec(
+        name="root_files",
+        type=_L,
+        default_factory=list,
+        non_empty=False,
+        item_spec=FieldSpec(
+            name="<item>",
+            type=_S,
+            description="Underscore-prefixed template path in docs/.",
+        ),
+        description="List of underscore-prefixed template paths in docs/ for root file generation.",
+    ),
+    # --- optional dict fields ---
+    FieldSpec(
+        name="deploy",
+        type=_D,
+        default=None,
+        strict_keys=False,
+        children=(
+            FieldSpec(
+                name="provider",
+                type=_S,
+                required=True,
+                choices=("cloudflare-pages", "github-pages"),
+                description="Hosting provider for deployment.",
+            ),
+            FieldSpec(
+                name="project",
+                type=_S,
+                required=False,
+                description="Project name on the hosting provider (required for cloudflare-pages).",
+            ),
+        ),
+        description="Deployment configuration for publishing the generated site.",
+    ),
+    FieldSpec(
+        name="directives",
+        type=_D,
+        default_factory=dict,
+        strict_keys=False,
+        description="Custom directive mappings from directive name to source file path.",
+    ),
+    FieldSpec(
+        name="author",
+        type=_D,
+        default=None,
+        strict_keys=False,
+        children=(
+            FieldSpec(
+                name="name",
+                type=_S,
+                required=True,
+                description="Author display name.",
+            ),
+            FieldSpec(
+                name="type",
+                type=_S,
+                required=False,
+                choices=("Person", "Organization"),
+                description="Schema.org author type.",
+            ),
+            FieldSpec(
+                name="twitter",
+                type=_S,
+                required=False,
+                pattern=r"^@",
+                description="Author Twitter handle (must start with @).",
+            ),
+        ),
+        description="Author information for meta tags and structured data.",
+    ),
+    FieldSpec(
+        name="twitter",
+        type=_S,
+        default=None,
+        pattern=r"^@",
+        internal=True,
+        description="Top-level Twitter handle, merged into author in post-validation.",
+    ),
+    FieldSpec(
+        name="feedback",
+        type=_D,
+        default=None,
+        strict_keys=False,
+        children=(
+            FieldSpec(
+                name="webhook",
+                type=_S,
+                required=False,
+                description="Webhook URL for collecting user feedback.",
+            ),
+            FieldSpec(
+                name="ga",
+                type=_S,
+                required=False,
+                description="Google Analytics measurement ID.",
+            ),
+        ),
+        description="Feedback collection configuration (at least one of webhook or ga required).",
+    ),
+    FieldSpec(
+        name="branding",
+        type=_D,
+        default=None,
+        strict_keys=False,
+        children=(
+            FieldSpec(
+                name="tagline",
+                type=_S,
+                required=False,
+                description="Short tagline displayed on the landing page.",
+            ),
+            FieldSpec(
+                name="cta_text",
+                type=_S,
+                required=False,
+                description="Primary call-to-action button text.",
+            ),
+            FieldSpec(
+                name="cta_link",
+                type=_S,
+                required=False,
+                description="Primary call-to-action button URL.",
+            ),
+            FieldSpec(
+                name="logo",
+                type=_S,
+                required=False,
+                description="Path to a logo image file.",
+            ),
+            FieldSpec(
+                name="secondary_cta_text",
+                type=_S,
+                required=False,
+                description="Secondary call-to-action button text.",
+            ),
+            FieldSpec(
+                name="secondary_cta_link",
+                type=_S,
+                required=False,
+                description="Secondary call-to-action button URL.",
+            ),
+            FieldSpec(
+                name="features",
+                type=_L,
+                required=False,
+                non_empty=False,
+                item_spec=FieldSpec(
+                    name="<item>",
+                    type=_D,
+                    children=(
+                        FieldSpec(
+                            name="title",
+                            type=_S,
+                            required=True,
+                            description="Feature card title.",
+                        ),
+                        FieldSpec(
+                            name="description",
+                            type=_S,
+                            required=True,
+                            description="Feature card description.",
+                        ),
+                    ),
+                    description="Feature card object.",
+                ),
+                description="List of feature cards shown on the landing page.",
+            ),
+        ),
+        description="Landing page branding and call-to-action configuration.",
+    ),
+    FieldSpec(
+        name="auto_detect",
+        type=_D,
+        default=None,
+        strict_keys=True,
+        children=(
+            FieldSpec(
+                name="steps",
+                type=_B,
+                required=False,
+                description="Auto-detect step guide blocks in documentation.",
+            ),
+            FieldSpec(
+                name="api_entries",
+                type=_B,
+                required=False,
+                description="Auto-detect API entry cards in documentation.",
+            ),
+        ),
+        description="Automatic content detection settings for step guides and API entries.",
+    ),
+    FieldSpec(
+        name="gen",
+        type=_D,
+        default=None,
+        strict_keys=True,
+        children=(
+            FieldSpec(
+                name="exclude",
+                type=_L,
+                required=False,
+                non_empty=False,
+                item_spec=FieldSpec(
+                    name="<item>",
+                    type=_S,
+                    description="Glob pattern to exclude from generation.",
+                ),
+                description="List of glob patterns to exclude from doc generation.",
+            ),
+        ),
+        description="Configuration for the gen command.",
+    ),
+    FieldSpec(
+        name="gen_data",
+        type=_D,
+        default=None,
+        strict_keys=True,
+        children=(
+            FieldSpec(
+                name="scripts",
+                type=_L,
+                required=False,
+                non_empty=False,
+                item_spec=FieldSpec(
+                    name="<item>",
+                    type=_D,
+                    children=(
+                        FieldSpec(
+                            name="command",
+                            type=_S,
+                            required=True,
+                            description="Shell command to execute for data generation.",
+                        ),
+                        FieldSpec(
+                            name="output",
+                            type=_S,
+                            required=True,
+                            description="Output file path relative to docs/ for generated data.",
+                        ),
+                        FieldSpec(
+                            name="mounts",
+                            type=_L,
+                            required=True,
+                            non_empty=False,
+                            item_spec=FieldSpec(
+                                name="<item>",
+                                type=_S,
+                                description="File path to mount into the script environment.",
+                            ),
+                            description="List of files to mount into the script environment.",
+                        ),
+                    ),
+                    description="Data generation script configuration.",
+                ),
+                description="List of data generation scripts to run before build.",
+            ),
+        ),
+        description="Configuration for the gen-data command.",
+    ),
+)
+
 
 class ConfigError(Exception):
     """Raised when selfdoc.json is present but invalid."""
