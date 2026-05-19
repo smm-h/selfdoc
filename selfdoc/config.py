@@ -458,26 +458,167 @@ class ConfigError(Exception):
     """Raised when selfdoc.json is present but invalid."""
 
 
-def _validate_deploy(deploy):
-    """Validate the deploy section if present.
+# Sentinel for "no value provided" (distinct from None, which is a valid default)
+_MISSING = object()
 
-    Raises ConfigError if provider is unrecognized or required fields are missing.
+
+def _validate_field(spec: FieldSpec, value, path: str) -> Any:
+    """Validate a single config value against its FieldSpec.
+
+    Returns the validated (and possibly transformed) value.
+    Raises ConfigError on validation failure.
     """
-    if not isinstance(deploy, dict):
-        raise ConfigError("'deploy' must be an object")
+    # Handle missing values
+    if value is _MISSING or value is None:
+        is_absent = value is _MISSING
+        if is_absent and spec.required:
+            raise ConfigError(f"missing required field '{path}'")
+        if is_absent:
+            if spec.default_factory is not None:
+                return spec.default_factory()
+            return spec.default
+        # value is None (explicitly set in JSON) -- for DICT/LIST types that
+        # are not required, treat explicit null the same as absent
+        if not spec.required:
+            if spec.type in (FieldType.DICT, FieldType.LIST):
+                if spec.default_factory is not None:
+                    return spec.default_factory()
+                return spec.default
+            return spec.default if spec.default is not None else None
+        raise ConfigError(f"missing required field '{path}'")
 
-    provider = deploy.get("provider")
-    if provider is None:
-        raise ConfigError("'deploy.provider' is required when deploy section is present")
+    # Type checking and validation by FieldType
+    if spec.type == FieldType.STR:
+        if not isinstance(value, str):
+            if spec.choices:
+                raise ConfigError(
+                    f"invalid {path} value {value!r}; "
+                    f"must be one of: {', '.join(spec.choices)}"
+                )
+            raise ConfigError(f"'{path}' must be a string")
+        if spec.non_empty and not value:
+            raise ConfigError(f"'{path}' must be a non-empty string")
+        if spec.choices and value not in spec.choices:
+            raise ConfigError(
+                f"invalid {path} value {value!r}; "
+                f"must be one of: {', '.join(spec.choices)}"
+            )
+        if spec.pattern and not re.match(spec.pattern, value):
+            raise ConfigError(
+                f"invalid {path} {value!r}; must match pattern {spec.pattern}"
+            )
+        if spec.transform:
+            value = spec.transform(value)
+        return value
 
-    if provider not in VALID_DEPLOY_PROVIDERS:
-        raise ConfigError(
-            f"invalid deploy provider {provider!r}; "
-            f"must be one of: {', '.join(VALID_DEPLOY_PROVIDERS)}"
-        )
+    if spec.type == FieldType.BOOL:
+        if not isinstance(value, bool):
+            raise ConfigError(f"'{path}' must be a boolean")
+        return value
 
-    if provider == "cloudflare-pages" and not deploy.get("project"):
-        raise ConfigError("'deploy.project' is required for cloudflare-pages provider")
+    if spec.type == FieldType.INT:
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise ConfigError(
+                f"'{path}' must be an integer"
+                + (f" between {spec.min_val} and {spec.max_val}"
+                   if spec.min_val is not None and spec.max_val is not None
+                   else "")
+            )
+        if spec.min_val is not None and value < spec.min_val:
+            raise ConfigError(
+                f"'{path}' must be an integer between {spec.min_val} and {spec.max_val}"
+            )
+        if spec.max_val is not None and value > spec.max_val:
+            raise ConfigError(
+                f"'{path}' must be an integer between {spec.min_val} and {spec.max_val}"
+            )
+        return value
+
+    if spec.type == FieldType.LIST:
+        if not isinstance(value, list):
+            if spec.min_length and spec.min_length > 0:
+                raise ConfigError(f"'{path}' must be a non-empty list")
+            raise ConfigError(f"'{path}' must be a list")
+        if spec.min_length is not None and len(value) < spec.min_length:
+            raise ConfigError(f"'{path}' must be a non-empty list")
+        if spec.non_empty and not value and spec.min_length and spec.min_length > 0:
+            raise ConfigError(f"'{path}' must be a non-empty list")
+        if spec.item_spec:
+            for i, item in enumerate(value):
+                value[i] = _validate_field(spec.item_spec, item, f"{path}[{i}]")
+        return value
+
+    if spec.type == FieldType.DICT:
+        if not isinstance(value, dict):
+            raise ConfigError(f"'{path}' must be an object")
+
+        # No children = open dict (e.g. directives), just check it's a dict
+        if not spec.children:
+            return value
+
+        # Check for unknown keys in strict mode
+        if spec.strict_keys:
+            known_keys = {child.name for child in spec.children}
+            for key in value:
+                if key not in known_keys:
+                    raise ConfigError(
+                        f"invalid {spec.name} key {key!r}; "
+                        f"must be one of: {', '.join(sorted(known_keys))}"
+                    )
+
+        # Validate children that are present or required
+        for child in spec.children:
+            child_path = f"{path}.{child.name}"
+            if child.name in value:
+                value[child.name] = _validate_field(
+                    child, value[child.name], child_path,
+                )
+            elif child.required:
+                raise ConfigError(f"'{child_path}' is required")
+            # If not required and not present, leave the dict as-is
+            # (don't inject defaults for sub-dict fields)
+
+        return value
+
+    # Unreachable for valid FieldType values
+    raise ConfigError(f"unknown field type {spec.type!r} for '{path}'")
+
+
+def _post_validate(config: dict) -> dict:
+    """Apply cross-field validation rules after individual field validation.
+
+    Handles twitter merge, feedback at-least-one, and deploy.project conditional.
+    Returns the modified config dict.
+    """
+    # Twitter merge: author.twitter takes precedence over top-level twitter
+    twitter = None
+    author = config.get("author")
+    if author and author.get("twitter"):
+        twitter = author["twitter"]
+    elif config.get("twitter"):
+        twitter = config["twitter"]
+    config["twitter"] = twitter
+
+    # Feedback at-least-one: if feedback is present, at least one of
+    # webhook or ga must be set
+    feedback = config.get("feedback")
+    if feedback is not None:
+        webhook = feedback.get("webhook")
+        ga = feedback.get("ga")
+        if webhook is None and ga is None:
+            raise ConfigError(
+                "'feedback' must contain at least one of 'webhook' or 'ga'"
+            )
+
+    # Deploy.project conditional: cloudflare-pages requires project
+    deploy = config.get("deploy")
+    if deploy is not None:
+        if deploy.get("provider") == "cloudflare-pages" and not deploy.get("project"):
+            raise ConfigError(
+                "'deploy.project' is required for cloudflare-pages provider"
+            )
+
+    return config
 
 
 def load_config(dir_path="."):
@@ -500,308 +641,24 @@ def load_config(dir_path="."):
     if not isinstance(raw, dict):
         raise ConfigError("selfdoc.json must be a JSON object")
 
-    # --- required fields ---
-    if "language" not in raw:
-        raise ConfigError("missing required field 'language'")
+    # Check for unknown root-level keys
+    known_keys = {spec.name for spec in CONFIG_SCHEMA}
+    for key in raw:
+        if key not in known_keys:
+            raise ConfigError(f"unknown config key {key!r}")
 
-    language = raw["language"]
-    if language not in VALID_LANGUAGES:
-        raise ConfigError(
-            f"invalid language {language!r}; "
-            f"must be one of: {', '.join(VALID_LANGUAGES)}"
-        )
-
-    if "source" not in raw:
-        raise ConfigError("missing required field 'source'")
-
-    source = raw["source"]
-    if not isinstance(source, list) or not source:
-        raise ConfigError("'source' must be a non-empty list of paths")
-
-    # --- optional fields with defaults ---
-    docs = raw.get("docs", "docs/")
-    output = raw.get("output", "docs/_build/")
-    theme = raw.get("theme", "minimal")
-    deploy = raw.get("deploy", None)
-    directives = raw.get("directives", {})
-
-    if not isinstance(theme, str) or not theme:
-        raise ConfigError("'theme' must be a non-empty string")
-
-    if deploy is not None:
-        _validate_deploy(deploy)
-
-    if not isinstance(directives, dict):
-        raise ConfigError("'directives' must be an object")
-
-    repo = raw.get("repo", None)
-    if repo is not None and not isinstance(repo, str):
-        raise ConfigError("'repo' must be a string (GitHub repo URL)")
-
-    if "base_url" not in raw:
-        raise ConfigError("'base_url' is required")
-    base_url = raw["base_url"]
-    if not isinstance(base_url, str) or not base_url:
-        raise ConfigError("'base_url' must be a non-empty string (e.g. 'https://example.com')")
-    # Strip trailing slash for consistent URL joining
-    base_url = base_url.rstrip("/")
-
-    lang = raw.get("lang", None)
-    if lang is not None:
-        if not isinstance(lang, str) or not lang:
-            raise ConfigError("'lang' must be a non-empty string (BCP 47 language tag)")
-        if not re.match(r"^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$", lang):
-            raise ConfigError(
-                f"invalid lang {lang!r}; must be a valid BCP 47 language tag "
-                f"(e.g. 'en', 'en-US', 'pt-BR')"
-            )
-
-    description = raw.get("description", None)
-    if description is not None:
-        if not isinstance(description, str) or not description:
-            raise ConfigError("'description' must be a non-empty string")
-
-    author = raw.get("author", None)
-    if author is not None:
-        if not isinstance(author, dict):
-            raise ConfigError("'author' must be an object")
-        if "name" not in author or not isinstance(author["name"], str) or not author["name"]:
-            raise ConfigError("'author.name' is required and must be a non-empty string")
-        if "type" in author and author["type"] not in ("Person", "Organization"):
-            raise ConfigError(
-                "'author.type' must be 'Person' or 'Organization'"
-            )
-        if "twitter" in author:
-            if not isinstance(author["twitter"], str) or not author["twitter"]:
-                raise ConfigError("'author.twitter' must be a non-empty string")
-            if not author["twitter"].startswith("@"):
-                raise ConfigError("'author.twitter' must start with '@'")
-
-    top_twitter = raw.get("twitter", None)
-    if top_twitter is not None:
-        if not isinstance(top_twitter, str) or not top_twitter:
-            raise ConfigError("'twitter' must be a non-empty string")
-        if not top_twitter.startswith("@"):
-            raise ConfigError("'twitter' must start with '@'")
-
-    # Resolve twitter: author.twitter takes precedence over top-level twitter
-    twitter = None
-    if author and author.get("twitter"):
-        twitter = author["twitter"]
-    elif top_twitter:
-        twitter = top_twitter
-
-    valid_search_values = ("icon", "bar", "hidden")
-    search = raw.get("search", None)
-    if search is not None:
-        if not isinstance(search, str) or search not in valid_search_values:
-            raise ConfigError(
-                f"invalid search value {search!r}; "
-                f"must be one of: {', '.join(valid_search_values)}"
-            )
-
-    search_engine = raw.get("search_engine", None)
-    if search_engine is not None:
-        if not isinstance(search_engine, str) or search_engine not in VALID_SEARCH_ENGINES:
-            raise ConfigError(
-                f"invalid search_engine value {search_engine!r}; "
-                f"must be one of: {', '.join(VALID_SEARCH_ENGINES)}"
-            )
-
-    feedback = raw.get("feedback", None)
-    if feedback is not None:
-        if not isinstance(feedback, dict):
-            raise ConfigError("'feedback' must be an object")
-        webhook = feedback.get("webhook")
-        ga = feedback.get("ga")
-        if webhook is None and ga is None:
-            raise ConfigError(
-                "'feedback' must contain at least one of 'webhook' or 'ga'"
-            )
-        if webhook is not None and (not isinstance(webhook, str) or not webhook):
-            raise ConfigError("'feedback.webhook' must be a non-empty string")
-        if ga is not None and (not isinstance(ga, str) or not ga):
-            raise ConfigError("'feedback.ga' must be a non-empty string")
-
-    branch = raw.get("branch", None)
-    if branch is not None:
-        if not isinstance(branch, str) or not branch:
-            raise ConfigError("'branch' must be a non-empty string")
-
-    lint_ignore = raw.get("lint_ignore", [])
-    if not isinstance(lint_ignore, list):
-        raise ConfigError("'lint_ignore' must be a list of strings")
-    for item in lint_ignore:
-        if not isinstance(item, str) or not re.match(r"^SEO\d+$", item):
-            raise ConfigError(
-                f"invalid lint_ignore entry {item!r}; "
-                f"must match pattern SEO followed by digits (e.g. 'SEO007')"
-            )
-
-    min_coverage = raw.get("min_coverage", None)
-    if min_coverage is not None:
-        if not isinstance(min_coverage, int) or isinstance(min_coverage, bool):
-            raise ConfigError("'min_coverage' must be an integer between 0 and 100")
-        if min_coverage < 0 or min_coverage > 100:
-            raise ConfigError("'min_coverage' must be an integer between 0 and 100")
-
-    branding = raw.get("branding", None)
-    if branding is not None:
-        if not isinstance(branding, dict):
-            raise ConfigError("'branding' must be an object")
-        for key in ("tagline", "cta_text", "cta_link", "logo",
-                     "secondary_cta_text", "secondary_cta_link"):
-            if key in branding and (not isinstance(branding[key], str) or not branding[key]):
-                raise ConfigError(f"'branding.{key}' must be a non-empty string")
-        features = branding.get("features", None)
-        if features is not None:
-            if not isinstance(features, list):
-                raise ConfigError("'branding.features' must be a list")
-            for i, feat in enumerate(features):
-                if not isinstance(feat, dict):
-                    raise ConfigError(f"'branding.features[{i}]' must be an object")
-                if "title" not in feat or not isinstance(feat["title"], str) or not feat["title"]:
-                    raise ConfigError(
-                        f"'branding.features[{i}].title' is required "
-                        f"and must be a non-empty string"
-                    )
-                if ("description" not in feat
-                        or not isinstance(feat["description"], str)
-                        or not feat["description"]):
-                    raise ConfigError(
-                        f"'branding.features[{i}].description' is required "
-                        f"and must be a non-empty string"
-                    )
-
-    auto_detect = raw.get("auto_detect", None)
-    if auto_detect is not None:
-        if not isinstance(auto_detect, dict):
-            raise ConfigError("'auto_detect' must be an object")
-        valid_keys = {"steps", "api_entries"}
-        for key, val in auto_detect.items():
-            if key not in valid_keys:
+    # Validate each field against its schema spec
+    result = {}
+    for spec in CONFIG_SCHEMA:
+        raw_value = raw.get(spec.name, _MISSING)
+        validated = _validate_field(spec, raw_value, spec.name)
+        # Special case: language choices come from VALID_LANGUAGES (runtime)
+        if spec.name == "language":
+            if validated not in VALID_LANGUAGES:
                 raise ConfigError(
-                    f"invalid auto_detect key {key!r}; "
-                    f"must be one of: {', '.join(sorted(valid_keys))}"
+                    f"invalid language {validated!r}; "
+                    f"must be one of: {', '.join(VALID_LANGUAGES)}"
                 )
-            if not isinstance(val, bool) or isinstance(val, int) and not isinstance(val, bool):
-                raise ConfigError(
-                    f"'auto_detect.{key}' must be a boolean"
-                )
+        result[spec.name] = validated
 
-    gen = raw.get("gen", None)
-    if gen is not None:
-        if not isinstance(gen, dict):
-            raise ConfigError("'gen' must be an object")
-        valid_gen_keys = {"exclude"}
-        for key in gen:
-            if key not in valid_gen_keys:
-                raise ConfigError(
-                    f"invalid gen key {key!r}; "
-                    f"must be one of: {', '.join(sorted(valid_gen_keys))}"
-                )
-        gen_exclude = gen.get("exclude", None)
-        if gen_exclude is not None:
-            if not isinstance(gen_exclude, list):
-                raise ConfigError("'gen.exclude' must be a list of strings")
-            for i, item in enumerate(gen_exclude):
-                if not isinstance(item, str):
-                    raise ConfigError(
-                        f"'gen.exclude[{i}]' must be a string"
-                    )
-
-    line_numbers = raw.get("line_numbers", False)
-    if not isinstance(line_numbers, bool) or isinstance(line_numbers, int) and not isinstance(line_numbers, bool):
-        raise ConfigError("'line_numbers' must be a boolean")
-
-    run_button = raw.get("run_button", False)
-    if not isinstance(run_button, bool) or isinstance(run_button, int) and not isinstance(run_button, bool):
-        raise ConfigError("'run_button' must be a boolean")
-
-    page_nav = raw.get("page_nav", True)
-    if not isinstance(page_nav, bool) or isinstance(page_nav, int) and not isinstance(page_nav, bool):
-        raise ConfigError("'page_nav' must be a boolean")
-
-    page_progress = raw.get("page_progress", True)
-    if not isinstance(page_progress, bool) or isinstance(page_progress, int) and not isinstance(page_progress, bool):
-        raise ConfigError("'page_progress' must be a boolean")
-
-    valid_code_icon_modes = ("colorful", "monochrome", "none")
-    code_icons = raw.get("code_icons", "colorful")
-    if not isinstance(code_icons, str) or code_icons not in valid_code_icon_modes:
-        raise ConfigError(
-            f"invalid code_icons value {code_icons!r}; "
-            f"must be one of: {', '.join(valid_code_icon_modes)}"
-        )
-
-    gen_data = raw.get("gen_data", None)
-    if gen_data is not None:
-        if not isinstance(gen_data, dict):
-            raise ConfigError("'gen_data' must be an object")
-        valid_gen_data_keys = {"scripts"}
-        for key in gen_data:
-            if key not in valid_gen_data_keys:
-                raise ConfigError(
-                    f"invalid gen_data key {key!r}; "
-                    f"must be one of: {', '.join(sorted(valid_gen_data_keys))}"
-                )
-        scripts = gen_data.get("scripts", None)
-        if scripts is not None:
-            if not isinstance(scripts, list):
-                raise ConfigError("'gen_data.scripts' must be a list")
-            for i, script in enumerate(scripts):
-                if not isinstance(script, dict):
-                    raise ConfigError(f"'gen_data.scripts[{i}]' must be an object")
-                for key in ("command", "output", "mounts"):
-                    if key not in script:
-                        raise ConfigError(
-                            f"'gen_data.scripts[{i}].{key}' is required"
-                        )
-                if not isinstance(script["command"], str):
-                    raise ConfigError(
-                        f"'gen_data.scripts[{i}].command' must be a string"
-                    )
-                if not isinstance(script["output"], str):
-                    raise ConfigError(
-                        f"'gen_data.scripts[{i}].output' must be a string"
-                    )
-                if not isinstance(script["mounts"], list):
-                    raise ConfigError(
-                        f"'gen_data.scripts[{i}].mounts' must be a list of strings"
-                    )
-                for j, mount in enumerate(script["mounts"]):
-                    if not isinstance(mount, str):
-                        raise ConfigError(
-                            f"'gen_data.scripts[{i}].mounts[{j}]' must be a string"
-                        )
-
-    return {
-        "language": language,
-        "source": source,
-        "docs": docs,
-        "output": output,
-        "theme": theme,
-        "deploy": deploy,
-        "directives": directives,
-        "repo": repo,
-        "base_url": base_url,
-        "lang": lang,
-        "author": author,
-        "description": description,
-        "twitter": twitter,
-        "search": search,
-        "search_engine": search_engine,
-        "feedback": feedback,
-        "branch": branch,
-        "lint_ignore": lint_ignore,
-        "min_coverage": min_coverage,
-        "branding": branding,
-        "auto_detect": auto_detect,
-        "gen": gen,
-        "gen_data": gen_data,
-        "line_numbers": line_numbers,
-        "run_button": run_button,
-        "page_nav": page_nav,
-        "page_progress": page_progress,
-        "code_icons": code_icons,
-    }
+    return _post_validate(result)
