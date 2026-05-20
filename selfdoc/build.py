@@ -11,10 +11,8 @@ import tempfile
 import zlib
 from datetime import datetime
 
-from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.config import load_config
-from selfdoc.directives import resolve_directives
-from selfdoc.docs import parse_frontmatter as _parse_frontmatter
+from selfdoc.docs import resolve_all_docs
 from selfdoc.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
     _md_to_html_path, _html_path_to_url, _html_to_md_path, _slugify,
@@ -22,7 +20,6 @@ from selfdoc.html import (
     _generate_search_js, _minify_js,
 )
 from selfdoc.themes import get_theme_meta
-from selfdoc.resolver import make_resolver
 
 try:
     from predraw.model import Scene, Element, Font
@@ -835,45 +832,22 @@ def build(dir_path=".", config=None):
             "Create it or run 'selfdoc init'."
         )
 
-    # Create the resolver: use language-specific extractor if supported,
-    # otherwise fall back to the stub resolver
-    resolver = make_resolver(config, dir_path)
+    # Resolve all .md templates via the shared pipeline
+    all_docs = resolve_all_docs(config, docs_dir=docs_dir, base_dir=dir_path)
+    markdown_files = {rp: resolved for rp, (fm, resolved, raw) in all_docs.items()}
+    frontmatter = {rp: fm for rp, (fm, resolved, raw) in all_docs.items() if fm}
 
-    # Build the set of valid directive names for parse-time validation
-    valid_names = ALL_BUILTIN_DIRECTIVES | set(config.get("directives", {}).keys())
-
-    # Scan for .md template files
-    markdown_files = {}
-    frontmatter = {}  # {rel_path: metadata_dict} (Feature 34)
+    # Collect non-.md static assets for copying
     other_files = []
-
-    # Normalize output_dir so we can reliably check containment
     abs_output = os.path.abspath(output_dir)
 
     for root, _dirs, files in os.walk(docs_dir):
-        # Skip the output directory to avoid processing previous build artifacts
         if os.path.abspath(root) == abs_output or os.path.abspath(root).startswith(abs_output + os.sep):
             continue
         for fname in files:
-            full_path = os.path.join(root, fname)
-            # Relative path within docs/
-            rel_path = os.path.relpath(full_path, docs_dir)
-
-            if fname.endswith(".md"):
-                # Skip underscore-prefixed template files (partials, includes)
-                if fname.startswith("_"):
-                    continue
-                with open(full_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                # Parse frontmatter (Feature 34)
-                metadata, content = _parse_frontmatter(content)
-                # Resolve directives with the language-aware resolver
-                resolved = resolve_directives(content, resolver, valid_names=valid_names)
-                markdown_files[rel_path] = resolved
-                if metadata:
-                    frontmatter[rel_path] = metadata
-            else:
-                other_files.append(rel_path)
+            if not fname.endswith(".md"):
+                full_path = os.path.join(root, fname)
+                other_files.append(os.path.relpath(full_path, docs_dir))
 
     # Save content/description hashes for staleness detection.
     # Build always proceeds -- staleness is only enforced at check time.
