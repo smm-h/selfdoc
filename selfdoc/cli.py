@@ -435,18 +435,19 @@ def _detect_version():
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format (default: text)")
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
-def _cmd_check(ignore="", format="text", no_commit=False):
+@strictcli.flag("dry-run", type=bool, help="Report staleness without writing hashes")
+def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
 
     try:
-        result = check_docs(".")
+        result = check_docs(".", dry_run=dry_run)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if not no_commit:
+    if not no_commit and not dry_run:
         from selfdoc.git import auto_commit
         auto_commit(
             [".selfdoc/hashes/hashes.json"],
