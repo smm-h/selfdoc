@@ -653,6 +653,7 @@ def _generate_llms_full_txt(project_name, markdown_files):
 def _generate_atom_feed(
     output_dir, base_url, project_name, description,
     markdown_files, frontmatter, page_dates,
+    feed_max_entries=None,
 ):
     """Generate an Atom feed (feed.xml) for the documentation site.
 
@@ -663,7 +664,7 @@ def _generate_atom_feed(
     if page_dates is None:
         page_dates = {}
 
-    entries = []
+    entries = []  # list of (page_date, entry_xml) tuples
     for md_path, content in sorted(markdown_files.items()):
         # Skip pages with feed: false in frontmatter
         meta = frontmatter.get(md_path, {})
@@ -700,7 +701,14 @@ def _generate_atom_feed(
             f"    <summary>{escaped_summary}</summary>\n"
             f"  </entry>"
         )
-        entries.append(entry)
+        entries.append((page_date, entry))
+
+    # Sort by modification date descending (most recent first)
+    entries.sort(key=lambda e: e[0], reverse=True)
+
+    # Truncate to feed_max_entries if set
+    if feed_max_entries is not None:
+        entries = entries[:feed_max_entries]
 
     # Find most recent date for the feed-level <updated>
     all_dates = [page_dates.get(p, (None, ""))[1] for p in markdown_files]
@@ -721,7 +729,7 @@ def _generate_atom_feed(
         f"  <id>{base_url}/</id>\n"
         f"  <updated>{most_recent}T00:00:00Z</updated>\n"
         f"{subtitle_line}"
-        + "\n".join(entries) + "\n"
+        + "\n".join(entry_xml for _, entry_xml in entries) + "\n"
         "</feed>\n"
     )
 
@@ -985,6 +993,7 @@ def build(dir_path=".", config=None):
         page_nav=config.get("page_nav", True),
         page_progress=config.get("page_progress", True),
         code_icons=config.get("code_icons", "colorful"),
+        glossary=config.get("glossary", True),
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
@@ -1071,6 +1080,7 @@ def build(dir_path=".", config=None):
         accent_color=theme_meta["accent_color"],
         theme_meta=theme_meta,
         deploy=config.get("deploy"),
+        feed_max_entries=config.get("feed_max_entries"),
     )
     written.update(aux_written)
 
@@ -1097,6 +1107,7 @@ def _generate_auxiliary_files(
     base_url, has_custom_css, repo, lang="en", page_dates=None,
     frontmatter=None, description="", feed_url=None, critical_css=None,
     accent_color="#0969da", theme_meta=None, deploy=None,
+    feed_max_entries=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
@@ -1145,6 +1156,7 @@ def _generate_auxiliary_files(
         markdown_files=markdown_files,
         frontmatter=frontmatter,
         page_dates=page_dates,
+        feed_max_entries=feed_max_entries,
     )
     written[feed_path] = True
 

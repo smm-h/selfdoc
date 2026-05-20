@@ -168,6 +168,12 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         default=True,
         description="Show a reading progress bar at the top of each page.",
     ),
+    FieldSpec(
+        name="glossary",
+        type=_B,
+        default=True,
+        description="Auto-generate a glossary page from dfn terms.",
+    ),
     # --- optional int field ---
     FieldSpec(
         name="min_coverage",
@@ -176,6 +182,13 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         min_val=0,
         max_val=100,
         description="Minimum documentation coverage percentage required by the check command.",
+    ),
+    FieldSpec(
+        name="feed_max_entries",
+        type=_I,
+        default=None,
+        min_val=1,
+        description="Maximum number of entries in the Atom feed, sorted by most recent.",
     ),
     # --- optional list fields ---
     FieldSpec(

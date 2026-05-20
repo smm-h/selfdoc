@@ -663,7 +663,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    deploy_target=None, run_button=False,
                    line_numbers=False,
                    page_nav=True, page_progress=True,
-                   code_icons="colorful"):
+                   code_icons="colorful", glossary=True):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -909,7 +909,7 @@ def generate_html(markdown_files, project_name=None, version=None,
     # page so all terms appear in one alphabetically-sorted definition list.
     # Skip if the user already has a glossary.md in their docs.
     existing_html_paths = {pd["html_path"] for pd in page_data}
-    if site_terms and "glossary/index.html" not in existing_html_paths:
+    if glossary and site_terms and "glossary/index.html" not in existing_html_paths:
         # Build glossary body HTML
         sorted_terms = sorted(site_terms.values(), key=lambda t: t["term"].lower())
         glossary_dl_items = []
