@@ -92,6 +92,44 @@ def check_staleness(
     )
 
 
+def update_hashes(all_docs, base_dir=".", dry_run=False):
+    """Compute content and description hashes for all docs and save.
+
+    Args:
+        all_docs: Dict from resolve_all_docs {rel_path: (fm, resolved, raw, fm_lines)}
+        base_dir: Project root
+        dry_run: If True, compute but don't write to disk
+
+    Returns:
+        List of LintResult-compatible tuples (rel_path, stale_msg) for stale pages.
+    """
+    stored_hashes = load_hashes(base_dir)
+    current_hashes: dict[str, dict] = {}
+    stale_warnings = []
+
+    for rel_path in sorted(all_docs):
+        metadata, resolved_content, _raw, _fm_lines = all_docs[rel_path]
+        description = metadata.get("description")
+        if description is None:
+            continue
+        c_hash = compute_content_hash(resolved_content)
+        d_hash = compute_description_hash(str(description))
+        current_hashes[rel_path] = {
+            "content": c_hash,
+            "description": d_hash,
+        }
+        stale_msg = check_staleness(rel_path, c_hash, d_hash, stored_hashes)
+        if stale_msg is not None:
+            stale_warnings.append((rel_path, stale_msg))
+
+    # Merge current hashes into stored (preserve pages not in this run)
+    stored_hashes.update(current_hashes)
+    if not dry_run:
+        save_hashes(stored_hashes, base_dir)
+
+    return stale_warnings
+
+
 def _strip_frontmatter(content: str) -> str:
     """Strip YAML frontmatter from content, returning only the body."""
     if not content.startswith("---"):

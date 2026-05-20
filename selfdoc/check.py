@@ -23,13 +23,7 @@ from selfdoc.config import load_config
 from selfdoc.directives import parse_directives
 from selfdoc.extractors import EXTRACTORS
 from selfdoc.resolver import make_resolver
-from selfdoc.staleness import (
-    check_staleness,
-    compute_content_hash,
-    compute_description_hash,
-    load_hashes,
-    save_hashes,
-)
+from selfdoc.staleness import update_hashes
 
 
 @dataclass
@@ -84,7 +78,7 @@ class CheckResult:
     lints: list[LintResult] = field(default_factory=list)
 
 
-def check_docs(dir_path=".", config=None):
+def check_docs(dir_path=".", config=None, dry_run=False):
     """Validate all directives in docs templates and report coverage.
 
     Scans docs/ for .md templates, parses directives, attempts to resolve
@@ -93,6 +87,7 @@ def check_docs(dir_path=".", config=None):
     Args:
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
+        dry_run: If True, report staleness without writing hashes to disk.
 
     Returns:
         CheckResult with per-directive results and optional coverage stats.
@@ -213,33 +208,15 @@ def check_docs(dir_path=".", config=None):
     # but frontmatter description was not updated.
     # Uses frontmatter and resolved content from resolve_all_docs instead
     # of re-walking docs/ and re-resolving directives.
-    stored_hashes = load_hashes(dir_path)
-    current_hashes: dict[str, dict] = {}
-    for rel_path in sorted(all_docs):
-        metadata, resolved_content, _raw, _fm_lines = all_docs[rel_path]
-        description = metadata.get("description")
-        if description is None:
-            continue
-        c_hash = compute_content_hash(resolved_content)
-        d_hash = compute_description_hash(str(description))
-        current_hashes[rel_path] = {
-            "content": c_hash,
-            "description": d_hash,
-        }
-        stale_msg = check_staleness(
-            rel_path, c_hash, d_hash, stored_hashes,
-        )
-        if stale_msg is not None:
-            result.lints.append(LintResult(
-                file=rel_path,
-                line=None,
-                code="STALE001",
-                message=stale_msg,
-                severity="error",
-            ))
-    # Merge current hashes into stored (preserve pages not in this run)
-    stored_hashes.update(current_hashes)
-    save_hashes(stored_hashes, dir_path)
+    stale_warnings = update_hashes(all_docs, dir_path, dry_run=dry_run)
+    for rel_path, stale_msg in stale_warnings:
+        result.lints.append(LintResult(
+            file=rel_path,
+            line=None,
+            code="STALE001",
+            message=stale_msg,
+            severity="error",
+        ))
 
     return result
 
