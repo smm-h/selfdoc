@@ -11,6 +11,7 @@ from selfdoc.staleness import (
     compute_description_hash,
     load_hashes,
     save_hashes,
+    update_hashes,
 )
 
 
@@ -257,3 +258,92 @@ def test_staleness_no_error_when_description_updated(tmp_path):
     result = check_docs(str(tmp_path))
     stale_lints = [l for l in result.lints if l.code == "STALE001"]
     assert len(stale_lints) == 0
+
+
+# -- update_hashes --
+
+
+def _make_all_docs(pages):
+    """Helper: build an all_docs dict from a list of (rel_path, description, body) tuples."""
+    result = {}
+    for rel_path, description, body in pages:
+        fm = {"description": description} if description is not None else {}
+        resolved = f"---\ndescription: {description}\n---\n{body}" if description else body
+        result[rel_path] = (fm, resolved, body, 3 if description else 0)
+    return result
+
+
+def test_update_hashes_writes_file(tmp_path):
+    """update_hashes writes hashes.json when dry_run=False."""
+    all_docs = _make_all_docs([
+        ("page.md", "A page about things", "# Page\n\nSome content."),
+    ])
+    update_hashes(all_docs, str(tmp_path), dry_run=False)
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    assert os.path.isfile(hashes_path)
+
+    with open(hashes_path, "r") as f:
+        data = json.load(f)
+    assert "page.md" in data
+    assert "content" in data["page.md"]
+    assert "description" in data["page.md"]
+
+
+def test_update_hashes_dry_run_no_write(tmp_path):
+    """update_hashes does NOT write hashes.json when dry_run=True."""
+    all_docs = _make_all_docs([
+        ("page.md", "A page about things", "# Page\n\nSome content."),
+    ])
+    update_hashes(all_docs, str(tmp_path), dry_run=True)
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    assert not os.path.exists(hashes_path)
+
+
+def test_update_hashes_detects_stale(tmp_path):
+    """update_hashes returns stale warnings when content changes but description doesn't."""
+    # First pass: establish baseline hashes
+    all_docs_v1 = _make_all_docs([
+        ("page.md", "Original description", "# Page\n\nOriginal content."),
+    ])
+    warnings_v1 = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    assert len(warnings_v1) == 0  # new page, no staleness
+
+    # Second pass: change content but keep same description
+    all_docs_v2 = _make_all_docs([
+        ("page.md", "Original description", "# Page\n\nCompletely new content."),
+    ])
+    warnings_v2 = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings_v2) == 1
+    rel_path, stale_msg = warnings_v2[0]
+    assert rel_path == "page.md"
+    assert "stale description" in stale_msg
+
+
+def test_update_hashes_no_stale_when_both_change(tmp_path):
+    """No staleness when both content and description change."""
+    all_docs_v1 = _make_all_docs([
+        ("page.md", "Desc v1", "# Page\n\nContent v1."),
+    ])
+    update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+
+    all_docs_v2 = _make_all_docs([
+        ("page.md", "Desc v2", "# Page\n\nContent v2."),
+    ])
+    warnings = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings) == 0
+
+
+def test_update_hashes_skips_pages_without_description(tmp_path):
+    """Pages without a description in frontmatter are skipped entirely."""
+    all_docs = _make_all_docs([
+        ("no-desc.md", None, "# No Description\n\nJust content."),
+    ])
+    warnings = update_hashes(all_docs, str(tmp_path), dry_run=False)
+    assert len(warnings) == 0
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    with open(hashes_path, "r") as f:
+        data = json.load(f)
+    assert "no-desc.md" not in data
