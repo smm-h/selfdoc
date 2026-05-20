@@ -378,10 +378,9 @@ def resolve_table_commands(attrs: dict, config: dict, base_dir: str) -> str:
     if not path:
         return "> *[selfdoc: table-commands requires a path attribute]*"
 
-    from selfdoc.strictcli_support import extract_cli_structure
+    from selfdoc.strictcli_support import read_schema_json
 
-    source_paths = [path]
-    cli = extract_cli_structure(source_paths, base_dir)
+    cli = read_schema_json(base_dir)
     if cli is None:
         return f"> *[selfdoc: no strictcli app found in '{path}']*"
 

@@ -180,18 +180,17 @@ def check_docs(dir_path=".", config=None, dry_run=False):
 
     # strictcli hard error: if the project uses strictcli and any directive
     # uses code-help, emit a hard error directing users to 'selfdoc gen'.
-    if config["language"] == "python":
-        from selfdoc.strictcli_support import uses_strictcli
+    from selfdoc.strictcli_support import uses_strictcli
 
-        has_code_help = any(
-            dr.directive.startswith("code-help")
-            for dr in result.directive_results
+    has_code_help = any(
+        dr.directive.startswith("code-help")
+        for dr in result.directive_results
+    )
+    if has_code_help and uses_strictcli(config["source"], dir_path):
+        raise RuntimeError(
+            "Project uses strictcli — use 'selfdoc gen' for CLI"
+            " documentation instead of code-help directives"
         )
-        if has_code_help and uses_strictcli(config["source"], dir_path):
-            raise RuntimeError(
-                "Project uses strictcli — use 'selfdoc gen' for CLI"
-                " documentation instead of code-help directives"
-            )
 
     # Compute coverage (language-agnostic via extractor protocol)
     language = config["language"]
