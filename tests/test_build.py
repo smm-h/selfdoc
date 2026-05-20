@@ -807,6 +807,39 @@ def test_atom_feed_link_in_html_with_base_url(project_dir):
     assert 'href="feed.xml">' in content
 
 
+def test_feed_max_entries_truncates(tmp_path):
+    """Feed with many pages is truncated to feed_max_entries."""
+    markdown_files = {
+        "page1.md": "# Page 1\n\nOldest page.",
+        "page2.md": "# Page 2\n\nMiddle page.",
+        "page3.md": "# Page 3\n\nNewest page.",
+    }
+    page_dates = {
+        "page1.md": ("2026-01-01", "2026-01-01"),
+        "page2.md": ("2026-03-01", "2026-03-01"),
+        "page3.md": ("2026-05-01", "2026-05-01"),
+    }
+    feed_path = _generate_atom_feed(
+        output_dir=str(tmp_path),
+        base_url="https://example.com",
+        project_name="Test",
+        description="A test",
+        markdown_files=markdown_files,
+        frontmatter={},
+        page_dates=page_dates,
+        feed_max_entries=2,
+    )
+    with open(feed_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Should have exactly 2 entries (most recent: page3 and page2)
+    assert content.count("<entry>") == 2
+    assert "Page 3" in content
+    assert "Page 2" in content
+    # Oldest page should be truncated
+    assert "Page 1" not in content
+
+
 # --- Phase 2.5: Improved 404 page ---
 
 

@@ -784,6 +784,70 @@ def test_min_coverage_default_none(config_dir):
     assert cfg["min_coverage"] is None
 
 
+# -- glossary field --
+
+
+def test_glossary_default_true(config_dir):
+    """Config without glossary key loads with glossary=True."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["glossary"] is True
+
+
+def test_glossary_false(config_dir):
+    """Config with glossary=false loads correctly."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "glossary": False,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["glossary"] is False
+
+
+# -- feed_max_entries field --
+
+
+def test_feed_max_entries_valid(config_dir):
+    """Valid integer for feed_max_entries loads correctly."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feed_max_entries": 10,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["feed_max_entries"] == 10
+
+
+def test_feed_max_entries_zero(config_dir):
+    """feed_max_entries=0 is rejected (min_val=1)."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "feed_max_entries": 0,
+    })
+    with pytest.raises(ConfigError, match="'feed_max_entries' must be an integer"):
+        load_config(str(config_dir))
+
+
+def test_feed_max_entries_default_none(config_dir):
+    """Missing feed_max_entries defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["feed_max_entries"] is None
+
+
 # -- gen_data field --
 
 
