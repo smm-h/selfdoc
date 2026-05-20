@@ -1,0 +1,166 @@
+{
+  "name": "selfdoc",
+  "version": "0.6.0",
+  "help": "Code-aware static site generator with directive-based content extraction",
+  "env_prefix": null,
+  "config": false,
+  "global_flags": [],
+  "commands": {
+    "init": {
+      "name": "init",
+      "help": "Initialize selfdoc in the current project",
+      "flags": [
+        {
+          "name": "no-commit",
+          "type": "bool",
+          "help": "Skip auto-committing changed files",
+          "short": null,
+          "default": false,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": true,
+          "hidden": false
+        }
+      ],
+      "args": [],
+      "passthrough": false
+    },
+    "build": {
+      "name": "build",
+      "help": "Build the documentation site",
+      "flags": [
+        {
+          "name": "no-commit",
+          "type": "bool",
+          "help": "Skip auto-committing changed files",
+          "short": null,
+          "default": false,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": true,
+          "hidden": false
+        }
+      ],
+      "args": [],
+      "passthrough": false
+    },
+    "serve": {
+      "name": "serve",
+      "help": "Serve the documentation site locally",
+      "flags": [
+        {
+          "name": "port",
+          "type": "int",
+          "help": "Port to serve on (default: 8000)",
+          "short": "p",
+          "default": 8000,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": null,
+          "hidden": false
+        }
+      ],
+      "args": [],
+      "passthrough": false
+    },
+    "deploy": {
+      "name": "deploy",
+      "help": "Deploy the documentation site",
+      "flags": [],
+      "args": [],
+      "passthrough": false
+    },
+    "check": {
+      "name": "check",
+      "help": "Check documentation coverage and consistency",
+      "flags": [
+        {
+          "name": "ignore",
+          "type": "str",
+          "help": "Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)",
+          "short": null,
+          "default": "",
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": null,
+          "hidden": false
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "help": "Output format (default: text)",
+          "short": null,
+          "default": "text",
+          "env": null,
+          "choices": [
+            "text",
+            "json"
+          ],
+          "repeatable": false,
+          "negatable": null,
+          "hidden": false
+        },
+        {
+          "name": "no-commit",
+          "type": "bool",
+          "help": "Skip auto-committing changed files",
+          "short": null,
+          "default": false,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": true,
+          "hidden": false
+        }
+      ],
+      "args": [],
+      "passthrough": false
+    },
+    "gen": {
+      "name": "gen",
+      "help": "Auto-generate documentation pages from project structure",
+      "flags": [
+        {
+          "name": "no-commit",
+          "type": "bool",
+          "help": "Skip auto-committing changed files",
+          "short": null,
+          "default": false,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": true,
+          "hidden": false
+        }
+      ],
+      "args": [],
+      "passthrough": false
+    },
+    "gen-data": {
+      "name": "gen-data",
+      "help": "Generate data files by running sandboxed scripts",
+      "flags": [
+        {
+          "name": "no-commit",
+          "type": "bool",
+          "help": "Skip auto-committing changed files",
+          "short": null,
+          "default": false,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": true,
+          "hidden": false
+        }
+      ],
+      "args": [],
+      "passthrough": false
+    }
+  },
+  "groups": {},
+  "deprecated": {}
+}
