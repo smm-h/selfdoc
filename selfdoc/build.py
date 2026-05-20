@@ -14,6 +14,7 @@ from datetime import datetime
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.config import load_config
 from selfdoc.directives import resolve_directives
+from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
     _md_to_html_path, _html_path_to_url, _html_to_md_path, _slugify,
@@ -570,66 +571,6 @@ def _generate_sitemap(base_url, html_paths, page_dates=None):
         + "\n</urlset>\n"
     )
 
-
-def _parse_frontmatter(content):
-    """Parse YAML-like frontmatter from markdown content (Feature 34).
-
-    If the content starts with '---', extracts key: value pairs until the
-    closing '---'. Returns (metadata_dict, remaining_content). If no
-    frontmatter is found, returns ({}, original_content).
-
-    Simple parser: splits on ':' (first occurrence), strips whitespace.
-    No YAML library needed.
-    """
-    if not content.startswith("---"):
-        return {}, content
-
-    lines = content.split("\n")
-    # Find closing ---
-    end_idx = None
-    for idx in range(1, len(lines)):
-        if lines[idx].strip() == "---":
-            end_idx = idx
-            break
-
-    if end_idx is None:
-        return {}, content
-
-    metadata = {}
-    for line in lines[1:end_idx]:
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        colon_pos = line.find(":")
-        if colon_pos == -1:
-            continue
-        key = line[:colon_pos].strip()
-        value = line[colon_pos + 1:].strip()
-        # Strip wrapping quotes (single or double) from string values
-        if (
-            len(value) >= 2
-            and value[0] == value[-1]
-            and value[0] in ('"', "'")
-        ):
-            value = value[1:-1]
-        # Convert boolean-like strings
-        if value.lower() == "true":
-            value = True
-        elif value.lower() == "false":
-            value = False
-        else:
-            # Try to convert numeric values
-            try:
-                value = int(value)
-            except ValueError:
-                try:
-                    value = float(value)
-                except ValueError:
-                    pass
-        metadata[key] = value
-
-    remaining = "\n".join(lines[end_idx + 1:]).lstrip("\n")
-    return metadata, remaining
 
 
 def _strip_html(text):

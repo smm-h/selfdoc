@@ -13,7 +13,7 @@ import re
 import pytest
 
 from selfdoc.check import _run_lints
-from selfdoc.build import _parse_frontmatter
+from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, _extract_title
 
 

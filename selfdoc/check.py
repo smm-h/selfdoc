@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 import re
 
-from selfdoc.build import _parse_frontmatter
+from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
     tokenize, Heading, Paragraph, BlankLine, CodeBlock,

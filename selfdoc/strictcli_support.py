@@ -11,7 +11,7 @@ import re
 import stat
 import tempfile
 
-from selfdoc.build import _parse_frontmatter
+from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 
 
 # Matches the default per-command/per-group description templates so we can
