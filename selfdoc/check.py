@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 import re
 
-from selfdoc.docs import parse_frontmatter as _parse_frontmatter
+from selfdoc.docs import parse_frontmatter as _parse_frontmatter, resolve_all_docs
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
     tokenize, Heading, Paragraph, BlankLine, CodeBlock,
@@ -20,7 +20,7 @@ from selfdoc.tokenizer import (
     Directive,
 )
 from selfdoc.config import load_config
-from selfdoc.directives import parse_directives, resolve_directives
+from selfdoc.directives import parse_directives
 from selfdoc.extractors import EXTRACTORS
 from selfdoc.resolver import make_resolver
 from selfdoc.staleness import (
@@ -120,75 +120,68 @@ def check_docs(dir_path=".", config=None):
     # Track all successfully resolved directives (for coverage)
     resolved_directives = []
 
-    # Normalize output dir so we can skip it during the walk
-    output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
-    abs_output = os.path.abspath(output_dir)
+    # Resolve all docs via the shared pipeline (provides frontmatter,
+    # resolved content, raw content, and frontmatter line count).
+    all_docs = resolve_all_docs(config, base_dir=dir_path)
 
-    # Scan docs/ for .md templates
-    for root, _dirs, files in os.walk(docs_dir):
-        # Skip the output directory to avoid processing previous build artifacts
-        if os.path.abspath(root) == abs_output or os.path.abspath(root).startswith(abs_output + os.sep):
-            continue
-        for fname in sorted(files):
-            if not fname.endswith(".md"):
-                continue
-            if fname.startswith("_"):
-                continue
-            full_path = os.path.join(root, fname)
-            rel_path = os.path.relpath(full_path, docs_dir)
+    # Walk #1: per-directive validation and coverage tracking.
+    # Uses raw_content (frontmatter-stripped body) from resolve_all_docs
+    # instead of re-reading files from disk.  fm_line_count adjusts
+    # directive line numbers back to file-absolute positions.
+    for rel_path in sorted(all_docs):
+        _fm, _resolved, raw_content, fm_line_count = all_docs[rel_path]
 
-            with open(full_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            directives = parse_directives(content, valid_names=valid_names)
-            for directive in directives:
-                attrs_str = " ".join(
-                    f'{k}="{v}"' for k, v in directive.attrs.items()
+        directives = parse_directives(raw_content, valid_names=valid_names)
+        for directive in directives:
+            # Adjust line number to be file-absolute (account for frontmatter)
+            file_line = directive.line_number + fm_line_count
+            attrs_str = " ".join(
+                f'{k}="{v}"' for k, v in directive.attrs.items()
+            )
+            directive_str = f"{directive.name} {attrs_str}".strip()
+            try:
+                resolved = resolver(
+                    directive.name, directive.attrs, directive.body
                 )
-                directive_str = f"{directive.name} {attrs_str}".strip()
-                try:
-                    resolved = resolver(
-                        directive.name, directive.attrs, directive.body
-                    )
-                    # Resolver returns error markers starting with "> *[selfdoc:"
-                    # when something goes wrong -- detect those as failures
-                    if resolved.startswith("> *[selfdoc:"):
-                        # Extract error message from the marker
-                        error_msg = resolved.strip("> *[]")
-                        # Clean up: remove "selfdoc: " prefix
-                        if error_msg.startswith("selfdoc: "):
-                            error_msg = error_msg[len("selfdoc: "):]
-                        result.directive_results.append(DirectiveResult(
-                            file=rel_path,
-                            line=directive.line_number,
-                            directive=directive_str,
-                            status="FAILED",
-                            error=error_msg,
-                        ))
-                    else:
-                        result.directive_results.append(DirectiveResult(
-                            file=rel_path,
-                            line=directive.line_number,
-                            directive=directive_str,
-                            status="OK",
-                        ))
-                        # Track all successful directives for coverage
-                        if directive.attrs:
-                            resolved_directives.append(
-                                ResolvedDirective(
-                                    name=directive.name,
-                                    attrs=directive.attrs,
-                                    content=resolved,
-                                )
-                            )
-                except Exception as exc:
+                # Resolver returns error markers starting with "> *[selfdoc:"
+                # when something goes wrong -- detect those as failures
+                if resolved.startswith("> *[selfdoc:"):
+                    # Extract error message from the marker
+                    error_msg = resolved.strip("> *[]")
+                    # Clean up: remove "selfdoc: " prefix
+                    if error_msg.startswith("selfdoc: "):
+                        error_msg = error_msg[len("selfdoc: "):]
                     result.directive_results.append(DirectiveResult(
                         file=rel_path,
-                        line=directive.line_number,
+                        line=file_line,
                         directive=directive_str,
                         status="FAILED",
-                        error=str(exc),
+                        error=error_msg,
                     ))
+                else:
+                    result.directive_results.append(DirectiveResult(
+                        file=rel_path,
+                        line=file_line,
+                        directive=directive_str,
+                        status="OK",
+                    ))
+                    # Track all successful directives for coverage
+                    if directive.attrs:
+                        resolved_directives.append(
+                            ResolvedDirective(
+                                name=directive.name,
+                                attrs=directive.attrs,
+                                content=resolved,
+                            )
+                        )
+            except Exception as exc:
+                result.directive_results.append(DirectiveResult(
+                    file=rel_path,
+                    line=file_line,
+                    directive=directive_str,
+                    status="FAILED",
+                    error=str(exc),
+                ))
 
     # strictcli hard error: if the project uses strictcli and any directive
     # uses code-help, emit a hard error directing users to 'selfdoc gen'.
@@ -218,46 +211,32 @@ def check_docs(dir_path=".", config=None):
 
     # Description staleness detection: check if page content changed
     # but frontmatter description was not updated.
+    # Uses frontmatter and resolved content from resolve_all_docs instead
+    # of re-walking docs/ and re-resolving directives.
     stored_hashes = load_hashes(dir_path)
     current_hashes: dict[str, dict] = {}
-    for root, _dirs, files in os.walk(docs_dir):
-        if (os.path.abspath(root) == abs_output
-                or os.path.abspath(root).startswith(abs_output + os.sep)):
+    for rel_path in sorted(all_docs):
+        metadata, resolved_content, _raw, _fm_lines = all_docs[rel_path]
+        description = metadata.get("description")
+        if description is None:
             continue
-        for fname in sorted(files):
-            if not fname.endswith(".md"):
-                continue
-            if fname.startswith("_"):
-                continue
-            full_path = os.path.join(root, fname)
-            rel_path = os.path.relpath(full_path, docs_dir)
-            with open(full_path, "r", encoding="utf-8") as f:
-                raw_content = f.read()
-            metadata, body_content = _parse_frontmatter(raw_content)
-            description = metadata.get("description")
-            if description is None:
-                continue
-            # Resolve directives to get the final content for hashing
-            resolved_content = resolve_directives(
-                body_content, resolver, valid_names=valid_names,
-            )
-            c_hash = compute_content_hash(resolved_content)
-            d_hash = compute_description_hash(str(description))
-            current_hashes[rel_path] = {
-                "content": c_hash,
-                "description": d_hash,
-            }
-            stale_msg = check_staleness(
-                rel_path, c_hash, d_hash, stored_hashes,
-            )
-            if stale_msg is not None:
-                result.lints.append(LintResult(
-                    file=rel_path,
-                    line=None,
-                    code="STALE001",
-                    message=stale_msg,
-                    severity="error",
-                ))
+        c_hash = compute_content_hash(resolved_content)
+        d_hash = compute_description_hash(str(description))
+        current_hashes[rel_path] = {
+            "content": c_hash,
+            "description": d_hash,
+        }
+        stale_msg = check_staleness(
+            rel_path, c_hash, d_hash, stored_hashes,
+        )
+        if stale_msg is not None:
+            result.lints.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="STALE001",
+                message=stale_msg,
+                severity="error",
+            ))
     # Merge current hashes into stored (preserve pages not in this run)
     stored_hashes.update(current_hashes)
     save_hashes(stored_hashes, dir_path)

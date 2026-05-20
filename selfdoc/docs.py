@@ -78,13 +78,15 @@ def resolve_all_docs(config, docs_dir=None, base_dir="."):
     """Walk docs/, parse frontmatter, resolve directives for each .md file.
 
     Returns dict mapping rel_path to (frontmatter_dict, resolved_content,
-    raw_content).
+    raw_content, fm_line_count).
 
     - rel_path: relative to docs_dir (e.g. "index.md", "api/reference.md")
     - frontmatter_dict: parsed frontmatter (empty dict if none)
     - resolved_content: markdown with all directives replaced
     - raw_content: original body content (frontmatter stripped, directives
       NOT resolved)
+    - fm_line_count: number of lines consumed by frontmatter (including
+      delimiters); 0 when no frontmatter is present
     """
     if docs_dir is None:
         docs_dir = os.path.join(base_dir, config.get("docs", "docs/").rstrip("/"))
@@ -116,7 +118,8 @@ def resolve_all_docs(config, docs_dir=None, base_dir="."):
                 content = f.read()
 
             frontmatter_dict, body = parse_frontmatter(content)
+            fm_line_count = len(content.split('\n')) - len(body.split('\n'))
             resolved = resolve_directives(body, resolver, valid_names=valid_names)
-            result[rel_path] = (frontmatter_dict, resolved, body)
+            result[rel_path] = (frontmatter_dict, resolved, body, fm_line_count)
 
     return result

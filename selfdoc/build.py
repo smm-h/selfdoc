@@ -834,8 +834,8 @@ def build(dir_path=".", config=None):
 
     # Resolve all .md templates via the shared pipeline
     all_docs = resolve_all_docs(config, docs_dir=docs_dir, base_dir=dir_path)
-    markdown_files = {rp: resolved for rp, (fm, resolved, raw) in all_docs.items()}
-    frontmatter = {rp: fm for rp, (fm, resolved, raw) in all_docs.items() if fm}
+    markdown_files = {rp: resolved for rp, (fm, resolved, raw, _) in all_docs.items()}
+    frontmatter = {rp: fm for rp, (fm, resolved, raw, _) in all_docs.items() if fm}
 
     # Collect non-.md static assets for copying
     other_files = []
