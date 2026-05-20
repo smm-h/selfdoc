@@ -8,7 +8,7 @@
     "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8"
   },
   "cli-check.md": {
-    "content": "495266af4cc9c57cba5084443575781e5b8172adf934423eaa0a8f2246d0d9b6",
+    "content": "9b089d4ee112451eb379de9dfa9fa3cb69f4cd696a3ab83c4192af6cb8d7c7da",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd"
   },
   "cli-deploy.md": {
@@ -48,7 +48,7 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "gen-index.md": {
-    "content": "46af85e07eb28d7dd3d60f6239c215db33b344b6ea604d44346f64b6c2d4b212",
+    "content": "3327e75cd368e8fc574d2671ae6647b65bb178e8f011e3283d8e5c28e2a11bc2",
     "description": "bb3cd9d34f014c0674a9285c25ee14b5b4abc5cf941f0d83594c301405e8f3b6"
   },
   "getting-started.md": {
@@ -64,15 +64,15 @@
     "description": "be4881babd1a98706a694be1393b205768d475c98a6f715d7ec504c1382e25de"
   },
   "selfdoc-build.md": {
-    "content": "3edc7fd01dbd443ea6d224306c7795f27f5948bafe207842affa2a2223ba25ca",
+    "content": "a11d09883a9c002706f29b73af2d6c74cd579b55396bbc5709cd00b8c3e7fedb",
     "description": "25ec3ea53419eb4126b309ad81d0c2e78e1347f29201a7f1574f6e38e90e4621"
   },
   "selfdoc-check.md": {
-    "content": "3c47444d8e3ae327c8dfc7f34cdbbe5fe44cd3a66c866d671882f93c93fc1d9f",
+    "content": "6ef700fd3e91926959ef099568ed293e17a4d4a686d26c7b857bb1819d3a3f0d",
     "description": "a458cccd01e54fe1e2266244fbbc15683400273f7f951c31c1392bc998151d6d"
   },
   "selfdoc-cli.md": {
-    "content": "880355a1431236a3e4771ecad5bcbda7b20460cedaf1ae1332ea14e71b9858ab",
+    "content": "02f7bd2cb044c46158e0123825beacafef4c9a02fe9bfa3ab97df174da6d3fcc",
     "description": "ee2400812c86e36d0188ddc98abf76fe402479955e087db0b33b5016e1f500ad"
   },
   "selfdoc-config.md": {
@@ -86,6 +86,10 @@
   "selfdoc-directives.md": {
     "content": "284db842f12b44acc1a7e8b0d043571a0c587b59e474a13858291beb389484c3",
     "description": "4349c5d3d01b37655615897c7e8cf33df5aad10bfe4d4a99f4bee95947406e2c"
+  },
+  "selfdoc-docs.md": {
+    "content": "6a28a5a84ef39dce108b51e334d801a3de3090bf542e935dd78fd22efce534e8",
+    "description": "e62e4b7f625c67bc856dc0a3332930e942bf9a184a88cadcec5a34cc3d4e7f50"
   },
   "selfdoc-extractors-go.md": {
     "content": "614e2764a5fffe95125a4472336018bdc91f6509a87352eb7c8a5ef7f2e04469",
@@ -112,7 +116,7 @@
     "description": "b808518c126f2f07a0b93986584b7fc20ae87cb76fc5f973b579c4066354a16d"
   },
   "selfdoc-html.md": {
-    "content": "0aaf85d3491540940f52d0a6584fe22d22822bf7239ef52b98355052e4686e18",
+    "content": "3e2ffc99495e4af66ca02b7799c10bd7439fe8c869428c432a2fb808dca5d4c1",
     "description": "e9c373874ce0bf9eaa4716a7b9a6f1e2ee94014b24f14c95df960e94cd780c59"
   },
   "selfdoc-icons.md": {
@@ -124,7 +128,7 @@
     "description": "273c26abce985442107be1fb321e5d51068124691b7631754cf0267af4c03adf"
   },
   "selfdoc-strictcli_support.md": {
-    "content": "1a2ca0ffff713e4aff94058cecf194342c24b7fcc15de2f50cf72db64a5de0dc",
+    "content": "b3bc7558fb379a83785e682d3696b79d93887b505e22b1986823d6afda24f3e1",
     "description": "ba21e34d05da48eae381df63dd5034745cbc1d5ce2d3cccf0b7a509cc89d4196"
   },
   "selfdoc-tokenizer.md": {
