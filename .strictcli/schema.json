@@ -115,6 +115,18 @@
           "repeatable": false,
           "negatable": true,
           "hidden": false
+        },
+        {
+          "name": "dry-run",
+          "type": "bool",
+          "help": "Report staleness without writing hashes",
+          "short": null,
+          "default": false,
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": true,
+          "hidden": false
         }
       ],
       "args": [],
