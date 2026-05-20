@@ -106,11 +106,11 @@ class TestTableCommands:
         result = resolve_table_commands({}, _SELFDOC_CONFIG, _PROJECT_DIR)
         assert "requires a path attribute" in result
 
-    def test_no_strictcli_app(self):
+    def test_no_strictcli_app(self, tmp_path):
         result = resolve_table_commands(
-            {"path": "tests/"},
+            {"path": "src/"},
             _SELFDOC_CONFIG,
-            _PROJECT_DIR,
+            str(tmp_path),
         )
         assert "no strictcli app found" in result
 

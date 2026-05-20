@@ -10,6 +10,7 @@ import pytest
 from selfdoc.strictcli_support import (
     uses_strictcli,
     extract_cli_structure,
+    read_schema_json,
     generate_cli_pages,
 )
 
@@ -28,26 +29,91 @@ def src_dir(tmp_path):
 
 
 @pytest.fixture()
-def strictcli_app_source():
-    """Return source code for a realistic strictcli app definition."""
-    return textwrap.dedent('''\
-        import strictcli
+def schema_json():
+    """Return a realistic schema.json dict for a strictcli app."""
+    return {
+        "name": "testapp",
+        "version": "1.0",
+        "help": "A test app",
+        "env_prefix": None,
+        "config": False,
+        "global_flags": [],
+        "commands": {
+            "deploy": {
+                "name": "deploy",
+                "help": "deploy stuff",
+                "flags": [
+                    {
+                        "name": "target",
+                        "type": "str",
+                        "help": "deploy target",
+                        "short": None,
+                        "default": "prod",
+                        "env": None,
+                        "choices": None,
+                        "repeatable": False,
+                        "negatable": None,
+                        "hidden": False,
+                    },
+                    {
+                        "name": "dry-run",
+                        "type": "bool",
+                        "help": "dry run mode",
+                        "short": "n",
+                        "default": False,
+                        "env": None,
+                        "choices": None,
+                        "repeatable": False,
+                        "negatable": True,
+                        "hidden": False,
+                    },
+                ],
+                "args": [],
+                "passthrough": False,
+            },
+        },
+        "groups": {
+            "config": {
+                "name": "config",
+                "help": "configuration",
+                "commands": {
+                    "show": {
+                        "name": "show",
+                        "help": "show config",
+                        "flags": [
+                            {
+                                "name": "format",
+                                "type": "str",
+                                "help": "output format",
+                                "short": None,
+                                "default": "text",
+                                "env": None,
+                                "choices": ["text", "json"],
+                                "repeatable": False,
+                                "negatable": None,
+                                "hidden": False,
+                            },
+                        ],
+                        "args": [],
+                        "passthrough": False,
+                    },
+                },
+                "deprecated": {},
+                "groups": {},
+            },
+        },
+        "deprecated": {},
+    }
 
-        app = strictcli.App(name="testapp", version="1.0", help="A test app")
 
-        @app.command("deploy", help="deploy stuff")
-        @strictcli.flag("target", type=str, help="deploy target", default="prod")
-        @strictcli.flag("dry-run", type=bool, help="dry run mode", short="n")
-        def deploy(target, dry_run):
-            pass
-
-        config = app.group("config", help="configuration")
-
-        @config.command("show", help="show config")
-        @strictcli.flag("format", type=str, help="output format", default="text")
-        def config_show(format):
-            pass
-    ''')
+def _write_schema(tmp_path, schema):
+    """Write a schema.json file into .strictcli/ under tmp_path."""
+    schema_dir = os.path.join(tmp_path, ".strictcli")
+    os.makedirs(schema_dir, exist_ok=True)
+    schema_path = os.path.join(schema_dir, "schema.json")
+    with open(schema_path, "w", encoding="utf-8") as f:
+        json.dump(schema, f)
+    return schema_path
 
 
 # ---------------------------------------------------------------------------
@@ -56,72 +122,141 @@ def strictcli_app_source():
 
 
 class TestUsesStrictcli:
-    """Test detection of strictcli imports."""
+    """Test detection of strictcli via .strictcli/schema.json."""
 
-    def test_import_strictcli(self, src_dir, tmp_path):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("import strictcli\n")
-
+    def test_schema_json_exists(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
         assert uses_strictcli(["src/"], str(tmp_path)) is True
 
-    def test_from_strictcli_import_app(self, src_dir, tmp_path):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("from strictcli import App\n")
-
-        assert uses_strictcli(["src/"], str(tmp_path)) is True
-
-    def test_from_strictcli_submodule(self, src_dir, tmp_path):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("from strictcli.something import X\n")
-
-        assert uses_strictcli(["src/"], str(tmp_path)) is True
-
-    def test_no_strictcli(self, src_dir, tmp_path):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("import argparse\n")
-
+    def test_no_schema_json(self, tmp_path):
         assert uses_strictcli(["src/"], str(tmp_path)) is False
 
-    def test_strictcli_in_string(self, src_dir, tmp_path):
-        """AST ignores strictcli mentioned in strings."""
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write('x = "import strictcli"\n')
+    def test_empty_source_paths(self, tmp_path, schema_json):
+        """source_paths is ignored; only schema.json matters."""
+        _write_schema(tmp_path, schema_json)
+        assert uses_strictcli([], str(tmp_path)) is True
 
-        assert uses_strictcli(["src/"], str(tmp_path)) is False
-
-    def test_strictcli_in_comment(self, src_dir, tmp_path):
-        """AST ignores strictcli mentioned in comments."""
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("# import strictcli\nx = 1\n")
-
-        assert uses_strictcli(["src/"], str(tmp_path)) is False
-
-    def test_empty_source_path(self, tmp_path):
-        """Non-existent source path returns False."""
-        assert uses_strictcli(["nonexistent/"], str(tmp_path)) is False
-
-    def test_nested_file(self, src_dir, tmp_path):
-        """Detects strictcli in nested subdirectories."""
-        sub = os.path.join(src_dir, "pkg", "sub")
-        os.makedirs(sub)
-        with open(os.path.join(sub, "app.py"), "w") as f:
-            f.write("import strictcli\n")
-
-        assert uses_strictcli(["src/"], str(tmp_path)) is True
+    def test_nonexistent_base_dir(self):
+        assert uses_strictcli(["src/"], "/nonexistent/path") is False
 
 
 # ---------------------------------------------------------------------------
-# Introspection tests
+# Schema reader tests
+# ---------------------------------------------------------------------------
+
+
+class TestReadSchemaJson:
+    """Test reading and translating .strictcli/schema.json."""
+
+    def test_returns_none_when_missing(self, tmp_path):
+        result = read_schema_json(str(tmp_path))
+        assert result is None
+
+    def test_translates_app_fields(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        assert result is not None
+        assert result["app_name"] == "testapp"
+        assert result["app_version"] == "1.0"
+        assert result["app_help"] == "A test app"
+
+    def test_commands_are_list(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        assert isinstance(result["commands"], list)
+        assert len(result["commands"]) == 1
+        deploy = result["commands"][0]
+        assert deploy["name"] == "deploy"
+        assert deploy["help"] == "deploy stuff"
+
+    def test_groups_are_list(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        assert isinstance(result["groups"], list)
+        assert len(result["groups"]) == 1
+        config_grp = result["groups"][0]
+        assert config_grp["name"] == "config"
+        assert config_grp["help"] == "configuration"
+
+    def test_group_commands_are_list(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        config_grp = result["groups"][0]
+        assert isinstance(config_grp["commands"], list)
+        assert len(config_grp["commands"]) == 1
+        show = config_grp["commands"][0]
+        assert show["name"] == "show"
+        assert show["help"] == "show config"
+
+    def test_preserves_new_fields(self, tmp_path, schema_json):
+        """New schema fields (choices, hidden, passthrough, etc.) are preserved."""
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        deploy = result["commands"][0]
+        assert deploy["passthrough"] is False
+
+        dry_run_flag = next(f for f in deploy["flags"] if f["name"] == "dry-run")
+        assert dry_run_flag["negatable"] is True
+        assert dry_run_flag["hidden"] is False
+        assert dry_run_flag["repeatable"] is False
+
+        config_grp = result["groups"][0]
+        show = config_grp["commands"][0]
+        format_flag = show["flags"][0]
+        assert format_flag["choices"] == ["text", "json"]
+
+    def test_flags_extracted(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        deploy = result["commands"][0]
+        assert len(deploy["flags"]) == 2
+
+        target_flag = next(f for f in deploy["flags"] if f["name"] == "target")
+        assert target_flag["type"] == "str"
+        assert target_flag["help"] == "deploy target"
+        assert target_flag["default"] == "prod"
+        assert target_flag["short"] is None
+
+        dry_run_flag = next(f for f in deploy["flags"] if f["name"] == "dry-run")
+        assert dry_run_flag["type"] == "bool"
+        assert dry_run_flag["help"] == "dry run mode"
+        assert dry_run_flag["short"] == "n"
+
+    def test_malformed_json_raises(self, tmp_path):
+        schema_dir = os.path.join(tmp_path, ".strictcli")
+        os.makedirs(schema_dir)
+        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+            f.write("not valid json{{{")
+
+        with pytest.raises(json.JSONDecodeError):
+            read_schema_json(str(tmp_path))
+
+    def test_empty_schema(self, tmp_path):
+        """Minimal schema with no commands or groups."""
+        _write_schema(tmp_path, {"name": "empty", "version": "0.1", "help": ""})
+        result = read_schema_json(str(tmp_path))
+
+        assert result["app_name"] == "empty"
+        assert result["commands"] == []
+        assert result["groups"] == []
+
+
+# ---------------------------------------------------------------------------
+# Introspection tests (extract_cli_structure wraps read_schema_json)
 # ---------------------------------------------------------------------------
 
 
 class TestExtractCliStructure:
-    """Test AST-based extraction of CLI structure."""
+    """Test extract_cli_structure as a thin wrapper around read_schema_json."""
 
-    def test_basic_extraction(self, src_dir, tmp_path, strictcli_app_source):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(strictcli_app_source)
-
+    def test_basic_extraction(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
         result = extract_cli_structure(["src/"], str(tmp_path))
 
         assert result is not None
@@ -129,10 +264,8 @@ class TestExtractCliStructure:
         assert result["app_version"] == "1.0"
         assert result["app_help"] == "A test app"
 
-    def test_commands_extracted(self, src_dir, tmp_path, strictcli_app_source):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(strictcli_app_source)
-
+    def test_commands_extracted(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
         result = extract_cli_structure(["src/"], str(tmp_path))
 
         assert len(result["commands"]) == 1
@@ -140,32 +273,26 @@ class TestExtractCliStructure:
         assert deploy["name"] == "deploy"
         assert deploy["help"] == "deploy stuff"
 
-    def test_flags_extracted(self, src_dir, tmp_path, strictcli_app_source):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(strictcli_app_source)
-
+    def test_flags_extracted(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
         result = extract_cli_structure(["src/"], str(tmp_path))
 
         deploy = result["commands"][0]
         assert len(deploy["flags"]) == 2
 
-        # Find the target flag
         target_flag = next(f for f in deploy["flags"] if f["name"] == "target")
         assert target_flag["type"] == "str"
         assert target_flag["help"] == "deploy target"
         assert target_flag["default"] == "prod"
         assert target_flag["short"] is None
 
-        # Find the dry-run flag
         dry_run_flag = next(f for f in deploy["flags"] if f["name"] == "dry-run")
         assert dry_run_flag["type"] == "bool"
         assert dry_run_flag["help"] == "dry run mode"
         assert dry_run_flag["short"] == "n"
 
-    def test_groups_extracted(self, src_dir, tmp_path, strictcli_app_source):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(strictcli_app_source)
-
+    def test_groups_extracted(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
         result = extract_cli_structure(["src/"], str(tmp_path))
 
         assert len(result["groups"]) == 1
@@ -173,10 +300,8 @@ class TestExtractCliStructure:
         assert config_group["name"] == "config"
         assert config_group["help"] == "configuration"
 
-    def test_group_commands_extracted(self, src_dir, tmp_path, strictcli_app_source):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(strictcli_app_source)
-
+    def test_group_commands_extracted(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
         result = extract_cli_structure(["src/"], str(tmp_path))
 
         config_group = result["groups"][0]
@@ -188,66 +313,9 @@ class TestExtractCliStructure:
         assert show_cmd["flags"][0]["name"] == "format"
         assert show_cmd["flags"][0]["default"] == "text"
 
-    def test_no_app_returns_none(self, src_dir, tmp_path):
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("import strictcli\nx = 1\n")
-
-        result = extract_cli_structure(["src/"], str(tmp_path))
-        assert result is None
-
-    def test_no_source_returns_none(self, tmp_path):
-        result = extract_cli_structure(["nonexistent/"], str(tmp_path))
-        assert result is None
-
-    def test_arg_extraction(self, src_dir, tmp_path):
-        """Test extraction of @strictcli.arg decorators."""
-        source = textwrap.dedent('''\
-            import strictcli
-
-            app = strictcli.App(name="myapp", version="0.1", help="test")
-
-            @app.command("greet", help="greet someone")
-            @strictcli.arg("name", help="person to greet", required=True)
-            @strictcli.arg("title", help="optional title", required=False)
-            def greet(name, title):
-                pass
-        ''')
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(source)
-
-        result = extract_cli_structure(["src/"], str(tmp_path))
-
-        assert result is not None
-        greet = result["commands"][0]
-        assert len(greet["args"]) == 2
-
-        name_arg = next(a for a in greet["args"] if a["name"] == "name")
-        assert name_arg["help"] == "person to greet"
-        assert name_arg["required"] is True
-
-        title_arg = next(a for a in greet["args"] if a["name"] == "title")
-        assert title_arg["required"] is False
-
-    def test_from_import_style(self, src_dir, tmp_path):
-        """Test extraction with ``from strictcli import App`` style."""
-        source = textwrap.dedent('''\
-            from strictcli import App
-
-            app = App(name="fromapp", version="2.0", help="from import")
-
-            @app.command("run", help="run it")
-            def run_cmd():
-                pass
-        ''')
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(source)
-
-        result = extract_cli_structure(["src/"], str(tmp_path))
-
-        assert result is not None
-        assert result["app_name"] == "fromapp"
-        assert len(result["commands"]) == 1
-        assert result["commands"][0]["name"] == "run"
+    def test_no_schema_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="schema.json"):
+            extract_cli_structure(["src/"], str(tmp_path))
 
 
 # ---------------------------------------------------------------------------
@@ -610,22 +678,28 @@ class TestGenerateDocsPreservesCliDescriptions:
     def test_handwritten_cli_description_survives_generate_docs(self, tmp_path):
         from selfdoc.gen import generate_docs
 
-        # Set up a project with a strictcli app
+        # Set up a project with a strictcli schema.json
         src_dir = os.path.join(tmp_path, "myapp")
         os.makedirs(src_dir)
         with open(os.path.join(src_dir, "__init__.py"), "w") as f:
             f.write("")
-        cli_src = textwrap.dedent('''\
-            import strictcli
 
-            app = strictcli.App(name="myapp", version="1.0", help="A test app")
-
-            @app.command("deploy", help="Deploy the app to one or more configured remote environments with health checks and rollback.")
-            def deploy():
-                pass
-        ''')
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write(cli_src)
+        # Write schema.json
+        _write_schema(tmp_path, {
+            "name": "myapp",
+            "version": "1.0",
+            "help": "A test app",
+            "commands": {
+                "deploy": {
+                    "name": "deploy",
+                    "help": "Deploy the app to one or more configured remote environments with health checks and rollback.",
+                    "flags": [],
+                    "args": [],
+                    "passthrough": False,
+                },
+            },
+            "groups": {},
+        })
 
         docs_dir = os.path.join(tmp_path, "docs")
         os.makedirs(docs_dir)
@@ -698,7 +772,7 @@ class TestCheckIntegration:
     """Test that check.py raises on code-help + strictcli."""
 
     def test_code_help_with_strictcli_raises(self, tmp_path):
-        """code-help directive + strictcli import produces a hard error."""
+        """code-help directive + strictcli schema.json produces a hard error."""
         from selfdoc.check import check_docs
 
         config = {
@@ -711,13 +785,20 @@ class TestCheckIntegration:
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
             json.dump(config, f)
 
-        # Source with strictcli import
+        # Source directory
         src_dir = os.path.join(tmp_path, "src")
         os.makedirs(src_dir)
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("import strictcli\n")
         with open(os.path.join(src_dir, "__init__.py"), "w") as f:
             f.write("")
+
+        # Schema.json to indicate strictcli usage
+        _write_schema(tmp_path, {
+            "name": "testapp",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
 
         # Docs with code-help directive
         docs_dir = os.path.join(tmp_path, "docs")
@@ -729,7 +810,7 @@ class TestCheckIntegration:
             check_docs(str(tmp_path))
 
     def test_strictcli_without_code_help_ok(self, tmp_path):
-        """strictcli import without code-help directive does not error."""
+        """strictcli schema.json without code-help directive does not error."""
         from selfdoc.check import check_docs
 
         config = {
@@ -744,10 +825,17 @@ class TestCheckIntegration:
 
         src_dir = os.path.join(tmp_path, "src")
         os.makedirs(src_dir)
-        with open(os.path.join(src_dir, "cli.py"), "w") as f:
-            f.write("import strictcli\n")
         with open(os.path.join(src_dir, "__init__.py"), "w") as f:
             f.write("")
+
+        # Schema.json to indicate strictcli usage
+        _write_schema(tmp_path, {
+            "name": "testapp",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
 
         docs_dir = os.path.join(tmp_path, "docs")
         os.makedirs(docs_dir)
@@ -759,7 +847,7 @@ class TestCheckIntegration:
         assert result is not None
 
     def test_code_help_without_strictcli_ok(self, tmp_path):
-        """code-help directive without strictcli import does not error."""
+        """code-help directive without strictcli schema.json does not error."""
         from selfdoc.check import check_docs
 
         config = {
