@@ -45,6 +45,7 @@ Tests live in `tests/` and cover config loading, directive parsing, the build pi
 - **selfdoc.content** (`selfdoc/content.py`): Content directives -- directives that transform body content into styled HTML.
 - **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites.
 - **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax.
+- **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates.
 - **selfdoc.extractors** (`selfdoc/extractors/__init__.py`): Language extractor registry and auto-detection.
 - **selfdoc.extractors.base** (`selfdoc/extractors/base.py`): Shared utilities for language extractors.
 - **selfdoc.extractors.go** (`selfdoc/extractors/go.py`): Go source extractor -- resolves directives by extracting from .go files.

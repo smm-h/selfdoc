@@ -18,6 +18,7 @@ order: 90
 - [selfdoc.config](selfdoc-config.html)
 - [selfdoc.deploy](selfdoc-deploy.html)
 - [selfdoc.directives](selfdoc-directives.html)
+- [selfdoc.docs](selfdoc-docs.html)
 - [selfdoc.extractors](selfdoc-extractors.html)
 - [selfdoc.extractors.go](selfdoc-extractors-go.html)
 - [selfdoc.extractors.python](selfdoc-extractors-python.html)
