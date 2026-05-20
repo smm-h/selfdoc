@@ -7,7 +7,7 @@ authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
-dependencies = ["strictcli>=0.2.0"]
+dependencies = ["strictcli>=0.7.0"]
 
 [project.optional-dependencies]
 perf = ["brotli>=1.1"]
@@ -18,6 +18,9 @@ Repository = "https://github.com/smm-h/selfdoc"
 
 [project.scripts]
 selfdoc = "selfdoc:main"
+
+[tool.uv.sources]
+strictcli = { path = "../strictcli/python", editable = true }
 
 [build-system]
 requires = ["hatchling"]
