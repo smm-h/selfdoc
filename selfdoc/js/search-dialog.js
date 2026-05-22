@@ -9,6 +9,8 @@
   var indexLoaded = false;
   var indexLoading = false;
   var activeIdx = -1;
+  var _allEntries = null;
+  var _activeFilters = [];
 
   // Platform detection for keyboard shortcut label
   var isMac = false;
@@ -28,16 +30,153 @@
     el.title = 'Search (' + shortcutLabel + ')';
   });
 
+  // Create chip container between input and results
+  var chipContainer = document.createElement('div');
+  chipContainer.className = 'search-chips';
+  resultsList.parentNode.insertBefore(chipContainer, resultsList);
+
+  function renderChips(filters) {
+    chipContainer.innerHTML = '';
+    _activeFilters = filters;
+    for (var i = 0; i < filters.length; i++) {
+      var f = filters[i];
+      var chip = document.createElement('span');
+      chip.className = 'search-chip';
+      if (f.negated) chip.classList.add('search-chip-negated');
+
+      var label = (f.negated ? '-' : '') + f.key + ': ' + f.values.join(' | ');
+      chip.appendChild(document.createTextNode(label + ' '));
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'chip-remove';
+      removeBtn.type = 'button';
+      removeBtn.setAttribute('aria-label', 'Remove filter ' + f.key);
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('data-filter-idx', String(i));
+      removeBtn.addEventListener('click', function(e) {
+        var idx = parseInt(e.target.getAttribute('data-filter-idx'), 10);
+        removeFilter(idx);
+      });
+      chip.appendChild(removeBtn);
+      chipContainer.appendChild(chip);
+    }
+  }
+
+  function removeFilter(idx) {
+    if (idx < 0 || idx >= _activeFilters.length) return;
+    var removed = _activeFilters[idx];
+
+    // Rebuild input text: remove the filter token from query text,
+    // or if it was auto-injected, just re-run without it
+    if (!removed.auto) {
+      // Remove the filter token from the input
+      var filterToken = (removed.negated ? '-' : '') + removed.key + '=' + removed.values.join('|');
+      var currentVal = input.value;
+      // Remove the token (may be anywhere in the string)
+      var newVal = currentVal.replace(filterToken, '').replace(/\s{2,}/g, ' ').trim();
+      input.value = newVal;
+    }
+
+    // Rebuild filters without the removed one
+    _activeFilters.splice(idx, 1);
+    renderChips(_activeFilters);
+    runFilteredSearch(input.value, _activeFilters);
+  }
+
+  function runFilteredSearch(rawQuery, overrideFilters) {
+    resultsList.innerHTML = '';
+    activeIdx = -1;
+    if (!indexLoaded || !_allEntries) {
+      if (rawQuery) {
+        resultsList.innerHTML = '<li class="search-loading">Loading...</li>';
+      }
+      return;
+    }
+
+    var parsed;
+    if (overrideFilters) {
+      // When filters are explicitly provided (e.g. after chip removal),
+      // only parse text from the raw query
+      var textParsed = parseSearchQuery(rawQuery);
+      parsed = { text: textParsed.text, filters: overrideFilters };
+    } else {
+      parsed = parseSearchQuery(rawQuery);
+    }
+
+    renderChips(parsed.filters);
+    var filtered = applyFilters(_allEntries, parsed.filters);
+
+    // Re-initialize engine with filtered subset
+    initSearchEngine(filtered);
+
+    var textQuery = parsed.text;
+    if (!textQuery) {
+      // No text query but we have filters -- show all filtered results
+      if (parsed.filters.length > 0 && filtered.length > 0) {
+        var toShow = filtered.slice(0, 20);
+        for (var i = 0; i < toShow.length; i++) {
+          var entry = toShow[i];
+          var li = document.createElement('li');
+          li.className = 'search-result-item';
+          li.setAttribute('role', 'option');
+          li.id = 'search-result-' + i;
+          var a = document.createElement('a');
+          a.href = searchBase + entry.path;
+          var titleEl = document.createElement('div');
+          titleEl.className = 'search-result-title';
+          titleEl.textContent = entry.title;
+          var snippet = document.createElement('div');
+          snippet.className = 'search-result-snippet';
+          snippet.textContent = entry.body ? entry.body.substring(0, 100) + (entry.body.length > 100 ? '...' : '') : '';
+          a.appendChild(titleEl);
+          a.appendChild(snippet);
+          a.addEventListener('click', function() { closeSearch(); });
+          li.appendChild(a);
+          resultsList.appendChild(li);
+        }
+      }
+      return;
+    }
+
+    var matches = searchEntries(textQuery);
+    matches.forEach(function(result, idx) {
+      var li = document.createElement('li');
+      li.className = 'search-result-item';
+      li.setAttribute('role', 'option');
+      li.id = 'search-result-' + idx;
+      var a = document.createElement('a');
+      a.href = searchBase + result.path;
+      var titleEl = document.createElement('div');
+      titleEl.className = 'search-result-title';
+      titleEl.appendChild(highlightText(result.title, result.highlights, 'title'));
+      var snippet = document.createElement('div');
+      snippet.className = 'search-result-snippet';
+      snippet.appendChild(highlightText(result.snippet, result.highlights, 'body'));
+      a.appendChild(titleEl);
+      a.appendChild(snippet);
+      a.addEventListener('click', function() { closeSearch(); });
+      li.appendChild(a);
+      resultsList.appendChild(li);
+    });
+    if (matches.length === 0 && textQuery) {
+      var noLi = document.createElement('li');
+      noLi.className = 'search-no-results';
+      noLi.textContent = 'No results for "' + textQuery + '". Try different terms or browse the sidebar.';
+      resultsList.appendChild(noLi);
+    }
+  }
+
   function loadIndex() {
     if (indexLoaded) return Promise.resolve();
     if (indexLoading) return indexLoading;
     indexLoading = fetch(searchBase + 'search-index.json')
       .then(function(r) { return r.json(); })
       .then(function(data) {
+        _allEntries = data;
         initSearchEngine(data);
         indexLoaded = true;
         // Re-render with current query after loading
-        if (input.value) renderResults(input.value);
+        if (input.value) runFilteredSearch(input.value);
       });
     return indexLoading;
   }
@@ -46,12 +185,14 @@
     dialog.showModal();
     input.value = initialQuery || '';
     resultsList.innerHTML = '';
+    chipContainer.innerHTML = '';
     activeIdx = -1;
+    _activeFilters = [];
     if (!indexLoaded) {
       resultsList.innerHTML = '<li class="search-loading">Loading...</li>';
     }
     loadIndex().then(function() {
-      if (input.value) renderResults(input.value);
+      if (input.value) runFilteredSearch(input.value);
     });
     input.focus();
   }
@@ -78,11 +219,18 @@
     var frag = document.createDocumentFragment();
     var lastEnd = 0;
     var q = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+    // Strip filter tokens from q for highlighting
+    var textQ = [];
+    for (var i = 0; i < q.length; i++) {
+      if (q[i].indexOf('=') === -1 && !(q[i].charAt(0) === '-' && q[i].indexOf('=') > 0)) {
+        textQ.push(q[i]);
+      }
+    }
     allIndices.forEach(function(idx) {
       if (idx < lastEnd || idx >= text.length) return;
       // Find which token matches at this position
       var matchLen = 1;
-      q.forEach(function(token) {
+      textQ.forEach(function(token) {
         if (text.substring(idx, idx + token.length).toLowerCase() === token) {
           matchLen = Math.max(matchLen, token.length);
         }
@@ -99,42 +247,6 @@
       frag.appendChild(document.createTextNode(text.substring(lastEnd)));
     }
     return frag;
-  }
-
-  function renderResults(query) {
-    resultsList.innerHTML = '';
-    activeIdx = -1;
-    if (!query) return;
-    if (!indexLoaded) {
-      resultsList.innerHTML = '<li class="search-loading">Loading...</li>';
-      return;
-    }
-    var matches = searchEntries(query);
-    matches.forEach(function(result, idx) {
-      var li = document.createElement('li');
-      li.className = 'search-result-item';
-      li.setAttribute('role', 'option');
-      li.id = 'search-result-' + idx;
-      var a = document.createElement('a');
-      a.href = searchBase + result.path;
-      var titleEl = document.createElement('div');
-      titleEl.className = 'search-result-title';
-      titleEl.appendChild(highlightText(result.title, result.highlights, 'title'));
-      var snippet = document.createElement('div');
-      snippet.className = 'search-result-snippet';
-      snippet.appendChild(highlightText(result.snippet, result.highlights, 'body'));
-      a.appendChild(titleEl);
-      a.appendChild(snippet);
-      a.addEventListener('click', function() { closeSearch(); });
-      li.appendChild(a);
-      resultsList.appendChild(li);
-    });
-    if (matches.length === 0 && query) {
-      var noLi = document.createElement('li');
-      noLi.className = 'search-no-results';
-      noLi.textContent = 'No results for "' + query + '". Try different terms or browse the sidebar.';
-      resultsList.appendChild(noLi);
-    }
   }
 
   function setActive(idx) {
@@ -177,7 +289,7 @@
   });
 
   input.addEventListener('input', function() {
-    renderResults(input.value);
+    runFilteredSearch(input.value);
   });
 
   input.addEventListener('keydown', function(e) {

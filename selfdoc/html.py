@@ -2431,10 +2431,19 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
     )
 
 
-def _render_search_dialog(prefix):
-    """Build the search dialog HTML."""
+def _render_search_dialog(prefix, current_version=""):
+    """Build the search dialog HTML.
+
+    Args:
+        prefix: Relative path prefix back to root.
+        current_version: Current version string for the default-version
+            filter attribute (e.g. "1.0.0").
+    """
+    version_attr = ""
+    if current_version:
+        version_attr = f' data-default-version="{_escape_html(current_version)}"'
     return (
-        f'<dialog class="search-dialog" id="search-dialog" data-search-base="/" aria-label="Search documentation">\n'
+        f'<dialog class="search-dialog" id="search-dialog" data-search-base="/"{version_attr} aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
         f'<div class="search-header">\n'
         f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'
@@ -2860,7 +2869,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     )
 
     # Build search dialog
-    search_dialog_html = _render_search_dialog(prefix)
+    search_dialog_html = _render_search_dialog(prefix, current_version=current_version)
 
     # Load JS from external files via the loader module
     from selfdoc.js.loader import load_js, assemble_body_js

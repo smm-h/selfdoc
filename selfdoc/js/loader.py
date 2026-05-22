@@ -29,8 +29,9 @@ def load_search_js(engine: str = "builtin") -> str:
     if engine not in valid_engines:
         engine = "builtin"
     engine_js = load_js(f"search-{engine}")
+    filter_js = load_js("search-filter")
     dialog_js = load_js("search-dialog")
-    return engine_js + "\n" + dialog_js
+    return engine_js + "\n" + filter_js + "\n" + dialog_js
 
 
 def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
