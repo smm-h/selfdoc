@@ -1902,223 +1902,11 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None):
     )
 
 
-def _wrap_page(body_html, nav_html, title, project_name, version,
-               css_href="style.css", custom_css_href=None,
-               toc_html="", breadcrumbs=None, prev_page=None,
-               next_page=None, prefix="", repo=None, source_path=None,
-               base_url=None, page_path=None, description="",
-               lang="en", date_published=None, date_modified=None, author=None,
-               feed_url=None, summary=None, critical_css=None,
-               schema=None, twitter_site=None, search=None,
-               feedback=None, branch="main", search_engine=None,
-               site_terms=None, page_number=None, total_pages=None,
-               theme_meta=None, has_hero=False, deploy_target=None,
-               page_nav=True, page_progress=True):
-    """Wrap converted HTML body in the full page template."""
-    # Use default theme metadata when none provided (backward compatible)
-    if theme_meta is None:
-        theme_meta = get_theme_meta("minimal")
-
-    # Cross-page term linking: wrap first occurrence of terms defined on
-    # other pages in <a class="term-link"> before template wrapping.
-    if site_terms and page_path:
-        body_html = _apply_cross_page_terms(
-            body_html, site_terms, page_path, prefix,
-        )
-
-    version_badge = (
-        f'<span class="version-badge">v{_escape_html(version)}</span>'
-        if version else ""
-    )
-    custom_css_tag = (
-        f'\n<link rel="stylesheet" href="{custom_css_href}">'
-        if custom_css_href else ""
-    )
-    # Atom feed link tag
-    feed_tag = ""
-    if feed_url:
-        feed_tag = (
-            f'\n<link rel="alternate" type="application/atom+xml" '
-            f'title="{_escape_html(project_name)} Feed" href="{feed_url}">'
-        )
-    # Meta description tag (Feature 34)
-    # Fall back to auto-extracted first paragraph when frontmatter description
-    # is absent, matching the og:description behaviour.
-    meta_description = description or _truncate_description(
-        _extract_first_paragraph(body_html)
-    )
-    description_tag = ""
-    if meta_description:
-        description_tag = (
-            f'\n<meta name="description" content="{_escape_html(meta_description)}">'
-        )
-
-    # Breadcrumbs (Feature 9)
-    breadcrumbs_html = breadcrumbs if breadcrumbs else ""
-
-    # Edit link (Feature 14)
-    edit_link_html = ""
-    edit_url = ""
-    if repo and source_path:
-        repo_url = repo.rstrip("/")
-        edit_url = f"{repo_url}/edit/{branch}/{source_path}"
-        edit_link_html = (
-            f'<a class="edit-link" href="{edit_url}" target="_blank" rel="noopener">'
-            f'Edit this page on GitHub</a>'
-        )
-
-    # Top edit link: right-aligned near breadcrumbs
-    top_edit_link_html = ""
-    if edit_url:
-        top_edit_link_html = (
-            f'<a class="edit-link edit-link-top" href="{edit_url}" target="_blank" rel="noopener">Edit</a>'
-        )
-
-    # Format date_modified for content header display (e.g. "Updated May 1, 2026")
-    content_date_html = ""
-    if date_modified:
-        try:
-            dt = datetime.strptime(date_modified, "%Y-%m-%d")
-            formatted_date = dt.strftime("%B %-d, %Y")
-        except (ValueError, TypeError):
-            formatted_date = date_modified
-        content_date_html = (
-            f'<span class="content-date">Updated '
-            f'<time datetime="{_escape_html(date_modified)}">'
-            f'{_escape_html(formatted_date)}</time></span>'
-        )
-
-    # Content header: wraps breadcrumbs, top edit link, and date
-    header_right_parts = []
-    if content_date_html:
-        header_right_parts.append(content_date_html)
-    if top_edit_link_html:
-        header_right_parts.append(top_edit_link_html)
-    header_right_html = "\n".join(header_right_parts)
-
-    if breadcrumbs_html and header_right_html:
-        breadcrumbs_html = (
-            f'<div class="content-header">\n'
-            f'{breadcrumbs_html}\n'
-            f'{header_right_html}\n'
-            f'</div>'
-        )
-    elif header_right_html:
-        breadcrumbs_html = (
-            f'<div class="content-header">\n'
-            f'{header_right_html}\n'
-            f'</div>'
-        )
-
-    # Prev/next page navigation (Feature 8)
-    page_nav_html = ""
-    if page_nav and (prev_page or next_page):
-        prev_link = ""
-        next_link = ""
-        if prev_page:
-            prev_href = prefix + _html_path_to_url(prev_page["path"])
-            prev_label = _escape_html(prev_page["label"])
-            prev_link = (
-                f'<a class="page-nav-prev" href="{prev_href}">'
-                f'<span class="page-nav-label">Previous</span>'
-                f'&larr; {prev_label}</a>'
-            )
-        # Page progress indicator (e.g. "Page 2 of 5")
-        progress_html = ""
-        if (page_progress and page_number is not None
-                and total_pages is not None and total_pages > 1):
-            progress_html = (
-                f'<span class="page-progress">'
-                f'Page {page_number} of {total_pages}</span>'
-            )
-        if next_page:
-            next_href = prefix + _html_path_to_url(next_page["path"])
-            next_label = _escape_html(next_page["label"])
-            next_link = (
-                f'<a class="page-nav-next" href="{next_href}">'
-                f'<span class="page-nav-label">Next</span>'
-                f'{next_label} &rarr;</a>'
-            )
-        page_nav_html = (
-            f'<nav class="page-nav">{prev_link}{progress_html}{next_link}</nav>'
-        )
-
-    # Feedback widget (Feature 30): only rendered when feedback config is set
-    feedback_html = ""
-    if feedback is not None:
-        data_attrs = ""
-        if feedback.get("webhook"):
-            data_attrs += f' data-webhook="{_escape_html(feedback["webhook"])}"'
-        if feedback.get("ga"):
-            data_attrs += f' data-ga="{_escape_html(feedback["ga"])}"'
-        feedback_html = (
-            f'<div class="feedback"{data_attrs}>'
-            '<span>Was this page helpful?</span>'
-            '<button class="feedback-yes" aria-label="Yes">Yes</button>'
-            '<button class="feedback-no" aria-label="No">No</button>'
-            '</div>'
-        )
-
-    # Format date_modified for display (e.g. "May 1, 2026")
-    date_display_html = ""
-    if date_modified:
-        try:
-            dt = datetime.strptime(date_modified, "%Y-%m-%d")
-            formatted_date = dt.strftime("%B %-d, %Y")
-        except (ValueError, TypeError):
-            formatted_date = date_modified
-        date_display_html = (
-            f'<time datetime="{_escape_html(date_modified)}">'
-            f'{_escape_html(formatted_date)}</time>'
-        )
-
-    # Page footer (Feature 18): combines edit link, feedback, and prev/next nav
-    footer_html = ""
-    footer_parts = []
-    meta_parts = []
-    if edit_link_html:
-        meta_parts.append(edit_link_html)
-    if date_display_html:
-        meta_parts.append(f'Last updated {date_display_html}')
-    if meta_parts:
-        footer_parts.append(
-            f'<div class="page-meta">{"".join("<span>" + p + "</span>" for p in meta_parts)}</div>'
-        )
-    footer_parts.append(feedback_html)
-    if page_nav_html:
-        footer_parts.append(page_nav_html)
-    footer_html = (
-        f'<footer class="page-footer">'
-        f'{"".join(footer_parts)}'
-        f'</footer>'
-    )
-
-    # TOC aside (Feature 2) -- desktop only
-    toc_aside = ""
-    if toc_html:
-        toc_aside = f'<aside class="toc">{toc_html}</aside>'
-
-    # Mobile TOC disclosure (Feature 26) -- shown only on mobile via CSS
-    mobile_toc_html = ""
-    if toc_html:
-        mobile_toc_html = (
-            f'<details class="mobile-toc">'
-            f'<summary>On this page</summary>'
-            f'{toc_html}'
-            f'</details>'
-        )
-
-    # Page summary block from frontmatter description (Phase 2.6)
-    summary_html = ""
-    if summary:
-        summary_html = (
-            f'<div class="page-summary">\n'
-            f'  <p>{_escape_html(summary)}</p>\n'
-            f'</div>'
-        )
-
-    # SEO: OG meta tags (Feature 21), canonical URL (Feature 22),
-    # JSON-LD structured data (Feature 23)
+def _render_seo_tags(title, base_url, page_path, description, body_html,
+                     author, project_name, repo, date_published,
+                     date_modified, lang, breadcrumbs, schema,
+                     twitter_site, deploy_target):
+    """Build SEO tags: JSON-LD structured data, OG meta, canonical, security."""
     seo_tags = ""
     escaped_title = _escape_html(title)
     escaped_project = _escape_html(project_name)
@@ -2470,6 +2258,35 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             '">'
         )
 
+    return seo_tags, security_meta
+
+
+def _render_page_footer(edit_link_html, date_display_html,
+                        feedback_html, page_nav_html):
+    """Assemble the page footer from edit link, dates, feedback, and nav."""
+    footer_parts = []
+    meta_parts = []
+    if edit_link_html:
+        meta_parts.append(edit_link_html)
+    if date_display_html:
+        meta_parts.append(f'Last updated {date_display_html}')
+    if meta_parts:
+        footer_parts.append(
+            f'<div class="page-meta">{"".join("<span>" + p + "</span>" for p in meta_parts)}</div>'
+        )
+    footer_parts.append(feedback_html)
+    if page_nav_html:
+        footer_parts.append(page_nav_html)
+    return (
+        f'<footer class="page-footer">'
+        f'{"".join(footer_parts)}'
+        f'</footer>'
+    )
+
+
+def _render_topbar(project_name, version_badge, topbar_page_title_html,
+                   search_trigger_html, prefix):
+    """Build the topbar header with hamburger, project name, theme toggle, search."""
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
         '<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" '
@@ -2502,55 +2319,234 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         '</svg>'
     )
 
-    # Load JS from external files via the loader module
-    from selfdoc.js.loader import load_js, assemble_body_js
+    return (
+        f'<header class="topbar">\n'
+        f'<div class="topbar-inner">\n'
+        f'<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">\n'
+        f'<span></span><span></span><span></span>\n'
+        f'</button>\n'
+        f'<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>\n'
+        f'{version_badge}\n'
+        f'{topbar_page_title_html}\n'
+        f'<button class="theme-toggle" aria-label="Toggle theme">\n'
+        f'{sun_icon}{moon_icon}{auto_icon}\n'
+        f'</button>\n'
+        f'{search_trigger_html}'
+        f'</div>\n'
+        f'</header>'
+    )
 
-    head_js = load_js("head")
 
-    # Search trigger HTML (configurable: "icon", "bar", or "hidden")
-    effective_search = search if search else "icon"
-    if effective_search == "icon":
-        search_trigger_html = (
-            '<button class="search-trigger" aria-label="Search documentation" title="Search (Cmd+K)">\n'
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
-            '</button>\n'
+def _render_search_dialog(prefix):
+    """Build the search dialog HTML."""
+    return (
+        f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}" aria-label="Search documentation">\n'
+        f'<div class="search-inner">\n'
+        f'<div class="search-header">\n'
+        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'
+        f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
+        f'</div>\n'
+        f'<ul class="search-results" id="search-results" role="listbox" aria-live="polite"></ul>\n'
+        f'</div>\n'
+        f'</dialog>'
+    )
+
+
+def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
+                     branch, breadcrumbs, prev_page, next_page, page_nav,
+                     page_progress, page_number, total_pages, feedback,
+                     toc_html, summary, date_modified, feed_url, page_path,
+                     site_terms, has_custom_css_href, version, project_name,
+                     description, has_hero, custom_css_href, theme_meta):
+    """Compute all page metadata variables needed by the template.
+
+    Returns a dict with: body_html (possibly modified by cross-page terms),
+    version_badge, custom_css_tag, feed_tag, description_tag, breadcrumbs_html,
+    edit_link_html, content_date_html, page_nav_html, feedback_html,
+    date_display_html, footer_html, toc_aside, mobile_toc_html, summary_html,
+    topbar_page_title_html, font_tags, auto_h1_html, search_trigger_html,
+    meta_description, feed_footer_html.
+    """
+    # Cross-page term linking: wrap first occurrence of terms defined on
+    # other pages in <a class="term-link"> before template wrapping.
+    if site_terms and page_path:
+        body_html = _apply_cross_page_terms(
+            body_html, site_terms, page_path, prefix,
         )
-    elif effective_search == "bar":
-        search_trigger_html = (
-            '<button class="search-bar-trigger" aria-label="Search documentation">\n'
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
-            '<span class="search-bar-text">Search...</span>\n'
-            '<kbd class="search-bar-kbd">Cmd+K</kbd>\n'
-            '</button>\n'
-        )
-    else:
-        # "hidden" -- no trigger in topbar
-        search_trigger_html = ""
 
-    # Assemble body JS from external files via the loader
-    body_js = _minify_js(assemble_body_js(body_html, toc_html, footer_html))
-
-    # Google Analytics script (injected when feedback.ga is configured)
-    ga_head_script = ""
-    if feedback and feedback.get("ga"):
-        ga_id = _escape_html(feedback["ga"])
-        ga_js = load_js("ga")
-        ga_head_script = (
-            f'<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>\n'
-            f'<script data-ga-id="{ga_id}">{ga_js}</script>\n'
-        )
-
-    # Feed link in site footer (Feature 9.5)
-    feed_footer_html = ""
+    version_badge = (
+        f'<span class="version-badge">v{_escape_html(version)}</span>'
+        if version else ""
+    )
+    custom_css_tag = (
+        f'\n<link rel="stylesheet" href="{custom_css_href}">'
+        if has_custom_css_href else ""
+    )
+    # Atom feed link tag
+    feed_tag = ""
     if feed_url:
-        feed_footer_html = (
-            '\n<p><a class="feed-link" href="' + _escape_html(feed_url) + '">'
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">'
-            '<circle cx="6.18" cy="17.82" r="2.18"/>'
-            '<path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56z'
-            'm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/>'
-            '</svg>'
-            'Subscribe via RSS</a></p>'
+        feed_tag = (
+            f'\n<link rel="alternate" type="application/atom+xml" '
+            f'title="{_escape_html(project_name)} Feed" href="{feed_url}">'
+        )
+    # Meta description tag (Feature 34)
+    # Fall back to auto-extracted first paragraph when frontmatter description
+    # is absent, matching the og:description behaviour.
+    meta_description = description or _truncate_description(
+        _extract_first_paragraph(body_html)
+    )
+    description_tag = ""
+    if meta_description:
+        description_tag = (
+            f'\n<meta name="description" content="{_escape_html(meta_description)}">'
+        )
+
+    # Breadcrumbs (Feature 9)
+    breadcrumbs_html = breadcrumbs if breadcrumbs else ""
+
+    # Edit link (Feature 14)
+    edit_link_html = ""
+    edit_url = ""
+    if repo and source_path:
+        repo_url = repo.rstrip("/")
+        edit_url = f"{repo_url}/edit/{branch}/{source_path}"
+        edit_link_html = (
+            f'<a class="edit-link" href="{edit_url}" target="_blank" rel="noopener">'
+            f'Edit this page on GitHub</a>'
+        )
+
+    # Top edit link: right-aligned near breadcrumbs
+    top_edit_link_html = ""
+    if edit_url:
+        top_edit_link_html = (
+            f'<a class="edit-link edit-link-top" href="{edit_url}" target="_blank" rel="noopener">Edit</a>'
+        )
+
+    # Format date_modified for content header display (e.g. "Updated May 1, 2026")
+    content_date_html = ""
+    if date_modified:
+        try:
+            dt = datetime.strptime(date_modified, "%Y-%m-%d")
+            formatted_date = dt.strftime("%B %-d, %Y")
+        except (ValueError, TypeError):
+            formatted_date = date_modified
+        content_date_html = (
+            f'<span class="content-date">Updated '
+            f'<time datetime="{_escape_html(date_modified)}">'
+            f'{_escape_html(formatted_date)}</time></span>'
+        )
+
+    # Content header: wraps breadcrumbs, top edit link, and date
+    header_right_parts = []
+    if content_date_html:
+        header_right_parts.append(content_date_html)
+    if top_edit_link_html:
+        header_right_parts.append(top_edit_link_html)
+    header_right_html = "\n".join(header_right_parts)
+
+    if breadcrumbs_html and header_right_html:
+        breadcrumbs_html = (
+            f'<div class="content-header">\n'
+            f'{breadcrumbs_html}\n'
+            f'{header_right_html}\n'
+            f'</div>'
+        )
+    elif header_right_html:
+        breadcrumbs_html = (
+            f'<div class="content-header">\n'
+            f'{header_right_html}\n'
+            f'</div>'
+        )
+
+    # Prev/next page navigation (Feature 8)
+    page_nav_html = ""
+    if page_nav and (prev_page or next_page):
+        prev_link = ""
+        next_link = ""
+        if prev_page:
+            prev_href = prefix + _html_path_to_url(prev_page["path"])
+            prev_label = _escape_html(prev_page["label"])
+            prev_link = (
+                f'<a class="page-nav-prev" href="{prev_href}">'
+                f'<span class="page-nav-label">Previous</span>'
+                f'&larr; {prev_label}</a>'
+            )
+        # Page progress indicator (e.g. "Page 2 of 5")
+        progress_html = ""
+        if (page_progress and page_number is not None
+                and total_pages is not None and total_pages > 1):
+            progress_html = (
+                f'<span class="page-progress">'
+                f'Page {page_number} of {total_pages}</span>'
+            )
+        if next_page:
+            next_href = prefix + _html_path_to_url(next_page["path"])
+            next_label = _escape_html(next_page["label"])
+            next_link = (
+                f'<a class="page-nav-next" href="{next_href}">'
+                f'<span class="page-nav-label">Next</span>'
+                f'{next_label} &rarr;</a>'
+            )
+        page_nav_html = (
+            f'<nav class="page-nav">{prev_link}{progress_html}{next_link}</nav>'
+        )
+
+    # Feedback widget (Feature 30): only rendered when feedback config is set
+    feedback_html = ""
+    if feedback is not None:
+        data_attrs = ""
+        if feedback.get("webhook"):
+            data_attrs += f' data-webhook="{_escape_html(feedback["webhook"])}"'
+        if feedback.get("ga"):
+            data_attrs += f' data-ga="{_escape_html(feedback["ga"])}"'
+        feedback_html = (
+            f'<div class="feedback"{data_attrs}>'
+            '<span>Was this page helpful?</span>'
+            '<button class="feedback-yes" aria-label="Yes">Yes</button>'
+            '<button class="feedback-no" aria-label="No">No</button>'
+            '</div>'
+        )
+
+    # Format date_modified for display (e.g. "May 1, 2026")
+    date_display_html = ""
+    if date_modified:
+        try:
+            dt = datetime.strptime(date_modified, "%Y-%m-%d")
+            formatted_date = dt.strftime("%B %-d, %Y")
+        except (ValueError, TypeError):
+            formatted_date = date_modified
+        date_display_html = (
+            f'<time datetime="{_escape_html(date_modified)}">'
+            f'{_escape_html(formatted_date)}</time>'
+        )
+
+    # Page footer (Feature 18): combines edit link, feedback, and prev/next nav
+    footer_html = _render_page_footer(
+        edit_link_html, date_display_html, feedback_html, page_nav_html,
+    )
+
+    # TOC aside (Feature 2) -- desktop only
+    toc_aside = ""
+    if toc_html:
+        toc_aside = f'<aside class="toc">{toc_html}</aside>'
+
+    # Mobile TOC disclosure (Feature 26) -- shown only on mobile via CSS
+    mobile_toc_html = ""
+    if toc_html:
+        mobile_toc_html = (
+            f'<details class="mobile-toc">'
+            f'<summary>On this page</summary>'
+            f'{toc_html}'
+            f'</details>'
+        )
+
+    # Page summary block from frontmatter description (Phase 2.6)
+    summary_html = ""
+    if summary:
+        summary_html = (
+            f'<div class="page-summary">\n'
+            f'  <p>{_escape_html(summary)}</p>\n'
+            f'</div>'
         )
 
     # Page title in topbar for non-index pages (Issue 51)
@@ -2586,7 +2582,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # Phase 3: auto-generate H1 from the page title. When the hero section
     # is present, it already provides the H1 so we suppress the auto H1.
-    _auto_h1_html = ""
+    auto_h1_html = ""
     if not has_hero:
         h1_slug = _slugify(title)
         h1_readable = _escape_html(title)
@@ -2594,8 +2590,137 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<a class="heading-link" href="#{h1_slug}"'
             f' aria-label="Link to section: {h1_readable}">#</a>'
         )
-        _auto_h1_html = (
+        auto_h1_html = (
             f'<h1 id="{h1_slug}">{h1_anchor}{_escape_html(title)}</h1>'
+        )
+
+    # Feed link in site footer (Feature 9.5)
+    feed_footer_html = ""
+    if feed_url:
+        feed_footer_html = (
+            '\n<p><a class="feed-link" href="' + _escape_html(feed_url) + '">'
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">'
+            '<circle cx="6.18" cy="17.82" r="2.18"/>'
+            '<path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56z'
+            'm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/>'
+            '</svg>'
+            'Subscribe via RSS</a></p>'
+        )
+
+    # Search trigger HTML (configurable: "icon", "bar", or "hidden")
+    # Note: search parameter is passed via the caller; we use has_custom_css_href
+    # as a proxy -- but actually search is not in this function's params.
+    # The search_trigger_html is computed by the caller and passed to _render_topbar.
+
+    return {
+        "body_html": body_html,
+        "version_badge": version_badge,
+        "custom_css_tag": custom_css_tag,
+        "feed_tag": feed_tag,
+        "description_tag": description_tag,
+        "breadcrumbs_html": breadcrumbs_html,
+        "footer_html": footer_html,
+        "toc_aside": toc_aside,
+        "mobile_toc_html": mobile_toc_html,
+        "summary_html": summary_html,
+        "topbar_page_title_html": topbar_page_title_html,
+        "font_tags": font_tags,
+        "auto_h1_html": auto_h1_html,
+        "feed_footer_html": feed_footer_html,
+    }
+
+
+def _wrap_page(body_html, nav_html, title, project_name, version,
+               css_href="style.css", custom_css_href=None,
+               toc_html="", breadcrumbs=None, prev_page=None,
+               next_page=None, prefix="", repo=None, source_path=None,
+               base_url=None, page_path=None, description="",
+               lang="en", date_published=None, date_modified=None, author=None,
+               feed_url=None, summary=None, critical_css=None,
+               schema=None, twitter_site=None, search=None,
+               feedback=None, branch="main", search_engine=None,
+               site_terms=None, page_number=None, total_pages=None,
+               theme_meta=None, has_hero=False, deploy_target=None,
+               page_nav=True, page_progress=True):
+    """Wrap converted HTML body in the full page template."""
+    # Use default theme metadata when none provided (backward compatible)
+    if theme_meta is None:
+        theme_meta = get_theme_meta("minimal")
+
+    # Compute all page metadata variables
+    meta = _build_page_meta(
+        body_html=body_html, nav_html=nav_html, title=title, prefix=prefix,
+        repo=repo, source_path=source_path, branch=branch,
+        breadcrumbs=breadcrumbs, prev_page=prev_page, next_page=next_page,
+        page_nav=page_nav, page_progress=page_progress,
+        page_number=page_number, total_pages=total_pages, feedback=feedback,
+        toc_html=toc_html, summary=summary, date_modified=date_modified,
+        feed_url=feed_url, page_path=page_path, site_terms=site_terms,
+        has_custom_css_href=custom_css_href, version=version,
+        project_name=project_name, description=description,
+        has_hero=has_hero, custom_css_href=custom_css_href,
+        theme_meta=theme_meta,
+    )
+    body_html = meta["body_html"]
+
+    # Build SEO tags and security meta
+    seo_tags, security_meta = _render_seo_tags(
+        title=title, base_url=base_url, page_path=page_path,
+        description=description, body_html=body_html, author=author,
+        project_name=project_name, repo=repo, date_published=date_published,
+        date_modified=date_modified, lang=lang, breadcrumbs=breadcrumbs,
+        schema=schema, twitter_site=twitter_site,
+        deploy_target=deploy_target,
+    )
+
+    # Search trigger HTML (configurable: "icon", "bar", or "hidden")
+    effective_search = search if search else "icon"
+    if effective_search == "icon":
+        search_trigger_html = (
+            '<button class="search-trigger" aria-label="Search documentation" title="Search (Cmd+K)">\n'
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
+            '</button>\n'
+        )
+    elif effective_search == "bar":
+        search_trigger_html = (
+            '<button class="search-bar-trigger" aria-label="Search documentation">\n'
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
+            '<span class="search-bar-text">Search...</span>\n'
+            '<kbd class="search-bar-kbd">Cmd+K</kbd>\n'
+            '</button>\n'
+        )
+    else:
+        # "hidden" -- no trigger in topbar
+        search_trigger_html = ""
+
+    # Build topbar
+    topbar_html = _render_topbar(
+        project_name=project_name,
+        version_badge=meta["version_badge"],
+        topbar_page_title_html=meta["topbar_page_title_html"],
+        search_trigger_html=search_trigger_html,
+        prefix=prefix,
+    )
+
+    # Build search dialog
+    search_dialog_html = _render_search_dialog(prefix)
+
+    # Load JS from external files via the loader module
+    from selfdoc.js.loader import load_js, assemble_body_js
+
+    head_js = load_js("head")
+
+    # Assemble body JS from external files via the loader
+    body_js = _minify_js(assemble_body_js(body_html, toc_html, meta["footer_html"]))
+
+    # Google Analytics script (injected when feedback.ga is configured)
+    ga_head_script = ""
+    if feedback and feedback.get("ga"):
+        ga_id = _escape_html(feedback["ga"])
+        ga_js = load_js("ga")
+        ga_head_script = (
+            f'<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>\n'
+            f'<script data-ga-id="{ga_id}">{ga_js}</script>\n'
         )
 
     return (
@@ -2604,15 +2729,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<head>\n'
         f'<meta charset="UTF-8">\n'
         f'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-        f'<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{description_tag}\n'
+        f'<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{meta["description_tag"]}\n'
         f'<link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">\n'
-        f'{font_tags}'
+        f'{meta["font_tags"]}'
         f'{"<style>" + critical_css + "</style>" + chr(10) if critical_css else ""}'
         f'<link rel="preload" href="{css_href}" as="style">\n'
         f'<link rel="stylesheet" href="{css_href}" media="print"'
         f" onload=\"this.media='all'\">"
         f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
-        f'{custom_css_tag}{feed_tag}{seo_tags}{security_meta}\n'
+        f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
@@ -2620,20 +2745,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</head>\n'
         f'<body>\n'
         f'<a class="skip-link" href="#main-content">Skip to content</a>\n'
-        f'<header class="topbar">\n'
-        f'<div class="topbar-inner">\n'
-        f'<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">\n'
-        f'<span></span><span></span><span></span>\n'
-        f'</button>\n'
-        f'<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>\n'
-        f'{version_badge}\n'
-        f'{topbar_page_title_html}\n'
-        f'<button class="theme-toggle" aria-label="Toggle theme">\n'
-        f'{sun_icon}{moon_icon}{auto_icon}\n'
-        f'</button>\n'
-        f'{search_trigger_html}'
-        f'</div>\n'
-        f'</header>\n'
+        f'{topbar_html}\n'
         f'<div class="reading-progress" id="reading-progress"></div>\n'
         f'<div class="layout">\n'
         f'<nav class="sidebar" id="sidebar" aria-label="Site navigation">\n'
@@ -2643,30 +2755,22 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</nav>\n'
         f'<main class="content" id="main-content">\n'
         f'<article>\n'
-        f'{breadcrumbs_html}\n'
-        f'{mobile_toc_html}\n'
-        f'{summary_html}\n'
-        f'{_auto_h1_html}\n'
+        f'{meta["breadcrumbs_html"]}\n'
+        f'{meta["mobile_toc_html"]}\n'
+        f'{meta["summary_html"]}\n'
+        f'{meta["auto_h1_html"]}\n'
         f'{body_html}\n'
-        f'{footer_html}\n'
+        f'{meta["footer_html"]}\n'
         f'</article>\n'
         f'</main>\n'
-        f'{toc_aside}\n'
+        f'{meta["toc_aside"]}\n'
         f'</div>\n'
         f'<footer class="site-footer">\n'
         f'<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
-        f'{feed_footer_html}\n'
+        f'{meta["feed_footer_html"]}\n'
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
-        f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}" aria-label="Search documentation">\n'
-        f'<div class="search-inner">\n'
-        f'<div class="search-header">\n'
-        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'
-        f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
-        f'</div>\n'
-        f'<ul class="search-results" id="search-results" role="listbox" aria-live="polite"></ul>\n'
-        f'</div>\n'
-        f'</dialog>\n'
+        f'{search_dialog_html}\n'
         f'<script defer src="{prefix}search.js"></script>\n'
         f'</body>\n'
         f'</html>\n'
