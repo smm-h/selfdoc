@@ -2339,6 +2339,47 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
         '</svg>'
     )
 
+    # Version picker (Phase 1.4)
+    version_picker_html = ""
+    if available_versions:
+        disabled = " disabled" if len(available_versions) <= 1 else ""
+        options = []
+        for v in available_versions:
+            ver = v["version"]
+            selected = " selected" if ver == current_version else ""
+            options.append(
+                f'<option value="{_escape_html(ver)}"{selected}>'
+                f'v{_escape_html(ver)}</option>'
+            )
+        version_picker_html = (
+            f'<select class="version-picker"'
+            f' data-current-locale="{_escape_html(current_locale)}"'
+            f'{disabled}>\n'
+            + "\n".join(options)
+            + "\n</select>\n"
+        )
+
+    # Locale picker (Phase 1.4)
+    locale_picker_html = ""
+    if available_locales:
+        disabled = " disabled" if len(available_locales) <= 1 else ""
+        options = []
+        for loc in available_locales:
+            code = loc["code"]
+            label = loc["label"]
+            selected = " selected" if code == current_locale else ""
+            options.append(
+                f'<option value="{_escape_html(code)}"{selected}>'
+                f'{_escape_html(label)}</option>'
+            )
+        locale_picker_html = (
+            f'<select class="locale-picker"'
+            f' data-current-version="{_escape_html(current_version)}"'
+            f'{disabled}>\n'
+            + "\n".join(options)
+            + "\n</select>\n"
+        )
+
     return (
         f'<header class="topbar">\n'
         f'<div class="topbar-inner">\n'
@@ -2347,6 +2388,8 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
         f'</button>\n'
         f'<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>\n'
         f'{version_badge}\n'
+        f'{version_picker_html}'
+        f'{locale_picker_html}'
         f'{topbar_page_title_html}\n'
         f'<button class="theme-toggle" aria-label="Toggle theme">\n'
         f'{sun_icon}{moon_icon}{auto_icon}\n'
@@ -2360,7 +2403,7 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
 def _render_search_dialog(prefix):
     """Build the search dialog HTML."""
     return (
-        f'<dialog class="search-dialog" id="search-dialog" data-search-prefix="{prefix}" aria-label="Search documentation">\n'
+        f'<dialog class="search-dialog" id="search-dialog" data-search-base="/" aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
         f'<div class="search-header">\n'
         f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'

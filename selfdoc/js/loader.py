@@ -58,6 +58,7 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         load_js("nav-groups"),
         load_js("scroll-affordance"),
         load_js("reading-progress"),
+        load_js("pickers"),
     ]
 
     # Conditional blocks

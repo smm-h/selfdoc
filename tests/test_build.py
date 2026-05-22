@@ -3545,8 +3545,8 @@ def test_search_js_file_generated(project_dir):
 
     # Must contain the fetch URL for the search index
     assert "search-index.json" in content
-    # Must read prefix from data attribute
-    assert "search-prefix" in content or "searchPrefix" in content
+    # Must read search base from data attribute
+    assert "search-base" in content or "searchBase" in content
 
 
 def test_search_js_deferred(project_dir):

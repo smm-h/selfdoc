@@ -2,7 +2,7 @@
 (function() {
   var dialog = document.getElementById('search-dialog');
   if (!dialog) return;
-  var searchPrefix = dialog.getAttribute('data-search-prefix') || '';
+  var searchBase = dialog.getAttribute('data-search-base') || '/';
   var input = dialog.querySelector('.search-input');
   var resultsList = dialog.querySelector('.search-results');
   var closeBtn = dialog.querySelector('.search-close');
@@ -31,7 +31,7 @@
   function loadIndex() {
     if (indexLoaded) return Promise.resolve();
     if (indexLoading) return indexLoading;
-    indexLoading = fetch(searchPrefix + 'search-index.json')
+    indexLoading = fetch(searchBase + 'search-index.json')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         initSearchEngine(data);
@@ -116,7 +116,7 @@
       li.setAttribute('role', 'option');
       li.id = 'search-result-' + idx;
       var a = document.createElement('a');
-      a.href = searchPrefix + result.path;
+      a.href = searchBase + result.path;
       var titleEl = document.createElement('div');
       titleEl.className = 'search-result-title';
       titleEl.appendChild(highlightText(result.title, result.highlights, 'title'));
