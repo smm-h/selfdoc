@@ -839,7 +839,7 @@ dev = [
 
 [[package]]
 name = "strictcli"
-version = "0.7.1"
+version = "0.8.5"
 source = { editable = "../strictcli/python" }
 
 [package.metadata]
