@@ -12,6 +12,11 @@ selfdoc is configured via a `selfdoc.json` file in your project root. Run `selfd
 
 Three fields are required: `language`, `source`, and `base_url`. Everything else is optional and has sensible defaults.
 
+:<: callout-warning
+:=:
+::: `base_url` is required for deployment. Without it, canonical URLs, sitemaps, OG tags, and Atom feeds will have broken links. Set it to the URL where your site will be hosted (e.g., `https://myproject.pages.dev`).
+:>:
+
 ## Config Reference
 
 The table below lists every field recognized by `selfdoc.json`, including the field type, whether it is required, and a description of what it controls. Required fields have no default and must be provided explicitly.

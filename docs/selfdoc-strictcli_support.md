@@ -9,4 +9,6 @@ nav_order: 19
 
 # selfdoc.strictcli_support
 
+First-class support for projects that use strictcli for their CLI. Detects strictcli usage via AST inspection, extracts the full CLI structure (commands, groups, flags, help text), and generates Markdown CLI reference pages automatically. If your project uses strictcli, `selfdoc gen` produces per-command documentation pages with no manual work. Also preserves any handwritten frontmatter descriptions across regeneration.
+
 :-: ref path="selfdoc.strictcli_support"

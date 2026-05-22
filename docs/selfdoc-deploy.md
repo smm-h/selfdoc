@@ -9,4 +9,6 @@ nav_order: 7
 
 # selfdoc.deploy
 
+Handles `selfdoc deploy` -- pushing the built site to Cloudflare Pages or GitHub Pages. Each provider is a separate function that reads credentials from environment variables and performs the upload. Cloudflare deploys use wrangler under the hood; GitHub Pages deploys do a clean force-push to the `gh-pages` branch. See the [Deployment](deployment/) guide for setup instructions.
+
 :-: ref path="selfdoc.deploy"

@@ -9,4 +9,6 @@ nav_order: 18
 
 # selfdoc.resolver
 
+The resolver factory -- creates the function that dispatches directives to the right handler. Tries content directives first, then custom directives from `selfdoc.json`, then the language extractor. This is the central routing layer between [selfdoc.directives](selfdoc-directives/) (parsing) and [selfdoc.extractors](selfdoc-extractors/) (extraction). If a directive resolves to the wrong thing or fails unexpectedly, start debugging here.
+
 :-: ref path="selfdoc.resolver"

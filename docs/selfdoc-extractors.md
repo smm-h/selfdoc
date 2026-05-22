@@ -9,4 +9,6 @@ nav_order: 10
 
 # selfdoc.extractors
 
+The language extractor registry. Maps language names to their extractor implementations (Python, Go, TypeScript) and provides `detect_language` for auto-detecting the project language from manifest files. You'd interact with this if you're adding support for a new language or debugging why language detection picks the wrong one. Individual extractors live in submodules below.
+
 :-: ref path="selfdoc.extractors"

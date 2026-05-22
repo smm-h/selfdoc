@@ -9,4 +9,6 @@ nav_order: 1
 
 # selfdoc
 
+The top-level package and entry point for selfdoc as a library. Exposes package metadata (version, description) and the public API surface. Most users interact through the CLI, but if you're embedding selfdoc in a script or building tooling on top of it, start here. See [selfdoc.cli](selfdoc-cli/) for the CLI and [selfdoc.build](selfdoc-build/) for the build pipeline.
+
 :-: ref path="selfdoc"

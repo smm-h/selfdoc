@@ -9,4 +9,6 @@ nav_order: 11
 
 # selfdoc.extractors.go
 
+The Go language extractor. Resolves directives by parsing `.go` files with regex, matching exported identifiers (capitalized names), struct fields, and function signatures. Handles `ref`, `table-schema`, `code-test`, and other directives for Go projects. Uses regex rather than a full parser because Go's export convention (capitalized = public) is simple enough to match reliably.
+
 :-: ref path="selfdoc.extractors.go"

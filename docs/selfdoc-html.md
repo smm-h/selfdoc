@@ -9,4 +9,6 @@ nav_order: 16
 
 # selfdoc.html
 
+The Markdown-to-HTML rendering engine. Takes resolved Markdown (after directives have been replaced with content) and produces full HTML pages with navigation, metadata, and themed styling. Includes the tokenizer dispatch, block renderers, post-processors (code tabs, step guides, API entry cards), and page assembly. Works with [selfdoc.tokenizer](selfdoc-tokenizer/) for parsing and the theme system for styling.
+
 :-: ref path="selfdoc.html"

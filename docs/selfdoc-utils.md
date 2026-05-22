@@ -9,4 +9,6 @@ nav_order: 21
 
 # selfdoc.utils
 
+Shared utility functions used across the codebase. Includes helpers for atomic file writes, module docstring extraction, path manipulation, and other small operations that don't belong to any single module. If you see a utility function imported in multiple places, it probably lives here.
+
 :-: ref path="selfdoc.utils"

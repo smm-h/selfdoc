@@ -9,4 +9,6 @@ nav_order: 15
 
 # selfdoc.gendata
 
+Generates data files by running scripts inside a bubblewrap (bwrap) sandbox. Useful for producing JSON, YAML, or other structured data that documentation pages consume at build time -- without giving those scripts unrestricted filesystem access. You'd care about this if your docs include dynamically generated content like schema dumps or computed tables.
+
 :-: ref path="selfdoc.gendata"

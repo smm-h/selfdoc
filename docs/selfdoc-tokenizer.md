@@ -9,4 +9,6 @@ nav_order: 20
 
 # selfdoc.tokenizer
 
+A standalone, zero-dependency Markdown block tokenizer. Splits Markdown source into typed tokens (headings, code blocks, tables, lists, paragraphs, etc.) with line numbers. Used by both the rendering pipeline ([selfdoc.html](selfdoc-html/)) and the lint system ([selfdoc.check](selfdoc-check/)). Designed for reuse outside selfdoc -- it has no imports from the rest of the package.
+
 :-: ref path="selfdoc.tokenizer"

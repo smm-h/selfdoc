@@ -9,4 +9,6 @@ nav_order: 6
 
 # selfdoc.config
 
+Loads and validates `selfdoc.json`. Defines the schema for every config field (type, required/optional, description) and provides the `load_config` function used by all commands. If a required field is missing or a value has the wrong type, this module raises a clear error. Also powers the `config-schema` directive that renders the config reference table on the [Configuration](configuration/) page.
+
 :-: ref path="selfdoc.config"

@@ -12,6 +12,11 @@ selfdoc directives are inline blocks in Markdown templates that get resolved int
 
 ## Syntax
 
+:<: callout-note
+:=:
+::: Directives inside fenced code blocks (triple backticks) are ignored. You can safely show directive syntax in code examples without triggering resolution.
+:>:
+
 Directives use 6 marker types and come in two forms, depending on whether the directive is self-contained with just attributes or needs to include additional body content that gets passed to the resolver function. Directives placed inside fenced code blocks are ignored, so you can safely document directive syntax in your pages:
 
 **One-liner** (self-closing, no body):

@@ -9,4 +9,6 @@ nav_order: 8
 
 # selfdoc.directives
 
+The directive parser. Reads Markdown source and extracts structured directive markers (one-liners like `:-:` and blocks like `:<: ... :>:`) with their attributes and body content. Automatically skips directives inside fenced code blocks. If you're writing a custom directive or debugging parse errors, this is the relevant module. Feeds into [selfdoc.resolver](selfdoc-resolver/) for dispatch.
+
 :-: ref path="selfdoc.directives"

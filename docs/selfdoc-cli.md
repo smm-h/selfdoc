@@ -9,4 +9,6 @@ nav_order: 5
 
 # selfdoc.cli
 
+The command-line interface layer. Parses arguments via strictcli and dispatches to the appropriate command (`init`, `build`, `check`, `serve`, `deploy`, `gen`, `gen-data`). You'd look here if you're adding a new CLI command or changing how flags are parsed. Each command delegates to its own module -- this file is purely argument parsing and dispatch.
+
 :-: ref path="selfdoc.cli"

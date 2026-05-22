@@ -9,4 +9,6 @@ nav_order: 3
 
 # selfdoc.build
 
+Orchestrates the full site generation: scans `docs/` for templates, resolves directives, renders HTML, generates auxiliary files (sitemap, Atom feed, search index, OG images), and copies assets. This is what `selfdoc build` calls under the hood. If you're debugging a build issue or writing a custom build script, this is the module to look at. Depends on [selfdoc.resolver](selfdoc-resolver/) for directive dispatch and [selfdoc.html](selfdoc-html/) for rendering.
+
 :-: ref path="selfdoc.build"

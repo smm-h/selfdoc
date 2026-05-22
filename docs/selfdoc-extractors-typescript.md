@@ -9,4 +9,6 @@ nav_order: 13
 
 # selfdoc.extractors.typescript
 
+The TypeScript and JavaScript extractor. Resolves directives by parsing `.ts` and `.js` files with regex, matching `export` declarations, interfaces, type aliases, and function signatures. Handles both TypeScript and plain JavaScript projects. Uses regex because explicit `export` keywords make the public API surface easy to identify without a full parser.
+
 :-: ref path="selfdoc.extractors.typescript"

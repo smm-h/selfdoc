@@ -199,6 +199,11 @@ Any SEO warnings or directive errors are printed after the build summary. Errors
 
 ## Local Development
 
+:<: callout-tip
+:=:
+::: Run `selfdoc serve` alongside `selfdoc build` for a live preview workflow -- the browser reloads automatically via Server-Sent Events whenever the output changes.
+:>:
+
 Preview your documentation site locally with automatic live reload using Server-Sent Events. The development server watches the output directory for changes and pushes reload notifications to connected browsers, so your pages update instantly after each build:
 
 ```bash

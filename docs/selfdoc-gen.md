@@ -9,4 +9,6 @@ nav_order: 14
 
 # selfdoc.gen
 
+Auto-generates documentation stub pages from your project's module structure. Running `selfdoc gen` scans source directories, discovers modules, and creates a `docs/` page for each one with the correct frontmatter and a `ref` directive pre-filled. This is how the API reference pages in this very documentation site were scaffolded. Respects existing handwritten descriptions in frontmatter.
+
 :-: ref path="selfdoc.gen"

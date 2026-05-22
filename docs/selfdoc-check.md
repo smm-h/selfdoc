@@ -9,4 +9,6 @@ nav_order: 4
 
 # selfdoc.check
 
+Implements the `selfdoc check` command -- validates that all directives resolve, measures documentation coverage against your public API, and runs 14 SEO lint checks. Useful for CI pipelines and pre-publish validation. Works on the tokenized representation of each page (via [selfdoc.tokenizer](selfdoc-tokenizer/)) so it can distinguish code blocks from body text.
+
 :-: ref path="selfdoc.check"

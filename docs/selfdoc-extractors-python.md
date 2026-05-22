@@ -9,4 +9,6 @@ nav_order: 12
 
 # selfdoc.extractors.python
 
+The Python language extractor. Uses the `ast` module for full AST parsing to accurately extract docstrings, function signatures, class hierarchies, and dataclass fields from `.py` files. AST parsing is necessary because Python's grammar (decorators, multiline signatures, nested classes) makes regex unreliable. This is the extractor used when `language` is `"python"` in your `selfdoc.json`.
+
 :-: ref path="selfdoc.extractors.python"

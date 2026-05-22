@@ -9,4 +9,6 @@ nav_order: 17
 
 # selfdoc.icons
 
+Provides language-specific icons for fenced code blocks in the rendered output. When a code block specifies a language (e.g., `python`, `bash`, `json`), this module maps it to an SVG icon displayed in the code block header. Purely cosmetic -- if you're adding support for a new language's icon, this is where to add it.
+
 :-: ref path="selfdoc.icons"

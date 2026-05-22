@@ -9,4 +9,6 @@ nav_order: 9
 
 # selfdoc.docs
 
+Shared resolution pipeline for `docs/` templates. Handles the common logic of walking the docs directory, parsing frontmatter, and threading resolved content through to the build and check commands. Both [selfdoc.build](selfdoc-build/) and [selfdoc.check](selfdoc-check/) use this module to avoid duplicating template discovery and frontmatter parsing.
+
 :-: ref path="selfdoc.docs"

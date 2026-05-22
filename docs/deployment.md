@@ -153,6 +153,11 @@ No configuration is required. All internal navigation links already use the dire
 
 ## CI Integration
 
+:<: callout-important
+:=:
+::: If your project uses rlsbl for releases, never run `selfdoc deploy` manually. Let the post-release hook handle it so your docs always match a tagged version. Manual deploys risk publishing docs that are ahead of or behind the released code.
+:>:
+
 The recommended approach is to use an rlsbl post-release hook that builds and deploys documentation automatically after each release, keeping your published docs in sync with tagged versions without manual intervention.
 
 ### Post-release hook example
