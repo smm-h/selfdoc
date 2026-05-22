@@ -151,22 +151,34 @@ def _cmd_init(no_commit=False):
 @strictcli.flag("version", type=str, default="", help="Build only this version (e.g., '1.0.0')")
 def _cmd_build(no_commit=False, locale="", version=""):
     """Build the documentation site."""
-    from selfdoc.build import build
-
-    try:
-        written = build(
-            ".",
-            version_filter=version or None,
-            locale_filter=locale or None,
-        )
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    from selfdoc.check import check_docs, filter_lints
     from selfdoc.config import load_config
 
     config = load_config(".")
+
+    # Detect unified config and dispatch accordingly
+    if config and config.get("unified"):
+        from selfdoc.unified import build_unified
+
+        try:
+            written = build_unified(".", config=config)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        from selfdoc.build import build
+
+        try:
+            written = build(
+                ".",
+                version_filter=version or None,
+                locale_filter=locale or None,
+            )
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    from selfdoc.check import check_docs, filter_lints
+
     output_dir = config["output"] if config else "docs/_build/"
 
     if not no_commit:
@@ -444,11 +456,16 @@ def _detect_version():
 @strictcli.flag("dry-run", type=bool, help="Report staleness without writing hashes")
 def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
     """Check documentation coverage and consistency."""
-    from selfdoc.check import check_docs, filter_lints, print_results
+    from selfdoc.check import check_docs, check_unified, filter_lints, print_results
     from selfdoc.config import load_config
 
+    config = load_config(".")
+
     try:
-        result = check_docs(".", dry_run=dry_run)
+        if config and config.get("unified"):
+            result = check_unified(".", config=config, dry_run=dry_run)
+        else:
+            result = check_docs(".", dry_run=dry_run)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

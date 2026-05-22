@@ -1,0 +1,711 @@
+"""Monorepo unified site builder.
+
+Orchestrates building a single documentation site from multiple
+constituent projects plus a docs-site's own cross-cutting content.
+Each constituent project is built using its own selfdoc.json; the
+docs-site's config provides the unified orchestration via its
+``unified`` section.
+"""
+
+import dataclasses
+import json
+import os
+import re
+import shutil
+
+from selfdoc.build import (
+    _build_search_index,
+    _compress_output,
+    _detect_project_version,
+    _extract_critical_css,
+    _generate_auxiliary_files,
+    _generate_sitemap,
+    _minify_css,
+    _minify_html,
+    build_single,
+)
+from selfdoc.config import ConfigError, load_config
+from selfdoc.html import (
+    _build_nav,
+    _escape_html,
+    _html_path_to_url,
+    _md_to_html_path,
+    _render_nav,
+    _slugify,
+    generate_html,
+    generate_pygments_css,
+    get_css,
+)
+from selfdoc.themes import get_theme_meta
+
+
+def _resolve_project_path(project_entry, docs_site_dir):
+    """Resolve a constituent project's absolute path from its config entry.
+
+    The ``path`` value in the unified config is relative to the docs-site
+    directory (e.g. ``../core``).
+
+    Returns the absolute project directory path.
+    Raises ConfigError if the resolved path does not exist.
+    """
+    raw_path = project_entry["path"]
+    abs_path = os.path.normpath(os.path.join(docs_site_dir, raw_path))
+    if not os.path.isdir(abs_path):
+        raise ConfigError(
+            f"unified project path '{raw_path}' resolves to "
+            f"'{abs_path}' which does not exist"
+        )
+    return abs_path
+
+
+def _project_slug(project_entry):
+    """Derive the URL slug for a constituent project.
+
+    Uses the explicit ``slug`` field if set, otherwise the basename
+    of the project path.
+    """
+    return (
+        project_entry.get("slug")
+        or os.path.basename(project_entry["path"].rstrip("/"))
+    )
+
+
+def _project_nav_title(project_entry):
+    """Derive the navigation title for a constituent project.
+
+    Uses the explicit ``nav_title`` field if set, otherwise titlecases
+    the slug.
+    """
+    return (
+        project_entry.get("nav_title")
+        or _project_slug(project_entry).replace("-", " ").replace("_", " ").title()
+    )
+
+
+def _build_unified_nav(common_nav, projects_nav, config):
+    """Merge navigation from common docs and constituent projects.
+
+    Returns a flat nav_items list suitable for _render_nav:
+    - Common (docs-site) pages first
+    - Then one collapsible group per constituent project
+
+    Args:
+        common_nav: Nav items from the docs-site's own docs.
+        projects_nav: List of (slug, nav_title, nav_items, url_prefix)
+            tuples, one per constituent project.
+        config: The docs-site's config dict.
+    """
+    merged = list(common_nav)
+    for slug, nav_title, nav_items, url_prefix in projects_nav:
+        # Wrap each project's nav as a collapsible group
+        # Prefix each item's path with the project's output_subdir
+        prefixed_items = []
+        for item in nav_items:
+            if "group" in item:
+                # Nested group: prefix each sub-item's path
+                prefixed_sub = []
+                for sub in item["items"]:
+                    prefixed_sub.append({
+                        "label": sub["label"],
+                        "path": f"{url_prefix}/{sub['path']}",
+                        "md_path": sub.get("md_path", ""),
+                    })
+                prefixed_items.append({
+                    "group": item["group"],
+                    "slug": item.get("slug", ""),
+                    "items": prefixed_sub,
+                })
+            else:
+                prefixed_items.append({
+                    "label": item["label"],
+                    "path": f"{url_prefix}/{item['path']}",
+                    "md_path": item.get("md_path", ""),
+                })
+        merged.append({
+            "group": nav_title,
+            "slug": _slugify(nav_title),
+            "items": prefixed_items,
+        })
+    return merged
+
+
+def _generate_landing_page(projects_info, config):
+    """Generate an HTML landing page listing all constituent projects as cards.
+
+    Args:
+        projects_info: List of dicts with keys: slug, nav_title, description,
+            version, url_prefix.
+        config: The docs-site config dict.
+
+    Returns:
+        HTML body string for the landing page.
+    """
+    cards = []
+    for info in projects_info:
+        slug = info["slug"]
+        title = _escape_html(info["nav_title"])
+        desc = _escape_html(info.get("description", ""))
+        version = _escape_html(info.get("version", ""))
+        link = _html_path_to_url(f"{info['url_prefix']}/index.html")
+        card = (
+            f'<div class="project-card">'
+            f'<h3><a href="{link}">{title}</a></h3>'
+        )
+        if desc:
+            card += f'<p>{desc}</p>'
+        if version:
+            card += f'<span class="project-version">v{version}</span>'
+        card += '</div>'
+        cards.append(card)
+    return (
+        '<div class="project-grid">'
+        + "\n".join(cards)
+        + '</div>'
+    )
+
+
+def _validate_rlsbl_workspace(docs_site_dir, unified_config):
+    """Validate unified config against rlsbl monorepo workspace.
+
+    Walks up from docs_site_dir looking for ``.rlsbl-monorepo/workspace.toml``.
+    If found, checks that every workspace project with a ``selfdoc.json``
+    is either listed in ``unified.projects`` or ``unified.exclude``.
+
+    Raises ConfigError if an undeclared selfdoc-enabled project is found.
+    """
+    import tomllib
+
+    # Walk up looking for .rlsbl-monorepo/workspace.toml
+    current = os.path.abspath(docs_site_dir)
+    workspace_toml = None
+    for _ in range(10):  # max 10 levels up
+        candidate = os.path.join(current, ".rlsbl-monorepo", "workspace.toml")
+        if os.path.isfile(candidate):
+            workspace_toml = candidate
+            break
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+
+    if workspace_toml is None:
+        return  # no rlsbl monorepo -- skip validation
+
+    monorepo_root = os.path.dirname(os.path.dirname(workspace_toml))
+
+    with open(workspace_toml, "rb") as f:
+        workspace = tomllib.load(f)
+
+    # Get workspace project paths
+    workspace_projects = workspace.get("projects", [])
+    if not workspace_projects:
+        return
+
+    # Build sets of known slugs/paths from unified config
+    unified_projects = unified_config.get("projects", [])
+    exclude_patterns = unified_config.get("exclude", [])
+
+    known_paths = set()
+    for proj in unified_projects:
+        abs_path = os.path.normpath(
+            os.path.join(docs_site_dir, proj["path"])
+        )
+        known_paths.add(abs_path)
+
+    # Check each workspace project
+    for wp in workspace_projects:
+        # workspace.toml entries can be strings (path) or dicts with "path" key
+        if isinstance(wp, str):
+            wp_path = wp
+        elif isinstance(wp, dict):
+            wp_path = wp.get("path", "")
+        else:
+            continue
+
+        abs_wp = os.path.normpath(os.path.join(monorepo_root, wp_path))
+
+        # Skip if no selfdoc.json
+        if not os.path.isfile(os.path.join(abs_wp, "selfdoc.json")):
+            continue
+
+        # Skip if it's the docs-site itself
+        if os.path.abspath(abs_wp) == os.path.abspath(docs_site_dir):
+            continue
+
+        # Skip if already in unified.projects
+        if abs_wp in known_paths:
+            continue
+
+        # Check exclude patterns
+        wp_name = os.path.basename(abs_wp)
+        excluded = False
+        for pattern in exclude_patterns:
+            if re.match(pattern.replace("*", ".*"), wp_name):
+                excluded = True
+                break
+        if excluded:
+            continue
+
+        raise ConfigError(
+            f"rlsbl workspace project '{wp_path}' has selfdoc.json but is "
+            f"neither in unified.projects nor unified.exclude. Add it to one."
+        )
+
+
+def _merge_site_terms(all_terms):
+    """Merge site_terms dicts from multiple projects.
+
+    Each entry in *all_terms* is a (project_slug, terms_dict) tuple.
+    Returns a merged dict keyed by lowercase term, with project
+    attribution added to each entry.
+    """
+    merged = {}
+    for project_slug, terms in all_terms:
+        for key, info in terms.items():
+            if key not in merged:
+                merged[key] = dict(info)
+                merged[key]["project"] = project_slug
+    return merged
+
+
+def _generate_unified_glossary_html(merged_terms, projects_info):
+    """Generate a unified glossary page body from merged terms.
+
+    Groups terms alphabetically with project attribution.
+    Returns HTML body string.
+    """
+    if not merged_terms:
+        return "<p>No glossary terms defined.</p>"
+
+    sorted_terms = sorted(merged_terms.values(), key=lambda t: t["term"].lower())
+    items = []
+    for info in sorted_terms:
+        anchor = info.get("anchor", _slugify(info["term"]))
+        term_name = _escape_html(info["term"])
+        definition = info.get("definition", "")
+        project = _escape_html(info.get("project", ""))
+        source_html = ""
+        if project:
+            source_html = f' <span class="term-project">[{project}]</span>'
+        items.append(
+            f'<dt id="{anchor}"><dfn>{term_name}</dfn></dt>'
+            f'<dd>{definition}{source_html}</dd>'
+        )
+    return (
+        '<div class="glossary"><dl>\n'
+        + "\n".join(items)
+        + '\n</dl></div>'
+    )
+
+
+def build_unified(dir_path=".", config=None):
+    """Build a unified documentation site from multiple constituent projects.
+
+    Main entry point for monorepo unified builds. Reads the ``unified``
+    section from the docs-site's config, builds each constituent project
+    and the docs-site's own content, then assembles everything into a
+    single output directory with merged search index, unified navigation,
+    and shared assets.
+
+    Args:
+        dir_path: The docs-site's project root directory.
+        config: Pre-loaded config dict (if None, loads from selfdoc.json).
+
+    Returns:
+        Dict of {output_path: True} for files written.
+    """
+    if config is None:
+        config = load_config(dir_path)
+    if config is None:
+        raise RuntimeError(
+            "No selfdoc.json found. Run 'selfdoc init' to initialize."
+        )
+
+    unified_config = config.get("unified")
+    if unified_config is None:
+        raise ConfigError("No 'unified' section in selfdoc.json")
+
+    if config.get("versions") is None:
+        raise ConfigError(
+            "selfdoc.json requires 'versions' array for unified builds."
+        )
+    if config.get("locales") is None:
+        raise ConfigError(
+            "selfdoc.json requires 'locales' array for unified builds."
+        )
+
+    # Validate against rlsbl workspace if present
+    _validate_rlsbl_workspace(dir_path, unified_config)
+
+    locales = config["locales"]
+    versions = config["versions"]
+    default_locale = locales[0]
+    for loc in locales:
+        if loc.get("default") is True:
+            default_locale = loc
+            break
+    default_locale_code = default_locale["code"]
+    latest_version = versions[-1]["version"]
+
+    output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
+    docs_dir_name = config["docs"].rstrip("/")
+    docs_dir = os.path.join(dir_path, docs_dir_name)
+
+    if not os.path.isdir(docs_dir):
+        raise RuntimeError(
+            f"Docs directory '{docs_dir_name}' not found. "
+            "Create it or run 'selfdoc init'."
+        )
+
+    # Clean output directory
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    written = {}
+    all_search_entries = []
+    all_site_terms = []
+    projects_info = []
+    projects_nav_data = []
+
+    # Get theme info from docs-site config
+    theme_name = config.get("theme", "minimal")
+    raw_theme_css = get_css(theme_name)
+    theme_meta = get_theme_meta(theme_name)
+    critical_css, _ = _extract_critical_css(raw_theme_css)
+    critical_css = _minify_css(critical_css)
+
+    # --- Build each constituent project ---
+    for project_entry in unified_config["projects"]:
+        slug = _project_slug(project_entry)
+        nav_title = _project_nav_title(project_entry)
+        project_path = _resolve_project_path(project_entry, dir_path)
+
+        # Load the constituent project's own config
+        proj_config = load_config(project_path)
+        if proj_config is None:
+            raise ConfigError(
+                f"No selfdoc.json found in constituent project "
+                f"'{project_entry['path']}' (resolved to '{project_path}')"
+            )
+
+        # Detect the project's version
+        proj_version = _detect_project_version(project_path)
+
+        # Per-version overrides from the docs-site's version entries
+        # (e.g. versions[0].projects.core = "2.0.0")
+        for ver_entry in versions:
+            ver_projects = ver_entry.get("projects", {})
+            if slug in ver_projects:
+                proj_version = ver_projects[slug]
+
+        # Build the project for each locale
+        for locale in locales:
+            locale_code = locale["code"]
+            output_subdir = f"{locale_code}/{slug}/{latest_version}"
+            url_prefix = output_subdir
+
+            (
+                html_files, markdown_files, frontmatter, page_dates,
+                nav_items, search_entries, project_name, version, _cfg,
+                proj_docs_dir, other_files, has_custom_css, _raw_css,
+                _theme_meta, _crit_css, config_description, base_url,
+                feed_url, lang,
+            ) = build_single(
+                dir_path=project_path,
+                config=proj_config,
+                output_subdir=output_subdir,
+                url_prefix=url_prefix,
+                version_override=proj_version or latest_version,
+                locale_override=locale_code,
+                available_versions=versions,
+                available_locales=locales,
+                current_version=latest_version,
+                current_locale=locale_code,
+                is_latest=True,
+            )
+
+            # Override the project field in search entries
+            patched_entries = []
+            for entry in search_entries:
+                patched = dataclasses.replace(entry, project=slug)
+                patched_entries.append(patched)
+            all_search_entries.extend(patched_entries)
+
+            # Write HTML files
+            for rel_path, html_content in html_files.items():
+                out_path = os.path.join(output_dir, rel_path)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(_minify_html(html_content))
+                written[out_path] = True
+
+            # Copy static assets
+            for rel_path in other_files:
+                src = os.path.join(proj_docs_dir, rel_path)
+                dst = os.path.join(output_dir, output_subdir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                written[dst] = True
+
+            # Collect nav data (only for default locale to avoid duplication)
+            if locale_code == default_locale_code:
+                projects_nav_data.append(
+                    (slug, nav_title, nav_items, output_subdir)
+                )
+                projects_info.append({
+                    "slug": slug,
+                    "nav_title": nav_title,
+                    "description": config_description or "",
+                    "version": proj_version or latest_version,
+                    "url_prefix": output_subdir,
+                })
+
+    # --- Build the docs-site's own content (common pages) ---
+    common_latest_build = None
+    for locale in locales:
+        locale_code = locale["code"]
+        common_subdir = f"{locale_code}/common/{latest_version}"
+        common_url_prefix = common_subdir
+
+        (
+            html_files, markdown_files, frontmatter, page_dates,
+            nav_items, search_entries, project_name, version, _cfg,
+            common_docs_dir, other_files, has_custom_css, _raw_css,
+            _theme_meta, _crit_css, config_description, base_url,
+            feed_url, lang,
+        ) = build_single(
+            dir_path=dir_path,
+            config=config,
+            output_subdir=common_subdir,
+            url_prefix=common_url_prefix,
+            version_override=latest_version,
+            locale_override=locale_code,
+            available_versions=versions,
+            available_locales=locales,
+            current_version=latest_version,
+            current_locale=locale_code,
+            is_latest=True,
+        )
+
+        # Mark common search entries
+        patched_entries = []
+        for entry in search_entries:
+            patched = dataclasses.replace(entry, project="common")
+            patched_entries.append(patched)
+        all_search_entries.extend(patched_entries)
+
+        # Write HTML files
+        for rel_path, html_content in html_files.items():
+            out_path = os.path.join(output_dir, rel_path)
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(_minify_html(html_content))
+            written[out_path] = True
+
+        # Copy static assets
+        for rel_path in other_files:
+            src = os.path.join(common_docs_dir, rel_path)
+            dst = os.path.join(output_dir, common_subdir, rel_path)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+            written[dst] = True
+
+        if locale_code == default_locale_code:
+            common_nav = nav_items
+            common_latest_build = {
+                "html_files": html_files,
+                "markdown_files": markdown_files,
+                "frontmatter": frontmatter,
+                "page_dates": page_dates,
+                "project_name": project_name,
+                "version": version,
+                "docs_dir": common_docs_dir,
+                "has_custom_css": has_custom_css,
+                "config_description": config_description,
+                "base_url": base_url,
+                "feed_url": feed_url,
+                "lang": lang,
+            }
+
+    # --- Build unified nav ---
+    unified_nav = _build_unified_nav(
+        common_nav, projects_nav_data, config,
+    )
+
+    # --- Generate landing page ---
+    landing_body = _generate_landing_page(projects_info, config)
+    common_subdir = f"{default_locale_code}/common/{latest_version}"
+    landing_html_path = os.path.join(
+        output_dir, common_subdir, "projects", "index.html",
+    )
+    # Wrap landing page in minimal HTML
+    landing_full = (
+        '<!DOCTYPE html>'
+        '<html lang="en">'
+        '<head><meta charset="utf-8">'
+        f'<title>Projects - {common_latest_build["project_name"]}</title>'
+        f'<link rel="stylesheet" href="../style.css">'
+        '</head>'
+        '<body>'
+        f'<h1>Projects</h1>'
+        f'{landing_body}'
+        '</body></html>'
+    )
+    os.makedirs(os.path.dirname(landing_html_path), exist_ok=True)
+    with open(landing_html_path, "w", encoding="utf-8") as f:
+        f.write(landing_full)
+    written[landing_html_path] = True
+
+    # --- Shared assets: CSS ---
+    lb = common_latest_build
+    css_path = os.path.join(output_dir, "style.css")
+    theme_css = raw_theme_css
+    pygments_css = generate_pygments_css(
+        light_style=theme_meta.get("pygments_light", "default"),
+        dark_style=theme_meta.get("pygments_dark", "monokai"),
+    )
+    if pygments_css:
+        theme_css = theme_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
+
+    # Append project-grid card styles
+    theme_css += "\n\n" + _PROJECT_GRID_CSS
+
+    theme_css = _minify_css(theme_css)
+    with open(css_path, "w", encoding="utf-8") as f:
+        f.write(theme_css)
+    written[css_path] = True
+
+    # --- Search index ---
+    search_index_path = os.path.join(output_dir, "search-index.json")
+    with open(search_index_path, "w", encoding="utf-8") as f:
+        json.dump(
+            [dataclasses.asdict(entry) for entry in all_search_entries],
+            f, ensure_ascii=False,
+        )
+    written[search_index_path] = True
+
+    # --- Search JS ---
+    from selfdoc.html import _generate_search_js, _minify_js
+    search_engine = config.get("search_engine") or "builtin"
+    search_js_path = os.path.join(output_dir, "search.js")
+    with open(search_js_path, "w", encoding="utf-8") as f:
+        f.write(_minify_js(_generate_search_js(engine=search_engine)))
+    written[search_js_path] = True
+
+    # --- Custom CSS ---
+    custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
+    if lb["has_custom_css"]:
+        custom_css_dst = os.path.join(output_dir, "custom.css")
+        shutil.copy2(custom_css_src, custom_css_dst)
+        written[custom_css_dst] = True
+
+    # --- Auxiliary files (OG cards, sitemap, llms.txt, 404, etc.) ---
+    all_html_paths = []
+    for k in written:
+        if k.endswith(".html"):
+            rel = os.path.relpath(k, output_dir)
+            all_html_paths.append(rel)
+
+    repo = config.get("repo", None)
+    aux_written = _generate_auxiliary_files(
+        output_dir=output_dir,
+        project_name=lb["project_name"],
+        version=lb["version"],
+        markdown_files=lb["markdown_files"],
+        html_paths=all_html_paths,
+        base_url=lb["base_url"],
+        has_custom_css=lb["has_custom_css"],
+        repo=repo,
+        lang=lb["lang"],
+        page_dates=lb["page_dates"],
+        frontmatter=lb["frontmatter"],
+        description=lb["config_description"],
+        feed_url=lb["feed_url"],
+        critical_css=critical_css,
+        accent_color=theme_meta["accent_color"],
+        theme_meta=theme_meta,
+        deploy=config.get("deploy"),
+        feed_max_entries=config.get("feed_max_entries"),
+    )
+    written.update(aux_written)
+
+    # --- Root redirect to common landing ---
+    redirect_url = f"/{default_locale_code}/common/{latest_version}/"
+    root_index_html = (
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        f'  <meta http-equiv="refresh" content="0;url={redirect_url}">\n'
+        f'  <link rel="canonical" href="{redirect_url}">\n'
+        "</head>\n"
+        "<body>\n"
+        f'  <script>window.location.replace("{redirect_url}")</script>\n'
+        f'  <p>Redirecting to <a href="{redirect_url}">{redirect_url}</a></p>\n'
+        "</body>\n"
+        "</html>\n"
+    )
+    root_index_path = os.path.join(output_dir, "index.html")
+    with open(root_index_path, "w", encoding="utf-8") as f:
+        f.write(root_index_html)
+    written[root_index_path] = True
+
+    redirects_content = f"/ {redirect_url} 302\n"
+    redirects_path = os.path.join(output_dir, "_redirects")
+    with open(redirects_path, "w", encoding="utf-8") as f:
+        f.write(redirects_content)
+    written[redirects_path] = True
+
+    # --- Pre-compress ---
+    compress_count, has_brotli = _compress_output(output_dir)
+    if has_brotli:
+        print(f"Pre-compressed {compress_count} files (gzip + brotli)")
+    else:
+        print(
+            f"Pre-compressed {compress_count} files "
+            f"(gzip only, install brotli for better compression)"
+        )
+
+    return written
+
+
+# CSS for the project card grid on the landing page
+_PROJECT_GRID_CSS = """\
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+.project-card {
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s;
+}
+.project-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.project-card h3 {
+  margin: 0 0 0.5rem 0;
+}
+.project-card h3 a {
+  text-decoration: none;
+  color: var(--link, #0969da);
+}
+.project-card p {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-secondary, #666);
+}
+.project-version {
+  font-size: 0.85em;
+  color: var(--text-secondary, #666);
+  background: var(--code-bg, #f6f8fa);
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+}
+.term-project {
+  font-size: 0.85em;
+  color: var(--text-secondary, #666);
+}
+"""
