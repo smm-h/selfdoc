@@ -67,13 +67,15 @@ And the CLI usage:
 The rendered output: a styled HTML page with your welcome text, followed by a complete API reference (every public function, class, and docstring from `mypackage.core`), then a formatted CLI help section showing every command and flag from `mypackage.cli`. All extracted live from your source code.
 
 :<: callout-tip
-You never edit the generated output. Change your code, rebuild, and the docs reflect reality.
+:=:
+::: You never edit the generated output. Change your code, rebuild, and the docs reflect reality.
 :>:
 
 ## Features
 
 :<: callout-note
-All of these work out of the box with zero configuration beyond the basic selfdoc.json.
+:=:
+::: All of these work out of the box with zero configuration beyond the basic selfdoc.json.
 :>:
 
 - **Code-aware directives** -- Embed live API references, schemas, tests, and CLI help directly from source code. Content stays in sync automatically.
