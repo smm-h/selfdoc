@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.go
-description: "Go source extractor -- resolves directives by extracting from .go files."
+description: "Go source extractor module that uses regex-based parsing to extract exported functions, struct fields, and doc comments from .go files for directives."
 generated: true
 nav_group: "Reference"
 nav_order: 11

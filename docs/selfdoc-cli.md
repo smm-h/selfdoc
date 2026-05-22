@@ -1,6 +1,6 @@
 ---
 title: selfdoc.cli
-description: "CLI interface for selfdoc."
+description: "CLI interface module that defines the selfdoc command-line entry point, argument parsing, and subcommand dispatch for build, check, gen, serve, and deploy."
 generated: true
 nav_group: "Reference"
 nav_order: 5

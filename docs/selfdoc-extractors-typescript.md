@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.typescript
-description: "TypeScript/JavaScript source extractor -- resolves directives by extracting from .ts/.js files."
+description: "TypeScript and JavaScript source extractor module that uses regex-based parsing to extract exports, interfaces, type aliases, and JSDoc from .ts/.js files."
 generated: true
 nav_group: "Reference"
 nav_order: 13

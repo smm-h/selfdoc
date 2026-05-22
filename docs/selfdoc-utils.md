@@ -1,6 +1,6 @@
 ---
 title: selfdoc.utils
-description: "Shared utility functions for selfdoc."
+description: "Shared utility module with helper functions for path resolution, atomic file writes, frontmatter parsing, and text processing used across selfdoc modules."
 generated: true
 nav_group: "Reference"
 nav_order: 21

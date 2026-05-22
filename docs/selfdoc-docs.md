@@ -1,6 +1,6 @@
 ---
 title: selfdoc.docs
-description: "Shared resolution pipeline for docs/ templates."
+description: "Shared resolution pipeline module that reads docs/ templates, resolves directives using the project's language extractor, and returns processed Markdown."
 generated: true
 nav_group: "Reference"
 nav_order: 9

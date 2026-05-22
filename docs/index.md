@@ -11,7 +11,7 @@ selfdoc builds documentation websites from your Markdown files and source code. 
 
 ### 1. Write Markdown with directives
 
-Create a Markdown file in your `docs/` folder. Use directives to pull content straight from your code:
+Create a Markdown file in your `docs/` folder. Use directive markers to reference modules, functions, classes, schemas, and CLI definitions in your source code. selfdoc resolves each directive at build time, extracting live content so your documentation always matches the actual implementation:
 
 ```markdown
 # API Reference
@@ -23,7 +23,7 @@ That `:-: ref` line tells selfdoc to grab the docstrings and signatures from `my
 
 ### 2. Configure with selfdoc.json
 
-A minimal config file is all you need:
+A minimal config file tells selfdoc your project's language, which directories contain source code, where your docs templates live, and where to write the built output. selfdoc infers everything else -- navigation, theming, search, SEO metadata, and deploy settings all have sensible defaults:
 
 ```json
 {
@@ -48,7 +48,7 @@ selfdoc build
 
 ## Before and after
 
-Here is what a typical docs template looks like, and what selfdoc turns it into.
+Here is what a typical docs template looks like before the build, and what selfdoc turns it into after directive resolution. The Markdown file stays clean and readable while the rendered output contains the full extracted content from your source code.
 
 Your Markdown file:
 
@@ -73,6 +73,8 @@ The rendered output: a styled HTML page with your welcome text, followed by a co
 
 ## Features
 
+selfdoc ships with everything you need to build, check, and deploy a documentation site from a single tool with one runtime dependency. Here are the core capabilities that work out of the box.
+
 :<: callout-note
 :=:
 ::: All of these work out of the box with zero configuration beyond the basic selfdoc.json.
@@ -86,4 +88,4 @@ The rendered output: a styled HTML page with your welcome text, followed by a co
 
 ## Get started
 
-Ready to try it? Head over to the [Getting Started](getting-started/) guide for installation, setup, and your first build.
+Ready to try it? Head over to the [Getting Started](getting-started/) guide for installation, project initialization, and your first documentation build. The guide walks you through creating a `selfdoc.json`, writing your first template with directives, and previewing the output locally with live reload.

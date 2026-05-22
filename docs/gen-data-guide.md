@@ -17,7 +17,7 @@ Instead of manually updating a table every release, write a script that produces
 
 ## Configuration
 
-Add a `gen_data` section to your `selfdoc.json` with a `scripts` array. Each script needs three fields:
+Add a `gen_data` section to your `selfdoc.json` with a `scripts` array. Each script entry declares the command to run, the output filename to validate, and which source directories to mount read-only inside the sandbox. All three fields are required for each script declaration:
 
 ```json
 {
@@ -43,7 +43,7 @@ All three fields are required for each script declaration.
 
 ## How the Sandbox Works
 
-selfdoc uses [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) on Linux to create a minimal sandbox for each script:
+selfdoc uses [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) on Linux to create a minimal namespace-isolated sandbox for each script execution. This prevents data generation scripts from modifying your source code, accessing the network, or reading environment variables:
 
 - **Read-only mounts**: directories listed in `mounts` are mounted read-only. The script can read your source code but cannot modify it.
 - **System binaries**: `/usr`, `/lib`, `/bin`, and similar system paths are mounted read-only so the script can use standard tools (Python, bash, etc.).
@@ -56,7 +56,7 @@ This means a misbehaving script cannot modify your source code, exfiltrate data 
 
 ## Output Validation
 
-After a script finishes, selfdoc validates its output file:
+After a script finishes, selfdoc validates its output file to catch malformed data before it reaches your documentation pages. If validation fails, `selfdoc gen-data` reports the specific parse error and stops the build to prevent broken content:
 
 - **JSON files** (`.json`) must parse as valid JSON
 - **CSV files** (`.csv`) must parse as valid CSV
@@ -67,7 +67,7 @@ Output files are written to `.selfdoc/data/`. Your documentation pages can then 
 
 ## Running It
 
-Run data generation before building:
+Run data generation before building your documentation site. The `gen-data` command executes each configured script in the bubblewrap sandbox, validates output files, and writes results to `.selfdoc/data/`. You can run it standalone or let `selfdoc build` handle it automatically:
 
 ```bash
 selfdoc gen-data
@@ -78,7 +78,7 @@ Or just run `selfdoc build` -- if you have `gen_data` configured, the build pipe
 
 ## Requirements
 
-Bubblewrap must be installed on your system:
+Bubblewrap must be installed on your system for the data generation sandbox to work. This is a Linux-only feature since bwrap relies on Linux kernel namespaces for isolation. If `bwrap` is not found on PATH, `selfdoc gen-data` exits with a clear error and installation instructions:
 
 ```bash
 # Fedora

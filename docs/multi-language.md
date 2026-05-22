@@ -11,7 +11,7 @@ selfdoc supports three languages out of the box: **Python**, **Go**, and **TypeS
 
 ## Setting the Language
 
-Set `language` in your `selfdoc.json`:
+Set `language` in your `selfdoc.json` to tell selfdoc which extractor to use when resolving directives against your source code. If omitted, selfdoc auto-detects the language by checking for marker files like `pyproject.toml`, `go.mod`, or `package.json` in your project root:
 
 ```json
 {
@@ -27,7 +27,7 @@ If you omit `language`, selfdoc auto-detects by checking for marker files in you
 
 ### Module reference
 
-Show package-level documentation and exported functions:
+Show package-level documentation and all exported functions for a Go package. The `ref` directive extracts the package doc comment from the source files and lists every exported function with its full signature and associated doc comment. Use the package import path relative to your `source` directories:
 
 ```markdown
 :<: ref path="internal/config"
@@ -35,11 +35,9 @@ Show package-level documentation and exported functions:
 :>:
 ```
 
-This extracts the package doc comment and lists exported functions with their signatures and doc comments.
-
 ### Struct schema table
 
-Render a struct's fields as a table:
+Render a Go struct's exported fields as a Markdown table with columns for field name, type, and documentation extracted from doc comments or struct tags. This is useful for configuration structs, request/response types, and any data structure readers need to understand at a glance:
 
 ```markdown
 :<: table-schema path="internal/server/handler.go" target="ServerConfig"
@@ -51,7 +49,7 @@ This finds the `ServerConfig` struct and generates a table with field names, typ
 
 ### Embedding test code
 
-Pull a test function into your docs as a code example:
+Pull a Go test function body into your documentation as a runnable code example. The `code-test` directive extracts the function body and renders it as a Go code block, giving readers a real example they know compiles and passes tests:
 
 ```markdown
 :<: code-test path="internal/config/config_test.go" target="TestLoadConfig"
@@ -63,7 +61,7 @@ The test body is rendered as a Go code block, giving readers a real example they
 
 ## TypeScript / JavaScript Examples
 
-The TypeScript extractor handles `.ts`, `.tsx`, `.js`, and `.jsx` files.
+The TypeScript extractor handles `.ts`, `.tsx`, `.js`, and `.jsx` files using regex-based parsing to match `export` declarations, interfaces, type aliases, and JSDoc/TSDoc comments. The same directive syntax works across all four file extensions since they share the same export conventions:
 
 ### Module reference
 
@@ -97,7 +95,7 @@ For TypeScript tests, the `target` matches the test description string (the firs
 
 ## Source File Detection
 
-Each extractor knows which file extensions to scan:
+Each language extractor knows which file extensions to scan when walking your source directories. Only files matching the active extractor's extensions are read during directive resolution, coverage analysis, and symbol enumeration for the auto-generated documentation pages:
 
 | Language | Extensions |
 | --- | --- |

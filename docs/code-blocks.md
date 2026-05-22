@@ -11,7 +11,7 @@ Fenced code blocks in selfdoc get automatic syntax highlighting, language labels
 
 ## Syntax Highlighting
 
-selfdoc uses Pygments for build-time syntax highlighting. Just specify the language after the opening fence:
+selfdoc uses Pygments for build-time syntax highlighting, supporting hundreds of languages out of the box with no client-side JavaScript required. Highlighting happens during the build, so the output is static HTML with CSS classes. Just specify the language after the opening fence:
 
 ````markdown
 ```python
@@ -27,7 +27,7 @@ Pygments supports hundreds of languages out of the box. If the language is not r
 
 ## Language Icons
 
-Each code block with a language label gets a small icon next to the language name. Control the style with `code_icons` in your config:
+Each code block with a recognized language label gets a small SVG icon next to the language name in the header bar. The icons provide a visual cue that helps readers quickly identify the language, especially in tabbed code blocks showing the same concept in multiple languages. Control the icon style with `code_icons` in your config:
 
 ```json
 {
@@ -43,7 +43,7 @@ Each code block with a language label gets a small icon next to the language nam
 
 ## Line Numbers
 
-Enable line numbers globally with `line_numbers` in your config:
+Enable line numbers globally or per block to help readers reference specific lines in discussions, reviews, or tutorials. Numbers are rendered via CSS counters in the gutter, so they do not get selected when a user copies code from the block. Enable globally with `line_numbers` in your config:
 
 ```json
 {
@@ -71,7 +71,7 @@ Per-block annotations can also set the starting line number with `line_start`:
 
 ## Run Buttons
 
-Enable interactive run buttons with `run_button` in your config:
+Enable interactive run buttons that let readers execute code examples in an online playground without leaving your documentation site. When enabled, each code block with a recognized language gets a "Run" button that opens the code in an appropriate external environment. Enable globally with `run_button` in your config:
 
 ```json
 {
@@ -89,7 +89,7 @@ print("Hello, world!")
 
 ## Annotations
 
-Inline annotations turn comments like `// [1]` or `# [1]` into clickable badges that reveal explanatory text. Add annotation definitions after the closing fence:
+Inline annotations turn numbered comments like `// [1]` or `# [1]` into small clickable badges that reveal explanatory text on hover or focus. This lets you walk readers through code step by step without cluttering the source with long inline comments. Add annotation definitions after the closing fence:
 
 ````markdown
 ```python
@@ -104,7 +104,7 @@ The numbered markers in the code become small badge elements. Click or focus a b
 
 ## Diff Highlighting
 
-Use the `diff` language to get line-level add/remove coloring:
+Use the `diff` language identifier to get line-level add/remove coloring that visually distinguishes additions from deletions. selfdoc also auto-detects diff-style content in any code block where lines start with `+` or `-` characters. Use it to show migration steps or API changes:
 
 ````markdown
 ```diff
@@ -118,7 +118,7 @@ Lines starting with `+` are highlighted green, lines starting with `-` are highl
 
 ## Code Tabs
 
-When you place two or more fenced code blocks with different languages next to each other (no content between them), selfdoc automatically groups them into a tabbed interface:
+When you place two or more fenced code blocks with different languages next to each other with no content between them, selfdoc automatically groups them into a tabbed interface. This is useful for showing the same concept in multiple languages, alternative installation methods, or platform-specific instructions. Only blocks with language labels participate in tab grouping:
 
 ````markdown
 ```python

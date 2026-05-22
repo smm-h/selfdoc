@@ -1,6 +1,6 @@
 ---
 title: selfdoc.build
-description: "Build pipeline for selfdoc: template scanning, directive resolution, HTML output."
+description: "Build pipeline module that scans docs/ templates, resolves directives against source code, renders HTML, and generates sitemap, feed, and search index."
 generated: true
 nav_group: "Reference"
 nav_order: 3

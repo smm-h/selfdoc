@@ -11,7 +11,7 @@ Every selfdoc site ships with full-text search out of the box. No external servi
 
 ## Search Engines
 
-selfdoc offers three search engine backends. Set `search_engine` in your `selfdoc.json` to pick one:
+selfdoc offers three search engine backends with different tradeoffs between simplicity, fuzzy matching, and relevance scoring. All three use the same JSON index file and the same search dialog UI, so you can switch engines without rebuilding content or changing templates. Set `search_engine` in your `selfdoc.json` to pick one:
 
 ```json
 {
@@ -29,7 +29,7 @@ The default is `builtin`. All three engines use the same `search-index.json` fil
 
 ## UI Modes
 
-The search widget has three display modes, controlled by the `search` config key:
+The search widget has three display modes that control how users access search on your site. All modes support the Cmd/Ctrl+K keyboard shortcut and open the same full-screen dialog with real-time results as you type. The only difference is the visible entry point in the topbar. Set the mode with the `search` config key:
 
 ```json
 {
@@ -46,7 +46,7 @@ The search widget has three display modes, controlled by the `search` config key
 
 ## How the Index Works
 
-During `selfdoc build`, the build pipeline splits each page into sections based on headings. Each section becomes one entry in `search-index.json` with:
+During `selfdoc build`, the build pipeline splits each page into sections based on headings. Each section becomes one entry in `search-index.json`, enabling sub-page search granularity so users land directly on the relevant heading rather than the top of the page. Each entry includes:
 
 - **title** -- the heading text
 - **path** -- the URL path including an anchor fragment (e.g., `/getting-started/#installation`)
@@ -57,7 +57,7 @@ The search dialog fetches this index on first open and runs queries entirely cli
 
 ## Search Filters
 
-The search box supports structured filters using `key=value` syntax. Type a filter alongside your search terms to narrow results:
+The search box supports structured filters using `key=value` syntax, giving users precise control over which pages appear in results. Filters can be combined with free-text queries, negated with a dash prefix, and combined using OR within a single key using the pipe character. Type a filter alongside your search terms to narrow results:
 
 ```
 build key=value config type=guide
@@ -87,11 +87,11 @@ When your site has versioned documentation, the search dialog automatically inje
 
 ### Filter chips
 
-Active filters appear as chips below the search input. Click a chip to remove that filter. The version filter chip is visually distinguished since it was auto-injected.
+Active filters appear as removable chips below the search input, providing a visual summary of the current filter state. Click any chip to remove that filter from the query and update results immediately. The version filter chip is visually distinguished from user-added chips since it was auto-injected by the search dialog to scope results to the latest documentation version.
 
 ## Adding Tags to Pages
 
-Add a `tags` field to your page frontmatter to make pages discoverable via the `tags=` filter:
+Add a `tags` field to your page frontmatter to make pages discoverable via the `tags=` filter in the search dialog. Tags are indexed into `search-index.json` alongside title, body, and metadata, so users can filter results by topic, category, or any grouping you define. Use arrays for multiple tags per page:
 
 ```markdown
 ---

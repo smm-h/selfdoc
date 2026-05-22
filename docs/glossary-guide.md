@@ -11,11 +11,11 @@ selfdoc can build a glossary from terms defined across your documentation. Defin
 
 ## Defining Terms
 
-There are two ways to mark a term as a glossary entry.
+There are two ways to mark a term as a glossary entry: inline `<dfn>` tags embedded naturally in your prose, or the `list-glossary` content directive for dedicated reference sections. Both methods register terms in the site-wide glossary and enable auto-linking across pages.
 
 ### Inline `<dfn>` tags
 
-Wrap a term in `<dfn>` tags anywhere in your Markdown content. selfdoc picks up the term name from the tag and the surrounding paragraph as its definition:
+Wrap a term in `<dfn>` tags anywhere in your Markdown content to mark it as a glossary entry. selfdoc extracts the term name from the tag text and uses the surrounding paragraph as its definition. This is ideal for introducing terms naturally in prose, right where readers first encounter them:
 
 ```markdown
 A <dfn>directive</dfn> is a structured marker in your Markdown templates
@@ -26,7 +26,7 @@ This creates a glossary entry for "directive" with the paragraph text as its def
 
 ### The `list-glossary` directive
 
-For a dedicated glossary section, use the `list-glossary` content directive. Each term is defined with `**Term**: Definition` syntax:
+For a dedicated glossary section with multiple curated terms, use the `list-glossary` content directive. It renders as a styled HTML definition list (`<dl>/<dt>/<dd>`) and registers every term in the site-wide glossary for auto-linking. Each term is defined with `**Term**: Definition` syntax:
 
 ```markdown
 :<: list-glossary
@@ -54,7 +54,7 @@ When `glossary` is `true` in your `selfdoc.json` (which it is by default), selfd
 
 ## Configuration
 
-The glossary feature is controlled by a single boolean in `selfdoc.json`:
+The glossary feature is controlled by a single boolean in `selfdoc.json`. When enabled, selfdoc generates an alphabetically sorted glossary page collecting every term across the site and activates auto-linking of first mentions on each page back to their definitions:
 
 ```json
 {

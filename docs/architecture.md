@@ -26,7 +26,7 @@ There is no shared mutable state between stages, so each one can be tested and d
 
 ## How Directives Resolve
 
-When you write a directive like `:-: ref path="mypackage.core"`, the build pipeline resolves it through a three-level dispatch chain, stopping at the first match:
+When you write a directive like `:-: ref path="mypackage.core"`, the build pipeline resolves it through a three-level dispatch chain. Each level is tried in order and resolution stops at the first match, so content directives take precedence over custom directives, which take precedence over the language extractor:
 
 1. **Content directives** -- callouts (`callout-note`, `callout-warning`, etc.) and `list-glossary` are handled first. These transform body content into styled HTML without needing source code access.
 
@@ -61,7 +61,7 @@ See the [Theming](theming/) page for the full property reference and design tool
 
 ## Auxiliary Outputs
 
-After the main HTML pipeline, the build generates companion files that enhance discoverability and performance:
+After the main HTML pipeline completes, the build generates companion files that enhance search engine discoverability, social sharing, client-side search, AI access, and transfer performance. These are all written to the same output directory alongside the HTML pages:
 
 - **Sitemap** (`sitemap.xml`) -- standard sitemap with page URLs and last-modified dates
 - **Atom feed** (`feed.xml`) -- for RSS readers, respects per-page `feed: false` frontmatter
@@ -72,7 +72,7 @@ After the main HTML pipeline, the build generates companion files that enhance d
 
 ## Post-Processors
 
-After block rendering produces HTML, a series of post-processors detect cross-block patterns and apply semantic enhancements:
+After block rendering produces HTML, a series of regex-based post-processors detect cross-block patterns and apply semantic enhancements. These operate on the joined HTML string rather than individual tokens, because the patterns they detect span multiple blocks:
 
 - **Code tabs** -- consecutive code blocks with different languages become a tabbed interface
 - **Step guides** -- ordered lists after headings containing "step", "guide", or "tutorial" get a `class="steps"` for special styling

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.resolver
-description: "Resolver factory -- dispatches directives to language-specific extractors."
+description: "Resolver factory module that creates a three-level dispatch chain: content directives, custom script directives, then language-specific extractors."
 generated: true
 nav_group: "Reference"
 nav_order: 18

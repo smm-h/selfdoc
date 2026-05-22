@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.python
-description: "Python source extractor -- resolves directives by extracting from .py files."
+description: "Python source extractor module that uses AST parsing to extract functions, classes, dataclass fields, docstrings, and type annotations from .py files."
 generated: true
 nav_group: "Reference"
 nav_order: 12

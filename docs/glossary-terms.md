@@ -1,6 +1,6 @@
 ---
 title: Glossary
-description: "Definitions of key terms used throughout the selfdoc documentation."
+description: "Alphabetical glossary of key terms used in the selfdoc documentation, including directives, extractors, frontmatter, themes, and build pipeline concepts."
 nav_group: "Reference"
 nav_order: 50
 ---

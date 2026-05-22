@@ -13,7 +13,7 @@ selfdoc and rlsbl have a bidirectional relationship. selfdoc is aware of rlsbl's
 
 ### Auto-commit preference chain
 
-When selfdoc writes files (hash updates, generated pages, etc.), it auto-commits them using the best available tool. The preference chain is:
+When selfdoc writes files such as hash updates, generated pages, or root files, it auto-commits them using the best available commit tool on the system PATH. This three-level preference chain ensures selfdoc integrates cleanly with concurrency-safe tools when available and falls back gracefully otherwise:
 
 1. **rlsbl** -- if `rlsbl` is on `PATH`, use `rlsbl commit` (concurrency-safe, changelog-aware).
 2. **safegit** -- if `safegit` is on `PATH`, use `safegit commit` (concurrency-safe).
@@ -40,7 +40,7 @@ If a project has a `selfdoc.json` in its root, rlsbl can run `selfdoc check` as 
 
 ### Post-release build and deploy
 
-The post-release hook is the natural place to rebuild and deploy documentation after a release is published. A typical `.rlsbl/hooks/post-release.sh` for a selfdoc project:
+The rlsbl post-release hook is the natural place to rebuild and deploy documentation after a release is published and tagged. This runs after the version bump commit, GitHub Release creation, and tag push are all complete, so the docs reflect the new version. A typical `.rlsbl/hooks/post-release.sh` for a selfdoc project:
 
 ```bash
 #!/usr/bin/env bash
@@ -64,7 +64,7 @@ If you need to release without running docs checks or builds, rlsbl provides `--
 
 ## Credential Handling
 
-For Cloudflare Pages deploys, selfdoc reads `CF_PAGES_API_TOKEN` and `CF_ACCOUNT_ID` from environment variables. In rlsbl-managed projects, the post-release hook sources these from `~/Projects/.env`:
+For Cloudflare Pages deploys, selfdoc reads `CF_PAGES_API_TOKEN` and `CF_ACCOUNT_ID` from environment variables. These credentials are not stored in the repository or in GitHub secrets since the deploy runs locally inside the post-release hook. In rlsbl-managed projects, the hook sources them from the shared environment file:
 
 ```bash
 # In post-release.sh
@@ -76,7 +76,7 @@ No GitHub secrets are needed for this flow -- the deploy runs locally in the hoo
 
 ## Setting It Up
 
-If your project already has both `selfdoc.json` and `.rlsbl/`, the integration is automatic. The tools detect each other at runtime. Here is the minimal setup:
+If your project already has both `selfdoc.json` and `.rlsbl/`, the integration is automatic since the tools detect each other at runtime. For new projects, the setup takes four steps: initialize selfdoc, add the docs check hook, configure post-release deploy, and set the deploy provider in your config. Here is the minimal setup:
 
 1. **Initialize selfdoc** in an rlsbl-managed project:
 

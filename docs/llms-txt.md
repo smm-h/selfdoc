@@ -1,6 +1,6 @@
 ---
 title: llms.txt
-description: "How selfdoc generates llms.txt and llms-full.txt files so AI assistants can discover and read your documentation."
+description: "How selfdoc generates llms.txt and llms-full.txt files for AI discoverability, plus robots.txt rules that allow AI crawlers like GPTBot and ClaudeBot."
 nav_group: "Guides"
 nav_order: 13
 ---
@@ -19,7 +19,7 @@ When an AI assistant encounters your site, it can fetch `/llms.txt` to understan
 
 ### llms.txt
 
-A brief index of your documentation. Each page gets one line with its title, URL, and first sentence as a summary:
+A brief index of your entire documentation site, designed for AI agents that need to understand what content is available before deciding which pages to read in full. Each page gets one line with its title, absolute URL, and first sentence as a summary:
 
 ```
 # MyProject Documentation
@@ -36,7 +36,7 @@ This is lightweight enough for an AI to read in one request and decide which pag
 
 ### llms-full.txt
 
-The complete text of every documentation page, concatenated as plain Markdown with page separators. Each section starts with the page title and a path comment:
+The complete text of every documentation page concatenated into a single plain Markdown file with page separators. This gives AI systems the full content of your documentation in one HTTP request, useful for context-heavy tasks like answering detailed questions. Each section starts with the page title and a path comment:
 
 ```markdown
 ## Getting Started
@@ -56,7 +56,7 @@ This gives AI systems the full content in a single fetch -- useful for context-h
 
 ## AI Crawler Access
 
-selfdoc's generated `robots.txt` explicitly allows AI crawlers. The following user agents are listed with `Allow: /`:
+selfdoc's generated `robots.txt` explicitly allows AI crawlers by listing each known AI user agent with `Allow: /`. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
 
 - **GPTBot** and **ChatGPT-User** (OpenAI)
 - **ClaudeBot** (Anthropic)

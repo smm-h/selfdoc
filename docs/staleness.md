@@ -17,7 +17,7 @@ This is easy to miss during normal editing. You change the content, the page loo
 
 ## How It Works
 
-selfdoc maintains a hash store at `.selfdoc/hashes/hashes.json`. For each documentation page with a frontmatter description, it tracks two SHA-256 hashes:
+selfdoc maintains a hash store at `.selfdoc/hashes/hashes.json` that tracks each page's content and description independently. By comparing current hashes against stored baselines on every `selfdoc check` run, it detects when content has drifted from its description. For each documentation page with a frontmatter description, it tracks two SHA-256 hashes:
 
 - **Content hash** -- computed from the page body (frontmatter stripped, directives resolved)
 - **Description hash** -- computed from the frontmatter `description` string
@@ -35,7 +35,7 @@ Only the last case triggers a staleness error.
 
 ## The STALE001 Error
 
-When staleness is detected, `selfdoc check` reports:
+When staleness is detected, `selfdoc check` reports an error-level diagnostic with the affected filename and a clear message explaining that the content changed but the description did not. This is classified as an error (not a warning) because stale descriptions degrade search results, social cards, and AI summaries:
 
 ```
 STALE001 [error] getting-started.md: content changed but frontmatter
@@ -46,7 +46,7 @@ This is an error, not a warning -- it causes `selfdoc check` to exit with code 1
 
 ## Fixing It
 
-Update the frontmatter `description` to reflect the current page content. Aim for 120-155 characters that summarize what the page covers:
+Update the frontmatter `description` to reflect the current page content, then run `selfdoc check` again to record the new baseline hashes and clear the error. Aim for 120-155 characters that accurately summarize what the page covers after the content change:
 
 ```markdown
 ---
@@ -59,7 +59,7 @@ Then run `selfdoc check` again. The hashes update and the error clears.
 
 ## Hash Storage
 
-Hashes are stored in `.selfdoc/hashes/hashes.json`, a JSON file mapping page paths to their content and description hashes:
+Hashes are stored in `.selfdoc/hashes/hashes.json`, a JSON file mapping each page path to its content and description SHA-256 hashes. This file is written atomically using a temporary file plus `os.replace` to prevent corruption, and should be committed to your repository as the baseline for future comparisons:
 
 ```json
 {
@@ -74,7 +74,7 @@ This file is written atomically (temp file + `os.replace`) and should be committ
 
 ## Dry Run Mode
 
-To preview staleness results without updating the hash file on disk:
+To preview staleness results without updating the hash file on disk, use the `--dry-run` flag. This computes all hashes, compares them against the stored baselines, and reports any stale pages but does not write changes to `.selfdoc/hashes/hashes.json`. Useful for previewing what would be flagged:
 
 ```bash
 selfdoc check --dry-run
@@ -84,7 +84,7 @@ This computes all hashes and reports stale pages but does not write to `.selfdoc
 
 ## The `--no-commit` Flag
 
-By default, `selfdoc check` auto-commits hash updates when it writes to the hash file. Use `--no-commit` to write the updated hashes without committing:
+By default, `selfdoc check` auto-commits hash updates when it writes to the hash file, using the best available commit tool (rlsbl, safegit, or plain git). Use `--no-commit` to write the updated hashes to disk without creating a commit, which is useful when the hash update is part of a larger change you will commit manually:
 
 ```bash
 selfdoc check --no-commit

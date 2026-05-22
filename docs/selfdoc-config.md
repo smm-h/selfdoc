@@ -1,6 +1,6 @@
 ---
 title: selfdoc.config
-description: "Config loader for selfdoc.json."
+description: "Config loader module that reads and validates selfdoc.json, resolves source paths, applies defaults, and raises ConfigError on missing or invalid settings."
 generated: true
 nav_group: "Reference"
 nav_order: 6

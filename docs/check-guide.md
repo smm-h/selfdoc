@@ -11,7 +11,7 @@ nav_order: 10
 
 ## What It Does
 
-A single `selfdoc check` run performs three categories of analysis:
+A single `selfdoc check` run performs three categories of analysis that together cover directive correctness, API documentation coverage, and SEO best practices. Each category produces structured output with file paths, line numbers, and actionable messages:
 
 1. **Directive validation** -- resolves every directive marker in your `docs/` templates and reports whether each one succeeds or fails.
 2. **Coverage analysis** -- counts public/exported symbols in your source code and checks how many are referenced by directives.
@@ -46,7 +46,7 @@ Undocumented symbols:
 
 ### Coverage threshold
 
-Set `min_coverage` in your `selfdoc.json` to enforce a minimum:
+Set `min_coverage` in your `selfdoc.json` to enforce a minimum percentage of public symbols that must be referenced by directives. If coverage falls below this threshold, `selfdoc check` exits with code 1, making it useful as a CI gate to prevent coverage regressions over time:
 
 ```json
 {
@@ -58,7 +58,7 @@ If coverage falls below this value, `selfdoc check` exits with code 1. Useful in
 
 ### Excluding modules
 
-Modules listed in `gen.exclude` are excluded from coverage calculations. This is for intentionally-internal modules that should not appear in public documentation:
+Modules listed in `gen.exclude` are excluded from both coverage calculations and auto-generated documentation pages. Use this for intentionally-internal modules, test helpers, or implementation details that should never appear in public-facing documentation. Excluded symbols do not count against your coverage threshold:
 
 ```json
 {
@@ -70,7 +70,7 @@ Modules listed in `gen.exclude` are excluded from coverage calculations. This is
 
 ## Lint Rules
 
-selfdoc runs 15 SEO lint rules plus a staleness check. Each rule has a code, severity, and actionable message.
+selfdoc runs 15 SEO lint rules plus a staleness check during every `selfdoc check` invocation. Each rule has a unique code, a severity level (error or warning), and an actionable message explaining what is wrong and how to fix it. Errors cause non-zero exit; warnings are informational.
 
 | Code | Severity | What it checks |
 | ---- | -------- | -------------- |
@@ -92,7 +92,7 @@ selfdoc runs 15 SEO lint rules plus a staleness check. Each rule has a code, sev
 
 ### Suppressing rules
 
-Suppress specific lint rules globally in your config:
+Suppress specific lint rules globally in your config or per invocation via CLI flags. Both sources are merged, so you can set baseline suppressions in config and add per-run overrides as needed. Use suppression sparingly since each rule catches real SEO or accessibility issues:
 
 ```json
 {
@@ -118,7 +118,7 @@ Hashes are stored in `.selfdoc/hashes/hashes.json` and auto-committed after each
 
 ### Text (default)
 
-Human-readable output with colored status indicators:
+Human-readable output with colored status indicators, file paths, line numbers, and rule codes. This is the default format designed for local development where you read the output directly in a terminal and fix issues one by one:
 
 ```bash
 selfdoc check
@@ -126,7 +126,7 @@ selfdoc check
 
 ### JSON
 
-Machine-readable output for CI integration:
+Machine-readable output for CI integration, custom tooling, or programmatic analysis. The JSON format includes the same information as text output but structured as arrays of objects with consistent field names for easy parsing:
 
 ```bash
 selfdoc check --format json
@@ -145,7 +145,7 @@ Returns a JSON object with `directives`, `coverage`, `lints`, and `exit_code` fi
 
 ## Exit Codes
 
-`selfdoc check` exits with code 0 when everything passes, and code 1 when any of these are true:
+`selfdoc check` uses standard exit codes to signal pass or fail, making it safe to use as a CI gate or pre-commit hook. It exits with code 0 when everything passes, and code 1 when any of these conditions are true:
 
 - A directive resolution failed
 - Any lint has severity `error`

@@ -58,6 +58,6 @@ API documentation generator for TypeScript and JavaScript projects. TypeDoc read
 
 ### selfdoc
 
-selfdoc fits a niche that the others do not cover well: projects that want source-extracted documentation across Python, Go, and TypeScript without switching tools. The directive system means your docs stay in sync with code automatically, and the built-in SEO, search, and deploy pipeline means fewer moving parts. The tradeoff is that selfdoc is smaller and younger than Sphinx or Docusaurus -- it has fewer themes, fewer plugins, and a smaller community. For small-to-medium projects that value simplicity and code-awareness, it is a strong fit.
+selfdoc fits a niche that the others do not cover well: projects that want source-extracted documentation across Python, Go, and TypeScript without switching tools. The directive system keeps docs in sync with code automatically, and the built-in SEO, search, and deploy pipeline means fewer moving parts. The tradeoff is fewer themes and a smaller community than Sphinx or Docusaurus.
 
 Next: [Getting Started](getting-started/) -->

@@ -15,7 +15,7 @@ A custom directive is a Python script with a `resolve(attrs, config, body)` func
 
 ## Configuration
 
-Map directive names to script paths in the `directives` section of `selfdoc.json`:
+Map directive names to Python script paths in the `directives` section of `selfdoc.json`. Each entry associates a directive name (used in your Markdown templates) with a script file that contains the resolution logic. Paths are relative to the project root:
 
 ```json
 {
@@ -52,7 +52,7 @@ Return a string of Markdown. selfdoc will process it through the normal Markdown
 
 ## Example: Directive Catalog
 
-selfdoc's own documentation uses a custom directive to generate the built-in directive reference table. Here is the script at `scripts/catalog-directive.py`:
+selfdoc's own documentation uses a custom directive to generate the built-in directive reference table dynamically from the internal catalog module. This ensures the reference stays in sync with the actual directive definitions without manual updates. Here is the script at `scripts/catalog-directive.py`:
 
 ```python
 from selfdoc.catalog import CORE_DIRECTIVES

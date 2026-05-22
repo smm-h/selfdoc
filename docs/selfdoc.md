@@ -1,6 +1,6 @@
 ---
 title: selfdoc
-description: "selfdoc: Code-aware static site generator with directive-based content extraction."
+description: "Root package module for selfdoc, the code-aware static site generator that extracts live content from Python, Go, and TypeScript source via directives."
 generated: true
 nav_group: "Reference"
 nav_order: 1

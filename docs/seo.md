@@ -11,7 +11,7 @@ selfdoc generates a full suite of SEO artifacts automatically during every build
 
 ## What Gets Generated Automatically
 
-Every `selfdoc build` produces the following for each page:
+Every `selfdoc build` produces a comprehensive set of SEO artifacts for each page without any additional configuration beyond your existing `selfdoc.json`. These cover search engine indexing, social sharing previews, structured data for rich results, and AI discoverability:
 
 - **Meta tags** -- `<title>`, `<meta name="description">`, and `<meta name="robots">` are set from frontmatter or auto-extracted from page content.
 - **Canonical URLs** -- `<link rel="canonical">` on every page, derived from `base_url` in your config.
@@ -26,7 +26,7 @@ Every `selfdoc build` produces the following for each page:
 
 ### Frontmatter description
 
-The most impactful thing you can set is `description` in your frontmatter. It feeds into `<meta name="description">`, `og:description`, and `twitter:description`:
+The most impactful thing you can set is `description` in your frontmatter. This single string feeds into four different outputs: `<meta name="description">` for search engines, `og:description` for social cards, `twitter:description` for Twitter/X previews, and the search index summary. Aim for 120-155 characters that accurately describe the page content:
 
 ```markdown
 ---
@@ -39,7 +39,7 @@ If you omit `description`, selfdoc auto-extracts the first sentence from the pag
 
 ### Author metadata
 
-Set the `author` object in `selfdoc.json` to populate the `TechArticle` author field and the homepage Organization/Person entity:
+Set the `author` object in `selfdoc.json` to populate the JSON-LD `TechArticle` author field on every page and the homepage Organization or Person entity. This structured data helps search engines attribute your documentation to the correct author and display rich results with author information:
 
 ```json
 {
@@ -55,7 +55,7 @@ If `type` is `"Person"`, the homepage JSON-LD emits a `Person` entity. Otherwise
 
 ### Top-level twitter config
 
-Alternatively, set `twitter` at the top level of `selfdoc.json`:
+Alternatively, set `twitter` at the top level of `selfdoc.json` if you do not need the full author object. This sets the `twitter:site` meta tag on every page, which Twitter/X uses to attribute the content when someone shares a link. The value must start with `@`:
 
 ```json
 {
@@ -67,7 +67,7 @@ If both `author.twitter` and `twitter` are set, `author.twitter` takes precedenc
 
 ### Language tag
 
-Set `lang` in your config for the HTML `lang` attribute and `og:locale`:
+Set `lang` in your config for the HTML `lang` attribute and `og:locale` meta tag. This tells search engines and screen readers what language your documentation is written in, improving both search ranking for locale-specific queries and accessibility for assistive technology users:
 
 ```json
 {
@@ -79,11 +79,11 @@ This accepts any BCP 47 tag (e.g., `en`, `en-US`, `pt-BR`).
 
 ## Lint Rules
 
-`selfdoc check` runs 15 SEO lint rules. See the [Check Guide](check-guide/) for the full list with fix suggestions.
+`selfdoc check` runs 15 SEO lint rules that cover heading structure, meta descriptions, image alt text, contrast ratios, title lengths, content density, and accessibility. Each rule has a code, severity level, and actionable fix suggestion. See the [Check Guide](check-guide/) for the full list with fix suggestions.
 
 ## llms.txt and llms-full.txt
 
-selfdoc generates two files for AI discoverability:
+selfdoc generates two files for AI discoverability, placed in the build output root alongside `sitemap.xml` and `robots.txt`. These follow the emerging `llms.txt` convention that AI crawlers and language models use to understand site structure and content without scraping HTML:
 
 - **llms.txt** -- a brief index listing every page with its title and URL. Follows the emerging `llms.txt` convention that AI crawlers use to understand site structure.
 - **llms-full.txt** -- the full text of all pages concatenated as plain Markdown. Gives AI systems the complete content in a single request.

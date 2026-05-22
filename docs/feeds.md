@@ -17,7 +17,7 @@ Every generated HTML page includes a `<link rel="alternate" type="application/at
 
 ## Date Handling
 
-selfdoc determines page dates from two sources, checked in order:
+selfdoc determines page dates from two sources, checked in priority order. Accurate dates are important because they control the sort order of feed entries and the feed-level `<updated>` element that readers use to detect new content. The two sources are:
 
 1. **Frontmatter fields** -- `date` and `updated` in your page's YAML frontmatter. If `updated` is present, it takes precedence. Format: `YYYY-MM-DD`.
 2. **File modification time** -- if no frontmatter date is set, selfdoc falls back to the file's last-modified timestamp from git (or the filesystem if git is unavailable).
@@ -47,7 +47,7 @@ Pages without this field (or with `feed: true`) are included by default.
 
 ## Limiting Feed Size
 
-By default the feed includes all pages. For large documentation sites, you can cap it with the `feed_max_entries` config option in `selfdoc.json`:
+By default the feed includes all pages sorted by date, which can grow large for documentation sites with hundreds of pages. For large sites, cap the number of entries with the `feed_max_entries` config option in `selfdoc.json` to keep the feed lightweight for subscribers:
 
 ```json
 {
@@ -59,7 +59,7 @@ This keeps only the 20 most recently updated pages in the feed. Older entries ar
 
 ## Subscribing
 
-Point any Atom/RSS reader at `https://your-site.example.com/feed.xml`. Most readers auto-detect the feed from any page URL thanks to the `<link>` tag in the HTML head.
+Point any Atom/RSS reader at `https://your-site.example.com/feed.xml` to subscribe to documentation updates. Most modern readers auto-detect the feed from any page URL thanks to the `<link rel="alternate" type="application/atom+xml">` tag that selfdoc includes in every HTML page head.
 
 Common readers that work:
 

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.html
-description: "Convert Markdown files to static HTML with a built-in minimal converter."
+description: "HTML rendering module that tokenizes Markdown, dispatches blocks to specialized renderers, applies post-processors, and assembles full page shells."
 generated: true
 nav_group: "Reference"
 nav_order: 16
