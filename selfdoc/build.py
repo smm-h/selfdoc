@@ -979,7 +979,8 @@ def _compress_output(output_dir):
 def build_single(dir_path=".", config=None, output_subdir="",
                   url_prefix="", version_override=None,
                   locale_override=None,
-                  available_versions=None, current_version="",
+                  available_versions=None, available_locales=None,
+                  current_version="", current_locale="",
                   is_latest=True):
     """Build HTML and search entries for a single version/locale of docs.
 
@@ -1053,8 +1054,17 @@ def build_single(dir_path=".", config=None, output_subdir="",
 
     # Save content/description hashes for staleness detection.
     # Build always proceeds -- staleness is only enforced at check time.
+    # Prefix hash keys with locale code to avoid collisions between locales
+    # (each locale may have the same relative paths like "index.md").
     from selfdoc.staleness import update_hashes
-    update_hashes(all_docs, dir_path)
+    if locale_override:
+        prefixed_docs = {
+            f"{locale_override}/{rp}": val
+            for rp, val in all_docs.items()
+        }
+        update_hashes(prefixed_docs, dir_path)
+    else:
+        update_hashes(all_docs, dir_path)
 
     # Build page_dates: map md_path -> (published, modified) tuple
     # modified: frontmatter "updated" > frontmatter "date" > file mtime
@@ -1136,9 +1146,12 @@ def build_single(dir_path=".", config=None, output_subdir="",
     # Get base_url for canonical links and sitemap (Feature 22)
     base_url = config.get("base_url", None)
 
-    # Get lang attribute for HTML pages (default "en")
+    # Get lang attribute for HTML pages (default "en").
+    # When multiple locales are configured, the locale code is the
+    # authoritative language tag. For single-locale projects, the
+    # config "lang" field takes precedence (backward compat).
     lang = config.get("lang") or "en"
-    if locale_override is not None:
+    if locale_override is not None and available_locales and len(available_locales) > 1:
         lang = locale_override
 
     # Get author from config for JSON-LD structured data
@@ -1192,7 +1205,9 @@ def build_single(dir_path=".", config=None, output_subdir="",
         glossary=config.get("glossary", True),
         url_prefix=url_prefix,
         available_versions=available_versions,
+        available_locales=available_locales,
         current_version=current_version,
+        current_locale=current_locale,
         is_latest=is_latest,
     )
 
@@ -1233,10 +1248,44 @@ def build_single(dir_path=".", config=None, output_subdir="",
     )
 
 
-def build(dir_path=".", config=None, version_filter=None):
-    """Build docs from templates + directives, with multi-version support.
+def _resolve_locale_docs_dir(dir_path, docs_dir_name, locale_code, locales):
+    """Resolve the docs directory for a locale.
 
-    For each configured version, builds HTML from either the working tree
+    For backward compatibility: if there's exactly one locale and
+    ``docs/{code}/`` doesn't exist, fall back to ``docs/`` directly
+    (single-locale projects don't need locale subdirectories).
+
+    For multi-locale projects: ``docs/{locale_code}/`` must exist.
+
+    Returns the resolved docs directory path.
+    Raises RuntimeError if the directory doesn't exist and fallback
+    is not applicable.
+    """
+    locale_docs = os.path.join(dir_path, docs_dir_name, locale_code)
+    if os.path.isdir(locale_docs):
+        return locale_docs
+
+    # Single-locale fallback: use docs/ directly if locale subdir missing
+    if len(locales) == 1:
+        plain_docs = os.path.join(dir_path, docs_dir_name)
+        if os.path.isdir(plain_docs):
+            # Check that plain_docs has .md files (not just an empty dir)
+            has_md = any(f.endswith(".md") for f in os.listdir(plain_docs)
+                        if os.path.isfile(os.path.join(plain_docs, f)))
+            if has_md:
+                return plain_docs
+
+    raise RuntimeError(
+        f"Locale directory '{docs_dir_name}/{locale_code}/' not found. "
+        f"Create it with .md files for locale '{locale_code}'."
+    )
+
+
+def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
+    """Build docs from templates + directives, with multi-locale/multi-version support.
+
+    Outer loop iterates locales, inner loop iterates versions. For each
+    locale/version combination, builds HTML from either the working tree
     (latest version) or git archive extraction (older versions). All
     search entries are merged into a single index. Auxiliary files (OG
     cards, sitemap, feed, etc.) use the latest version's data only.
@@ -1245,6 +1294,7 @@ def build(dir_path=".", config=None, version_filter=None):
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
         version_filter: Optional version string to build only that version.
+        locale_filter: Optional locale code to build only that locale.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -1275,7 +1325,7 @@ def build(dir_path=".", config=None, version_filter=None):
         if loc.get("default") is True:
             default_locale = loc
             break
-    locale_code = default_locale["code"]
+    default_locale_code = default_locale["code"]
     latest_version = versions[-1]["version"]
 
     # Filter versions if --version flag was given
@@ -1289,6 +1339,18 @@ def build(dir_path=".", config=None, version_filter=None):
         build_versions = matching
     else:
         build_versions = versions
+
+    # Filter locales if --locale flag was given
+    if locale_filter:
+        matching_locales = [loc for loc in locales if loc["code"] == locale_filter]
+        if not matching_locales:
+            raise RuntimeError(
+                f"Locale '{locale_filter}' not found in config. "
+                f"Available: {', '.join(loc['code'] for loc in locales)}"
+            )
+        build_locales = matching_locales
+    else:
+        build_locales = locales
 
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
 
@@ -1311,69 +1373,96 @@ def build(dir_path=".", config=None, version_filter=None):
     written = {}
     all_search_entries = []
     latest_build = None
+    # Track per-locale indexed HTML paths for per-locale sitemaps
+    per_locale_indexed_html = {}  # locale_code -> list of html rel paths
 
-    # Multi-version build loop
-    for ver_entry in build_versions:
-        ver_str = ver_entry["version"]
-        is_latest = (ver_str == latest_version)
-        output_subdir = f"{locale_code}/{ver_str}"
-        url_prefix = output_subdir
+    # Multi-locale / multi-version build loop (locales = outer, versions = inner)
+    for locale in build_locales:
+        locale_code = locale["code"]
+        per_locale_indexed_html[locale_code] = []
 
-        if is_latest:
-            build_dir = dir_path
-        else:
-            build_dir = _extract_version_content(ver_str, config, dir_path)
+        for ver_entry in build_versions:
+            ver_str = ver_entry["version"]
+            is_latest = (ver_str == latest_version)
+            output_subdir = f"{locale_code}/{ver_str}"
+            url_prefix = output_subdir
 
-        (
-            html_files, markdown_files, frontmatter, page_dates,
-            nav_items, search_entries, project_name, version, _cfg,
-            docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
-            critical_css, config_description, base_url, feed_url, lang,
-        ) = build_single(
-            dir_path=build_dir,
-            config=config,
-            output_subdir=output_subdir,
-            url_prefix=url_prefix,
-            version_override=ver_str,
-            available_versions=versions,
-            current_version=ver_str,
-            is_latest=is_latest,
-        )
+            if is_latest:
+                build_dir = dir_path
+            else:
+                build_dir = _extract_version_content(ver_str, config, dir_path)
 
-        all_search_entries.extend(search_entries)
+            # Resolve locale-specific docs directory
+            locale_docs_dir = _resolve_locale_docs_dir(
+                build_dir, docs_dir_name, locale_code, locales,
+            )
 
-        for rel_path, html_content in html_files.items():
-            out_path = os.path.join(output_dir, rel_path)
-            os.makedirs(os.path.dirname(out_path), exist_ok=True)
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(_minify_html(html_content))
-            written[out_path] = True
+            # Build a locale-aware config copy pointing to the locale docs dir
+            locale_config = dict(config)
+            locale_config["docs"] = os.path.relpath(locale_docs_dir, build_dir)
 
-        for rel_path in other_files:
-            src = os.path.join(docs_dir, rel_path)
-            dst = os.path.join(output_dir, output_subdir, rel_path)
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            shutil.copy2(src, dst)
-            written[dst] = True
+            (
+                html_files, markdown_files, frontmatter, page_dates,
+                nav_items, search_entries, project_name, version, _cfg,
+                docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
+                critical_css, config_description, base_url, feed_url, lang,
+            ) = build_single(
+                dir_path=build_dir,
+                config=locale_config,
+                output_subdir=output_subdir,
+                url_prefix=url_prefix,
+                version_override=ver_str,
+                locale_override=locale_code,
+                available_versions=versions,
+                available_locales=locales,
+                current_version=ver_str,
+                current_locale=locale_code,
+                is_latest=is_latest,
+            )
 
-        if is_latest:
-            latest_build = {
-                "html_files": html_files,
-                "markdown_files": markdown_files,
-                "frontmatter": frontmatter,
-                "page_dates": page_dates,
-                "project_name": project_name,
-                "version": version,
-                "docs_dir": docs_dir,
-                "has_custom_css": has_custom_css,
-                "raw_theme_css": raw_theme_css,
-                "theme_meta": theme_meta,
-                "critical_css": critical_css,
-                "config_description": config_description,
-                "base_url": base_url,
-                "feed_url": feed_url,
-                "lang": lang,
-            }
+            all_search_entries.extend(search_entries)
+
+            for rel_path, html_content in html_files.items():
+                out_path = os.path.join(output_dir, rel_path)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(_minify_html(html_content))
+                written[out_path] = True
+
+            for rel_path in other_files:
+                src = os.path.join(docs_dir, rel_path)
+                dst = os.path.join(output_dir, output_subdir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                written[dst] = True
+
+            # Collect indexed HTML paths for per-locale sitemaps
+            if ver_entry.get("indexed", True):
+                ver_prefix = os.path.join(output_dir, f"{locale_code}/{ver_str}")
+                for k in written:
+                    if k.startswith(ver_prefix) and k.endswith(".html"):
+                        rel = os.path.relpath(k, output_dir)
+                        if rel not in per_locale_indexed_html[locale_code]:
+                            per_locale_indexed_html[locale_code].append(rel)
+
+            if is_latest and locale_code == default_locale_code:
+                latest_build = {
+                    "html_files": html_files,
+                    "markdown_files": markdown_files,
+                    "frontmatter": frontmatter,
+                    "page_dates": page_dates,
+                    "project_name": project_name,
+                    "version": version,
+                    "docs_dir": docs_dir,
+                    "has_custom_css": has_custom_css,
+                    "raw_theme_css": raw_theme_css,
+                    "theme_meta": theme_meta,
+                    "critical_css": critical_css,
+                    "config_description": config_description,
+                    "base_url": base_url,
+                    "feed_url": feed_url,
+                    "lang": lang,
+                }
 
     # Fallback: if version_filter excluded the latest, use the last build
     if latest_build is None:
@@ -1412,7 +1501,7 @@ def build(dir_path=".", config=None, version_filter=None):
         f.write(theme_css)
     written[css_path] = True
 
-    # Combined search index from ALL versions
+    # Combined search index from ALL versions and locales
     search_index_path = os.path.join(output_dir, "search-index.json")
     with open(search_index_path, "w", encoding="utf-8") as f:
         json.dump(
@@ -1436,26 +1525,19 @@ def build(dir_path=".", config=None, version_filter=None):
         written[custom_css_dst] = True
 
     # Auxiliary files using latest version data only
-    # Sitemap: only include pages from indexed versions
-    indexed_html_paths = []
-    for ver_entry in build_versions:
-        ver_str = ver_entry["version"]
-        ver_prefix = f"{locale_code}/{ver_str}"
-        if ver_entry.get("indexed", True):
-            indexed_html_paths.extend(
-                os.path.relpath(k, output_dir)
-                for k in written
-                if k.startswith(os.path.join(output_dir, ver_prefix))
-                and k.endswith(".html")
-            )
+    # Collect all indexed HTML paths across all locales for the root sitemap
+    all_indexed_html_paths = []
+    for locale_paths in per_locale_indexed_html.values():
+        all_indexed_html_paths.extend(locale_paths)
 
     repo = config.get("repo", None)
+    has_sitemap_index = len(build_locales) > 1
     aux_written = _generate_auxiliary_files(
         output_dir=output_dir,
         project_name=lb["project_name"],
         version=lb["version"],
         markdown_files=lb["markdown_files"],
-        html_paths=indexed_html_paths,
+        html_paths=all_indexed_html_paths,
         base_url=lb["base_url"],
         has_custom_css=lb["has_custom_css"],
         repo=repo,
@@ -1469,11 +1551,30 @@ def build(dir_path=".", config=None, version_filter=None):
         theme_meta=theme_meta,
         deploy=config.get("deploy"),
         feed_max_entries=config.get("feed_max_entries"),
+        has_sitemap_index=has_sitemap_index,
     )
     written.update(aux_written)
 
+    # Per-locale sitemaps + sitemap-index (when multiple locales)
+    if len(build_locales) > 1:
+        locale_sitemap_paths = _generate_per_locale_sitemaps(
+            output_dir=output_dir,
+            base_url=lb["base_url"],
+            per_locale_indexed_html=per_locale_indexed_html,
+            page_dates=lb["page_dates"],
+        )
+        for sp in locale_sitemap_paths:
+            written[sp] = True
+
+        sitemap_index_path = _generate_sitemap_index(
+            output_dir=output_dir,
+            base_url=lb["base_url"],
+            locale_codes=list(per_locale_indexed_html.keys()),
+        )
+        written[sitemap_index_path] = True
+
     # Root redirect to default locale / latest version
-    latest_prefix = f"{locale_code}/{latest_version}"
+    latest_prefix = f"{default_locale_code}/{latest_version}"
     redirect_url = f"/{latest_prefix}/"
     root_index_html = (
         "<!DOCTYPE html>\n"
@@ -1522,7 +1623,7 @@ def _generate_auxiliary_files(
     base_url, has_custom_css, repo, lang="en", page_dates=None,
     frontmatter=None, description="", feed_url=None, critical_css=None,
     accent_color="#0969da", theme_meta=None, deploy=None,
-    feed_max_entries=None,
+    feed_max_entries=None, has_sitemap_index=False,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
@@ -1602,7 +1703,7 @@ def _generate_auxiliary_files(
     written[favicon_path] = True
 
     # Generate robots.txt (allow all crawlers including AI bots)
-    robots_path = _generate_robots_txt(output_dir, base_url)
+    robots_path = _generate_robots_txt(output_dir, base_url, has_sitemap_index)
     written[robots_path] = True
 
     # Generate _headers only for Cloudflare Pages deploy target
@@ -1617,8 +1718,13 @@ def _generate_auxiliary_files(
     return written
 
 
-def _generate_robots_txt(output_dir, base_url):
-    """Generate robots.txt allowing all crawlers including AI bots."""
+def _generate_robots_txt(output_dir, base_url, has_sitemap_index=False):
+    """Generate robots.txt allowing all crawlers including AI bots.
+
+    When ``has_sitemap_index`` is True, references ``sitemap-index.xml``
+    instead of ``sitemap.xml``.
+    """
+    sitemap_file = "sitemap-index.xml" if has_sitemap_index else "sitemap.xml"
     lines = [
         "User-agent: *",
         "Allow: /",
@@ -1644,10 +1750,50 @@ def _generate_robots_txt(output_dir, base_url):
         "User-agent: OAI-SearchBot",
         "Allow: /",
         "",
-        f"Sitemap: {base_url}/sitemap.xml",
+        f"Sitemap: {base_url}/{sitemap_file}",
     ]
     content = "\n".join(lines) + "\n"
     path = os.path.join(output_dir, "robots.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
+
+
+def _generate_per_locale_sitemaps(output_dir, base_url, per_locale_indexed_html,
+                                  page_dates=None):
+    """Generate per-locale sitemap.xml files at output_dir/{locale}/sitemap.xml.
+
+    Returns a list of written file paths.
+    """
+    written = []
+    for locale_code, html_paths in per_locale_indexed_html.items():
+        sitemap_content = _generate_sitemap(base_url, html_paths, page_dates)
+        locale_dir = os.path.join(output_dir, locale_code)
+        os.makedirs(locale_dir, exist_ok=True)
+        sitemap_path = os.path.join(locale_dir, "sitemap.xml")
+        with open(sitemap_path, "w", encoding="utf-8") as f:
+            f.write(sitemap_content)
+        written.append(sitemap_path)
+    return written
+
+
+def _generate_sitemap_index(output_dir, base_url, locale_codes):
+    """Generate sitemap-index.xml at the output root listing per-locale sitemaps.
+
+    Returns the written file path.
+    """
+    entries = []
+    for code in sorted(locale_codes):
+        entries.append(
+            f"  <sitemap><loc>{base_url}/{code}/sitemap.xml</loc></sitemap>"
+        )
+    content = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(entries)
+        + "\n</sitemapindex>\n"
+    )
+    path = os.path.join(output_dir, "sitemap-index.xml")
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path

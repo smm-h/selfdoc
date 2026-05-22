@@ -147,12 +147,18 @@ def _cmd_init(no_commit=False):
 
 @app.command("build", help="Build the documentation site")
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
-def _cmd_build(no_commit=False):
+@strictcli.flag("locale", type=str, default="", help="Build only this locale (e.g., 'en')")
+@strictcli.flag("version", type=str, default="", help="Build only this version (e.g., '1.0.0')")
+def _cmd_build(no_commit=False, locale="", version=""):
     """Build the documentation site."""
     from selfdoc.build import build
 
     try:
-        written = build(".")
+        written = build(
+            ".",
+            version_filter=version or None,
+            locale_filter=locale or None,
+        )
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

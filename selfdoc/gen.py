@@ -254,8 +254,44 @@ def _remove_stale_generated(docs_dir, new_filenames):
             os.unlink(full)
 
 
+def _get_locale_docs_dirs(config, base_dir):
+    """Return a list of (locale_code, docs_dir) for generation.
+
+    For single-locale projects without locale subdirectories, returns
+    [("", docs_dir)] so generation goes to docs/ directly.
+    For multi-locale projects, returns [(code, docs/code/), ...] for
+    each configured locale.
+    """
+    locales = config.get("locales")
+    docs_rel = config.get("docs", "docs/").rstrip("/")
+    docs_dir = os.path.join(base_dir, docs_rel)
+
+    if not locales or len(locales) == 0:
+        return [("", docs_dir)]
+
+    if len(locales) == 1:
+        code = locales[0]["code"]
+        locale_dir = os.path.join(docs_dir, code)
+        if os.path.isdir(locale_dir):
+            return [(code, locale_dir)]
+        # Single locale without subdir -- use docs/ directly
+        return [("", docs_dir)]
+
+    # Multiple locales: generate into each locale subdir
+    result = []
+    for loc in locales:
+        code = loc["code"]
+        locale_dir = os.path.join(docs_dir, code)
+        result.append((code, locale_dir))
+    return result
+
+
 def generate_docs(config, base_dir="."):
     """Auto-discover project source files and generate documentation pages.
+
+    For multi-locale projects, generates pages under docs/{locale_code}/
+    for each configured locale. For single-locale projects without locale
+    subdirectories, generates directly under docs/.
 
     Returns a list of generated file paths relative to the docs directory.
     """
@@ -264,9 +300,28 @@ def generate_docs(config, base_dir="."):
     if extractor is None:
         raise RuntimeError(f"no extractor for language {language!r}")
 
+    locale_dirs = _get_locale_docs_dirs(config, base_dir)
+    all_generated = []
+
+    for locale_code, locale_docs_dir in locale_dirs:
+        generated = _generate_docs_for_dir(
+            config, base_dir, language, extractor, locale_docs_dir,
+        )
+        if locale_code:
+            # Prefix paths with locale code for the caller
+            all_generated.extend(
+                os.path.join(locale_code, f) for f in generated
+            )
+        else:
+            all_generated.extend(generated)
+
+    return all_generated
+
+
+def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
+    """Generate docs for a single directory. Returns list of generated filenames."""
+
     source_paths = config["source"]
-    docs_rel = config.get("docs", "docs/")
-    docs_dir = os.path.join(base_dir, docs_rel.rstrip("/"))
     os.makedirs(docs_dir, exist_ok=True)
 
     extensions = set(extractor.file_extensions())

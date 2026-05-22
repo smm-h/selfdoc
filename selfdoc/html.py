@@ -1921,8 +1921,10 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None):
 def _render_seo_tags(title, base_url, page_path, description, body_html,
                      author, project_name, repo, date_published,
                      date_modified, lang, breadcrumbs, schema,
-                     twitter_site, deploy_target):
-    """Build SEO tags: JSON-LD structured data, OG meta, canonical, security."""
+                     twitter_site, deploy_target,
+                     available_locales=None, current_locale="",
+                     url_prefix=""):
+    """Build SEO tags: JSON-LD structured data, OG meta, canonical, hreflang, security."""
     seo_tags = ""
     escaped_title = _escape_html(title)
     escaped_project = _escape_html(project_name)
@@ -2255,6 +2257,35 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
     # Canonical URL -- needs base_url
     if canonical_url:
         seo_tags += f'\n<link rel="canonical" href="{canonical_url}">'
+
+    # hreflang tags -- only when multiple locales are configured
+    if available_locales and len(available_locales) > 1 and page_path and base_url:
+        # Determine the version part of the URL prefix (e.g. "0.7.0" from "en/0.7.0")
+        version_part = ""
+        if url_prefix:
+            parts = url_prefix.split("/")
+            if len(parts) >= 2:
+                version_part = parts[1]
+
+        page_url_suffix = _html_path_to_url(page_path)
+        default_locale_code = None
+        for loc in available_locales:
+            code = loc["code"]
+            if loc.get("default") is True:
+                default_locale_code = code
+            locale_prefix = f"{code}/{version_part}" if version_part else code
+            href = f"{base_url}/{locale_prefix}/{page_url_suffix}"
+            seo_tags += f'\n<link rel="alternate" hreflang="{code}" href="{href}">'
+
+        # x-default points to the default locale (or first locale)
+        if default_locale_code is None:
+            default_locale_code = available_locales[0]["code"]
+        default_prefix = (
+            f"{default_locale_code}/{version_part}"
+            if version_part else default_locale_code
+        )
+        default_href = f"{base_url}/{default_prefix}/{page_url_suffix}"
+        seo_tags += f'\n<link rel="alternate" hreflang="x-default" href="{default_href}">'
 
     # Security meta tags for GitHub Pages (Phase 7.1)
     # Cloudflare Pages uses _headers file instead; HSTS and Permissions-Policy
@@ -2763,6 +2794,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         date_modified=date_modified, lang=lang, breadcrumbs=breadcrumbs,
         schema=schema, twitter_site=twitter_site,
         deploy_target=deploy_target,
+        available_locales=available_locales,
+        current_locale=current_locale,
+        url_prefix=url_prefix,
     )
 
     # Per-version SEO (Phase 2): noindex for non-indexed, canonical override
