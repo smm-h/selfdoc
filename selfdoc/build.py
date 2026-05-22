@@ -282,6 +282,114 @@ def _stub_resolver(name, attrs, body):
     return f"> *[selfdoc: {label} — not yet resolved]*"
 
 
+def _extract_version_content(version, config, base_dir):
+    """Extract docs and source content from a git tag into a cache directory.
+
+    Tries tag names ``v{version}`` then ``{version}``. Uses
+    ``git archive | tar -x`` to populate ``.selfdoc/cache/{version}/``.
+    The tag's commit hash is stored in a ``.hash`` sentinel; if the tag
+    still points to the same commit, extraction is skipped.
+
+    Also ensures ``.selfdoc/cache/.gitignore`` exists with ``*`` so the
+    entire cache directory is ignored by git.
+
+    Returns the cache directory path.
+    Raises RuntimeError if neither tag name exists.
+    """
+    cache_root = os.path.join(base_dir, ".selfdoc", "cache")
+    cache_dir = os.path.join(cache_root, version)
+    hash_file = os.path.join(cache_dir, ".hash")
+
+    # Ensure .gitignore in cache root
+    os.makedirs(cache_root, exist_ok=True)
+    gitignore_path = os.path.join(cache_root, ".gitignore")
+    if not os.path.isfile(gitignore_path):
+        with open(gitignore_path, "w", encoding="utf-8") as f:
+            f.write("*\n")
+
+    # Determine tag name
+    tag_name = None
+    for candidate in (f"v{version}", version):
+        result = subprocess.run(
+            ["git", "rev-parse", f"refs/tags/{candidate}"],
+            capture_output=True, text=True, timeout=10,
+            cwd=base_dir,
+        )
+        if result.returncode == 0:
+            tag_name = candidate
+            break
+
+    if tag_name is None:
+        raise RuntimeError(
+            f"Git tag for version '{version}' not found. "
+            f"Tried 'v{version}' and '{version}'."
+        )
+
+    # Get commit hash for the tag (dereference annotated tags)
+    result = subprocess.run(
+        ["git", "rev-parse", f"{tag_name}^{{commit}}"],
+        capture_output=True, text=True, timeout=10,
+        cwd=base_dir,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Failed to resolve commit for tag '{tag_name}': "
+            f"{result.stderr.strip()}"
+        )
+    commit_hash = result.stdout.strip()
+
+    # Cache validation: skip extraction if hash matches
+    if os.path.isfile(hash_file):
+        with open(hash_file, "r", encoding="utf-8") as f:
+            cached_hash = f.read().strip()
+        if cached_hash == commit_hash:
+            return cache_dir
+
+    # Clear stale cache and re-extract
+    if os.path.isdir(cache_dir):
+        shutil.rmtree(cache_dir)
+    os.makedirs(cache_dir, exist_ok=True)
+
+    # Determine paths to extract: docs dir + source dirs
+    docs_path = config["docs"].rstrip("/")
+    source_paths = config.get("source", [])
+    archive_paths = [docs_path] + [s.rstrip("/") for s in source_paths]
+
+    # Run git archive piped into tar
+    git_cmd = ["git", "archive", tag_name] + archive_paths
+    tar_cmd = ["tar", "-x", "-C", cache_dir]
+
+    git_proc = subprocess.Popen(
+        git_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cwd=base_dir,
+    )
+    tar_proc = subprocess.Popen(
+        tar_cmd, stdin=git_proc.stdout, stderr=subprocess.PIPE,
+        cwd=base_dir,
+    )
+    git_proc.stdout.close()
+
+    _, tar_err = tar_proc.communicate(timeout=30)
+    git_proc.wait(timeout=30)
+
+    if git_proc.returncode != 0:
+        raise RuntimeError(
+            f"git archive failed for tag '{tag_name}': "
+            f"{git_proc.stderr.read().decode().strip()}"
+        )
+    if tar_proc.returncode != 0:
+        raise RuntimeError(
+            f"tar extraction failed for tag '{tag_name}': "
+            f"{tar_err.decode().strip()}"
+        )
+
+    # Write hash sentinel
+    with open(hash_file, "w", encoding="utf-8") as f:
+        f.write(commit_hash + "\n")
+
+    return cache_dir
+
+
 def _detect_project_version(dir_path):
     """Detect project version from pyproject.toml or package.json.
 
@@ -870,7 +978,9 @@ def _compress_output(output_dir):
 
 def build_single(dir_path=".", config=None, output_subdir="",
                   url_prefix="", version_override=None,
-                  locale_override=None):
+                  locale_override=None,
+                  available_versions=None, current_version="",
+                  is_latest=True):
     """Build HTML and search entries for a single version/locale of docs.
 
     Performs config loading, template resolution, HTML generation, image
@@ -1081,6 +1191,9 @@ def build_single(dir_path=".", config=None, output_subdir="",
         code_icons=config.get("code_icons", "colorful"),
         glossary=config.get("glossary", True),
         url_prefix=url_prefix,
+        available_versions=available_versions,
+        current_version=current_version,
+        is_latest=is_latest,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
@@ -1120,25 +1233,22 @@ def build_single(dir_path=".", config=None, output_subdir="",
     )
 
 
-def build(dir_path=".", config=None):
-    """Build docs from templates + directives.
+def build(dir_path=".", config=None, version_filter=None):
+    """Build docs from templates + directives, with multi-version support.
 
-    1. Load config from selfdoc.json
-    2. Scan docs/ directory for .md template files
-    3. For each template, resolve directives using language-specific extractor
-    4. Convert resolved markdown to HTML
-    5. Write HTML to output directory (under locale/version prefix)
-    6. Copy non-.md files (images, CSS, etc.) to output
-    7. Generate root redirect to default locale/version
+    For each configured version, builds HTML from either the working tree
+    (latest version) or git archive extraction (older versions). All
+    search entries are merged into a single index. Auxiliary files (OG
+    cards, sitemap, feed, etc.) use the latest version's data only.
 
     Args:
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
+        version_filter: Optional version string to build only that version.
 
     Returns:
         Dict of {output_path: True} for files written.
     """
-    # Load config early to validate required fields before build_single
     if config is None:
         config = load_config(dir_path)
     if config is None:
@@ -1158,15 +1268,6 @@ def build(dir_path=".", config=None):
             "\"default\": true}]"
         )
 
-    # Run the core build pipeline (HTML generation + search index)
-    (
-        html_files, markdown_files, frontmatter, page_dates,
-        nav_items, search_entries, project_name, version, config,
-        docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
-        critical_css, config_description, base_url, feed_url, lang,
-    ) = build_single(dir_path=dir_path, config=config)
-
-    # Compute the default locale/version prefix for redirects
     locales = config.get("locales", [])
     versions = config.get("versions", [])
     default_locale = locales[0]
@@ -1175,21 +1276,131 @@ def build(dir_path=".", config=None):
             default_locale = loc
             break
     locale_code = default_locale["code"]
-    version_str = versions[0]["version"]
-    prefix_path = f"{locale_code}/{version_str}"
+    latest_version = versions[-1]["version"]
+
+    # Filter versions if --version flag was given
+    if version_filter:
+        matching = [v for v in versions if v["version"] == version_filter]
+        if not matching:
+            raise RuntimeError(
+                f"Version '{version_filter}' not found in config. "
+                f"Available: {', '.join(v['version'] for v in versions)}"
+            )
+        build_versions = matching
+    else:
+        build_versions = versions
 
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
 
-    # Clean output directory to prevent stale files from previous builds
+    # Validate docs directory exists before touching output (creating
+    # output_dir could implicitly create the docs parent directory,
+    # masking a missing docs/ error).
+    docs_dir_name = config["docs"].rstrip("/")
+    docs_dir_check = os.path.join(dir_path, docs_dir_name)
+    if not os.path.isdir(docs_dir_check):
+        raise RuntimeError(
+            f"Docs directory '{config['docs']}' not found. "
+            "Create it or run 'selfdoc init'."
+        )
+
+    # Clean output directory
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     written = {}
+    all_search_entries = []
+    latest_build = None
 
-    # Write the theme CSS file (with Pygments syntax highlighting rules appended)
+    # Multi-version build loop
+    for ver_entry in build_versions:
+        ver_str = ver_entry["version"]
+        is_latest = (ver_str == latest_version)
+        output_subdir = f"{locale_code}/{ver_str}"
+        url_prefix = output_subdir
+
+        if is_latest:
+            build_dir = dir_path
+        else:
+            build_dir = _extract_version_content(ver_str, config, dir_path)
+
+        (
+            html_files, markdown_files, frontmatter, page_dates,
+            nav_items, search_entries, project_name, version, _cfg,
+            docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
+            critical_css, config_description, base_url, feed_url, lang,
+        ) = build_single(
+            dir_path=build_dir,
+            config=config,
+            output_subdir=output_subdir,
+            url_prefix=url_prefix,
+            version_override=ver_str,
+            available_versions=versions,
+            current_version=ver_str,
+            is_latest=is_latest,
+        )
+
+        all_search_entries.extend(search_entries)
+
+        for rel_path, html_content in html_files.items():
+            out_path = os.path.join(output_dir, rel_path)
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(_minify_html(html_content))
+            written[out_path] = True
+
+        for rel_path in other_files:
+            src = os.path.join(docs_dir, rel_path)
+            dst = os.path.join(output_dir, output_subdir, rel_path)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+            written[dst] = True
+
+        if is_latest:
+            latest_build = {
+                "html_files": html_files,
+                "markdown_files": markdown_files,
+                "frontmatter": frontmatter,
+                "page_dates": page_dates,
+                "project_name": project_name,
+                "version": version,
+                "docs_dir": docs_dir,
+                "has_custom_css": has_custom_css,
+                "raw_theme_css": raw_theme_css,
+                "theme_meta": theme_meta,
+                "critical_css": critical_css,
+                "config_description": config_description,
+                "base_url": base_url,
+                "feed_url": feed_url,
+                "lang": lang,
+            }
+
+    # Fallback: if version_filter excluded the latest, use the last build
+    if latest_build is None:
+        latest_build = {
+            "html_files": html_files,
+            "markdown_files": markdown_files,
+            "frontmatter": frontmatter,
+            "page_dates": page_dates,
+            "project_name": project_name,
+            "version": version,
+            "docs_dir": docs_dir,
+            "has_custom_css": has_custom_css,
+            "raw_theme_css": raw_theme_css,
+            "theme_meta": theme_meta,
+            "critical_css": critical_css,
+            "config_description": config_description,
+            "base_url": base_url,
+            "feed_url": feed_url,
+            "lang": lang,
+        }
+
+    lb = latest_build
+    theme_meta = lb["theme_meta"]
+
+    # Shared assets: CSS
     css_path = os.path.join(output_dir, "style.css")
-    theme_css = raw_theme_css
+    theme_css = lb["raw_theme_css"]
     pygments_css = generate_pygments_css(
         light_style=theme_meta.get("pygments_light", "default"),
         dark_style=theme_meta.get("pygments_dark", "monokai"),
@@ -1201,62 +1412,59 @@ def build(dir_path=".", config=None):
         f.write(theme_css)
     written[css_path] = True
 
-    # Write search index (Feature 19)
+    # Combined search index from ALL versions
     search_index_path = os.path.join(output_dir, "search-index.json")
     with open(search_index_path, "w", encoding="utf-8") as f:
         json.dump(
-            [dataclasses.asdict(entry) for entry in search_entries],
+            [dataclasses.asdict(entry) for entry in all_search_entries],
             f, ensure_ascii=False,
         )
     written[search_index_path] = True
 
-    # Generate external search JS (Feature 19 -- externalized, pluggable engine)
+    # Search JS
     search_engine = config.get("search_engine") or "builtin"
     search_js_path = os.path.join(output_dir, "search.js")
     with open(search_js_path, "w", encoding="utf-8") as f:
         f.write(_minify_js(_generate_search_js(engine=search_engine)))
     written[search_js_path] = True
 
-    # Copy custom.css to output if it exists
-    custom_css_src = os.path.join(docs_dir, "custom.css")
-    if has_custom_css:
+    # Custom CSS
+    custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
+    if lb["has_custom_css"]:
         custom_css_dst = os.path.join(output_dir, "custom.css")
         shutil.copy2(custom_css_src, custom_css_dst)
         written[custom_css_dst] = True
 
-    # Write HTML files (minified)
-    for rel_path, html_content in html_files.items():
-        out_path = os.path.join(output_dir, rel_path)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.write(_minify_html(html_content))
-        written[out_path] = True
+    # Auxiliary files using latest version data only
+    # Sitemap: only include pages from indexed versions
+    indexed_html_paths = []
+    for ver_entry in build_versions:
+        ver_str = ver_entry["version"]
+        ver_prefix = f"{locale_code}/{ver_str}"
+        if ver_entry.get("indexed", True):
+            indexed_html_paths.extend(
+                os.path.relpath(k, output_dir)
+                for k in written
+                if k.startswith(os.path.join(output_dir, ver_prefix))
+                and k.endswith(".html")
+            )
 
-    # Copy non-.md files (images, CSS, etc.) to output under locale/version prefix
-    for rel_path in other_files:
-        src = os.path.join(docs_dir, rel_path)
-        dst = os.path.join(output_dir, prefix_path, rel_path)
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copy2(src, dst)
-        written[dst] = True
-
-    # Generate auxiliary files (OG cards, sitemap, llms.txt, 404, favicon, feed, etc.)
     repo = config.get("repo", None)
     aux_written = _generate_auxiliary_files(
         output_dir=output_dir,
-        project_name=project_name,
-        version=version,
-        markdown_files=markdown_files,
-        html_paths=list(html_files.keys()),
-        base_url=base_url,
-        has_custom_css=has_custom_css,
+        project_name=lb["project_name"],
+        version=lb["version"],
+        markdown_files=lb["markdown_files"],
+        html_paths=indexed_html_paths,
+        base_url=lb["base_url"],
+        has_custom_css=lb["has_custom_css"],
         repo=repo,
-        lang=lang,
-        page_dates=page_dates,
-        frontmatter=frontmatter,
-        description=config_description,
-        feed_url=feed_url,
-        critical_css=critical_css,
+        lang=lb["lang"],
+        page_dates=lb["page_dates"],
+        frontmatter=lb["frontmatter"],
+        description=lb["config_description"],
+        feed_url=lb["feed_url"],
+        critical_css=lb["critical_css"],
         accent_color=theme_meta["accent_color"],
         theme_meta=theme_meta,
         deploy=config.get("deploy"),
@@ -1264,8 +1472,9 @@ def build(dir_path=".", config=None):
     )
     written.update(aux_written)
 
-    # Generate root redirect to default locale/version
-    redirect_url = f"/{prefix_path}/"
+    # Root redirect to default locale / latest version
+    latest_prefix = f"{locale_code}/{latest_version}"
+    redirect_url = f"/{latest_prefix}/"
     root_index_html = (
         "<!DOCTYPE html>\n"
         "<html>\n"
@@ -1280,8 +1489,6 @@ def build(dir_path=".", config=None):
         "</html>\n"
     )
     root_index_path = os.path.join(output_dir, "index.html")
-    # Only write root redirect if index.html is not already at root level
-    # (it should be under the prefix now)
     with open(root_index_path, "w", encoding="utf-8") as f:
         f.write(root_index_html)
     written[root_index_path] = True
@@ -1292,7 +1499,7 @@ def build(dir_path=".", config=None):
         f.write(redirects_content)
     written[redirects_path] = True
 
-    # Pre-compress text-based output files (gzip + optional brotli)
+    # Pre-compress
     compress_count, has_brotli = _compress_output(output_dir)
     if has_brotli:
         print(f"Pre-compressed {compress_count} files (gzip + brotli)")

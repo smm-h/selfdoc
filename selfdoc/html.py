@@ -2661,6 +2661,20 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
             f'<h1 id="{h1_slug}">{h1_anchor}{_escape_html(title)}</h1>'
         )
 
+    # Version banner for old versions (Phase 2)
+    version_banner_html = ""
+    if not is_latest and available_versions and current_version:
+        latest_ver = available_versions[-1]["version"] if available_versions else ""
+        if latest_ver:
+            banner_locale = url_prefix.split("/")[0] if "/" in url_prefix else "en"
+            latest_url = f"/{banner_locale}/{latest_ver}/"
+            version_banner_html = (
+                f'<div class="version-banner">'
+                f'You are viewing docs for v{_escape_html(current_version)}. '
+                f'<a href="{latest_url}">See latest</a>'
+                f'</div>'
+            )
+
     # Feed link in site footer (Feature 9.5)
     feed_footer_html = ""
     if feed_url:
@@ -2694,6 +2708,7 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         "font_tags": font_tags,
         "auto_h1_html": auto_h1_html,
         "feed_footer_html": feed_footer_html,
+        "version_banner_html": version_banner_html,
     }
 
 
@@ -2749,6 +2764,31 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         schema=schema, twitter_site=twitter_site,
         deploy_target=deploy_target,
     )
+
+    # Per-version SEO (Phase 2): noindex for non-indexed, canonical override
+    version_seo_tags = ""
+    if available_versions and current_version and not is_latest:
+        cur_ver_entry = None
+        for v in available_versions:
+            if v["version"] == current_version:
+                cur_ver_entry = v
+                break
+        if cur_ver_entry and not cur_ver_entry.get("indexed", True):
+            version_seo_tags += '\n<meta name="robots" content="noindex, nofollow">'
+        if base_url and page_path and url_prefix:
+            latest_ver = available_versions[-1]["version"]
+            parts = url_prefix.split("/")
+            if len(parts) >= 2:
+                latest_prefix = f"{parts[0]}/{latest_ver}"
+                canonical_latest = (
+                    f"{base_url}/{latest_prefix}/"
+                    f"{_html_path_to_url(page_path)}"
+                )
+                seo_tags = re.sub(
+                    r'<link rel="canonical" href="[^"]*">',
+                    f'<link rel="canonical" href="{canonical_latest}">',
+                    seo_tags,
+                )
 
     # Search trigger HTML (configurable: "icon", "bar", or "hidden")
     effective_search = search if search else "icon"
@@ -2820,7 +2860,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<link rel="stylesheet" href="{css_href}" media="print"'
         f" onload=\"this.media='all'\">"
         f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
-        f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{security_meta}\n'
+        f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{version_seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
@@ -2837,6 +2877,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</ul>\n'
         f'</nav>\n'
         f'<main class="content" id="main-content">\n'
+        f'{meta["version_banner_html"]}\n'
         f'<article>\n'
         f'{meta["breadcrumbs_html"]}\n'
         f'{meta["mobile_toc_html"]}\n'
