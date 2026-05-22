@@ -1093,6 +1093,9 @@ blockquote p:last-child {
     position: absolute;
     top: 0;
     left: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     font-size: 0.625rem;
     font-family: var(--font-body);
     text-transform: uppercase;
@@ -1110,9 +1113,6 @@ blockquote p:last-child {
 .code-label svg {
     width: 1em;
     height: 1em;
-    vertical-align: middle;
-    margin-right: 0.25rem;
-    display: inline;
 }
 
 .code-block:hover .code-label {
