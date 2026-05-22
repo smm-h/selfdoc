@@ -1,6 +1,6 @@
 {
   "name": "selfdoc",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "env_prefix": null,
   "config": false,
@@ -40,6 +40,30 @@
           "choices": null,
           "repeatable": false,
           "negatable": true,
+          "hidden": false
+        },
+        {
+          "name": "locale",
+          "type": "str",
+          "help": "Build only this locale (e.g., 'en')",
+          "short": null,
+          "default": "",
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": null,
+          "hidden": false
+        },
+        {
+          "name": "version",
+          "type": "str",
+          "help": "Build only this version (e.g., '1.0.0')",
+          "short": null,
+          "default": "",
+          "env": null,
+          "choices": null,
+          "repeatable": false,
+          "negatable": null,
           "hidden": false
         }
       ],
