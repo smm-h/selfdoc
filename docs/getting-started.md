@@ -2,6 +2,8 @@
 title: Getting Started
 description: "Install selfdoc and generate your first documentation site in minutes. Covers installation, project setup, writing directives, and local development."
 order: 10
+nav_group: "Getting Started"
+nav_order: 1
 ---
 
 # Getting Started

@@ -2,6 +2,8 @@
 title: Theming
 description: "Customize your selfdoc site with built-in themes, CSS custom properties, dark mode support, and a visual design tool for iterating on styles."
 order: 40
+nav_group: "Guides"
+nav_order: 3
 ---
 
 # Theming

@@ -2,6 +2,8 @@
 title: Architecture
 description: "Internal architecture of selfdoc: the Markdown tokenizer, rendering pipeline, language extractors, directive resolver, and build system."
 order: 60
+nav_group: "Guides"
+nav_order: 5
 ---
 
 # Architecture

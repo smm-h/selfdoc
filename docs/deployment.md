@@ -2,6 +2,8 @@
 title: Deployment
 description: "Deploy your selfdoc site to Cloudflare Pages or GitHub Pages. Covers configuration, credentials, security headers, and CI integration."
 order: 50
+nav_group: "Guides"
+nav_order: 4
 ---
 
 # Deployment

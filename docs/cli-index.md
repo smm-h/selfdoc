@@ -2,7 +2,7 @@
 title: selfdoc CLI Reference
 description: "Complete CLI reference for selfdoc — all available commands, subcommands, flags, arguments, and usage examples with detailed descriptions."
 generated: true
-nav_group: "CLI Reference"
+nav_group: "Reference"
 nav_order: 0
 order: 91
 ---

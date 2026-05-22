@@ -2,6 +2,8 @@
 title: Configuration
 description: "Complete reference for selfdoc.json configuration options including project settings, themes, SEO, deployment, and branding."
 order: 20
+nav_group: "Guides"
+nav_order: 1
 ---
 
 # Configuration

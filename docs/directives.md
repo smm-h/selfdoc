@@ -2,6 +2,8 @@
 title: Directives Reference
 description: "Complete reference for all built-in selfdoc directives including code extraction, content blocks, and custom directive authoring."
 order: 30
+nav_group: "Guides"
+nav_order: 2
 ---
 
 # Directives Reference

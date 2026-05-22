@@ -2,7 +2,7 @@
 title: API Reference
 description: "Complete auto-generated API reference index — browse all modules, classes, and functions with their signatures and docstrings."
 generated: true
-nav_group: "API Reference"
+nav_group: "Reference"
 nav_order: 0
 order: 90
 ---
