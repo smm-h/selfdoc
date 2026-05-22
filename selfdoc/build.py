@@ -859,22 +859,28 @@ def _compress_output(output_dir):
     return count, has_brotli
 
 
-def build(dir_path=".", config=None):
-    """Build docs from templates + directives.
+def build_single(dir_path=".", config=None, output_subdir="",
+                  url_prefix="", version_override=None,
+                  locale_override=None):
+    """Build HTML and search entries for a single version/locale of docs.
 
-    1. Load config from selfdoc.json
-    2. Scan docs/ directory for .md template files
-    3. For each template, resolve directives using language-specific extractor
-    4. Convert resolved markdown to HTML
-    5. Write HTML to output directory
-    6. Copy non-.md files (images, CSS, etc.) to output
+    Performs config loading, template resolution, HTML generation, image
+    dimension post-processing, and search index building. Does NOT write
+    any files to disk -- the caller (``build()``) handles all IO.
 
     Args:
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
+        output_subdir: Subdirectory within output for this build (e.g. "en/0.7.0").
+        url_prefix: URL path prefix for versioned/localized links (e.g. "en/0.7.0").
+        version_override: Override detected version string (optional).
+        locale_override: Override detected locale string (optional).
 
     Returns:
-        Dict of {output_path: True} for files written.
+        Tuple of (html_files, markdown_files, frontmatter, page_dates,
+        nav_items, search_entries, project_name, version, config,
+        docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
+        critical_css, config_description, base_url, feed_url, lang).
     """
     if config is None:
         config = load_config(dir_path)
@@ -967,7 +973,7 @@ def build(dir_path=".", config=None):
 
     # Detect project name and version
     project_name = os.path.basename(os.path.abspath(dir_path))
-    version = _detect_project_version(dir_path)
+    version = version_override if version_override is not None else _detect_project_version(dir_path)
 
     # Check for custom.css in docs/
     custom_css_src = os.path.join(docs_dir, "custom.css")
@@ -997,6 +1003,8 @@ def build(dir_path=".", config=None):
 
     # Get lang attribute for HTML pages (default "en")
     lang = config.get("lang") or "en"
+    if locale_override is not None:
+        lang = locale_override
 
     # Get author from config for JSON-LD structured data
     author = config.get("author")
@@ -1047,6 +1055,7 @@ def build(dir_path=".", config=None):
         page_progress=config.get("page_progress", True),
         code_icons=config.get("code_icons", "colorful"),
         glossary=config.get("glossary", True),
+        url_prefix=url_prefix,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
@@ -1056,6 +1065,55 @@ def build(dir_path=".", config=None):
         html_files[html_path] = _add_image_dimensions(
             html_files[html_path], docs_dir, md_path,
         )
+
+    # Build nav items (used by search index and auxiliary files)
+    nav_items = _build_nav(markdown_files, frontmatter)
+
+    # Build search index entries (returned to caller for accumulation)
+    search_entries = _build_search_index(
+        markdown_files,
+        version=version,
+        locale=locale_override or "",
+        target="",
+        project=project_name,
+        frontmatter=frontmatter,
+        nav_items=nav_items,
+    )
+
+    return (
+        html_files, markdown_files, frontmatter, page_dates,
+        nav_items, search_entries, project_name, version, config,
+        docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
+        critical_css, config_description, base_url, feed_url, lang,
+    )
+
+
+def build(dir_path=".", config=None):
+    """Build docs from templates + directives.
+
+    1. Load config from selfdoc.json
+    2. Scan docs/ directory for .md template files
+    3. For each template, resolve directives using language-specific extractor
+    4. Convert resolved markdown to HTML
+    5. Write HTML to output directory
+    6. Copy non-.md files (images, CSS, etc.) to output
+
+    Args:
+        dir_path: Project root directory.
+        config: Pre-loaded config dict (if None, loads from selfdoc.json).
+
+    Returns:
+        Dict of {output_path: True} for files written.
+    """
+    # Run the core build pipeline (HTML generation + search index)
+    (
+        html_files, markdown_files, frontmatter, page_dates,
+        nav_items, search_entries, project_name, version, config,
+        docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
+        critical_css, config_description, base_url, feed_url, lang,
+    ) = build_single(dir_path=dir_path, config=config)
+
+    output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
 
     # Clean output directory to prevent stale files from previous builds
     if os.path.exists(output_dir):
@@ -1078,23 +1136,11 @@ def build(dir_path=".", config=None):
         f.write(theme_css)
     written[css_path] = True
 
-    # Build nav items (used by search index and auxiliary files)
-    nav_items = _build_nav(markdown_files, frontmatter)
-
-    # Build and write search index (Feature 19)
-    search_index = _build_search_index(
-        markdown_files,
-        version=version,
-        locale="",
-        target="",
-        project=project_name,
-        frontmatter=frontmatter,
-        nav_items=nav_items,
-    )
+    # Write search index (Feature 19)
     search_index_path = os.path.join(output_dir, "search-index.json")
     with open(search_index_path, "w", encoding="utf-8") as f:
         json.dump(
-            [dataclasses.asdict(entry) for entry in search_index],
+            [dataclasses.asdict(entry) for entry in search_entries],
             f, ensure_ascii=False,
         )
     written[search_index_path] = True
@@ -1107,6 +1153,7 @@ def build(dir_path=".", config=None):
     written[search_js_path] = True
 
     # Copy custom.css to output if it exists
+    custom_css_src = os.path.join(docs_dir, "custom.css")
     if has_custom_css:
         custom_css_dst = os.path.join(output_dir, "custom.css")
         shutil.copy2(custom_css_src, custom_css_dst)
@@ -1129,6 +1176,7 @@ def build(dir_path=".", config=None):
         written[dst] = True
 
     # Generate auxiliary files (OG cards, sitemap, llms.txt, 404, favicon, feed, etc.)
+    repo = config.get("repo", None)
     aux_written = _generate_auxiliary_files(
         output_dir=output_dir,
         project_name=project_name,

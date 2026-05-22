@@ -307,7 +307,11 @@ def generate_html(markdown_files, project_name=None, version=None,
                    deploy_target=None, run_button=False,
                    line_numbers=False,
                    page_nav=True, page_progress=True,
-                   code_icons="colorful", glossary=True):
+                   code_icons="colorful", glossary=True,
+                   url_prefix="",
+                   available_versions=None, available_locales=None,
+                   current_version="", current_locale="",
+                   is_latest=True):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -322,6 +326,12 @@ def generate_html(markdown_files, project_name=None, version=None,
         page_dates: Dict mapping relative paths to (published, modified) tuples (optional).
         author: Author dict from config (optional, keys: name, type, url).
         feed_url: Relative URL to the Atom feed (optional, e.g. "feed.xml").
+        url_prefix: Path prefix for versioned/localized URLs (e.g. "en/0.7.0").
+        available_versions: List of version dicts for version picker (optional).
+        available_locales: List of locale dicts for locale picker (optional).
+        current_version: Current version being built (e.g. "0.7.0").
+        current_locale: Current locale being built (e.g. "en").
+        is_latest: Whether this is the latest version (default True).
 
     Returns:
         Dict mapping file paths (.html) to HTML content.
@@ -688,6 +698,12 @@ def generate_html(markdown_files, project_name=None, version=None,
             deploy_target=deploy_target,
             page_nav=page_nav,
             page_progress=page_progress,
+            url_prefix=url_prefix,
+            available_versions=available_versions,
+            available_locales=available_locales,
+            current_version=current_version,
+            current_locale=current_locale,
+            is_latest=is_latest,
         )
         html_files[pd["html_path"]] = full_html
 
@@ -2285,7 +2301,11 @@ def _render_page_footer(edit_link_html, date_display_html,
 
 
 def _render_topbar(project_name, version_badge, topbar_page_title_html,
-                   search_trigger_html, prefix):
+                   search_trigger_html, prefix,
+                   url_prefix="",
+                   available_versions=None, available_locales=None,
+                   current_version="", current_locale="",
+                   is_latest=True):
     """Build the topbar header with hamburger, project name, theme toggle, search."""
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
@@ -2357,7 +2377,11 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                      page_progress, page_number, total_pages, feedback,
                      toc_html, summary, date_modified, feed_url, page_path,
                      site_terms, has_custom_css_href, version, project_name,
-                     description, has_hero, custom_css_href, theme_meta):
+                     description, has_hero, custom_css_href, theme_meta,
+                     url_prefix="",
+                     available_versions=None, available_locales=None,
+                     current_version="", current_locale="",
+                     is_latest=True):
     """Compute all page metadata variables needed by the template.
 
     Returns a dict with: body_html (possibly modified by cross-page terms),
@@ -2641,7 +2665,11 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                feedback=None, branch="main", search_engine=None,
                site_terms=None, page_number=None, total_pages=None,
                theme_meta=None, has_hero=False, deploy_target=None,
-               page_nav=True, page_progress=True):
+               page_nav=True, page_progress=True,
+               url_prefix="",
+               available_versions=None, available_locales=None,
+               current_version="", current_locale="",
+               is_latest=True):
     """Wrap converted HTML body in the full page template."""
     # Use default theme metadata when none provided (backward compatible)
     if theme_meta is None:
@@ -2660,6 +2688,12 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         project_name=project_name, description=description,
         has_hero=has_hero, custom_css_href=custom_css_href,
         theme_meta=theme_meta,
+        url_prefix=url_prefix,
+        available_versions=available_versions,
+        available_locales=available_locales,
+        current_version=current_version,
+        current_locale=current_locale,
+        is_latest=is_latest,
     )
     body_html = meta["body_html"]
 
@@ -2700,6 +2734,12 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         topbar_page_title_html=meta["topbar_page_title_html"],
         search_trigger_html=search_trigger_html,
         prefix=prefix,
+        url_prefix=url_prefix,
+        available_versions=available_versions,
+        available_locales=available_locales,
+        current_version=current_version,
+        current_locale=current_locale,
+        is_latest=is_latest,
     )
 
     # Build search dialog
