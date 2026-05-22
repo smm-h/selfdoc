@@ -464,6 +464,135 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         ),
         description="Configuration for the gen-data command.",
     ),
+    # --- multi-version / multi-locale / unified fields ---
+    FieldSpec(
+        name="versions",
+        type=_L,
+        default=None,
+        non_empty=False,
+        item_spec=FieldSpec(
+            name="<item>",
+            type=_D,
+            strict_keys=True,
+            children=(
+                FieldSpec(
+                    name="version",
+                    type=_S,
+                    required=True,
+                    description="Version string (e.g. '1.0', 'latest').",
+                ),
+                FieldSpec(
+                    name="indexed",
+                    type=_B,
+                    required=True,
+                    description="Whether this version is included in search indexes.",
+                ),
+                FieldSpec(
+                    name="projects",
+                    type=_D,
+                    required=False,
+                    strict_keys=False,
+                    description="Per-project version overrides (project name -> version string).",
+                ),
+            ),
+            description="Version entry.",
+        ),
+        description="List of documentation versions to build.",
+    ),
+    FieldSpec(
+        name="locales",
+        type=_L,
+        default=None,
+        non_empty=False,
+        item_spec=FieldSpec(
+            name="<item>",
+            type=_D,
+            strict_keys=False,
+            children=(
+                FieldSpec(
+                    name="code",
+                    type=_S,
+                    required=True,
+                    pattern=r"^[a-z]{2,3}(-[A-Z][a-z]{3})?(-[A-Z]{2})?$",
+                    description="BCP 47 locale code (e.g. 'en', 'pt-BR', 'zh-Hans-CN').",
+                ),
+                FieldSpec(
+                    name="label",
+                    type=_S,
+                    required=True,
+                    description="Human-readable locale label (e.g. 'English').",
+                ),
+                FieldSpec(
+                    name="default",
+                    type=_B,
+                    required=False,
+                    description="Whether this locale is the default.",
+                ),
+                FieldSpec(
+                    name="rtl",
+                    type=_B,
+                    required=False,
+                    description="Whether this locale uses right-to-left text direction.",
+                ),
+            ),
+            description="Locale entry.",
+        ),
+        description="List of locales for multi-language documentation.",
+    ),
+    FieldSpec(
+        name="unified",
+        type=_D,
+        default=None,
+        strict_keys=True,
+        children=(
+            FieldSpec(
+                name="projects",
+                type=_L,
+                required=True,
+                min_length=1,
+                item_spec=FieldSpec(
+                    name="<item>",
+                    type=_D,
+                    strict_keys=True,
+                    children=(
+                        FieldSpec(
+                            name="path",
+                            type=_S,
+                            required=True,
+                            description="Path to the project directory.",
+                        ),
+                        FieldSpec(
+                            name="slug",
+                            type=_S,
+                            required=False,
+                            description="URL slug for the project (defaults to path basename).",
+                        ),
+                        FieldSpec(
+                            name="nav_title",
+                            type=_S,
+                            required=False,
+                            description="Display title in the navigation.",
+                        ),
+                    ),
+                    description="Unified project entry.",
+                ),
+                description="List of projects to unify into a single documentation site.",
+            ),
+            FieldSpec(
+                name="exclude",
+                type=_L,
+                required=False,
+                non_empty=False,
+                item_spec=FieldSpec(
+                    name="<item>",
+                    type=_S,
+                    description="Glob pattern to exclude from unified build.",
+                ),
+                description="Glob patterns to exclude from the unified build.",
+            ),
+        ),
+        description="Configuration for unified multi-project documentation.",
+    ),
 )
 
 
@@ -630,6 +759,48 @@ def _post_validate(config: dict) -> dict:
             raise ConfigError(
                 "'deploy.project' is required for cloudflare-pages provider"
             )
+
+    # Locales validation: unique codes, at most one default
+    locales = config.get("locales")
+    if locales is not None:
+        codes = [loc["code"] for loc in locales]
+        seen_codes: set[str] = set()
+        for code in codes:
+            if code in seen_codes:
+                raise ConfigError(
+                    f"duplicate locale code {code!r} in 'locales'"
+                )
+            seen_codes.add(code)
+        defaults = [loc for loc in locales if loc.get("default") is True]
+        if len(defaults) > 1:
+            raise ConfigError(
+                "at most one locale may have 'default: true', "
+                f"found {len(defaults)}"
+            )
+
+    # Versions validation: unique version strings
+    versions = config.get("versions")
+    if versions is not None:
+        seen_versions: set[str] = set()
+        for entry in versions:
+            v = entry["version"]
+            if v in seen_versions:
+                raise ConfigError(
+                    f"duplicate version string {v!r} in 'versions'"
+                )
+            seen_versions.add(v)
+
+    # Unified validation: unique project slugs (explicit or derived from path)
+    unified = config.get("unified")
+    if unified is not None:
+        seen_slugs: set[str] = set()
+        for proj in unified["projects"]:
+            slug = proj.get("slug") or os.path.basename(proj["path"].rstrip("/"))
+            if slug in seen_slugs:
+                raise ConfigError(
+                    f"duplicate project slug {slug!r} in 'unified.projects'"
+                )
+            seen_slugs.add(slug)
 
     return config
 
