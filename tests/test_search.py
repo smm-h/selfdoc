@@ -8,18 +8,13 @@ import pytest
 
 from selfdoc.build import build
 from selfdoc.html import _generate_search_js
+from conftest import default_config, DEFAULT_PREFIX
 
 
 @pytest.fixture()
 def project_dir(tmp_path):
     """Create a minimal selfdoc project in a temp directory."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -41,7 +36,7 @@ def test_website_jsonld_has_search_action(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
 
     # Extract all JSON-LD blocks
@@ -68,7 +63,7 @@ def test_search_action_target_uses_base_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
 
     ld_blocks = re.findall(
@@ -101,7 +96,7 @@ def test_non_homepage_no_website_jsonld(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         guide_html = f.read()
 
     assert '"WebSite"' not in guide_html

@@ -4,19 +4,14 @@ import json
 import os
 
 from selfdoc.build import build
+from conftest import default_config, DEFAULT_PREFIX
 
 
 def test_e2e_build_with_new_directives(tmp_path):
     """Full build with ref, callout, and glossary directives using new syntax."""
 
     # -- Set up selfdoc.json --
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -105,9 +100,9 @@ def test_e2e_build_with_new_directives(tmp_path):
     # -- Verify output files exist --
     output_dir = os.path.join(tmp_path, "docs", "_build")
 
-    index_html_path = os.path.join(output_dir, "index.html")
-    notes_html_path = os.path.join(output_dir, "notes", "index.html")
-    glossary_html_path = os.path.join(output_dir, "glossary", "index.html")
+    index_html_path = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
+    notes_html_path = os.path.join(output_dir, DEFAULT_PREFIX, "notes", "index.html")
+    glossary_html_path = os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html")
     style_css_path = os.path.join(output_dir, "style.css")
 
     assert os.path.isfile(index_html_path), "index.html not found"

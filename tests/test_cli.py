@@ -91,10 +91,12 @@ def test_init_aborts_if_config_exists(project_dir):
 
 
 def _add_base_url(project_dir):
-    """Add base_url to selfdoc.json after init (required field)."""
+    """Add base_url, versions, and locales to selfdoc.json after init."""
     config_path = project_dir / "selfdoc.json"
     config = json.load(open(config_path, "r", encoding="utf-8"))
     config["base_url"] = "https://example.com"
+    config["versions"] = [{"version": "1.0.0", "indexed": True}]
+    config["locales"] = [{"code": "en", "label": "English", "default": True}]
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
 

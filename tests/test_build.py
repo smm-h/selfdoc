@@ -16,19 +16,14 @@ from selfdoc.build import build, _generate_robots_txt, _generate_headers, _gener
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
 from selfdoc.themes import get_theme_meta
+from conftest import default_config, DEFAULT_PREFIX
 
 
 @pytest.fixture()
 def project_dir(tmp_path):
     """Create a minimal selfdoc project in a temp directory."""
     # Write selfdoc.json
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -50,9 +45,9 @@ def test_build_produces_html(project_dir):
 
     assert len(written) > 0
 
-    # Check that index.html was created
+    # Check that index.html was created under locale/version prefix
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     assert index_html in written
     assert os.path.isfile(index_html)
 
@@ -62,6 +57,13 @@ def test_build_produces_html(project_dir):
     assert "<!DOCTYPE html>" in content
     assert '<h1 id="test-project"><a class="heading-link" href="#test-project" aria-label="Link to section: Test Project">#</a>Test Project</h1>' in content
     assert "Welcome." in content
+
+    # Root index.html should be a redirect
+    root_index = os.path.join(output_dir, "index.html")
+    assert root_index in written
+    with open(root_index, "r", encoding="utf-8") as f:
+        root_content = f.read()
+    assert f"/{DEFAULT_PREFIX}/" in root_content
 
 
 def test_build_resolves_directives_with_error_for_missing(project_dir):
@@ -74,7 +76,7 @@ def test_build_resolves_directives_with_error_for_missing(project_dir):
     written = build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    api_html = os.path.join(output_dir, "api", "index.html")
+    api_html = os.path.join(output_dir, DEFAULT_PREFIX, "api", "index.html")
     assert api_html in written
 
     with open(api_html, "r", encoding="utf-8") as f:
@@ -96,7 +98,7 @@ def test_build_copies_non_md_files(project_dir):
     written = build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    copied_img = os.path.join(output_dir, "logo.png")
+    copied_img = os.path.join(output_dir, DEFAULT_PREFIX, "logo.png")
     assert copied_img in written
     assert os.path.isfile(copied_img)
 
@@ -112,13 +114,12 @@ def test_build_multiple_files(project_dir):
     written = build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    assert os.path.isfile(os.path.join(output_dir, "index.html"))
-    assert os.path.isfile(os.path.join(output_dir, "guide", "index.html"))
-    # 2 HTML + 1 style.css + 1 search-index.json + 1 search.js + 2 OG PNGs
-    # + 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt
-    # + 1 sitemap.xml + 1 feed.xml (base_url is set)
-    # (_headers and _redirects no longer generated without cloudflare-pages deploy)
-    assert len(written) == 14
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"))
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"))
+    # 2 HTML (under en/1.0.0/) + 1 style.css + 1 search-index.json + 1 search.js
+    # + 2 OG PNGs + 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt
+    # + 1 sitemap.xml + 1 feed.xml + 1 root index.html redirect + 1 _redirects
+    assert len(written) == 16
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
@@ -142,7 +143,7 @@ def test_build_no_config_raises(tmp_path):
 
 def test_build_no_docs_dir_raises(tmp_path):
     """Build without docs/ directory raises an error."""
-    config = {"language": "python", "source": ["src/"], "docs": "docs/", "output": "docs/_build/", "base_url": "https://example.com"}
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -161,7 +162,7 @@ def test_build_generates_sidebar(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Sidebar should link to guide/ (directory-style URL)
@@ -221,7 +222,7 @@ def test_html_lang_attribute_from_config(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<html lang="fa">' in content
@@ -232,7 +233,7 @@ def test_html_lang_default_en(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<html lang="en">' in content
@@ -243,7 +244,7 @@ def test_html_article_tag_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "<article>" in content
@@ -255,7 +256,7 @@ def test_html_site_footer_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<footer class="site-footer">' in content
@@ -267,7 +268,7 @@ def test_html_no_highlight_js(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "highlight.js" not in content
@@ -387,7 +388,7 @@ def test_last_updated_visible_in_html(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "dated", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "dated", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "Last updated" in content
@@ -413,7 +414,7 @@ def test_json_ld_date_modified(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "dated", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "dated", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"dateModified": "2026-05-01"' in content
@@ -464,14 +465,14 @@ def test_breadcrumb_list_on_non_index_page(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
 
     # Non-index page should have BreadcrumbList
-    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         guide_html = f.read()
     assert '"BreadcrumbList"' in guide_html
     assert '"Home"' in guide_html
     assert "https://example.com/index.html" in guide_html
 
     # Index page should NOT have BreadcrumbList
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
     assert '"BreadcrumbList"' not in index_html
 
@@ -494,14 +495,14 @@ def test_website_on_index_only(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
 
     # Index page should have WebSite with SearchAction
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
     assert '"WebSite"' in index_html
     assert '"SearchAction"' in index_html
     assert "https://example.com/" in index_html
 
     # Non-index page should NOT have WebSite
-    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         guide_html = f.read()
     assert '"WebSite"' not in guide_html
 
@@ -519,7 +520,7 @@ def test_author_from_config_in_json_ld(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"Person"' in content
@@ -540,7 +541,7 @@ def test_default_author_when_no_config_author(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Should use project name as Organization
@@ -564,7 +565,7 @@ def test_software_source_code_on_pages_with_code(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"SoftwareSourceCode"' in content
@@ -615,7 +616,7 @@ def test_og_url_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:url" content="https://example.com/index.html">' in content
@@ -637,7 +638,7 @@ def test_og_description_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:description" content="My project description">' in content
@@ -655,7 +656,7 @@ def test_og_image_absolute_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:image" content="https://example.com/og-index.png">' in content
@@ -673,7 +674,7 @@ def test_twitter_card_and_title_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta name="twitter:card" content="summary_large_image">' in content
@@ -696,7 +697,7 @@ def test_auto_generated_description_from_first_paragraph(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Auto-extracted first paragraph used as meta description
@@ -719,7 +720,7 @@ def test_frontmatter_description_takes_priority(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta name="description" content="Custom description from frontmatter">' in content
@@ -800,7 +801,7 @@ def test_atom_feed_link_in_html_with_base_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<link rel="alternate" type="application/atom+xml"' in content
@@ -855,7 +856,7 @@ def test_page_summary_shown_with_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "summary", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "summary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' in content
@@ -871,7 +872,7 @@ def test_no_page_summary_without_frontmatter(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' not in content
@@ -887,7 +888,7 @@ def test_page_summary_text_matches_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "detailed", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "detailed", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert f"<p>{desc_text}</p>" in content
@@ -902,7 +903,7 @@ def test_page_summary_frontmatter_takes_priority(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' in content
@@ -918,7 +919,7 @@ def test_no_auto_summary_from_first_paragraph(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "autosummary", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "autosummary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' not in content
@@ -936,7 +937,7 @@ def test_explicit_summary_takes_precedence(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "explicit", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "explicit", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' in content
@@ -954,7 +955,7 @@ def test_no_summary_for_short_content(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "short", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "short", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' not in content
@@ -976,7 +977,7 @@ def test_tech_article_has_description_field(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Extract TechArticle JSON-LD
@@ -1012,7 +1013,7 @@ def test_tech_article_no_auto_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -1094,7 +1095,7 @@ def test_pygments_code_blocks_have_spans(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Pygments wraps tokens in <span> elements with short class names
@@ -1117,7 +1118,7 @@ def test_code_blocks_without_lang_are_plain(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Find the code block content -- no Pygments class spans should appear
@@ -1137,7 +1138,7 @@ def test_diff_code_blocks_still_work(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert 'class="line line-add"' in content
@@ -1168,7 +1169,7 @@ def test_no_highlight_js_in_built_html(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "highlight.min.js" not in content
@@ -1272,7 +1273,7 @@ def test_built_html_has_no_html_comments(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "<!--" not in content
@@ -1286,7 +1287,7 @@ def test_built_html_contains_inline_style_block(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "<style>" in content
@@ -1298,7 +1299,7 @@ def test_built_html_loads_stylesheet_async(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert 'media="print"' in content
@@ -1310,7 +1311,7 @@ def test_built_html_has_noscript_fallback(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "<noscript>" in content
@@ -1322,7 +1323,7 @@ def test_critical_css_contains_root_variables(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Extract the <style> block content
@@ -1339,7 +1340,7 @@ def test_critical_css_contains_layout(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
@@ -1354,7 +1355,7 @@ def test_critical_css_excludes_admonition(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
@@ -1369,7 +1370,7 @@ def test_critical_css_excludes_print_styles(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     style_match = re.search(r"<style>(.*?)</style>", content, re.DOTALL)
@@ -1574,7 +1575,7 @@ def test_build_adds_png_dimensions(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert 'width="10"' in content
@@ -1893,7 +1894,7 @@ def test_itemlist_jsonld_with_schema_frontmatter(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "features", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' in content
@@ -1922,7 +1923,7 @@ def test_itemlist_jsonld_contains_correct_items(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "features", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Extract the ItemList JSON-LD block
@@ -1965,7 +1966,7 @@ def test_no_itemlist_jsonld_without_schema_frontmatter(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' not in content
@@ -1990,7 +1991,7 @@ def test_glossary_directive_resolves_to_dl(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "glossary", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="glossary">' in content
@@ -2024,7 +2025,7 @@ def test_glossary_defined_term_set_jsonld_with_base_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "glossary", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"DefinedTermSet"' in content
@@ -2070,7 +2071,7 @@ def test_glossary_integration_end_to_end(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Verify glossary HTML structure
@@ -2152,7 +2153,7 @@ def test_definition_list_generates_defined_term_set_jsonld(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="glossary">' in content
@@ -2230,7 +2231,7 @@ def test_itemlist_auto_detected_on_list_heavy_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' in content
@@ -2270,7 +2271,7 @@ def test_itemlist_not_auto_detected_on_paragraph_heavy_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' not in content
@@ -2291,7 +2292,7 @@ def test_itemlist_explicit_schema_still_works(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "features", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "features", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' in content
@@ -2312,7 +2313,7 @@ def test_itemlist_not_auto_detected_below_threshold(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '"ItemList"' not in content
@@ -2426,7 +2427,7 @@ def test_tech_article_has_date_published(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -2450,7 +2451,7 @@ def test_tech_article_has_publisher_organization(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -2475,7 +2476,7 @@ def test_tech_article_has_in_language(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -2499,7 +2500,7 @@ def test_og_site_name_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # project_name is derived from directory name
@@ -2519,7 +2520,7 @@ def test_twitter_image_present_with_base_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta name="twitter:image" content="https://example.com/og-index.png">' in content
@@ -2537,7 +2538,7 @@ def test_og_image_dimensions_present(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:image:width" content="1200">' in content
@@ -2556,7 +2557,7 @@ def test_twitter_card_summary_large_image_with_base_url(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta name="twitter:card" content="summary_large_image">' in content
@@ -2567,7 +2568,7 @@ def test_organization_schema_on_index_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -2594,7 +2595,7 @@ def test_organization_schema_absent_on_non_index(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -2613,7 +2614,7 @@ def test_organization_schema_has_correct_name(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # project_name is derived from directory name
@@ -2791,9 +2792,9 @@ def test_non_text_files_not_compressed(project_dir):
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
 
-    # The PNG should be copied but NOT have a .gz companion
-    assert os.path.isfile(os.path.join(output_dir, "logo.png"))
-    assert not os.path.isfile(os.path.join(output_dir, "logo.png.gz"))
+    # The PNG should be copied (under prefix) but NOT have a .gz companion
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "logo.png"))
+    assert not os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "logo.png.gz"))
 
 
 # --- Phase 5B: Conditional JS inclusion ---
@@ -2959,25 +2960,22 @@ def test_glossary_and_inline_dfn_no_duplicates():
 # --- Phase 7A: Trailing slash redirect rules ---
 
 
-def test_redirects_file_not_generated(project_dir):
-    """_redirects file is no longer generated (directory-index URLs don't need it)."""
+def test_redirects_file_generated_for_root_redirect(project_dir):
+    """_redirects file is generated with root -> locale/version redirect."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     redirects_path = os.path.join(output_dir, "_redirects")
-    assert not os.path.isfile(redirects_path)
+    assert os.path.isfile(redirects_path)
+    with open(redirects_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert f"/ /{DEFAULT_PREFIX}/ 302" in content
 
 
 def test_headers_only_for_cloudflare_pages(tmp_path):
     """_headers file is only generated when deploy target is cloudflare-pages."""
     # Without cloudflare-pages deploy: no _headers
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3018,7 +3016,7 @@ def test_og_type_website_on_index(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -3036,7 +3034,7 @@ def test_og_type_article_on_other_pages(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide", "index.html")
+    guide_html = os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html")
     with open(guide_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -3062,19 +3060,14 @@ def test_twitter_site_meta_tag(project_dir):
     # Rewrite selfdoc.json with twitter field
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "language": "python",
-            "source": ["src/"],
-            "docs": "docs/",
-            "output": "docs/_build/",
-            "base_url": "https://example.com",
-            "twitter": "@selfdoc",
-        }, f)
+        json.dump(default_config(
+            docs="docs/", output="docs/_build/", twitter="@selfdoc",
+        ), f)
 
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -3091,7 +3084,7 @@ def test_breadcrumbs_flat_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
@@ -3111,7 +3104,7 @@ def test_breadcrumbs_subdirectory_page(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    endpoints_html = os.path.join(output_dir, "api", "endpoints", "index.html")
+    endpoints_html = os.path.join(output_dir, DEFAULT_PREFIX, "api", "endpoints", "index.html")
     assert os.path.isfile(endpoints_html)
 
     with open(endpoints_html, "r", encoding="utf-8") as f:
@@ -3126,17 +3119,6 @@ def test_breadcrumbs_subdirectory_page(project_dir):
 
 def test_breadcrumbs_json_ld_nested(project_dir):
     """Subdirectory page produces BreadcrumbList JSON-LD with 3 items."""
-    # Add base_url to config
-    config_path = os.path.join(project_dir, "selfdoc.json")
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "language": "python",
-            "source": ["src/"],
-            "docs": "docs/",
-            "output": "docs/_build/",
-            "base_url": "https://example.com",
-        }, f)
-
     docs_dir = os.path.join(project_dir, "docs")
     api_dir = os.path.join(docs_dir, "api")
     os.makedirs(api_dir)
@@ -3146,7 +3128,7 @@ def test_breadcrumbs_json_ld_nested(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    endpoints_html = os.path.join(output_dir, "api", "endpoints", "index.html")
+    endpoints_html = os.path.join(output_dir, DEFAULT_PREFIX, "api", "endpoints", "index.html")
     with open(endpoints_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -3194,7 +3176,7 @@ def test_date_published_differs_from_modified(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -3229,7 +3211,7 @@ def test_date_only_uses_for_both(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -3265,7 +3247,7 @@ def test_updated_only_uses_fallback_for_published(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -3298,7 +3280,7 @@ def test_no_date_frontmatter_uses_mtime(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     ld_blocks = re.findall(
@@ -3493,7 +3475,7 @@ def test_og_locale_default_en(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:locale" content="en_US">' in content
@@ -3511,7 +3493,7 @@ def test_og_locale_custom_language(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:locale" content="fa_IR">' in content
@@ -3526,7 +3508,7 @@ def test_og_image_alt_with_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:image:alt" content="My project overview">' in content
@@ -3541,7 +3523,7 @@ def test_og_image_alt_falls_back_to_title(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta property="og:image:alt" content="My Page Title">' in content
@@ -3572,7 +3554,7 @@ def test_search_js_deferred(project_dir):
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
 
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # External deferred script tag must point to search.js
@@ -3601,7 +3583,7 @@ def test_subdirectory_pages_grouped_in_nav(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert 'class="nav-group"' in content
@@ -3621,7 +3603,7 @@ def test_top_level_pages_ungrouped(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # FAQ link should exist as a direct nav-list child, not inside a group
@@ -3641,7 +3623,7 @@ def test_nav_group_frontmatter_override(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "Custom Title" in content
@@ -3663,7 +3645,7 @@ def test_nav_order_frontmatter(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Find positions of the two links within the nav-group-items
@@ -3684,12 +3666,12 @@ def test_active_group_auto_expands(project_dir):
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     # Check the intro page itself -- its group should be open
-    with open(os.path.join(output_dir, "guides", "intro", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guides", "intro", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<details open>' in content
     # Check that the index page (different group) does NOT have it open
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_content = f.read()
 
     # On index page, the group should be closed (no active page in it)
@@ -3713,7 +3695,7 @@ def test_nav_groups_sorted_alphabetically(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # "Api" comes before "Guides" alphabetically
@@ -3852,7 +3834,7 @@ def test_search_trigger_icon_default(project_dir):
     """Build without search config renders the icon trigger by default."""
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert 'class="search-trigger"' in content
@@ -3869,7 +3851,7 @@ def test_search_trigger_icon_explicit(project_dir):
         json.dump(config, f)
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert 'class="search-trigger"' in content
@@ -3886,7 +3868,7 @@ def test_search_trigger_bar(project_dir):
         json.dump(config, f)
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert 'class="search-bar-trigger"' in content
@@ -3905,7 +3887,7 @@ def test_search_trigger_hidden(project_dir):
         json.dump(config, f)
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert 'search-trigger' not in content
@@ -3926,7 +3908,7 @@ def test_search_cmd_k_always_works(project_dir):
             json.dump(config, f)
         build(str(project_dir))
         output_dir = os.path.join(project_dir, "docs", "_build")
-        index_html = os.path.join(output_dir, "index.html")
+        index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
         with open(index_html, "r", encoding="utf-8") as f:
             content = f.read()
         assert 'id="search-dialog"' in content, f"search dialog missing for search={search_val}"
@@ -4214,7 +4196,7 @@ def test_feed_link_in_footer(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert "feed-link" in content
@@ -4285,7 +4267,7 @@ def test_breadcrumb_no_broken_links(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    setup_html = os.path.join(output_dir, "guides", "setup", "index.html")
+    setup_html = os.path.join(output_dir, DEFAULT_PREFIX, "guides", "setup", "index.html")
     assert os.path.isfile(setup_html)
 
     with open(setup_html, "r", encoding="utf-8") as f:
@@ -4308,7 +4290,7 @@ def test_search_action_in_jsonld(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
 
     assert '"WebSite"' in index_html
@@ -4411,7 +4393,7 @@ def test_search_engine_fuse_config(project_dir):
         json.dump(config, f)
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert "cdn.jsdelivr.net/npm/fuse.js@7.0.0" in content
@@ -4427,7 +4409,7 @@ def test_search_engine_minisearch_config(project_dir):
         json.dump(config, f)
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert "cdn.jsdelivr.net/npm/minisearch@7.1.1" in content
@@ -4481,18 +4463,11 @@ def test_search_platform_detection():
 
 def test_landing_page_hero_with_branding(tmp_path):
     """Landing page renders hero section when branding config is present."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "branding": {
-            "tagline": "Build docs fast",
-            "cta_text": "Read the Docs",
-            "cta_link": "guide/",
-        },
-    }
+    config = default_config(docs="docs/", output="docs/_build/", branding={
+        "tagline": "Build docs fast",
+        "cta_text": "Read the Docs",
+        "cta_link": "guide/",
+    })
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4505,7 +4480,7 @@ def test_landing_page_hero_with_branding(tmp_path):
         f.write("# Guide\n\nGet started here.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     assert index_html in written
 
     with open(index_html, "r", encoding="utf-8") as f:
@@ -4521,16 +4496,9 @@ def test_landing_page_hero_with_branding(tmp_path):
 
 def test_landing_page_cta_default_link(tmp_path):
     """CTA defaults to the first non-index page when cta_link is not set."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "branding": {
-            "tagline": "Hello world",
-        },
-    }
+    config = default_config(docs="docs/", output="docs/_build/", branding={
+        "tagline": "Hello world",
+    })
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4543,7 +4511,7 @@ def test_landing_page_cta_default_link(tmp_path):
         f.write("# Quickstart\n\nStart here.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -4555,16 +4523,9 @@ def test_landing_page_cta_default_link(tmp_path):
 
 def test_landing_page_features_auto_from_nav_groups(tmp_path):
     """Feature cards auto-generated from nav groups when features not set."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "branding": {
-            "tagline": "Great docs",
-        },
-    }
+    config = default_config(docs="docs/", output="docs/_build/", branding={
+        "tagline": "Great docs",
+    })
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4588,7 +4549,7 @@ def test_landing_page_features_auto_from_nav_groups(tmp_path):
         f.write("# Reference\n\nAPI reference.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -4604,20 +4565,13 @@ def test_landing_page_features_auto_from_nav_groups(tmp_path):
 
 def test_landing_page_features_explicit(tmp_path):
     """Explicit features in branding config are used instead of auto-generated."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "branding": {
-            "tagline": "Test",
-            "features": [
-                {"title": "Fast", "description": "Lightning fast builds"},
-                {"title": "Simple", "description": "Zero config needed"},
-            ],
-        },
-    }
+    config = default_config(docs="docs/", output="docs/_build/", branding={
+        "tagline": "Test",
+        "features": [
+            {"title": "Fast", "description": "Lightning fast builds"},
+            {"title": "Simple", "description": "Zero config needed"},
+        ],
+    })
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4628,7 +4582,7 @@ def test_landing_page_features_explicit(tmp_path):
         f.write("# Project\n\nWelcome.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -4641,13 +4595,7 @@ def test_landing_page_features_explicit(tmp_path):
 
 def test_landing_page_no_branding_no_hero(tmp_path):
     """Without branding config, index.html does NOT contain hero section."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4658,7 +4606,7 @@ def test_landing_page_no_branding_no_hero(tmp_path):
         f.write("# Project\n\nWelcome.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -4668,17 +4616,10 @@ def test_landing_page_no_branding_no_hero(tmp_path):
 
 def test_landing_page_logo(tmp_path):
     """Landing page renders logo image when branding.logo is set."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "branding": {
-            "tagline": "With logo",
-            "logo": "logo.svg",
-        },
-    }
+    config = default_config(docs="docs/", output="docs/_build/", branding={
+        "tagline": "With logo",
+        "logo": "logo.svg",
+    })
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4689,7 +4630,7 @@ def test_landing_page_logo(tmp_path):
         f.write("# Project\n\nWelcome.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -4699,20 +4640,13 @@ def test_landing_page_logo(tmp_path):
 
 def test_landing_page_secondary_cta(tmp_path):
     """Landing page renders secondary CTA when configured."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "branding": {
-            "tagline": "Dual CTA",
-            "cta_text": "Get Started",
-            "cta_link": "guide/",
-            "secondary_cta_text": "View on GitHub",
-            "secondary_cta_link": "https://github.com/example/repo",
-        },
-    }
+    config = default_config(docs="docs/", output="docs/_build/", branding={
+        "tagline": "Dual CTA",
+        "cta_text": "Get Started",
+        "cta_link": "guide/",
+        "secondary_cta_text": "View on GitHub",
+        "secondary_cta_link": "https://github.com/example/repo",
+    })
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4723,7 +4657,7 @@ def test_landing_page_secondary_cta(tmp_path):
         f.write("# Project\n\nWelcome.\n")
 
     written = build(str(tmp_path))
-    index_html = os.path.join(tmp_path, "docs", "_build", "index.html")
+    index_html = os.path.join(tmp_path, "docs", "_build", DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -4737,7 +4671,7 @@ def test_scroll_affordance_js_included(project_dir):
     written = build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -5103,13 +5037,7 @@ def test_two_pass_output_identical(tmp_path):
     verifies that headings, links, JSON-LD, and navigation are all present
     as expected -- proving the two-pass refactor is behavior-preserving.
     """
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5132,12 +5060,12 @@ def test_two_pass_output_identical(tmp_path):
     written = build(str(tmp_path))
     output_dir = os.path.join(tmp_path, "docs", "_build")
 
-    # Both pages should be generated
-    assert os.path.isfile(os.path.join(output_dir, "index.html"))
-    assert os.path.isfile(os.path.join(output_dir, "glossary", "index.html"))
+    # Both pages should be generated (under locale/version prefix)
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"))
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html"))
 
     # Verify index.html has expected content
-    with open(os.path.join(output_dir, "index.html"), "r") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r") as f:
         index_html = f.read()
     assert "<!DOCTYPE html>" in index_html
     assert "Home" in index_html
@@ -5145,7 +5073,7 @@ def test_two_pass_output_identical(tmp_path):
     assert 'href="glossary/"' in index_html  # sidebar link
 
     # Verify glossary page has expected content
-    with open(os.path.join(output_dir, "glossary", "index.html"), "r") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html"), "r") as f:
         glossary_html = f.read()
     assert "Glossary" in glossary_html
     assert "<dfn>" in glossary_html  # _apply_definitions should have added dfn tags
@@ -5181,13 +5109,7 @@ def test_frontmatter_feed_key_parsed():
 def test_table_wrap_has_overflow_class_support(tmp_path):
     """Build with a table produces .table-wrap and CSS has sticky first-column rules."""
     # Set up a project with a Markdown table
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5203,7 +5125,7 @@ def test_table_wrap_has_overflow_class_support(tmp_path):
 
     # Verify HTML output wraps the table in .table-wrap
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         html_content = f.read()
     assert "table-wrap" in html_content
@@ -5220,13 +5142,7 @@ def test_table_wrap_has_overflow_class_support(tmp_path):
 
 def test_feed_excludes_pages_with_feed_false(tmp_path):
     """Pages with feed: false in frontmatter are excluded from feed.xml."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5263,13 +5179,7 @@ def test_feed_excludes_pages_with_feed_false(tmp_path):
 
 def test_changelog_auto_detected(tmp_path):
     """CHANGELOG.md in project root is auto-detected and built as changelog.html."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5289,7 +5199,7 @@ def test_changelog_auto_detected(tmp_path):
     output_dir = os.path.join(tmp_path, "docs", "_build")
 
     # changelog page should exist
-    changelog_html = os.path.join(output_dir, "changelog", "index.html")
+    changelog_html = os.path.join(output_dir, DEFAULT_PREFIX, "changelog", "index.html")
     assert os.path.isfile(changelog_html)
 
     with open(changelog_html, "r", encoding="utf-8") as f:
@@ -5310,13 +5220,7 @@ def test_changelog_auto_detected(tmp_path):
 
 def test_changelog_case_insensitive(tmp_path):
     """Lowercase changelog.md in project root is also auto-detected."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5334,7 +5238,7 @@ def test_changelog_case_insensitive(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    changelog_html = os.path.join(output_dir, "changelog", "index.html")
+    changelog_html = os.path.join(output_dir, DEFAULT_PREFIX, "changelog", "index.html")
     assert os.path.isfile(changelog_html)
 
     with open(changelog_html, "r", encoding="utf-8") as f:
@@ -5344,13 +5248,7 @@ def test_changelog_case_insensitive(tmp_path):
 
 def test_no_changelog_no_error(tmp_path):
     """Build succeeds normally when no changelog file exists."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5377,13 +5275,7 @@ def test_no_changelog_no_error(tmp_path):
 
 def test_cross_page_term_linked(tmp_path):
     """Term defined on page A is linked on page B with class='term-link'."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
 
@@ -5409,20 +5301,14 @@ def test_cross_page_term_linked(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "page_b", "index.html"), "r") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "page_b", "index.html"), "r") as f:
         content_b = f.read()
     assert 'page_a/#resolver" class="term-link"' in content_b
 
 
 def test_cross_page_term_not_linked_on_same_page(tmp_path):
     """Term is NOT wrapped in a term-link on the page where it is defined."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
 
@@ -5444,20 +5330,14 @@ def test_cross_page_term_not_linked_on_same_page(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "page_a", "index.html"), "r") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "page_a", "index.html"), "r") as f:
         content_a = f.read()
     assert "term-link" not in content_a
 
 
 def test_cross_page_term_skips_code_blocks(tmp_path):
     """Term inside a <code> element is NOT linked."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
 
@@ -5483,20 +5363,14 @@ def test_cross_page_term_skips_code_blocks(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "page_b", "index.html"), "r") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "page_b", "index.html"), "r") as f:
         content_b = f.read()
     assert "term-link" not in content_b
 
 
 def test_glossary_page_generated(tmp_path):
     """Auto-generated glossary.html contains all terms sorted alphabetically."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
 
@@ -5523,7 +5397,7 @@ def test_glossary_page_generated(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    glossary_path = os.path.join(output_dir, "glossary", "index.html")
+    glossary_path = os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html")
     assert os.path.isfile(glossary_path)
 
     with open(glossary_path, "r") as f:
@@ -5539,13 +5413,7 @@ def test_glossary_page_generated(tmp_path):
 
 def test_glossary_in_sidebar(tmp_path):
     """Sidebar nav includes a 'Glossary' link when terms exist."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
 
@@ -5564,7 +5432,7 @@ def test_glossary_in_sidebar(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r") as f:
         content = f.read()
     assert 'href="glossary/"' in content
     assert "Glossary" in content
@@ -5624,7 +5492,7 @@ def test_auto_steps_false_frontmatter_disables_step_detection(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide", "index.html")
+    guide_html = os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html")
     assert guide_html in written
 
     with open(guide_html, "r", encoding="utf-8") as f:
@@ -5649,7 +5517,7 @@ def test_auto_api_false_frontmatter_disables_api_wrapping(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    api_html = os.path.join(output_dir, "api", "index.html")
+    api_html = os.path.join(output_dir, DEFAULT_PREFIX, "api", "index.html")
     assert api_html in written
 
     with open(api_html, "r", encoding="utf-8") as f:
@@ -5696,7 +5564,7 @@ def test_auto_detect_config_disables_steps_globally(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide", "index.html")
+    guide_html = os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html")
     assert guide_html in written
 
     with open(guide_html, "r", encoding="utf-8") as f:
@@ -5726,7 +5594,7 @@ def test_frontmatter_overrides_global_config(project_dir):
 
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    guide_html = os.path.join(output_dir, "guide", "index.html")
+    guide_html = os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html")
     assert guide_html in written
 
     with open(guide_html, "r", encoding="utf-8") as f:
@@ -5739,7 +5607,7 @@ def test_theme_meta_loaded(project_dir):
     """Build with minimal theme uses font URL from minimal.json metadata."""
     written = build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -5778,7 +5646,7 @@ def test_theme_meta_no_fonts(project_dir):
 
         written = build(str(project_dir))
         output_dir = os.path.join(project_dir, "docs", "_build")
-        index_html = os.path.join(output_dir, "index.html")
+        index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
         with open(index_html, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -5818,7 +5686,7 @@ def test_clean_theme_builds_successfully(project_dir):
     assert len(written) > 0
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, "index.html")
+    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -5879,7 +5747,7 @@ def test_frontmatter_description_in_meta_tag(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta name="description" content="Explicit frontmatter description">' in content
@@ -5902,7 +5770,7 @@ def test_auto_meta_description_truncated_to_155_chars(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     # Extract the meta description content
@@ -5923,7 +5791,7 @@ def test_auto_meta_description_matches_og_description(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     import re
@@ -5947,8 +5815,8 @@ def test_directory_index_guide_outputs_to_subdir(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    assert os.path.isfile(os.path.join(output_dir, "guide", "index.html"))
-    assert not os.path.isfile(os.path.join(output_dir, "guide.html"))
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"))
+    assert not os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "guide.html"))
 
 
 def test_directory_index_root_index_stays_flat(project_dir):
@@ -5956,8 +5824,8 @@ def test_directory_index_root_index_stays_flat(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    assert os.path.isfile(os.path.join(output_dir, "index.html"))
-    assert not os.path.isdir(os.path.join(output_dir, "index"))
+    assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"))
+    assert not os.path.isdir(os.path.join(output_dir, DEFAULT_PREFIX, "index"))
 
 
 def test_directory_index_internal_links_use_dir_paths():
@@ -5984,7 +5852,7 @@ def test_directory_index_canonical_urls_use_dir_paths(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "guide", "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert 'href="https://example.com/guide/"' in content
@@ -6003,10 +5871,10 @@ def test_directory_index_sitemap_uses_dir_paths(project_dir):
     with open(os.path.join(output_dir, "sitemap.xml"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert "https://example.com/guide/" in content
+    assert f"https://example.com/{DEFAULT_PREFIX}/guide/" in content
     assert "https://example.com/guide.html" not in content
-    # Root index still uses index.html
-    assert "https://example.com/index.html" in content
+    # Root index uses prefixed path
+    assert f"https://example.com/{DEFAULT_PREFIX}/" in content
 
 
 def test_no_meta_description_without_paragraphs(project_dir):
@@ -6019,7 +5887,7 @@ def test_no_meta_description_without_paragraphs(project_dir):
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta name="description"' not in content
@@ -6027,14 +5895,10 @@ def test_no_meta_description_without_paragraphs(project_dir):
 
 def test_github_pages_security_meta_tags(tmp_path):
     """GitHub Pages builds include security meta http-equiv tags."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "deploy": {"provider": "github-pages"},
-    }
+    config = default_config(
+        docs="docs/", output="docs/_build/",
+        deploy={"provider": "github-pages"},
+    )
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -6045,7 +5909,7 @@ def test_github_pages_security_meta_tags(tmp_path):
 
     build(str(tmp_path))
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta http-equiv="X-Content-Type-Options" content="nosniff">' in content
@@ -6055,14 +5919,10 @@ def test_github_pages_security_meta_tags(tmp_path):
 
 def test_cloudflare_pages_no_security_meta_tags(tmp_path):
     """Cloudflare Pages builds do NOT include security meta http-equiv tags."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-        "deploy": {"provider": "cloudflare-pages", "project": "test"},
-    }
+    config = default_config(
+        docs="docs/", output="docs/_build/",
+        deploy={"provider": "cloudflare-pages", "project": "test"},
+    )
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -6073,7 +5933,7 @@ def test_cloudflare_pages_no_security_meta_tags(tmp_path):
 
     build(str(tmp_path))
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta http-equiv="X-Content-Type-Options"' not in content
@@ -6083,13 +5943,7 @@ def test_cloudflare_pages_no_security_meta_tags(tmp_path):
 
 def test_no_deploy_config_no_security_meta_tags(tmp_path):
     """Builds with no deploy config do NOT include security meta tags."""
-    config = {
-        "language": "python",
-        "source": ["src/"],
-        "docs": "docs/",
-        "output": "docs/_build/",
-        "base_url": "https://example.com",
-    }
+    config = default_config(docs="docs/", output="docs/_build/")
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -6100,7 +5954,7 @@ def test_no_deploy_config_no_security_meta_tags(tmp_path):
 
     build(str(tmp_path))
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<meta http-equiv="X-Content-Type-Options"' not in content

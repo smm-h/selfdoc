@@ -12,7 +12,7 @@ import tempfile
 import zlib
 from datetime import datetime
 
-from selfdoc.config import load_config
+from selfdoc.config import load_config, ConfigError
 from selfdoc.context import SearchEntry
 from selfdoc.docs import resolve_all_docs
 from selfdoc.html import (
@@ -601,10 +601,19 @@ def _generate_sitemap(base_url, html_paths, page_dates=None):
         page_dates = {}
     urls = []
     for path in sorted(html_paths):
-        # Convert html path to md path for date lookup
+        # Convert html path to md path for date lookup.
+        # html_paths may include a locale/version prefix (e.g. "en/1.0.0/guide/index.html")
+        # while page_dates is keyed by unprefixed md_path (e.g. "guide.md").
         md_path = _html_to_md_path(path)
         url = _html_path_to_url(path)
         date_tuple = page_dates.get(md_path)
+        if date_tuple is None:
+            # Try stripping prefix: "en/1.0.0/guide.md" -> "guide.md"
+            parts = md_path.split("/")
+            if len(parts) > 1:
+                date_tuple = page_dates.get(parts[-1])
+                if date_tuple is None and len(parts) > 2:
+                    date_tuple = page_dates.get("/".join(parts[2:]))
         # Use modified date for lastmod
         date = date_tuple[1] if date_tuple else None
         if date:
@@ -890,6 +899,22 @@ def build_single(dir_path=".", config=None, output_subdir="",
             "No selfdoc.json found. Run 'selfdoc init' to initialize."
         )
 
+    # Compute output_subdir and url_prefix from config if not explicitly set
+    if not output_subdir and not url_prefix:
+        locales = config.get("locales")
+        versions = config.get("versions")
+        if locales and versions:
+            # Find default locale (one with default: true, or first)
+            default_locale = locales[0]
+            for loc in locales:
+                if loc.get("default") is True:
+                    default_locale = loc
+                    break
+            locale_code = default_locale["code"]
+            version_str = versions[0]["version"]
+            output_subdir = f"{locale_code}/{version_str}"
+            url_prefix = output_subdir
+
     docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
 
@@ -1066,6 +1091,13 @@ def build_single(dir_path=".", config=None, output_subdir="",
             html_files[html_path], docs_dir, md_path,
         )
 
+    # Prefix html_files keys with output_subdir so callers write under
+    # the versioned/localized subdirectory (e.g. "en/1.0.0/index.html")
+    if output_subdir:
+        html_files = {
+            f"{output_subdir}/{k}": v for k, v in html_files.items()
+        }
+
     # Build nav items (used by search index and auxiliary files)
     nav_items = _build_nav(markdown_files, frontmatter)
 
@@ -1095,8 +1127,9 @@ def build(dir_path=".", config=None):
     2. Scan docs/ directory for .md template files
     3. For each template, resolve directives using language-specific extractor
     4. Convert resolved markdown to HTML
-    5. Write HTML to output directory
+    5. Write HTML to output directory (under locale/version prefix)
     6. Copy non-.md files (images, CSS, etc.) to output
+    7. Generate root redirect to default locale/version
 
     Args:
         dir_path: Project root directory.
@@ -1105,6 +1138,26 @@ def build(dir_path=".", config=None):
     Returns:
         Dict of {output_path: True} for files written.
     """
+    # Load config early to validate required fields before build_single
+    if config is None:
+        config = load_config(dir_path)
+    if config is None:
+        raise RuntimeError(
+            "No selfdoc.json found. Run 'selfdoc init' to initialize."
+        )
+
+    if config.get("versions") is None:
+        raise ConfigError(
+            "selfdoc.json requires 'versions' array. "
+            "Add: \"versions\": [{\"version\": \"1.0.0\", \"indexed\": true}]"
+        )
+    if config.get("locales") is None:
+        raise ConfigError(
+            "selfdoc.json requires 'locales' array. "
+            "Add: \"locales\": [{\"code\": \"en\", \"label\": \"English\", "
+            "\"default\": true}]"
+        )
+
     # Run the core build pipeline (HTML generation + search index)
     (
         html_files, markdown_files, frontmatter, page_dates,
@@ -1112,6 +1165,18 @@ def build(dir_path=".", config=None):
         docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
         critical_css, config_description, base_url, feed_url, lang,
     ) = build_single(dir_path=dir_path, config=config)
+
+    # Compute the default locale/version prefix for redirects
+    locales = config.get("locales", [])
+    versions = config.get("versions", [])
+    default_locale = locales[0]
+    for loc in locales:
+        if loc.get("default") is True:
+            default_locale = loc
+            break
+    locale_code = default_locale["code"]
+    version_str = versions[0]["version"]
+    prefix_path = f"{locale_code}/{version_str}"
 
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
 
@@ -1167,10 +1232,10 @@ def build(dir_path=".", config=None):
             f.write(_minify_html(html_content))
         written[out_path] = True
 
-    # Copy non-.md files (images, CSS, etc.) to output
+    # Copy non-.md files (images, CSS, etc.) to output under locale/version prefix
     for rel_path in other_files:
         src = os.path.join(docs_dir, rel_path)
-        dst = os.path.join(output_dir, rel_path)
+        dst = os.path.join(output_dir, prefix_path, rel_path)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
         written[dst] = True
@@ -1198,6 +1263,34 @@ def build(dir_path=".", config=None):
         feed_max_entries=config.get("feed_max_entries"),
     )
     written.update(aux_written)
+
+    # Generate root redirect to default locale/version
+    redirect_url = f"/{prefix_path}/"
+    root_index_html = (
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        f'  <meta http-equiv="refresh" content="0;url={redirect_url}">\n'
+        f'  <link rel="canonical" href="{redirect_url}">\n'
+        "</head>\n"
+        "<body>\n"
+        f'  <script>window.location.replace("{redirect_url}")</script>\n'
+        f'  <p>Redirecting to <a href="{redirect_url}">{redirect_url}</a></p>\n'
+        "</body>\n"
+        "</html>\n"
+    )
+    root_index_path = os.path.join(output_dir, "index.html")
+    # Only write root redirect if index.html is not already at root level
+    # (it should be under the prefix now)
+    with open(root_index_path, "w", encoding="utf-8") as f:
+        f.write(root_index_html)
+    written[root_index_path] = True
+
+    redirects_content = f"/ {redirect_url} 302\n"
+    redirects_path = os.path.join(output_dir, "_redirects")
+    with open(redirects_path, "w", encoding="utf-8") as f:
+        f.write(redirects_content)
+    written[redirects_path] = True
 
     # Pre-compress text-based output files (gzip + optional brotli)
     compress_count, has_brotli = _compress_output(output_dir)

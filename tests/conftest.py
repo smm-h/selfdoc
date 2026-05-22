@@ -40,6 +40,23 @@ def _write_text(path, text):
         f.write(text)
 
 
+def default_config(**overrides):
+    """Minimal valid selfdoc config with required versions and locales."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+    }
+    config.update(overrides)
+    return config
+
+
+# Default locale/version prefix used in output paths for test assertions
+DEFAULT_PREFIX = "en/1.0.0"
+
+
 @pytest.fixture()
 def make_project(tmp_path):
     """Factory fixture: create a minimal selfdoc project directory.
@@ -54,12 +71,7 @@ def make_project(tmp_path):
         project_dir.mkdir(exist_ok=True)
 
         # Merge defaults with caller overrides
-        config = {
-            "language": "python",
-            "source": ["src/"],
-            "base_url": "https://example.com",
-        }
-        config.update(overrides)
+        config = default_config(**overrides)
 
         _write_json(str(project_dir / "selfdoc.json"), config)
 
