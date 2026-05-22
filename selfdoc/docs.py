@@ -67,7 +67,9 @@ def parse_frontmatter(content):
                 try:
                     value = float(value)
                 except ValueError:
-                    pass
+                    # Comma-separated values become a list
+                    if "," in value:
+                        value = [item.strip() for item in value.split(",")]
         metadata[key] = value
 
     remaining = "\n".join(lines[end_idx + 1:]).lstrip("\n")

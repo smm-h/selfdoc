@@ -1,5 +1,6 @@
 """Build pipeline for selfdoc: template scanning, directive resolution, HTML output."""
 
+import dataclasses
 import gzip
 import json
 import os
@@ -12,6 +13,7 @@ import zlib
 from datetime import datetime
 
 from selfdoc.config import load_config
+from selfdoc.context import SearchEntry
 from selfdoc.docs import resolve_all_docs
 from selfdoc.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
@@ -316,12 +318,34 @@ def _detect_project_version(dir_path):
     return ""
 
 
-def _build_search_index(markdown_files):
+def _build_search_index(
+    markdown_files,
+    version="",
+    locale="",
+    target="",
+    project="",
+    frontmatter=None,
+    nav_items=None,
+):
     """Build a search index from markdown files.
 
     Splits each file by headings and creates one entry per section.
-    Each entry has: title, path (html path with anchor), and body text.
+    Returns a list of SearchEntry dataclasses with title, path, body,
+    and metadata fields (version, locale, group, type, tags, etc.).
     """
+    if frontmatter is None:
+        frontmatter = {}
+    if nav_items is None:
+        nav_items = []
+
+    # Build md_path -> nav group name lookup from nav_items
+    _page_group = {}
+    for nav_item in nav_items:
+        if "group" in nav_item:
+            group_name = nav_item["group"]
+            for sub_item in nav_item.get("items", []):
+                _page_group[sub_item.get("md_path", "")] = group_name
+
     entries = []
     for md_path, content in markdown_files.items():
         url_path = _html_path_to_url(_md_to_html_path(md_path))
@@ -329,6 +353,28 @@ def _build_search_index(markdown_files):
         current_title = None
         current_slug = None
         current_body = []
+
+        # Derive per-page metadata
+        nav_group = _page_group.get(md_path, "")
+        page_meta = frontmatter.get(md_path, {})
+        tags_val = page_meta.get("tags", [])
+        # tags may be a string (no comma in frontmatter) -- wrap in list
+        if isinstance(tags_val, str):
+            tags_val = [tags_val] if tags_val else []
+        page_tags = list(tags_val)
+
+        # Derive page type from frontmatter and nav group
+        base_name = md_path.replace(".md", "").lower()
+        if page_meta.get("generated") is True and "API" in nav_group:
+            page_type = "api"
+        elif page_meta.get("generated") is True and "CLI" in nav_group:
+            page_type = "cli"
+        elif "changelog" in base_name:
+            page_type = "changelog"
+        elif "glossary" in base_name:
+            page_type = "glossary"
+        else:
+            page_type = "guide"
 
         def _flush():
             if current_title is not None:
@@ -341,11 +387,18 @@ def _build_search_index(markdown_files):
                 path = url_path
                 if current_slug:
                     path = f"{url_path}#{current_slug}"
-                entries.append({
-                    "title": current_title,
-                    "path": path,
-                    "body": body_text[:500],
-                })
+                entries.append(SearchEntry(
+                    title=current_title,
+                    path=path,
+                    body=body_text[:500],
+                    version=version,
+                    locale=locale,
+                    target=target,
+                    project=project,
+                    group=nav_group,
+                    type=page_type,
+                    tags=page_tags,
+                ))
 
         for line in lines:
             heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
@@ -1025,11 +1078,25 @@ def build(dir_path=".", config=None):
         f.write(theme_css)
     written[css_path] = True
 
+    # Build nav items (used by search index and auxiliary files)
+    nav_items = _build_nav(markdown_files, frontmatter)
+
     # Build and write search index (Feature 19)
-    search_index = _build_search_index(markdown_files)
+    search_index = _build_search_index(
+        markdown_files,
+        version=version,
+        locale="",
+        target="",
+        project=project_name,
+        frontmatter=frontmatter,
+        nav_items=nav_items,
+    )
     search_index_path = os.path.join(output_dir, "search-index.json")
     with open(search_index_path, "w", encoding="utf-8") as f:
-        json.dump(search_index, f, ensure_ascii=False)
+        json.dump(
+            [dataclasses.asdict(entry) for entry in search_index],
+            f, ensure_ascii=False,
+        )
     written[search_index_path] = True
 
     # Generate external search JS (Feature 19 -- externalized, pluggable engine)
