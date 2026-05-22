@@ -4366,26 +4366,22 @@ def test_pygments_dark_css_no_nesting():
 
 def test_scrollspy_includes_scrollintoview():
     """Scrollspy JS includes scrollIntoView call."""
-    from selfdoc.html import _wrap_page
-    # Access the JS constant indirectly by checking it's in the module
-    import selfdoc.html as html_mod
-    # The scrollspy JS is built inline; check the source
-    source = open(html_mod.__file__, "r").read()
+    from selfdoc.js.loader import load_js
+    source = load_js("scrollspy")
     assert "scrollIntoView" in source
 
 
 def test_tab_sync_has_guard():
     """Code tabs JS includes syncing re-entrancy guard."""
-    import selfdoc.html as html_mod
-    source = open(html_mod.__file__, "r").read()
+    from selfdoc.js.loader import load_js
+    source = load_js("code-tabs")
     assert "syncing" in source
 
 
 def test_sidebar_escape_handler():
     """Sidebar JS includes Escape key handler."""
-    import selfdoc.html as html_mod
-    source = open(html_mod.__file__, "r").read()
-    # Check for Escape key handling in sidebar toggle code
+    from selfdoc.js.loader import load_js
+    source = load_js("sidebar")
     assert "Escape" in source
 
 
