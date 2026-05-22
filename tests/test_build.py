@@ -13,6 +13,7 @@ import gzip as gzip_module
 from unittest import mock
 
 from selfdoc.build import build, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg
+from selfdoc.config import ConfigError
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
 from selfdoc.themes import get_theme_meta
@@ -5960,3 +5961,48 @@ def test_no_deploy_config_no_security_meta_tags(tmp_path):
     assert '<meta http-equiv="X-Content-Type-Options"' not in content
     assert '<meta http-equiv="X-Frame-Options"' not in content
     assert '<meta http-equiv="Content-Security-Policy"' not in content
+
+
+# --- ConfigError for missing versions/locales ---
+
+
+def test_build_missing_versions_raises(tmp_path):
+    """build() raises ConfigError when 'versions' is missing from config."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "locales": [{"code": "en", "label": "English", "default": True}],
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    with pytest.raises(ConfigError, match="versions"):
+        build(str(tmp_path))
+
+
+def test_build_missing_locales_raises(tmp_path):
+    """build() raises ConfigError when 'locales' is missing from config."""
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    with pytest.raises(ConfigError, match="locales"):
+        build(str(tmp_path))

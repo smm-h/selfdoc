@@ -54,8 +54,12 @@ def parse_frontmatter(content):
             and value[0] in ('"', "'")
         ):
             value = value[1:-1]
+        # Bracket-delimited lists: [a, b, c] -> ["a", "b", "c"]
+        if value.startswith("[") and value.endswith("]"):
+            inner = value[1:-1]
+            value = [item.strip() for item in inner.split(",") if item.strip()]
         # Convert boolean-like strings
-        if value.lower() == "true":
+        elif value.lower() == "true":
             value = True
         elif value.lower() == "false":
             value = False
@@ -67,9 +71,7 @@ def parse_frontmatter(content):
                 try:
                     value = float(value)
                 except ValueError:
-                    # Comma-separated values become a list
-                    if "," in value:
-                        value = [item.strip() for item in value.split(",")]
+                    pass
         metadata[key] = value
 
     remaining = "\n".join(lines[end_idx + 1:]).lstrip("\n")

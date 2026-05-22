@@ -97,10 +97,7 @@ Add a `tags` field to your page frontmatter to make pages discoverable via the `
 ---
 title: Deployment
 description: "Deploy your documentation site to Cloudflare Pages or GitHub Pages."
-tags:
-  - deploy
-  - cloudflare
-  - hosting
+tags: [deploy, cloudflare, hosting]
 ---
 ```
 

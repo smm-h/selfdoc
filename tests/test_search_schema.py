@@ -177,8 +177,8 @@ class TestTagsInSearchIndex:
         assert result[0].tags == []
 
     def test_tags_from_parsed_frontmatter(self):
-        """Integration: parse_frontmatter comma list -> search index tags."""
-        content = "---\ntags: deploy, advanced, python\n---\n# Guide\n\nContent.\n"
+        """Integration: parse_frontmatter bracket list -> search index tags."""
+        content = "---\ntags: [deploy, advanced, python]\n---\n# Guide\n\nContent.\n"
         meta, body = parse_frontmatter(content)
         md = {"guide.md": body}
         fm = {"guide.md": meta}
