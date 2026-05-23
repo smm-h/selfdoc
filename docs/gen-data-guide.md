@@ -93,4 +93,24 @@ If `bwrap` is not found, `selfdoc gen-data` exits with a clear error message and
 > [!NOTE]
 > Scripts run with `--clearenv`, so they cannot access environment variables. If your script needs configuration, pass it via command-line arguments or read it from a mounted config file.
 
+## Example: selfdoc's Own Directive Stats
+
+selfdoc dogfoods this feature to generate a JSON inventory of its directive catalog. The script `scripts/gen-directive-stats.py` uses AST parsing to read `selfdoc/catalog.py` and extract every core and future directive into structured data at `.selfdoc/data/directive-stats.json`.
+
+The selfdoc.json config for this:
+
+```json
+"gen_data": {
+  "scripts": [
+    {
+      "command": "python3 scripts/gen-directive-stats.py",
+      "output": "directive-stats.json",
+      "mounts": ["selfdoc/", "scripts/"]
+    }
+  ]
+}
+```
+
+The script uses only `ast` and `json` from the standard library, reads the catalog source via AST parsing (no imports needed inside the sandbox), and writes the output to `.selfdoc/data/directive-stats.json`. The generated JSON contains every core directive with its description, category, and attribute requirements, plus all planned future directives grouped by prefix.
+
 Next: [Staleness Detection](staleness/) -->

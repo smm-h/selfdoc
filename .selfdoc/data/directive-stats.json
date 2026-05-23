@@ -1,0 +1,255 @@
+{
+  "core_directives": [
+    {
+      "name": "ref",
+      "description": "Extract module docstring, exported functions, and classes",
+      "category": "code",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": [
+        "target"
+      ]
+    },
+    {
+      "name": "table-schema",
+      "description": "Extract dataclass/struct fields as a markdown table",
+      "category": "code",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": [
+        "target"
+      ]
+    },
+    {
+      "name": "code-test",
+      "description": "Embed test source code (whole file or specific function)",
+      "category": "code",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": [
+        "target"
+      ]
+    },
+    {
+      "name": "code-help",
+      "description": "Extract CLI help/usage text and flag definitions",
+      "category": "code",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "table-config",
+      "description": "Render a config file (JSON/TOML) as a key-value table",
+      "category": "code",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "callout-note",
+      "description": "Styled note callout block",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "callout-warning",
+      "description": "Styled warning callout block",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "callout-tip",
+      "description": "Styled tip callout block",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "callout-danger",
+      "description": "Styled danger callout block",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "callout-important",
+      "description": "Styled important callout block",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "list-glossary",
+      "description": "Definition list from **Term**: Definition lines",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "prose-desc",
+      "description": "Extract module/package docstring as prose text",
+      "category": "code",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "list-tree",
+      "description": "File/directory tree listing",
+      "category": "content",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": [
+        "depth"
+      ]
+    },
+    {
+      "name": "table-dep",
+      "description": "Dependencies table from pyproject.toml",
+      "category": "content",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "list-features",
+      "description": "Module summaries from docstring first lines",
+      "category": "content",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "list-modules",
+      "description": "List source modules with file paths and docstring summaries",
+      "category": "content",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "table-commands",
+      "description": "CLI command summary table from strictcli structure",
+      "category": "content",
+      "required_attrs": [
+        "path"
+      ],
+      "optional_attrs": []
+    },
+    {
+      "name": "table-directives",
+      "description": "Table of all core built-in directives",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "table-config-schema",
+      "description": "Configuration field reference table from schema",
+      "category": "content",
+      "required_attrs": [],
+      "optional_attrs": []
+    },
+    {
+      "name": "var",
+      "description": "Interpolate project metadata value",
+      "category": "content",
+      "required_attrs": [
+        "key"
+      ],
+      "optional_attrs": []
+    }
+  ],
+  "future_directives": [
+    "callout-breaking",
+    "callout-compat",
+    "callout-deprecated",
+    "callout-example",
+    "callout-experimental",
+    "callout-perf",
+    "callout-quote",
+    "callout-security",
+    "callout-see-also",
+    "callout-success",
+    "code-build",
+    "code-config",
+    "code-diff",
+    "code-error",
+    "code-example",
+    "code-log",
+    "code-query",
+    "code-repl",
+    "code-schema",
+    "code-session",
+    "code-source",
+    "code-template",
+    "code-wire",
+    "list-api",
+    "list-breadcrumb",
+    "list-changelog",
+    "list-check",
+    "list-decisions",
+    "list-deps",
+    "list-errors",
+    "list-faq",
+    "list-related",
+    "list-reqs",
+    "list-steps",
+    "list-toc",
+    "prose-abstract",
+    "prose-annotation",
+    "prose-attribution",
+    "prose-caption",
+    "prose-caveat",
+    "prose-changelog",
+    "prose-definition",
+    "prose-deprecation",
+    "prose-example",
+    "prose-migration",
+    "prose-prereq",
+    "prose-rationale",
+    "prose-release",
+    "prose-summary",
+    "table-compare",
+    "table-endpoint",
+    "table-env",
+    "table-error",
+    "table-migration",
+    "table-param",
+    "table-perm",
+    "table-plan",
+    "table-registry",
+    "table-shortcut",
+    "table-status",
+    "table-timeline"
+  ],
+  "summary": {
+    "core_count": 20,
+    "future_count": 61,
+    "total": 81,
+    "core_by_category": {
+      "code": 6,
+      "content": 14
+    },
+    "future_by_prefix": {
+      "callout": 10,
+      "code": 13,
+      "list": 12,
+      "prose": 14,
+      "table": 12
+    }
+  }
+}
