@@ -18,6 +18,7 @@ from selfdoc.build import (
     _compress_output,
     _detect_project_version,
     _extract_critical_css,
+    _extract_version_content,
     _generate_auxiliary_files,
     _generate_sitemap,
     _minify_css,
@@ -375,91 +376,99 @@ def build_unified(dir_path=".", config=None):
     critical_css, _ = _extract_critical_css(raw_theme_css)
     critical_css = _minify_css(critical_css)
 
-    # --- Build each constituent project ---
-    for project_entry in unified_config["projects"]:
-        slug = _project_slug(project_entry)
-        nav_title = _project_nav_title(project_entry)
-        project_path = _resolve_project_path(project_entry, dir_path)
+    # --- Build each constituent project for each docs-site version ---
+    for ver_entry in versions:
+        ver_str = ver_entry["version"]
+        is_latest = (ver_str == latest_version)
+        ver_projects_pinning = ver_entry.get("projects") or {}
 
-        # Load the constituent project's own config
-        proj_config = load_config(project_path)
-        if proj_config is None:
-            raise ConfigError(
-                f"No selfdoc.json found in constituent project "
-                f"'{project_entry['path']}' (resolved to '{project_path}')"
-            )
+        for project_entry in unified_config["projects"]:
+            slug = _project_slug(project_entry)
+            nav_title = _project_nav_title(project_entry)
+            project_path = _resolve_project_path(project_entry, dir_path)
 
-        # Detect the project's version
-        proj_version = _detect_project_version(project_path)
-
-        # Per-version overrides from the docs-site's version entries
-        # (e.g. versions[0].projects.core = "2.0.0")
-        for ver_entry in versions:
-            ver_projects = ver_entry.get("projects", {})
-            if slug in ver_projects:
-                proj_version = ver_projects[slug]
-
-        # Build the project for each locale
-        for locale in locales:
-            locale_code = locale["code"]
-            output_subdir = f"{locale_code}/{slug}/{latest_version}"
-            url_prefix = output_subdir
-
-            (
-                html_files, markdown_files, frontmatter, page_dates,
-                nav_items, search_entries, project_name, version, _cfg,
-                proj_docs_dir, other_files, has_custom_css, _raw_css,
-                _theme_meta, _crit_css, config_description, base_url,
-                feed_url, lang,
-            ) = build_single(
-                dir_path=project_path,
-                config=proj_config,
-                output_subdir=output_subdir,
-                url_prefix=url_prefix,
-                version_override=proj_version or latest_version,
-                locale_override=locale_code,
-                available_versions=versions,
-                available_locales=locales,
-                current_version=latest_version,
-                current_locale=locale_code,
-                is_latest=True,
-            )
-
-            # Override the project field in search entries
-            patched_entries = []
-            for entry in search_entries:
-                patched = dataclasses.replace(entry, project=slug)
-                patched_entries.append(patched)
-            all_search_entries.extend(patched_entries)
-
-            # Write HTML files
-            for rel_path, html_content in html_files.items():
-                out_path = os.path.join(output_dir, rel_path)
-                os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                with open(out_path, "w", encoding="utf-8") as f:
-                    f.write(_minify_html(html_content))
-                written[out_path] = True
-
-            # Copy static assets
-            for rel_path in other_files:
-                src = os.path.join(proj_docs_dir, rel_path)
-                dst = os.path.join(output_dir, output_subdir, rel_path)
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
-                written[dst] = True
-
-            # Collect nav data (only for default locale to avoid duplication)
-            if locale_code == default_locale_code:
-                projects_nav_data.append(
-                    (slug, nav_title, nav_items, output_subdir)
+            # Load the constituent project's own config
+            proj_config = load_config(project_path)
+            if proj_config is None:
+                raise ConfigError(
+                    f"No selfdoc.json found in constituent project "
+                    f"'{project_entry['path']}' (resolved to '{project_path}')"
                 )
-                projects_info.append({
-                    "slug": slug,
-                    "nav_title": nav_title,
-                    "description": config_description or "",
-                    "version": proj_version or latest_version,
-                    "url_prefix": output_subdir,
-                })
+
+            # Determine the build directory and version for this project.
+            # For old docs-site versions with a projects pinning dict,
+            # extract the constituent project at the pinned version tag.
+            if not is_latest and slug in ver_projects_pinning:
+                pinned_version = ver_projects_pinning[slug]
+                build_dir = _extract_version_content(
+                    pinned_version, proj_config, project_path,
+                )
+                proj_version = pinned_version
+            else:
+                build_dir = project_path
+                proj_version = _detect_project_version(project_path)
+
+            # Build the project for each locale
+            for locale in locales:
+                locale_code = locale["code"]
+                output_subdir = f"{locale_code}/{slug}/{ver_str}"
+                url_prefix = output_subdir
+
+                (
+                    html_files, markdown_files, frontmatter, page_dates,
+                    nav_items, search_entries, project_name, version, _cfg,
+                    proj_docs_dir, other_files, has_custom_css, _raw_css,
+                    _theme_meta, _crit_css, config_description, base_url,
+                    feed_url, lang,
+                ) = build_single(
+                    dir_path=build_dir,
+                    config=proj_config,
+                    output_subdir=output_subdir,
+                    url_prefix=url_prefix,
+                    version_override=proj_version or ver_str,
+                    locale_override=locale_code,
+                    available_versions=versions,
+                    available_locales=locales,
+                    current_version=ver_str,
+                    current_locale=locale_code,
+                    is_latest=is_latest,
+                )
+
+                # Override the project field in search entries
+                patched_entries = []
+                for entry in search_entries:
+                    patched = dataclasses.replace(entry, project=slug)
+                    patched_entries.append(patched)
+                all_search_entries.extend(patched_entries)
+
+                # Write HTML files
+                for rel_path, html_content in html_files.items():
+                    out_path = os.path.join(output_dir, rel_path)
+                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                    with open(out_path, "w", encoding="utf-8") as f:
+                        f.write(_minify_html(html_content))
+                    written[out_path] = True
+
+                # Copy static assets
+                for rel_path in other_files:
+                    src = os.path.join(proj_docs_dir, rel_path)
+                    dst = os.path.join(output_dir, output_subdir, rel_path)
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    shutil.copy2(src, dst)
+                    written[dst] = True
+
+                # Collect nav data (only for latest version + default locale)
+                if is_latest and locale_code == default_locale_code:
+                    projects_nav_data.append(
+                        (slug, nav_title, nav_items, output_subdir)
+                    )
+                    projects_info.append({
+                        "slug": slug,
+                        "nav_title": nav_title,
+                        "description": config_description or "",
+                        "version": proj_version or ver_str,
+                        "url_prefix": output_subdir,
+                    })
 
     # --- Build the docs-site's own content (common pages) ---
     common_latest_build = None

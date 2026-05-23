@@ -309,3 +309,55 @@ class TestSingleVersion:
         html = _read_html(output_dir, "en/1.0.0/index.html")
         assert "version-picker" in html
         assert "disabled" in html
+
+
+class TestCheckValidatesAllVersions:
+    """Tests for check_docs validating old versions."""
+
+    def test_check_validates_all_versions(self, make_versioned_project):
+        """check_docs should validate directives in old versions too."""
+        from selfdoc.check import check_docs
+
+        project_dir = make_versioned_project(["0.1.0", "0.2.0"])
+        config = load_config(str(project_dir))
+
+        result = check_docs(str(project_dir), config=config, dry_run=True)
+
+        # Lints from the old version should be prefixed with [0.1.0]
+        all_files = (
+            [dr.file for dr in result.directive_results]
+            + [lint.file for lint in result.lints]
+        )
+        has_old_version = any("[0.1.0]" in f for f in all_files)
+        assert has_old_version, (
+            f"Expected results from [0.1.0] but got: {all_files}"
+        )
+
+
+def test_sitemap_excludes_non_indexed_version(make_versioned_project):
+    """Sitemap should exclude pages from non-indexed versions."""
+    project_dir = make_versioned_project(["0.1.0", "0.2.0"])
+
+    # Overwrite config to set indexed: false on v0.1.0
+    config_path = os.path.join(str(project_dir), "selfdoc.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["versions"] = [
+        {"version": "0.1.0", "indexed": False},
+        {"version": "0.2.0", "indexed": True},
+    ]
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(str(project_dir), "docs", "_build")
+    sitemap_path = os.path.join(output_dir, "sitemap.xml")
+    assert os.path.isfile(sitemap_path)
+    with open(sitemap_path, "r", encoding="utf-8") as f:
+        sitemap = f.read()
+
+    # Pages from the indexed version ARE in the sitemap
+    assert "en/0.2.0" in sitemap
+    # Pages from the non-indexed version are NOT in the sitemap
+    assert "en/0.1.0" not in sitemap

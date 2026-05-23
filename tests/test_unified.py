@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 
 from selfdoc.build import build
 from selfdoc.config import ConfigError, load_config
@@ -14,6 +15,7 @@ from selfdoc.unified import (
     _validate_rlsbl_workspace,
     build_unified,
 )
+from tests.conftest import _git, _write_json, _write_text
 
 
 # -- Helper --
@@ -373,3 +375,95 @@ def test_check_unified(make_unified_project):
     has_common = any("[common]" in f for f in combined)
     # At minimum common lints should appear (SEO checks on docs-site docs)
     assert has_common or has_core
+
+
+# -- Version pinning --
+
+def test_version_pinning_uses_old_constituent_content(tmp_path):
+    """Old docs-site version with projects pinning builds constituent at pinned tag."""
+    packages_dir = tmp_path / "monorepo" / "packages"
+    packages_dir.mkdir(parents=True)
+
+    # --- constituent project: core ---
+    core_dir = packages_dir / "core"
+    core_dir.mkdir()
+    core_config = {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com/core",
+    }
+    _write_json(str(core_dir / "selfdoc.json"), core_config)
+    (core_dir / "src").mkdir()
+    _write_text(str(core_dir / "src" / "__init__.py"), '"""core."""\n')
+    (core_dir / "docs").mkdir()
+    _write_text(
+        str(core_dir / "docs" / "index.md"),
+        "# Core v1\n\nOld core content for version 1.0.0.\n",
+    )
+
+    # --- git init core and create v1.0.0 tag ---
+    _git(["init"], cwd=core_dir)
+    _git(["add", "."], cwd=core_dir)
+    _git(["commit", "-m", "core v1.0.0"], cwd=core_dir)
+    _git(["tag", "v1.0.0"], cwd=core_dir)
+
+    # --- update core to v2.0.0 ---
+    _write_text(
+        str(core_dir / "docs" / "index.md"),
+        "# Core v2\n\nNew core content for version 2.0.0.\n",
+    )
+    _git(["add", "docs/index.md"], cwd=core_dir)
+    _git(["commit", "-m", "core v2.0.0"], cwd=core_dir)
+    _git(["tag", "v2.0.0"], cwd=core_dir)
+
+    # --- docs-site project ---
+    docs_site_dir = packages_dir / "docs-site"
+    docs_site_dir.mkdir()
+    docs_site_config = {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "unified": {
+            "projects": [{"path": "../core"}],
+        },
+        "versions": [
+            {
+                "version": "1.0.0",
+                "indexed": True,
+                "projects": {"core": "1.0.0"},
+            },
+            {
+                "version": "2.0.0",
+                "indexed": True,
+            },
+        ],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+    }
+    _write_json(str(docs_site_dir / "selfdoc.json"), docs_site_config)
+    (docs_site_dir / "src").mkdir()
+    _write_text(
+        str(docs_site_dir / "src" / "__init__.py"),
+        '"""Docs-site."""\n',
+    )
+    (docs_site_dir / "docs").mkdir()
+    _write_text(
+        str(docs_site_dir / "docs" / "index.md"),
+        "# Unified Docs\n\nLanding page.\n",
+    )
+
+    # --- build ---
+    written = build_unified(str(docs_site_dir))
+
+    output_dir = str(docs_site_dir / "docs" / "_build")
+
+    # Old docs-site version should have old core content (v1.0.0)
+    old_core_html = _read(
+        os.path.join(output_dir, "en", "core", "1.0.0", "index.html"),
+    )
+    assert "Old core content" in old_core_html or "Core v1" in old_core_html
+
+    # Latest docs-site version should have new core content (v2.0.0)
+    new_core_html = _read(
+        os.path.join(output_dir, "en", "core", "2.0.0", "index.html"),
+    )
+    assert "New core content" in new_core_html or "Core v2" in new_core_html

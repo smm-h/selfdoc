@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 import re
 
+from selfdoc.build import _extract_version_content
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter, resolve_all_docs
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
@@ -216,6 +217,86 @@ def check_docs(dir_path=".", config=None, dry_run=False):
             message=stale_msg,
             severity="error",
         ))
+
+    # Validate old versions when multi-version is configured.
+    # The working-tree check above covers the latest version; here we
+    # extract each older version from its git tag and run directive
+    # validation and lint on it, prefixing results with the version string.
+    versions = config.get("versions") or []
+    if len(versions) > 1:
+        latest_version = versions[-1]["version"]
+        for ver_entry in versions:
+            ver_str = ver_entry["version"]
+            if ver_str == latest_version:
+                continue  # already validated above (working tree)
+            try:
+                cache_dir = _extract_version_content(
+                    ver_str, config, dir_path,
+                )
+            except RuntimeError:
+                result.lints.append(LintResult(
+                    file=f"[{ver_str}]",
+                    line=None,
+                    code="VER001",
+                    message=f"Could not extract content for version {ver_str}",
+                    severity="error",
+                ))
+                continue
+
+            # Build a resolver against the extracted content
+            ver_resolver = make_resolver(config, cache_dir)
+            ver_docs = resolve_all_docs(config, base_dir=cache_dir)
+
+            for rel_path in sorted(ver_docs):
+                _fm, _resolved, raw_content, fm_line_count = ver_docs[rel_path]
+                directives = parse_directives(raw_content, valid_names=valid_names)
+                for directive in directives:
+                    file_line = directive.line_number + fm_line_count
+                    attrs_str = " ".join(
+                        f'{k}="{v}"' for k, v in directive.attrs.items()
+                    )
+                    directive_str = f"{directive.name} {attrs_str}".strip()
+                    prefixed_file = f"[{ver_str}] {rel_path}"
+                    try:
+                        resolved = ver_resolver(
+                            directive.name, directive.attrs, directive.body,
+                        )
+                        if resolved.startswith("> *[selfdoc:"):
+                            error_msg = resolved.strip("> *[]")
+                            if error_msg.startswith("selfdoc: "):
+                                error_msg = error_msg[len("selfdoc: "):]
+                            result.directive_results.append(DirectiveResult(
+                                file=prefixed_file,
+                                line=file_line,
+                                directive=directive_str,
+                                status="FAILED",
+                                error=error_msg,
+                            ))
+                        else:
+                            result.directive_results.append(DirectiveResult(
+                                file=prefixed_file,
+                                line=file_line,
+                                directive=directive_str,
+                                status="OK",
+                            ))
+                    except Exception as exc:
+                        result.directive_results.append(DirectiveResult(
+                            file=prefixed_file,
+                            line=file_line,
+                            directive=directive_str,
+                            status="FAILED",
+                            error=str(exc),
+                        ))
+
+            # Run lint checks on the extracted version's docs
+            ver_docs_dir = os.path.join(
+                cache_dir, config["docs"].rstrip("/"),
+            )
+            if os.path.isdir(ver_docs_dir):
+                ver_lints = _run_lints(ver_docs_dir, ver_resolver, config)
+                for lint in ver_lints:
+                    lint.file = f"[{ver_str}] {lint.file}"
+                    result.lints.append(lint)
 
     return result
 
