@@ -4,5 +4,6 @@
     "pypi",
     "docs"
   ],
-  "env_file": "~/Projects/.env"
+  "env_file": "~/Projects/.env",
+  "private": false
 }
