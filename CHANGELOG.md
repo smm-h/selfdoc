@@ -2,6 +2,17 @@
 
 # Changelog
 
+## 0.8.1
+
+### Features
+
+- **Check validates all versions.** `selfdoc check` now extracts and validates old tagged versions, not just the working tree. Monorepo version pinning lets docs-site releases freeze constituent project versions.
+- **gen_data dogfooding.** selfdoc's own docs now use a gen_data script that extracts the directive catalog from source code.
+
+### Fixes
+
+- **Fix frontmatter list parsing.** Use bracket syntax `[a, b, c]` for list values instead of comma detection, which broke description fields containing commas.
+
 ## 0.8.0
 
 ### Breaking
