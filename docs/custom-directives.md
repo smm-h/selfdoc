@@ -7,11 +7,11 @@ nav_order: 9
 
 # Custom Directives
 
-selfdoc's built-in directives cover common patterns like module references and schema tables, but sometimes you need something project-specific. Custom directives let you write a Python script that generates Markdown content at build time, driven by your own logic.
+selfdoc's 20 built-in directives cover common patterns like module references and schema tables, but sometimes you need something project-specific. Custom directives let you write a Python script that generates Markdown content at build time, driven by your own logic.
 
 ## How It Works
 
-A custom directive is a Python script with a `resolve(attrs, config, body)` function. You register it in `selfdoc.json`, then use it in your Markdown templates just like a built-in directive. During the build, selfdoc calls your function and replaces the directive marker with whatever Markdown you return.
+A custom directive is a Python script with a `resolve(attrs, config, body)` function that receives 3 parameters: directive attributes, the full project config, and optional body content. You register it in `selfdoc.json`, then use it in your Markdown templates just like a built-in directive. During the build, selfdoc calls your function and replaces the directive marker with whatever Markdown you return.
 
 ## Configuration
 

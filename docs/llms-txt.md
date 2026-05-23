@@ -7,7 +7,7 @@ nav_order: 13
 
 # llms.txt
 
-selfdoc automatically generates two files that make your documentation accessible to AI assistants and large language models. No configuration needed -- they appear in your build output alongside `sitemap.xml` and `robots.txt`.
+selfdoc automatically generates 2 files that make your documentation accessible to AI assistants and large language models. No configuration needed -- they appear in your build output alongside `sitemap.xml` and `robots.txt`.
 
 ## What Is llms.txt?
 
@@ -56,7 +56,7 @@ This gives AI systems the full content in a single fetch -- useful for context-h
 
 ## AI Crawler Access
 
-selfdoc's generated `robots.txt` explicitly allows AI crawlers by listing each known AI user agent with `Allow: /`. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
+selfdoc's generated `robots.txt` explicitly allows 6 AI crawlers by listing each known AI user agent with `Allow: /`. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
 
 - **GPTBot** and **ChatGPT-User** (OpenAI)
 - **ClaudeBot** (Anthropic)

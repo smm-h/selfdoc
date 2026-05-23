@@ -12,7 +12,7 @@ This page explains how selfdoc works at a high level -- what happens when you ru
 
 ## Build Pipeline Overview
 
-The build transforms your `docs/` Markdown templates into a deployable static HTML site through seven stages. Each stage receives the output of the previous one and produces a deterministic result:
+The build transforms your `docs/` Markdown templates into a deployable static HTML site through 7 stages. Each stage receives the output of the previous one and produces a deterministic result:
 
 1. **Scan** -- walk `docs/` for `.md` files, parse frontmatter
 2. **Resolve directives** -- replace directive markers with generated Markdown content (from source code or content transforms)
@@ -61,7 +61,7 @@ See the [Theming](theming/) page for the full property reference and design tool
 
 ## Auxiliary Outputs
 
-After the main HTML pipeline completes, the build generates companion files that enhance search engine discoverability, social sharing, client-side search, AI access, and transfer performance. These are all written to the same output directory alongside the HTML pages:
+After the main HTML pipeline completes, the build generates 6 categories of companion files that enhance search engine discoverability, social sharing, client-side search, AI access, and transfer performance. These are all written to the same output directory alongside the HTML pages:
 
 - **Sitemap** (`sitemap.xml`) -- standard sitemap with page URLs and last-modified dates
 - **Atom feed** (`feed.xml`) -- for RSS readers, respects per-page `feed: false` frontmatter
@@ -72,7 +72,7 @@ After the main HTML pipeline completes, the build generates companion files that
 
 ## Post-Processors
 
-After block rendering produces HTML, a series of regex-based post-processors detect cross-block patterns and apply semantic enhancements. These operate on the joined HTML string rather than individual tokens, because the patterns they detect span multiple blocks:
+After block rendering produces HTML, 5 regex-based post-processors detect cross-block patterns and apply semantic enhancements. These operate on the joined HTML string rather than individual tokens, because the patterns they detect span multiple blocks:
 
 - **Code tabs** -- consecutive code blocks with different languages become a tabbed interface
 - **Step guides** -- ordered lists after headings containing "step", "guide", or "tutorial" get a `class="steps"` for special styling

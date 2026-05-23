@@ -7,6 +7,8 @@ nav_order: 50
 
 # Glossary
 
+This page defines 23 key terms used throughout the selfdoc documentation.
+
 :<: list-glossary
 :=:
 ::: **Directive**: A marker in Markdown templates that selfdoc resolves into content at build time. Comes in one-liner (`:-:`) and block (`:<: ... :>:`) forms.

@@ -11,7 +11,7 @@ Every selfdoc site ships with full-text search out of the box. No external servi
 
 ## Search Engines
 
-selfdoc offers three search engine backends with different tradeoffs between simplicity, fuzzy matching, and relevance scoring. All three use the same JSON index file and the same search dialog UI, so you can switch engines without rebuilding content or changing templates. Set `search_engine` in your `selfdoc.json` to pick one:
+selfdoc offers 3 search engine backends with different tradeoffs between simplicity, fuzzy matching, and relevance scoring. All three use the same JSON index file and the same search dialog UI, so you can switch engines without rebuilding content or changing templates. Set `search_engine` in your `selfdoc.json` to pick one:
 
 ```json
 {
@@ -29,7 +29,7 @@ The default is `builtin`. All three engines use the same `search-index.json` fil
 
 ## UI Modes
 
-The search widget has three display modes that control how users access search on your site. All modes support the Cmd/Ctrl+K keyboard shortcut and open the same full-screen dialog with real-time results as you type. The only difference is the visible entry point in the topbar. Set the mode with the `search` config key:
+The search widget has 3 display modes that control how users access search on your site. All modes support the Cmd/Ctrl+K keyboard shortcut and open the same full-screen dialog with real-time results as you type. The only difference is the visible entry point in the topbar. Set the mode with the `search` config key:
 
 ```json
 {
@@ -57,7 +57,7 @@ The search dialog fetches this index on first open and runs queries entirely cli
 
 ## Search Filters
 
-The search box supports structured filters using `key=value` syntax, giving users precise control over which pages appear in results. Filters can be combined with free-text queries, negated with a dash prefix, and combined using OR within a single key using the pipe character. Type a filter alongside your search terms to narrow results:
+The search box supports structured filters across 7 dimensions using `key=value` syntax, giving users precise control over which pages appear in results. Filters can be combined with free-text queries, negated with a dash prefix, and combined using OR within a single key using the pipe character. Type a filter alongside your search terms to narrow results:
 
 ```
 build key=value config type=guide

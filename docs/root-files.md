@@ -11,9 +11,9 @@ selfdoc can generate root-level project files (like `README.md` and `CLAUDE.md`)
 
 ## How It Works
 
-1. You create a template in `docs/` with an underscore prefix: `docs/_README.md`, `docs/_CLAUDE.md`, etc.
+1. You create a template in `docs/` with an underscore prefix (e.g., `docs/_README.md`, `docs/_CLAUDE.md`).
 2. You list those templates in the `root_files` config array.
-3. When you run `selfdoc gen`, each template is read, its directives are resolved against your source code, and the result is written to the project root (without the underscore).
+3. When you run `selfdoc gen`, each template is read, its directives are resolved against your source code, and the result is written to the project root (without the underscore). Generated files are set to mode 444 (read-only) to prevent accidental edits.
 
 So `docs/_README.md` becomes `README.md`, and `docs/_CLAUDE.md` becomes `CLAUDE.md`.
 

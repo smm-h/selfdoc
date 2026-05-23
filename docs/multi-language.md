@@ -7,7 +7,7 @@ nav_order: 15
 
 # Multi-Language Support
 
-selfdoc supports three languages out of the box: **Python**, **Go**, and **TypeScript/JavaScript**. Each language has its own extractor that knows how to read source files and resolve directives. The same directive syntax works across all languages -- only the source file format changes.
+selfdoc supports 3 languages out of the box: **Python**, **Go**, and **TypeScript/JavaScript**. Each language has its own extractor that knows how to read source files and resolve directives. The same directive syntax works across all languages -- only the source file format changes.
 
 ## Setting the Language
 
@@ -61,7 +61,7 @@ The test body is rendered as a Go code block, giving readers a real example they
 
 ## TypeScript / JavaScript Examples
 
-The TypeScript extractor handles `.ts`, `.tsx`, `.js`, and `.jsx` files using regex-based parsing to match `export` declarations, interfaces, type aliases, and JSDoc/TSDoc comments. The same directive syntax works across all four file extensions since they share the same export conventions:
+The TypeScript extractor handles 4 file extensions (`.ts`, `.tsx`, `.js`, `.jsx`) using regex-based parsing to match `export` declarations, interfaces, type aliases, and JSDoc/TSDoc comments. The same directive syntax works across all four file extensions since they share the same export conventions:
 
 ### Module reference
 

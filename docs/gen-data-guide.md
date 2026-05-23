@@ -17,7 +17,7 @@ Instead of manually updating a table every release, write a script that produces
 
 ## Configuration
 
-Add a `gen_data` section to your `selfdoc.json` with a `scripts` array. Each script entry declares the command to run, the output filename to validate, and which source directories to mount read-only inside the sandbox. All three fields are required for each script declaration:
+Add a `gen_data` section to your `selfdoc.json` with a `scripts` array. Each script entry declares 3 required fields: the command to run, the output filename to validate, and which source directories to mount read-only inside the sandbox:
 
 ```json
 {
@@ -56,7 +56,7 @@ This means a misbehaving script cannot modify your source code, exfiltrate data 
 
 ## Output Validation
 
-After a script finishes, selfdoc validates its output file to catch malformed data before it reaches your documentation pages. If validation fails, `selfdoc gen-data` reports the specific parse error and stops the build to prevent broken content:
+After a script finishes, selfdoc validates its output file against 2 supported formats to catch malformed data before it reaches your documentation pages. If validation fails, `selfdoc gen-data` reports the specific parse error and stops the build to prevent broken content:
 
 - **JSON files** (`.json`) must parse as valid JSON
 - **CSV files** (`.csv`) must parse as valid CSV

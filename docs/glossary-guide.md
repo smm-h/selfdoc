@@ -11,7 +11,7 @@ selfdoc can build a glossary from terms defined across your documentation. Defin
 
 ## Defining Terms
 
-There are two ways to mark a term as a glossary entry: inline `<dfn>` tags embedded naturally in your prose, or the `list-glossary` content directive for dedicated reference sections. Both methods register terms in the site-wide glossary and enable auto-linking across pages.
+There are 2 ways to mark a term as a glossary entry: inline `<dfn>` tags embedded naturally in your prose, or the `list-glossary` content directive for dedicated reference sections. Both methods register terms in the site-wide glossary and enable auto-linking across pages.
 
 ### Inline `<dfn>` tags
 
@@ -43,7 +43,7 @@ This renders as a styled definition list (`<dl>/<dt>/<dd>`) and registers each t
 
 Once a term is defined (via either method), selfdoc auto-links the first occurrence of that term on every other page. The link points to the term's definition, either on the glossary page or on whichever page defined it.
 
-Auto-linking is case-insensitive for matching but preserves the original casing in the rendered text. Only the first mention per page gets linked -- subsequent mentions are left as plain text to avoid cluttering the page.
+Auto-linking is case-insensitive for matching but preserves the original casing in the rendered text. Only the 1st mention per page gets linked -- subsequent mentions are left as plain text to avoid cluttering the page.
 
 > [!NOTE]
 > Auto-linking skips content inside glossary blocks themselves to prevent circular links. Terms inside code blocks and headings are also left alone.

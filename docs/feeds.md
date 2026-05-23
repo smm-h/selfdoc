@@ -7,7 +7,7 @@ nav_order: 12
 
 # Atom Feeds
 
-Every selfdoc site gets a `feed.xml` in the build output. It is a standard Atom feed that RSS readers, news aggregators, and automation tools can subscribe to. No setup required -- it happens automatically during `selfdoc build`.
+Every selfdoc site gets a `feed.xml` in the build output. It is a standard Atom 1.0 feed that RSS readers, news aggregators, and automation tools can subscribe to. No setup required -- it happens automatically during `selfdoc build`.
 
 ## How It Works
 
@@ -17,7 +17,7 @@ Every generated HTML page includes a `<link rel="alternate" type="application/at
 
 ## Date Handling
 
-selfdoc determines page dates from two sources, checked in priority order. Accurate dates are important because they control the sort order of feed entries and the feed-level `<updated>` element that readers use to detect new content. The two sources are:
+selfdoc determines page dates from 2 sources, checked in priority order. Accurate dates are important because they control the sort order of feed entries and the feed-level `<updated>` element that readers use to detect new content. The 2 sources are:
 
 1. **Frontmatter fields** -- `date` and `updated` in your page's YAML frontmatter. If `updated` is present, it takes precedence. Format: `YYYY-MM-DD`.
 2. **File modification time** -- if no frontmatter date is set, selfdoc falls back to the file's last-modified timestamp from git (or the filesystem if git is unavailable).
