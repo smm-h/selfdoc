@@ -2,7 +2,7 @@
 
 # selfdocumenting
 
-Code-aware documentation site generator. Builds full static sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, theming, search, SEO, and deploy to Cloudflare Pages or GitHub Pages.
+Code-aware documentation site generator. Builds full static sites from Markdown templates and source code. Your code is the documentation -- directives in Markdown pull live content from your codebase at build time.
 
 Supports Python, Go, and TypeScript/JavaScript. One runtime dependency (strictcli). Pure Python.
 
@@ -43,21 +43,37 @@ selfdoc check
 selfdoc serve
 ```
 
+Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version, single-locale project:
+
+```json
+{
+  "language": "python",
+  "source": ["src/"],
+  "base_url": "https://my-project.example.com",
+  "versions": [{"version": "1.0.0", "indexed": true}],
+  "locales": [{"code": "en", "label": "English", "default": true}]
+}
+```
+
 ## Features
 
-- Attribute-based directive syntax (`:-:`, `:<:`, `:>:`) for embedding code-extracted content
-- Auto-generated API reference and CLI docs from source code structure (`selfdoc gen`)
-- Sandboxed data generation scripts (`selfdoc gen-data`)
-- Theming with dark mode, accent colors, and custom CSS overrides
-- Pluggable search (builtin, Fuse.js, or MiniSearch)
-- 15+ SEO lint rules, WCAG contrast validation, JSON-LD structured data
-- Per-symbol documentation coverage tracking with configurable thresholds
-- Build-time Pygments syntax highlighting, code tabs, sortable tables
-- CSS/JS/HTML minification, critical CSS inlining, gzip and Brotli pre-compression
-- Atom feed, `robots.txt` with AI crawler controls, `llms.txt` / `llms-full.txt`
-- Landing page with hero section, tagline, and feature cards
-- SSE-based live reload dev server
-- Auto-commit of generated files (prefers safegit)
+- **Directive syntax** -- embed live API references, schemas, tests, and CLI help directly from source code (`:-:`, `:<:`, `:>:`)
+- **Auto-generated pages** -- API reference and CLI docs from source code structure (`selfdoc gen`)
+- **Multi-version docs** -- build from git tags, cached builds, version picker UI
+- **Localization** -- parallel locale directories, hreflang tags, locale picker, per-locale sitemaps
+- **Monorepo support** -- unified site builder combines multiple projects into one docs site
+- **Faceted search** -- key=value filter syntax, 7 dimensions, chip UI, auto-injected version default
+- **Sandboxed data generation** -- run scripts in bubblewrap isolation (`selfdoc gen-data`)
+- **Theming** -- dark mode, accent colors, custom CSS overrides
+- **Search engines** -- builtin, Fuse.js, or MiniSearch
+- **SEO** -- 15+ lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
+- **Coverage tracking** -- per-symbol documentation coverage with configurable thresholds
+- **Syntax highlighting** -- build-time Pygments, code tabs, sortable tables
+- **Performance** -- CSS/JS/HTML minification, critical CSS inlining, gzip and Brotli pre-compression
+- **Feeds and AI** -- Atom feed, `robots.txt` with AI crawler controls, `llms.txt` / `llms-full.txt`
+- **Landing page** -- hero section, tagline, and feature cards
+- **Live reload** -- SSE-based dev server
+- **Auto-commit** -- generated files committed automatically (prefers safegit)
 
 ## Directive syntax
 
@@ -152,6 +168,9 @@ Custom directives take priority over built-in names.
   "source": ["selfdoc/"],
   "docs": "docs/",
   "output": "docs/_build/",
+  "base_url": "https://my-project.example.com",
+  "versions": [{"version": "1.0.0", "indexed": true}],
+  "locales": [{"code": "en", "label": "English", "default": true}],
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "my-docs"
@@ -246,6 +265,10 @@ Enable GitHub Pages in your repo settings (source: `gh-pages` branch).
 ## Integration with rlsbl
 
 When [rlsbl](https://github.com/smm-h/rlsbl) detects a `selfdoc.json` in the project, it can trigger `selfdoc build` and `selfdoc deploy` as part of the release lifecycle via the `.rlsbl/hooks/post-release.sh` hook.
+
+## Documentation
+
+Full documentation at [selfdoc.smmh.dev](https://selfdoc.smmh.dev).
 
 ## License
 
