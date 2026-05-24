@@ -1,4 +1,5 @@
 {
+  "version": "0.8.1",
   "language": "python",
   "source": ["selfdoc/"],
   "docs": "docs/",
