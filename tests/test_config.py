@@ -1156,3 +1156,53 @@ def test_cross_project_config_loads(config_path):
         pytest.skip(f"{config_path} not found")
     cfg = load_config(os.path.dirname(config_path))
     assert isinstance(cfg, dict)
+
+
+# -- version field --
+
+
+def test_version_valid(config_dir):
+    """Valid semver version string is accepted."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "version": "1.2.3",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "1.2.3"
+
+
+def test_version_absent_is_none(config_dir):
+    """Missing version field defaults to None."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] is None
+
+
+def test_version_invalid_pattern(config_dir):
+    """Version not matching semver pattern raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "version": "abc",
+    })
+    with pytest.raises(ConfigError, match="invalid version"):
+        load_config(str(config_dir))
+
+
+def test_version_non_string(config_dir):
+    """Non-string version raises ConfigError."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": ["src/"],
+        "base_url": "https://example.com",
+        "version": 123,
+    })
+    with pytest.raises(ConfigError, match="'version' must be a string"):
+        load_config(str(config_dir))

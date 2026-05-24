@@ -402,8 +402,8 @@ def _cmd_deploy():
         )
         sys.exit(1)
 
-    # Detect version from project files
-    version = _detect_version()
+    # Prefer version from selfdoc.json, fall back to project manifest
+    version = config.get("version") or _detect_version()
 
     provider = deploy_config["provider"]
 

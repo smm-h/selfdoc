@@ -79,6 +79,14 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
     ),
     # --- optional string fields ---
     FieldSpec(
+        name="version",
+        type=_S,
+        required=False,
+        default=None,
+        pattern=r"^\d+\.\d+\.\d+",
+        description="Project version. When present, used by deploy instead of reading from pyproject.toml/package.json.",
+    ),
+    FieldSpec(
         name="docs",
         type=_S,
         default="docs/",
