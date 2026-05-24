@@ -456,6 +456,29 @@ def test_print_results_with_lints(capsys):
 
 
 from selfdoc.check import _run_lints
+from selfdoc.docs import parse_frontmatter as _parse_frontmatter
+
+
+def _build_all_docs(docs_dir):
+    """Build an all_docs dict from docs_dir for lint tests.
+
+    Walks docs_dir, reads each .md file (skipping underscore-prefixed),
+    parses frontmatter, and returns the same structure as
+    resolve_all_docs() -- without resolving directives (lint checks
+    only need raw content).
+    """
+    all_docs = {}
+    for root, _dirs, files in os.walk(docs_dir):
+        for fname in sorted(files):
+            if fname.endswith(".md") and not fname.startswith("_"):
+                full_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(full_path, docs_dir)
+                with open(full_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                metadata, body = _parse_frontmatter(content)
+                fm_line_count = len(content.split("\n")) - len(body.split("\n"))
+                all_docs[rel_path] = (metadata, "", body, fm_line_count)
+    return all_docs
 
 
 @pytest.fixture()
@@ -482,7 +505,7 @@ def test_seo001_multiple_h1s(lint_project):
             "# First Title\n\nSome text.\n\n# Second Title\n\nMore text.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo001 = [r for r in results if r.code == "SEO001"]
 
     assert len(seo001) == 1
@@ -500,7 +523,7 @@ def test_seo001_single_h1_no_warning(lint_project):
             "# Only Title\n\n## Subsection\n\n### Sub-subsection\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo001 = [r for r in results if r.code == "SEO001"]
     assert len(seo001) == 0
 
@@ -514,7 +537,7 @@ def test_seo002_heading_level_gap(lint_project):
             "# Title\n\n## Section\n\n#### Skipped H3\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo002 = [r for r in results if r.code == "SEO002"]
 
     assert len(seo002) == 1
@@ -534,7 +557,7 @@ def test_seo002_no_gap(lint_project):
             "# Title\n\n## Section\n\n### Subsection\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo002 = [r for r in results if r.code == "SEO002"]
     assert len(seo002) == 0
 
@@ -548,7 +571,7 @@ def test_seo003_empty_alt_text(lint_project):
             "# Title\n\n![](image.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo003 = [r for r in results if r.code == "SEO003"]
 
     assert len(seo003) == 1
@@ -566,7 +589,7 @@ def test_seo003_with_alt_text_no_warning(lint_project):
             "# Title\n\n![screenshot](image.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo003 = [r for r in results if r.code == "SEO003"]
     assert len(seo003) == 0
 
@@ -581,7 +604,7 @@ def test_seo004_title_too_long(lint_project):
             "# Title\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo004 = [r for r in results if r.code == "SEO004"]
 
     # project_name is derived from docs_dir parent basename
@@ -603,7 +626,7 @@ def test_seo004_short_title_no_warning(lint_project):
             "# Hi\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo004 = [r for r in results if r.code == "SEO004"]
     assert len(seo004) == 0
 
@@ -619,7 +642,7 @@ def test_seo006_missing_description(lint_project):
             "# My Page\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo006 = [r for r in results if r.code == "SEO006"]
 
     assert len(seo006) == 1
@@ -639,7 +662,7 @@ def test_seo006_with_description_no_warning(lint_project):
             "# My Page\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo006 = [r for r in results if r.code == "SEO006"]
     assert len(seo006) == 0
 
@@ -659,7 +682,7 @@ def test_clean_file_no_lints(lint_project):
             f"{para}\n\n![diagram](diagram.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     assert len(results) == 0
 
 
@@ -778,7 +801,7 @@ def test_seo007_short_paragraph(lint_project):
             "More content here.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo007 = [r for r in results if r.code == "SEO007"]
 
     assert len(seo007) == 1
@@ -803,7 +826,7 @@ def test_seo007_normal_paragraph_no_lint(lint_project):
             "More content.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo007 = [r for r in results if r.code == "SEO007"]
 
     assert len(seo007) == 0
@@ -823,7 +846,7 @@ def test_seo007_suppressed_when_directive_follows_heading(lint_project):
             ":::\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo007 = [r for r in results if r.code == "SEO007"]
 
     assert len(seo007) == 0
@@ -844,7 +867,7 @@ def test_seo007_suppressed_when_directive_follows_short_paragraph(lint_project):
             ":::\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo007 = [r for r in results if r.code == "SEO007"]
 
     assert len(seo007) == 0
@@ -864,7 +887,7 @@ def test_seo007_still_fires_without_directive(lint_project):
             "Some other paragraph.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo007 = [r for r in results if r.code == "SEO007"]
 
     assert len(seo007) == 1
@@ -885,7 +908,7 @@ def test_seo001_does_not_count_directive_as_heading(lint_project):
             ":::\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo001 = [r for r in results if r.code == "SEO001"]
 
     # Only one H1 (the real one), directive is not counted
@@ -908,7 +931,7 @@ def test_seo008_no_numbers_long_page(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 1
@@ -931,7 +954,7 @@ def test_seo008_with_numbers_no_lint(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 0
@@ -950,7 +973,7 @@ def test_seo008_short_page_no_lint(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 0
@@ -970,7 +993,7 @@ def test_seo008_1000_words_insufficient_numbers(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 1
@@ -993,7 +1016,7 @@ def test_seo008_1000_words_sufficient_numbers(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 0
@@ -1012,7 +1035,7 @@ def test_seo008_200_words_zero_numbers(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 1
@@ -1035,7 +1058,7 @@ def test_seo008_200_words_one_number(lint_project):
             f"{words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 0
@@ -1057,7 +1080,7 @@ def test_seo009_short_description(lint_project):
             "# Title\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo009 = [r for r in results if r.code == "SEO009"]
 
     assert len(seo009) == 1
@@ -1073,7 +1096,7 @@ def test_seo009_no_description_does_not_trigger(lint_project):
     with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
         f.write("# Title\n")
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo009 = [r for r in results if r.code == "SEO009"]
 
     assert len(seo009) == 0
@@ -1091,7 +1114,7 @@ def test_seo009_normal_length_no_trigger(lint_project):
             "# Title\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo009 = [r for r in results if r.code == "SEO009"]
 
     assert len(seo009) == 0
@@ -1112,7 +1135,7 @@ def test_seo010_long_description(lint_project):
             "# Title\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo010 = [r for r in results if r.code == "SEO010"]
 
     assert len(seo010) == 1
@@ -1133,7 +1156,7 @@ def test_seo010_normal_length_no_trigger(lint_project):
             "# Title\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo010 = [r for r in results if r.code == "SEO010"]
 
     assert len(seo010) == 0
@@ -1154,7 +1177,7 @@ def test_seo011_h2_followed_by_h2(lint_project):
             "# Title\n\n## Foo\n\n## Bar\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo011 = [r for r in results if r.code == "SEO011"]
 
     assert len(seo011) == 1
@@ -1174,7 +1197,7 @@ def test_seo011_h3_followed_by_h2(lint_project):
             "# Title\n\n### A\n\n## B\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo011 = [r for r in results if r.code == "SEO011"]
 
     assert len(seo011) == 1
@@ -1193,7 +1216,7 @@ def test_seo011_h2_with_content_no_trigger(lint_project):
             "# Title\n\n## Foo\n\nSome text.\n\n## Bar\n\nMore text.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo011 = [r for r in results if r.code == "SEO011"]
 
     assert len(seo011) == 0
@@ -1211,7 +1234,7 @@ def test_seo011_h2_followed_by_h3_no_trigger(lint_project):
             "# Title\n\n## Foo\n\n### Bar\n\nText here.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo011 = [r for r in results if r.code == "SEO011"]
 
     assert len(seo011) == 0
@@ -1237,7 +1260,7 @@ def test_seo012_default_theme_passes(lint_project):
             "# Title\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo012 = [r for r in results if r.code == "SEO012"]
 
     assert len(seo012) == 0
@@ -1342,7 +1365,7 @@ def test_seo013_no_h1(lint_project):
             "## Only H2\n\nSome content here.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo013 = [r for r in results if r.code == "SEO013"]
 
     assert len(seo013) == 1
@@ -1362,7 +1385,7 @@ def test_seo013_with_h1_no_warning(lint_project):
             "# Title\n\nSome content here.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo013 = [r for r in results if r.code == "SEO013"]
 
     assert len(seo013) == 0
@@ -1380,7 +1403,7 @@ def test_seo013_with_frontmatter_title_no_h1(lint_project):
             "## Section\n\nSome content here.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo013 = [r for r in results if r.code == "SEO013"]
 
     assert len(seo013) == 0
@@ -1402,7 +1425,7 @@ def test_seo004_long_h1_no_frontmatter_title(lint_project):
             f"# {long_h1}\n\nContent.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo004 = [r for r in results if r.code == "SEO004"]
 
     # Verify that combined length exceeds 60
@@ -1430,7 +1453,7 @@ def test_seo014_meaningless_alt(lint_project):
             "# Title\n\n![image](photo.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo014 = [r for r in results if r.code == "SEO014"]
 
     assert len(seo014) == 1
@@ -1451,7 +1474,7 @@ def test_seo014_filename_alt(lint_project):
             "# Title\n\n![dashboard-v2.png](assets/dashboard.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo014 = [r for r in results if r.code == "SEO014"]
 
     assert len(seo014) == 1
@@ -1471,7 +1494,7 @@ def test_seo014_single_char_alt(lint_project):
             "# Title\n\n![x](photo.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo014 = [r for r in results if r.code == "SEO014"]
 
     assert len(seo014) == 1
@@ -1491,7 +1514,7 @@ def test_seo014_descriptive_alt_no_warning(lint_project):
             "# Title\n\n![Architecture diagram showing request flow](arch.png)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo014 = [r for r in results if r.code == "SEO014"]
 
     assert len(seo014) == 0
@@ -1512,7 +1535,7 @@ def test_seo015_generic_anchor(lint_project):
             "# Title\n\n[click here](https://example.com)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo015 = [r for r in results if r.code == "SEO015"]
 
     assert len(seo015) == 1
@@ -1533,7 +1556,7 @@ def test_seo015_descriptive_anchor_no_warning(lint_project):
             "# Title\n\n[selfdoc configuration reference](https://example.com/config)\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo015 = [r for r in results if r.code == "SEO015"]
 
     assert len(seo015) == 0
@@ -1554,7 +1577,7 @@ def test_seo015_inside_code_block_no_warning(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo015 = [r for r in results if r.code == "SEO015"]
 
     assert len(seo015) == 0
@@ -2245,7 +2268,7 @@ def test_seo012_custom_css_low_contrast_link(lint_project):
             "}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo012 = [r for r in results if r.code == "SEO012"]
 
     # Should have at least one SEO012 from custom.css for the link pair
@@ -2274,7 +2297,7 @@ def test_seo012_custom_css_high_contrast_link(lint_project):
             "}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo012 = [r for r in results if r.code == "SEO012"]
 
     # No SEO012 should fire from custom.css
@@ -2298,7 +2321,7 @@ def test_seo012_no_custom_css(lint_project):
     custom_path = os.path.join(docs_dir, "custom.css")
     assert not os.path.exists(custom_path)
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo012 = [r for r in results if r.code == "SEO012"]
 
     # Default minimal theme should pass all contrast checks
@@ -2326,7 +2349,7 @@ def test_seo012_custom_css_dark_mode_override(lint_project):
             "}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo012 = [r for r in results if r.code == "SEO012"]
 
     # Should have SEO012 from custom.css for dark mode body text

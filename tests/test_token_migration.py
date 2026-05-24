@@ -17,6 +17,22 @@ from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, _extract_title
 
 
+def _build_all_docs(docs_dir):
+    """Build an all_docs dict from docs_dir for lint tests."""
+    all_docs = {}
+    for root, _dirs, files in os.walk(docs_dir):
+        for fname in sorted(files):
+            if fname.endswith(".md") and not fname.startswith("_"):
+                full_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(full_path, docs_dir)
+                with open(full_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                metadata, body = _parse_frontmatter(content)
+                fm_line_count = len(content.split("\n")) - len(body.split("\n"))
+                all_docs[rel_path] = (metadata, "", body, fm_line_count)
+    return all_docs
+
+
 @pytest.fixture()
 def lint_project(tmp_path):
     """Create a minimal project with docs dir and config for lint testing."""
@@ -50,7 +66,7 @@ def test_seo001_h1_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo001 = [r for r in results if r.code == "SEO001"]
 
     assert len(seo001) == 0
@@ -73,7 +89,7 @@ def test_seo001_multiple_h1_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo001 = [r for r in results if r.code == "SEO001"]
 
     assert len(seo001) == 0
@@ -156,7 +172,7 @@ def test_seo003_empty_alt_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo003 = [r for r in results if r.code == "SEO003"]
 
     assert len(seo003) == 0
@@ -177,7 +193,7 @@ def test_seo003_empty_alt_outside_code_block_still_triggers(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo003 = [r for r in results if r.code == "SEO003"]
 
     assert len(seo003) == 1
@@ -202,7 +218,7 @@ def test_seo002_heading_gap_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo002 = [r for r in results if r.code == "SEO002"]
 
     assert len(seo002) == 0
@@ -230,7 +246,7 @@ def test_seo008_word_count_excludes_code_blocks(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     # Prose word count is well under 200, so SEO008 should NOT fire
@@ -251,7 +267,7 @@ def test_seo008_prose_words_still_counted(lint_project):
             f"{prose_words}\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 1
@@ -279,7 +295,7 @@ def test_seo007_heading_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo007 = [r for r in results if r.code == "SEO007"]
 
     # Only the real heading should be checked, and it has 50 words (OK)
@@ -304,7 +320,7 @@ def test_seo014_meaningless_alt_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo014 = [r for r in results if r.code == "SEO014"]
 
     assert len(seo014) == 0
@@ -328,7 +344,7 @@ def test_seo015_generic_anchor_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo015 = [r for r in results if r.code == "SEO015"]
 
     assert len(seo015) == 0
@@ -354,7 +370,7 @@ def test_seo011_consecutive_headings_in_code_block_ignored(lint_project):
             "```\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo011 = [r for r in results if r.code == "SEO011"]
 
     assert len(seo011) == 0
@@ -377,7 +393,7 @@ def test_seo013_h1_only_in_code_block_triggers(lint_project):
             "## Only H2\n\nSome content.\n"
         )
 
-    results = _run_lints(docs_dir, None, config)
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     seo013 = [r for r in results if r.code == "SEO013"]
 
     assert len(seo013) == 1

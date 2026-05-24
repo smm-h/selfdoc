@@ -202,7 +202,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
         )
 
     # Run lint checks (SEO and other diagnostics)
-    result.lints = _run_lints(docs_dir, resolver, config)
+    result.lints = _run_lints(all_docs, docs_dir, resolver, config)
 
     # Description staleness detection: check if page content changed
     # but frontmatter description was not updated.
@@ -293,7 +293,9 @@ def check_docs(dir_path=".", config=None, dry_run=False):
                 cache_dir, config["docs"].rstrip("/"),
             )
             if os.path.isdir(ver_docs_dir):
-                ver_lints = _run_lints(ver_docs_dir, ver_resolver, config)
+                ver_lints = _run_lints(
+                    ver_docs, ver_docs_dir, ver_resolver, config,
+                )
                 for lint in ver_lints:
                     lint.file = f"[{ver_str}] {lint.file}"
                     result.lints.append(lint)
@@ -320,23 +322,21 @@ def _token_text_lines(tok):
     return []
 
 
-def _run_lints(docs_dir, resolver, config):
+def _run_lints(all_docs, docs_dir, resolver, config):
     """Run lint checks on documentation templates.
+
+    Args:
+        all_docs: Dict from resolve_all_docs mapping rel_path to
+            (frontmatter, resolved, raw_content, fm_line_count).
+        docs_dir: Absolute path to the docs directory.
+        resolver: Directive resolver callable.
+        config: Project configuration dict.
 
     Returns a list of LintResult diagnostics covering SEO best practices:
     multiple H1s, heading level gaps, empty alt text, title length,
     missing base_url, and missing description.
     """
     results = []
-
-    # Collect .md files (same walk pattern as check_docs)
-    md_files = []
-    for root, _dirs, files in os.walk(docs_dir):
-        for fname in sorted(files):
-            if fname.endswith(".md") and not fname.startswith("_"):
-                full_path = os.path.join(root, fname)
-                rel_path = os.path.relpath(full_path, docs_dir)
-                md_files.append((rel_path, full_path))
 
     project_name = os.path.basename(os.path.dirname(os.path.abspath(docs_dir)))
 
@@ -354,16 +354,9 @@ def _run_lints(docs_dir, resolver, config):
         "link", "read more", "more", "learn more",
     }
 
-    for rel_path, full_path in md_files:
-        with open(full_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        metadata, body_content = _parse_frontmatter(content)
+    for rel_path in sorted(all_docs):
+        metadata, _resolved, body_content, fm_offset = all_docs[rel_path]
         tokens = tokenize(body_content)
-
-        # Compute line offset: number of frontmatter lines consumed,
-        # so token.start (1-based in body) maps to the original file
-        fm_offset = len(content.split("\n")) - len(body_content.split("\n"))
 
         # Collect heading tokens for reuse across checks
         heading_tokens = [t for t in tokens if isinstance(t, Heading)]
