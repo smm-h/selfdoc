@@ -192,6 +192,9 @@ Custom directives take priority over built-in names.
 | `auto_detect` | no | Automatic content detection settings for step guides and API entries. |
 | `gen` | no | Configuration for the gen command. |
 | `gen_data` | no | Configuration for the gen-data command. |
+| `versions` | no | List of documentation versions to build. |
+| `locales` | no | List of locales for multi-language documentation. |
+| `unified` | no | Configuration for unified multi-project documentation. |
 
 `selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json).
 

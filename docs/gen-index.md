@@ -2,7 +2,7 @@
 title: API Reference
 description: "Complete auto-generated API reference index — browse all modules, classes, and functions with their signatures and docstrings."
 generated: true
-nav_group: "Reference"
+nav_group: "API Reference"
 nav_order: 0
 order: 90
 ---
@@ -16,6 +16,7 @@ order: 90
 - [selfdoc.check](selfdoc-check.html)
 - [selfdoc.cli](selfdoc-cli.html)
 - [selfdoc.config](selfdoc-config.html)
+- [selfdoc.context](selfdoc-context.html)
 - [selfdoc.deploy](selfdoc-deploy.html)
 - [selfdoc.directives](selfdoc-directives.html)
 - [selfdoc.docs](selfdoc-docs.html)
@@ -27,7 +28,10 @@ order: 90
 - [selfdoc.gendata](selfdoc-gendata.html)
 - [selfdoc.html](selfdoc-html.html)
 - [selfdoc.icons](selfdoc-icons.html)
+- [selfdoc.js](selfdoc-js.html)
+- [selfdoc.js.loader](selfdoc-js-loader.html)
 - [selfdoc.resolver](selfdoc-resolver.html)
 - [selfdoc.strictcli_support](selfdoc-strictcli_support.html)
 - [selfdoc.tokenizer](selfdoc-tokenizer.html)
+- [selfdoc.unified](selfdoc-unified.html)
 - [selfdoc.utils](selfdoc-utils.html)

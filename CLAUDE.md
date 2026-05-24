@@ -2,28 +2,75 @@
 
 # selfdocumenting
 
-Code-aware documentation site generator. Builds full static sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, theming, search, SEO, and deploy to Cloudflare Pages or GitHub Pages. Supports Python, Go, and TypeScript/JavaScript.
+Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, and deploy to Cloudflare Pages or GitHub Pages. Supports Python, Go, and TypeScript/JavaScript.
 
 ## Conventions
 
-- Pure Python, one runtime dependency (`strictcli>=0.2.0`)
+- Pure Python, one runtime dependency (`strictcli>=0.7.0`)
 - Build system: hatchling
 - Development: `uv` for all Python tooling (`uv sync`, `uv run`, `uv add`)
 - Local development install: `uv pip install -e .`
 - npm package is a thin Node wrapper (`bin/cli.js`) that delegates to `python3 -m selfdoc`
+- JS files live in `selfdoc/js/`, loaded at build time via `importlib.resources` (never inline JS in Python)
 - File writes to shared state use atomic write (write to tmp, then `os.replace`)
 - External calls (subprocess, network) must have timeouts
+
+## Key concepts
+
+### Always-prefixed URLs
+
+Every page outputs to `/<locale>/<version>/page/`. The config MUST have `versions` and `locales` arrays -- these are required. Even a single-version, single-locale project needs them:
+
+```json
+{
+  "versions": [{"version": "0.8.1", "indexed": true}],
+  "locales": [{"code": "en", "label": "English", "default": true}]
+}
+```
+
+### Multi-version builds
+
+Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. Version/locale picker UI is auto-generated.
+
+### Localization
+
+Parallel `docs/<locale>/` directories with per-locale templates. Generates hreflang tags, per-locale sitemaps, and locale picker UI.
+
+### Monorepo unified sites
+
+`selfdoc/unified.py` orchestrates building a single documentation site from multiple constituent projects plus a docs-site's own cross-cutting content. Configured via the `unified` section in `selfdoc.json`. The unified project is effectively the (N+1)th docs-site project.
+
+### Search filters
+
+Faceted search with key=value syntax across 7 dimensions. Chip-based filter UI with auto-injected version default. Pages declare search metadata via frontmatter tags using bracket syntax: `tags: [a, b, c]`.
+
+### Directives
+
+6 marker types for embedding code-extracted content in Markdown templates:
+- `:-:` -- self-closing directive
+- `:<:` -- block open
+- `:@:` -- block attribute
+- `:=:` -- section separator
+- `:::` -- section content
+- `:>:` -- block close
+
+### gen_data
+
+Sandboxed script execution via bubblewrap (bwrap). Runs scripts in isolated environments to generate data files used by the build.
+
+### Root file templates
+
+`docs/_CLAUDE.md` and `docs/_README.md` are templates that generate the project root `CLAUDE.md` and `README.md` via `selfdoc gen`. They support directives like any other template.
 
 ## Release workflow
 
 This project uses [rlsbl](https://github.com/smm-h/rlsbl) for release orchestration.
 
-- Update CHANGELOG.md with a `## X.Y.Z` entry describing changes
-- Run `rlsbl release [patch|minor|major]` to bump version and create a GitHub Release
-- CI handles publishing automatically via the publish workflow
+- `selfdoc check` runs during release (validates directives, coverage, lint)
+- Deploy to Cloudflare Pages via post-release hook
+- CI handles PyPI and npm publishing automatically
 - Never publish manually -- always use `rlsbl release`
 - Requires NPM_TOKEN secret on GitHub (Settings > Secrets > Actions)
-- Use `rlsbl release --dry-run` to preview a release without making changes
 
 ## Testing
 
@@ -31,7 +78,16 @@ This project uses [rlsbl](https://github.com/smm-h/rlsbl) for release orchestrat
 uv run pytest
 ```
 
-Tests live in `tests/` and cover config loading, directive parsing, the build pipeline, and language-specific extractors (Python, Go).
+1270+ tests in `tests/` covering config loading, directive parsing, the build pipeline, language-specific extractors (Python, Go, TypeScript), check command, gen command, gendata, unified builder, context dataclasses, search, pickers, filters, localization, and multi-version builds.
+
+## Important config fields
+
+- `versions` (required): array of `{version, indexed}` objects -- controls multi-version builds
+- `locales` (required): array of `{code, label, default}` objects -- controls localization
+- `unified`: optional, for monorepo docs-site projects -- lists constituent projects
+- `gen_data`: optional sandboxed script execution config
+- `root_files`: templates that generate root-level files (e.g. CLAUDE.md, README.md)
+- `deploy`: Cloudflare Pages or GitHub Pages provider config
 
 ## Architecture
 
@@ -43,6 +99,7 @@ Tests live in `tests/` and cover config loading, directive parsing, the build pi
 - **selfdoc.cli** (`selfdoc/cli.py`): CLI interface for selfdoc.
 - **selfdoc.config** (`selfdoc/config.py`): Config loader for selfdoc.json.
 - **selfdoc.content** (`selfdoc/content.py`): Content directives -- directives that transform body content into styled HTML.
+- **selfdoc.context** (`selfdoc/context.py`): Build, page, and search context dataclasses.
 - **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites.
 - **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax.
 - **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates.
@@ -57,9 +114,12 @@ Tests live in `tests/` and cover config loading, directive parsing, the build pi
 - **selfdoc.git** (`selfdoc/git.py`): Auto-commit helper for selfdoc commands.
 - **selfdoc.html** (`selfdoc/html.py`): Convert Markdown files to static HTML with a built-in minimal converter.
 - **selfdoc.icons** (`selfdoc/icons.py`): Language icons for code blocks.
+- **selfdoc.js** (`selfdoc/js/__init__.py`)
+- **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources.
 - **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors.
 - **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
 - **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
 - **selfdoc.themes** (`selfdoc/themes/__init__.py`): Theme registry for selfdoc.
 - **selfdoc.tokenizer** (`selfdoc/tokenizer.py`): Standalone Markdown block tokenizer.
+- **selfdoc.unified** (`selfdoc/unified.py`): Monorepo unified site builder.
 - **selfdoc.utils** (`selfdoc/utils.py`): Shared utility functions for selfdoc.
