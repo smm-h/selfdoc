@@ -5987,6 +5987,35 @@ def test_build_missing_versions_raises(tmp_path):
         build(str(tmp_path))
 
 
+def test_glossary_false_suppresses_generation(tmp_path):
+    """glossary=false should suppress auto-generated glossary page."""
+    config = default_config(docs="docs/", output="docs/_build/", glossary=False)
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    # Include glossary terms so site_terms would be populated --
+    # the glossary=false flag should still suppress the page.
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write(
+            "# Home\n\n"
+            ":<: list-glossary\n"
+            ":=:\n"
+            "::: **Widget**: A reusable UI component\n"
+            ":>:\n"
+        )
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    glossary_path = os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html")
+    assert not os.path.exists(glossary_path), (
+        "glossary page should not be generated when glossary=false"
+    )
+
+
 def test_build_missing_locales_raises(tmp_path):
     """build() raises ConfigError when 'locales' is missing from config."""
     config = {
