@@ -7,11 +7,11 @@ authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
-dependencies = ["strictcli>=0.7.0"]
+dependencies = ["strictcli"]
 
 [project.optional-dependencies]
 perf = ["brotli>=1.1"]
-og = ["predraw>=0.2.0"]
+og = ["predraw"]
 
 [project.urls]
 Repository = "https://github.com/smm-h/selfdoc"

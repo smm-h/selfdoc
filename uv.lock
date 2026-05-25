@@ -825,8 +825,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "brotli", marker = "extra == 'perf'", specifier = ">=1.1" },
-    { name = "predraw", marker = "extra == 'og'", specifier = ">=0.2.0" },
-    { name = "strictcli", specifier = ">=0.7.0" },
+    { name = "predraw", marker = "extra == 'og'" },
+    { name = "strictcli" },
 ]
 provides-extras = ["perf", "og"]
 
