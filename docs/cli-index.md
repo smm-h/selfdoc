@@ -12,7 +12,7 @@ order: 91
 
 Code-aware static site generator with directive-based content extraction
 
-Version: 0.8.1
+Version: 0.9.0
 
 ## Commands
 
