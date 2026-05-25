@@ -28,7 +28,7 @@
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac"
   },
   "cli-index.md": {
-    "content": "f58f2770d84c0b2e09711fdac85e47ca277942717554a3f060dab1055c11c1d8",
+    "content": "1b7b753a32ac75e9a0af9049928b21686c0b876e829b782b0f50e9d64c16fa38",
     "description": "ce584c83335140b2ae900664f37fe8c62f98c29dc72847b32ccea87287cd1458"
   },
   "cli-init.md": {
@@ -60,7 +60,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "directives.md": {
-    "content": "a269cbef57366d2f15f94ef4105680a24367bff5d9be2fa8f26368b56519d00e",
+    "content": "83d08725c42e9616a10040a3f176bc8bf581e1ec2aaa53fb6b67125e5ce18983",
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/architecture.md": {
@@ -344,15 +344,15 @@
     "description": "be4881babd1a98706a694be1393b205768d475c98a6f715d7ec504c1382e25de"
   },
   "selfdoc-build.md": {
-    "content": "17e21df8d8f68526a0c37478c97cbc5aef0e2fa7f3f978f3ae2a7cc8e36af98b",
+    "content": "59ae1f07d1b93d2b9acf02e19bbb2efc5ec458b718a1d719d6b37d0feaa05aa1",
     "description": "4d7cedf5ab1e4ceca8648d56e5a281ca4afeaeed54215bb505ffe08fa2310e54"
   },
   "selfdoc-check.md": {
-    "content": "560e08f839bd08900a299ed0a308a07e58ce07d4d457f6225dbb436695a94912",
+    "content": "4f74f3f316ebcb161c71a46cf4c01324baef563b46d0f7fc14e18b95b13baed8",
     "description": "b3e82d342254adcd7892e8610337842feaddfdb4a3b4fd347e99d497b7f110c4"
   },
   "selfdoc-cli.md": {
-    "content": "3a021f69e160b3e99050db4148a616965dc92a4019514d358ff9fda54f3de842",
+    "content": "4554ccda3ec34fc6ef881c3bb9d3764ba02ede64830606ee8ae819951ddbd08e",
     "description": "9ca6c2052a0141a05bff8a70677e0f23a2e259bc02cbcee1c86f3cca41c491b0"
   },
   "selfdoc-config.md": {
@@ -392,7 +392,7 @@
     "description": "829a4cb72881062640fa01ec788cc2036f5adee4df5ee1ca09acc6030a164cde"
   },
   "selfdoc-gen.md": {
-    "content": "9798b766bb2ac0fb7a366769d9f1ad842be53a0304bcb53ab2053d0ccabf48de",
+    "content": "95edb638767f401635a2922748efe7817dbfd70e6d65f375c87c59a438c008c0",
     "description": "dfa9962a53b635783b4856d554a16dc780c385982beaa7c72aff14a069022f98"
   },
   "selfdoc-gendata.md": {
@@ -432,7 +432,7 @@
     "description": "c1a00e92bff237575d7c025bf16be00a26df5a4d444bba6017dad98e512f5625"
   },
   "selfdoc-utils.md": {
-    "content": "9279dc668ca705cc1a6c7bbcb7b8c356eac318b3a3d3bfcf63bca0b25921b067",
+    "content": "f2ae67acecbd36c430b6156138d81d3e4308e608fd6471906fd471e75144adb7",
     "description": "7812daa0d3a81a7b18bc130fd5406630c681d3dcf238ce1b1dc81d4ce8b3cf30"
   },
   "selfdoc.md": {
