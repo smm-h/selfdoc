@@ -2,6 +2,12 @@
 
 # Changelog
 
+## 0.9.1
+
+### Fixes
+
+- **Fix.** Go gen root package now correctly uses `ref path="."` instead of the module name.
+
 ## 0.9.0
 
 ### Features
