@@ -506,3 +506,244 @@ class TestStaleCleanup:
 
         # The stale page should be removed
         assert not os.path.isfile(os.path.join(docs_dir, "mylib-utils.md"))
+
+
+# ---------------------------------------------------------------------------
+# Go generation tests -- per-package (per-directory) pages
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def go_project(tmp_path):
+    """Create a Go project with multiple packages for gen testing.
+
+    Layout:
+      go.mod
+      main.go              (root package)
+      utils.go             (root package, second file)
+      internal/models/models.go   (single-file package)
+      internal/commit/doc.go      (multi-file package, has package doc)
+      internal/commit/commit.go
+      internal/commit/types.go
+      internal/commit/commit_test.go  (should be excluded)
+      cmd/myapp/main.go   (cmd package)
+      docs/               (output directory)
+    """
+    # go.mod
+    with open(os.path.join(tmp_path, "go.mod"), "w") as f:
+        f.write("module github.com/user/mygoapp\n\ngo 1.21\n")
+
+    # selfdoc.json
+    config = {
+        "language": "go",
+        "source": ["."],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    # Root package files
+    with open(os.path.join(tmp_path, "main.go"), "w") as f:
+        f.write(
+            "// mygoapp is the entry point for the application.\n"
+            "package main\n\n"
+            "func main() {}\n"
+        )
+    with open(os.path.join(tmp_path, "utils.go"), "w") as f:
+        f.write("package main\n\nfunc Helper() {}\n")
+
+    # internal/models -- single-file package
+    models_dir = os.path.join(tmp_path, "internal", "models")
+    os.makedirs(models_dir)
+    with open(os.path.join(models_dir, "models.go"), "w") as f:
+        f.write(
+            "// Package models defines data structures.\n"
+            "package models\n\n"
+            "type User struct {\n\tName string\n}\n"
+        )
+
+    # internal/commit -- multi-file package with doc.go
+    commit_dir = os.path.join(tmp_path, "internal", "commit")
+    os.makedirs(commit_dir)
+    with open(os.path.join(commit_dir, "doc.go"), "w") as f:
+        f.write(
+            "// Package commit handles git commit operations.\n"
+            "package commit\n"
+        )
+    with open(os.path.join(commit_dir, "commit.go"), "w") as f:
+        f.write("package commit\n\nfunc Create() error { return nil }\n")
+    with open(os.path.join(commit_dir, "types.go"), "w") as f:
+        f.write("package commit\n\ntype Commit struct {\n\tHash string\n}\n")
+    # Test file -- should be excluded
+    with open(os.path.join(commit_dir, "commit_test.go"), "w") as f:
+        f.write(
+            "package commit\n\n"
+            "import \"testing\"\n\n"
+            "func TestCreate(t *testing.T) {}\n"
+        )
+
+    # cmd/myapp
+    cmd_dir = os.path.join(tmp_path, "cmd", "myapp")
+    os.makedirs(cmd_dir)
+    with open(os.path.join(cmd_dir, "main.go"), "w") as f:
+        f.write("package main\n\nfunc main() {}\n")
+
+    # docs directory
+    os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
+
+    return tmp_path
+
+
+class TestGoPackageGeneration:
+    """Test Go per-package (per-directory) page generation."""
+
+    def test_one_page_per_package(self, go_project):
+        """Each directory with .go files produces exactly one page."""
+        config = _load_config(go_project)
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        # Should have: root package, internal-models, internal-commit,
+        # cmd-myapp, plus gen-index.md
+        assert "internal-models.md" in filenames
+        assert "internal-commit.md" in filenames
+        assert "cmd-myapp.md" in filenames
+        assert "gen-index.md" in filenames
+
+    def test_no_per_file_pages(self, go_project):
+        """Per-file pages should NOT be generated for Go."""
+        config = _load_config(go_project)
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        # These would exist if gen was treating Go as per-file
+        assert "internal-commit-commit.md" not in filenames
+        assert "internal-commit-types.md" not in filenames
+        assert "internal-commit-doc.md" not in filenames
+        assert "main.md" not in filenames
+        assert "utils.md" not in filenames
+
+    def test_root_package_uses_module_name(self, go_project):
+        """Root package page filename comes from go.mod module name."""
+        config = _load_config(go_project)
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        # go.mod has "module github.com/user/mygoapp" -> last segment "mygoapp"
+        assert "mygoapp.md" in filenames
+
+    def test_root_package_fallback_to_dirname(self, go_project):
+        """Root package falls back to directory basename when go.mod is missing."""
+        # Remove go.mod
+        os.unlink(os.path.join(go_project, "go.mod"))
+        # The go extractor detect() checks for go.mod, but gen only uses
+        # the config language field, so we need to keep it working.
+        # We re-create go.mod without a module line to test the fallback.
+        with open(os.path.join(go_project, "go.mod"), "w") as f:
+            f.write("go 1.21\n")
+
+        config = _load_config(go_project)
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        # Should use the tmp directory basename
+        basename = os.path.basename(str(go_project))
+        assert f"{basename}.md" in filenames
+
+    def test_test_files_excluded(self, go_project):
+        """_test.go files should not cause packages to appear or affect output."""
+        config = _load_config(go_project)
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        # No page named after a test file
+        for fname in filenames:
+            assert "test" not in fname.lower() or fname == "gen-index.md"
+
+    def test_ref_directive_uses_directory_path(self, go_project):
+        """Generated pages use package directory path in ref directive."""
+        config = _load_config(go_project)
+        generate_docs(config, base_dir=str(go_project))
+
+        docs_dir = os.path.join(go_project, "docs")
+        with open(os.path.join(docs_dir, "internal-commit.md"), "r") as f:
+            content = f.read()
+
+        assert ':-: ref path="internal/commit"' in content
+
+    def test_ref_directive_root_package(self, go_project):
+        """Root package ref directive uses the module name as display path."""
+        config = _load_config(go_project)
+        generate_docs(config, base_dir=str(go_project))
+
+        docs_dir = os.path.join(go_project, "docs")
+        with open(os.path.join(docs_dir, "mygoapp.md"), "r") as f:
+            content = f.read()
+
+        # Root package uses the module name as the path in the directive
+        assert ':-: ref path="mygoapp"' in content
+
+    def test_package_doc_used_as_description(self, go_project):
+        """Package doc comment is extracted and used as page description."""
+        config = _load_config(go_project)
+        generate_docs(config, base_dir=str(go_project))
+
+        docs_dir = os.path.join(go_project, "docs")
+        with open(os.path.join(docs_dir, "internal-commit.md"), "r") as f:
+            content = f.read()
+
+        # doc.go has "Package commit handles git commit operations."
+        assert "handles git commit operations." in content
+
+    def test_package_without_doc_uses_default(self, go_project):
+        """Packages without doc comment get the default description template."""
+        config = _load_config(go_project)
+        generate_docs(config, base_dir=str(go_project))
+
+        docs_dir = os.path.join(go_project, "docs")
+        with open(os.path.join(docs_dir, "cmd-myapp.md"), "r") as f:
+            content = f.read()
+
+        # cmd/myapp has no package doc comment
+        assert "auto-generated documentation" in content
+
+    def test_generated_marker_present(self, go_project):
+        """All generated Go pages have the generated: true marker."""
+        config = _load_config(go_project)
+        generate_docs(config, base_dir=str(go_project))
+
+        docs_dir = os.path.join(go_project, "docs")
+        assert _has_generated_marker(
+            os.path.join(docs_dir, "internal-commit.md")
+        )
+        assert _has_generated_marker(
+            os.path.join(docs_dir, "internal-models.md")
+        )
+
+    def test_multi_source_path(self, go_project):
+        """Go gen works with multiple source paths."""
+        # Create an extra source directory
+        extra_dir = os.path.join(go_project, "pkg", "extra")
+        os.makedirs(extra_dir)
+        with open(os.path.join(extra_dir, "extra.go"), "w") as f:
+            f.write("package extra\n\nfunc DoExtra() {}\n")
+
+        config = _load_config(go_project)
+        config["source"] = [".", "pkg/"]
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        assert "extra.md" in filenames
+
+    def test_user_exclude_patterns_go(self, go_project):
+        """User-configured exclude patterns work for Go packages."""
+        config = _load_config(go_project)
+        config["gen"] = {"exclude": ["cmd/*"]}
+        generated = generate_docs(config, base_dir=str(go_project))
+
+        filenames = set(generated)
+        assert "cmd-myapp.md" not in filenames
+        # Other packages still present
+        assert "internal-commit.md" in filenames

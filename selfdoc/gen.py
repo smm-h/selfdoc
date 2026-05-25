@@ -9,6 +9,8 @@ from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.directives import resolve_directives
 from selfdoc.extractors import EXTRACTORS
+from selfdoc.extractors.base import read_source
+from selfdoc.extractors.go import _extract_package_doc
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import extract_module_docstring as _extract_module_docstring
 from selfdoc.utils import atomic_write as _atomic_write
@@ -101,6 +103,138 @@ def _module_to_filename(module_path, language):
     if language == "python":
         return module_path.replace(".", "-") + ".md"
     return module_path.replace("/", "-") + ".md"
+
+
+def _read_go_module_name(base_dir):
+    """Read the module name from go.mod in base_dir.
+
+    Returns the last path segment of the module path (e.g. "myapp" from
+    "github.com/user/myapp"), or None if go.mod is missing or unparseable.
+    """
+    go_mod = os.path.join(base_dir, "go.mod")
+    try:
+        with open(go_mod, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("module "):
+                    module_path = line[len("module "):].strip()
+                    # Last segment of the module path
+                    return module_path.rstrip("/").rsplit("/", 1)[-1]
+    except OSError:
+        pass
+    return None
+
+
+def _go_root_package_name(base_dir):
+    """Determine the filename stem for the root Go package.
+
+    Reads the module name from go.mod; falls back to the project directory
+    basename.
+    """
+    name = _read_go_module_name(base_dir)
+    if name:
+        return name
+    return os.path.basename(os.path.abspath(base_dir))
+
+
+def _extract_go_package_description(pkg_dir):
+    """Extract the package doc comment from a Go package directory.
+
+    Reads .go files (excluding _test.go), preferring doc.go, then the file
+    matching the directory name, then any file with a package doc comment.
+    Returns the first line of the doc comment (truncated to 155 chars), or None.
+    """
+    go_files = sorted(
+        f for f in os.listdir(pkg_dir)
+        if f.endswith(".go") and not f.endswith("_test.go")
+    )
+    if not go_files:
+        return None
+
+    # Prioritise doc.go and the file matching the directory basename
+    dir_basename = os.path.basename(pkg_dir)
+    priority_names = ["doc.go", f"{dir_basename}.go"]
+    ordered = []
+    for pn in priority_names:
+        if pn in go_files:
+            ordered.append(pn)
+    for gf in go_files:
+        if gf not in ordered:
+            ordered.append(gf)
+
+    file_contents = {}
+    for gf in ordered:
+        content, _err = read_source(os.path.join(pkg_dir, gf))
+        file_contents[gf] = content if content is not None else ""
+
+    _pkg_name, doc = _extract_package_doc(file_contents)
+    if not doc:
+        return None
+
+    # Take first line, truncate to 155 chars
+    first_line = doc.split("\n", 1)[0].strip()
+    if not first_line:
+        return None
+    # Take up to the first sentence-ending period
+    match = re.search(r"\.\s", first_line)
+    if match:
+        first_line = first_line[: match.start() + 1]
+    elif first_line.endswith("."):
+        pass
+    if len(first_line) > 155:
+        first_line = first_line[:152] + "..."
+    return first_line
+
+
+def _collect_go_packages(source_paths, base_dir, exclude_patterns):
+    """Walk source paths and group .go files by parent directory (package).
+
+    Returns a list of (module_path, pkg_dir_abs) tuples sorted by module_path.
+    Excludes test files and files matching exclude_patterns.
+    The module_path is the relative directory path from the source root
+    (e.g. "internal/commit"), or "." for the source root itself.
+    """
+    packages = {}  # module_path -> pkg_dir absolute path
+
+    for sp in source_paths:
+        source_root = os.path.join(base_dir, sp.rstrip("/"))
+        if not os.path.isdir(source_root):
+            continue
+
+        for dirpath, _dirnames, filenames in os.walk(source_root):
+            has_go_file = False
+            for fname in filenames:
+                if not fname.endswith(".go"):
+                    continue
+                if fname.endswith("_test.go"):
+                    continue
+
+                full_path = os.path.join(dirpath, fname)
+                rel_to_source = os.path.relpath(full_path, source_root)
+
+                if _is_excluded(rel_to_source, exclude_patterns):
+                    continue
+
+                has_go_file = True
+
+            if has_go_file:
+                rel_dir = os.path.relpath(dirpath, source_root)
+                # Normalise to forward slashes
+                if rel_dir == ".":
+                    module_path = "."
+                else:
+                    module_path = rel_dir.replace(os.sep, "/")
+
+                # Check exclusion against the package path itself
+                if module_path != "." and _is_excluded(
+                    module_path, exclude_patterns
+                ):
+                    continue
+
+                if module_path not in packages:
+                    packages[module_path] = os.path.abspath(dirpath)
+
+    return sorted(packages.items(), key=lambda t: t[0])
 
 
 def _is_excluded(rel_path, exclude_patterns):
@@ -331,47 +465,76 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
     user_excludes = gen_config.get("exclude", [])
     exclude_patterns = list(_DEFAULT_EXCLUDES) + list(user_excludes)
 
-    # Collect (module_path, module_name, md_filename) tuples
+    # Collect (module_path, module_name, md_filename, src_path_or_pkg_dir) tuples.
+    # For Go, src_path_or_pkg_dir is the package directory; for others it is
+    # the individual source file path.
     modules = []
 
-    for sp in source_paths:
-        source_root = os.path.join(base_dir, sp.rstrip("/"))
-        if not os.path.isdir(source_root):
-            continue
+    if language == "go":
+        # Go: group by package directory, one page per directory
+        go_packages = _collect_go_packages(
+            source_paths, base_dir, exclude_patterns,
+        )
+        root_pkg_name = _go_root_package_name(base_dir)
 
-        for dirpath, _dirnames, filenames in os.walk(source_root):
-            for fname in filenames:
-                _root, ext = os.path.splitext(fname)
-                if ext not in extensions:
-                    continue
-
-                full_path = os.path.join(dirpath, fname)
-                rel_to_source = os.path.relpath(full_path, source_root)
-
-                if _is_excluded(rel_to_source, exclude_patterns):
-                    continue
-
-                module_path = _file_to_module_path(
-                    full_path, base_dir, language,
-                )
-                if module_path is None:
-                    continue
-
-                # Also check exclude patterns against the computed module path
-                # (supports dotted module names like "selfdoc.staleness")
-                if _is_excluded(module_path, exclude_patterns):
-                    continue
-
+        for module_path, pkg_dir_abs in go_packages:
+            if module_path == ".":
+                display_path = root_pkg_name
+                md_filename = root_pkg_name + ".md"
+            else:
+                display_path = module_path
                 md_filename = _module_to_filename(module_path, language)
 
-                # Skip if a hand-written page already exists
-                existing_md = os.path.join(docs_dir, md_filename)
-                if os.path.isfile(existing_md) and not _has_generated_marker(
-                    existing_md
-                ):
-                    continue
+            # Skip if a hand-written page already exists
+            existing_md = os.path.join(docs_dir, md_filename)
+            if os.path.isfile(existing_md) and not _has_generated_marker(
+                existing_md
+            ):
+                continue
 
-                modules.append((module_path, module_path, md_filename, full_path))
+            modules.append(
+                (display_path, display_path, md_filename, pkg_dir_abs)
+            )
+    else:
+        # Python, TypeScript, JavaScript: one page per file
+        for sp in source_paths:
+            source_root = os.path.join(base_dir, sp.rstrip("/"))
+            if not os.path.isdir(source_root):
+                continue
+
+            for dirpath, _dirnames, filenames in os.walk(source_root):
+                for fname in filenames:
+                    _root, ext = os.path.splitext(fname)
+                    if ext not in extensions:
+                        continue
+
+                    full_path = os.path.join(dirpath, fname)
+                    rel_to_source = os.path.relpath(full_path, source_root)
+
+                    if _is_excluded(rel_to_source, exclude_patterns):
+                        continue
+
+                    module_path = _file_to_module_path(
+                        full_path, base_dir, language,
+                    )
+                    if module_path is None:
+                        continue
+
+                    # Also check exclude patterns against the computed module path
+                    # (supports dotted module names like "selfdoc.staleness")
+                    if _is_excluded(module_path, exclude_patterns):
+                        continue
+
+                    md_filename = _module_to_filename(module_path, language)
+
+                    # Skip if a hand-written page already exists
+                    existing_md = os.path.join(docs_dir, md_filename)
+                    if os.path.isfile(existing_md) and not _has_generated_marker(
+                        existing_md
+                    ):
+                        continue
+
+                    modules.append((module_path, module_path, md_filename, full_path))
 
     # Sort for deterministic output
     modules.sort(key=lambda t: t[0])
@@ -413,10 +576,16 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
     for nav_order, (mod_path, mod_name, md_fname, src_path) in enumerate(modules, start=1):
         out_path = os.path.join(docs_dir, md_fname)
         existing_description = _read_existing_description(out_path)
-        # Try module docstring when no custom description exists
+        # Try module/package docstring when no custom description exists
         docstring_description = None
         if existing_description is None:
-            docstring_description = _extract_module_docstring(src_path)
+            if language == "go":
+                # src_path is a package directory for Go
+                docstring_description = _extract_go_package_description(
+                    src_path
+                )
+            else:
+                docstring_description = _extract_module_docstring(src_path)
         content = _generate_page_content(
             mod_name, mod_path, nav_order,
             existing_description=existing_description,
