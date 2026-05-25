@@ -1,9 +1,11 @@
 """Shared utility functions for selfdoc."""
 
 import ast
+import json
 import os
 import re
 import tempfile
+import tomllib
 
 
 def extract_module_docstring(filepath):
@@ -66,3 +68,51 @@ def atomic_write(filepath, content, permissions=None):
         except OSError:
             pass
         raise
+
+
+def detect_project_version(base_dir: str, fallback: str = "") -> str:
+    """Detect project version from manifest files.
+
+    Checks sources in order:
+    1. pyproject.toml [project].version
+    2. package.json "version"
+    3. VERSION file (plain text)
+
+    Returns *fallback* if no version is found.
+    """
+    # Try pyproject.toml
+    pyproject_path = os.path.join(base_dir, "pyproject.toml")
+    if os.path.isfile(pyproject_path):
+        try:
+            with open(pyproject_path, "rb") as f:
+                data = tomllib.load(f)
+            version = data.get("project", {}).get("version")
+            if version:
+                return version
+        except (OSError, tomllib.TOMLDecodeError, KeyError):
+            pass
+
+    # Try package.json
+    package_path = os.path.join(base_dir, "package.json")
+    if os.path.isfile(package_path):
+        try:
+            with open(package_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            version = data.get("version")
+            if version:
+                return version
+        except (OSError, json.JSONDecodeError, KeyError):
+            pass
+
+    # Try VERSION file
+    version_path = os.path.join(base_dir, "VERSION")
+    if os.path.isfile(version_path):
+        try:
+            with open(version_path, "r", encoding="utf-8") as f:
+                version = f.read().strip()
+            if version:
+                return version
+        except OSError:
+            pass
+
+    return fallback

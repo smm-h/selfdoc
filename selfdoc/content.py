@@ -13,6 +13,8 @@ import json
 import os
 import re
 
+from selfdoc.utils import detect_project_version
+
 # -- Callout directives -------------------------------------------------------
 
 _CALLOUT_TYPES: dict[str, str] = {
@@ -472,6 +474,11 @@ def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
 
 def _read_project_field(base_dir: str, field: str) -> str:
     """Read a project metadata field from pyproject.toml, package.json, or go.mod."""
+    # For version, delegate to the shared utility
+    if field == "version":
+        return detect_project_version(base_dir, fallback="unknown")
+
+    # For other fields (e.g. "name"), use the original lookup chain
     # Try pyproject.toml
     pyproject = os.path.join(base_dir, "pyproject.toml")
     if os.path.isfile(pyproject):
@@ -509,7 +516,6 @@ def _read_project_field(base_dir: str, field: str) -> str:
                             return m.group(1).strip()
             except OSError:
                 pass
-        # Go doesn't have a version field in go.mod
         return "unknown"
 
     return "unknown"

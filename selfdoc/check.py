@@ -204,6 +204,9 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # Run lint checks (SEO and other diagnostics)
     result.lints = _run_lints(all_docs, docs_dir, resolver, config)
 
+    # Project-level version consistency checks
+    result.lints.extend(_check_version_consistency(config, dir_path))
+
     # Description staleness detection: check if page content changed
     # but frontmatter description was not updated.
     # Uses frontmatter and resolved content from resolve_all_docs instead
@@ -320,6 +323,52 @@ def _token_text_lines(tok):
             lines.extend(defs)
         return lines
     return []
+
+
+def _check_version_consistency(config, dir_path):
+    """Check version consistency between config and project manifest.
+
+    VER002: config["version"] differs from detected project version.
+    VER003: versions array last entry doesn't match config["version"].
+    """
+    from selfdoc.utils import detect_project_version
+
+    results = []
+
+    config_version = config.get("version")
+
+    # VER002: config version vs detected project version
+    if config_version:
+        detected = detect_project_version(dir_path)
+        if detected and detected != config_version:
+            results.append(LintResult(
+                file="selfdoc.json",
+                line=None,
+                code="VER002",
+                message=(
+                    f"Config version '{config_version}' does not match"
+                    f" detected project version '{detected}'"
+                ),
+                severity="error",
+            ))
+
+    # VER003: versions array last entry vs config version
+    versions = config.get("versions") or []
+    if config_version and versions:
+        last_version = versions[-1].get("version", "")
+        if last_version and last_version != config_version:
+            results.append(LintResult(
+                file="selfdoc.json",
+                line=None,
+                code="VER003",
+                message=(
+                    f"Last entry in versions array ('{last_version}') does"
+                    f" not match config version ('{config_version}')"
+                ),
+                severity="error",
+            ))
+
+    return results
 
 
 def _run_lints(all_docs, docs_dir, resolver, config):

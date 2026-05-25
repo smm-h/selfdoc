@@ -16,7 +16,6 @@ import shutil
 from selfdoc.build import (
     _build_search_index,
     _compress_output,
-    _detect_project_version,
     _extract_critical_css,
     _extract_version_content,
     _generate_auxiliary_files,
@@ -406,7 +405,8 @@ def build_unified(dir_path=".", config=None):
                 proj_version = pinned_version
             else:
                 build_dir = project_path
-                proj_version = _detect_project_version(project_path)
+                from selfdoc.utils import detect_project_version
+                proj_version = detect_project_version(project_path)
 
             # Build the project for each locale
             for locale in locales:

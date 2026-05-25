@@ -2359,3 +2359,172 @@ def test_seo012_custom_css_dark_mode_override(lint_project):
     ]
     assert len(custom_dark) >= 1
     assert any("body text" in r.message for r in custom_dark)
+
+
+# -- VER002 / VER003: version consistency checks --
+
+
+class TestVersionConsistencyLints:
+    """Tests for VER002 and VER003 lint checks."""
+
+    def _make_project(self, tmp_path, config, pyproject_version=None, package_json_version=None):
+        """Helper to create a minimal project with config and optional manifests."""
+        config_path = os.path.join(tmp_path, "selfdoc.json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f)
+
+        # Create source dir and docs
+        lib_dir = os.path.join(tmp_path, "mylib")
+        os.makedirs(lib_dir, exist_ok=True)
+        with open(os.path.join(lib_dir, "__init__.py"), "w") as f:
+            f.write('"""Lib."""\n')
+
+        docs_dir = os.path.join(tmp_path, "docs")
+        os.makedirs(docs_dir, exist_ok=True)
+        with open(os.path.join(docs_dir, "index.md"), "w") as f:
+            f.write(
+                "---\ntitle: Test\n"
+                "description: A test project for version consistency checking across builds\n"
+                "---\n\n# Test\n"
+            )
+
+        if pyproject_version is not None:
+            pyproject_path = os.path.join(tmp_path, "pyproject.toml")
+            with open(pyproject_path, "w") as f:
+                f.write(
+                    f'[project]\nname = "mylib"\nversion = "{pyproject_version}"\n'
+                )
+
+        if package_json_version is not None:
+            pkg_path = os.path.join(tmp_path, "package.json")
+            with open(pkg_path, "w") as f:
+                json.dump({"name": "mylib", "version": package_json_version}, f)
+
+        return tmp_path
+
+    def test_ver002_version_mismatch(self, tmp_path):
+        """VER002 fires when config version differs from detected project version."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version": "2.0.0",
+        }
+        self._make_project(tmp_path, config, pyproject_version="1.5.0")
+
+        result = check_docs(str(tmp_path))
+        ver002 = [l for l in result.lints if l.code == "VER002"]
+        assert len(ver002) == 1
+        assert "2.0.0" in ver002[0].message
+        assert "1.5.0" in ver002[0].message
+        assert ver002[0].severity == "error"
+
+    def test_ver002_no_lint_when_versions_match(self, tmp_path):
+        """VER002 does not fire when config version matches detected version."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version": "1.5.0",
+        }
+        self._make_project(tmp_path, config, pyproject_version="1.5.0")
+
+        result = check_docs(str(tmp_path))
+        ver002 = [l for l in result.lints if l.code == "VER002"]
+        assert len(ver002) == 0
+
+    def test_ver002_no_lint_when_no_config_version(self, tmp_path):
+        """VER002 does not fire when config has no version field."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+        }
+        self._make_project(tmp_path, config, pyproject_version="1.0.0")
+
+        result = check_docs(str(tmp_path))
+        ver002 = [l for l in result.lints if l.code == "VER002"]
+        assert len(ver002) == 0
+
+    def test_ver002_no_lint_when_no_detected_version(self, tmp_path):
+        """VER002 does not fire when no project version can be detected."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version": "1.0.0",
+        }
+        # No pyproject.toml, no package.json, no VERSION
+        self._make_project(tmp_path, config)
+
+        result = check_docs(str(tmp_path))
+        ver002 = [l for l in result.lints if l.code == "VER002"]
+        assert len(ver002) == 0
+
+    def test_ver003_versions_array_mismatch(self, tmp_path):
+        """VER003 fires when versions array last entry differs from config version."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version": "2.0.0",
+            "versions": [
+                {"version": "1.0.0", "indexed": True},
+                {"version": "1.5.0", "indexed": True},
+            ],
+        }
+        # Make detected version match config to avoid VER002
+        self._make_project(tmp_path, config, pyproject_version="2.0.0")
+
+        result = check_docs(str(tmp_path))
+        ver003 = [l for l in result.lints if l.code == "VER003"]
+        assert len(ver003) == 1
+        assert "1.5.0" in ver003[0].message
+        assert "2.0.0" in ver003[0].message
+        assert ver003[0].severity == "error"
+
+    def test_ver003_no_lint_when_consistent(self, tmp_path):
+        """VER003 does not fire when versions array last entry matches config."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version": "2.0.0",
+            "versions": [
+                {"version": "1.0.0", "indexed": True},
+                {"version": "2.0.0", "indexed": True},
+            ],
+        }
+        self._make_project(tmp_path, config, pyproject_version="2.0.0")
+
+        result = check_docs(str(tmp_path))
+        ver003 = [l for l in result.lints if l.code == "VER003"]
+        assert len(ver003) == 0
+
+    def test_ver003_no_lint_when_no_versions_array(self, tmp_path):
+        """VER003 does not fire when config has no versions array."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version": "1.0.0",
+        }
+        self._make_project(tmp_path, config, pyproject_version="1.0.0")
+
+        result = check_docs(str(tmp_path))
+        ver003 = [l for l in result.lints if l.code == "VER003"]
+        assert len(ver003) == 0

@@ -403,7 +403,8 @@ def _cmd_deploy():
         sys.exit(1)
 
     # Prefer version from selfdoc.json, fall back to project manifest
-    version = config.get("version") or _detect_version()
+    from selfdoc.utils import detect_project_version
+    version = config.get("version") or detect_project_version(".", fallback="0.0.0")
 
     provider = deploy_config["provider"]
 
@@ -422,31 +423,6 @@ def _cmd_deploy():
     return 0
 
 
-def _detect_version():
-    """Detect project version from pyproject.toml or package.json."""
-    # Try pyproject.toml
-    if os.path.isfile("pyproject.toml"):
-        try:
-            try:
-                import tomllib
-            except ModuleNotFoundError:
-                import tomli as tomllib  # type: ignore[no-redef]
-            with open("pyproject.toml", "rb") as f:
-                data = tomllib.load(f)
-            return data.get("project", {}).get("version", "0.0.0")
-        except Exception:
-            pass
-
-    # Try package.json
-    if os.path.isfile("package.json"):
-        try:
-            with open("package.json", "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data.get("version", "0.0.0")
-        except Exception:
-            pass
-
-    return "0.0.0"
 
 
 @app.command("check", help="Check documentation coverage and consistency")

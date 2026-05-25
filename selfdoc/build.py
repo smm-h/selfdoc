@@ -15,6 +15,7 @@ from datetime import datetime
 from selfdoc.config import load_config, ConfigError
 from selfdoc.context import SearchEntry
 from selfdoc.docs import resolve_all_docs
+from selfdoc.utils import detect_project_version
 from selfdoc.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
     _md_to_html_path, _html_path_to_url, _html_to_md_path, _slugify,
@@ -390,40 +391,6 @@ def _extract_version_content(version, config, base_dir):
     return cache_dir
 
 
-def _detect_project_version(dir_path):
-    """Detect project version from pyproject.toml or package.json.
-
-    Returns the version string, or an empty string if not found.
-    """
-    # Try pyproject.toml
-    pyproject_path = os.path.join(dir_path, "pyproject.toml")
-    if os.path.isfile(pyproject_path):
-        try:
-            try:
-                import tomllib
-            except ModuleNotFoundError:
-                import tomli as tomllib  # type: ignore[no-redef]
-            with open(pyproject_path, "rb") as f:
-                data = tomllib.load(f)
-            version = data.get("project", {}).get("version")
-            if version:
-                return version
-        except Exception:
-            pass
-
-    # Try package.json
-    package_path = os.path.join(dir_path, "package.json")
-    if os.path.isfile(package_path):
-        try:
-            with open(package_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            version = data.get("version")
-            if version:
-                return version
-        except Exception:
-            pass
-
-    return ""
 
 
 def _build_search_index(
@@ -1118,7 +1085,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
 
     # Detect project name and version
     project_name = os.path.basename(os.path.abspath(dir_path))
-    version = version_override if version_override is not None else _detect_project_version(dir_path)
+    version = version_override if version_override is not None else detect_project_version(dir_path)
 
     # Check for custom.css in docs/
     custom_css_src = os.path.join(docs_dir, "custom.css")
