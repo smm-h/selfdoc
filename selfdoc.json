@@ -1,12 +1,25 @@
 {
-  "version": "0.8.1",
+  "version": "0.9.0",
   "language": "python",
-  "source": ["selfdoc/"],
+  "source": [
+    "selfdoc/"
+  ],
   "docs": "docs/",
   "output": "docs/_build/",
   "base_url": "https://selfdoc.smmh.dev",
-  "versions": [{"version": "0.8.1", "indexed": true}],
-  "locales": [{"code": "en", "label": "English", "default": true}],
+  "versions": [
+    {
+      "version": "0.8.1",
+      "indexed": true
+    }
+  ],
+  "locales": [
+    {
+      "code": "en",
+      "label": "English",
+      "default": true
+    }
+  ],
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "gen": {
     "exclude": [
@@ -28,11 +41,17 @@
       {
         "command": "python3 scripts/gen-directive-stats.py",
         "output": "directive-stats.json",
-        "mounts": ["selfdoc/", "scripts/"]
+        "mounts": [
+          "selfdoc/",
+          "scripts/"
+        ]
       }
     ]
   },
-  "root_files": ["docs/_CLAUDE.md", "docs/_README.md"],
+  "root_files": [
+    "docs/_CLAUDE.md",
+    "docs/_README.md"
+  ],
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "selfdoc"
