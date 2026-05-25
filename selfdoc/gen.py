@@ -479,10 +479,12 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
 
         for module_path, pkg_dir_abs in go_packages:
             if module_path == ".":
-                display_path = root_pkg_name
+                display_name = root_pkg_name
+                ref_path = "."
                 md_filename = root_pkg_name + ".md"
             else:
-                display_path = module_path
+                display_name = module_path
+                ref_path = module_path
                 md_filename = _module_to_filename(module_path, language)
 
             # Skip if a hand-written page already exists
@@ -493,7 +495,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
                 continue
 
             modules.append(
-                (display_path, display_path, md_filename, pkg_dir_abs)
+                (ref_path, display_name, md_filename, pkg_dir_abs)
             )
     else:
         # Python, TypeScript, JavaScript: one page per file
