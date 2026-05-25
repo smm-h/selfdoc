@@ -471,7 +471,7 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
     has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
     has_errors = any(lint.severity == "error" for lint in result.lints)
 
-    # Coverage threshold check
+    # Coverage threshold check (uses documented count, not referenced)
     coverage_below_threshold = False
     min_coverage = config.get("min_coverage") if config else None
     if (
@@ -479,7 +479,7 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
         and result.coverage is not None
         and result.coverage.total_public > 0
     ):
-        actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
+        actual_pct = result.coverage.documented * 100 // result.coverage.total_public
         if actual_pct < min_coverage:
             coverage_below_threshold = True
 
@@ -519,7 +519,9 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
             output["coverage"] = {
                 "total_public": cov.total_public,
                 "referenced": cov.referenced,
+                "documented": cov.documented,
                 "documented_symbols": cov.documented_symbols,
+                "truly_documented_symbols": cov.truly_documented_symbols,
                 "undocumented_symbols": cov.undocumented_symbols,
             }
         print(json.dumps(output, indent=2))
@@ -527,7 +529,7 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
         print_results(result)
 
     if coverage_below_threshold:
-        actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
+        actual_pct = result.coverage.documented * 100 // result.coverage.total_public
         print(f"Coverage {actual_pct}% is below minimum threshold {min_coverage}%")
 
     if exit_code != 0:

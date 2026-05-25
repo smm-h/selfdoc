@@ -262,7 +262,7 @@ def test_print_results_coverage(python_project, capsys):
     captured = capsys.readouterr()
 
     assert "Coverage:" in captured.out
-    assert "public symbols documented" in captured.out
+    assert "symbols documented" in captured.out
 
 
 def test_print_results_no_directives(capsys):
@@ -2528,3 +2528,396 @@ class TestVersionConsistencyLints:
         result = check_docs(str(tmp_path))
         ver003 = [l for l in result.lints if l.code == "VER003"]
         assert len(ver003) == 0
+
+
+# -- Two-tier coverage (skeleton vs documented pages) --
+
+
+from selfdoc.check import _is_skeleton_page, CoverageStats
+
+
+class TestIsSkeletonPage:
+    """Tests for _is_skeleton_page classification."""
+
+    def test_skeleton_page_generated_true_default_description(self):
+        """A page with generated=True and default description is skeleton."""
+        fm = {
+            "generated": True,
+            "description": (
+                "API reference for the mylib.config module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures."
+            ),
+        }
+        assert _is_skeleton_page(fm) is True
+
+    def test_skeleton_page_without_the_article(self):
+        """Default description without 'the' is also skeleton."""
+        fm = {
+            "generated": True,
+            "description": (
+                "API reference for mylib.config — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures."
+            ),
+        }
+        assert _is_skeleton_page(fm) is True
+
+    def test_not_skeleton_when_generated_false(self):
+        """A hand-written page is not skeleton even with default-like description."""
+        fm = {
+            "generated": False,
+            "description": (
+                "API reference for the mylib.config module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures."
+            ),
+        }
+        assert _is_skeleton_page(fm) is False
+
+    def test_not_skeleton_when_generated_missing(self):
+        """A page without generated key is not skeleton."""
+        fm = {
+            "description": "Some custom description that is quite detailed.",
+        }
+        assert _is_skeleton_page(fm) is False
+
+    def test_not_skeleton_when_description_customized(self):
+        """A generated page with customized description is NOT skeleton."""
+        fm = {
+            "generated": True,
+            "description": "Configuration loader with validation and defaults.",
+        }
+        assert _is_skeleton_page(fm) is False
+
+    def test_not_skeleton_when_generated_is_string_true(self):
+        """generated must be boolean True, not string 'true'."""
+        fm = {
+            "generated": "true",
+            "description": (
+                "API reference for the mylib module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures."
+            ),
+        }
+        assert _is_skeleton_page(fm) is False
+
+    def test_not_skeleton_when_description_missing(self):
+        """A generated page with no description is not skeleton (no match)."""
+        fm = {"generated": True}
+        assert _is_skeleton_page(fm) is False
+
+
+class TestTwoTierCoverage:
+    """Tests for two-tier coverage reporting (referenced vs documented)."""
+
+    def _make_project(self, tmp_path):
+        """Create a project with source files and both skeleton and hand-written pages."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+        }
+        with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+            json.dump(config, f)
+
+        # Source: mylib/__init__.py with public symbols
+        lib_dir = os.path.join(tmp_path, "mylib")
+        os.makedirs(lib_dir)
+        with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+            f.write(
+                '"""My library."""\n'
+                "\n"
+                "def greet(name):\n"
+                '    """Say hello."""\n'
+                "    return f'Hello, {name}'\n"
+                "\n"
+                "def farewell(name):\n"
+                '    """Say goodbye."""\n'
+                "    return f'Goodbye, {name}'\n"
+            )
+
+        # Source: mylib/utils.py with additional symbols
+        with open(os.path.join(lib_dir, "utils.py"), "w", encoding="utf-8") as f:
+            f.write(
+                '"""Utility functions."""\n'
+                "\n"
+                "def helper():\n"
+                '    """Help."""\n'
+                "    pass\n"
+            )
+
+        docs_dir = os.path.join(tmp_path, "docs")
+        os.makedirs(docs_dir)
+        return tmp_path, docs_dir
+
+    def test_hand_written_page_counts_as_documented(self, tmp_path):
+        """Symbols on a hand-written page count as both referenced and documented."""
+        project_dir, docs_dir = self._make_project(tmp_path)
+
+        # Hand-written page (no generated: true)
+        with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "description: Comprehensive guide to the API with examples.\n"
+                "---\n"
+                "# API\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+                "\n"
+                ':-: ref path="mylib.utils"\n'
+            )
+
+        result = check_docs(str(project_dir))
+
+        assert result.coverage is not None
+        # All 3 symbols (greet, farewell, helper) are on a non-skeleton page
+        assert result.coverage.total_public == 3
+        assert result.coverage.referenced == 3
+        assert result.coverage.documented == 3
+
+    def test_skeleton_page_counts_as_referenced_not_documented(self, tmp_path):
+        """Symbols on a skeleton page count as referenced but NOT documented."""
+        project_dir, docs_dir = self._make_project(tmp_path)
+
+        # Skeleton page (generated: true + default description)
+        with open(os.path.join(docs_dir, "mylib.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib\n"
+                "description: \"API reference for the mylib module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures.\"\n"
+                "generated: true\n"
+                "---\n"
+                "# mylib\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+            )
+
+        # Skeleton page for utils
+        with open(os.path.join(docs_dir, "mylib-utils.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib.utils\n"
+                "description: \"API reference for the mylib.utils module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures.\"\n"
+                "generated: true\n"
+                "---\n"
+                "# mylib.utils\n"
+                "\n"
+                ':-: ref path="mylib.utils"\n'
+            )
+
+        result = check_docs(str(project_dir))
+
+        assert result.coverage is not None
+        assert result.coverage.total_public == 3
+        # All referenced (they appear in directive output)
+        assert result.coverage.referenced == 3
+        # None documented (all on skeleton pages)
+        assert result.coverage.documented == 0
+
+    def test_mixed_skeleton_and_hand_written(self, tmp_path):
+        """Mix of skeleton and hand-written pages produces correct two-tier counts."""
+        project_dir, docs_dir = self._make_project(tmp_path)
+
+        # Hand-written page for mylib (greet, farewell are documented)
+        with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "description: A detailed guide explaining the greeting API.\n"
+                "---\n"
+                "# Guide\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+            )
+
+        # Skeleton page for utils (helper is only referenced)
+        with open(os.path.join(docs_dir, "mylib-utils.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib.utils\n"
+                "description: \"API reference for the mylib.utils module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures.\"\n"
+                "generated: true\n"
+                "---\n"
+                "# mylib.utils\n"
+                "\n"
+                ':-: ref path="mylib.utils"\n'
+            )
+
+        result = check_docs(str(project_dir))
+
+        assert result.coverage is not None
+        assert result.coverage.total_public == 3
+        # All 3 are referenced
+        assert result.coverage.referenced == 3
+        # Only greet and farewell are documented (on hand-written page)
+        assert result.coverage.documented == 2
+
+    def test_generated_page_with_custom_description_is_documented(self, tmp_path):
+        """A generated page with a customized description counts as documented."""
+        project_dir, docs_dir = self._make_project(tmp_path)
+
+        # Generated page with CUSTOMIZED description (not skeleton)
+        with open(os.path.join(docs_dir, "mylib.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib\n"
+                "description: \"Core greeting and farewell functionality.\"\n"
+                "generated: true\n"
+                "---\n"
+                "# mylib\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+            )
+
+        result = check_docs(str(project_dir))
+
+        assert result.coverage is not None
+        # greet and farewell are on a generated-but-customized page -> documented
+        assert result.coverage.documented == 2
+        assert result.coverage.referenced == 2
+
+    def test_min_coverage_uses_documented_not_referenced(self, tmp_path):
+        """min_coverage threshold checks against documented count, not referenced."""
+        config = {
+            "language": "python",
+            "source": ["mylib/"],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "min_coverage": 80,
+        }
+        with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+            json.dump(config, f)
+
+        # Source: 3 public symbols
+        lib_dir = os.path.join(tmp_path, "mylib")
+        os.makedirs(lib_dir)
+        with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+            f.write(
+                '"""Lib."""\n'
+                "def alpha(): pass\n"
+                "def beta(): pass\n"
+                "def gamma(): pass\n"
+            )
+
+        docs_dir = os.path.join(tmp_path, "docs")
+        os.makedirs(docs_dir)
+
+        # Skeleton page references all 3 symbols (100% referenced)
+        with open(os.path.join(docs_dir, "mylib.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib\n"
+                "description: \"API reference for the mylib module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures.\"\n"
+                "generated: true\n"
+                "---\n"
+                "# mylib\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+            )
+
+        result = check_docs(str(tmp_path))
+
+        assert result.coverage is not None
+        # 100% referenced but 0% documented
+        assert result.coverage.referenced == 3
+        assert result.coverage.documented == 0
+
+        # min_coverage checks documented (0%) < 80% -> should fail
+        from selfdoc.config import load_config
+        cfg = load_config(str(tmp_path))
+        min_cov = cfg.get("min_coverage")
+        actual_pct = result.coverage.documented * 100 // result.coverage.total_public
+        assert actual_pct < min_cov  # 0 < 80 -> fails threshold
+
+    def test_coverage_output_shows_both_tiers(self, tmp_path, capsys):
+        """print_results shows both documented and referenced lines when they differ."""
+        project_dir, docs_dir = self._make_project(tmp_path)
+
+        # Hand-written page for mylib only
+        with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "description: Detailed guide to the main module covering all aspects.\n"
+                "---\n"
+                "# Guide\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+            )
+
+        # Skeleton page for utils
+        with open(os.path.join(docs_dir, "utils-ref.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib.utils\n"
+                "description: \"API reference for the mylib.utils module — "
+                "auto-generated documentation covering public functions, "
+                "classes, and type signatures.\"\n"
+                "generated: true\n"
+                "---\n"
+                "# mylib.utils\n"
+                "\n"
+                ':-: ref path="mylib.utils"\n'
+            )
+
+        result = check_docs(str(project_dir))
+        print_results(result)
+        captured = capsys.readouterr()
+
+        # Should show documented line
+        assert "2/3 symbols documented" in captured.out
+        # Should show referenced line (different from documented)
+        assert "3/3 symbols referenced" in captured.out
+
+    def test_coverage_output_hides_referenced_when_equal(self, tmp_path, capsys):
+        """print_results hides the referenced line when it equals documented."""
+        project_dir, docs_dir = self._make_project(tmp_path)
+
+        # Hand-written page with all symbols
+        with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "description: Complete API guide with all functions and classes documented.\n"
+                "---\n"
+                "# API\n"
+                "\n"
+                ':-: ref path="mylib"\n'
+                "\n"
+                ':-: ref path="mylib.utils"\n'
+            )
+
+        result = check_docs(str(project_dir))
+        print_results(result)
+        captured = capsys.readouterr()
+
+        assert "symbols documented" in captured.out
+        # Referenced line should NOT appear when counts are equal
+        assert "symbols referenced" not in captured.out
+
+    def test_no_all_docs_degrades_gracefully(self):
+        """_compute_coverage works when all_docs is None (backward compat)."""
+        from selfdoc.check import _compute_coverage
+        from selfdoc.extractors import EXTRACTORS
+
+        # This is a unit-level check that passing None doesn't crash.
+        # In practice all_docs is always passed, but the default=None
+        # ensures old callers (if any) still work.
+        extractor = EXTRACTORS["python"]
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            config = {"language": "python", "source": ["src/"]}
+            os.makedirs(os.path.join(td, "src"))
+            stats = _compute_coverage(config, td, [], extractor, None)
+            assert stats.total_public == 0
+            assert stats.referenced == 0
+            assert stats.documented == 0

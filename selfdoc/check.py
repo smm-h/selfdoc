@@ -45,6 +45,7 @@ class ResolvedDirective:
     name: str  # directive name (ref, table-schema, code-test, etc.)
     attrs: dict  # directive attributes
     content: str  # resolved output text
+    file: str = ""  # relative path within docs/ (which page this directive is on)
 
 
 @dataclass
@@ -53,9 +54,12 @@ class CoverageStats:
 
     total_public: int = 0
     referenced: int = 0
-    # Symbols that are documented (referenced by a directive)
+    documented: int = 0  # symbols on non-skeleton (hand-written or customized) pages
+    # Symbols that are referenced by any directive (skeleton or not)
     documented_symbols: list[str] = field(default_factory=list)
-    # Symbols that are NOT documented
+    # Symbols that are truly documented (on non-skeleton pages only)
+    truly_documented_symbols: list[str] = field(default_factory=list)
+    # Symbols that are NOT referenced by any directive
     undocumented_symbols: list[str] = field(default_factory=list)
 
 
@@ -168,6 +172,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
                                 name=directive.name,
                                 attrs=directive.attrs,
                                 content=resolved,
+                                file=rel_path,
                             )
                         )
             except Exception as exc:
@@ -198,7 +203,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     extractor = EXTRACTORS.get(language)
     if extractor is not None:
         result.coverage = _compute_coverage(
-            config, dir_path, resolved_directives, extractor
+            config, dir_path, resolved_directives, extractor, all_docs
         )
 
     # Run lint checks (SEO and other diagnostics)
@@ -876,15 +881,46 @@ def _check_pairs(lints, css_vars, pairs, mode_prefix, css_file="theme CSS"):
             ))
 
 
-def _compute_coverage(config, base_dir, resolved_directives, extractor):
+_DEFAULT_DESCRIPTION_RE = re.compile(
+    r"^API reference for (the )?[\w.]+( module)? — "
+    r"auto-generated documentation covering public functions, "
+    r"classes, and type signatures\.?$"
+)
+
+
+def _is_skeleton_page(frontmatter):
+    """Return True if the page is a skeleton auto-generated page.
+
+    A page is "skeleton" when it has ``generated: true`` AND its
+    description still matches the default auto-generated pattern.
+    A generated page whose description has been customized counts
+    as documented (someone edited it).
+    """
+    if frontmatter.get("generated") is not True:
+        return False
+    description = frontmatter.get("description", "")
+    if not isinstance(description, str):
+        return False
+    return bool(_DEFAULT_DESCRIPTION_RE.match(description))
+
+
+def _compute_coverage(config, base_dir, resolved_directives, extractor,
+                      all_docs=None):
     """Count public symbols in source files vs. those documented by directives.
 
     Language-agnostic: uses the extractor protocol to discover public symbols
-    and resolve file paths. A symbol is "documented" if its name appears in
-    the resolved content of a directive that references its file.
+    and resolve file paths. Two-tier tracking:
+    - "referenced": symbol appears in ANY directive's resolved output
+    - "documented": symbol appears on a non-skeleton page (hand-written or
+      generated with a customized description)
 
     Files whose module path matches a ``gen.exclude`` pattern are skipped
     so that intentionally-internal modules do not drag down coverage.
+
+    Args:
+        all_docs: Dict from resolve_all_docs mapping rel_path to
+            (frontmatter, resolved, raw_content, fm_line_count).
+            When provided, enables two-tier skeleton page detection.
     """
     from selfdoc.gen import _file_to_module_path, _is_excluded
 
@@ -897,6 +933,13 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
     # Build gen-exclude list from config
     gen_config = config.get("gen") or {}
     gen_excludes = list(gen_config.get("exclude", []))
+
+    # Pre-compute set of skeleton pages (for two-tier coverage)
+    skeleton_pages: set[str] = set()
+    if all_docs:
+        for rel_path, (frontmatter, _resolved, _raw, _fm_lc) in all_docs.items():
+            if _is_skeleton_page(frontmatter):
+                skeleton_pages.add(rel_path)
 
     # Collect all source files and their public symbols
     # Map: relative file path -> list of public symbol names
@@ -931,7 +974,10 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
                 if symbols:
                     all_symbols[rel_to_base] = symbols
 
-    # Build set of documented symbols (as "rel/path:symbol_name")
+    # Build two sets:
+    # - referenced_set: all symbols matched by any directive
+    # - documented_set: symbols matched by directives on non-skeleton pages
+    referenced_set: set[str] = set()
     documented_set: set[str] = set()
 
     for rd in resolved_directives:
@@ -947,6 +993,8 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
         if resolved_path is None:
             continue
 
+        is_skeleton = rd.file in skeleton_pages
+
         # For directory-based resolution (e.g. Go packages), resolved_path
         # is a directory. Match all files in that directory.
         if os.path.isdir(resolved_path):
@@ -958,7 +1006,10 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
                 if os.path.abspath(file_dir).startswith(dir_abs):
                     for sym in syms:
                         if sym in rd.content:
-                            documented_set.add(f"{rel_path}:{sym}")
+                            qualified = f"{rel_path}:{sym}"
+                            referenced_set.add(qualified)
+                            if not is_skeleton:
+                                documented_set.add(qualified)
         else:
             # File-based resolution
             rel_path = os.path.relpath(resolved_path, base_dir)
@@ -967,27 +1018,39 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor):
                 if rd.name == "ref":
                     for sym in all_symbols[rel_path]:
                         if sym in rd.content:
-                            documented_set.add(f"{rel_path}:{sym}")
+                            qualified = f"{rel_path}:{sym}"
+                            referenced_set.add(qualified)
+                            if not is_skeleton:
+                                documented_set.add(qualified)
                 else:
                     # For targeted directives (table-schema, code-test, etc.),
                     # check the target attr for a specific symbol
                     target = rd.attrs.get("target", "")
                     if target and target in all_symbols[rel_path]:
-                        documented_set.add(f"{rel_path}:{target}")
+                        qualified = f"{rel_path}:{target}"
+                        referenced_set.add(qualified)
+                        if not is_skeleton:
+                            documented_set.add(qualified)
                     else:
                         # No target -- check all symbols against content
                         for sym in all_symbols[rel_path]:
                             if sym in rd.content:
-                                documented_set.add(f"{rel_path}:{sym}")
+                                qualified = f"{rel_path}:{sym}"
+                                referenced_set.add(qualified)
+                                if not is_skeleton:
+                                    documented_set.add(qualified)
 
     # Tally
     for rel_path, symbols in sorted(all_symbols.items()):
         for sym in symbols:
             qualified = f"{rel_path}:{sym}"
             stats.total_public += 1
-            if qualified in documented_set:
+            if qualified in referenced_set:
                 stats.referenced += 1
                 stats.documented_symbols.append(qualified)
+                if qualified in documented_set:
+                    stats.documented += 1
+                    stats.truly_documented_symbols.append(qualified)
             else:
                 stats.undocumented_symbols.append(qualified)
 
@@ -1049,13 +1112,19 @@ def print_results(result):
         if result.coverage is not None:
             cov = result.coverage
             if cov.total_public > 0:
-                pct = cov.referenced * 100 // cov.total_public
+                doc_pct = cov.documented * 100 // cov.total_public
+                ref_pct = cov.referenced * 100 // cov.total_public
                 print(
-                    f"Coverage: {cov.referenced}/{cov.total_public} "
-                    f"public symbols documented ({pct}%)"
+                    f"Coverage: {cov.documented}/{cov.total_public} "
+                    f"symbols documented ({doc_pct}%)"
                 )
+                if cov.referenced != cov.documented:
+                    print(
+                        f"          {cov.referenced}/{cov.total_public} "
+                        f"symbols referenced ({ref_pct}%)"
+                    )
                 # Print undocumented symbols when coverage is below 100%
-                if cov.undocumented_symbols and pct < 100:
+                if cov.undocumented_symbols and ref_pct < 100:
                     print(_color("Undocumented symbols:", "1"))
                     # Group by file path
                     by_file: dict[str, list[str]] = {}
@@ -1168,8 +1237,12 @@ def check_unified(dir_path=".", config=None, dry_run=False):
                 aggregate.coverage = CoverageStats()
             aggregate.coverage.total_public += proj_result.coverage.total_public
             aggregate.coverage.referenced += proj_result.coverage.referenced
+            aggregate.coverage.documented += proj_result.coverage.documented
             aggregate.coverage.documented_symbols.extend(
                 f"[{slug}] {s}" for s in proj_result.coverage.documented_symbols
+            )
+            aggregate.coverage.truly_documented_symbols.extend(
+                f"[{slug}] {s}" for s in proj_result.coverage.truly_documented_symbols
             )
             aggregate.coverage.undocumented_symbols.extend(
                 f"[{slug}] {s}" for s in proj_result.coverage.undocumented_symbols
