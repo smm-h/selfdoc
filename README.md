@@ -107,6 +107,7 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 | `table-config-schema` | Configuration field reference table from schema |
 | `table-dep` | Dependencies table from pyproject.toml |
 | `table-directives` | Table of all core built-in directives |
+| `table-endpoint` | REST API endpoint table from OpenAPI spec |
 | `table-schema` | Extract dataclass/struct fields as a markdown table |
 | `var` | Interpolate project metadata value |
 
@@ -184,6 +185,7 @@ Custom directives take priority over built-in names.
 | `language` | yes | Programming language of the documented project. |
 | `source` | yes | List of source directories or files to extract documentation from. |
 | `base_url` | yes | Base URL of the generated site, used for canonical links and SEO. |
+| `version` | no | Project version. When present, used by deploy instead of reading from pyproject.toml/package.json. |
 | `docs` | no | Directory containing Markdown documentation templates. |
 | `output` | no | Output directory for generated HTML files. |
 | `theme` | no | Visual theme for the generated site. |
