@@ -682,8 +682,8 @@ class TestGoPackageGeneration:
         with open(os.path.join(docs_dir, "mygoapp.md"), "r") as f:
             content = f.read()
 
-        # Root package uses the module name as the path in the directive
-        assert ':-: ref path="mygoapp"' in content
+        # Root package uses "." as the ref path (Go resolver expects directory)
+        assert ':-: ref path="."' in content
 
     def test_package_doc_used_as_description(self, go_project):
         """Package doc comment is extracted and used as page description."""
