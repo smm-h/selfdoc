@@ -106,6 +106,7 @@ EXPECTED_CORE_NAMES = {
     "table-commands",
     "table-directives",
     "table-config-schema",
+    "table-endpoint",
     "var",
 }
 

@@ -119,6 +119,13 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         required_attrs=["path"],
         example=':-: table-commands path="selfdoc/"',
     ),
+    "table-endpoint": DirectiveSpec(
+        description="REST API endpoint table from OpenAPI spec",
+        category="content",
+        required_attrs=["path"],
+        optional_attrs=["endpoint", "method"],
+        example=':-: table-endpoint path="openapi.json"',
+    ),
     "table-directives": DirectiveSpec(
         description="Table of all core built-in directives",
         category="content",
@@ -142,7 +149,6 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
 FUTURE_DIRECTIVES: set[str] = {
     # Tables
     "table-param",
-    "table-endpoint",
     "table-env",
     "table-compare",
     "table-error",

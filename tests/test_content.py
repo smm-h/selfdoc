@@ -7,13 +7,13 @@ from selfdoc.content import CONTENT_DIRECTIVES, resolve_content, resolve_glossar
 
 
 def test_content_directives_has_all_entries():
-    """CONTENT_DIRECTIVES should contain all 14 content directive names."""
+    """CONTENT_DIRECTIVES should contain all 15 content directive names."""
     expected = {
         "callout-note", "callout-warning", "callout-tip",
         "callout-danger", "callout-important", "list-glossary",
         "list-tree", "table-dep", "list-features",
         "list-modules", "table-commands", "table-directives",
-        "table-config-schema", "var",
+        "table-config-schema", "table-endpoint", "var",
     }
     assert CONTENT_DIRECTIVES == expected
 

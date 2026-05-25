@@ -561,6 +561,264 @@ def _read_project_description(base_dir: str) -> str:
     return "unknown"
 
 
+# -- table-endpoint directive --------------------------------------------------
+
+
+def resolve_table_endpoint(attrs: dict, base_dir: str) -> str:
+    """Render REST API endpoint documentation from an OpenAPI 3.x JSON spec."""
+    path = attrs.get("path", "")
+    if not path:
+        return "> *[selfdoc: table-endpoint requires a path attribute]*"
+
+    full_path = os.path.join(base_dir, path)
+    if not os.path.isfile(full_path):
+        return f"> *[selfdoc: file '{path}' not found]*"
+
+    try:
+        with open(full_path, "r", encoding="utf-8") as f:
+            spec = json.load(f)
+    except json.JSONDecodeError as exc:
+        return f"> *[selfdoc: invalid JSON in '{path}': {exc}]*"
+    except OSError as exc:
+        return f"> *[selfdoc: cannot read '{path}': {exc}]*"
+
+    paths_obj = spec.get("paths", {})
+    if not paths_obj:
+        return f"> *[selfdoc: no paths found in '{path}']*"
+
+    endpoint_filter = attrs.get("endpoint", "")
+    method_filter = attrs.get("method", "").lower()
+
+    # Collect matching operations: (path, method, operation_obj)
+    operations: list[tuple[str, str, dict]] = []
+    for endpoint_path in sorted(paths_obj.keys()):
+        if endpoint_filter and not endpoint_path.startswith(endpoint_filter):
+            continue
+        path_item = paths_obj[endpoint_path]
+        if not isinstance(path_item, dict):
+            continue
+        for method in sorted(path_item.keys()):
+            if method.startswith("x-") or method in ("summary", "description", "servers", "parameters"):
+                continue
+            if method_filter and method.lower() != method_filter:
+                continue
+            op = path_item[method]
+            if isinstance(op, dict):
+                operations.append((endpoint_path, method.upper(), op))
+
+    if not operations:
+        return f"> *[selfdoc: no matching endpoints in '{path}']*"
+
+    sections = []
+    for ep_path, method, op in operations:
+        sections.append(_render_endpoint(ep_path, method, op, spec))
+
+    return "\n\n".join(sections)
+
+
+def _resolve_ref(ref: str, spec: dict) -> dict | None:
+    """Resolve a JSON $ref pointer within the spec. Returns None if unresolvable."""
+    if not ref.startswith("#/"):
+        return None
+    parts = ref[2:].split("/")
+    current = spec
+    for part in parts:
+        # Handle JSON pointer escaping
+        part = part.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return None
+    return current if isinstance(current, dict) else None
+
+
+def _resolve_schema(schema: dict, spec: dict) -> dict:
+    """Resolve a schema, following $ref if present."""
+    if "$ref" in schema:
+        resolved = _resolve_ref(schema["$ref"], spec)
+        if resolved is not None:
+            return resolved
+    return schema
+
+
+def _extract_type(schema: dict, spec: dict) -> str:
+    """Extract a human-readable type string from a JSON Schema object."""
+    schema = _resolve_schema(schema, spec)
+
+    if "allOf" in schema:
+        # Merge allOf schemas
+        return "object"
+    if "oneOf" in schema:
+        types = []
+        for sub in schema["oneOf"]:
+            sub = _resolve_schema(sub, spec)
+            types.append(_extract_type(sub, spec))
+        return " | ".join(types)
+    if "anyOf" in schema:
+        types = []
+        for sub in schema["anyOf"]:
+            sub = _resolve_schema(sub, spec)
+            types.append(_extract_type(sub, spec))
+        return " | ".join(types)
+
+    schema_type = schema.get("type", "object")
+    if schema_type == "array":
+        items = schema.get("items", {})
+        item_type = _extract_type(items, spec)
+        return f"array[{item_type}]"
+    return schema_type
+
+
+def _extract_properties(schema: dict, spec: dict) -> list[tuple[str, str, bool, str]]:
+    """Extract properties from a schema as (name, type, required, description) tuples."""
+    schema = _resolve_schema(schema, spec)
+    properties: list[tuple[str, str, bool, str]] = []
+
+    required_set = set(schema.get("required", []))
+
+    # Handle allOf: merge properties from all sub-schemas
+    if "allOf" in schema:
+        merged_props: dict[str, dict] = {}
+        merged_required: set[str] = set(required_set)
+        for sub in schema["allOf"]:
+            sub = _resolve_schema(sub, spec)
+            merged_required.update(sub.get("required", []))
+            for name, prop_schema in sub.get("properties", {}).items():
+                merged_props[name] = prop_schema
+        for name in sorted(merged_props.keys()):
+            prop_schema = _resolve_schema(merged_props[name], spec)
+            prop_type = _extract_type(prop_schema, spec)
+            desc = prop_schema.get("description", "")
+            properties.append((name, prop_type, name in merged_required, desc))
+        return properties
+
+    props = schema.get("properties", {})
+    for name in sorted(props.keys()):
+        prop_schema = _resolve_schema(props[name], spec)
+        prop_type = _extract_type(prop_schema, spec)
+        desc = prop_schema.get("description", "")
+        properties.append((name, prop_type, name in required_set, desc))
+
+    return properties
+
+
+def _render_endpoint(ep_path: str, method: str, op: dict, spec: dict) -> str:
+    """Render a single endpoint operation as Markdown."""
+    lines = [f"### `{method} {ep_path}`"]
+
+    # Description/summary
+    desc = op.get("description", op.get("summary", ""))
+    if desc:
+        lines.append("")
+        lines.append(desc)
+
+    # Parameters
+    params = op.get("parameters", [])
+    path_params = []
+    query_params = []
+    for param in params:
+        if "$ref" in param:
+            resolved = _resolve_ref(param["$ref"], spec)
+            if resolved is not None:
+                param = resolved
+            else:
+                continue
+        loc = param.get("in", "")
+        if loc == "path":
+            path_params.append(param)
+        elif loc == "query":
+            query_params.append(param)
+
+    if path_params:
+        lines.append("")
+        lines.append("**Path Parameters**")
+        lines.append("")
+        lines.append("| Name | Type | Required | Description |")
+        lines.append("| --- | --- | --- | --- |")
+        for p in path_params:
+            name = p.get("name", "")
+            p_schema = p.get("schema", {})
+            p_type = _extract_type(p_schema, spec) if p_schema else "string"
+            required = "yes" if p.get("required", False) else "no"
+            p_desc = p.get("description", "")
+            lines.append(f"| `{name}` | {p_type} | {required} | {p_desc} |")
+
+    if query_params:
+        lines.append("")
+        lines.append("**Query Parameters**")
+        lines.append("")
+        lines.append("| Name | Type | Required | Description |")
+        lines.append("| --- | --- | --- | --- |")
+        for p in query_params:
+            name = p.get("name", "")
+            p_schema = p.get("schema", {})
+            p_type = _extract_type(p_schema, spec) if p_schema else "string"
+            required = "yes" if p.get("required", False) else "no"
+            p_desc = p.get("description", "")
+            lines.append(f"| `{name}` | {p_type} | {required} | {p_desc} |")
+
+    # Request body
+    request_body = op.get("requestBody", {})
+    if request_body:
+        if "$ref" in request_body:
+            resolved = _resolve_ref(request_body["$ref"], spec)
+            if resolved is not None:
+                request_body = resolved
+        content = request_body.get("content", {})
+        # Prefer application/json
+        media = content.get("application/json", {})
+        if not media:
+            # Try first available media type
+            for _mt, mt_obj in content.items():
+                media = mt_obj
+                break
+        if media:
+            body_schema = media.get("schema", {})
+            body_schema = _resolve_schema(body_schema, spec)
+            props = _extract_properties(body_schema, spec)
+            if props:
+                lines.append("")
+                lines.append("**Request Body**")
+                lines.append("")
+                lines.append("| Field | Type | Required | Description |")
+                lines.append("| --- | --- | --- | --- |")
+                for name, prop_type, required, desc in props:
+                    req_str = "yes" if required else "no"
+                    lines.append(f"| `{name}` | {prop_type} | {req_str} | {desc} |")
+
+    # Responses
+    responses = op.get("responses", {})
+    for status_code in sorted(responses.keys()):
+        resp = responses[status_code]
+        if "$ref" in resp:
+            resolved = _resolve_ref(resp["$ref"], spec)
+            if resolved is not None:
+                resp = resolved
+            else:
+                continue
+        resp_content = resp.get("content", {})
+        media = resp_content.get("application/json", {})
+        if not media:
+            for _mt, mt_obj in resp_content.items():
+                media = mt_obj
+                break
+        if not media:
+            continue
+        resp_schema = media.get("schema", {})
+        resp_schema = _resolve_schema(resp_schema, spec)
+        props = _extract_properties(resp_schema, spec)
+        if props:
+            lines.append("")
+            lines.append(f"**Response {status_code}**")
+            lines.append("")
+            lines.append("| Field | Type | Description |")
+            lines.append("| --- | --- | --- |")
+            for name, prop_type, _required, desc in props:
+                lines.append(f"| `{name}` | {prop_type} | {desc} |")
+
+    return "\n".join(lines)
+
+
 # -- Dispatch -----------------------------------------------------------------
 
 CONTENT_DIRECTIVES: set[str] = {
@@ -568,7 +826,7 @@ CONTENT_DIRECTIVES: set[str] = {
     "callout-danger", "callout-important", "list-glossary",
     "list-tree", "table-dep", "list-features",
     "list-modules", "table-commands", "table-directives",
-    "table-config-schema", "var",
+    "table-config-schema", "table-endpoint", "var",
 }
 
 
@@ -599,6 +857,8 @@ def resolve_content(
         return resolve_table_directives()
     if name == "table-config-schema":
         return resolve_table_config_schema()
+    if name == "table-endpoint":
+        return resolve_table_endpoint(attrs, base_dir)
     if name == "var":
         if config is None:
             return "> *[selfdoc: var requires project config]*"
