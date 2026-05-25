@@ -1,6 +1,6 @@
 {
   "name": "selfdoc",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "help": "Code-aware static site generator with directive-based content extraction",
   "env_prefix": null,
   "config": false,
