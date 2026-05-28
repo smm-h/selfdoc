@@ -38,3 +38,7 @@ docs/_build/
 .env
 .env.local
 *.local-only
+
+*.pyc
+*.log
+coverage/
