@@ -224,6 +224,34 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         ),
         description="List of underscore-prefixed template paths in docs/ for root file generation.",
     ),
+    FieldSpec(
+        name="redirects",
+        type=_L,
+        required=False,
+        default_factory=list,
+        non_empty=False,
+        item_spec=FieldSpec(
+            name="<item>",
+            type=_D,
+            strict_keys=True,
+            children=(
+                FieldSpec(
+                    name="from",
+                    type=_S,
+                    required=True,
+                    description="Old page slug to redirect from.",
+                ),
+                FieldSpec(
+                    name="to",
+                    type=_S,
+                    required=True,
+                    description="New page slug to redirect to.",
+                ),
+            ),
+            description="Redirect entry mapping old slug to new slug.",
+        ),
+        description="Page-level redirects expanded across all locale/version combos.",
+    ),
     # --- optional dict fields ---
     FieldSpec(
         name="deploy",
