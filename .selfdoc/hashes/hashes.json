@@ -28,7 +28,7 @@
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac"
   },
   "cli-index.md": {
-    "content": "f1471596d3266292ed3d1f28d8897f6d6e1f64efd9d324c99d13c4780c0fee2f",
+    "content": "6e482b5ee5e50bfea381662c150f9e6c8fb58cc840c91ea6a67b026c76a52ee6",
     "description": "ce584c83335140b2ae900664f37fe8c62f98c29dc72847b32ccea87287cd1458"
   },
   "cli-init.md": {
@@ -60,7 +60,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "directives.md": {
-    "content": "83d08725c42e9616a10040a3f176bc8bf581e1ec2aaa53fb6b67125e5ce18983",
+    "content": "49649d62321c3343b454394c440b4b91611779cab488379e8b234ce2f367ac80",
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/architecture.md": {
@@ -380,15 +380,15 @@
     "description": "aa70482e11aa0fa69c31f6724fde918dbaf60eb741b7fa0510e9cd3cb73a377e"
   },
   "selfdoc-extractors-go.md": {
-    "content": "614e2764a5fffe95125a4472336018bdc91f6509a87352eb7c8a5ef7f2e04469",
+    "content": "306f4860b8112b40502fc594b43d2efb52f5708ea0679079095e151e1b4b897d",
     "description": "da3775034594ff0572d308f49e52040fc5837a35114aafb93501ce0b497020b6"
   },
   "selfdoc-extractors-python.md": {
-    "content": "9171a5a26e52978d019369dea38d3b5aba843b3a99e8577e4a3b33de9a8a4782",
+    "content": "685002d4155fe984c8070290c34a56e9cb378cad8f68049bb838e128c9d276a2",
     "description": "86076a664efeba6ce64abb41ef00f6e522ebd10b4284ad9e11e9778de60fd768"
   },
   "selfdoc-extractors-typescript.md": {
-    "content": "ed037150438ddcea03e17cb7d91d30dc0f957d2ee950decd914bf0f6b5da6cff",
+    "content": "b2015f1aab1e69eb141bff54770d48b51dac66bb7cbfe5cdec952527a6e0c193",
     "description": "2af505cc5f5387e2f049dd0ef9ae7de54b6acc749d0bf775019dbf3f4372c46f"
   },
   "selfdoc-extractors.md": {
