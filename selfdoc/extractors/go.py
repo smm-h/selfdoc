@@ -630,11 +630,12 @@ def _handle_schema(arg, body, source_paths, base_dir, attrs):
     file_path = parts[0]
     type_name = parts[1] if len(parts) > 1 else None
 
+    # JSON/TOML/YAML files are config files, not Go source -- delegate
+    if file_path.endswith((".json", ".toml", ".yaml", ".yml")):
+        return _handle_config(file_path, body, source_paths, base_dir, attrs)
+
     full_path = _resolve_file_path(file_path, source_paths, base_dir)
     if full_path is None:
-        # Also try as JSON/TOML/YAML config
-        if file_path.endswith((".json", ".toml", ".yaml", ".yml")):
-            return _handle_config(file_path, body, source_paths, base_dir, attrs)
         return format_error(f"file '{file_path}' not found")
 
     source, err = read_source(full_path)
