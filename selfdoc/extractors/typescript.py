@@ -74,7 +74,7 @@ class TypeScriptExtractor(BaseExtractor):
         handler = handlers.get(directive_name)
         if handler is None:
             return format_error(f"unknown directive '{directive_name}' for TypeScript extractor")
-        return handler(arg, body, source_paths, base_dir)
+        return handler(arg, body, source_paths, base_dir, attrs)
 
     def file_extensions(self) -> list[str]:
         return [".ts", ".tsx", ".js", ".jsx"]
@@ -336,7 +336,7 @@ def _format_jsdoc_as_markdown(jsdoc):
 # ---------------------------------------------------------------------------
 
 
-def _handle_module(arg, body, source_paths, base_dir):
+def _handle_module(arg, body, source_paths, base_dir, attrs):
     """Extract module-level JSDoc and exported declarations from a TS/JS file."""
     if not arg:
         return format_error(":::module requires a file path argument")
@@ -478,7 +478,7 @@ def _extract_name_from_signature(sig):
 # ---------------------------------------------------------------------------
 
 
-def _handle_test(arg, body, source_paths, base_dir):
+def _handle_test(arg, body, source_paths, base_dir, attrs):
     """Extract test source code from a test file.
 
     arg format: <file_path> [TestName]
@@ -651,7 +651,7 @@ def _extract_test_block(source, target_name):
 # ---------------------------------------------------------------------------
 
 
-def _handle_schema(arg, body, source_paths, base_dir):
+def _handle_schema(arg, body, source_paths, base_dir, attrs):
     """Extract interface or type definition fields as a markdown table.
 
     arg format:
@@ -938,7 +938,7 @@ def _find_inline_comment(line):
 # ---------------------------------------------------------------------------
 
 
-def _handle_cli(arg, body, source_paths, base_dir):
+def _handle_cli(arg, body, source_paths, base_dir, attrs):
     """Extract CLI help/usage information from a TS/JS file.
 
     Looks for:
@@ -991,7 +991,7 @@ def _handle_cli(arg, body, source_paths, base_dir):
 # ---------------------------------------------------------------------------
 
 
-def _handle_config(arg, body, source_paths, base_dir):
+def _handle_config(arg, body, source_paths, base_dir, attrs):
     """Extract config file contents as a documented table.
 
     Supports JSON, JSONC (strips // and /* */ comments), and TOML.
@@ -1102,7 +1102,7 @@ def _strip_jsonc_comments(text):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir):
+def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
     """Extract only the module-level JSDoc as prose markdown.
 
     Unlike :::module which also lists exported declarations, this directive
