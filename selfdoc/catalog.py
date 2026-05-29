@@ -30,7 +30,7 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         description="Extract dataclass/struct fields as a markdown table",
         category="code",
         required_attrs=["path"],
-        optional_attrs=["target"],
+        optional_attrs=["target", "exclude"],
         example=':::table-schema path="models.py" target="User"',
     ),
     "code-test": DirectiveSpec(
@@ -50,6 +50,7 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         description="Render a config file (JSON/TOML) as a key-value table",
         category="code",
         required_attrs=["path"],
+        optional_attrs=["exclude"],
         example=':::table-config path="config.json"',
     ),
     "callout-note": DirectiveSpec(
