@@ -16,6 +16,29 @@ def format_error(message):
     return f"> *[selfdoc: {message}]*"
 
 
+def parse_comma_set(value: str) -> set[str]:
+    """Split a comma-separated string into a set of stripped, non-empty parts."""
+    return {part.strip() for part in value.split(",") if part.strip()}
+
+
+def apply_exclude_keys(
+    data: dict, exclude_keys: set[str] | None, display_path: str
+) -> dict | str:
+    """Filter out excluded keys from a dict.
+
+    Returns the filtered dict, or a format_error string if any key
+    in exclude_keys is not present in data.
+    """
+    if not exclude_keys:
+        return data
+    for key in exclude_keys:
+        if key not in data:
+            return format_error(
+                f"exclude key '{key}' not found in '{display_path}'"
+            )
+    return {k: v for k, v in data.items() if k not in exclude_keys}
+
+
 def read_source(filepath):
     """Read a source file and return its contents.
 
