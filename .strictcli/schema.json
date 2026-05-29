@@ -1,10 +1,40 @@
 {
+  "defaults": {
+    "app": {
+      "env_prefix": null,
+      "config": false,
+      "global_flags": [],
+      "commands": {},
+      "groups": {},
+      "deprecated": {}
+    },
+    "flag": {
+      "short": null,
+      "default": null,
+      "env": null,
+      "choices": null,
+      "repeatable": false,
+      "negatable": null,
+      "hidden": false
+    },
+    "arg": {
+      "required": true,
+      "variadic": false
+    },
+    "command": {
+      "passthrough": false,
+      "flags": [],
+      "args": []
+    },
+    "group": {
+      "commands": {},
+      "groups": {},
+      "deprecated": {}
+    }
+  },
   "name": "selfdoc",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "help": "Code-aware static site generator with directive-based content extraction",
-  "env_prefix": null,
-  "config": false,
-  "global_flags": [],
   "commands": {
     "init": {
       "name": "init",
@@ -14,17 +44,10 @@
           "name": "no-commit",
           "type": "bool",
           "help": "Skip auto-committing changed files",
-          "short": null,
           "default": false,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": true,
-          "hidden": false
+          "negatable": true
         }
-      ],
-      "args": [],
-      "passthrough": false
+      ]
     },
     "build": {
       "name": "build",
@@ -34,41 +57,22 @@
           "name": "no-commit",
           "type": "bool",
           "help": "Skip auto-committing changed files",
-          "short": null,
           "default": false,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": true,
-          "hidden": false
+          "negatable": true
         },
         {
           "name": "locale",
           "type": "str",
           "help": "Build only this locale (e.g., 'en')",
-          "short": null,
-          "default": "",
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": null,
-          "hidden": false
+          "default": ""
         },
         {
           "name": "version",
           "type": "str",
           "help": "Build only this version (e.g., '1.0.0')",
-          "short": null,
-          "default": "",
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": null,
-          "hidden": false
+          "default": ""
         }
-      ],
-      "args": [],
-      "passthrough": false
+      ]
     },
     "serve": {
       "name": "serve",
@@ -79,23 +83,13 @@
           "type": "int",
           "help": "Port to serve on (default: 8000)",
           "short": "p",
-          "default": 8000,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": null,
-          "hidden": false
+          "default": 8000
         }
-      ],
-      "args": [],
-      "passthrough": false
+      ]
     },
     "deploy": {
       "name": "deploy",
-      "help": "Deploy the documentation site",
-      "flags": [],
-      "args": [],
-      "passthrough": false
+      "help": "Deploy the documentation site"
     },
     "check": {
       "name": "check",
@@ -105,56 +99,33 @@
           "name": "ignore",
           "type": "str",
           "help": "Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)",
-          "short": null,
-          "default": "",
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": null,
-          "hidden": false
+          "default": ""
         },
         {
           "name": "format",
           "type": "str",
           "help": "Output format (default: text)",
-          "short": null,
           "default": "text",
-          "env": null,
           "choices": [
             "text",
             "json"
-          ],
-          "repeatable": false,
-          "negatable": null,
-          "hidden": false
+          ]
         },
         {
           "name": "no-commit",
           "type": "bool",
           "help": "Skip auto-committing changed files",
-          "short": null,
           "default": false,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": true,
-          "hidden": false
+          "negatable": true
         },
         {
           "name": "dry-run",
           "type": "bool",
           "help": "Report staleness without writing hashes",
-          "short": null,
           "default": false,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": true,
-          "hidden": false
+          "negatable": true
         }
-      ],
-      "args": [],
-      "passthrough": false
+      ]
     },
     "gen": {
       "name": "gen",
@@ -164,17 +135,10 @@
           "name": "no-commit",
           "type": "bool",
           "help": "Skip auto-committing changed files",
-          "short": null,
           "default": false,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": true,
-          "hidden": false
+          "negatable": true
         }
-      ],
-      "args": [],
-      "passthrough": false
+      ]
     },
     "gen-data": {
       "name": "gen-data",
@@ -184,19 +148,10 @@
           "name": "no-commit",
           "type": "bool",
           "help": "Skip auto-committing changed files",
-          "short": null,
           "default": false,
-          "env": null,
-          "choices": null,
-          "repeatable": false,
-          "negatable": true,
-          "hidden": false
+          "negatable": true
         }
-      ],
-      "args": [],
-      "passthrough": false
+      ]
     }
-  },
-  "groups": {},
-  "deprecated": {}
+  }
 }
