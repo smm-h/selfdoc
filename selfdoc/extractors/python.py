@@ -65,7 +65,7 @@ class PythonExtractor(BaseExtractor):
         handler = handlers.get(directive_name)
         if handler is None:
             return format_error(f"unknown directive '{directive_name}' for Python extractor")
-        return handler(arg, body, source_paths, base_dir)
+        return handler(arg, body, source_paths, base_dir, attrs)
 
     def file_extensions(self) -> list[str]:
         return [".py"]
@@ -102,7 +102,7 @@ class PythonExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 
 
-def _handle_module(arg, body, source_paths, base_dir):
+def _handle_module(arg, body, source_paths, base_dir, attrs):
     """Extract module docstring, functions, and classes.
 
     Resolves dotted.path or file path to a .py file, parses with ast,
@@ -539,7 +539,7 @@ def _annotation_str(node):
 # ---------------------------------------------------------------------------
 
 
-def _handle_test(arg, body, source_paths, base_dir):
+def _handle_test(arg, body, source_paths, base_dir, attrs):
     """Extract test source code from a test file.
 
     arg format: <file_path> [TestClassName or test_function_name]
@@ -598,7 +598,7 @@ def _extract_node_source(source_lines, node):
 # ---------------------------------------------------------------------------
 
 
-def _handle_schema(arg, body, source_paths, base_dir):
+def _handle_schema(arg, body, source_paths, base_dir, attrs):
     """Extract schema information from JSON or Python dataclass.
 
     arg format:
@@ -748,7 +748,7 @@ def _format_default(default_str):
 # ---------------------------------------------------------------------------
 
 
-def _handle_cli(arg, body, source_paths, base_dir):
+def _handle_cli(arg, body, source_paths, base_dir, attrs):
     """Extract CLI help/usage information from a module.
 
     For v1: extracts the module docstring and any string constants named
@@ -798,7 +798,7 @@ def _handle_cli(arg, body, source_paths, base_dir):
 # ---------------------------------------------------------------------------
 
 
-def _handle_config(arg, body, source_paths, base_dir):
+def _handle_config(arg, body, source_paths, base_dir, attrs):
     """Extract config file contents as a documented table.
 
     Supports JSON and TOML. Detects format from file extension.
@@ -829,7 +829,7 @@ def _handle_config(arg, body, source_paths, base_dir):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir):
+def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
     """Extract only the module docstring as prose markdown.
 
     Unlike :::module which also lists functions and classes, this directive
