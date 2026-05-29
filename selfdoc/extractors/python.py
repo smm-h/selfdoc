@@ -9,7 +9,6 @@ Uses stdlib ast for parsing, no external dependencies. Handles:
 """
 
 import ast
-import json
 import os
 import textwrap
 
@@ -17,9 +16,8 @@ from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
     _config_from_toml,
-    _json_type_name,
-    _json_value_repr,
     format_error,
+    parse_comma_set,
     read_source,
 )
 
@@ -613,7 +611,11 @@ def _handle_schema(arg, body, source_paths, base_dir, attrs):
     file_or_module = parts[0]
 
     if file_or_module.endswith(".json"):
-        return _schema_from_json(file_or_module, base_dir)
+        full_path = os.path.join(base_dir, file_or_module)
+        if not os.path.isfile(full_path):
+            return format_error(f"JSON file '{file_or_module}' not found")
+        exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
+        return _config_from_json(full_path, file_or_module, exclude_keys=exclude_keys)
 
     # Otherwise, treat as Python module + class name
     if len(parts) < 2:
@@ -625,34 +627,6 @@ def _handle_schema(arg, body, source_paths, base_dir, attrs):
     class_name = parts[1]
     return _schema_from_dataclass(module_path, class_name, source_paths, base_dir)
 
-
-def _schema_from_json(file_path, base_dir):
-    """Render a JSON file as a documented table of keys, types, and values."""
-    full_path = os.path.join(base_dir, file_path)
-    if not os.path.isfile(full_path):
-        return format_error(f"JSON file '{file_path}' not found")
-
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError) as exc:
-        return format_error(f"cannot parse '{file_path}': {exc}")
-
-    if not isinstance(data, dict):
-        # Non-object JSON: just show as code block
-        return f"```json\n{json.dumps(data, indent=2)}\n```"
-
-    # Render as table
-    rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
-    for key, value in data.items():
-        type_name = _json_type_name(value)
-        value_repr = _json_value_repr(value)
-        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
-
-    return "\n".join(rows)
 
 
 def _schema_from_dataclass(module_path, class_name, source_paths, base_dir):
@@ -811,11 +785,12 @@ def _handle_config(arg, body, source_paths, base_dir, attrs):
         return format_error(f"config file '{arg}' not found")
 
     ext = os.path.splitext(arg)[1].lower()
+    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
 
     if ext == ".json":
-        return _config_from_json(full_path, arg)
+        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
     elif ext == ".toml":
-        return _config_from_toml(full_path, arg)
+        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
     else:
         # Unsupported format -- show as code block
         content, err = read_source(full_path)
