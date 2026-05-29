@@ -2,6 +2,16 @@
 
 # Changelog
 
+## 0.10.0
+
+### Features
+
+- **New feature.** `exclude` attribute for `table-schema` and `table-config` directives, allowing users to exclude specific top-level keys when rendering JSON/TOML/JSONC config files as tables.
+
+### Fixes
+
+- **Bug fix.** Go extractor `table-schema` now correctly renders JSON/TOML config files instead of failing with 'no struct types found' when the file exists in the project.
+
 ## 0.9.1
 
 ### Fixes
