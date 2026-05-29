@@ -205,6 +205,7 @@ Custom directives take priority over built-in names.
 | `feed_max_entries` | no | Maximum number of entries in the Atom feed, sorted by most recent. |
 | `lint_ignore` | no | List of lint rule IDs to suppress (e.g. 'SEO007'). |
 | `root_files` | no | List of underscore-prefixed template paths in docs/ for root file generation. |
+| `redirects` | no | Page-level redirects expanded across all locale/version combos. |
 | `deploy` | no | Deployment configuration for publishing the generated site. |
 | `directives` | no | Custom directive mappings from directive name to source file path. |
 | `author` | no | Author information for meta tags and structured data. |
