@@ -2,3 +2,4 @@
 {"commits":["da6a0c09e41e6fc5f9c826286d313d8a64264432"],"user_facing":true,"description":"**Docs.** Added prose documentation for the `exclude` attribute on `table-schema` and `table-config` directives.","type":"feature"}
 {"commits":["237a60cb8753a9395fdb90673079dcfb41fe7af4","5e45c13cd65c2840b00ef95a0f4732ec9d76dc96","bd3506a66a7ceef61875fabb707065fde5eaadc6","a36676e0632da7ca7305164f3e51acf4dad68b19"],"user_facing":false}
 {"commits":["196869fb6fbc90ae209bb4c8c77f3b57d06c9caa"],"user_facing":false}
+{"commits":["1ac8adb52a9b3fa373c289b0de92368559703810"],"user_facing":false}
