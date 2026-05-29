@@ -1567,6 +1567,54 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
         f.write(redirects_content)
     written[redirects_path] = True
 
+    # Config-driven page redirects (expanded across all locale/version combos)
+    config_redirects = config.get("redirects") or []
+    if config_redirects:
+        redirect_count = 0
+        for redirect_entry in config_redirects:
+            from_slug = redirect_entry["from"]
+            to_slug = redirect_entry["to"]
+            for locale in build_locales:
+                locale_code = locale["code"]
+                for ver_entry in build_versions:
+                    ver_str = ver_entry["version"]
+                    old_path = os.path.join(
+                        output_dir, locale_code, ver_str,
+                        from_slug, "index.html",
+                    )
+                    # Skip if the page already exists (e.g. cached old-version page)
+                    if os.path.exists(old_path):
+                        continue
+                    # Target URL for the redirect
+                    target_url = f"/{locale_code}/{ver_str}/{to_slug}/"
+                    # Generate HTML meta-refresh page
+                    meta_html = (
+                        "<!DOCTYPE html>\n"
+                        "<html>\n"
+                        "<head>\n"
+                        f'  <meta http-equiv="refresh" content="0;url={target_url}">\n'
+                        f'  <link rel="canonical" href="{target_url}">\n'
+                        "</head>\n"
+                        "<body>\n"
+                        f'  <script>window.location.replace("{target_url}")</script>\n'
+                        f'  <p>Redirecting to <a href="{target_url}">{target_url}</a></p>\n'
+                        "</body>\n"
+                        "</html>\n"
+                    )
+                    os.makedirs(os.path.dirname(old_path), exist_ok=True)
+                    with open(old_path, "w", encoding="utf-8") as f:
+                        f.write(meta_html)
+                    written[old_path] = True
+                    # Append Cloudflare _redirects rule
+                    with open(redirects_path, "a", encoding="utf-8") as f:
+                        f.write(
+                            f"/{locale_code}/{ver_str}/{from_slug}/ "
+                            f"{target_url} 301\n"
+                        )
+                    redirect_count += 1
+        if redirect_count:
+            print(f"Generated {redirect_count} redirect(s)")
+
     # Pre-compress
     compress_count, has_brotli = _compress_output(output_dir)
     if has_brotli:
