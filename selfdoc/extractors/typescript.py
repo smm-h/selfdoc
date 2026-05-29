@@ -18,7 +18,9 @@ from selfdoc.extractors.base import (
     _config_from_toml,
     _json_type_name,
     _json_value_repr,
+    apply_exclude_keys,
     format_error,
+    parse_comma_set,
     read_source,
 )
 
@@ -667,7 +669,11 @@ def _handle_schema(arg, body, source_paths, base_dir, attrs):
 
     # Check if it's a JSON file
     if file_or_module.endswith(".json"):
-        return _schema_from_json(file_or_module, base_dir)
+        full_path = os.path.join(base_dir, file_or_module)
+        if not os.path.isfile(full_path):
+            return format_error(f"JSON file '{file_or_module}' not found")
+        exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
+        return _config_from_json(full_path, file_or_module, exclude_keys=exclude_keys)
 
     # TS/JS file with optional type name
     type_name = parts[1] if len(parts) > 1 else None
@@ -682,32 +688,6 @@ def _handle_schema(arg, body, source_paths, base_dir, attrs):
 
     return _schema_from_ts(source, type_name, file_or_module)
 
-
-def _schema_from_json(file_path, base_dir):
-    """Render a JSON file as a documented table of keys, types, and values."""
-    full_path = os.path.join(base_dir, file_path)
-    if not os.path.isfile(full_path):
-        return format_error(f"JSON file '{file_path}' not found")
-
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError) as exc:
-        return format_error(f"cannot parse '{file_path}': {exc}")
-
-    if not isinstance(data, dict):
-        return f"```json\n{json.dumps(data, indent=2)}\n```"
-
-    rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
-    for key, value in data.items():
-        type_name = _json_type_name(value)
-        value_repr = _json_value_repr(value)
-        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
-
-    return "\n".join(rows)
 
 
 def _schema_from_ts(source, type_name, display_path):
@@ -1004,13 +984,14 @@ def _handle_config(arg, body, source_paths, base_dir, attrs):
         return format_error(f"config file '{arg}' not found")
 
     ext = os.path.splitext(arg)[1].lower()
+    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
 
     if ext == ".json":
-        return _config_from_json(full_path, arg)
+        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
     elif ext == ".jsonc":
-        return _config_from_jsonc(full_path, arg)
+        return _config_from_jsonc(full_path, arg, exclude_keys=exclude_keys)
     elif ext == ".toml":
-        return _config_from_toml(full_path, arg)
+        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
     else:
         # Unsupported format -- show as code block
         content, err = read_source(full_path)
@@ -1019,7 +1000,7 @@ def _handle_config(arg, body, source_paths, base_dir, attrs):
         return f"```\n{content.rstrip()}\n```"
 
 
-def _config_from_jsonc(full_path, display_path):
+def _config_from_jsonc(full_path, display_path, exclude_keys: set[str] | None = None):
     """Parse JSONC config (strip comments) and render as a key-value table."""
     raw, err = read_source(full_path)
     if err:
@@ -1033,6 +1014,11 @@ def _config_from_jsonc(full_path, display_path):
 
     if not isinstance(data, dict):
         return f"```json\n{json.dumps(data, indent=2)}\n```"
+
+    result = apply_exclude_keys(data, exclude_keys, display_path)
+    if isinstance(result, str):
+        return result
+    data = result
 
     rows = []
     rows.append("| Key | Type | Value |")
