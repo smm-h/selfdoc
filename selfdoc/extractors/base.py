@@ -106,7 +106,7 @@ def _flatten_toml(data, prefix, rows):
             rows.append(f"| `{full_key}` | {type_name} | {value_repr} |")
 
 
-def _config_from_json(full_path, display_path):
+def _config_from_json(full_path, display_path, exclude_keys: set[str] | None = None):
     """Parse JSON config and render as a key-value table."""
     try:
         with open(full_path, "r", encoding="utf-8") as f:
@@ -116,6 +116,11 @@ def _config_from_json(full_path, display_path):
 
     if not isinstance(data, dict):
         return f"```json\n{json.dumps(data, indent=2)}\n```"
+
+    result = apply_exclude_keys(data, exclude_keys, display_path)
+    if isinstance(result, str):
+        return result
+    data = result
 
     rows = []
     rows.append("| Key | Type | Value |")
@@ -148,7 +153,7 @@ class BaseExtractor:
         return None
 
 
-def _config_from_toml(full_path, display_path):
+def _config_from_toml(full_path, display_path, exclude_keys: set[str] | None = None):
     """Parse TOML config and render as a key-value table."""
     try:
         import tomllib
@@ -166,6 +171,11 @@ def _config_from_toml(full_path, display_path):
             data = tomllib.load(f)
     except (OSError, Exception) as exc:
         return format_error(f"cannot parse '{display_path}': {exc}")
+
+    result = apply_exclude_keys(data, exclude_keys, display_path)
+    if isinstance(result, str):
+        return result
+    data = result
 
     rows = []
     rows.append("| Key | Type | Value |")

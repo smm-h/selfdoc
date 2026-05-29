@@ -114,3 +114,47 @@ class TestConfigFromToml:
 
         result = _config_from_toml(str(path), "nested.toml")
         assert "`section.key`" in result
+
+
+# -- _config_from_json with exclude_keys ------------------------------------
+
+
+class TestConfigFromJsonExclude:
+    def test_exclude_filters_key(self, tmp_path):
+        path = tmp_path / "config.json"
+        data = {"name": "test", "version": "1.0", "count": 42}
+        path.write_text(json.dumps(data))
+
+        result = _config_from_json(str(path), "config.json", exclude_keys={"version"})
+        assert "`version`" not in result
+        assert "`name`" in result
+        assert "`count`" in result
+
+    def test_exclude_missing_key_returns_error(self, tmp_path):
+        path = tmp_path / "config.json"
+        data = {"name": "test", "version": "1.0", "count": 42}
+        path.write_text(json.dumps(data))
+
+        result = _config_from_json(str(path), "config.json", exclude_keys={"missing"})
+        assert "selfdoc:" in result
+
+
+# -- _config_from_toml with exclude_keys ------------------------------------
+
+
+class TestConfigFromTomlExclude:
+    def test_exclude_section_drops_all_subkeys(self, tmp_path):
+        path = tmp_path / "config.toml"
+        path.write_text('name = "test"\n\n[deploy]\nprovider = "cf"\n')
+
+        result = _config_from_toml(str(path), "config.toml", exclude_keys={"deploy"})
+        assert "deploy" not in result
+        assert "deploy.provider" not in result
+        assert "`name`" in result
+
+    def test_exclude_missing_key_returns_error(self, tmp_path):
+        path = tmp_path / "config.toml"
+        path.write_text('name = "test"\n')
+
+        result = _config_from_toml(str(path), "config.toml", exclude_keys={"missing"})
+        assert "selfdoc:" in result
