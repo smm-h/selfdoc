@@ -519,3 +519,88 @@ class TestEdgeCases:
             "table-config", {}, [], source_paths, str(go_project)
         )
         assert "requires" in result
+
+
+# ---------------------------------------------------------------------------
+# Schema-to-config fallback bug fix
+# ---------------------------------------------------------------------------
+
+
+class TestSchemaFallbackBugFix:
+    def test_schema_fallback_bug_fix(self, go_project, source_paths):
+        """table-schema with a target on a JSON file should not append the
+        target to the file path. Previously, the fallback passed the full
+        arg (including the type name) to _handle_config, creating an invalid
+        path like 'config.json SomeType'."""
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "config.json", "target": "SomeType"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        # Should render the config table (fallback to _handle_config)
+        assert "| Key |" in result
+
+
+# ---------------------------------------------------------------------------
+# Exclude support
+# ---------------------------------------------------------------------------
+
+
+class TestExcludeSupport:
+    def test_schema_exclude_json(self, go_project, source_paths):
+        """table-schema on a JSON file with exclude should omit the key."""
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "config.json", "exclude": "debug"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "| Key |" in result
+        assert "`host`" in result
+        assert "`port`" in result
+        assert "debug" not in result
+
+    def test_schema_exclude_missing_key(self, go_project, source_paths):
+        """Excluding a key that does not exist should produce an error."""
+        result = GoExtractor().extract(
+            "table-schema",
+            {"path": "config.json", "exclude": "nonexistent"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "not found" in result
+        assert "nonexistent" in result
+
+    def test_config_exclude_json(self, go_project, source_paths):
+        """table-config with exclude should omit specified keys."""
+        result = GoExtractor().extract(
+            "table-config",
+            {"path": "config.json", "exclude": "host, port"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "| Key |" in result
+        assert "host" not in result
+        assert "port" not in result
+        assert "`debug`" in result
+
+    def test_config_exclude_toml(self, tmp_path, source_paths):
+        """table-config with exclude on a TOML file should omit specified keys."""
+        toml_path = os.path.join(tmp_path, "app.toml")
+        with open(toml_path, "w", encoding="utf-8") as f:
+            f.write('[server]\nhost = "localhost"\nport = 8080\n\n[logging]\nlevel = "info"\n')
+
+        result = GoExtractor().extract(
+            "table-config",
+            {"path": "app.toml", "exclude": "logging"},
+            [],
+            source_paths,
+            str(tmp_path),
+        )
+        assert "server.host" in result
+        assert "logging" not in result
