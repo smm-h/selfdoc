@@ -341,6 +341,55 @@ class Config:
         )
         assert "not found" in result
 
+    def test_json_schema_exclude(self, sample_project, source_paths):
+        """Exclude attribute should remove specified keys from JSON schema table."""
+        schema_path = os.path.join(sample_project, "test.json")
+        with open(schema_path, "w", encoding="utf-8") as f:
+            json.dump({"name": "mylib", "version": "1.0.0", "count": 42}, f)
+
+        result = PythonExtractor().extract(
+            "table-schema",
+            {"path": "test.json", "exclude": "version"},
+            [],
+            source_paths,
+            str(sample_project),
+        )
+        assert "`version`" not in result
+        assert "`name`" in result
+        assert "`count`" in result
+
+    def test_json_schema_exclude_whitespace(self, sample_project, source_paths):
+        """Exclude with multiple comma-separated keys and whitespace."""
+        schema_path = os.path.join(sample_project, "test.json")
+        with open(schema_path, "w", encoding="utf-8") as f:
+            json.dump({"name": "mylib", "version": "1.0.0", "count": 42}, f)
+
+        result = PythonExtractor().extract(
+            "table-schema",
+            {"path": "test.json", "exclude": "version, count"},
+            [],
+            source_paths,
+            str(sample_project),
+        )
+        assert "`version`" not in result
+        assert "`count`" not in result
+        assert "`name`" in result
+
+    def test_json_schema_exclude_missing_key(self, sample_project, source_paths):
+        """Excluding a nonexistent key should produce an error."""
+        schema_path = os.path.join(sample_project, "test.json")
+        with open(schema_path, "w", encoding="utf-8") as f:
+            json.dump({"name": "mylib", "version": "1.0.0", "count": 42}, f)
+
+        result = PythonExtractor().extract(
+            "table-schema",
+            {"path": "test.json", "exclude": "nonexistent"},
+            [],
+            source_paths,
+            str(sample_project),
+        )
+        assert "selfdoc:" in result
+
 
 # ---------------------------------------------------------------------------
 # :::cli tests
@@ -431,6 +480,42 @@ class TestConfigDirective:
         )
         assert "```" in result
         assert "[section]" in result
+
+    def test_config_exclude_json(self, sample_project, source_paths):
+        """Exclude attribute should remove specified keys from JSON config table."""
+        config_path = os.path.join(sample_project, "config.json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump({"host": "localhost", "port": 3000, "ssl": False}, f)
+
+        result = PythonExtractor().extract(
+            "table-config",
+            {"path": "config.json", "exclude": "ssl"},
+            [],
+            source_paths,
+            str(sample_project),
+        )
+        assert "`ssl`" not in result
+        assert "`host`" in result
+        assert "`port`" in result
+
+    def test_config_exclude_toml(self, sample_project, source_paths):
+        """Exclude attribute should remove specified top-level sections from TOML config."""
+        config_path = os.path.join(sample_project, "config.toml")
+        with open(config_path, "w", encoding="utf-8") as f:
+            f.write(
+                '[server]\nhost = "localhost"\nport = 3000\n'
+                '[logging]\nlevel = "debug"\n'
+            )
+
+        result = PythonExtractor().extract(
+            "table-config",
+            {"path": "config.toml", "exclude": "logging"},
+            [],
+            source_paths,
+            str(sample_project),
+        )
+        assert "`logging.level`" not in result
+        assert "`server.host`" in result or "`host`" in result
 
 
 # ---------------------------------------------------------------------------
