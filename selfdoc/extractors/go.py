@@ -16,6 +16,7 @@ from selfdoc.extractors.base import (
     _config_from_json,
     _config_from_toml,
     format_error,
+    parse_comma_set,
     read_source,
 )
 from selfdoc.extractors.python import _format_docstring
@@ -67,7 +68,7 @@ class GoExtractor(BaseExtractor):
         handler = handlers.get(directive_name)
         if handler is None:
             return format_error(f"unknown directive '{directive_name}' for Go extractor")
-        return handler(arg, body, source_paths, base_dir)
+        return handler(arg, body, source_paths, base_dir, attrs)
 
     def file_extensions(self) -> list[str]:
         return [".go"]
@@ -139,7 +140,7 @@ class GoExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 
 
-def _handle_module(arg, body, source_paths, base_dir):
+def _handle_module(arg, body, source_paths, base_dir, attrs):
     """Extract package doc, exported funcs, types, consts, and vars.
 
     arg is a package directory path (e.g. "internal/commit").
@@ -525,7 +526,7 @@ def _extract_var_block(lines, block_start_idx, declarations, seen_names):
 # ---------------------------------------------------------------------------
 
 
-def _handle_test(arg, body, source_paths, base_dir):
+def _handle_test(arg, body, source_paths, base_dir, attrs):
     """Extract test source code from a Go test file.
 
     arg format: <file_path> [TestFuncName]
@@ -616,7 +617,7 @@ def _extract_go_function(source, func_name):
 # ---------------------------------------------------------------------------
 
 
-def _handle_schema(arg, body, source_paths, base_dir):
+def _handle_schema(arg, body, source_paths, base_dir, attrs):
     """Extract struct type fields as a markdown table.
 
     arg format: <file_path> [TypeName]
@@ -633,7 +634,7 @@ def _handle_schema(arg, body, source_paths, base_dir):
     if full_path is None:
         # Also try as JSON/TOML/YAML config
         if file_path.endswith((".json", ".toml", ".yaml", ".yml")):
-            return _handle_config(arg, body, source_paths, base_dir)
+            return _handle_config(file_path, body, source_paths, base_dir, attrs)
         return format_error(f"file '{file_path}' not found")
 
     source, err = read_source(full_path)
@@ -766,7 +767,7 @@ def _format_struct_table(struct_info):
 # ---------------------------------------------------------------------------
 
 
-def _handle_cli(arg, body, source_paths, base_dir):
+def _handle_cli(arg, body, source_paths, base_dir, attrs):
     """Extract CLI usage/help text and flag definitions from Go source.
 
     Looks for:
@@ -1021,7 +1022,7 @@ def _extract_strictcli_commands(source):
 # ---------------------------------------------------------------------------
 
 
-def _handle_config(arg, body, source_paths, base_dir):
+def _handle_config(arg, body, source_paths, base_dir, attrs):
     """Extract config file contents as a documented table.
 
     Supports JSON and TOML. Detects format from file extension.
@@ -1035,11 +1036,12 @@ def _handle_config(arg, body, source_paths, base_dir):
         return format_error(f"config file '{arg}' not found")
 
     ext = os.path.splitext(arg)[1].lower()
+    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
 
     if ext == ".json":
-        return _config_from_json(full_path, arg)
+        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
     elif ext == ".toml":
-        return _config_from_toml(full_path, arg)
+        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
     else:
         # Unsupported format -- show as code block
         content, err = read_source(full_path)
@@ -1053,7 +1055,7 @@ def _handle_config(arg, body, source_paths, base_dir):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir):
+def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
     """Extract only the package doc comment as prose markdown.
 
     Unlike :::module which also lists exported declarations, this directive
