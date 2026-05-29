@@ -6035,3 +6035,171 @@ def test_build_missing_locales_raises(tmp_path):
 
     with pytest.raises(ConfigError, match="locales"):
         build(str(tmp_path))
+
+
+# -- redirect generation --
+
+
+def test_redirect_generates_meta_refresh_html(tmp_path):
+    """Redirect entry produces an HTML meta-refresh page at the old slug path."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        redirects=[{"from": "edit-release", "to": "release/edit"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    written = build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    redirect_html_path = os.path.join(
+        output_dir, "en", "1.0.0", "edit-release", "index.html",
+    )
+    assert redirect_html_path in written
+    assert os.path.isfile(redirect_html_path)
+
+    with open(redirect_html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert 'content="0;url=/en/1.0.0/release/edit/"' in content
+    assert "/en/1.0.0/release/edit/" in content
+
+
+def test_redirect_generates_cloudflare_rule(tmp_path):
+    """Redirect entry appends a 301 rule to the _redirects file."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        redirects=[{"from": "old-cmd", "to": "new-cmd"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    redirects_path = os.path.join(output_dir, "_redirects")
+    with open(redirects_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    # Root redirect should still be present
+    assert "/ /en/1.0.0/ 302\n" in content
+    # Config-driven redirect should be appended
+    assert "/en/1.0.0/old-cmd/ /en/1.0.0/new-cmd/ 301\n" in content
+
+
+def test_redirect_skips_existing_page(tmp_path):
+    """Redirect does not overwrite a page that already exists at the old path."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        redirects=[{"from": "index", "to": "new-index"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    # index/index.html is the actual index page -- it should NOT be a redirect
+    index_html_path = os.path.join(
+        output_dir, "en", "1.0.0", "index.html",
+    )
+    assert os.path.isfile(index_html_path)
+    with open(index_html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    # Should be the real page content, not a redirect
+    assert "Test" in content
+    assert 'meta http-equiv="refresh"' not in content
+
+
+def test_redirect_multiple_locales_versions(tmp_path):
+    """Redirects expand across all locale/version combinations."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        versions=[
+            {"version": "0.9.0", "indexed": True},
+            {"version": "1.0.0", "indexed": True},
+        ],
+        locales=[
+            {"code": "en", "label": "English", "default": True},
+            {"code": "fr", "label": "French"},
+        ],
+        redirects=[{"from": "old-page", "to": "new-page"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Create per-locale docs directories
+    for locale in ("en", "fr"):
+        locale_docs = os.path.join(tmp_path, "docs", locale)
+        os.makedirs(locale_docs)
+        with open(os.path.join(locale_docs, "index.md"), "w", encoding="utf-8") as f:
+            f.write(f"# Test ({locale})\n\nContent.\n")
+
+    # Create minimal source file (needed for git archive)
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""Test."""\n')
+
+    # Need a git repo for multi-version builds
+    import subprocess
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "Test",
+        "GIT_AUTHOR_EMAIL": "test@test.com",
+        "GIT_COMMITTER_NAME": "Test",
+        "GIT_COMMITTER_EMAIL": "test@test.com",
+    }
+    subprocess.run(["git", "init"], cwd=str(tmp_path), env=env, check=True, capture_output=True)
+    subprocess.run(["git", "add", "."], cwd=str(tmp_path), env=env, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(tmp_path), env=env, check=True, capture_output=True)
+    subprocess.run(["git", "tag", "v0.9.0"], cwd=str(tmp_path), env=env, check=True, capture_output=True)
+    subprocess.run(["git", "tag", "v1.0.0"], cwd=str(tmp_path), env=env, check=True, capture_output=True)
+
+    written = build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+
+    # Check all 4 combinations: en/0.9.0, en/1.0.0, fr/0.9.0, fr/1.0.0
+    for locale in ("en", "fr"):
+        for ver in ("0.9.0", "1.0.0"):
+            redirect_path = os.path.join(
+                output_dir, locale, ver, "old-page", "index.html",
+            )
+            assert os.path.isfile(redirect_path), (
+                f"Missing redirect for {locale}/{ver}"
+            )
+            with open(redirect_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            expected_url = f"/{locale}/{ver}/new-page/"
+            assert expected_url in content
+
+    # Check _redirects has all 4 rules
+    redirects_path = os.path.join(output_dir, "_redirects")
+    with open(redirects_path, "r", encoding="utf-8") as f:
+        redirects_content = f.read()
+    for locale in ("en", "fr"):
+        for ver in ("0.9.0", "1.0.0"):
+            rule = f"/{locale}/{ver}/old-page/ /{locale}/{ver}/new-page/ 301"
+            assert rule in redirects_content

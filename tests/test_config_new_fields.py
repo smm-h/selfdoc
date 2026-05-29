@@ -279,3 +279,62 @@ def test_unified_project_unknown_key(config_dir):
     }))
     with pytest.raises(ConfigError, match="invalid.*key 'bogus'"):
         load_config(str(config_dir))
+
+
+# -- redirects: happy path --
+
+
+def test_redirects_valid(config_dir):
+    """Valid redirects list is accepted."""
+    _write_config(config_dir, _cfg(redirects=[
+        {"from": "edit-release", "to": "release/edit"},
+        {"from": "old-page", "to": "new-page"},
+    ]))
+    cfg = load_config(str(config_dir))
+    assert len(cfg["redirects"]) == 2
+    assert cfg["redirects"][0]["from"] == "edit-release"
+    assert cfg["redirects"][0]["to"] == "release/edit"
+
+
+def test_redirects_empty_list(config_dir):
+    """Empty redirects list is accepted."""
+    _write_config(config_dir, _cfg(redirects=[]))
+    cfg = load_config(str(config_dir))
+    assert cfg["redirects"] == []
+
+
+def test_redirects_absent(config_dir):
+    """Absent redirects defaults to empty list."""
+    _write_config(config_dir, _cfg())
+    cfg = load_config(str(config_dir))
+    assert cfg["redirects"] == []
+
+
+# -- redirects: validation errors --
+
+
+def test_redirects_missing_from(config_dir):
+    """Redirect entry missing 'from' raises ConfigError."""
+    _write_config(config_dir, _cfg(redirects=[
+        {"to": "new-page"},
+    ]))
+    with pytest.raises(ConfigError, match="redirects\\[0\\].from.*required"):
+        load_config(str(config_dir))
+
+
+def test_redirects_missing_to(config_dir):
+    """Redirect entry missing 'to' raises ConfigError."""
+    _write_config(config_dir, _cfg(redirects=[
+        {"from": "old-page"},
+    ]))
+    with pytest.raises(ConfigError, match="redirects\\[0\\].to.*required"):
+        load_config(str(config_dir))
+
+
+def test_redirects_unknown_key(config_dir):
+    """Unknown key in redirect entry is rejected (strict_keys)."""
+    _write_config(config_dir, _cfg(redirects=[
+        {"from": "a", "to": "b", "bogus": True},
+    ]))
+    with pytest.raises(ConfigError, match="invalid.*key 'bogus'"):
+        load_config(str(config_dir))
