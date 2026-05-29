@@ -50,6 +50,17 @@ The following table shows all built-in directives that selfdoc recognizes, their
 
 :-: catalog
 
+### The `exclude` Attribute
+
+The `table-schema` and `table-config` directives accept an optional `exclude` attribute — a comma-separated list of top-level keys to omit from the rendered table. Whitespace around commas is stripped.
+
+```markdown
+:-: table-config path="selfdoc.json" exclude="versions, locales"
+:-: table-schema path="schema.json" exclude="internal_field"
+```
+
+If any excluded key does not exist in the file, a hard error is produced (no silent skips). Works with JSON, TOML, and JSONC files. For `table-schema`, `exclude` only applies when the path points to a data file — it has no effect when extracting from a Python dataclass or Go struct.
+
 ## Custom Directives
 
 You can extend selfdoc with project-specific custom directives by registering them in your `selfdoc.json` configuration file, pointing each directive name to a Python script that implements the resolution logic. Custom directives take priority over built-in directives of the same name:
