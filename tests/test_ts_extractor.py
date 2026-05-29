@@ -373,6 +373,63 @@ class TestSchemaDirective:
         )
         assert "not found" in result
 
+    def test_json_schema_exclude(self, ts_project, source_paths):
+        """Exclude a key from JSON schema table via exclude attr."""
+        schema_path = os.path.join(ts_project, "schema.json")
+        with open(schema_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {"name": "widgets", "version": "1.0.0", "count": 5},
+                f,
+            )
+
+        result = TypeScriptExtractor().extract(
+            "table-schema",
+            {"path": "schema.json", "exclude": "version"},
+            [],
+            source_paths,
+            str(ts_project),
+        )
+        assert "| Key | Type | Value |" in result
+        assert "`name`" in result
+        assert "`count`" in result
+        assert "`version`" not in result
+
+    def test_json_schema_exclude_whitespace(self, ts_project, source_paths):
+        """Exclude with spaces in comma list should work."""
+        schema_path = os.path.join(ts_project, "schema.json")
+        with open(schema_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {"name": "widgets", "version": "1.0.0", "count": 5},
+                f,
+            )
+
+        result = TypeScriptExtractor().extract(
+            "table-schema",
+            {"path": "schema.json", "exclude": "version, count"},
+            [],
+            source_paths,
+            str(ts_project),
+        )
+        assert "| Key | Type | Value |" in result
+        assert "`name`" in result
+        assert "`version`" not in result
+        assert "`count`" not in result
+
+    def test_json_schema_exclude_missing_key(self, ts_project, source_paths):
+        """Excluding a non-existent key should produce a format_error."""
+        schema_path = os.path.join(ts_project, "schema.json")
+        with open(schema_path, "w", encoding="utf-8") as f:
+            json.dump({"name": "widgets", "version": "1.0.0"}, f)
+
+        result = TypeScriptExtractor().extract(
+            "table-schema",
+            {"path": "schema.json", "exclude": "nonexistent"},
+            [],
+            source_paths,
+            str(ts_project),
+        )
+        assert "exclude key 'nonexistent' not found" in result
+
     def test_type_alias_object(self, tmp_path):
         """Test extraction from a type alias with object shape."""
         src_dir = os.path.join(tmp_path, "src")
@@ -485,6 +542,70 @@ class TestConfigDirective:
         assert "`target`" in result
         assert "`module`" in result
         assert "`strict`" in result
+
+    def test_config_exclude_json(self, tmp_path):
+        """Exclude a key from JSON config table."""
+        config_path = os.path.join(tmp_path, "config.json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump({"host": "localhost", "port": 3000, "ssl": False}, f)
+
+        result = TypeScriptExtractor().extract(
+            "table-config",
+            {"path": "config.json", "exclude": "ssl"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "| Key | Type | Value |" in result
+        assert "`host`" in result
+        assert "`port`" in result
+        assert "`ssl`" not in result
+
+    def test_config_exclude_toml(self, tmp_path):
+        """Exclude a key from TOML config table with nested section."""
+        config_path = os.path.join(tmp_path, "config.toml")
+        with open(config_path, "w", encoding="utf-8") as f:
+            f.write(
+                '[server]\nhost = "localhost"\nport = 3000\n\n'
+                "[logging]\nlevel = \"info\"\n"
+            )
+
+        result = TypeScriptExtractor().extract(
+            "table-config",
+            {"path": "config.toml", "exclude": "logging"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "| Key | Type | Value |" in result
+        assert "`server.host`" in result
+        assert "`server.port`" in result
+        assert "logging" not in result
+
+    def test_config_exclude_jsonc(self, tmp_path):
+        """Exclude a key from JSONC config table."""
+        config_path = os.path.join(tmp_path, "settings.jsonc")
+        with open(config_path, "w", encoding="utf-8") as f:
+            f.write(
+                '{\n'
+                '  // Editor settings\n'
+                '  "theme": "dark",\n'
+                '  "fontSize": 14,\n'
+                '  "autoSave": true\n'
+                '}\n'
+            )
+
+        result = TypeScriptExtractor().extract(
+            "table-config",
+            {"path": "settings.jsonc", "exclude": "fontSize"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "| Key | Type | Value |" in result
+        assert "`theme`" in result
+        assert "`autoSave`" in result
+        assert "`fontSize`" not in result
 
     def test_missing_config_error(self, tmp_path):
         result = TypeScriptExtractor().extract(
