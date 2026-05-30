@@ -389,11 +389,6 @@ def _remove_stale_generated(docs_dir, new_filenames):
             continue
         full = os.path.join(docs_dir, entry)
         if os.path.isfile(full) and _has_generated_marker(full):
-            # Make writable before removing (we set 0o444)
-            try:
-                os.chmod(full, stat.S_IRUSR | stat.S_IWUSR)
-            except OSError:
-                pass
             os.unlink(full)
 
 
