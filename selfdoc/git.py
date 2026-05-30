@@ -49,7 +49,7 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
         # Check gitignore
         try:
             result = subprocess.run(
-                ["git", "check-ignore", "-q", f],
+                ["git", "check-ignore", "-q", "--", f],
                 cwd=cwd,
                 capture_output=True,
                 timeout=10,
@@ -70,7 +70,7 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
         # Check if the file is tracked
         try:
             ls_result = subprocess.run(
-                ["git", "ls-files", f],
+                ["git", "ls-files", "--", f],
                 cwd=cwd,
                 capture_output=True,
                 text=True,
@@ -83,7 +83,7 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
             # File is tracked -- check if it has changes
             try:
                 diff_result = subprocess.run(
-                    ["git", "diff", "--quiet", f],
+                    ["git", "diff", "--quiet", "--", f],
                     cwd=cwd,
                     capture_output=True,
                     timeout=10,
@@ -143,7 +143,7 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
         # Fallback: git add + git commit
         try:
             add_result = subprocess.run(
-                ["git", "add"] + committable,
+                ["git", "add", "--"] + committable,
                 cwd=cwd,
                 capture_output=True,
                 env=env,

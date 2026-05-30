@@ -215,3 +215,60 @@ def test_auto_commit_untracked_file(tmp_path):
         cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
     )
     assert "newfile.txt" in ls.stdout
+
+
+def test_auto_commit_filename_resembling_git_flag(tmp_path):
+    """auto_commit handles filenames that look like git options (-- separator)."""
+    _init_git_repo(tmp_path)
+
+    # Create a file whose name starts with "--" which git would
+    # interpret as an option without the "--" separator
+    tricky_name = "--hierarchical"
+    (tmp_path / tricky_name).write_text("tricky content")
+
+    result = auto_commit([tricky_name], "add tricky file", str(tmp_path))
+    assert result is True
+
+    # Verify the file was committed
+    log = subprocess.run(
+        ["git", "log", "--oneline", "--", tricky_name],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert "add tricky file" in log.stdout
+
+
+def test_auto_commit_dash_separator_in_subprocess_calls(tmp_path):
+    """Verify -- separator is present in all git subprocess calls."""
+    _init_git_repo(tmp_path)
+    (tmp_path / "file.txt").write_text("data")
+
+    with mock.patch("shutil.which", return_value=None):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                mock.Mock(returncode=0),           # git rev-parse --git-dir
+                mock.Mock(returncode=1),            # git check-ignore (not ignored)
+                mock.Mock(returncode=0, stdout=""), # git ls-files (untracked)
+                mock.Mock(returncode=0),            # git add
+                mock.Mock(returncode=0),            # git commit
+            ]
+
+            auto_commit(["file.txt"], "msg", str(tmp_path))
+
+        calls = mock_run.call_args_list
+        # check-ignore call (index 1) must have "--" before filename
+        check_ignore_cmd = calls[1][0][0]
+        assert check_ignore_cmd == ["git", "check-ignore", "-q", "--", "file.txt"]
+
+        # ls-files call (index 2) must have "--" before filename
+        ls_files_cmd = calls[2][0][0]
+        assert ls_files_cmd == ["git", "ls-files", "--", "file.txt"]
+
+        # git add call (index 3) must have "--" before filenames
+        add_cmd = calls[3][0][0]
+        assert add_cmd == ["git", "add", "--", "file.txt"]
+
+        # git commit call (index 4) must have "--" before filenames
+        commit_cmd = calls[4][0][0]
+        assert "--" in commit_cmd
+        dash_idx = commit_cmd.index("--")
+        assert commit_cmd[dash_idx + 1] == "file.txt"
