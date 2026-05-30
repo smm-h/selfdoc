@@ -25,6 +25,7 @@ from selfdoc.directives import parse_directives
 from selfdoc.extractors import EXTRACTORS
 from selfdoc.resolver import make_resolver
 from selfdoc.staleness import update_hashes
+from selfdoc.gen import _DEFAULT_DESCRIPTION_RE
 
 
 @dataclass
@@ -879,13 +880,6 @@ def _check_pairs(lints, css_vars, pairs, mode_prefix, css_file="theme CSS"):
                 ),
                 severity="warning",
             ))
-
-
-_DEFAULT_DESCRIPTION_RE = re.compile(
-    r"^API reference for (the )?[\w.]+( module)? — "
-    r"auto-generated documentation covering public functions, "
-    r"classes, and type signatures\.?$"
-)
 
 
 def _is_skeleton_page(frontmatter):
