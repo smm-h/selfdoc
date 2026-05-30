@@ -4,6 +4,7 @@ import fnmatch
 import os
 import re
 import stat
+from dataclasses import dataclass, field
 
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
@@ -14,6 +15,14 @@ from selfdoc.extractors.go import _extract_package_doc
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import extract_module_docstring as _extract_module_docstring
 from selfdoc.utils import atomic_write as _atomic_write
+
+
+@dataclass
+class GenResult:
+    """Result of a generate_docs call, tracking written and deleted files."""
+
+    written: list[str] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
 
 
 # Matches the default per-module description template so we can detect when a

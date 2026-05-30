@@ -6,7 +6,7 @@ import stat
 
 import pytest
 
-from selfdoc.gen import generate_docs, _has_generated_marker
+from selfdoc.gen import GenResult, generate_docs, _has_generated_marker
 
 
 @pytest.fixture()
@@ -747,3 +747,20 @@ class TestGoPackageGeneration:
         assert "cmd-myapp.md" not in filenames
         # Other packages still present
         assert "internal-commit.md" in filenames
+
+
+class TestGenResult:
+    def test_default_empty(self):
+        result = GenResult()
+        assert result.written == []
+        assert result.deleted == []
+
+    def test_merge(self):
+        a = GenResult(written=["a.md"], deleted=["x.md"])
+        b = GenResult(written=["b.md"], deleted=["y.md"])
+        merged = GenResult(
+            written=a.written + b.written,
+            deleted=a.deleted + b.deleted,
+        )
+        assert merged.written == ["a.md", "b.md"]
+        assert merged.deleted == ["x.md", "y.md"]
