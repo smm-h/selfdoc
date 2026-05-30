@@ -8,10 +8,9 @@ documentation pages.
 import json
 import os
 import re
-import stat
-import tempfile
 
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
+from selfdoc.utils import atomic_write as _atomic_write
 
 
 # Matches the default per-command/per-group description templates so we can
@@ -344,25 +343,7 @@ def generate_cli_pages(cli_structure, docs_dir):
 
 def _write_page(filepath, content):
     """Write a generated page atomically with read-only permissions."""
-    # Make writable if it already exists with 0o444
-    if os.path.isfile(filepath):
-        try:
-            os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass
-    dir_name = os.path.dirname(filepath)
-    fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.chmod(tmp_path, 0o444)
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    _atomic_write(filepath, content, permissions=0o444)
 
 
 def _render_command_page(cmd, app_name, nav_order, existing_path=None):
