@@ -72,7 +72,7 @@ def test_auto_commit_no_changes(tmp_path):
 
 
 def test_auto_commit_gitignored_file(tmp_path):
-    """auto_commit skips gitignored files and returns False."""
+    """auto_commit lets git handle gitignored files (git add fails)."""
     _init_git_repo(tmp_path)
 
     (tmp_path / ".gitignore").write_text("ignored.txt\n")
@@ -87,6 +87,7 @@ def test_auto_commit_gitignored_file(tmp_path):
 
     (tmp_path / "ignored.txt").write_text("should be ignored")
 
+    # With no external tools, git add will fail on a gitignored file
     result = auto_commit(["ignored.txt"], "msg", str(tmp_path))
     assert result is False
 
@@ -110,7 +111,6 @@ def test_auto_commit_uses_rlsbl_when_available(tmp_path):
         with mock.patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
-                mock.Mock(returncode=1),       # git check-ignore (not ignored)
                 mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
                 mock.Mock(returncode=0),       # rlsbl commit
             ]
@@ -140,7 +140,6 @@ def test_auto_commit_uses_safegit_when_available(tmp_path):
         with mock.patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
-                mock.Mock(returncode=1),       # git check-ignore (not ignored)
                 mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
                 mock.Mock(returncode=0),       # safegit commit
             ]
@@ -163,7 +162,6 @@ def test_auto_commit_falls_back_to_git(tmp_path):
         with mock.patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
-                mock.Mock(returncode=1),       # git check-ignore (not ignored)
                 mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
                 mock.Mock(returncode=0),       # git add
                 mock.Mock(returncode=0),       # git commit
@@ -246,7 +244,6 @@ def test_auto_commit_dash_separator_in_subprocess_calls(tmp_path):
         with mock.patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 mock.Mock(returncode=0),           # git rev-parse --git-dir
-                mock.Mock(returncode=1),            # git check-ignore (not ignored)
                 mock.Mock(returncode=0, stdout=""), # git ls-files (untracked)
                 mock.Mock(returncode=0),            # git add
                 mock.Mock(returncode=0),            # git commit
@@ -255,20 +252,176 @@ def test_auto_commit_dash_separator_in_subprocess_calls(tmp_path):
             auto_commit(["file.txt"], "msg", str(tmp_path))
 
         calls = mock_run.call_args_list
-        # check-ignore call (index 1) must have "--" before filename
-        check_ignore_cmd = calls[1][0][0]
-        assert check_ignore_cmd == ["git", "check-ignore", "-q", "--", "file.txt"]
 
-        # ls-files call (index 2) must have "--" before filename
-        ls_files_cmd = calls[2][0][0]
+        # ls-files call (index 1) must have "--" before filename
+        ls_files_cmd = calls[1][0][0]
         assert ls_files_cmd == ["git", "ls-files", "--", "file.txt"]
 
-        # git add call (index 3) must have "--" before filenames
-        add_cmd = calls[3][0][0]
+        # git add call (index 2) must have "--" before filenames
+        add_cmd = calls[2][0][0]
         assert add_cmd == ["git", "add", "--", "file.txt"]
 
-        # git commit call (index 4) must have "--" before filenames
-        commit_cmd = calls[4][0][0]
+        # git commit call (index 3) must have "--" before filenames
+        commit_cmd = calls[3][0][0]
         assert "--" in commit_cmd
         dash_idx = commit_cmd.index("--")
         assert commit_cmd[dash_idx + 1] == "file.txt"
+
+
+def test_auto_commit_deleted_file(tmp_path):
+    """auto_commit commits a deletion of a tracked file."""
+    _init_git_repo(tmp_path)
+
+    # Create and commit a file
+    target = tmp_path / "to_delete.txt"
+    target.write_text("will be deleted")
+    subprocess.run(
+        ["git", "add", "to_delete.txt"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add file"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Delete the file from disk
+    os.unlink(target)
+    assert not target.exists()
+
+    # auto_commit should detect and commit the deletion
+    result = auto_commit(["to_delete.txt"], "delete file", str(tmp_path))
+    assert result is True
+
+    # Verify the file is no longer tracked
+    ls = subprocess.run(
+        ["git", "ls-files", "to_delete.txt"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert ls.stdout.strip() == ""
+
+
+def test_auto_commit_mixed_operations(tmp_path):
+    """auto_commit handles modify + delete + new file in one call."""
+    _init_git_repo(tmp_path)
+
+    # Create and commit two files
+    (tmp_path / "file1.txt").write_text("original")
+    (tmp_path / "file2.txt").write_text("to delete")
+    subprocess.run(
+        ["git", "add", "file1.txt", "file2.txt"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add files"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Modify file1, delete file2, create file3 (new)
+    (tmp_path / "file1.txt").write_text("modified")
+    os.unlink(tmp_path / "file2.txt")
+    (tmp_path / "file3.txt").write_text("brand new")
+
+    result = auto_commit(
+        ["file1.txt", "file2.txt", "file3.txt"],
+        "mixed ops",
+        str(tmp_path),
+    )
+    assert result is True
+
+    # Verify file1 was modified in the commit
+    show = subprocess.run(
+        ["git", "show", "HEAD:file1.txt"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert show.stdout == "modified"
+
+    # Verify file2 is no longer tracked
+    ls = subprocess.run(
+        ["git", "ls-files", "file2.txt"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert ls.stdout.strip() == ""
+
+    # Verify file3 is now tracked
+    ls3 = subprocess.run(
+        ["git", "ls-files", "file3.txt"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert "file3.txt" in ls3.stdout
+
+
+def test_auto_commit_deleted_file_rlsbl_path(tmp_path):
+    """auto_commit passes deleted file to rlsbl commit."""
+    _init_git_repo(tmp_path)
+
+    # Create and commit a file, then delete it
+    target = tmp_path / "gone.txt"
+    target.write_text("will vanish")
+    subprocess.run(
+        ["git", "add", "gone.txt"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add gone"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    os.unlink(target)
+
+    with mock.patch("shutil.which", return_value="/usr/bin/rlsbl"):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                mock.Mock(returncode=0),                      # git rev-parse
+                mock.Mock(returncode=0, stdout="gone.txt\n"), # git ls-files
+                mock.Mock(returncode=0),                      # rlsbl commit
+            ]
+
+            result = auto_commit(["gone.txt"], "rm gone", str(tmp_path))
+
+        assert result is True
+        last_call = mock_run.call_args_list[-1]
+        cmd = last_call[0][0]
+        assert cmd[0] == "rlsbl"
+        assert cmd[1] == "commit"
+        assert "gone.txt" in cmd
+
+
+def test_auto_commit_deleted_file_safegit_path(tmp_path):
+    """auto_commit passes deleted file to safegit commit."""
+    _init_git_repo(tmp_path)
+
+    # Create and commit a file, then delete it
+    target = tmp_path / "gone.txt"
+    target.write_text("will vanish")
+    subprocess.run(
+        ["git", "add", "gone.txt"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add gone"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    os.unlink(target)
+
+    def which_side_effect(cmd):
+        if cmd == "rlsbl":
+            return None
+        if cmd == "safegit":
+            return "/usr/bin/safegit"
+        return None
+
+    with mock.patch("shutil.which", side_effect=which_side_effect):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                mock.Mock(returncode=0),                      # git rev-parse
+                mock.Mock(returncode=0, stdout="gone.txt\n"), # git ls-files
+                mock.Mock(returncode=0),                      # safegit commit
+            ]
+
+            result = auto_commit(["gone.txt"], "rm gone", str(tmp_path))
+
+        assert result is True
+        last_call = mock_run.call_args_list[-1]
+        cmd = last_call[0][0]
+        assert cmd[0] == "safegit"
+        assert cmd[1] == "commit"
+        assert "gone.txt" in cmd

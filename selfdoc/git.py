@@ -19,8 +19,8 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     Guards:
     - Returns False if SELFDOC_AUTO_COMMIT is set (prevents loops).
     - Returns False if *cwd* is not inside a git repo.
-    - Filters out files that don't exist, are gitignored, or have no
-      changes (tracked and unchanged, or not untracked).
+    - Filters out files that have no changes (tracked and unchanged,
+      or not untracked). Handles deletions of tracked files.
     """
     # Guard against re-entrant calls (e.g. git hook triggers selfdoc)
     if os.environ.get("SELFDOC_AUTO_COMMIT"):
@@ -39,34 +39,12 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
 
-    # Filter files: must exist and not be gitignored
-    candidates = []
-    for f in files:
-        # Resolve path relative to cwd
-        path = f if os.path.isabs(f) else os.path.join(cwd, f)
-        if not os.path.exists(path):
-            continue
-        # Check gitignore
-        try:
-            result = subprocess.run(
-                ["git", "check-ignore", "-q", "--", f],
-                cwd=cwd,
-                capture_output=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                # File is gitignored
-                continue
-        except (OSError, subprocess.TimeoutExpired):
-            continue
-        candidates.append(f)
-
-    if not candidates:
-        return False
-
-    # Check for actual changes: tracked files with diffs, or untracked files
+    # Check for actual changes: tracked files with diffs, deletions,
+    # or untracked (new) files
     committable = []
-    for f in candidates:
+    for f in files:
+        path = f if os.path.isabs(f) else os.path.join(cwd, f)
+
         # Check if the file is tracked
         try:
             ls_result = subprocess.run(
@@ -80,22 +58,28 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
             continue
 
         if ls_result.returncode == 0 and ls_result.stdout.strip():
-            # File is tracked -- check if it has changes
-            try:
-                diff_result = subprocess.run(
-                    ["git", "diff", "--quiet", "--", f],
-                    cwd=cwd,
-                    capture_output=True,
-                    timeout=10,
-                )
-                if diff_result.returncode != 0:
-                    # Has changes
-                    committable.append(f)
-            except (OSError, subprocess.TimeoutExpired):
-                continue
+            # File is tracked
+            if not os.path.exists(path):
+                # Tracked but deleted from disk -- stage the deletion
+                committable.append(f)
+            else:
+                # Tracked and exists -- check if it has changes
+                try:
+                    diff_result = subprocess.run(
+                        ["git", "diff", "--quiet", "--", f],
+                        cwd=cwd,
+                        capture_output=True,
+                        timeout=10,
+                    )
+                    if diff_result.returncode != 0:
+                        # Has changes
+                        committable.append(f)
+                except (OSError, subprocess.TimeoutExpired):
+                    continue
         else:
             # File is untracked -- it's new and should be committed
-            committable.append(f)
+            if os.path.exists(path):
+                committable.append(f)
 
     if not committable:
         return False
