@@ -201,7 +201,6 @@ Custom directives take priority over built-in names.
 | `page_nav` | no | Show previous/next navigation links between pages. |
 | `page_progress` | no | Show a reading progress bar at the top of each page. |
 | `glossary` | no | Auto-generate a glossary page from dfn terms. |
-| `min_coverage` | no | Minimum documentation coverage percentage required by the check command. |
 | `feed_max_entries` | no | Maximum number of entries in the Atom feed, sorted by most recent. |
 | `lint_ignore` | no | List of lint rule IDs to suppress (e.g. 'SEO007'). |
 | `root_files` | no | List of underscore-prefixed template paths in docs/ for root file generation. |
