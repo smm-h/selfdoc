@@ -199,10 +199,10 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         item_spec=FieldSpec(
             name="<item>",
             type=_S,
-            pattern=r"^SEO\d+$",
-            description="Lint rule ID to ignore.",
+            pattern=r"^[A-Z]+\d+$",
+            description="Lint rule ID to ignore (e.g. SEO007, STALE001, VER002).",
         ),
-        description="List of lint rule IDs to suppress (e.g. 'SEO007').",
+        description="List of lint rule IDs to suppress (e.g. 'SEO007', 'STALE001').",
     ),
     FieldSpec(
         name="root_files",
