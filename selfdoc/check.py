@@ -84,6 +84,84 @@ class CheckResult:
     lints: list[LintResult] = field(default_factory=list)
 
 
+def _validate_directives(docs_dict, resolver, valid_names, file_prefix="",
+                         collect_resolved=False):
+    """Validate directives across a set of documentation templates.
+
+    Parses directives from each template, attempts resolution, and
+    records per-directive OK/FAILED results.
+
+    Args:
+        docs_dict: Dict from resolve_all_docs mapping rel_path to
+            (frontmatter, resolved, raw_content, fm_line_count).
+        resolver: Directive resolver callable.
+        valid_names: Set of valid directive names for parse-time validation.
+        file_prefix: String prepended to rel_path in results (e.g. "[0.1.0] ").
+        collect_resolved: If True, collect successfully resolved directives
+            with attrs into a list for coverage tracking.
+
+    Returns:
+        (directive_results, resolved_directives) where directive_results is
+        a list of DirectiveResult and resolved_directives is a list of
+        ResolvedDirective (empty if collect_resolved is False).
+    """
+    directive_results = []
+    resolved_directives = []
+
+    for rel_path in sorted(docs_dict):
+        _fm, _resolved, raw_content, fm_line_count = docs_dict[rel_path]
+        directives = parse_directives(raw_content, valid_names=valid_names)
+        display_file = f"{file_prefix}{rel_path}" if file_prefix else rel_path
+
+        for directive in directives:
+            file_line = directive.line_number + fm_line_count
+            attrs_str = " ".join(
+                f'{k}="{v}"' for k, v in directive.attrs.items()
+            )
+            directive_str = f"{directive.name} {attrs_str}".strip()
+            try:
+                resolved = resolver(
+                    directive.name, directive.attrs, directive.body,
+                )
+                if resolved.startswith("> *[selfdoc:"):
+                    error_msg = resolved.strip("> *[]")
+                    if error_msg.startswith("selfdoc: "):
+                        error_msg = error_msg[len("selfdoc: "):]
+                    directive_results.append(DirectiveResult(
+                        file=display_file,
+                        line=file_line,
+                        directive=directive_str,
+                        status="FAILED",
+                        error=error_msg,
+                    ))
+                else:
+                    directive_results.append(DirectiveResult(
+                        file=display_file,
+                        line=file_line,
+                        directive=directive_str,
+                        status="OK",
+                    ))
+                    if collect_resolved and directive.attrs:
+                        resolved_directives.append(
+                            ResolvedDirective(
+                                name=directive.name,
+                                attrs=directive.attrs,
+                                content=resolved,
+                                file=rel_path,
+                            )
+                        )
+            except Exception as exc:
+                directive_results.append(DirectiveResult(
+                    file=display_file,
+                    line=file_line,
+                    directive=directive_str,
+                    status="FAILED",
+                    error=str(exc),
+                ))
+
+    return directive_results, resolved_directives
+
+
 def check_docs(dir_path=".", config=None, dry_run=False):
     """Validate all directives in docs templates and report coverage.
 
@@ -118,72 +196,15 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # Build valid directive names for parse-time validation
     valid_names = ALL_BUILTIN_DIRECTIVES | set(config.get("directives", {}).keys())
 
-    # Track all successfully resolved directives (for coverage)
-    resolved_directives = []
-
     # Resolve all docs via the shared pipeline (provides frontmatter,
     # resolved content, raw content, and frontmatter line count).
     all_docs = resolve_all_docs(config, base_dir=dir_path)
 
-    # Walk #1: per-directive validation and coverage tracking.
-    # Uses raw_content (frontmatter-stripped body) from resolve_all_docs
-    # instead of re-reading files from disk.  fm_line_count adjusts
-    # directive line numbers back to file-absolute positions.
-    for rel_path in sorted(all_docs):
-        _fm, _resolved, raw_content, fm_line_count = all_docs[rel_path]
-
-        directives = parse_directives(raw_content, valid_names=valid_names)
-        for directive in directives:
-            # Adjust line number to be file-absolute (account for frontmatter)
-            file_line = directive.line_number + fm_line_count
-            attrs_str = " ".join(
-                f'{k}="{v}"' for k, v in directive.attrs.items()
-            )
-            directive_str = f"{directive.name} {attrs_str}".strip()
-            try:
-                resolved = resolver(
-                    directive.name, directive.attrs, directive.body
-                )
-                # Resolver returns error markers starting with "> *[selfdoc:"
-                # when something goes wrong -- detect those as failures
-                if resolved.startswith("> *[selfdoc:"):
-                    # Extract error message from the marker
-                    error_msg = resolved.strip("> *[]")
-                    # Clean up: remove "selfdoc: " prefix
-                    if error_msg.startswith("selfdoc: "):
-                        error_msg = error_msg[len("selfdoc: "):]
-                    result.directive_results.append(DirectiveResult(
-                        file=rel_path,
-                        line=file_line,
-                        directive=directive_str,
-                        status="FAILED",
-                        error=error_msg,
-                    ))
-                else:
-                    result.directive_results.append(DirectiveResult(
-                        file=rel_path,
-                        line=file_line,
-                        directive=directive_str,
-                        status="OK",
-                    ))
-                    # Track all successful directives for coverage
-                    if directive.attrs:
-                        resolved_directives.append(
-                            ResolvedDirective(
-                                name=directive.name,
-                                attrs=directive.attrs,
-                                content=resolved,
-                                file=rel_path,
-                            )
-                        )
-            except Exception as exc:
-                result.directive_results.append(DirectiveResult(
-                    file=rel_path,
-                    line=file_line,
-                    directive=directive_str,
-                    status="FAILED",
-                    error=str(exc),
-                ))
+    # Per-directive validation and coverage tracking.
+    dir_results, resolved_directives = _validate_directives(
+        all_docs, resolver, valid_names, collect_resolved=True,
+    )
+    result.directive_results.extend(dir_results)
 
     # strictcli hard error: if the project uses strictcli and any directive
     # uses code-help, emit a hard error directing users to 'selfdoc gen'.
@@ -264,46 +285,11 @@ def check_docs(dir_path=".", config=None, dry_run=False):
             ver_resolver = make_resolver(config, cache_dir)
             ver_docs = resolve_all_docs(config, base_dir=cache_dir)
 
-            for rel_path in sorted(ver_docs):
-                _fm, _resolved, raw_content, fm_line_count = ver_docs[rel_path]
-                directives = parse_directives(raw_content, valid_names=valid_names)
-                for directive in directives:
-                    file_line = directive.line_number + fm_line_count
-                    attrs_str = " ".join(
-                        f'{k}="{v}"' for k, v in directive.attrs.items()
-                    )
-                    directive_str = f"{directive.name} {attrs_str}".strip()
-                    prefixed_file = f"[{ver_str}] {rel_path}"
-                    try:
-                        resolved = ver_resolver(
-                            directive.name, directive.attrs, directive.body,
-                        )
-                        if resolved.startswith("> *[selfdoc:"):
-                            error_msg = resolved.strip("> *[]")
-                            if error_msg.startswith("selfdoc: "):
-                                error_msg = error_msg[len("selfdoc: "):]
-                            result.directive_results.append(DirectiveResult(
-                                file=prefixed_file,
-                                line=file_line,
-                                directive=directive_str,
-                                status="FAILED",
-                                error=error_msg,
-                            ))
-                        else:
-                            result.directive_results.append(DirectiveResult(
-                                file=prefixed_file,
-                                line=file_line,
-                                directive=directive_str,
-                                status="OK",
-                            ))
-                    except Exception as exc:
-                        result.directive_results.append(DirectiveResult(
-                            file=prefixed_file,
-                            line=file_line,
-                            directive=directive_str,
-                            status="FAILED",
-                            error=str(exc),
-                        ))
+            ver_dir_results, _ = _validate_directives(
+                ver_docs, ver_resolver, valid_names,
+                file_prefix=f"[{ver_str}] ",
+            )
+            result.directive_results.extend(ver_dir_results)
 
             # Run lint checks on the extracted version's docs
             ver_docs_dir = os.path.join(
