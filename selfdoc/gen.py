@@ -585,9 +585,6 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
         cli_structure = extract_cli_structure(source_paths, base_dir)
     all_filenames.extend(expected_cli_page_filenames(cli_structure))
 
-    # Remove stale generated files before writing new ones
-    deleted = _remove_stale_generated(docs_dir, all_filenames)
-
     generated = []
 
     for nav_order, (mod_path, mod_name, md_fname, src_path) in enumerate(modules, start=1):
@@ -635,6 +632,9 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
     if cli_structure is not None:
         cli_pages = generate_cli_pages(cli_structure, docs_dir)
         generated.extend(cli_pages)
+
+    # Remove stale generated files after all new files have been written
+    deleted = _remove_stale_generated(docs_dir, all_filenames)
 
     return GenResult(written=generated, deleted=deleted)
 
