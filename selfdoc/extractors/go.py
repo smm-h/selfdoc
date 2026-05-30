@@ -77,6 +77,7 @@ class GoExtractor(BaseExtractor):
         """Extract exported (capitalized) symbols from a Go source file.
 
         Skips lines inside // and /* */ comments.
+        Handles const (...) and var (...) blocks.
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -87,6 +88,7 @@ class GoExtractor(BaseExtractor):
         lines = source.split("\n")
         symbols = []
         in_block_comment = False
+        in_const_var_block = False
 
         for line in lines:
             stripped = line.strip()
@@ -118,6 +120,27 @@ class GoExtractor(BaseExtractor):
             comment_idx = stripped.find("//")
             if comment_idx >= 0:
                 stripped = stripped[:comment_idx].strip()
+
+            # Track const/var block boundaries
+            if not in_const_var_block:
+                if stripped == "const (" or stripped.startswith("const ("):
+                    in_const_var_block = True
+                    continue
+                if stripped == "var (" or stripped.startswith("var ("):
+                    in_const_var_block = True
+                    continue
+
+            if in_const_var_block:
+                if stripped == ")" or stripped.startswith(")"):
+                    in_const_var_block = False
+                    continue
+                # Inside a block: exported symbol starts with uppercase
+                m = re.match(r"^([A-Z]\w*)", stripped)
+                if m:
+                    sym_name = m.group(1)
+                    if sym_name not in symbols:
+                        symbols.append(sym_name)
+                continue
 
             for pattern in (
                 _GO_METHOD_RE,

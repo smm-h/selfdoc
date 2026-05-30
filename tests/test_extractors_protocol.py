@@ -136,6 +136,98 @@ class TestPublicSymbols:
         assert "hello" not in symbols
         assert "config" not in symbols
 
+    def test_go_public_symbols_const_block(self, tmp_path):
+        go_file = tmp_path / "consts.go"
+        go_file.write_text(
+            "package exitcodes\n"
+            "\n"
+            "const (\n"
+            "\tExitSuccess = 0\n"
+            "\tExitGeneral = 1\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "ExitSuccess" in symbols
+        assert "ExitGeneral" in symbols
+
+    def test_go_public_symbols_var_block(self, tmp_path):
+        go_file = tmp_path / "vars.go"
+        go_file.write_text(
+            "package config\n"
+            "\n"
+            "var (\n"
+            "\tDefaultTimeout int = 30\n"
+            "\tMaxRetries int = 3\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "DefaultTimeout" in symbols
+        assert "MaxRetries" in symbols
+
+    def test_go_public_symbols_mixed(self, tmp_path):
+        go_file = tmp_path / "mixed.go"
+        go_file.write_text(
+            "package main\n"
+            "\n"
+            "const SingleConst = 42\n"
+            "\n"
+            "const (\n"
+            "\tBlockConst1 = 1\n"
+            "\tBlockConst2 = 2\n"
+            ")\n"
+            "\n"
+            "var SingleVar int\n"
+            "\n"
+            "var (\n"
+            "\tBlockVar1 string = \"hello\"\n"
+            ")\n"
+            "\n"
+            "func ExportedFunc() {}\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "SingleConst" in symbols
+        assert "BlockConst1" in symbols
+        assert "BlockConst2" in symbols
+        assert "SingleVar" in symbols
+        assert "BlockVar1" in symbols
+        assert "ExportedFunc" in symbols
+
+    def test_go_public_symbols_block_unexported(self, tmp_path):
+        go_file = tmp_path / "unexported.go"
+        go_file.write_text(
+            "package exitcodes\n"
+            "\n"
+            "const (\n"
+            "\texitSuccess = 0\n"
+            "\tExitGeneral = 1\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "ExitGeneral" in symbols
+        assert "exitSuccess" not in symbols
+
+    def test_go_public_symbols_nested_comment_in_block(self, tmp_path):
+        go_file = tmp_path / "commented.go"
+        go_file.write_text(
+            "package codes\n"
+            "\n"
+            "const (\n"
+            "\t// ExitSuccess is the success code.\n"
+            "\tExitSuccess = 0\n"
+            "\t// internal comment\n"
+            "\tExitGeneral = 1\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "ExitSuccess" in symbols
+        assert "ExitGeneral" in symbols
+        assert len(symbols) == 2
+
     def test_go_public_symbols_missing_file(self):
         assert GoExtractor().public_symbols("/nonexistent/file.go") == []
 
