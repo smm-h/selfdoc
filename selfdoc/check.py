@@ -1132,6 +1132,25 @@ def print_results(result):
                     for fpath in sorted(by_file):
                         symbols = ", ".join(by_file[fpath])
                         print(f"  {fpath}: {symbols}")
+                # Print skeleton-only symbols when doc coverage is below 100%
+                if doc_pct < 100:
+                    documented_set = set(cov.documented_symbols)
+                    skeleton_only = [
+                        s for s in cov.referenced_symbols
+                        if s not in documented_set
+                    ]
+                    if skeleton_only:
+                        print(_color("Skeleton-only symbols:", "1"))
+                        by_file_skel: dict[str, list[str]] = {}
+                        for qualified in skeleton_only:
+                            if ":" in qualified:
+                                fpath, sym = qualified.rsplit(":", 1)
+                            else:
+                                fpath, sym = qualified, qualified
+                            by_file_skel.setdefault(fpath, []).append(sym)
+                        for fpath in sorted(by_file_skel):
+                            symbols = ", ".join(by_file_skel[fpath])
+                            print(f"  {fpath}: {symbols}")
             else:
                 print("Coverage: no public symbols found in source files")
 

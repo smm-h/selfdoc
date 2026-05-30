@@ -1728,6 +1728,91 @@ def test_unreferenced_symbols_printed(python_project, capsys):
     assert "helper" in captured.out
 
 
+def test_skeleton_only_symbols_printed(tmp_path, capsys):
+    """When all symbols are referenced but some only on skeleton pages, show them."""
+    import selfdoc.check as check_mod
+
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source with two modules
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n\n'
+            "def greet(name):\n"
+            '    """Say hello."""\n'
+            "    return f'Hello, {name}'\n"
+        )
+    with open(os.path.join(lib_dir, "utils.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Utilities."""\n\n'
+            "def helper():\n"
+            '    """Help."""\n'
+            "    pass\n"
+        )
+
+    # docs/ with two pages:
+    # - api.md: hand-written page that references mylib (greet is documented)
+    # - utils.md: skeleton page that references mylib.utils (helper is only skeleton)
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\n"
+            "title: API\n"
+            "description: Hand-written API docs\n"
+            "---\n"
+            "\n"
+            "# API Reference\n"
+            "\n"
+            ':-: ref path="mylib"\n'
+        )
+    with open(os.path.join(docs_dir, "utils.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\n"
+            "title: mylib.utils\n"
+            "description: API reference for mylib.utils module"
+            " — auto-generated documentation covering public functions,"
+            " classes, and type signatures\n"
+            "generated: true\n"
+            "---\n"
+            "\n"
+            "# mylib.utils\n"
+            "\n"
+            ':-: ref path="mylib.utils"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # All 2 symbols are referenced (greet from api.md, helper from utils.md)
+    assert result.coverage.referenced == result.coverage.total_public
+    # But only greet is documented (on non-skeleton page)
+    assert result.coverage.documented < result.coverage.referenced
+
+    old_use_color = check_mod._USE_COLOR
+    try:
+        check_mod._USE_COLOR = False
+        print_results(result)
+    finally:
+        check_mod._USE_COLOR = old_use_color
+    captured = capsys.readouterr()
+
+    assert "Skeleton-only symbols:" in captured.out
+    assert "utils.py" in captured.out
+    assert "helper" in captured.out
+    # Should NOT show "Unreferenced symbols:" since all are referenced
+    assert "Unreferenced symbols:" not in captured.out
+
+
 # -- JSON format --
 
 
