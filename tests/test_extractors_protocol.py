@@ -228,6 +228,26 @@ class TestPublicSymbols:
         assert "ExitGeneral" in symbols
         assert len(symbols) == 2
 
+    def test_go_public_symbols_iota_with_blank(self, tmp_path):
+        go_file = tmp_path / "iota.go"
+        go_file.write_text(
+            "package main\n"
+            "\n"
+            "const (\n"
+            "\t_ = iota\n"
+            "\tExitSuccess\n"
+            "\tExitGeneral\n"
+            "\t_reserved\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "ExitSuccess" in symbols
+        assert "ExitGeneral" in symbols
+        assert "_" not in symbols
+        assert "_reserved" not in symbols
+        assert len(symbols) == 2
+
     def test_go_public_symbols_missing_file(self):
         assert GoExtractor().public_symbols("/nonexistent/file.go") == []
 
