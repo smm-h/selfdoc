@@ -550,7 +550,7 @@ def _cmd_gen(no_commit=False):
         sys.exit(1)
 
     try:
-        generated = generate_docs(config, base_dir=".")
+        gen_result = generate_docs(config, base_dir=".")
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -567,15 +567,23 @@ def _cmd_gen(no_commit=False):
         for path in root_generated:
             print(f"  {path}")
 
+    docs_rel = config.get("docs", "docs/").rstrip("/")
     all_commit_files = []
 
-    if generated:
-        print(f"Generated {len(generated)} doc file(s):")
-        for path in generated:
+    if gen_result.written:
+        print(f"Generated {len(gen_result.written)} doc file(s):")
+        for path in gen_result.written:
             print(f"  {path}")
-        docs_rel = config.get("docs", "docs/").rstrip("/")
         all_commit_files.extend(
-            os.path.join(docs_rel, f) for f in generated
+            os.path.join(docs_rel, f) for f in gen_result.written
+        )
+
+    if gen_result.deleted:
+        print(f"Deleted {len(gen_result.deleted)} stale doc file(s):")
+        for path in gen_result.deleted:
+            print(f"  {path}")
+        all_commit_files.extend(
+            os.path.join(docs_rel, f) for f in gen_result.deleted
         )
 
     all_commit_files.extend(root_generated)
@@ -586,7 +594,7 @@ def _cmd_gen(no_commit=False):
             all_commit_files, "selfdoc gen: update generated docs", ".",
         )
 
-    if not generated and not root_generated:
+    if not gen_result.written and not root_generated:
         print("No files generated.")
     return 0
 

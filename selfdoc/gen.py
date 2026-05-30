@@ -380,7 +380,10 @@ def _remove_stale_generated(docs_dir, new_filenames):
     """Delete previously generated files that are no longer in the new set.
 
     Only removes files whose frontmatter contains ``generated: true``.
+
+    Returns a list of deleted filenames (basenames, not full paths).
     """
+    deleted = []
     new_set = set(new_filenames)
     for entry in os.listdir(docs_dir):
         if not entry.endswith(".md"):
@@ -390,6 +393,8 @@ def _remove_stale_generated(docs_dir, new_filenames):
         full = os.path.join(docs_dir, entry)
         if os.path.isfile(full) and _has_generated_marker(full):
             os.unlink(full)
+            deleted.append(entry)
+    return deleted
 
 
 def _get_locale_docs_dirs(config, base_dir):
@@ -431,7 +436,8 @@ def generate_docs(config, base_dir="."):
     for each configured locale. For single-locale projects without locale
     subdirectories, generates directly under docs/.
 
-    Returns a list of generated file paths relative to the docs directory.
+    Returns a ``GenResult`` with written and deleted file paths relative
+    to the docs directory.
     """
     language = config["language"]
     extractor = EXTRACTORS.get(language)
@@ -439,25 +445,30 @@ def generate_docs(config, base_dir="."):
         raise RuntimeError(f"no extractor for language {language!r}")
 
     locale_dirs = _get_locale_docs_dirs(config, base_dir)
-    all_generated = []
+    all_written = []
+    all_deleted = []
 
     for locale_code, locale_docs_dir in locale_dirs:
-        generated = _generate_docs_for_dir(
+        result = _generate_docs_for_dir(
             config, base_dir, language, extractor, locale_docs_dir,
         )
         if locale_code:
             # Prefix paths with locale code for the caller
-            all_generated.extend(
-                os.path.join(locale_code, f) for f in generated
+            all_written.extend(
+                os.path.join(locale_code, f) for f in result.written
+            )
+            all_deleted.extend(
+                os.path.join(locale_code, f) for f in result.deleted
             )
         else:
-            all_generated.extend(generated)
+            all_written.extend(result.written)
+            all_deleted.extend(result.deleted)
 
-    return all_generated
+    return GenResult(written=all_written, deleted=all_deleted)
 
 
 def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
-    """Generate docs for a single directory. Returns list of generated filenames."""
+    """Generate docs for a single directory. Returns a ``GenResult``."""
 
     source_paths = config["source"]
     os.makedirs(docs_dir, exist_ok=True)
@@ -575,7 +586,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
     all_filenames.extend(expected_cli_page_filenames(cli_structure))
 
     # Remove stale generated files before writing new ones
-    _remove_stale_generated(docs_dir, all_filenames)
+    deleted = _remove_stale_generated(docs_dir, all_filenames)
 
     generated = []
 
@@ -625,7 +636,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
         cli_pages = generate_cli_pages(cli_structure, docs_dir)
         generated.extend(cli_pages)
 
-    return generated
+    return GenResult(written=generated, deleted=deleted)
 
 
 # -- Header comment for auto-generated root files ---------------------------

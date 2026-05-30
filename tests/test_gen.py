@@ -56,7 +56,7 @@ class TestBasicGeneration:
 
     def test_generates_md_files(self, python_project):
         config = _load_config(python_project)
-        generated = generate_docs(config, base_dir=str(python_project))
+        generated = generate_docs(config, base_dir=str(python_project)).written
 
         assert len(generated) > 0
         docs_dir = os.path.join(python_project, "docs")
@@ -65,7 +65,7 @@ class TestBasicGeneration:
 
     def test_correct_filenames(self, python_project):
         config = _load_config(python_project)
-        generated = generate_docs(config, base_dir=str(python_project))
+        generated = generate_docs(config, base_dir=str(python_project)).written
 
         # Should have pages for mylib.core, mylib.utils, and mylib (__init__)
         # plus gen-index.md
@@ -192,7 +192,7 @@ class TestExclusions:
             f.write("def test_something(): pass\n")
 
         config = _load_config(python_project)
-        generated = generate_docs(config, base_dir=str(python_project))
+        generated = generate_docs(config, base_dir=str(python_project)).written
 
         filenames = set(generated)
         assert "mylib-test_core.md" not in filenames
@@ -204,7 +204,7 @@ class TestExclusions:
             f.write("")
 
         config = _load_config(python_project)
-        generated = generate_docs(config, base_dir=str(python_project))
+        generated = generate_docs(config, base_dir=str(python_project)).written
 
         # __pycache__ files should not generate any pages
         for fname in generated:
@@ -219,7 +219,7 @@ class TestExclusions:
         # Configure exclusion
         config = _load_config(python_project)
         config["gen"] = {"exclude": ["**/internal.*"]}
-        generated = generate_docs(config, base_dir=str(python_project))
+        generated = generate_docs(config, base_dir=str(python_project)).written
 
         filenames = set(generated)
         assert "mylib-internal.md" not in filenames
@@ -294,7 +294,7 @@ class TestIndexPage:
 
     def test_index_generated(self, python_project):
         config = _load_config(python_project)
-        generated = generate_docs(config, base_dir=str(python_project))
+        generated = generate_docs(config, base_dir=str(python_project)).written
 
         assert "gen-index.md" in generated
 
@@ -602,7 +602,7 @@ class TestGoPackageGeneration:
     def test_one_page_per_package(self, go_project):
         """Each directory with .go files produces exactly one page."""
         config = _load_config(go_project)
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         # Should have: root package, internal-models, internal-commit,
@@ -615,7 +615,7 @@ class TestGoPackageGeneration:
     def test_no_per_file_pages(self, go_project):
         """Per-file pages should NOT be generated for Go."""
         config = _load_config(go_project)
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         # These would exist if gen was treating Go as per-file
@@ -628,7 +628,7 @@ class TestGoPackageGeneration:
     def test_root_package_uses_module_name(self, go_project):
         """Root package page filename comes from go.mod module name."""
         config = _load_config(go_project)
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         # go.mod has "module github.com/user/mygoapp" -> last segment "mygoapp"
@@ -645,7 +645,7 @@ class TestGoPackageGeneration:
             f.write("go 1.21\n")
 
         config = _load_config(go_project)
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         # Should use the tmp directory basename
@@ -655,7 +655,7 @@ class TestGoPackageGeneration:
     def test_test_files_excluded(self, go_project):
         """_test.go files should not cause packages to appear or affect output."""
         config = _load_config(go_project)
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         # No page named after a test file
@@ -732,7 +732,7 @@ class TestGoPackageGeneration:
 
         config = _load_config(go_project)
         config["source"] = [".", "pkg/"]
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         assert "extra.md" in filenames
@@ -741,7 +741,7 @@ class TestGoPackageGeneration:
         """User-configured exclude patterns work for Go packages."""
         config = _load_config(go_project)
         config["gen"] = {"exclude": ["cmd/*"]}
-        generated = generate_docs(config, base_dir=str(go_project))
+        generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
         assert "cmd-myapp.md" not in filenames
@@ -764,3 +764,58 @@ class TestGenResult:
         )
         assert merged.written == ["a.md", "b.md"]
         assert merged.deleted == ["x.md", "y.md"]
+
+    def test_generate_docs_returns_gen_result(self, python_project):
+        """generate_docs returns a GenResult with the correct written list."""
+        config = _load_config(python_project)
+        result = generate_docs(config, base_dir=str(python_project))
+
+        assert isinstance(result, GenResult)
+        assert len(result.written) > 0
+        filenames = set(result.written)
+        assert "mylib-core.md" in filenames
+        assert "mylib-utils.md" in filenames
+        assert "mylib.md" in filenames
+        assert "gen-index.md" in filenames
+
+    def test_stale_cleanup_returns_deleted(self, python_project):
+        """Removing a source file causes GenResult.deleted to list the stale page."""
+        config = _load_config(python_project)
+        # First generation creates all pages
+        result1 = generate_docs(config, base_dir=str(python_project))
+        assert "mylib-utils.md" in result1.written
+        assert result1.deleted == []
+
+        # Remove the source file
+        os.unlink(os.path.join(python_project, "mylib", "utils.py"))
+
+        # Second generation should report the stale page as deleted
+        result2 = generate_docs(config, base_dir=str(python_project))
+        assert "mylib-utils.md" in result2.deleted
+        assert "mylib-utils.md" not in result2.written
+
+    def test_deleted_files_in_gen_result(self, python_project):
+        """Full flow: generate, remove source, re-generate. Verify both written and deleted."""
+        config = _load_config(python_project)
+        result1 = generate_docs(config, base_dir=str(python_project))
+
+        # All three modules + index should be written
+        assert "mylib-core.md" in result1.written
+        assert "mylib-utils.md" in result1.written
+        assert "mylib.md" in result1.written
+        assert "gen-index.md" in result1.written
+        assert result1.deleted == []
+
+        # Remove utils.py
+        os.unlink(os.path.join(python_project, "mylib", "utils.py"))
+
+        result2 = generate_docs(config, base_dir=str(python_project))
+
+        # utils page should be deleted, not written
+        assert "mylib-utils.md" in result2.deleted
+        assert "mylib-utils.md" not in result2.written
+
+        # core and init pages should still be written
+        assert "mylib-core.md" in result2.written
+        assert "mylib.md" in result2.written
+        assert "gen-index.md" in result2.written
