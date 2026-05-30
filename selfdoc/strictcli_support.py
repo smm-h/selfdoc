@@ -9,6 +9,7 @@ import json
 import os
 import re
 
+from selfdoc.content import _read_project_field
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.utils import atomic_write as _atomic_write
 
@@ -83,6 +84,21 @@ def read_schema_json(base_dir, source_paths=None):
 
     with open(schema_path, "r", encoding="utf-8") as f:
         schema = json.load(f)
+
+    # Validate project_id
+    project_id = schema.get("project_id")
+    if project_id is None:
+        app_name = schema.get("name", "<app>")
+        raise ValueError(
+            f"Schema missing project_id field. "
+            f"Regenerate with: {app_name} --dump-schema"
+        )
+    expected = _read_project_field(base_dir, "name")
+    if expected != "unknown" and project_id != expected:
+        raise ValueError(
+            f"Schema project_id '{project_id}' does not match "
+            f"project name '{expected}'. Wrong schema file?"
+        )
 
     result = {
         "app_name": schema.get("name", ""),

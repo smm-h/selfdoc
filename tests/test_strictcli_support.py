@@ -33,6 +33,7 @@ def schema_json():
     """Return a realistic schema.json dict for a strictcli app."""
     return {
         "name": "testapp",
+        "project_id": "testapp",
         "version": "1.0",
         "help": "A test app",
         "env_prefix": None,
@@ -239,12 +240,96 @@ class TestReadSchemaJson:
 
     def test_empty_schema(self, tmp_path):
         """Minimal schema with no commands or groups."""
-        _write_schema(tmp_path, {"name": "empty", "version": "0.1", "help": ""})
+        _write_schema(tmp_path, {"name": "empty", "project_id": "empty", "version": "0.1", "help": ""})
         result = read_schema_json(str(tmp_path))
 
         assert result["app_name"] == "empty"
         assert result["commands"] == []
         assert result["groups"] == []
+
+
+# ---------------------------------------------------------------------------
+# project_id validation tests
+# ---------------------------------------------------------------------------
+
+
+def _write_pyproject(tmp_path, name):
+    """Write a minimal pyproject.toml with the given project name."""
+    content = f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
+    with open(os.path.join(tmp_path, "pyproject.toml"), "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+class TestProjectIdValidation:
+    """Test that read_schema_json validates the project_id field."""
+
+    def test_schema_project_id_missing(self, tmp_path):
+        """Schema without project_id raises ValueError."""
+        _write_schema(tmp_path, {
+            "name": "testapp",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
+        with pytest.raises(ValueError, match="Schema missing project_id field"):
+            read_schema_json(str(tmp_path))
+
+    def test_schema_project_id_mismatch(self, tmp_path):
+        """Schema project_id that doesn't match project name raises ValueError."""
+        _write_pyproject(tmp_path, "testapp")
+        _write_schema(tmp_path, {
+            "name": "testapp",
+            "project_id": "wrong",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
+        with pytest.raises(ValueError, match="does not match project name"):
+            read_schema_json(str(tmp_path))
+
+    def test_schema_project_id_valid(self, tmp_path):
+        """Schema project_id matching project name succeeds."""
+        _write_pyproject(tmp_path, "testapp")
+        _write_schema(tmp_path, {
+            "name": "testapp",
+            "project_id": "testapp",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
+        result = read_schema_json(str(tmp_path))
+        assert result is not None
+        assert result["app_name"] == "testapp"
+
+    def test_schema_project_id_skips_when_name_unknown(self, tmp_path):
+        """When project name cannot be determined, skip mismatch check."""
+        # No pyproject.toml, package.json, or go.mod -- _read_project_field
+        # returns "unknown", so any project_id should be accepted.
+        _write_schema(tmp_path, {
+            "name": "testapp",
+            "project_id": "anything",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
+        result = read_schema_json(str(tmp_path))
+        assert result is not None
+
+    def test_schema_project_id_missing_shows_app_name(self, tmp_path):
+        """Error message includes the app name for regeneration hint."""
+        _write_schema(tmp_path, {
+            "name": "myapp",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
+        with pytest.raises(ValueError, match="myapp --dump-schema"):
+            read_schema_json(str(tmp_path))
 
 
 # ---------------------------------------------------------------------------
@@ -687,6 +772,7 @@ class TestGenerateDocsPreservesCliDescriptions:
         # Write schema.json
         _write_schema(tmp_path, {
             "name": "myapp",
+            "project_id": "myapp",
             "version": "1.0",
             "help": "A test app",
             "commands": {
@@ -794,6 +880,7 @@ class TestCheckIntegration:
         # Schema.json to indicate strictcli usage
         _write_schema(tmp_path, {
             "name": "testapp",
+            "project_id": "testapp",
             "version": "1.0",
             "help": "test",
             "commands": {},
@@ -831,6 +918,7 @@ class TestCheckIntegration:
         # Schema.json to indicate strictcli usage
         _write_schema(tmp_path, {
             "name": "testapp",
+            "project_id": "testapp",
             "version": "1.0",
             "help": "test",
             "commands": {},
