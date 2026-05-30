@@ -2027,15 +2027,14 @@ def test_coverage_multi_directive(tmp_path):
 # -- Coverage threshold --
 
 
-def test_coverage_threshold_pass(tmp_path):
-    """min_coverage=50 with 3/4 documented (75%) passes."""
+def test_coverage_threshold_partial_fails(tmp_path):
+    """3/4 documented (75%) fails the hardcoded 100% requirement."""
     config = {
         "language": "python",
         "source": ["mylib/"],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
-        "min_coverage": 50,
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2059,27 +2058,21 @@ def test_coverage_threshold_pass(tmp_path):
 
     result = check_docs(str(tmp_path))
     assert result.coverage is not None
-    # 3/4 = 75% > 50% threshold
-    assert result.coverage.referenced == 3
+    assert result.coverage.documented == 3
     assert result.coverage.total_public == 4
 
-    # Simulate what _cmd_check does for threshold
-    from selfdoc.config import load_config
-    cfg = load_config(str(tmp_path))
-    min_cov = cfg.get("min_coverage")
-    actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
-    assert actual_pct >= min_cov  # 75 >= 50 -- should pass
+    # 3/4 < 100% -> coverage_below_threshold is True
+    assert result.coverage.documented < result.coverage.total_public
 
 
-def test_coverage_threshold_fail(tmp_path, capsys):
-    """min_coverage=80 with 1/3 documented (33%) fails."""
+def test_coverage_threshold_low_fails(tmp_path):
+    """1/3 documented (33%) fails the hardcoded 100% requirement."""
     config = {
         "language": "python",
         "source": ["mylib/"],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
-        "min_coverage": 80,
         "lint_ignore": ["SEO006", "SEO009", "SEO013"],
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
@@ -2107,14 +2100,83 @@ def test_coverage_threshold_fail(tmp_path, capsys):
     assert result.coverage is not None
     # 1 documented (alpha from mylib/__init__.py), 2 undocumented
     assert result.coverage.total_public == 3
-    assert result.coverage.referenced == 1
+    assert result.coverage.documented == 1
 
-    # Check the threshold logic
-    from selfdoc.config import load_config
-    cfg = load_config(str(tmp_path))
-    min_cov = cfg.get("min_coverage")
-    actual_pct = result.coverage.referenced * 100 // result.coverage.total_public
-    assert actual_pct < min_cov  # 33 < 80 -- should fail
+    # 1/3 < 100% -> coverage_below_threshold is True
+    assert result.coverage.documented < result.coverage.total_public
+
+
+def test_coverage_100_percent_passes(tmp_path):
+    """Project where all public symbols are documented passes coverage check."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My lib."""\n'
+            "def greet(): pass\n"
+            "def farewell(): pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    # Hand-written page (not skeleton) references all symbols
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\n"
+            "description: Complete API reference covering all public functions.\n"
+            "---\n"
+            "# API\n\n"
+            ':-: ref path="mylib"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    assert result.coverage.total_public == 2
+    assert result.coverage.documented == 2
+
+    # 2/2 = 100% -> coverage_below_threshold is False
+    assert result.coverage.documented == result.coverage.total_public
+
+
+def test_coverage_zero_symbols_passes(tmp_path):
+    """Project with no public symbols passes coverage check (no division by zero)."""
+    config = {
+        "language": "python",
+        "source": ["mylib/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    # Empty source -- no public symbols
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""Empty library."""\n')
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome.\n")
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    assert result.coverage.total_public == 0
+
+    # total_public == 0 -> guard prevents coverage_below_threshold
+    # (no division by zero, check passes)
 
 
 # -- Exit code severity --
@@ -2869,15 +2931,14 @@ class TestTwoTierCoverage:
         assert result.coverage.documented == 2
         assert result.coverage.referenced == 2
 
-    def test_min_coverage_uses_documented_not_referenced(self, tmp_path):
-        """min_coverage threshold checks against documented count, not referenced."""
+    def test_coverage_check_uses_documented_not_referenced(self, tmp_path):
+        """Hardcoded 100% check uses documented count, not referenced."""
         config = {
             "language": "python",
             "source": ["mylib/"],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
-            "min_coverage": 80,
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
             json.dump(config, f)
@@ -2914,16 +2975,13 @@ class TestTwoTierCoverage:
         result = check_docs(str(tmp_path))
 
         assert result.coverage is not None
-        # 100% referenced but 0% documented
+        # 100% referenced but 0% documented (skeleton page)
         assert result.coverage.referenced == 3
         assert result.coverage.documented == 0
+        assert result.coverage.total_public == 3
 
-        # min_coverage checks documented (0%) < 80% -> should fail
-        from selfdoc.config import load_config
-        cfg = load_config(str(tmp_path))
-        min_cov = cfg.get("min_coverage")
-        actual_pct = result.coverage.documented * 100 // result.coverage.total_public
-        assert actual_pct < min_cov  # 0 < 80 -> fails threshold
+        # 0 documented < 3 total -> coverage_below_threshold is True
+        assert result.coverage.documented < result.coverage.total_public
 
     def test_coverage_output_shows_both_tiers(self, tmp_path, capsys):
         """print_results shows both documented and referenced lines when they differ."""

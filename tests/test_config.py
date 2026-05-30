@@ -698,90 +698,19 @@ def test_branding_default_none(config_dir):
     assert cfg["branding"] is None
 
 
-# -- min_coverage field --
+# -- min_coverage removed (now hardcoded to 100%) --
 
 
-def test_min_coverage_valid(config_dir):
-    """Integer 0-100 accepted for min_coverage."""
+def test_min_coverage_rejected(config_dir):
+    """min_coverage is no longer a valid config key."""
     _write_config(config_dir, {
         "language": "python",
         "source": ["src/"],
         "base_url": "https://example.com",
         "min_coverage": 80,
     })
-    cfg = load_config(str(config_dir))
-    assert cfg["min_coverage"] == 80
-
-
-def test_min_coverage_valid_zero(config_dir):
-    """min_coverage=0 is accepted."""
-    _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
-        "base_url": "https://example.com",
-        "min_coverage": 0,
-    })
-    cfg = load_config(str(config_dir))
-    assert cfg["min_coverage"] == 0
-
-
-def test_min_coverage_valid_hundred(config_dir):
-    """min_coverage=100 is accepted."""
-    _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
-        "base_url": "https://example.com",
-        "min_coverage": 100,
-    })
-    cfg = load_config(str(config_dir))
-    assert cfg["min_coverage"] == 100
-
-
-def test_min_coverage_invalid_type(config_dir):
-    """String min_coverage raises ConfigError."""
-    _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
-        "base_url": "https://example.com",
-        "min_coverage": "80",
-    })
-    with pytest.raises(ConfigError, match="'min_coverage' must be an integer"):
+    with pytest.raises(ConfigError, match="unknown config key"):
         load_config(str(config_dir))
-
-
-def test_min_coverage_out_of_range_high(config_dir):
-    """min_coverage=101 raises ConfigError."""
-    _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
-        "base_url": "https://example.com",
-        "min_coverage": 101,
-    })
-    with pytest.raises(ConfigError, match="'min_coverage' must be an integer"):
-        load_config(str(config_dir))
-
-
-def test_min_coverage_out_of_range_negative(config_dir):
-    """min_coverage=-1 raises ConfigError."""
-    _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
-        "base_url": "https://example.com",
-        "min_coverage": -1,
-    })
-    with pytest.raises(ConfigError, match="'min_coverage' must be an integer"):
-        load_config(str(config_dir))
-
-
-def test_min_coverage_default_none(config_dir):
-    """Missing min_coverage defaults to None."""
-    _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
-        "base_url": "https://example.com",
-    })
-    cfg = load_config(str(config_dir))
-    assert cfg["min_coverage"] is None
 
 
 # -- glossary field --

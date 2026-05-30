@@ -184,14 +184,6 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
     ),
     # --- optional int field ---
     FieldSpec(
-        name="min_coverage",
-        type=_I,
-        default=None,
-        min_val=0,
-        max_val=100,
-        description="Minimum documentation coverage percentage required by the check command.",
-    ),
-    FieldSpec(
         name="feed_max_entries",
         type=_I,
         default=None,
