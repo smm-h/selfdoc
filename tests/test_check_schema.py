@@ -55,18 +55,18 @@ def _validate_check_output(data):
     cov = data["coverage"]
     if cov is not None:
         assert isinstance(cov, dict), "coverage must be null or an object"
-        for field in ("total_public", "referenced", "documented_symbols", "undocumented_symbols"):
+        for field in ("total_public", "referenced", "referenced_symbols", "unreferenced_symbols"):
             assert field in cov, f"coverage missing required field: {field}"
         assert isinstance(cov["total_public"], int), "coverage.total_public must be an integer"
         assert cov["total_public"] >= 0, "coverage.total_public must be >= 0"
         assert isinstance(cov["referenced"], int), "coverage.referenced must be an integer"
         assert cov["referenced"] >= 0, "coverage.referenced must be >= 0"
-        assert isinstance(cov["documented_symbols"], list), "coverage.documented_symbols must be an array"
-        for j, sym in enumerate(cov["documented_symbols"]):
-            assert isinstance(sym, str), f"coverage.documented_symbols[{j}] must be a string"
-        assert isinstance(cov["undocumented_symbols"], list), "coverage.undocumented_symbols must be an array"
-        for j, sym in enumerate(cov["undocumented_symbols"]):
-            assert isinstance(sym, str), f"coverage.undocumented_symbols[{j}] must be a string"
+        assert isinstance(cov["referenced_symbols"], list), "coverage.referenced_symbols must be an array"
+        for j, sym in enumerate(cov["referenced_symbols"]):
+            assert isinstance(sym, str), f"coverage.referenced_symbols[{j}] must be a string"
+        assert isinstance(cov["unreferenced_symbols"], list), "coverage.unreferenced_symbols must be an array"
+        for j, sym in enumerate(cov["unreferenced_symbols"]):
+            assert isinstance(sym, str), f"coverage.unreferenced_symbols[{j}] must be a string"
 
     # lints
     assert isinstance(data["lints"], list), "lints must be an array"
@@ -125,8 +125,8 @@ def _serialize_check_result(result):
         output["coverage"] = {
             "total_public": cov.total_public,
             "referenced": cov.referenced,
-            "documented_symbols": cov.documented_symbols,
-            "undocumented_symbols": cov.undocumented_symbols,
+            "referenced_symbols": cov.referenced_symbols,
+            "unreferenced_symbols": cov.unreferenced_symbols,
         }
     return output
 
@@ -215,8 +215,8 @@ def test_check_output_with_coverage(python_project):
     assert parsed["coverage"] is not None
     assert parsed["coverage"]["total_public"] >= 0
     assert parsed["coverage"]["referenced"] >= 0
-    assert isinstance(parsed["coverage"]["documented_symbols"], list)
-    assert isinstance(parsed["coverage"]["undocumented_symbols"], list)
+    assert isinstance(parsed["coverage"]["referenced_symbols"], list)
+    assert isinstance(parsed["coverage"]["unreferenced_symbols"], list)
 
 
 def test_check_output_null_coverage():

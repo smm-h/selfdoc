@@ -520,9 +520,9 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
                 "total_public": cov.total_public,
                 "referenced": cov.referenced,
                 "documented": cov.documented,
+                "referenced_symbols": cov.referenced_symbols,
                 "documented_symbols": cov.documented_symbols,
-                "truly_documented_symbols": cov.truly_documented_symbols,
-                "undocumented_symbols": cov.undocumented_symbols,
+                "unreferenced_symbols": cov.unreferenced_symbols,
             }
         print(json.dumps(output, indent=2))
     else:

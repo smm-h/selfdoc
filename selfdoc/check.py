@@ -57,11 +57,11 @@ class CoverageStats:
     referenced: int = 0
     documented: int = 0  # symbols on non-skeleton (hand-written or customized) pages
     # Symbols that are referenced by any directive (skeleton or not)
+    referenced_symbols: list[str] = field(default_factory=list)
+    # Symbols that are documented on non-skeleton (hand-written or customized) pages
     documented_symbols: list[str] = field(default_factory=list)
-    # Symbols that are truly documented (on non-skeleton pages only)
-    truly_documented_symbols: list[str] = field(default_factory=list)
     # Symbols that are NOT referenced by any directive
-    undocumented_symbols: list[str] = field(default_factory=list)
+    unreferenced_symbols: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -1041,12 +1041,12 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor,
             stats.total_public += 1
             if qualified in referenced_set:
                 stats.referenced += 1
-                stats.documented_symbols.append(qualified)
+                stats.referenced_symbols.append(qualified)
                 if qualified in documented_set:
                     stats.documented += 1
-                    stats.truly_documented_symbols.append(qualified)
+                    stats.documented_symbols.append(qualified)
             else:
-                stats.undocumented_symbols.append(qualified)
+                stats.unreferenced_symbols.append(qualified)
 
     return stats
 
@@ -1117,12 +1117,12 @@ def print_results(result):
                         f"          {cov.referenced}/{cov.total_public} "
                         f"symbols referenced ({ref_pct}%)"
                     )
-                # Print undocumented symbols when coverage is below 100%
-                if cov.undocumented_symbols and ref_pct < 100:
-                    print(_color("Undocumented symbols:", "1"))
+                # Print unreferenced symbols when ref coverage is below 100%
+                if cov.unreferenced_symbols and ref_pct < 100:
+                    print(_color("Unreferenced symbols:", "1"))
                     # Group by file path
                     by_file: dict[str, list[str]] = {}
-                    for qualified in cov.undocumented_symbols:
+                    for qualified in cov.unreferenced_symbols:
                         # qualified is "rel/path.py:symbol_name"
                         if ":" in qualified:
                             fpath, sym = qualified.rsplit(":", 1)
@@ -1232,14 +1232,14 @@ def check_unified(dir_path=".", config=None, dry_run=False):
             aggregate.coverage.total_public += proj_result.coverage.total_public
             aggregate.coverage.referenced += proj_result.coverage.referenced
             aggregate.coverage.documented += proj_result.coverage.documented
+            aggregate.coverage.referenced_symbols.extend(
+                f"[{slug}] {s}" for s in proj_result.coverage.referenced_symbols
+            )
             aggregate.coverage.documented_symbols.extend(
                 f"[{slug}] {s}" for s in proj_result.coverage.documented_symbols
             )
-            aggregate.coverage.truly_documented_symbols.extend(
-                f"[{slug}] {s}" for s in proj_result.coverage.truly_documented_symbols
-            )
-            aggregate.coverage.undocumented_symbols.extend(
-                f"[{slug}] {s}" for s in proj_result.coverage.undocumented_symbols
+            aggregate.coverage.unreferenced_symbols.extend(
+                f"[{slug}] {s}" for s in proj_result.coverage.unreferenced_symbols
             )
 
     # Check the docs-site's own content

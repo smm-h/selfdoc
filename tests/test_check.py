@@ -180,7 +180,7 @@ def test_coverage_full(python_project):
     # mylib/utils.py has: helper (1 public)
     assert result.coverage.total_public == 4
     assert result.coverage.referenced == 4
-    assert len(result.coverage.undocumented_symbols) == 0
+    assert len(result.coverage.unreferenced_symbols) == 0
 
 
 def test_coverage_partial(python_project):
@@ -200,9 +200,9 @@ def test_coverage_partial(python_project):
     # 3 from mylib/__init__.py documented, 1 from utils.py not
     assert result.coverage.total_public == 4
     assert result.coverage.referenced == 3
-    assert len(result.coverage.undocumented_symbols) == 1
-    # The undocumented symbol should be from utils.py
-    assert any("utils.py" in s for s in result.coverage.undocumented_symbols)
+    assert len(result.coverage.unreferenced_symbols) == 1
+    # The unreferenced symbol should be from utils.py
+    assert any("utils.py" in s for s in result.coverage.unreferenced_symbols)
 
 
 def test_coverage_none_documented(python_project):
@@ -1701,15 +1701,15 @@ def test_plain_output_on_pipe(capsys):
         check_mod._USE_COLOR = old_use_color
 
 
-# -- Undocumented symbols printed --
+# -- Unreferenced symbols printed --
 
 
-def test_undocumented_symbols_printed(python_project, capsys):
-    """When coverage < 100%, undocumented symbols are printed grouped by file."""
+def test_unreferenced_symbols_printed(python_project, capsys):
+    """When coverage < 100%, unreferenced symbols are printed grouped by file."""
     import selfdoc.check as check_mod
 
     docs_dir = os.path.join(python_project, "docs")
-    # Only document mylib (not mylib.utils) -- utils.py:helper is undocumented
+    # Only document mylib (not mylib.utils) -- utils.py:helper is unreferenced
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write('# API\n\n:-: ref path="mylib"\n')
 
@@ -1723,7 +1723,7 @@ def test_undocumented_symbols_printed(python_project, capsys):
         check_mod._USE_COLOR = old_use_color
     captured = capsys.readouterr()
 
-    assert "Undocumented symbols:" in captured.out
+    assert "Unreferenced symbols:" in captured.out
     assert "utils.py" in captured.out
     assert "helper" in captured.out
 
@@ -1769,8 +1769,8 @@ def test_json_format(python_project, capsys):
         output["coverage"] = {
             "total_public": cov.total_public,
             "referenced": cov.referenced,
-            "documented_symbols": cov.documented_symbols,
-            "undocumented_symbols": cov.undocumented_symbols,
+            "referenced_symbols": cov.referenced_symbols,
+            "unreferenced_symbols": cov.unreferenced_symbols,
         }
 
     json_str = json.dumps(output, indent=2)
@@ -1786,7 +1786,7 @@ def test_json_format(python_project, capsys):
     assert isinstance(parsed["lints"], list)
     assert parsed["coverage"] is not None
     assert "total_public" in parsed["coverage"]
-    assert "undocumented_symbols" in parsed["coverage"]
+    assert "unreferenced_symbols" in parsed["coverage"]
 
 
 # -- Per-symbol coverage --
@@ -1871,8 +1871,8 @@ def test_coverage_per_symbol(tmp_path):
     # mylib/extras.py has delta -- not referenced at all
     assert result.coverage.total_public == 4
     assert result.coverage.referenced == 3
-    assert len(result.coverage.undocumented_symbols) == 1
-    assert any("delta" in s for s in result.coverage.undocumented_symbols)
+    assert len(result.coverage.unreferenced_symbols) == 1
+    assert any("delta" in s for s in result.coverage.unreferenced_symbols)
 
 
 # -- Multi-directive coverage --
@@ -1935,8 +1935,8 @@ def test_coverage_multi_directive(tmp_path):
     assert result.coverage.total_public == 2
     # table-schema references Config by name in target attr
     assert result.coverage.referenced >= 1
-    # Config should be documented
-    assert any("Config" in s for s in result.coverage.documented_symbols)
+    # Config should be referenced
+    assert any("Config" in s for s in result.coverage.referenced_symbols)
 
 
 # -- Coverage threshold --
@@ -2175,9 +2175,9 @@ def test_go_coverage_basic(tmp_path):
     assert result.coverage.total_public == 3
     # Only pkg/server is documented (Start and Stop appear in resolved content)
     assert result.coverage.referenced == 2
-    # Format from util is undocumented
-    assert len(result.coverage.undocumented_symbols) == 1
-    assert any("Format" in s for s in result.coverage.undocumented_symbols)
+    # Format from util is unreferenced
+    assert len(result.coverage.unreferenced_symbols) == 1
+    assert any("Format" in s for s in result.coverage.unreferenced_symbols)
 
 
 # -- TypeScript/JavaScript coverage --
@@ -2237,9 +2237,9 @@ def test_ts_coverage_basic(tmp_path):
     assert result.coverage.total_public == 3
     # Only src/utils.ts is documented (format, parse in resolved content)
     assert result.coverage.referenced == 2
-    # Settings from config.ts is undocumented
-    assert len(result.coverage.undocumented_symbols) == 1
-    assert any("Settings" in s for s in result.coverage.undocumented_symbols)
+    # Settings from config.ts is unreferenced
+    assert len(result.coverage.unreferenced_symbols) == 1
+    assert any("Settings" in s for s in result.coverage.unreferenced_symbols)
 
 
 # -- SEO012: custom.css contrast override checks --
