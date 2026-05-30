@@ -71,8 +71,12 @@ class PythonExtractor(BaseExtractor):
     def public_symbols(self, file_path: str) -> list[str]:
         """Extract public top-level functions and classes from a Python file.
 
-        A public symbol is a top-level function or class whose name does
-        not start with underscore.
+        If the module defines ``__all__`` as a literal list or tuple of
+        strings, those names are returned directly (they ARE the public
+        API, even if some start with ``_``).
+
+        Otherwise falls back to heuristic: top-level functions and classes
+        whose name does not start with underscore.
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -85,6 +89,25 @@ class PythonExtractor(BaseExtractor):
         except SyntaxError:
             return []
 
+        # Check for __all__ assignment with literal list/tuple of strings
+        for node in ast.iter_child_nodes(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    if isinstance(node.value, (ast.List, ast.Tuple)):
+                        names = []
+                        all_strings = True
+                        for elt in node.value.elts:
+                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                                names.append(elt.value)
+                            else:
+                                all_strings = False
+                                break
+                        if all_strings:
+                            return names
+
+        # Fallback: non-underscore top-level functions and classes
         symbols = []
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):

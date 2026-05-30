@@ -174,6 +174,64 @@ class TestPublicSymbols:
     def test_typescript_public_symbols_missing_file(self):
         assert TypeScriptExtractor().public_symbols("/nonexistent/file.ts") == []
 
+    def test_python_public_symbols_with_all(self, tmp_path):
+        py_file = tmp_path / "mod.py"
+        py_file.write_text(
+            '__all__ = ["Foo", "bar"]\n'
+            'class Foo: pass\n'
+            'def bar(): pass\n'
+            'class Baz: pass\n',
+            encoding="utf-8",
+        )
+        symbols = PythonExtractor().public_symbols(str(py_file))
+        assert symbols == ["Foo", "bar"]
+
+    def test_python_public_symbols_all_with_private(self, tmp_path):
+        py_file = tmp_path / "mod.py"
+        py_file.write_text(
+            '__all__ = ["_private_helper", "Public"]\n'
+            'def _private_helper(): pass\n'
+            'class Public: pass\n',
+            encoding="utf-8",
+        )
+        symbols = PythonExtractor().public_symbols(str(py_file))
+        assert symbols == ["_private_helper", "Public"]
+
+    def test_python_public_symbols_all_non_literal(self, tmp_path):
+        py_file = tmp_path / "mod.py"
+        py_file.write_text(
+            '__all__ = some_function()\n'
+            'def greet(): pass\n'
+            'def _hidden(): pass\n'
+            'class Widget: pass\n',
+            encoding="utf-8",
+        )
+        symbols = PythonExtractor().public_symbols(str(py_file))
+        assert symbols == ["greet", "Widget"]
+
+    def test_python_public_symbols_all_empty(self, tmp_path):
+        py_file = tmp_path / "mod.py"
+        py_file.write_text(
+            '__all__ = []\n'
+            'def greet(): pass\n'
+            'class Widget: pass\n',
+            encoding="utf-8",
+        )
+        symbols = PythonExtractor().public_symbols(str(py_file))
+        assert symbols == []
+
+    def test_python_public_symbols_all_tuple(self, tmp_path):
+        py_file = tmp_path / "mod.py"
+        py_file.write_text(
+            '__all__ = ("Foo", "Bar")\n'
+            'class Foo: pass\n'
+            'class Bar: pass\n'
+            'class Baz: pass\n',
+            encoding="utf-8",
+        )
+        symbols = PythonExtractor().public_symbols(str(py_file))
+        assert symbols == ["Foo", "Bar"]
+
 
 # ---------------------------------------------------------------------------
 # resolve_path()
