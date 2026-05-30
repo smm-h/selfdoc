@@ -202,7 +202,7 @@ Custom directives take priority over built-in names.
 | `page_progress` | no | Show a reading progress bar at the top of each page. |
 | `glossary` | no | Auto-generate a glossary page from dfn terms. |
 | `feed_max_entries` | no | Maximum number of entries in the Atom feed, sorted by most recent. |
-| `lint_ignore` | no | List of lint rule IDs to suppress (e.g. 'SEO007'). |
+| `lint_ignore` | no | List of lint rule IDs to suppress (e.g. 'SEO007', 'STALE001'). |
 | `root_files` | no | List of underscore-prefixed template paths in docs/ for root file generation. |
 | `redirects` | no | Page-level redirects expanded across all locale/version combos. |
 | `deploy` | no | Deployment configuration for publishing the generated site. |
