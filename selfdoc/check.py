@@ -217,7 +217,15 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # but frontmatter description was not updated.
     # Uses frontmatter and resolved content from resolve_all_docs instead
     # of re-walking docs/ and re-resolving directives.
-    stale_warnings = update_hashes(all_docs, dir_path, dry_run=dry_run)
+    # Prefix hash keys with locale code (matching build.py) so that gen
+    # and check use the same key space in hashes.json.
+    locales = config.get("locales") or []
+    if locales:
+        locale_code = locales[0]["code"]
+        prefixed_docs = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
+        stale_warnings = update_hashes(prefixed_docs, dir_path, dry_run=dry_run)
+    else:
+        stale_warnings = update_hashes(all_docs, dir_path, dry_run=dry_run)
     for rel_path, stale_msg in stale_warnings:
         result.lints.append(LintResult(
             file=rel_path,

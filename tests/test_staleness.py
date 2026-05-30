@@ -347,3 +347,116 @@ def test_update_hashes_skips_pages_without_description(tmp_path):
     with open(hashes_path, "r") as f:
         data = json.load(f)
     assert "no-desc.md" not in data
+
+
+# -- gen updates hashes --
+
+
+def _setup_project(tmp_path, *, locales=None, page_content=None):
+    """Helper: create a minimal selfdoc project in tmp_path.
+
+    Returns the config dict written to selfdoc.json.
+    """
+    config = {
+        "language": "python",
+        "source": ["src/"],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    if locales is not None:
+        config["locales"] = locales
+
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    # Minimal source dir
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+        f.write("")
+
+    # docs dir with a page
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir, exist_ok=True)
+    content = page_content or (
+        "---\n"
+        "description: A test page\n"
+        "---\n"
+        "# Test\n\n"
+        "Some content.\n"
+    )
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write(content)
+
+    return config
+
+
+def _run_gen_hashes(config, base_dir):
+    """Simulate the hash-update logic from _cmd_gen."""
+    from selfdoc.docs import resolve_all_docs
+
+    all_docs = resolve_all_docs(config, base_dir=base_dir)
+    locales = config.get("locales") or []
+    if locales:
+        locale_code = locales[0]["code"]
+        prefixed = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
+        update_hashes(prefixed, base_dir)
+    else:
+        update_hashes(all_docs, base_dir)
+
+
+def test_gen_updates_hashes(tmp_path):
+    """Running the gen hash-update logic creates/updates hashes.json."""
+    config = _setup_project(tmp_path)
+    _run_gen_hashes(config, str(tmp_path))
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    assert os.path.isfile(hashes_path)
+
+    with open(hashes_path, "r") as f:
+        data = json.load(f)
+    assert len(data) > 0
+
+
+def test_gen_then_check_no_stale(tmp_path):
+    """After gen updates hashes, check_docs reports no STALE001 warnings."""
+    config = _setup_project(tmp_path)
+    _run_gen_hashes(config, str(tmp_path))
+
+    from selfdoc.check import check_docs
+
+    result = check_docs(str(tmp_path))
+    stale_lints = [lint for lint in result.lints if lint.code == "STALE001"]
+    assert len(stale_lints) == 0
+
+
+def test_locale_prefixed_hash_keys(tmp_path):
+    """With locales configured, hash keys are prefixed with locale code."""
+    locales = [{"code": "en", "label": "English", "default": True}]
+    config = _setup_project(tmp_path, locales=locales)
+    _run_gen_hashes(config, str(tmp_path))
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    with open(hashes_path, "r") as f:
+        data = json.load(f)
+
+    # All keys must be prefixed with "en/"
+    for key in data:
+        assert key.startswith("en/"), f"Expected locale prefix on key {key!r}"
+    assert "en/page.md" in data
+
+
+def test_no_locales_no_prefix(tmp_path):
+    """Without locales configured, hash keys are unprefixed."""
+    config = _setup_project(tmp_path)
+    _run_gen_hashes(config, str(tmp_path))
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    with open(hashes_path, "r") as f:
+        data = json.load(f)
+
+    # Keys should be bare paths without any "/" prefix
+    for key in data:
+        assert not key.startswith("en/"), f"Unexpected locale prefix on key {key!r}"
+    assert "page.md" in data

@@ -588,6 +588,21 @@ def _cmd_gen(no_commit=False):
 
     all_commit_files.extend(root_generated)
 
+    # Update content/description hashes so that a subsequent 'check' does
+    # not report freshly-generated pages as stale.
+    from selfdoc.docs import resolve_all_docs
+    from selfdoc.staleness import update_hashes
+
+    all_docs = resolve_all_docs(config, base_dir=".")
+    locales = config.get("locales") or []
+    if locales:
+        locale_code = locales[0]["code"]
+        prefixed = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
+        update_hashes(prefixed, ".")
+    else:
+        update_hashes(all_docs, ".")
+    all_commit_files.append(".selfdoc/hashes/hashes.json")
+
     if all_commit_files and not no_commit:
         from selfdoc.git import auto_commit
         auto_commit(
