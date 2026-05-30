@@ -460,7 +460,6 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
         ignore_codes.update(
             code.strip() for code in ignore.split(",") if code.strip()
         )
-    config = load_config(".")
     if config:
         ignore_codes.update(config.get("lint_ignore", []))
 
