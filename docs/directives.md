@@ -52,7 +52,7 @@ The following table shows all built-in directives that selfdoc recognizes, their
 
 ### The `exclude` Attribute
 
-The `table-schema` and `table-config` directives accept an optional `exclude` attribute — a comma-separated list of top-level keys to omit from the rendered table. Whitespace around commas is stripped.
+The `table-schema` and `table-config` directives accept an optional `exclude` attribute — a comma-separated list of top-level keys to omit from the rendered table. Whitespace around commas is stripped. This is useful when a config or schema file contains keys that are too large, irrelevant, or internal to display in documentation, letting you render a focused subset of the file's structure.
 
 ```markdown
 :-: table-config path="selfdoc.json" exclude="versions, locales"
