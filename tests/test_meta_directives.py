@@ -78,6 +78,43 @@ class TestListModules:
         assert result is not None
         assert "**selfdoc.config**" in result
 
+    def test_list_modules_with_multi_language(self, tmp_path):
+        """list-modules uses the correct extractor for the path's source entry."""
+        # Set up a Go source directory
+        go_dir = tmp_path / "cmd"
+        go_dir.mkdir()
+        (go_dir / "main.go").write_text(
+            '// Package main provides the entry point.\npackage main\n'
+            '\nfunc main() {}\n'
+        )
+        # Set up a Python source directory
+        py_dir = tmp_path / "lib"
+        py_dir.mkdir()
+        (py_dir / "__init__.py").write_text('"""Library module."""\n')
+        (py_dir / "util.py").write_text('"""Utility functions."""\n')
+
+        config = {
+            "source": [
+                {"path": "lib/", "language": "python"},
+                {"path": "cmd/", "language": "go"},
+            ],
+        }
+
+        # list-modules on the Go path should find .go files
+        result = resolve_list_modules(
+            {"path": "cmd/"}, config, str(tmp_path),
+        )
+        assert "main.go" in result
+        # Should NOT find Python files
+        assert ".py" not in result
+
+        # list-modules on the Python path should find .py files
+        result = resolve_list_modules(
+            {"path": "lib/"}, config, str(tmp_path),
+        )
+        assert "util.py" in result
+        assert ".go" not in result
+
     def test_without_config_returns_error(self):
         result = resolve_content(
             "list-modules", {"path": "selfdoc/"}, [],
@@ -259,6 +296,42 @@ class TestVar:
         result = resolve_content(
             "var", {"key": "project.language"}, [],
             _PROJECT_DIR, config=_SELFDOC_CONFIG,
+        )
+        assert result == "python"
+
+    def test_var_project_language_single(self):
+        """Single-language project returns just the language name."""
+        config = {
+            "source": [{"path": "selfdoc/", "language": "python"}],
+        }
+        result = resolve_var(
+            {"key": "project.language"}, config, _PROJECT_DIR,
+        )
+        assert result == "python"
+
+    def test_var_project_language_multi(self):
+        """Multi-language project returns comma-separated languages."""
+        config = {
+            "source": [
+                {"path": "selfdoc/", "language": "python"},
+                {"path": "cmd/", "language": "go"},
+            ],
+        }
+        result = resolve_var(
+            {"key": "project.language"}, config, _PROJECT_DIR,
+        )
+        assert result == "python, go"
+
+    def test_var_project_language_multi_deduplicates(self):
+        """Duplicate languages are deduplicated."""
+        config = {
+            "source": [
+                {"path": "pkg_a/", "language": "python"},
+                {"path": "pkg_b/", "language": "python"},
+            ],
+        }
+        result = resolve_var(
+            {"key": "project.language"}, config, _PROJECT_DIR,
         )
         assert result == "python"
 

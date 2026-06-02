@@ -308,7 +308,24 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     from selfdoc.extractors import EXTRACTORS, resolve_source_entries
 
     src_entries = resolve_source_entries(config)
-    language = src_entries[0].language if src_entries else "unknown"
+    if not src_entries:
+        return "> *[selfdoc: no source entries configured]*"
+
+    # Match the directive's path to a source entry
+    matched_entry = None
+    for entry in src_entries:
+        # Normalize: both should end without trailing slash for prefix check
+        entry_path = entry.path.rstrip("/")
+        directive_path = path.rstrip("/")
+        if directive_path.startswith(entry_path) or entry_path.startswith(directive_path):
+            matched_entry = entry
+            break
+
+    if matched_entry is None:
+        # Fallback to first source entry
+        matched_entry = src_entries[0]
+
+    language = matched_entry.language
     extractor = EXTRACTORS.get(language)
     if extractor is None:
         return f"> *[selfdoc: unsupported language '{language}']*"
@@ -456,9 +473,17 @@ def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
 
     if key == "project.language":
         source = config.get("source", [])
-        if source:
-            return source[0].get("language", "unknown") if isinstance(source[0], dict) else "unknown"
-        return "unknown"
+        if not source:
+            return "unknown"
+        # Collect unique languages in first-appearance order
+        seen: set[str] = set()
+        languages: list[str] = []
+        for entry in source:
+            lang = entry.get("language", "unknown") if isinstance(entry, dict) else "unknown"
+            if lang not in seen:
+                seen.add(lang)
+                languages.append(lang)
+        return ", ".join(languages) if languages else "unknown"
 
     if key == "project.description":
         desc = config.get("description")
