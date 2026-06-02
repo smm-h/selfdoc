@@ -1,10 +1,22 @@
 """Tests for the LanguageExtractor protocol, registry, and detection."""
 
-from selfdoc.extractors import EXTRACTORS, detect_language
+import dataclasses
+
+import pytest
+
+from selfdoc.extractors import (
+    EXTRACTORS,
+    SourceEntry,
+    detect_language,
+    detect_languages,
+    resolve_source_entries,
+    source_paths,
+)
 from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
 from selfdoc.extractors.typescript import TypeScriptExtractor
+from selfdoc.extractors.zig import ZigExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -22,6 +34,9 @@ class TestProtocolConformance:
     def test_typescript_extractor_is_language_extractor(self):
         assert isinstance(TypeScriptExtractor(), LanguageExtractor)
 
+    def test_zig_extractor_is_language_extractor(self):
+        assert isinstance(ZigExtractor(), LanguageExtractor)
+
 
 # ---------------------------------------------------------------------------
 # Name property
@@ -37,6 +52,9 @@ class TestNameProperty:
 
     def test_typescript_name(self):
         assert TypeScriptExtractor().name == "typescript"
+
+    def test_zig_name(self):
+        assert ZigExtractor().name == "zig"
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +88,17 @@ class TestDetect:
     def test_typescript_not_detected_empty(self, tmp_path):
         assert TypeScriptExtractor().detect(str(tmp_path)) is False
 
+    def test_zig_detects_build_zig(self, tmp_path):
+        (tmp_path / "build.zig").touch()
+        assert ZigExtractor().detect(str(tmp_path)) is True
+
+    def test_zig_detects_build_zig_zon(self, tmp_path):
+        (tmp_path / "build.zig.zon").touch()
+        assert ZigExtractor().detect(str(tmp_path)) is True
+
+    def test_zig_not_detected_empty(self, tmp_path):
+        assert ZigExtractor().detect(str(tmp_path)) is False
+
 
 # ---------------------------------------------------------------------------
 # file_extensions()
@@ -86,6 +115,9 @@ class TestFileExtensions:
     def test_typescript_extensions(self):
         exts = TypeScriptExtractor().file_extensions()
         assert exts == [".ts", ".tsx", ".js", ".jsx"]
+
+    def test_zig_extensions(self):
+        assert ZigExtractor().file_extensions() == [".zig"]
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +376,125 @@ class TestPublicSymbols:
         symbols = PythonExtractor().public_symbols(str(py_file))
         assert symbols == ["Foo", "Bar"]
 
+    def test_zig_public_symbols(self, tmp_path):
+        zig_file = tmp_path / "example.zig"
+        zig_file.write_text(
+            "const std = @import(\"std\");\n"
+            "\n"
+            "pub fn init() void {}\n"
+            "pub const MAX_SIZE = 100;\n"
+            "pub var counter: u32 = 0;\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert "init" in symbols
+        assert "MAX_SIZE" in symbols
+        assert "counter" in symbols
+        assert "std" not in symbols
+
+    def test_zig_public_symbols_extern_fn(self, tmp_path):
+        zig_file = tmp_path / "ffi.zig"
+        zig_file.write_text(
+            "pub extern fn SDL_Init(flags: u32) c_int;\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["SDL_Init"]
+
+    def test_zig_public_symbols_export_fn(self, tmp_path):
+        zig_file = tmp_path / "exports.zig"
+        zig_file.write_text(
+            "pub export fn gameInit() void {}\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["gameInit"]
+
+    def test_zig_public_symbols_inline_fn(self, tmp_path):
+        zig_file = tmp_path / "inline.zig"
+        zig_file.write_text(
+            "pub inline fn fastAdd(a: u32, b: u32) u32 {\n"
+            "    return a + b;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["fastAdd"]
+
+    def test_zig_public_symbols_struct(self, tmp_path):
+        zig_file = tmp_path / "types.zig"
+        zig_file.write_text(
+            "pub const Config = struct {\n"
+            "    timeout: u32 = 30,\n"
+            "    retries: u8 = 3,\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["Config"]
+
+    def test_zig_public_symbols_enum(self, tmp_path):
+        zig_file = tmp_path / "enums.zig"
+        zig_file.write_text(
+            "pub const Color = enum {\n"
+            "    red,\n"
+            "    green,\n"
+            "    blue,\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["Color"]
+
+    def test_zig_public_symbols_union(self, tmp_path):
+        zig_file = tmp_path / "unions.zig"
+        zig_file.write_text(
+            "pub const Token = union(enum) {\n"
+            "    number: f64,\n"
+            "    string: []const u8,\n"
+            "    eof,\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["Token"]
+
+    def test_zig_public_symbols_private_excluded(self, tmp_path):
+        zig_file = tmp_path / "mixed.zig"
+        zig_file.write_text(
+            "const private_const = 42;\n"
+            "var private_var: u32 = 0;\n"
+            "fn privateFunc() void {}\n"
+            "pub fn publicFunc() void {}\n"
+            "pub const PUBLIC_CONST = 100;\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert "publicFunc" in symbols
+        assert "PUBLIC_CONST" in symbols
+        assert "private_const" not in symbols
+        assert "private_var" not in symbols
+        assert "privateFunc" not in symbols
+        assert len(symbols) == 2
+
+    def test_zig_public_symbols_test_block_excluded(self, tmp_path):
+        zig_file = tmp_path / "tested.zig"
+        zig_file.write_text(
+            "pub fn add(a: u32, b: u32) u32 {\n"
+            "    return a + b;\n"
+            "}\n"
+            "\n"
+            'test "add works" {\n'
+            "    try std.testing.expectEqual(@as(u32, 3), add(1, 2));\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        symbols = ZigExtractor().public_symbols(str(zig_file))
+        assert symbols == ["add"]
+
+    def test_zig_public_symbols_missing_file(self):
+        assert ZigExtractor().public_symbols("/nonexistent/file.zig") == []
+
 
 # ---------------------------------------------------------------------------
 # resolve_path()
@@ -395,7 +546,7 @@ class TestResolvePath:
 
 class TestRegistry:
     def test_extractors_has_all_keys(self):
-        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "javascript"}
+        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "javascript", "zig"}
 
     def test_javascript_is_typescript_alias(self):
         # Both should be TypeScriptExtractor instances
@@ -439,3 +590,86 @@ class TestDetectLanguage:
         (tmp_path / "go.mod").touch()
         (tmp_path / "tsconfig.json").touch()
         assert detect_language(str(tmp_path)) == "go"
+
+
+# ---------------------------------------------------------------------------
+# SourceEntry & helpers
+# ---------------------------------------------------------------------------
+
+
+class TestSourceEntries:
+    def test_resolve_source_entries_single(self):
+        config = {"language": "python", "source": ["mylib/"]}
+        entries = resolve_source_entries(config)
+        assert len(entries) == 1
+        assert entries[0].path == "mylib/"
+        assert entries[0].language == "python"
+        assert isinstance(entries[0].extractor, PythonExtractor)
+
+    def test_resolve_source_entries_multi(self):
+        # Two source paths with the same language (matching current config schema)
+        config = {"language": "python", "source": ["src/", "lib/"]}
+        entries = resolve_source_entries(config)
+        assert len(entries) == 2
+        assert entries[0].path == "src/"
+        assert entries[1].path == "lib/"
+        assert all(e.language == "python" for e in entries)
+
+    def test_resolve_source_entries_go(self):
+        config = {"language": "go", "source": ["."]}
+        entries = resolve_source_entries(config)
+        assert len(entries) == 1
+        assert entries[0].language == "go"
+        assert isinstance(entries[0].extractor, GoExtractor)
+
+    def test_resolve_source_entries_unsupported_language(self):
+        config = {"language": "ruby", "source": ["lib/"]}
+        with pytest.raises(ValueError, match="unsupported language 'ruby'"):
+            resolve_source_entries(config)
+
+    def test_source_paths_extracts_paths(self):
+        config = {"language": "python", "source": ["selfdoc/", "tests/"]}
+        result = source_paths(config)
+        assert result == ["selfdoc/", "tests/"]
+
+    def test_source_entry_frozen(self):
+        entry = SourceEntry(
+            path="src/", language="python", extractor=EXTRACTORS["python"]
+        )
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            entry.path = "other/"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# detect_languages()
+# ---------------------------------------------------------------------------
+
+
+class TestDetectLanguages:
+    def test_detects_single_python(self, tmp_path):
+        (tmp_path / "pyproject.toml").touch()
+        result = detect_languages(str(tmp_path))
+        assert len(result) == 1
+        assert result[0]["language"] == "python"
+
+    def test_detects_multiple(self, tmp_path):
+        (tmp_path / "pyproject.toml").touch()
+        (tmp_path / "go.mod").touch()
+        result = detect_languages(str(tmp_path))
+        assert len(result) == 2
+        languages = [r["language"] for r in result]
+        assert "python" in languages
+        assert "go" in languages
+
+    def test_detects_all_three(self, tmp_path):
+        (tmp_path / "pyproject.toml").touch()
+        (tmp_path / "go.mod").touch()
+        (tmp_path / "tsconfig.json").touch()
+        result = detect_languages(str(tmp_path))
+        assert len(result) == 3
+        languages = [r["language"] for r in result]
+        assert languages == ["python", "go", "typescript"]
+
+    def test_empty_dir_returns_empty(self, tmp_path):
+        result = detect_languages(str(tmp_path))
+        assert result == []

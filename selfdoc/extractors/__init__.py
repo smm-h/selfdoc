@@ -1,23 +1,38 @@
 """Language extractor registry and auto-detection."""
 
+from dataclasses import dataclass
+
 from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
 from selfdoc.extractors.typescript import TypeScriptExtractor
+from selfdoc.extractors.zig import ZigExtractor
 
 EXTRACTORS: dict[str, LanguageExtractor] = {
     "python": PythonExtractor(),
     "go": GoExtractor(),
     "typescript": TypeScriptExtractor(),
     "javascript": TypeScriptExtractor(),  # alias
+    "zig": ZigExtractor(),
 }
 
-# Ordered list for detection priority (Python, Go, TypeScript).
+
+@dataclass(frozen=True, slots=True)
+class SourceEntry:
+    """A resolved source path with its language and extractor."""
+
+    path: str
+    language: str
+    extractor: LanguageExtractor
+
+
+# Ordered list for detection priority (Python, Go, TypeScript, Zig).
 # Avoids duplicate detection for the javascript alias.
 _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["python"],
     EXTRACTORS["go"],
     EXTRACTORS["typescript"],
+    EXTRACTORS["zig"],
 ]
 
 
@@ -31,3 +46,43 @@ def detect_language(dir_path: str) -> str | None:
         if extractor.detect(dir_path):
             return extractor.name
     return None
+
+
+def detect_languages(dir_path: str) -> list[dict[str, str]]:
+    """Detect ALL languages present in a directory.
+
+    Unlike detect_language which returns only the first match,
+    this returns all detected languages with their source paths.
+
+    Returns a list of {"path": ..., "language": ...} dicts.
+    """
+    results: list[dict[str, str]] = []
+    for extractor in _DETECTION_ORDER:
+        if extractor.detect(dir_path):
+            results.append({"path": dir_path, "language": extractor.name})
+    return results
+
+
+def resolve_source_entries(config: dict) -> list[SourceEntry]:
+    """Resolve config source paths into SourceEntry objects.
+
+    Each source path is paired with the config's language field
+    and its corresponding extractor.
+    """
+    language = config["language"]
+    extractor = EXTRACTORS.get(language)
+    if extractor is None:
+        raise ValueError(
+            f"unsupported language {language!r} in config"
+        )
+    entries = []
+    for path in config["source"]:
+        entries.append(
+            SourceEntry(path=path, language=language, extractor=extractor)
+        )
+    return entries
+
+
+def source_paths(config: dict) -> list[str]:
+    """Extract just the source path strings from config."""
+    return list(config["source"])
