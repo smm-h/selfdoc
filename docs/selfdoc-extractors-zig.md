@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.zig
-description: "Zig source extractor -- resolves directives by extracting from .zig files."
+description: "Zig source extractor for selfdoc -- parses .zig files to extract public declarations, doc comments, and test blocks for documentation pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 15
