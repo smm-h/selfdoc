@@ -230,11 +230,9 @@ def check_docs(dir_path=".", config=None, dry_run=False):
 
     # Compute coverage (language-agnostic via extractor protocol)
     src_entries = resolve_source_entries(config)
-    language = src_entries[0].language if src_entries else "unknown"
-    extractor = src_entries[0].extractor if src_entries else None
-    if extractor is not None:
+    if src_entries:
         result.coverage = _compute_coverage(
-            config, dir_path, resolved_directives, extractor, all_docs
+            config, dir_path, resolved_directives, src_entries, all_docs
         )
 
     # Run lint checks (SEO and other diagnostics)
@@ -901,12 +899,13 @@ def _is_skeleton_page(frontmatter):
     return bool(_DEFAULT_DESCRIPTION_RE.match(description))
 
 
-def _compute_coverage(config, base_dir, resolved_directives, extractor,
+def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                       all_docs=None):
     """Count public symbols in source files vs. those documented by directives.
 
-    Language-agnostic: uses the extractor protocol to discover public symbols
-    and resolve file paths. Two-tier tracking:
+    Multi-language: iterates over all source entries, using each entry's
+    extractor to discover public symbols and resolve file paths. Two-tier
+    tracking:
     - "referenced": symbol appears in ANY directive's resolved output
     - "documented": symbol appears on a non-skeleton page (hand-written or
       generated with a customized description)
@@ -915,20 +914,16 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor,
     so that intentionally-internal modules do not drag down coverage.
 
     Args:
+        source_entries: List of SourceEntry objects (each with path, language,
+            extractor). Replaces the old single-extractor parameter.
         all_docs: Dict from resolve_all_docs mapping rel_path to
             (frontmatter, resolved, raw_content, fm_line_count).
             When provided, enables two-tier skeleton page detection.
     """
     from selfdoc.gen import _file_to_module_path, _is_excluded
 
-    from selfdoc.extractors import source_paths as _source_paths
-
     base_dir = os.path.abspath(base_dir)
-    source_paths = _source_paths(config)
-    # language is passed via extractor; derive name from first source entry
-    language = config["source"][0]["language"] if config["source"] else "unknown"
     stats = CoverageStats()
-    extensions = extractor.file_extensions()
 
     # Build gen-exclude list from config
     gen_config = config.get("gen") or {}
@@ -941,38 +936,49 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor,
             if _is_skeleton_page(frontmatter):
                 skeleton_pages.add(rel_path)
 
-    # Collect all source files and their public symbols
+    # Group source entries by (language, extractor) to collect all paths
+    # for each language together.
+    groups: dict[str, tuple[str, object, list[str]]] = {}
+    for entry in source_entries:
+        key = entry.language
+        if key not in groups:
+            groups[key] = (entry.language, entry.extractor, [])
+        groups[key][2].append(entry.path)
+
+    # Collect all source files and their public symbols across all languages.
     # Map: relative file path -> list of public symbol names
     all_symbols: dict[str, list[str]] = {}
 
-    for sp in source_paths:
-        src_dir = os.path.join(base_dir, sp)
-        if not os.path.isdir(src_dir):
-            continue
-        for root, _dirs, files in os.walk(src_dir):
-            for fname in sorted(files):
-                if not any(fname.endswith(ext) for ext in extensions):
-                    continue
-                # Skip test files (Go: *_test.go, TS/JS: *.test.* / *.spec.*)
-                if fname.endswith("_test.go"):
-                    continue
-                if any(
-                    fname.endswith(f".test{ext}") or fname.endswith(f".spec{ext}")
-                    for ext in extensions
-                ):
-                    continue
-                full_path = os.path.join(root, fname)
-                rel_to_base = os.path.relpath(full_path, base_dir)
-                # Skip files excluded from doc generation
-                if gen_excludes:
-                    mod_path = _file_to_module_path(
-                        full_path, base_dir, language,
-                    )
-                    if mod_path and _is_excluded(mod_path, gen_excludes):
+    for language, extractor, paths in groups.values():
+        extensions = extractor.file_extensions()
+        for sp in paths:
+            src_dir = os.path.join(base_dir, sp)
+            if not os.path.isdir(src_dir):
+                continue
+            for root, _dirs, files in os.walk(src_dir):
+                for fname in sorted(files):
+                    if not any(fname.endswith(ext) for ext in extensions):
                         continue
-                symbols = extractor.public_symbols(full_path)
-                if symbols:
-                    all_symbols[rel_to_base] = symbols
+                    # Skip test files (Go: *_test.go, TS/JS: *.test.* / *.spec.*)
+                    if fname.endswith("_test.go"):
+                        continue
+                    if any(
+                        fname.endswith(f".test{ext}") or fname.endswith(f".spec{ext}")
+                        for ext in extensions
+                    ):
+                        continue
+                    full_path = os.path.join(root, fname)
+                    rel_to_base = os.path.relpath(full_path, base_dir)
+                    # Skip files excluded from doc generation
+                    if gen_excludes:
+                        mod_path = _file_to_module_path(
+                            full_path, base_dir, language,
+                        )
+                        if mod_path and _is_excluded(mod_path, gen_excludes):
+                            continue
+                    symbols = extractor.public_symbols(full_path)
+                    if symbols:
+                        all_symbols[rel_to_base] = symbols
 
     # Build two sets:
     # - referenced_set: all symbols matched by any directive
@@ -986,9 +992,21 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor,
         if not path_arg:
             continue
 
-        # Resolve path via the extractor
-        resolved_path = extractor.resolve_path(
-            path_arg, source_paths, base_dir
+        # Use the directive's matched source entry for resolution.
+        # Content directives (source_entry is None) are skipped.
+        if rd.source_entry is None:
+            continue
+
+        rd_extractor = rd.source_entry.extractor
+        rd_language = rd.source_entry.language
+        # Get all paths for the directive's language group
+        if rd_language in groups:
+            _, _, rd_source_paths = groups[rd_language]
+        else:
+            continue
+
+        resolved_path = rd_extractor.resolve_path(
+            path_arg, rd_source_paths, base_dir
         )
         if resolved_path is None:
             continue

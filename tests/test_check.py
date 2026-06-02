@@ -3025,9 +3025,9 @@ class TestTwoTierCoverage:
         assert "symbols referenced" not in captured.out
 
     def test_no_all_docs_degrades_gracefully(self):
-        """_compute_coverage works when all_docs is None (backward compat)."""
+        """_compute_coverage works when all_docs is None."""
         from selfdoc.check import _compute_coverage
-        from selfdoc.extractors import EXTRACTORS
+        from selfdoc.extractors import EXTRACTORS, SourceEntry
 
         # This is a unit-level check that passing None doesn't crash.
         # In practice all_docs is always passed, but the default=None
@@ -3037,7 +3037,188 @@ class TestTwoTierCoverage:
         with tempfile.TemporaryDirectory() as td:
             config = {"source": [{"path": "src/", "language": "python"}]}
             os.makedirs(os.path.join(td, "src"))
-            stats = _compute_coverage(config, td, [], extractor, None)
+            entries = [SourceEntry(path="src/", language="python", extractor=extractor)]
+            stats = _compute_coverage(config, td, [], entries, None)
             assert stats.total_public == 0
             assert stats.referenced == 0
             assert stats.documented == 0
+
+
+# -- Multi-language coverage --
+
+
+def test_multi_language_coverage(tmp_path):
+    """Coverage counts symbols from both Python and Go sources."""
+    config = {
+        "source": [
+            {"path": "pylib/", "language": "python"},
+            {"path": "golib/", "language": "go"},
+        ],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Python source
+    pylib = os.path.join(tmp_path, "pylib")
+    os.makedirs(pylib)
+    with open(os.path.join(pylib, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Python lib."""\n'
+            "\n"
+            "def py_func():\n"
+            '    """A Python function."""\n'
+            "    pass\n"
+        )
+
+    # Go source
+    golib = os.path.join(tmp_path, "golib")
+    os.makedirs(golib)
+    with open(os.path.join(golib, "lib.go"), "w", encoding="utf-8") as f:
+        f.write(
+            "package golib\n"
+            "\n"
+            "// GoFunc does something.\n"
+            "func GoFunc() {}\n"
+        )
+
+    # Docs referencing both
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n"
+            "\n"
+            ':-: ref path="pylib"\n'
+            "\n"
+            ':-: ref path="golib"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+
+    assert result.coverage is not None
+    # Python: py_func (1 public symbol)
+    # Go: GoFunc (1 public symbol)
+    assert result.coverage.total_public == 2
+    assert result.coverage.referenced == 2
+    assert len(result.coverage.unreferenced_symbols) == 0
+
+
+def test_multi_language_100_percent_enforcement(tmp_path):
+    """All Python documented but Go undocumented yields partial coverage."""
+    config = {
+        "source": [
+            {"path": "pylib/", "language": "python"},
+            {"path": "golib/", "language": "go"},
+        ],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Python source
+    pylib = os.path.join(tmp_path, "pylib")
+    os.makedirs(pylib)
+    with open(os.path.join(pylib, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Python lib."""\n'
+            "\n"
+            "def py_func():\n"
+            '    """A Python function."""\n'
+            "    pass\n"
+        )
+
+    # Go source (undocumented)
+    golib = os.path.join(tmp_path, "golib")
+    os.makedirs(golib)
+    with open(os.path.join(golib, "lib.go"), "w", encoding="utf-8") as f:
+        f.write(
+            "package golib\n"
+            "\n"
+            "// GoFunc does something.\n"
+            "func GoFunc() {}\n"
+            "\n"
+            "// AnotherFunc does more.\n"
+            "func AnotherFunc() {}\n"
+        )
+
+    # Docs referencing only Python
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n"
+            "\n"
+            ':-: ref path="pylib"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+
+    assert result.coverage is not None
+    # Python: py_func (1 symbol, documented)
+    # Go: GoFunc, AnotherFunc (2 symbols, undocumented)
+    assert result.coverage.total_public == 3
+    assert result.coverage.referenced == 1
+    assert len(result.coverage.unreferenced_symbols) == 2
+    # The unreferenced symbols should be from Go
+    assert all("golib" in s for s in result.coverage.unreferenced_symbols)
+
+
+def test_single_language_coverage_unchanged(tmp_path):
+    """Single-language (Python) coverage works exactly as before."""
+    config = {
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n'
+            "\n"
+            "def greet(name):\n"
+            '    """Say hello."""\n'
+            "    return f'Hello, {name}'\n"
+            "\n"
+            "def farewell(name):\n"
+            '    """Say goodbye."""\n'
+            "    return f'Goodbye, {name}'\n"
+        )
+
+    with open(os.path.join(lib_dir, "utils.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Utility functions."""\n'
+            "\n"
+            "def helper():\n"
+            '    """Help."""\n'
+            "    pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+
+    # Full coverage
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n"
+            "\n"
+            ':-: ref path="mylib"\n'
+            "\n"
+            ':-: ref path="mylib.utils"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+
+    assert result.coverage is not None
+    assert result.coverage.total_public == 3
+    assert result.coverage.referenced == 3
+    assert len(result.coverage.unreferenced_symbols) == 0
