@@ -314,13 +314,17 @@ def _read_existing_description(filepath):
 
 def _generate_page_content(module_name, module_path, nav_order,
                            existing_description=None,
-                           docstring_description=None):
+                           docstring_description=None,
+                           language=None):
     """Build the Markdown content for a generated documentation page.
 
     If ``existing_description`` is provided, it is used verbatim as the page's
     ``description`` frontmatter value.  Otherwise, if ``docstring_description``
     is provided (extracted from the module's docstring), it is used.  Finally,
     if neither is available, the default auto-generated template is used.
+
+    ``language`` is emitted as a ``lang`` attribute on the ref directive to
+    disambiguate in multi-language projects.
     """
     if existing_description is not None:
         desc = existing_description
@@ -332,6 +336,7 @@ def _generate_page_content(module_name, module_path, nav_order,
             f"auto-generated documentation covering public functions, "
             f"classes, and type signatures."
         )
+    lang_attr = f' lang="{language}"' if language else ""
     return (
         f"---\n"
         f"title: {module_name}\n"
@@ -344,7 +349,7 @@ def _generate_page_content(module_name, module_path, nav_order,
         f"\n"
         f"# {module_name}\n"
         f"\n"
-        f':-: ref path="{module_path}"\n'
+        f':-: ref path="{module_path}"{lang_attr}\n'
     )
 
 
@@ -659,6 +664,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
             mod_name, mod_path, nav_order,
             existing_description=existing_description,
             docstring_description=docstring_description,
+            language=language,
         )
         # Make writable if it already exists with 0o444
         if os.path.isfile(out_path):

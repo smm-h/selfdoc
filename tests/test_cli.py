@@ -50,7 +50,7 @@ def test_init_creates_config_and_docs(project_dir):
 
     content = index_path.read_text()
     assert "testproj" in content
-    assert ':-: ref path="testproj"' in content
+    assert ':-: ref path="testproj" lang="python"' in content
 
 
 def test_init_index_has_frontmatter(project_dir):

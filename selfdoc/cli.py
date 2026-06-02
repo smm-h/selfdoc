@@ -125,7 +125,7 @@ def _cmd_init(no_commit=False):
             f"\n"
             f"## API Reference\n"
             f"\n"
-            f':-: ref path="{main_module}"\n'
+            f':-: ref path="{main_module}" lang="{language}"\n'
         )
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(starter)

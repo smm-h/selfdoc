@@ -117,6 +117,78 @@ def test_resolver_cross_language_ambiguity_error(tmp_path):
         resolver("ref", {"path": "shared"}, [])
 
 
+def test_resolver_lang_attr_disambiguates(tmp_path):
+    """lang attr in directive resolves ambiguity in multi-language projects."""
+    # Create a directory with both Go and Zig files at the root.
+    # Both Go and Zig resolve_path check for directories containing their
+    # file extensions, so path="." resolves in both languages.
+    (tmp_path / "main.go").write_text(
+        'package main\n\n// RootFunc does something.\nfunc RootFunc() {}\n'
+    )
+    (tmp_path / "main.zig").write_text(
+        '//! Root module.\npub fn rootZig() void {}\n'
+    )
+
+    config = _make_config(source=[
+        {"path": ".", "language": "go"},
+        {"path": ".", "language": "zig"},
+    ])
+    resolver = make_resolver(config, str(tmp_path))
+
+    # Without lang: ambiguous -- both extractors resolve "."
+    with pytest.raises(RuntimeError, match="Ambiguous"):
+        resolver("ref", {"path": "."}, [])
+
+    # With lang="go": resolves to Go extractor without error
+    result = resolver("ref", {"path": ".", "lang": "go"}, [])
+    assert "RootFunc" in result
+
+    # With lang="zig": resolves to Zig extractor without error
+    result = resolver("ref", {"path": ".", "lang": "zig"}, [])
+    assert "rootZig" in result
+
+
+def test_resolver_lang_attr_invalid_language(tmp_path):
+    """lang attr with a language that has no match falls through to error."""
+    (tmp_path / "main.go").write_text(
+        'package main\n\nfunc Hello() {}\n'
+    )
+    (tmp_path / "main.zig").write_text(
+        'pub fn hello() void {}\n'
+    )
+
+    config = _make_config(source=[
+        {"path": ".", "language": "go"},
+        {"path": ".", "language": "zig"},
+    ])
+    resolver = make_resolver(config, str(tmp_path))
+
+    # lang="python" doesn't match any configured group -- should get error
+    result = resolver("ref", {"path": ".", "lang": "python"}, [])
+    assert "not found" in result
+    assert "python" in result
+
+
+def test_resolver_lang_attr_sets_source_entry(tmp_path):
+    """lang attr correctly sets last_source_entry on the resolver."""
+    (tmp_path / "main.go").write_text(
+        'package main\n\nfunc Hello() {}\n'
+    )
+    (tmp_path / "main.zig").write_text(
+        'pub fn hello() void {}\n'
+    )
+
+    config = _make_config(source=[
+        {"path": ".", "language": "go"},
+        {"path": ".", "language": "zig"},
+    ])
+    resolver = make_resolver(config, str(tmp_path))
+
+    resolver("ref", {"path": ".", "lang": "go"}, [])
+    assert resolver.last_source_entry is not None
+    assert resolver.last_source_entry.language == "go"
+
+
 # -- last_source_entry tracking --
 
 

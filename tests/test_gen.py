@@ -86,7 +86,7 @@ class TestBasicGeneration:
         # Module has a docstring ("Core module."), so it should be used
         assert "Core module." in content
         assert "# mylib.core" in content
-        assert ':-: ref path="mylib.core"' in content
+        assert ':-: ref path="mylib.core" lang="python"' in content
 
 
 class TestFrontmatter:
@@ -271,7 +271,7 @@ class TestHandwrittenPages:
             content = f.read()
 
         # Should be regenerated with new content
-        assert ':-: ref path="mylib.core"' in content
+        assert ':-: ref path="mylib.core" lang="python"' in content
 
 
 class TestDirectiveSyntax:
@@ -285,7 +285,7 @@ class TestDirectiveSyntax:
         with open(os.path.join(docs_dir, "mylib-utils.md"), "r") as f:
             content = f.read()
 
-        assert ':-: ref path="mylib.utils"' in content
+        assert ':-: ref path="mylib.utils" lang="python"' in content
 
 
 class TestIndexPage:
@@ -669,7 +669,7 @@ class TestGoPackageGeneration:
         with open(os.path.join(docs_dir, "internal-commit.md"), "r") as f:
             content = f.read()
 
-        assert ':-: ref path="internal/commit"' in content
+        assert ':-: ref path="internal/commit" lang="go"' in content
 
     def test_ref_directive_root_package(self, go_project):
         """Root package ref directive uses the module name as display path."""
@@ -680,8 +680,8 @@ class TestGoPackageGeneration:
         with open(os.path.join(docs_dir, "mygoapp.md"), "r") as f:
             content = f.read()
 
-        # Root package uses "." as the ref path (Go resolver expects directory)
-        assert ':-: ref path="."' in content
+        # Root package uses "." as the ref path with lang qualifier
+        assert ':-: ref path="." lang="go"' in content
 
     def test_package_doc_used_as_description(self, go_project):
         """Package doc comment is extracted and used as page description."""
@@ -964,5 +964,5 @@ class TestMultiLanguageGeneration:
         docs_dir = os.path.join(python_project, "docs")
         with open(os.path.join(docs_dir, "mylib-core.md"), "r") as f:
             content = f.read()
-        assert ':-: ref path="mylib.core"' in content
+        assert ':-: ref path="mylib.core" lang="python"' in content
         assert "generated: true" in content

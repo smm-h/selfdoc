@@ -124,9 +124,15 @@ class Resolver:
 
         # Multi-language dispatch: find which group(s) can resolve the path
         path_arg = attrs.get("path", "")
+        lang_filter = attrs.get("lang", "")
+
+        # When lang is specified, only consider groups for that language
+        groups = self._groups
+        if lang_filter:
+            groups = [g for g in groups if g[0] == lang_filter]
 
         matches: list[tuple[str, object, list[str], str]] = []
-        for language, extractor, paths in self._groups:
+        for language, extractor, paths in groups:
             resolved = extractor.resolve_path(
                 path_arg, paths, self._base_dir,
             )
@@ -149,8 +155,18 @@ class Resolver:
                 f"resolves in multiple languages: {langs}"
             )
 
-        # Zero matches: use the first group for error reporting
-        language, extractor, paths = self._groups[0]
+        # Zero matches
+        if lang_filter and not groups:
+            # lang specified a language that is not configured
+            configured = ", ".join(g[0] for g in self._groups)
+            return (
+                f"> *[selfdoc: lang={lang_filter!r} not found in "
+                f"configured source languages: {configured}]*"
+            )
+
+        # Use the first group for error reporting (extractor produces
+        # a "not found" message for the unresolvable path)
+        language, extractor, paths = (groups or self._groups)[0]
         return extractor.extract(
             name, attrs, body, paths, self._base_dir,
         )
