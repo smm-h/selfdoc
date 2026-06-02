@@ -1,4 +1,4 @@
-"""Zig source extractor -- resolves directives by extracting from .zig files.
+"""Zig source extractor for selfdoc -- parses .zig files to extract public declarations, doc comments, and test blocks for documentation pages.
 
 Uses regex-based parsing (no Zig toolchain required). Handles:
 - :::ref     -- extract module doc, pub declarations with doc comments
