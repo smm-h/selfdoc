@@ -1,1 +1,2 @@
 {"commits":["7dcec4aa577c5b996b1f802274b95e0d6feba443"],"user_facing":false}
+{"commits":["d62b0cadaa2bd1c533b3e9b636992021fd0c6df5"],"user_facing":true,"description":"**New feature.** Zig language extractor with support for `pub fn`, `pub const`, `pub var`, struct/enum/union declarations, `///` doc comments, `//!` module docs, and test block extraction.","type":"feature"}
