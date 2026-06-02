@@ -1,3 +1,4 @@
 {"commits":["7dcec4aa577c5b996b1f802274b95e0d6feba443"],"user_facing":false}
 {"commits":["d62b0cadaa2bd1c533b3e9b636992021fd0c6df5"],"user_facing":true,"description":"**New feature.** Zig language extractor with support for `pub fn`, `pub const`, `pub var`, struct/enum/union declarations, `///` doc comments, `//!` module docs, and test block extraction.","type":"feature"}
 {"commits":["b0327b486906d24491d8fbd56a17c3aa6b474da6","4b2f294bf353468bd07a8a4e347c39012ff3cc66"],"user_facing":true,"description":"**Breaking.** Top-level `language` config field removed. Each source entry is now an object with `path` and `language` fields: `{\"path\": \"src/\", \"language\": \"python\"}`.","type":"breaking"}
+{"commits":["9d9d95a276aee559386769084793c0faa41a0cb4"],"user_facing":true,"description":"**New feature.** Resolver dispatches directives to the correct language extractor based on source path. Cross-language path ambiguity is detected and errors.","type":"feature"}
