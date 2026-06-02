@@ -109,6 +109,7 @@ uv run pytest
 - **selfdoc.extractors.protocol** (`selfdoc/extractors/protocol.py`): Language extractor protocol -- defines the interface all extractors must implement.
 - **selfdoc.extractors.python** (`selfdoc/extractors/python.py`): Python source extractor -- resolves directives by extracting from .py files.
 - **selfdoc.extractors.typescript** (`selfdoc/extractors/typescript.py`): TypeScript/JavaScript source extractor -- resolves directives by extracting from .ts/.js files.
+- **selfdoc.extractors.zig** (`selfdoc/extractors/zig.py`): Zig source extractor -- resolves directives by extracting from .zig files.
 - **selfdoc.gen** (`selfdoc/gen.py`): Auto-generate documentation pages from project structure.
 - **selfdoc.gendata** (`selfdoc/gendata.py`): Generate data files by running sandboxed scripts via bubblewrap (bwrap).
 - **selfdoc.git** (`selfdoc/git.py`): Auto-commit helper for selfdoc commands.

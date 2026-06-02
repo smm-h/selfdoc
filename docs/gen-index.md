@@ -24,6 +24,7 @@ order: 90
 - [selfdoc.extractors.go](selfdoc-extractors-go.html)
 - [selfdoc.extractors.python](selfdoc-extractors-python.html)
 - [selfdoc.extractors.typescript](selfdoc-extractors-typescript.html)
+- [selfdoc.extractors.zig](selfdoc-extractors-zig.html)
 - [selfdoc.gen](selfdoc-gen.html)
 - [selfdoc.gendata](selfdoc-gendata.html)
 - [selfdoc.html](selfdoc-html.html)

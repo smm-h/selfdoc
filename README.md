@@ -182,8 +182,7 @@ Custom directives take priority over built-in names.
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `language` | yes | Programming language of the documented project. |
-| `source` | yes | List of source directories or files to extract documentation from. |
+| `source` | yes | List of source entries to extract documentation from. |
 | `base_url` | yes | Base URL of the generated site, used for canonical links and SEO. |
 | `version` | no | Project version. When present, used by deploy instead of reading from pyproject.toml/package.json. |
 | `docs` | no | Directory containing Markdown documentation templates. |
