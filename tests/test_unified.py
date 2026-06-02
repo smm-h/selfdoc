@@ -388,8 +388,7 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
     core_dir = packages_dir / "core"
     core_dir.mkdir()
     core_config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com/core",
     }
     _write_json(str(core_dir / "selfdoc.json"), core_config)
@@ -420,8 +419,7 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
     docs_site_dir = packages_dir / "docs-site"
     docs_site_dir.mkdir()
     docs_site_config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "unified": {
             "projects": [{"path": "../core"}],

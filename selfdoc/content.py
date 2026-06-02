@@ -305,9 +305,10 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     if not os.path.isdir(full_path):
         return f"> *[selfdoc: directory '{path}' not found]*"
 
-    from selfdoc.extractors import EXTRACTORS
+    from selfdoc.extractors import EXTRACTORS, resolve_source_entries
 
-    language = config["language"]
+    src_entries = resolve_source_entries(config)
+    language = src_entries[0].language if src_entries else "unknown"
     extractor = EXTRACTORS.get(language)
     if extractor is None:
         return f"> *[selfdoc: unsupported language '{language}']*"
@@ -454,7 +455,10 @@ def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
         return "> *[selfdoc: var requires a key attribute]*"
 
     if key == "project.language":
-        return config.get("language", "unknown")
+        source = config.get("source", [])
+        if source:
+            return source[0].get("language", "unknown") if isinstance(source[0], dict) else "unknown"
+        return "unknown"
 
     if key == "project.description":
         desc = config.get("description")

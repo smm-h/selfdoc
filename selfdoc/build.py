@@ -353,8 +353,10 @@ def _extract_version_content(version, config, base_dir):
 
     # Determine paths to extract: docs dir + source dirs
     docs_path = config["docs"].rstrip("/")
-    source_paths = config.get("source", [])
-    archive_paths = [docs_path] + [s.rstrip("/") for s in source_paths]
+    from selfdoc.extractors import source_paths as _source_paths
+
+    raw_source_paths = _source_paths(config) if config.get("source") else []
+    archive_paths = [docs_path] + [s.rstrip("/") for s in raw_source_paths]
 
     # Run git archive piped into tar
     git_cmd = ["git", "archive", tag_name] + archive_paths

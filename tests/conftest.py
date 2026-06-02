@@ -43,8 +43,7 @@ def _write_text(path, text):
 def default_config(**overrides):
     """Minimal valid selfdoc config with required versions and locales."""
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "versions": [{"version": "1.0.0", "indexed": True}],
         "locales": [{"code": "en", "label": "English", "default": True}],
@@ -116,8 +115,7 @@ def make_versioned_project(tmp_path):
             {"code": "en", "label": "English", "default": True},
         ]
         config = {
-            "language": "python",
-            "source": ["src/"],
+            "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
             "versions": versions_config,
             "locales": locales_config,
@@ -176,8 +174,7 @@ def make_localized_project(tmp_path):
         project_dir.mkdir(exist_ok=True)
 
         config = {
-            "language": "python",
-            "source": ["src/"],
+            "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
             "locales": locales,
             "versions": [{"version": "1.0.0", "indexed": True}],
@@ -230,8 +227,7 @@ def make_unified_project(tmp_path):
             proj_dir = packages_dir / name
 
             proj_config = {
-                "language": lang,
-                "source": ["src/"],
+                "source": [{"path": "src/", "language": lang}],
                 "base_url": f"https://example.com/{name}",
             }
             proj_dir.mkdir(exist_ok=True)
@@ -258,8 +254,7 @@ def make_unified_project(tmp_path):
         docs_site_dir.mkdir(exist_ok=True)
 
         docs_site_config = {
-            "language": "python",
-            "source": ["src/"],
+            "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
             "unified": {"projects": unified_entries},
             "versions": [{"version": "1.0.0", "indexed": True}],

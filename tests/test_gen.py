@@ -13,8 +13,7 @@ from selfdoc.gen import GenResult, generate_docs, _has_generated_marker
 def python_project(tmp_path):
     """Create a minimal Python project with selfdoc config and source files."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -535,8 +534,7 @@ def go_project(tmp_path):
 
     # selfdoc.json
     config = {
-        "language": "go",
-        "source": ["."],
+        "source": [{"path": ".", "language": "go"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -731,7 +729,7 @@ class TestGoPackageGeneration:
             f.write("package extra\n\nfunc DoExtra() {}\n")
 
         config = _load_config(go_project)
-        config["source"] = [".", "pkg/"]
+        config["source"] = [{"path": ".", "language": "go"}, {"path": "pkg/", "language": "go"}]
         generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)

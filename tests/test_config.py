@@ -26,8 +26,7 @@ def _write_config(directory, data):
 
 def test_valid_config_loads(config_dir):
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "docs": "docs/",
         "output": "docs/_build/",
@@ -36,16 +35,14 @@ def test_valid_config_loads(config_dir):
     })
     cfg = load_config(str(config_dir))
     assert cfg is not None
-    assert cfg["language"] == "python"
-    assert cfg["source"] == ["src/"]
+    assert cfg["source"] == [{"path": "src/", "language": "python"}]
     assert cfg["deploy"]["provider"] == "github-pages"
 
 
 def test_defaults_applied(config_dir):
     """Optional fields get their defaults when omitted."""
     _write_config(config_dir, {
-        "language": "go",
-        "source": ["pkg/"],
+        "source": [{"path": "pkg/", "language": "go"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -65,26 +62,23 @@ def test_missing_file_returns_none(tmp_path):
 # -- required fields --
 
 
-def test_missing_language(config_dir):
-    _write_config(config_dir, {"source": ["src/"]})
-    with pytest.raises(ConfigError, match="missing required field 'language'"):
-        load_config(str(config_dir))
-
-
 def test_missing_source(config_dir):
-    _write_config(config_dir, {"language": "python"})
+    _write_config(config_dir, {"base_url": "https://example.com"})
     with pytest.raises(ConfigError, match="missing required field 'source'"):
         load_config(str(config_dir))
 
 
 def test_missing_base_url(config_dir):
-    _write_config(config_dir, {"language": "python", "source": ["src/"]})
+    _write_config(config_dir, {"source": [{"path": "src/", "language": "python"}]})
     with pytest.raises(ConfigError, match="missing required field 'base_url'"):
         load_config(str(config_dir))
 
 
 def test_empty_base_url(config_dir):
-    _write_config(config_dir, {"language": "python", "source": ["src/"], "base_url": ""})
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "",
+    })
     with pytest.raises(ConfigError, match="'base_url' must be a non-empty string"):
         load_config(str(config_dir))
 
@@ -92,22 +86,79 @@ def test_empty_base_url(config_dir):
 # -- invalid values --
 
 
-def test_invalid_language(config_dir):
-    _write_config(config_dir, {"language": "ruby", "source": ["lib/"]})
-    with pytest.raises(ConfigError, match="invalid language"):
+def test_invalid_language_in_source_entry(config_dir):
+    """Unsupported language in a source entry raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "lib/", "language": "ruby"}],
+        "base_url": "https://example.com",
+    })
+    with pytest.raises(ConfigError, match="unsupported language 'ruby'"):
         load_config(str(config_dir))
 
 
 def test_source_not_a_list(config_dir):
-    _write_config(config_dir, {"language": "python", "source": "src/"})
+    _write_config(config_dir, {"source": "src/"})
     with pytest.raises(ConfigError, match="'source' must be a non-empty list"):
         load_config(str(config_dir))
 
 
 def test_source_empty_list(config_dir):
-    _write_config(config_dir, {"language": "python", "source": []})
+    _write_config(config_dir, {"source": []})
     with pytest.raises(ConfigError, match="'source' must be a non-empty list"):
         load_config(str(config_dir))
+
+
+def test_source_item_plain_string_migration_error(config_dir):
+    """Source item as a plain string triggers migration error."""
+    _write_config(config_dir, {"source": ["src/"], "base_url": "https://example.com"})
+    with pytest.raises(ConfigError, match="source\\[0\\] is a plain string"):
+        load_config(str(config_dir))
+
+
+def test_top_level_language_migration_error(config_dir):
+    """Top-level 'language' key triggers migration error."""
+    _write_config(config_dir, {
+        "language": "python",
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+    })
+    with pytest.raises(ConfigError, match="Top-level 'language' field is no longer supported"):
+        load_config(str(config_dir))
+
+
+def test_source_entry_missing_language(config_dir):
+    """Source entry missing 'language' raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/"}],
+        "base_url": "https://example.com",
+    })
+    with pytest.raises(ConfigError, match="source\\[0\\].language.*required"):
+        load_config(str(config_dir))
+
+
+def test_source_entry_missing_path(config_dir):
+    """Source entry missing 'path' raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"language": "python"}],
+        "base_url": "https://example.com",
+    })
+    with pytest.raises(ConfigError, match="source\\[0\\].path.*required"):
+        load_config(str(config_dir))
+
+
+def test_multi_language_source(config_dir):
+    """Config with multiple source entries using different languages loads."""
+    _write_config(config_dir, {
+        "source": [
+            {"path": "src/", "language": "python"},
+            {"path": "pkg/", "language": "go"},
+        ],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert len(cfg["source"]) == 2
+    assert cfg["source"][0]["language"] == "python"
+    assert cfg["source"][1]["language"] == "go"
 
 
 # -- deploy validation --
@@ -115,8 +166,7 @@ def test_source_empty_list(config_dir):
 
 def test_invalid_deploy_provider(config_dir):
     _write_config(config_dir, {
-        "language": "typescript",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "typescript"}],
         "base_url": "https://example.com",
         "deploy": {"provider": "netlify"},
     })
@@ -126,8 +176,7 @@ def test_invalid_deploy_provider(config_dir):
 
 def test_cloudflare_requires_project(config_dir):
     _write_config(config_dir, {
-        "language": "javascript",
-        "source": ["lib/"],
+        "source": [{"path": "lib/", "language": "javascript"}],
         "base_url": "https://example.com",
         "deploy": {"provider": "cloudflare-pages"},
     })
@@ -137,8 +186,7 @@ def test_cloudflare_requires_project(config_dir):
 
 def test_cloudflare_with_project(config_dir):
     _write_config(config_dir, {
-        "language": "javascript",
-        "source": ["lib/"],
+        "source": [{"path": "lib/", "language": "javascript"}],
         "base_url": "https://example.com",
         "deploy": {"provider": "cloudflare-pages", "project": "my-docs"},
     })
@@ -161,8 +209,7 @@ def test_invalid_json(config_dir):
 def test_all_new_fields_present(config_dir):
     """Config with lang, author, and description loads correctly."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "lang": "en",
         "author": {"name": "Jane Doe", "url": "https://jane.dev", "type": "Person"},
@@ -179,8 +226,7 @@ def test_all_new_fields_present(config_dir):
 def test_new_fields_absent_backward_compat(config_dir):
     """Config without lang, author, description still loads (all None)."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -191,8 +237,7 @@ def test_new_fields_absent_backward_compat(config_dir):
 
 def test_invalid_lang_empty_string(config_dir):
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "lang": "",
     })
@@ -202,8 +247,7 @@ def test_invalid_lang_empty_string(config_dir):
 
 def test_invalid_author_not_dict(config_dir):
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "author": "Jane Doe",
     })
@@ -213,8 +257,7 @@ def test_invalid_author_not_dict(config_dir):
 
 def test_author_missing_name(config_dir):
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "author": {"url": "https://jane.dev"},
     })
@@ -224,8 +267,7 @@ def test_author_missing_name(config_dir):
 
 def test_author_invalid_type(config_dir):
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "author": {"name": "Jane", "type": "Bot"},
     })
@@ -235,8 +277,7 @@ def test_author_invalid_type(config_dir):
 
 def test_invalid_description_empty_string(config_dir):
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "description": "",
     })
@@ -247,8 +288,7 @@ def test_invalid_description_empty_string(config_dir):
 def test_author_name_only(config_dir):
     """Author with only name (no url/type) loads correctly."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "author": {"name": "Jane Doe"},
     })
@@ -262,8 +302,7 @@ def test_author_name_only(config_dir):
 def test_twitter_in_author(config_dir):
     """Twitter handle in author section is returned in config."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "author": {"name": "Test", "twitter": "@test"},
     })
@@ -274,8 +313,7 @@ def test_twitter_in_author(config_dir):
 def test_twitter_top_level(config_dir):
     """Top-level twitter handle is returned when author.twitter is absent."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "twitter": "@test",
     })
@@ -286,8 +324,7 @@ def test_twitter_top_level(config_dir):
 def test_twitter_author_takes_precedence(config_dir):
     """author.twitter takes precedence over top-level twitter."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "author": {"name": "Test", "twitter": "@author_handle"},
         "twitter": "@top_handle",
@@ -299,8 +336,7 @@ def test_twitter_author_takes_precedence(config_dir):
 def test_twitter_invalid(config_dir):
     """Twitter handle not starting with '@' raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "twitter": "test",
     })
@@ -315,8 +351,7 @@ def test_twitter_invalid(config_dir):
 def test_valid_bcp47_lang_tags(config_dir, tag):
     """Valid BCP 47 language tags are accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "lang": tag,
     })
@@ -328,8 +363,7 @@ def test_valid_bcp47_lang_tags(config_dir, tag):
 def test_invalid_bcp47_lang_tags(config_dir, tag):
     """Invalid BCP 47 language tags raise ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "lang": tag,
     })
@@ -344,8 +378,7 @@ def test_invalid_bcp47_lang_tags(config_dir, tag):
 def test_search_valid_values(config_dir, value):
     """Valid search values are accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "search": value,
     })
@@ -356,8 +389,7 @@ def test_search_valid_values(config_dir, value):
 def test_search_absent_is_none(config_dir):
     """Missing search field defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -367,8 +399,7 @@ def test_search_absent_is_none(config_dir):
 def test_search_invalid_value(config_dir):
     """Invalid search value raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "search": "fullscreen",
     })
@@ -379,8 +410,7 @@ def test_search_invalid_value(config_dir):
 def test_search_non_string(config_dir):
     """Non-string search value raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "search": 42,
     })
@@ -394,8 +424,7 @@ def test_search_non_string(config_dir):
 def test_feedback_absent_is_none(config_dir):
     """Missing feedback field defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -405,8 +434,7 @@ def test_feedback_absent_is_none(config_dir):
 def test_feedback_webhook_only(config_dir):
     """Feedback with only webhook is valid."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"webhook": "https://hooks.example.com/fb"},
     })
@@ -417,8 +445,7 @@ def test_feedback_webhook_only(config_dir):
 def test_feedback_ga_only(config_dir):
     """Feedback with only ga is valid."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"ga": "G-ABCDEF1234"},
     })
@@ -429,8 +456,7 @@ def test_feedback_ga_only(config_dir):
 def test_feedback_both_keys(config_dir):
     """Feedback with both webhook and ga is valid."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"webhook": "https://hooks.example.com/fb", "ga": "G-ABCDEF1234"},
     })
@@ -442,8 +468,7 @@ def test_feedback_both_keys(config_dir):
 def test_feedback_empty_object(config_dir):
     """Empty feedback object raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {},
     })
@@ -454,8 +479,7 @@ def test_feedback_empty_object(config_dir):
 def test_feedback_not_object(config_dir):
     """Non-object feedback raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": "yes",
     })
@@ -466,8 +490,7 @@ def test_feedback_not_object(config_dir):
 def test_feedback_webhook_non_string(config_dir):
     """Non-string webhook raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"webhook": 123},
     })
@@ -478,8 +501,7 @@ def test_feedback_webhook_non_string(config_dir):
 def test_feedback_webhook_empty_string(config_dir):
     """Empty string webhook raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"webhook": ""},
     })
@@ -490,8 +512,7 @@ def test_feedback_webhook_empty_string(config_dir):
 def test_feedback_ga_non_string(config_dir):
     """Non-string ga raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"ga": 42},
     })
@@ -502,8 +523,7 @@ def test_feedback_ga_non_string(config_dir):
 def test_feedback_ga_empty_string(config_dir):
     """Empty string ga raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feedback": {"ga": ""},
     })
@@ -517,8 +537,7 @@ def test_feedback_ga_empty_string(config_dir):
 def test_branch_valid(config_dir):
     """Valid branch string is accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branch": "main",
     })
@@ -529,8 +548,7 @@ def test_branch_valid(config_dir):
 def test_branch_absent_is_none(config_dir):
     """Missing branch field defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -540,8 +558,7 @@ def test_branch_absent_is_none(config_dir):
 def test_branch_empty_string(config_dir):
     """Empty string branch raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branch": "",
     })
@@ -552,8 +569,7 @@ def test_branch_empty_string(config_dir):
 def test_branch_non_string(config_dir):
     """Non-string branch raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branch": 42,
     })
@@ -568,8 +584,7 @@ def test_branch_non_string(config_dir):
 def test_search_engine_valid_values(config_dir, value):
     """Each valid search_engine value is accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "search_engine": value,
     })
@@ -580,8 +595,7 @@ def test_search_engine_valid_values(config_dir, value):
 def test_search_engine_invalid_value(config_dir):
     """Invalid search_engine value raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "search_engine": "algolia",
     })
@@ -592,8 +606,7 @@ def test_search_engine_invalid_value(config_dir):
 def test_search_engine_default_none(config_dir):
     """Missing search_engine defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -606,8 +619,7 @@ def test_search_engine_default_none(config_dir):
 def test_branding_valid_full(config_dir):
     """Complete branding config with all keys including features."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branding": {
             "tagline": "Build docs fast",
@@ -633,8 +645,7 @@ def test_branding_valid_full(config_dir):
 def test_branding_valid_minimal(config_dir):
     """Branding with only tagline is valid."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branding": {"tagline": "Docs made easy"},
     })
@@ -646,8 +657,7 @@ def test_branding_valid_minimal(config_dir):
 def test_branding_invalid_not_dict(config_dir):
     """Non-dict branding raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branding": "fancy",
     })
@@ -658,8 +668,7 @@ def test_branding_invalid_not_dict(config_dir):
 def test_branding_features_invalid_item(config_dir):
     """Feature item missing title raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branding": {
             "features": [
@@ -674,8 +683,7 @@ def test_branding_features_invalid_item(config_dir):
 def test_branding_features_missing_description(config_dir):
     """Feature item missing description raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "branding": {
             "features": [
@@ -690,8 +698,7 @@ def test_branding_features_missing_description(config_dir):
 def test_branding_default_none(config_dir):
     """Missing branding defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -704,8 +711,7 @@ def test_branding_default_none(config_dir):
 def test_min_coverage_rejected(config_dir):
     """min_coverage is no longer a valid config key."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "min_coverage": 80,
     })
@@ -719,8 +725,7 @@ def test_min_coverage_rejected(config_dir):
 def test_glossary_default_true(config_dir):
     """Config without glossary key loads with glossary=True."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -730,8 +735,7 @@ def test_glossary_default_true(config_dir):
 def test_glossary_false(config_dir):
     """Config with glossary=false loads correctly."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "glossary": False,
     })
@@ -745,8 +749,7 @@ def test_glossary_false(config_dir):
 def test_feed_max_entries_valid(config_dir):
     """Valid integer for feed_max_entries loads correctly."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feed_max_entries": 10,
     })
@@ -757,8 +760,7 @@ def test_feed_max_entries_valid(config_dir):
 def test_feed_max_entries_zero(config_dir):
     """feed_max_entries=0 is rejected (min_val=1)."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "feed_max_entries": 0,
     })
@@ -769,8 +771,7 @@ def test_feed_max_entries_zero(config_dir):
 def test_feed_max_entries_default_none(config_dir):
     """Missing feed_max_entries defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -783,8 +784,7 @@ def test_feed_max_entries_default_none(config_dir):
 def test_gen_data_passed_through(config_dir):
     """gen_data with valid scripts is accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -799,8 +799,7 @@ def test_gen_data_passed_through(config_dir):
 def test_gen_data_absent_is_none(config_dir):
     """Missing gen_data defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -810,8 +809,7 @@ def test_gen_data_absent_is_none(config_dir):
 def test_gen_data_not_dict(config_dir):
     """Non-dict gen_data raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": "bad",
     })
@@ -822,8 +820,7 @@ def test_gen_data_not_dict(config_dir):
 def test_gen_data_scripts_not_list(config_dir):
     """Non-list gen_data.scripts raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {"scripts": "bad"},
     })
@@ -834,8 +831,7 @@ def test_gen_data_scripts_not_list(config_dir):
 def test_gen_data_script_missing_command(config_dir):
     """Script missing 'command' raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -850,8 +846,7 @@ def test_gen_data_script_missing_command(config_dir):
 def test_gen_data_script_missing_output(config_dir):
     """Script missing 'output' raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -866,8 +861,7 @@ def test_gen_data_script_missing_output(config_dir):
 def test_gen_data_script_missing_mounts(config_dir):
     """Script missing 'mounts' raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -882,8 +876,7 @@ def test_gen_data_script_missing_mounts(config_dir):
 def test_gen_data_script_command_not_string(config_dir):
     """Non-string command raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -898,8 +891,7 @@ def test_gen_data_script_command_not_string(config_dir):
 def test_gen_data_script_mounts_not_list(config_dir):
     """Non-list mounts raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -914,8 +906,7 @@ def test_gen_data_script_mounts_not_list(config_dir):
 def test_gen_data_script_mounts_item_not_string(config_dir):
     """Non-string item in mounts raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {
             "scripts": [
@@ -933,8 +924,7 @@ def test_gen_data_script_mounts_item_not_string(config_dir):
 def test_gen_valid(config_dir):
     """Valid gen config with exclude list is accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen": {"exclude": ["test_*.py", "__pycache__"]},
     })
@@ -945,8 +935,7 @@ def test_gen_valid(config_dir):
 def test_gen_absent_is_none(config_dir):
     """Missing gen defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -956,8 +945,7 @@ def test_gen_absent_is_none(config_dir):
 def test_gen_not_dict(config_dir):
     """Non-dict gen raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen": "bad",
     })
@@ -968,8 +956,7 @@ def test_gen_not_dict(config_dir):
 def test_gen_exclude_not_list(config_dir):
     """Non-list gen.exclude raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen": {"exclude": "*.pyc"},
     })
@@ -980,8 +967,7 @@ def test_gen_exclude_not_list(config_dir):
 def test_gen_exclude_item_not_string(config_dir):
     """Non-string item in gen.exclude raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen": {"exclude": [42]},
     })
@@ -992,8 +978,7 @@ def test_gen_exclude_item_not_string(config_dir):
 def test_gen_invalid_key(config_dir):
     """Unknown keys in gen are rejected."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen": {"exclude": [], "bogus": True},
     })
@@ -1004,8 +989,7 @@ def test_gen_invalid_key(config_dir):
 def test_gen_data_invalid_key(config_dir):
     """Unknown keys in gen_data are rejected."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "gen_data": {"scripts": [], "timeout": 30},
     })
@@ -1019,8 +1003,7 @@ def test_gen_data_invalid_key(config_dir):
 def test_unknown_top_level_key(config_dir):
     """Unknown top-level key raises ConfigError mentioning the key name."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "foo": "bar",
     })
@@ -1034,8 +1017,7 @@ def test_unknown_top_level_key(config_dir):
 def test_root_files_valid(config_dir):
     """Valid root_files list is accepted and present in loaded config."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "root_files": ["docs/_CLAUDE.md"],
     })
@@ -1047,8 +1029,7 @@ def test_root_files_valid(config_dir):
 def test_root_files_invalid_item(config_dir):
     """Non-string item in root_files raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "root_files": [123],
     })
@@ -1083,6 +1064,12 @@ def test_cross_project_config_loads(config_path):
     """Each real selfdoc.json across all consumer projects loads without error."""
     if not os.path.isfile(config_path):
         pytest.skip(f"{config_path} not found")
+    # Skip projects that haven't migrated to multi-language source format yet
+    with open(config_path, "r", encoding="utf-8") as f:
+        import json as _json
+        raw = _json.load(f)
+    if "language" in raw:
+        pytest.skip(f"{config_path} still uses old top-level 'language' format")
     cfg = load_config(os.path.dirname(config_path))
     assert isinstance(cfg, dict)
 
@@ -1093,8 +1080,7 @@ def test_cross_project_config_loads(config_path):
 def test_version_valid(config_dir):
     """Valid semver version string is accepted."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.2.3",
     })
@@ -1105,8 +1091,7 @@ def test_version_valid(config_dir):
 def test_version_absent_is_none(config_dir):
     """Missing version field defaults to None."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
     cfg = load_config(str(config_dir))
@@ -1116,8 +1101,7 @@ def test_version_absent_is_none(config_dir):
 def test_version_invalid_pattern(config_dir):
     """Version not matching semver pattern raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "abc",
     })
@@ -1128,8 +1112,7 @@ def test_version_invalid_pattern(config_dir):
 def test_version_non_string(config_dir):
     """Non-string version raises ConfigError."""
     _write_config(config_dir, {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": 123,
     })

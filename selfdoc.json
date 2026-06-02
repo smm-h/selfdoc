@@ -1,8 +1,7 @@
 {
   "version": "0.12.0",
-  "language": "python",
   "source": [
-    "selfdoc/"
+    {"path": "selfdoc/", "language": "python"}
   ],
   "docs": "docs/",
   "output": "docs/_build/",

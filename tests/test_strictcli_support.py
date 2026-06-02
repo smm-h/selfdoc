@@ -791,8 +791,7 @@ class TestGenerateDocsPreservesCliDescriptions:
         os.makedirs(docs_dir)
 
         config = {
-            "language": "python",
-            "source": ["myapp/"],
+            "source": [{"path": "myapp/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -862,8 +861,7 @@ class TestCheckIntegration:
         from selfdoc.check import check_docs
 
         config = {
-            "language": "python",
-            "source": ["src/"],
+            "source": [{"path": "src/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -901,8 +899,7 @@ class TestCheckIntegration:
         from selfdoc.check import check_docs
 
         config = {
-            "language": "python",
-            "source": ["src/"],
+            "source": [{"path": "src/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -939,8 +936,7 @@ class TestCheckIntegration:
         from selfdoc.check import check_docs
 
         config = {
-            "language": "python",
-            "source": ["src/"],
+            "source": [{"path": "src/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",

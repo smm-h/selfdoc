@@ -22,8 +22,7 @@ def _write_config(directory, data):
 
 
 _BASE = {
-    "language": "python",
-    "source": ["src/"],
+    "source": [{"path": "src/", "language": "python"}],
     "base_url": "https://example.com",
 }
 

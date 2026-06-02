@@ -57,18 +57,31 @@ _L = FieldType.LIST
 CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
     # --- required fields ---
     FieldSpec(
-        name="language",
-        type=_S,
-        required=True,
-        description="Programming language of the documented project.",
-    ),
-    FieldSpec(
         name="source",
         type=_L,
         required=True,
         min_length=1,
-        item_spec=FieldSpec(name="<item>", type=_S, description="Source path."),
-        description="List of source directories or files to extract documentation from.",
+        item_spec=FieldSpec(
+            name="<item>",
+            type=_D,
+            strict_keys=True,
+            children=(
+                FieldSpec(
+                    name="path",
+                    type=_S,
+                    required=True,
+                    description="Source directory or file path.",
+                ),
+                FieldSpec(
+                    name="language",
+                    type=_S,
+                    required=True,
+                    description="Programming language for this source entry.",
+                ),
+            ),
+            description="Source entry with path and language.",
+        ),
+        description="List of source entries to extract documentation from.",
     ),
     FieldSpec(
         name="base_url",
@@ -853,24 +866,45 @@ def load_config(dir_path="."):
     if not isinstance(raw, dict):
         raise ConfigError("selfdoc.json must be a JSON object")
 
+    # Migration error: top-level "language" is no longer supported
+    if "language" in raw:
+        raise ConfigError(
+            "Top-level 'language' field is no longer supported. "
+            'Move language into each source entry: '
+            '"source": [{"path": "src/", "language": "python"}]'
+        )
+
     # Check for unknown root-level keys
     known_keys = {spec.name for spec in CONFIG_SCHEMA}
     for key in raw:
         if key not in known_keys:
             raise ConfigError(f"unknown config key {key!r}")
 
+    # Migration error: source items must be dicts, not strings
+    raw_source = raw.get("source")
+    if isinstance(raw_source, list):
+        for i, item in enumerate(raw_source):
+            if isinstance(item, str):
+                raise ConfigError(
+                    f"source[{i}] is a plain string ({item!r}). "
+                    "Source entries must be objects with 'path' and 'language': "
+                    '{"path": "src/", "language": "python"}'
+                )
+
     # Validate each field against its schema spec
     result = {}
     for spec in CONFIG_SCHEMA:
         raw_value = raw.get(spec.name, _MISSING)
         validated = _validate_field(spec, raw_value, spec.name)
-        # Special case: language choices come from VALID_LANGUAGES (runtime)
-        if spec.name == "language":
-            if validated not in VALID_LANGUAGES:
-                raise ConfigError(
-                    f"invalid language {validated!r}; "
-                    f"must be one of: {', '.join(VALID_LANGUAGES)}"
-                )
         result[spec.name] = validated
+
+    # Validate language values in source entries against VALID_LANGUAGES
+    for i, entry in enumerate(result.get("source", [])):
+        lang = entry.get("language")
+        if lang and lang not in VALID_LANGUAGES:
+            raise ConfigError(
+                f"unsupported language {lang!r} in source[{i}]; "
+                f"must be one of: {', '.join(sorted(VALID_LANGUAGES))}"
+            )
 
     return _post_validate(result)

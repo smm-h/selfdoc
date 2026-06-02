@@ -599,7 +599,7 @@ class TestDetectLanguage:
 
 class TestSourceEntries:
     def test_resolve_source_entries_single(self):
-        config = {"language": "python", "source": ["mylib/"]}
+        config = {"source": [{"path": "mylib/", "language": "python"}]}
         entries = resolve_source_entries(config)
         assert len(entries) == 1
         assert entries[0].path == "mylib/"
@@ -607,8 +607,10 @@ class TestSourceEntries:
         assert isinstance(entries[0].extractor, PythonExtractor)
 
     def test_resolve_source_entries_multi(self):
-        # Two source paths with the same language (matching current config schema)
-        config = {"language": "python", "source": ["src/", "lib/"]}
+        config = {"source": [
+            {"path": "src/", "language": "python"},
+            {"path": "lib/", "language": "python"},
+        ]}
         entries = resolve_source_entries(config)
         assert len(entries) == 2
         assert entries[0].path == "src/"
@@ -616,19 +618,22 @@ class TestSourceEntries:
         assert all(e.language == "python" for e in entries)
 
     def test_resolve_source_entries_go(self):
-        config = {"language": "go", "source": ["."]}
+        config = {"source": [{"path": ".", "language": "go"}]}
         entries = resolve_source_entries(config)
         assert len(entries) == 1
         assert entries[0].language == "go"
         assert isinstance(entries[0].extractor, GoExtractor)
 
     def test_resolve_source_entries_unsupported_language(self):
-        config = {"language": "ruby", "source": ["lib/"]}
+        config = {"source": [{"path": "lib/", "language": "ruby"}]}
         with pytest.raises(ValueError, match="unsupported language 'ruby'"):
             resolve_source_entries(config)
 
     def test_source_paths_extracts_paths(self):
-        config = {"language": "python", "source": ["selfdoc/", "tests/"]}
+        config = {"source": [
+            {"path": "selfdoc/", "language": "python"},
+            {"path": "tests/", "language": "python"},
+        ]}
         result = source_paths(config)
         assert result == ["selfdoc/", "tests/"]
 

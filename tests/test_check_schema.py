@@ -138,8 +138,7 @@ def _serialize_check_result(result):
 def python_project(tmp_path):
     """Create a minimal Python project with selfdoc config and source files."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -234,8 +233,7 @@ def test_check_output_null_coverage():
 def test_check_output_empty_coverage(tmp_path):
     """When no source files exist, coverage has zero symbols but is still valid."""
     config = {
-        "language": "go",
-        "source": ["pkg/"],
+        "source": [{"path": "pkg/", "language": "go"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",

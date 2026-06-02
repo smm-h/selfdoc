@@ -17,8 +17,7 @@ _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Minimal config matching selfdoc's own selfdoc.json
 _SELFDOC_CONFIG = {
-    "language": "python",
-    "source": ["selfdoc/"],
+    "source": [{"path": "selfdoc/", "language": "python"}],
     "base_url": "https://selfdoc.pages.dev",
     "description": "Code-aware static site generator.",
 }
@@ -159,19 +158,18 @@ class TestTableConfigSchema:
     def test_lists_config_fields(self):
         result = resolve_table_config_schema()
         assert "| Field | Required | Description |" in result
-        assert "`language`" in result
         assert "`source`" in result
         assert "`base_url`" in result
 
     def test_required_fields_marked(self):
         result = resolve_table_config_schema()
-        # language is required
+        # source is required
         for line in result.split("\n"):
-            if "`language`" in line:
+            if "`source`" in line:
                 assert "| yes |" in line
                 break
         else:
-            raise AssertionError("language field not found")
+            raise AssertionError("source field not found")
 
     def test_optional_fields_marked(self):
         result = resolve_table_config_schema()
@@ -191,7 +189,7 @@ class TestTableConfigSchema:
     def test_via_resolve_content(self):
         result = resolve_content("table-config-schema", {}, [], _PROJECT_DIR)
         assert result is not None
-        assert "`language`" in result
+        assert "`source`" in result
 
 
 # -- var -----------------------------------------------------------------------
@@ -216,8 +214,7 @@ class TestVar:
 
     def test_project_description_falls_back_to_pyproject(self):
         config_no_desc = {
-            "language": "python",
-            "source": ["selfdoc/"],
+            "source": [{"path": "selfdoc/", "language": "python"}],
             "base_url": "https://example.com",
         }
         result = resolve_var(

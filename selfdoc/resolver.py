@@ -53,14 +53,18 @@ def make_resolver(config, base_dir="."):
     Returns:
         A callable(name, attrs, body) -> str that resolves directives to markdown.
     """
-    language = config["language"]
-    source_paths = config["source"]
+    from selfdoc.extractors import resolve_source_entries, source_paths as _source_paths
+
+    src_entries = resolve_source_entries(config)
+    src_paths = _source_paths(config)
     custom_directives = config.get("directives", {})
     # Normalize base_dir to absolute for consistent path resolution
     base_dir = os.path.abspath(base_dir)
 
-    # Look up the language extractor from the registry
-    extractor = EXTRACTORS.get(language)
+    # Use first entry's extractor as default (multi-language routing
+    # will be refined in future phases)
+    extractor = src_entries[0].extractor if src_entries else None
+    language = src_entries[0].language if src_entries else "unknown"
 
     def resolve(name, attrs, body):
         # Content directives (callouts, glossary, tree, deps, features, modules,
@@ -88,6 +92,6 @@ def make_resolver(config, base_dir="."):
                 f"for :::{name}]*"
             )
 
-        return extractor.extract(name, attrs, body, source_paths, base_dir)
+        return extractor.extract(name, attrs, body, src_paths, base_dir)
 
     return resolve

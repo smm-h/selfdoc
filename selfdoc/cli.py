@@ -19,41 +19,42 @@ app = strictcli.App(
 )
 
 
-def _detect_source_paths(language):
-    """Detect source paths for a given language.
+def _detect_source_entries(language):
+    """Detect source entries for a given language.
 
-    Returns a list of source directory paths suitable for selfdoc.json.
+    Returns a list of {"path": ..., "language": ...} dicts suitable
+    for the ``source`` field in selfdoc.json.
     """
     if language == "python":
-        sources = []
+        paths = []
         for candidate in ("src", "lib"):
             if os.path.isdir(candidate):
-                sources.append(f"{candidate}/")
+                paths.append(f"{candidate}/")
                 break
-        if not sources:
+        if not paths:
             for entry in sorted(os.listdir(".")):
                 init_path = os.path.join(entry, "__init__.py")
                 if os.path.isdir(entry) and os.path.isfile(init_path):
-                    sources.append(f"{entry}/")
+                    paths.append(f"{entry}/")
                     break
-        return sources or ["."]
-
-    if language == "go":
-        sources = []
+        paths = paths or ["."]
+    elif language == "go":
+        paths = []
         for candidate in ("pkg", "internal", "cmd"):
             if os.path.isdir(candidate):
-                sources.append(f"{candidate}/")
-        return sources or ["."]
-
-    if language in ("typescript", "javascript"):
-        sources = []
+                paths.append(f"{candidate}/")
+        paths = paths or ["."]
+    elif language in ("typescript", "javascript"):
+        paths = []
         for candidate in ("src", "lib"):
             if os.path.isdir(candidate):
-                sources.append(f"{candidate}/")
+                paths.append(f"{candidate}/")
                 break
-        return sources or ["."]
+        paths = paths or ["."]
+    else:
+        paths = ["."]
 
-    return ["."]
+    return [{"path": p, "language": language} for p in paths]
 
 
 def _detect_main_module():
@@ -86,14 +87,13 @@ def _cmd_init(no_commit=False):
             "tsconfig.json/package.json (TypeScript/JavaScript)"
         )
         sys.exit(1)
-    sources = _detect_source_paths(language)
+    source_entries = _detect_source_entries(language)
 
     project_name = os.path.basename(os.path.abspath("."))
     main_module = _detect_main_module()
 
     config = {
-        "language": language,
-        "source": sources,
+        "source": source_entries,
         "docs": "docs/",
         "output": "docs/_build/",
     }
@@ -130,10 +130,11 @@ def _cmd_init(no_commit=False):
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(starter)
 
+    source_path_strs = [e["path"] for e in source_entries]
     print(f"Initialized selfdoc for {language} project '{project_name}'")
     print(f"  Created: selfdoc.json")
     print(f"  Created: docs/index.md")
-    print(f"  Source:  {', '.join(sources)}")
+    print(f"  Source:  {', '.join(source_path_strs)}")
     print(f"\nRun 'selfdoc build' to generate documentation.")
 
     if not no_commit:

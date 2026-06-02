@@ -439,10 +439,12 @@ def generate_docs(config, base_dir="."):
     Returns a ``GenResult`` with written and deleted file paths relative
     to the docs directory.
     """
-    language = config["language"]
-    extractor = EXTRACTORS.get(language)
-    if extractor is None:
-        raise RuntimeError(f"no extractor for language {language!r}")
+    from selfdoc.extractors import resolve_source_entries
+
+    src_entries = resolve_source_entries(config)
+    # Use first entry's language/extractor as primary
+    language = src_entries[0].language
+    extractor = src_entries[0].extractor
 
     locale_dirs = _get_locale_docs_dirs(config, base_dir)
     all_written = []
@@ -469,8 +471,9 @@ def generate_docs(config, base_dir="."):
 
 def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
     """Generate docs for a single directory. Returns a ``GenResult``."""
+    from selfdoc.extractors import source_paths as _source_paths
 
-    source_paths = config["source"]
+    source_paths = _source_paths(config)
     os.makedirs(docs_dir, exist_ok=True)
 
     extensions = set(extractor.file_extensions())

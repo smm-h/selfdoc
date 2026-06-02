@@ -10,8 +10,7 @@ from selfdoc.resolver import make_resolver
 def _make_config(**overrides):
     """Create a minimal valid config dict with optional overrides."""
     base = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "deploy": None,
@@ -175,16 +174,17 @@ def test_non_custom_directive_falls_through(tmp_path):
 
 def test_unknown_language_produces_error(tmp_path):
     """An unsupported language should produce an error, not crash."""
-    config = _make_config(language="rust")
-    resolver = make_resolver(config, str(tmp_path))
-    result = resolver("ref", {"path": "main"}, [])
-    assert "unsupported language" in result
-    assert "rust" in result
+    config = _make_config(source=[{"path": "src/", "language": "rust"}])
+    from selfdoc.extractors import EXTRACTORS
+    # rust is not in EXTRACTORS, so resolve_source_entries will fail
+    from pytest import raises
+    with raises(ValueError, match="unsupported language 'rust'"):
+        make_resolver(config, str(tmp_path))
 
 
 def test_unknown_directive_produces_error(tmp_path):
     """An unknown directive name should produce an error from the extractor."""
-    config = _make_config(language="python")
+    config = _make_config()
     resolver = make_resolver(config, str(tmp_path))
     result = resolver("nonexistent-directive", {}, [])
     assert "unknown directive" in result

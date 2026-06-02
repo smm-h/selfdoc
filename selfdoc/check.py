@@ -214,15 +214,18 @@ def check_docs(dir_path=".", config=None, dry_run=False):
         dr.directive.startswith("code-help")
         for dr in result.directive_results
     )
-    if has_code_help and uses_strictcli(config["source"], dir_path):
+    from selfdoc.extractors import resolve_source_entries, source_paths as _source_paths
+
+    if has_code_help and uses_strictcli(_source_paths(config), dir_path):
         raise RuntimeError(
             "Project uses strictcli — use 'selfdoc gen' for CLI"
             " documentation instead of code-help directives"
         )
 
     # Compute coverage (language-agnostic via extractor protocol)
-    language = config["language"]
-    extractor = EXTRACTORS.get(language)
+    src_entries = resolve_source_entries(config)
+    language = src_entries[0].language if src_entries else "unknown"
+    extractor = src_entries[0].extractor if src_entries else None
     if extractor is not None:
         result.coverage = _compute_coverage(
             config, dir_path, resolved_directives, extractor, all_docs
@@ -912,9 +915,12 @@ def _compute_coverage(config, base_dir, resolved_directives, extractor,
     """
     from selfdoc.gen import _file_to_module_path, _is_excluded
 
+    from selfdoc.extractors import source_paths as _source_paths
+
     base_dir = os.path.abspath(base_dir)
-    source_paths = config["source"]
-    language = config["language"]
+    source_paths = _source_paths(config)
+    # language is passed via extractor; derive name from first source entry
+    language = config["source"][0]["language"] if config["source"] else "unknown"
     stats = CoverageStats()
     extensions = extractor.file_extensions()
 

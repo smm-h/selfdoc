@@ -19,8 +19,7 @@ def _make_config(tmp_path, root_files=None, extras=None):
     os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
 
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
     }

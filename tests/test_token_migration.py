@@ -39,8 +39,7 @@ def lint_project(tmp_path):
     docs_dir = os.path.join(tmp_path, "docs")
     os.makedirs(docs_dir)
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",

@@ -31,14 +31,16 @@ def test_make_project_config_loads(make_project):
     project_dir = make_project()
     cfg = load_config(str(project_dir))
     assert cfg is not None
-    assert cfg["language"] == "python"
+    assert cfg["source"][0]["language"] == "python"
     assert cfg["base_url"] == "https://example.com"
 
 
 def test_make_project_accepts_overrides(make_project):
-    project_dir = make_project(language="go")
+    project_dir = make_project(
+        source=[{"path": "src/", "language": "go"}],
+    )
     cfg = load_config(str(project_dir))
-    assert cfg["language"] == "go"
+    assert cfg["source"][0]["language"] == "go"
 
 
 # -- make_versioned_project --
@@ -171,4 +173,4 @@ def test_unified_constituent_configs_load(make_unified_project):
     for proj in projects:
         cfg = load_config(str(packages_dir / proj["name"]))
         assert cfg is not None
-        assert cfg["language"] == proj["language"]
+        assert cfg["source"][0]["language"] == proj["language"]

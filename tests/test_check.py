@@ -14,8 +14,7 @@ def python_project(tmp_path):
     """Create a minimal Python project with selfdoc config and source files."""
     # selfdoc.json
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -300,8 +299,7 @@ def test_print_results_no_directives_with_lints(capsys):
 def test_no_docs_dir_raises(tmp_path):
     """check_docs raises when docs/ directory is missing."""
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -487,8 +485,7 @@ def lint_project(tmp_path):
     docs_dir = os.path.join(tmp_path, "docs")
     os.makedirs(docs_dir)
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -1733,8 +1730,7 @@ def test_skeleton_only_symbols_printed(tmp_path, capsys):
     import selfdoc.check as check_mod
 
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -1885,8 +1881,7 @@ def test_coverage_per_symbol(tmp_path):
     """
     # selfdoc.json
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -1966,8 +1961,7 @@ def test_coverage_per_symbol(tmp_path):
 def test_coverage_multi_directive(tmp_path):
     """table-schema and code-test directives contribute to coverage."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2030,8 +2024,7 @@ def test_coverage_multi_directive(tmp_path):
 def test_coverage_threshold_partial_fails(tmp_path):
     """3/4 documented (75%) fails the hardcoded 100% requirement."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2068,8 +2061,7 @@ def test_coverage_threshold_partial_fails(tmp_path):
 def test_coverage_threshold_low_fails(tmp_path):
     """1/3 documented (33%) fails the hardcoded 100% requirement."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2109,8 +2101,7 @@ def test_coverage_threshold_low_fails(tmp_path):
 def test_coverage_100_percent_passes(tmp_path):
     """Project where all public symbols are documented passes coverage check."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2151,8 +2142,7 @@ def test_coverage_100_percent_passes(tmp_path):
 def test_coverage_zero_symbols_passes(tmp_path):
     """Project with no public symbols passes coverage check (no division by zero)."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2185,8 +2175,7 @@ def test_coverage_zero_symbols_passes(tmp_path):
 def test_exit_code_0_when_only_warnings(tmp_path, capsys):
     """Exit code is 0 when only warnings (no errors) exist."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2227,8 +2216,7 @@ def test_exit_code_0_when_only_warnings(tmp_path, capsys):
 def test_exit_code_1_when_errors_exist(tmp_path, capsys):
     """Exit code is 1 when lint errors exist."""
     config = {
-        "language": "python",
-        "source": ["mylib/"],
+        "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2267,8 +2255,7 @@ def test_go_coverage_basic(tmp_path):
     """Create a Go project with exported and unexported symbols, verify coverage."""
     # selfdoc.json
     config = {
-        "language": "go",
-        "source": ["pkg/"],
+        "source": [{"path": "pkg/", "language": "go"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2333,8 +2320,7 @@ def test_go_coverage_basic(tmp_path):
 def test_ts_coverage_basic(tmp_path):
     """Create a TypeScript project with exports, verify coverage."""
     config = {
-        "language": "typescript",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "typescript"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -2552,8 +2538,7 @@ class TestVersionConsistencyLints:
     def test_ver002_version_mismatch(self, tmp_path):
         """VER002 fires when config version differs from detected project version."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2571,8 +2556,7 @@ class TestVersionConsistencyLints:
     def test_ver002_no_lint_when_versions_match(self, tmp_path):
         """VER002 does not fire when config version matches detected version."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2587,8 +2571,7 @@ class TestVersionConsistencyLints:
     def test_ver002_no_lint_when_no_config_version(self, tmp_path):
         """VER002 does not fire when config has no version field."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2602,8 +2585,7 @@ class TestVersionConsistencyLints:
     def test_ver002_no_lint_when_no_detected_version(self, tmp_path):
         """VER002 does not fire when no project version can be detected."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2619,8 +2601,7 @@ class TestVersionConsistencyLints:
     def test_ver003_versions_array_mismatch(self, tmp_path):
         """VER003 fires when versions array last entry differs from config version."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2643,8 +2624,7 @@ class TestVersionConsistencyLints:
     def test_ver003_no_lint_when_consistent(self, tmp_path):
         """VER003 does not fire when versions array last entry matches config."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2663,8 +2643,7 @@ class TestVersionConsistencyLints:
     def test_ver003_no_lint_when_no_versions_array(self, tmp_path):
         """VER003 does not fire when config has no versions array."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2761,8 +2740,7 @@ class TestTwoTierCoverage:
     def _make_project(self, tmp_path):
         """Create a project with source files and both skeleton and hand-written pages."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -2934,8 +2912,7 @@ class TestTwoTierCoverage:
     def test_coverage_check_uses_documented_not_referenced(self, tmp_path):
         """Hardcoded 100% check uses documented count, not referenced."""
         config = {
-            "language": "python",
-            "source": ["mylib/"],
+            "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
@@ -3058,7 +3035,7 @@ class TestTwoTierCoverage:
         extractor = EXTRACTORS["python"]
         import tempfile
         with tempfile.TemporaryDirectory() as td:
-            config = {"language": "python", "source": ["src/"]}
+            config = {"source": [{"path": "src/", "language": "python"}]}
             os.makedirs(os.path.join(td, "src"))
             stats = _compute_coverage(config, td, [], extractor, None)
             assert stats.total_public == 0

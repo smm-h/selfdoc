@@ -170,8 +170,7 @@ def test_staleness_integration_with_check(tmp_path):
     """Full integration: check_docs detects stale descriptions."""
     # Set up a minimal project
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -226,8 +225,7 @@ def test_staleness_integration_with_check(tmp_path):
 def test_staleness_no_error_when_description_updated(tmp_path):
     """No staleness error when both content and description change."""
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -358,8 +356,7 @@ def _setup_project(tmp_path, *, locales=None, page_content=None):
     Returns the config dict written to selfdoc.json.
     """
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",

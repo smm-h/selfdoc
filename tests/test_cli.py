@@ -39,8 +39,8 @@ def test_init_creates_config_and_docs(project_dir):
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    assert config["language"] == "python"
-    assert "testproj/" in config["source"]
+    assert isinstance(config["source"], list)
+    assert any(e["path"] == "testproj/" and e["language"] == "python" for e in config["source"])
     assert config["docs"] == "docs/"
     assert config["output"] == "docs/_build/"
 

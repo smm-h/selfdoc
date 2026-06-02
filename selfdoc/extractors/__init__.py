@@ -64,25 +64,25 @@ def detect_languages(dir_path: str) -> list[dict[str, str]]:
 
 
 def resolve_source_entries(config: dict) -> list[SourceEntry]:
-    """Resolve config source paths into SourceEntry objects.
+    """Resolve config source entries into SourceEntry objects.
 
-    Each source path is paired with the config's language field
-    and its corresponding extractor.
+    Each source entry dict has 'path' and 'language' keys.
+    The language is looked up in the extractor registry.
     """
-    language = config["language"]
-    extractor = EXTRACTORS.get(language)
-    if extractor is None:
-        raise ValueError(
-            f"unsupported language {language!r} in config"
-        )
     entries = []
-    for path in config["source"]:
+    for item in config["source"]:
+        language = item["language"]
+        extractor = EXTRACTORS.get(language)
+        if extractor is None:
+            raise ValueError(
+                f"unsupported language {language!r} in config"
+            )
         entries.append(
-            SourceEntry(path=path, language=language, extractor=extractor)
+            SourceEntry(path=item["path"], language=language, extractor=extractor)
         )
     return entries
 
 
 def source_paths(config: dict) -> list[str]:
     """Extract just the source path strings from config."""
-    return list(config["source"])
+    return [item["path"] for item in config["source"]]

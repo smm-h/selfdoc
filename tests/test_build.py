@@ -5969,8 +5969,7 @@ def test_no_deploy_config_no_security_meta_tags(tmp_path):
 def test_build_missing_versions_raises(tmp_path):
     """build() raises ConfigError when 'versions' is missing from config."""
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
@@ -6019,8 +6018,7 @@ def test_glossary_false_suppresses_generation(tmp_path):
 def test_build_missing_locales_raises(tmp_path):
     """build() raises ConfigError when 'locales' is missing from config."""
     config = {
-        "language": "python",
-        "source": ["src/"],
+        "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "versions": [{"version": "1.0.0", "indexed": True}],
     }
