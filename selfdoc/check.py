@@ -22,8 +22,8 @@ from selfdoc.tokenizer import (
 )
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives
-from selfdoc.extractors import EXTRACTORS
-from selfdoc.resolver import make_resolver
+from selfdoc.extractors import EXTRACTORS, SourceEntry
+from selfdoc.resolver import make_resolver, Resolver
 from selfdoc.staleness import update_hashes
 from selfdoc.gen import _DEFAULT_DESCRIPTION_RE
 
@@ -47,6 +47,7 @@ class ResolvedDirective:
     attrs: dict  # directive attributes
     content: str  # resolved output text
     file: str = ""  # relative path within docs/ (which page this directive is on)
+    source_entry: "SourceEntry | None" = None  # which source entry matched
 
 
 @dataclass
@@ -142,12 +143,17 @@ def _validate_directives(docs_dict, resolver, valid_names, file_prefix="",
                         status="OK",
                     ))
                     if collect_resolved and directive.attrs:
+                        # Read the matched source entry from the resolver
+                        src_entry = None
+                        if isinstance(resolver, Resolver):
+                            src_entry = resolver.last_source_entry
                         resolved_directives.append(
                             ResolvedDirective(
                                 name=directive.name,
                                 attrs=directive.attrs,
                                 content=resolved,
                                 file=rel_path,
+                                source_entry=src_entry,
                             )
                         )
             except Exception as exc:
