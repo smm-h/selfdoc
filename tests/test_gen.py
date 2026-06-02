@@ -817,3 +817,152 @@ class TestGenResult:
         assert "mylib-core.md" in result2.written
         assert "mylib.md" in result2.written
         assert "gen-index.md" in result2.written
+
+
+# ---------------------------------------------------------------------------
+# Multi-language generation tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def multi_language_project(tmp_path):
+    """Create a project with both Python and Go sources."""
+    config = {
+        "source": [
+            {"path": "pylib/", "language": "python"},
+            {"path": "golib/", "language": "go"},
+        ],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Python source: pylib/__init__.py, pylib/core.py
+    py_dir = os.path.join(tmp_path, "pylib")
+    os.makedirs(py_dir)
+    with open(os.path.join(py_dir, "__init__.py"), "w") as f:
+        f.write('"""Python library."""\n')
+    with open(os.path.join(py_dir, "core.py"), "w") as f:
+        f.write('"""Core Python module."""\ndef main(): pass\n')
+
+    # Go source: golib/handler.go (one package)
+    go_dir = os.path.join(tmp_path, "golib")
+    os.makedirs(go_dir)
+    with open(os.path.join(go_dir, "handler.go"), "w") as f:
+        f.write(
+            "// Package golib provides handlers.\n"
+            "package golib\n\n"
+            "func Handle() {}\n"
+        )
+
+    # go.mod (needed for root package name resolution)
+    with open(os.path.join(tmp_path, "go.mod"), "w") as f:
+        f.write("module github.com/user/multiproj\n\ngo 1.21\n")
+
+    # Create docs/ directory
+    os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
+
+    return tmp_path
+
+
+class TestMultiLanguageGeneration:
+    """Test that multi-language configs generate pages for all languages."""
+
+    def test_multi_language_gen(self, multi_language_project):
+        """Config with Python + Go sources generates pages for both."""
+        config = _load_config(multi_language_project)
+        result = generate_docs(config, base_dir=str(multi_language_project))
+
+        filenames = set(result.written)
+
+        # Python pages: pylib (from __init__), pylib-core
+        assert "pylib.md" in filenames
+        assert "pylib-core.md" in filenames
+
+        # Go pages: golib is a single package under golib/ source path.
+        # The Go extractor walks golib/ and finds "." as the package path
+        # relative to the source root. The root package uses
+        # _go_root_package_name which reads go.mod -> "multiproj".
+        # But wait -- golib/ source path means the Go walker starts at
+        # golib/ and finds "." there, which maps to the root package name.
+        # Actually, _go_root_package_name reads go.mod from base_dir.
+        # The "." package in golib/ -> filename = "multiproj.md"
+        # Let's verify by checking the docs dir for .md files:
+        docs_dir = os.path.join(multi_language_project, "docs")
+        all_md = {
+            f for f in os.listdir(docs_dir) if f.endswith(".md")
+        }
+
+        # Should have Python pages + Go page(s) + gen-index
+        assert "pylib.md" in all_md
+        assert "pylib-core.md" in all_md
+        assert "gen-index.md" in all_md
+
+        # Go root package uses go.mod module name -> "multiproj"
+        assert "multiproj.md" in all_md
+
+        # Index should list both Python and Go modules
+        with open(os.path.join(docs_dir, "gen-index.md"), "r") as f:
+            index_content = f.read()
+        assert "pylib.core" in index_content
+        assert "multiproj" in index_content
+
+    def test_stale_cleanup_across_languages(self, multi_language_project):
+        """Removing a Python source does not delete Go pages."""
+        config = _load_config(multi_language_project)
+
+        # First generation
+        result1 = generate_docs(
+            config, base_dir=str(multi_language_project),
+        )
+        assert "pylib-core.md" in result1.written
+
+        docs_dir = os.path.join(multi_language_project, "docs")
+
+        # Find Go page name
+        go_pages = [
+            f for f in result1.written
+            if f not in ("pylib.md", "pylib-core.md", "gen-index.md")
+        ]
+        assert len(go_pages) == 1
+        go_page = go_pages[0]
+        assert os.path.isfile(os.path.join(docs_dir, go_page))
+
+        # Remove the Python core source file
+        os.unlink(
+            os.path.join(multi_language_project, "pylib", "core.py")
+        )
+
+        # Second generation
+        result2 = generate_docs(
+            config, base_dir=str(multi_language_project),
+        )
+
+        # Python core page should be deleted
+        assert "pylib-core.md" in result2.deleted
+
+        # Go page should still exist and be written (not deleted)
+        assert go_page in result2.written
+        assert go_page not in result2.deleted
+        assert os.path.isfile(os.path.join(docs_dir, go_page))
+
+    def test_single_language_still_works(self, python_project):
+        """Single-language config (Python only) works correctly."""
+        config = _load_config(python_project)
+        result = generate_docs(config, base_dir=str(python_project))
+
+        filenames = set(result.written)
+        assert "mylib-core.md" in filenames
+        assert "mylib-utils.md" in filenames
+        assert "mylib.md" in filenames
+        assert "gen-index.md" in filenames
+
+        # Verify content is correct
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "mylib-core.md"), "r") as f:
+            content = f.read()
+        assert ':-: ref path="mylib.core"' in content
+        assert "generated: true" in content

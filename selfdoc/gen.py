@@ -432,6 +432,11 @@ def _get_locale_docs_dirs(config, base_dir):
 def generate_docs(config, base_dir="."):
     """Auto-discover project source files and generate documentation pages.
 
+    For multi-language projects, groups source entries by language and
+    runs a generation pass for each language group.  Stale cleanup runs
+    once after all groups so one language's output is never deleted by
+    another's pass.
+
     For multi-locale projects, generates pages under docs/{locale_code}/
     for each configured locale. For single-locale projects without locale
     subdirectories, generates directly under docs/.
@@ -439,41 +444,108 @@ def generate_docs(config, base_dir="."):
     Returns a ``GenResult`` with written and deleted file paths relative
     to the docs directory.
     """
-    from selfdoc.extractors import resolve_source_entries
+    from selfdoc.extractors import resolve_source_entries, source_paths as _source_paths
 
     src_entries = resolve_source_entries(config)
-    # Use first entry's language/extractor as primary
-    language = src_entries[0].language
-    extractor = src_entries[0].extractor
+
+    # Group entries by (language, extractor identity) so each group
+    # collects all source paths for one language.
+    groups: dict[tuple[str, int], tuple[str, object, list[str]]] = {}
+    for entry in src_entries:
+        key = (entry.language, id(entry.extractor))
+        if key not in groups:
+            groups[key] = (entry.language, entry.extractor, [])
+        groups[key][2].append(entry.path)
+
+    all_source_paths = _source_paths(config)
 
     locale_dirs = _get_locale_docs_dirs(config, base_dir)
     all_written = []
     all_deleted = []
 
+    # Resolve strictcli structure once (shared across locales)
+    from selfdoc.strictcli_support import (
+        uses_strictcli,
+        extract_cli_structure,
+        generate_cli_pages,
+        expected_cli_page_filenames,
+    )
+    cli_structure = None
+    if uses_strictcli(all_source_paths, base_dir):
+        cli_structure = extract_cli_structure(all_source_paths, base_dir)
+    cli_page_names = expected_cli_page_filenames(cli_structure)
+
     for locale_code, locale_docs_dir in locale_dirs:
-        result = _generate_docs_for_dir(
-            config, base_dir, language, extractor, locale_docs_dir,
-        )
+        # Collect filenames across all language groups for stale cleanup
+        locale_all_filenames: list[str] = []
+        locale_written: list[str] = []
+        locale_index_pages: list[tuple[str, str]] = []
+
+        for language, extractor, group_paths in groups.values():
+            result, index_pages = _generate_docs_for_dir(
+                config, base_dir, language, extractor,
+                locale_docs_dir, group_paths,
+            )
+            locale_written.extend(result.written)
+            locale_all_filenames.extend(result.written)
+            locale_index_pages.extend(index_pages)
+
+        # Sort index entries across all language groups for deterministic output
+        locale_index_pages.sort(key=lambda t: t[0])
+
+        # Generate combined index page across all language groups
+        index_content = _generate_index_content(locale_index_pages)
+        index_path = os.path.join(locale_docs_dir, "gen-index.md")
+        os.makedirs(locale_docs_dir, exist_ok=True)
+        if os.path.isfile(index_path):
+            try:
+                os.chmod(index_path, stat.S_IRUSR | stat.S_IWUSR)
+            except OSError:
+                pass
+        _atomic_write(index_path, index_content, permissions=0o444)
+        locale_written.append("gen-index.md")
+        locale_all_filenames.append("gen-index.md")
+
+        # Include strictcli page names so they survive stale cleanup
+        locale_all_filenames.extend(cli_page_names)
+
+        # Generate CLI pages (once per locale, not per language group)
+        if cli_structure is not None:
+            cli_pages = generate_cli_pages(cli_structure, locale_docs_dir)
+            locale_written.extend(cli_pages)
+
+        # Stale cleanup: run ONCE after all language groups have generated
+        deleted = _remove_stale_generated(locale_docs_dir, locale_all_filenames)
+
         if locale_code:
-            # Prefix paths with locale code for the caller
             all_written.extend(
-                os.path.join(locale_code, f) for f in result.written
+                os.path.join(locale_code, f) for f in locale_written
             )
             all_deleted.extend(
-                os.path.join(locale_code, f) for f in result.deleted
+                os.path.join(locale_code, f) for f in deleted
             )
         else:
-            all_written.extend(result.written)
-            all_deleted.extend(result.deleted)
+            all_written.extend(locale_written)
+            all_deleted.extend(deleted)
 
     return GenResult(written=all_written, deleted=all_deleted)
 
 
-def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
-    """Generate docs for a single directory. Returns a ``GenResult``."""
-    from selfdoc.extractors import source_paths as _source_paths
+def _generate_docs_for_dir(config, base_dir, language, extractor,
+                           docs_dir, source_paths):
+    """Generate docs for a single language group in one directory.
 
-    source_paths = _source_paths(config)
+    ``source_paths`` is the list of source path strings for this
+    language group (already extracted from config by the caller).
+
+    Stale cleanup and index generation are NOT done here -- the caller
+    (``generate_docs``) handles them after all language groups have
+    generated.
+
+    Returns a tuple of ``(GenResult, index_pages)`` where
+    ``index_pages`` is a list of ``(module_name, md_filename)`` for
+    the combined index page.
+    """
     os.makedirs(docs_dir, exist_ok=True)
 
     extensions = set(extractor.file_extensions())
@@ -568,26 +640,6 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
             unique_modules.append((mod_path, mod_name, md_fname, src_path))
     modules = unique_modules
 
-    # Collect all filenames we will write (pages + index) for stale cleanup
-    all_filenames = [md_fname for _, _, md_fname, _ in modules]
-    all_filenames.append("gen-index.md")
-
-    # Resolve the strictcli structure up front so the CLI page names can
-    # join all_filenames before the stale-cleanup pass — otherwise the
-    # cleanup deletes every cli-*.md file (they have ``generated: true``)
-    # and the per-page description preservation has no existing file to
-    # read from when generate_cli_pages re-renders them.
-    from selfdoc.strictcli_support import (
-        uses_strictcli,
-        extract_cli_structure,
-        generate_cli_pages,
-        expected_cli_page_filenames,
-    )
-    cli_structure = None
-    if uses_strictcli(source_paths, base_dir):
-        cli_structure = extract_cli_structure(source_paths, base_dir)
-    all_filenames.extend(expected_cli_page_filenames(cli_structure))
-
     generated = []
 
     for nav_order, (mod_path, mod_name, md_fname, src_path) in enumerate(modules, start=1):
@@ -617,29 +669,10 @@ def _generate_docs_for_dir(config, base_dir, language, extractor, docs_dir):
         _atomic_write(out_path, content, permissions=0o444)
         generated.append(md_fname)
 
-    # Generate index page
+    # Return index entries for the caller to merge across language groups
     index_pages = [(mod_name, md_fname) for _, mod_name, md_fname, _ in modules]
-    index_content = _generate_index_content(index_pages)
-    index_path = os.path.join(docs_dir, "gen-index.md")
-    if os.path.isfile(index_path):
-        try:
-            os.chmod(index_path, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass
-    _atomic_write(index_path, index_content, permissions=0o444)
-    generated.append("gen-index.md")
 
-    # strictcli support: auto-generate CLI documentation pages
-    # (cli_structure was resolved earlier so its page names could be
-    # excluded from the stale-cleanup pass)
-    if cli_structure is not None:
-        cli_pages = generate_cli_pages(cli_structure, docs_dir)
-        generated.extend(cli_pages)
-
-    # Remove stale generated files after all new files have been written
-    deleted = _remove_stale_generated(docs_dir, all_filenames)
-
-    return GenResult(written=generated, deleted=deleted)
+    return GenResult(written=generated, deleted=[]), index_pages
 
 
 # -- Header comment for auto-generated root files ---------------------------
