@@ -200,8 +200,11 @@ def _collect_go_packages(source_paths, base_dir, exclude_patterns):
 
     Returns a list of (module_path, pkg_dir_abs) tuples sorted by module_path.
     Excludes test files and files matching exclude_patterns.
-    The module_path is the relative directory path from the source root
-    (e.g. "internal/commit"), or "." for the source root itself.
+    The module_path is source-path-qualified: for a root package under
+    ``router/``, the module_path is ``"router"`` (not ``"."``).  For a
+    sub-package ``middleware/`` under ``router/``, it is
+    ``"router/middleware"``.  This ensures uniqueness across multiple
+    source paths.
     """
     packages = {}  # module_path -> pkg_dir absolute path
 
@@ -209,6 +212,12 @@ def _collect_go_packages(source_paths, base_dir, exclude_patterns):
         source_root = os.path.join(base_dir, sp.rstrip("/"))
         if not os.path.isdir(source_root):
             continue
+
+        # The source path prefix used to qualify module paths.
+        # e.g. "router/" -> "router", "." -> ""
+        sp_prefix = sp.rstrip("/")
+        if sp_prefix == ".":
+            sp_prefix = ""
 
         for dirpath, _dirnames, filenames in os.walk(source_root):
             has_go_file = False
@@ -230,9 +239,17 @@ def _collect_go_packages(source_paths, base_dir, exclude_patterns):
                 rel_dir = os.path.relpath(dirpath, source_root)
                 # Normalise to forward slashes
                 if rel_dir == ".":
-                    module_path = "."
+                    # Root of this source path -- use source path name
+                    if sp_prefix:
+                        module_path = sp_prefix
+                    else:
+                        module_path = "."
                 else:
-                    module_path = rel_dir.replace(os.sep, "/")
+                    rel_normalized = rel_dir.replace(os.sep, "/")
+                    if sp_prefix:
+                        module_path = sp_prefix + "/" + rel_normalized
+                    else:
+                        module_path = rel_normalized
 
                 # Check exclusion against the package path itself
                 if module_path != "." and _is_excluded(

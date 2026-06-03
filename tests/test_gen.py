@@ -733,7 +733,8 @@ class TestGoPackageGeneration:
         generated = generate_docs(config, base_dir=str(go_project)).written
 
         filenames = set(generated)
-        assert "extra.md" in filenames
+        # Sub-package under pkg/ is prefixed with source path name
+        assert "pkg-extra.md" in filenames
 
     def test_user_exclude_patterns_go(self, go_project):
         """User-configured exclude patterns work for Go packages."""
@@ -883,14 +884,7 @@ class TestMultiLanguageGeneration:
         assert "pylib-core.md" in filenames
 
         # Go pages: golib is a single package under golib/ source path.
-        # The Go extractor walks golib/ and finds "." as the package path
-        # relative to the source root. The root package uses
-        # _go_root_package_name which reads go.mod -> "multiproj".
-        # But wait -- golib/ source path means the Go walker starts at
-        # golib/ and finds "." there, which maps to the root package name.
-        # Actually, _go_root_package_name reads go.mod from base_dir.
-        # The "." package in golib/ -> filename = "multiproj.md"
-        # Let's verify by checking the docs dir for .md files:
+        # The root package gets module_path = "golib" (source-path-qualified).
         docs_dir = os.path.join(multi_language_project, "docs")
         all_md = {
             f for f in os.listdir(docs_dir) if f.endswith(".md")
@@ -901,14 +895,14 @@ class TestMultiLanguageGeneration:
         assert "pylib-core.md" in all_md
         assert "gen-index.md" in all_md
 
-        # Go root package uses go.mod module name -> "multiproj"
-        assert "multiproj.md" in all_md
+        # Go root package uses source path name -> "golib"
+        assert "golib.md" in all_md
 
         # Index should list both Python and Go modules
         with open(os.path.join(docs_dir, "gen-index.md"), "r") as f:
             index_content = f.read()
         assert "pylib.core" in index_content
-        assert "multiproj" in index_content
+        assert "golib" in index_content
 
     def test_stale_cleanup_across_languages(self, multi_language_project):
         """Removing a Python source does not delete Go pages."""
@@ -966,3 +960,117 @@ class TestMultiLanguageGeneration:
             content = f.read()
         assert ':-: ref path="mylib.core" lang="python"' in content
         assert "generated: true" in content
+
+
+# ---------------------------------------------------------------------------
+# Multi-source-path Go root package ambiguity tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def multi_go_source_project(tmp_path):
+    """Create a project with two Go source paths, each with a root package."""
+    config = {
+        "source": [
+            {"path": "router/", "language": "go"},
+            {"path": "sdk/", "language": "go"},
+        ],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # go.mod
+    with open(os.path.join(tmp_path, "go.mod"), "w") as f:
+        f.write("module github.com/user/myproject\n\ngo 1.21\n")
+
+    # router/ source path with root package
+    router_dir = os.path.join(tmp_path, "router")
+    os.makedirs(router_dir)
+    with open(os.path.join(router_dir, "router.go"), "w") as f:
+        f.write(
+            "// Package router provides HTTP routing.\n"
+            "package router\n\n"
+            "func Route() {}\n"
+        )
+
+    # sdk/ source path with root package
+    sdk_dir = os.path.join(tmp_path, "sdk")
+    os.makedirs(sdk_dir)
+    with open(os.path.join(sdk_dir, "client.go"), "w") as f:
+        f.write(
+            "// Package sdk provides the client SDK.\n"
+            "package sdk\n\n"
+            "func NewClient() {}\n"
+        )
+
+    # Create docs/ directory
+    os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
+
+    return tmp_path
+
+
+class TestMultiGoSourcePathAmbiguity:
+    """Test that multiple Go source paths with root packages are not ambiguous."""
+
+    def test_both_root_packages_generate_pages(self, multi_go_source_project):
+        """Two Go source paths with root packages produce two separate pages."""
+        config = _load_config(multi_go_source_project)
+        result = generate_docs(
+            config, base_dir=str(multi_go_source_project),
+        )
+
+        filenames = set(result.written)
+
+        # Both source paths should produce pages, not just the first one
+        assert "router.md" in filenames
+        assert "sdk.md" in filenames
+
+    def test_ref_paths_are_unique(self, multi_go_source_project):
+        """Each root package page has a unique, non-dot ref path."""
+        config = _load_config(multi_go_source_project)
+        generate_docs(config, base_dir=str(multi_go_source_project))
+
+        docs_dir = os.path.join(multi_go_source_project, "docs")
+
+        with open(os.path.join(docs_dir, "router.md"), "r") as f:
+            router_content = f.read()
+        with open(os.path.join(docs_dir, "sdk.md"), "r") as f:
+            sdk_content = f.read()
+
+        # ref paths should use the source path name, not "."
+        assert ':-: ref path="router"' in router_content
+        assert ':-: ref path="sdk"' in sdk_content
+        # Neither should use "."
+        assert 'ref path="."' not in router_content
+        assert 'ref path="."' not in sdk_content
+
+    def test_sub_packages_prefixed_with_source_path(
+        self, multi_go_source_project,
+    ):
+        """Sub-packages under a source path are prefixed with the source path."""
+        # Add a sub-package under router/
+        middleware_dir = os.path.join(
+            multi_go_source_project, "router", "middleware",
+        )
+        os.makedirs(middleware_dir)
+        with open(os.path.join(middleware_dir, "auth.go"), "w") as f:
+            f.write("package middleware\n\nfunc Auth() {}\n")
+
+        config = _load_config(multi_go_source_project)
+        result = generate_docs(
+            config, base_dir=str(multi_go_source_project),
+        )
+
+        filenames = set(result.written)
+        assert "router-middleware.md" in filenames
+
+        docs_dir = os.path.join(multi_go_source_project, "docs")
+        with open(os.path.join(docs_dir, "router-middleware.md"), "r") as f:
+            content = f.read()
+
+        # The ref path should be prefixed with the source path
+        assert ':-: ref path="router/middleware"' in content
