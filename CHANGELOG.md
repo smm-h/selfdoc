@@ -2,9 +2,15 @@
 
 # Changelog
 
-## 0.14.0
+## 0.14.1
 
-Stub extractors for unsupported languages, skip .venv in source walks, remove javascript alias
+Exclude Python test files from coverage
+
+### Fixes
+
+- **Fix.** Python test files (`test_*.py`, `conftest.py`) and test directories (`tests/`, `test/`, `__tests__/`) are now excluded from documentation coverage, matching what `selfdoc gen` already excluded.
+
+## 0.14.0
 
 ### Breaking
 
