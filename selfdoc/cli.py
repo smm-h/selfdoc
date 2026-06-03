@@ -73,21 +73,28 @@ def _detect_main_module():
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
 def _cmd_init(no_commit=False):
     """Initialize selfdoc in the current project."""
-    from selfdoc.extractors import detect_language
+    from selfdoc.extractors import detect_languages
 
     if os.path.isfile("selfdoc.json"):
         print("selfdoc.json already exists. Aborting.")
         sys.exit(1)
 
-    language = detect_language(".")
-    if language is None:
+    detected = detect_languages(".")
+    if not detected:
         print(
             "Could not detect project language. "
             "Supported: pyproject.toml (Python), go.mod (Go), "
             "tsconfig.json/package.json (TypeScript/JavaScript)"
         )
         sys.exit(1)
-    source_entries = _detect_source_entries(language)
+
+    source_entries = []
+    for entry in detected:
+        source_entries.extend(_detect_source_entries(entry["language"]))
+
+    # Use the first detected language for the starter template
+    primary_language = detected[0]["language"]
+    detected_languages = [e["language"] for e in detected]
 
     project_name = os.path.basename(os.path.abspath("."))
     main_module = _detect_main_module()
@@ -125,13 +132,14 @@ def _cmd_init(no_commit=False):
             f"\n"
             f"## API Reference\n"
             f"\n"
-            f':-: ref path="{main_module}" lang="{language}"\n'
+            f':-: ref path="{main_module}" lang="{primary_language}"\n'
         )
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(starter)
 
     source_path_strs = [e["path"] for e in source_entries]
-    print(f"Initialized selfdoc for {language} project '{project_name}'")
+    langs_str = ", ".join(detected_languages)
+    print(f"Initialized selfdoc for {langs_str} project '{project_name}'")
     print(f"  Created: selfdoc.json")
     print(f"  Created: docs/index.md")
     print(f"  Source:  {', '.join(source_path_strs)}")

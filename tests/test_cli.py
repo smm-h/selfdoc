@@ -90,6 +90,49 @@ def test_init_aborts_if_config_exists(project_dir):
         _cmd_init()
 
 
+def test_init_detects_multiple_languages(tmp_path, monkeypatch):
+    """selfdoc init detects all languages and creates multi-language source config."""
+    # Create both Python and Go marker files
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "polyglot"\nversion = "0.1.0"\n'
+    )
+    (tmp_path / "go.mod").write_text("module example.com/polyglot\n")
+
+    # Create a Python package so _detect_source_entries finds it
+    pkg_dir = tmp_path / "polyglot"
+    pkg_dir.mkdir()
+    (pkg_dir / "__init__.py").write_text("")
+
+    # Create a Go directory so _detect_source_entries finds it
+    cmd_dir = tmp_path / "cmd"
+    cmd_dir.mkdir()
+
+    monkeypatch.chdir(tmp_path)
+
+    from selfdoc.cli import _cmd_init
+
+    _cmd_init()
+
+    config_path = tmp_path / "selfdoc.json"
+    assert config_path.exists()
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+
+    source = config["source"]
+    languages = [e["language"] for e in source]
+    assert "python" in languages
+    assert "go" in languages
+
+    # Verify Python source paths detected
+    python_entries = [e for e in source if e["language"] == "python"]
+    assert len(python_entries) >= 1
+
+    # Verify Go source paths detected
+    go_entries = [e for e in source if e["language"] == "go"]
+    assert len(go_entries) >= 1
+
+
 def _add_base_url(project_dir):
     """Add base_url, versions, and locales to selfdoc.json after init."""
     config_path = project_dir / "selfdoc.json"
