@@ -9,4 +9,4 @@ nav_order: 23
 
 # selfdoc.strictcli_support
 
-:-: ref path="selfdoc.strictcli_support"
+:-: ref path="selfdoc.strictcli_support" lang="python"

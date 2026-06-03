@@ -9,4 +9,4 @@ nav_order: 22
 
 # selfdoc.resolver
 
-:-: ref path="selfdoc.resolver"
+:-: ref path="selfdoc.resolver" lang="python"

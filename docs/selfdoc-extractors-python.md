@@ -9,4 +9,4 @@ nav_order: 13
 
 # selfdoc.extractors.python
 
-:-: ref path="selfdoc.extractors.python"
+:-: ref path="selfdoc.extractors.python" lang="python"

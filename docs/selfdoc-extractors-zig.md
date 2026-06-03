@@ -9,4 +9,4 @@ nav_order: 15
 
 # selfdoc.extractors.zig
 
-:-: ref path="selfdoc.extractors.zig"
+:-: ref path="selfdoc.extractors.zig" lang="python"

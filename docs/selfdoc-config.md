@@ -9,4 +9,4 @@ nav_order: 6
 
 # selfdoc.config
 
-:-: ref path="selfdoc.config"
+:-: ref path="selfdoc.config" lang="python"

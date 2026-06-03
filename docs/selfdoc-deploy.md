@@ -9,4 +9,4 @@ nav_order: 8
 
 # selfdoc.deploy
 
-:-: ref path="selfdoc.deploy"
+:-: ref path="selfdoc.deploy" lang="python"

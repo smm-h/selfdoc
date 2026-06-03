@@ -9,4 +9,4 @@ nav_order: 17
 
 # selfdoc.gendata
 
-:-: ref path="selfdoc.gendata"
+:-: ref path="selfdoc.gendata" lang="python"

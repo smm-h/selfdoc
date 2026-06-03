@@ -9,4 +9,4 @@ nav_order: 5
 
 # selfdoc.cli
 
-:-: ref path="selfdoc.cli"
+:-: ref path="selfdoc.cli" lang="python"

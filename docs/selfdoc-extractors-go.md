@@ -9,4 +9,4 @@ nav_order: 12
 
 # selfdoc.extractors.go
 
-:-: ref path="selfdoc.extractors.go"
+:-: ref path="selfdoc.extractors.go" lang="python"

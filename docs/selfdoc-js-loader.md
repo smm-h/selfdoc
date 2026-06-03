@@ -9,4 +9,4 @@ nav_order: 21
 
 # selfdoc.js.loader
 
-:-: ref path="selfdoc.js.loader"
+:-: ref path="selfdoc.js.loader" lang="python"

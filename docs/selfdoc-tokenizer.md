@@ -9,4 +9,4 @@ nav_order: 24
 
 # selfdoc.tokenizer
 
-:-: ref path="selfdoc.tokenizer"
+:-: ref path="selfdoc.tokenizer" lang="python"

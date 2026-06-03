@@ -9,4 +9,4 @@ nav_order: 14
 
 # selfdoc.extractors.typescript
 
-:-: ref path="selfdoc.extractors.typescript"
+:-: ref path="selfdoc.extractors.typescript" lang="python"

@@ -9,4 +9,4 @@ nav_order: 16
 
 # selfdoc.gen
 
-:-: ref path="selfdoc.gen"
+:-: ref path="selfdoc.gen" lang="python"

@@ -9,4 +9,4 @@ nav_order: 1
 
 # selfdoc
 
-:-: ref path="selfdoc"
+:-: ref path="selfdoc" lang="python"

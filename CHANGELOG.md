@@ -2,9 +2,15 @@
 
 # Changelog
 
-## 0.13.0
+## 0.13.1
 
-Multi-language project support and Zig extractor
+Fix Go root package ambiguity in multi-language projects
+
+### Fixes
+
+- **Fix.** Go root packages in multi-source-path projects no longer crash with ambiguity errors. Each source path's root package gets a unique qualified path instead of the ambiguous `path="."`.
+
+## 0.13.0
 
 ### Breaking
 

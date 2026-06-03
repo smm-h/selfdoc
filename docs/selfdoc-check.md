@@ -9,4 +9,4 @@ nav_order: 4
 
 # selfdoc.check
 
-:-: ref path="selfdoc.check"
+:-: ref path="selfdoc.check" lang="python"

@@ -9,4 +9,4 @@ nav_order: 19
 
 # selfdoc.icons
 
-:-: ref path="selfdoc.icons"
+:-: ref path="selfdoc.icons" lang="python"

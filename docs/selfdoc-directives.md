@@ -9,4 +9,4 @@ nav_order: 9
 
 # selfdoc.directives
 
-:-: ref path="selfdoc.directives"
+:-: ref path="selfdoc.directives" lang="python"
