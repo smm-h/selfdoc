@@ -1,0 +1,1 @@
+{"commits":["88733bda78764d3967a3f264f2b15e2de3d3f9db"],"user_facing":true,"description":"**New feature.** Unsupported languages in source entries get a stub extractor instead of a config error. Supported languages work normally alongside unsupported ones. `LANG001` lint error reports which source paths lack an extractor.","type":"feature"}
