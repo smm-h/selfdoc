@@ -1074,3 +1074,133 @@ class TestMultiGoSourcePathAmbiguity:
 
         # The ref path should be prefixed with the source path
         assert ':-: ref path="router/middleware"' in content
+
+
+# ---------------------------------------------------------------------------
+# Directory pruning tests -- .venv, node_modules, etc.
+# ---------------------------------------------------------------------------
+
+
+class TestDirectoryPruning:
+    """Test that .venv, node_modules, and other non-source directories are skipped."""
+
+    def test_venv_excluded_from_python_gen(self, python_project):
+        """Files inside .venv/ should not produce doc pages."""
+        venv_pkg = os.path.join(
+            python_project, "mylib", ".venv", "lib", "python3.11",
+            "site-packages", "requests",
+        )
+        os.makedirs(venv_pkg)
+        with open(os.path.join(venv_pkg, "__init__.py"), "w") as f:
+            f.write('"""HTTP library."""\n')
+        with open(os.path.join(venv_pkg, "api.py"), "w") as f:
+            f.write('"""API module."""\ndef get(): pass\n')
+
+        config = _load_config(python_project)
+        result = generate_docs(config, base_dir=str(python_project))
+
+        # No page should reference anything from .venv
+        for fname in result.written:
+            assert ".venv" not in fname
+            assert "requests" not in fname
+
+    def test_plain_venv_excluded(self, python_project):
+        """Files inside venv/ (without dot) should not produce doc pages."""
+        venv_pkg = os.path.join(python_project, "mylib", "venv", "lib", "pkg")
+        os.makedirs(venv_pkg)
+        with open(os.path.join(venv_pkg, "__init__.py"), "w") as f:
+            f.write('"""Some package."""\n')
+
+        config = _load_config(python_project)
+        result = generate_docs(config, base_dir=str(python_project))
+
+        for fname in result.written:
+            assert "venv" not in fname
+
+    def test_node_modules_excluded(self, tmp_path):
+        """Files inside node_modules/ should not produce doc pages."""
+        config = {
+            "source": [{"path": "src/", "language": "typescript"}],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+        }
+        with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+            json.dump(config, f)
+
+        src_dir = os.path.join(tmp_path, "src")
+        os.makedirs(src_dir)
+        with open(os.path.join(src_dir, "index.ts"), "w") as f:
+            f.write("export function main() {}\n")
+
+        # Simulate node_modules inside src/
+        nm_dir = os.path.join(src_dir, "node_modules", "some-pkg", "src")
+        os.makedirs(nm_dir)
+        with open(os.path.join(nm_dir, "index.ts"), "w") as f:
+            f.write("export function internal() {}\n")
+
+        os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
+
+        config = _load_config(tmp_path)
+        result = generate_docs(config, base_dir=str(tmp_path))
+
+        for fname in result.written:
+            assert "node_modules" not in fname
+            assert "some-pkg" not in fname
+
+    def test_venv_excluded_from_go_gen(self, go_project):
+        """Go walks should skip .venv directories too."""
+        venv_go = os.path.join(go_project, ".venv", "govendor")
+        os.makedirs(venv_go)
+        with open(os.path.join(venv_go, "vendor.go"), "w") as f:
+            f.write("package govendor\n\nfunc Vendor() {}\n")
+
+        config = _load_config(go_project)
+        result = generate_docs(config, base_dir=str(go_project))
+
+        for fname in result.written:
+            assert ".venv" not in fname
+            assert "vendor" not in fname.lower() or fname in (
+                "gen-index.md",
+            )
+
+    def test_venv_at_source_root(self, tmp_path):
+        """A .venv at the source path root level is skipped."""
+        config = {
+            "source": [{"path": ".", "language": "python"}],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+        }
+        with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+            json.dump(config, f)
+
+        # Real source file
+        pkg_dir = os.path.join(tmp_path, "mypkg")
+        os.makedirs(pkg_dir)
+        with open(os.path.join(pkg_dir, "__init__.py"), "w") as f:
+            f.write('"""My package."""\n')
+        with open(os.path.join(pkg_dir, "core.py"), "w") as f:
+            f.write('"""Core."""\ndef run(): pass\n')
+
+        # .venv with third-party packages at project root
+        venv_site = os.path.join(
+            tmp_path, ".venv", "lib", "python3.11", "site-packages", "flask",
+        )
+        os.makedirs(venv_site)
+        with open(os.path.join(venv_site, "__init__.py"), "w") as f:
+            f.write('"""Flask web framework."""\n')
+        with open(os.path.join(venv_site, "app.py"), "w") as f:
+            f.write('"""Flask app."""\ndef create_app(): pass\n')
+
+        os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
+
+        config = _load_config(tmp_path)
+        result = generate_docs(config, base_dir=str(tmp_path))
+
+        # Should have mypkg pages but nothing from .venv
+        filenames = set(result.written)
+        assert "mypkg.md" in filenames or "mypkg-core.md" in filenames
+        for fname in filenames:
+            assert ".venv" not in fname
+            assert "flask" not in fname

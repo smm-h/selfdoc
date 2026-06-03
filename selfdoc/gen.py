@@ -45,6 +45,24 @@ _DEFAULT_EXCLUDES = [
     "tests",
 ]
 
+# Directories that should ALWAYS be pruned from os.walk during source walks.
+# Modifying dirs[:] in-place prevents os.walk from descending into these.
+_SKIP_DIRS = {
+    ".venv", "venv", "node_modules", "__pycache__", ".git", ".hg",
+    ".svn", "dist", "build", "_build", ".tox", ".mypy_cache",
+    ".pytest_cache", ".ruff_cache", ".zig-cache", "zig-cache",
+}
+
+
+def _should_skip_dir(dirname):
+    """Return True if a directory name should be pruned during source walks."""
+    if dirname in _SKIP_DIRS:
+        return True
+    # Also skip directories ending in .egg-info (e.g. mylib.egg-info)
+    if dirname.endswith(".egg-info"):
+        return True
+    return False
+
 
 def _has_generated_marker(filepath):
     """Check whether a Markdown file has ``generated: true`` in its frontmatter.
@@ -219,7 +237,8 @@ def _collect_go_packages(source_paths, base_dir, exclude_patterns):
         if sp_prefix == ".":
             sp_prefix = ""
 
-        for dirpath, _dirnames, filenames in os.walk(source_root):
+        for dirpath, dirnames, filenames in os.walk(source_root):
+            dirnames[:] = [d for d in dirnames if not _should_skip_dir(d)]
             has_go_file = False
             for fname in filenames:
                 if not fname.endswith(".go"):
@@ -616,7 +635,8 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
             if not os.path.isdir(source_root):
                 continue
 
-            for dirpath, _dirnames, filenames in os.walk(source_root):
+            for dirpath, dirnames, filenames in os.walk(source_root):
+                dirnames[:] = [d for d in dirnames if not _should_skip_dir(d)]
                 for fname in filenames:
                     _root, ext = os.path.splitext(fname)
                     if ext not in extensions:

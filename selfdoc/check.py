@@ -935,7 +935,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
             (frontmatter, resolved, raw_content, fm_line_count).
             When provided, enables two-tier skeleton page detection.
     """
-    from selfdoc.gen import _file_to_module_path, _is_excluded
+    from selfdoc.gen import _file_to_module_path, _is_excluded, _should_skip_dir
 
     base_dir = os.path.abspath(base_dir)
     stats = CoverageStats()
@@ -970,7 +970,8 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
             src_dir = os.path.join(base_dir, sp)
             if not os.path.isdir(src_dir):
                 continue
-            for root, _dirs, files in os.walk(src_dir):
+            for root, dirs, files in os.walk(src_dir):
+                dirs[:] = [d for d in dirs if not _should_skip_dir(d)]
                 for fname in sorted(files):
                     if not any(fname.endswith(ext) for ext in extensions):
                         continue
