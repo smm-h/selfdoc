@@ -86,14 +86,15 @@ def test_empty_base_url(config_dir):
 # -- invalid values --
 
 
-def test_invalid_language_in_source_entry(config_dir):
-    """Unsupported language in a source entry raises ConfigError."""
+def test_unsupported_language_accepted_in_config(config_dir):
+    """Unsupported language in a source entry is accepted by config loader."""
     _write_config(config_dir, {
         "source": [{"path": "lib/", "language": "ruby"}],
         "base_url": "https://example.com",
     })
-    with pytest.raises(ConfigError, match="unsupported language 'ruby'"):
-        load_config(str(config_dir))
+    config = load_config(str(config_dir))
+    assert config is not None
+    assert config["source"][0]["language"] == "ruby"
 
 
 def test_source_not_a_list(config_dir):

@@ -3222,3 +3222,43 @@ def test_single_language_coverage_unchanged(tmp_path):
     assert result.coverage.total_public == 3
     assert result.coverage.referenced == 3
     assert len(result.coverage.unreferenced_symbols) == 0
+
+
+# -- LANG001: Unsupported language lint --
+
+
+def test_lang001_for_unsupported_language(tmp_path):
+    """LANG001: config with an unsupported language produces a lint error."""
+    config = {
+        "source": [{"path": "ios/Sources/", "language": "swift"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write("# API\n\nSome content.\n")
+
+    result = check_docs(str(tmp_path))
+
+    lang001 = [lint for lint in result.lints if lint.code == "LANG001"]
+    assert len(lang001) == 1
+    assert lang001[0].severity == "error"
+    assert "swift" in lang001[0].message
+    assert "ios/Sources/" in lang001[0].message
+
+
+def test_supported_languages_no_lang001(python_project):
+    """Config with only supported languages produces no LANG001 lint."""
+    docs_dir = os.path.join(python_project, "docs")
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="mylib"\n')
+
+    result = check_docs(str(python_project))
+
+    lang001 = [lint for lint in result.lints if lint.code == "LANG001"]
+    assert len(lang001) == 0

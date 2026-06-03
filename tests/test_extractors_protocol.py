@@ -12,6 +12,7 @@ from selfdoc.extractors import (
     resolve_source_entries,
     source_paths,
 )
+from selfdoc.extractors.base import StubExtractor
 from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
@@ -36,6 +37,50 @@ class TestProtocolConformance:
 
     def test_zig_extractor_is_language_extractor(self):
         assert isinstance(ZigExtractor(), LanguageExtractor)
+
+    def test_stub_extractor_is_language_extractor(self):
+        assert isinstance(StubExtractor("swift"), LanguageExtractor)
+
+
+# ---------------------------------------------------------------------------
+# StubExtractor
+# ---------------------------------------------------------------------------
+
+
+class TestStubExtractor:
+    def test_stub_extractor_name(self):
+        stub = StubExtractor("swift")
+        assert stub.name == "swift"
+
+    def test_stub_extractor_detect_false(self, tmp_path):
+        stub = StubExtractor("swift")
+        assert stub.detect(str(tmp_path)) is False
+
+    def test_stub_extractor_file_extensions_empty(self):
+        stub = StubExtractor("swift")
+        assert stub.file_extensions() == []
+
+    def test_stub_extractor_public_symbols_empty(self):
+        stub = StubExtractor("swift")
+        assert stub.public_symbols("/some/file.swift") == []
+
+    def test_stub_extractor_resolve_path_none(self):
+        stub = StubExtractor("swift")
+        assert stub.resolve_path("Foo", ["src/"], "/base") is None
+
+    def test_stub_extractor_extract_returns_error(self):
+        stub = StubExtractor("swift")
+        result = stub.extract("ref", {"path": "Foo"}, [], ["src/"], "/base")
+        assert "no extractor for 'swift'" in result
+        assert result.startswith("> *[selfdoc:")
+
+    def test_resolve_source_entries_unsupported_uses_stub(self):
+        config = {"source": [{"path": "ios/Sources/", "language": "swift"}]}
+        entries = resolve_source_entries(config)
+        assert len(entries) == 1
+        assert isinstance(entries[0].extractor, StubExtractor)
+        assert entries[0].extractor.name == "swift"
+        assert entries[0].path == "ios/Sources/"
 
 
 # ---------------------------------------------------------------------------
@@ -626,8 +671,10 @@ class TestSourceEntries:
 
     def test_resolve_source_entries_unsupported_language(self):
         config = {"source": [{"path": "lib/", "language": "ruby"}]}
-        with pytest.raises(ValueError, match="unsupported language 'ruby'"):
-            resolve_source_entries(config)
+        entries = resolve_source_entries(config)
+        assert len(entries) == 1
+        assert entries[0].language == "ruby"
+        assert isinstance(entries[0].extractor, StubExtractor)
 
     def test_source_paths_extracts_paths(self):
         config = {"source": [

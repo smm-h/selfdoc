@@ -238,6 +238,21 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # Run lint checks (SEO and other diagnostics)
     result.lints = _run_lints(all_docs, docs_dir, resolver, config)
 
+    # LANG001: unsupported language detection via StubExtractor
+    from selfdoc.extractors.base import StubExtractor as _StubExtractor
+    for entry in src_entries:
+        if isinstance(entry.extractor, _StubExtractor):
+            result.lints.append(LintResult(
+                file="selfdoc.json",
+                line=None,
+                code="LANG001",
+                message=(
+                    f"No extractor for language '{entry.language}'"
+                    f" (source path: {entry.path})"
+                ),
+                severity="error",
+            ))
+
     # Project-level version consistency checks
     result.lints.extend(_check_version_consistency(config, dir_path))
 

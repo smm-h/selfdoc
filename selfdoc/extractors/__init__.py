@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from selfdoc.extractors.base import StubExtractor
 from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
@@ -74,9 +75,7 @@ def resolve_source_entries(config: dict) -> list[SourceEntry]:
         language = item["language"]
         extractor = EXTRACTORS.get(language)
         if extractor is None:
-            raise ValueError(
-                f"unsupported language {language!r} in config"
-            )
+            extractor = StubExtractor(language)
         entries.append(
             SourceEntry(path=item["path"], language=language, extractor=extractor)
         )

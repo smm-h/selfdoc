@@ -153,6 +153,36 @@ class BaseExtractor:
         return None
 
 
+class StubExtractor(BaseExtractor):
+    """Stub extractor for unsupported languages.
+
+    Returns empty results for discovery methods and an error marker
+    for extraction. Allows the pipeline to proceed without raising
+    ValueError for unknown languages -- the LANG001 lint catches
+    these at check time instead.
+    """
+
+    def __init__(self, language: str) -> None:
+        self._language = language
+
+    @property
+    def name(self) -> str:
+        return self._language
+
+    def detect(self, dir_path: str) -> bool:
+        return False
+
+    def extract(
+        self,
+        directive_name: str,
+        attrs: dict[str, str],
+        body: list[str],
+        source_paths: list[str],
+        base_dir: str,
+    ) -> str:
+        return format_error(f"no extractor for '{self._language}'")
+
+
 def _config_from_toml(full_path, display_path, exclude_keys: set[str] | None = None):
     """Parse TOML config and render as a key-value table."""
     try:

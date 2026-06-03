@@ -172,14 +172,12 @@ def test_non_custom_directive_falls_through(tmp_path):
 # -- language-agnostic dispatch --
 
 
-def test_unknown_language_produces_error(tmp_path):
-    """An unsupported language should produce an error, not crash."""
+def test_unknown_language_uses_stub_extractor(tmp_path):
+    """An unsupported language uses StubExtractor and returns error on extract."""
     config = _make_config(source=[{"path": "src/", "language": "rust"}])
-    from selfdoc.extractors import EXTRACTORS
-    # rust is not in EXTRACTORS, so resolve_source_entries will fail
-    from pytest import raises
-    with raises(ValueError, match="unsupported language 'rust'"):
-        make_resolver(config, str(tmp_path))
+    resolver = make_resolver(config, str(tmp_path))
+    result = resolver("ref", {"path": "foo"}, [])
+    assert "no extractor for 'rust'" in result
 
 
 def test_unknown_directive_produces_error(tmp_path):

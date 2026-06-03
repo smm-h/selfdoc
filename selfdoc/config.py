@@ -9,9 +9,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable
 
-from selfdoc.extractors import EXTRACTORS
-
-
 class FieldType(Enum):
     """Supported field types for config validation."""
 
@@ -44,7 +41,6 @@ class FieldSpec:
     transform: Callable[[Any], Any] | None = None
     internal: bool = False
 
-VALID_LANGUAGES = set(EXTRACTORS.keys())
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
 VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch")
 
@@ -897,14 +893,5 @@ def load_config(dir_path="."):
         raw_value = raw.get(spec.name, _MISSING)
         validated = _validate_field(spec, raw_value, spec.name)
         result[spec.name] = validated
-
-    # Validate language values in source entries against VALID_LANGUAGES
-    for i, entry in enumerate(result.get("source", [])):
-        lang = entry.get("language")
-        if lang and lang not in VALID_LANGUAGES:
-            raise ConfigError(
-                f"unsupported language {lang!r} in source[{i}]; "
-                f"must be one of: {', '.join(sorted(VALID_LANGUAGES))}"
-            )
 
     return _post_validate(result)
