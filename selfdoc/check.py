@@ -975,12 +975,27 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                 for fname in sorted(files):
                     if not any(fname.endswith(ext) for ext in extensions):
                         continue
-                    # Skip test files (Go: *_test.go, TS/JS: *.test.* / *.spec.*)
+                    # Skip test files:
+                    # Go: *_test.go
+                    # TS/JS: *.test.* / *.spec.*
+                    # Python: test_*.py, conftest.py
                     if fname.endswith("_test.go"):
                         continue
                     if any(
                         fname.endswith(f".test{ext}") or fname.endswith(f".spec{ext}")
                         for ext in extensions
+                    ):
+                        continue
+                    if fname.startswith("test_") and fname.endswith(".py"):
+                        continue
+                    if fname == "conftest.py":
+                        continue
+                    # Skip files inside test directories (tests/, test/, __tests__/)
+                    rel_to_src = os.path.relpath(root, src_dir)
+                    path_parts = rel_to_src.replace(os.sep, "/").split("/")
+                    if any(
+                        part in ("tests", "test", "__tests__")
+                        for part in path_parts
                     ):
                         continue
                     full_path = os.path.join(root, fname)

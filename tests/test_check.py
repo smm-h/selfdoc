@@ -3262,3 +3262,184 @@ def test_supported_languages_no_lang001(python_project):
 
     lang001 = [lint for lint in result.lints if lint.code == "LANG001"]
     assert len(lang001) == 0
+
+
+# -- Python test file exclusion from coverage --
+
+
+def test_coverage_excludes_python_test_files(tmp_path):
+    """Python test files (test_*.py, conftest.py) should not count toward coverage."""
+    config = {
+        "source": [{"path": "src/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source: src/app.py with a public function
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""App package."""\n')
+    with open(os.path.join(src_dir, "app.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Application module."""\n'
+            "\n"
+            "def run():\n"
+            '    """Run the app."""\n'
+            "    pass\n"
+        )
+
+    # Source: src/test_app.py with a public test class (should be excluded)
+    with open(os.path.join(src_dir, "test_app.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Tests for app."""\n'
+            "\n"
+            "class TestApp:\n"
+            '    """Test the app."""\n'
+            "    def test_run(self):\n"
+            "        pass\n"
+        )
+
+    # Source: src/conftest.py with a public fixture (should be excluded)
+    with open(os.path.join(src_dir, "conftest.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Pytest fixtures."""\n'
+            "\n"
+            "def my_fixture():\n"
+            '    """A fixture."""\n'
+            "    return 42\n"
+        )
+
+    # docs/ referencing src.app
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="src.app"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # Only src/app.py's "run" should count. test_app.py and conftest.py excluded.
+    # src/__init__.py has no public symbols (just a docstring).
+    assert result.coverage.total_public == 1
+    assert result.coverage.referenced == 1
+    # No unreferenced symbols from test files
+    assert len(result.coverage.unreferenced_symbols) == 0
+
+
+def test_coverage_excludes_tests_directory(tmp_path):
+    """Files inside tests/ directories should not count toward coverage."""
+    config = {
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source: mylib/__init__.py
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n'
+            "\n"
+            "def do_stuff():\n"
+            '    """Do stuff."""\n'
+            "    pass\n"
+        )
+
+    # Source: mylib/tests/test_stuff.py (inside tests/ dir -- should be excluded)
+    tests_dir = os.path.join(lib_dir, "tests")
+    os.makedirs(tests_dir)
+    with open(os.path.join(tests_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write("")
+    with open(os.path.join(tests_dir, "test_stuff.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Tests for stuff."""\n'
+            "\n"
+            "class TestStuff:\n"
+            '    """Test stuff."""\n'
+            "    def test_it(self):\n"
+            "        pass\n"
+        )
+
+    # docs/ referencing mylib
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="mylib"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # Only mylib/__init__.py's "do_stuff" should count.
+    # mylib/tests/ entire directory should be excluded.
+    assert result.coverage.total_public == 1
+    assert result.coverage.referenced == 1
+    assert len(result.coverage.unreferenced_symbols) == 0
+
+
+def test_coverage_excludes_test_and__tests__directories(tmp_path):
+    """Files inside test/ and __tests__/ directories should not count."""
+    config = {
+        "source": [{"path": "pkg/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    pkg_dir = os.path.join(tmp_path, "pkg")
+    os.makedirs(pkg_dir)
+    with open(os.path.join(pkg_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Package."""\n'
+            "\n"
+            "def main():\n"
+            '    """Main."""\n'
+            "    pass\n"
+        )
+
+    # test/ directory
+    test_dir = os.path.join(pkg_dir, "test")
+    os.makedirs(test_dir)
+    with open(os.path.join(test_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write("")
+    with open(os.path.join(test_dir, "helpers.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Test helpers."""\n'
+            "\n"
+            "def make_fixture():\n"
+            '    """Build a fixture."""\n'
+            "    return {}\n"
+        )
+
+    # __tests__/ directory
+    dunder_tests_dir = os.path.join(pkg_dir, "__tests__")
+    os.makedirs(dunder_tests_dir)
+    with open(os.path.join(dunder_tests_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write("")
+    with open(os.path.join(dunder_tests_dir, "suite.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Test suite."""\n'
+            "\n"
+            "def run_suite():\n"
+            '    """Run test suite."""\n'
+            "    pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="pkg"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # Only pkg/__init__.py's "main" should count
+    assert result.coverage.total_public == 1
+    assert result.coverage.referenced == 1
+    assert len(result.coverage.unreferenced_symbols) == 0
