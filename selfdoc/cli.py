@@ -44,7 +44,7 @@ def _detect_source_entries(language):
             if os.path.isdir(candidate):
                 paths.append(f"{candidate}/")
         paths = paths or ["."]
-    elif language in ("typescript", "javascript"):
+    elif language == "typescript":
         paths = []
         for candidate in ("src", "lib"):
             if os.path.isdir(candidate):

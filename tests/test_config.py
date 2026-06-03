@@ -177,7 +177,7 @@ def test_invalid_deploy_provider(config_dir):
 
 def test_cloudflare_requires_project(config_dir):
     _write_config(config_dir, {
-        "source": [{"path": "lib/", "language": "javascript"}],
+        "source": [{"path": "lib/", "language": "typescript"}],
         "base_url": "https://example.com",
         "deploy": {"provider": "cloudflare-pages"},
     })
@@ -187,7 +187,7 @@ def test_cloudflare_requires_project(config_dir):
 
 def test_cloudflare_with_project(config_dir):
     _write_config(config_dir, {
-        "source": [{"path": "lib/", "language": "javascript"}],
+        "source": [{"path": "lib/", "language": "typescript"}],
         "base_url": "https://example.com",
         "deploy": {"provider": "cloudflare-pages", "project": "my-docs"},
     })

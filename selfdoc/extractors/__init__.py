@@ -13,7 +13,6 @@ EXTRACTORS: dict[str, LanguageExtractor] = {
     "python": PythonExtractor(),
     "go": GoExtractor(),
     "typescript": TypeScriptExtractor(),
-    "javascript": TypeScriptExtractor(),  # alias
     "zig": ZigExtractor(),
 }
 
@@ -28,7 +27,6 @@ class SourceEntry:
 
 
 # Ordered list for detection priority (Python, Go, TypeScript, Zig).
-# Avoids duplicate detection for the javascript alias.
 _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["python"],
     EXTRACTORS["go"],

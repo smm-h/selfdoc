@@ -591,12 +591,7 @@ class TestResolvePath:
 
 class TestRegistry:
     def test_extractors_has_all_keys(self):
-        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "javascript", "zig"}
-
-    def test_javascript_is_typescript_alias(self):
-        # Both should be TypeScriptExtractor instances
-        assert isinstance(EXTRACTORS["javascript"], TypeScriptExtractor)
-        assert isinstance(EXTRACTORS["typescript"], TypeScriptExtractor)
+        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "zig"}
 
     def test_all_extractors_are_language_extractors(self):
         for name, ext in EXTRACTORS.items():
