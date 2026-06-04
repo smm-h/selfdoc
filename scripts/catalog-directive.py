@@ -6,6 +6,7 @@ grouped by category.
 """
 
 from selfdoc.catalog import CORE_DIRECTIVES
+from selfdoc.tables import render_markdown_table
 
 
 def resolve(attrs, config, body):
@@ -32,14 +33,15 @@ def resolve(attrs, config, body):
         title = category_titles.get(cat_key, cat_key.title())
         lines.append(f"### {title}")
         lines.append("")
-        lines.append("| Directive | Description | Required | Optional |")
-        lines.append("|-----------|-------------|----------|----------|")
+
+        headers = ["Directive", "Description", "Required", "Optional"]
+        rows = []
         for name, spec in categories[cat_key]:
             required = ", ".join(f"`{a}`" for a in spec.required_attrs) or "—"
             optional = ", ".join(f"`{a}`" for a in spec.optional_attrs) or "—"
-            lines.append(
-                f"| `{name}` | {spec.description} | {required} | {optional} |"
-            )
+            rows.append([f"`{name}`", spec.description, required, optional])
+
+        lines.append(render_markdown_table(headers, rows))
         lines.append("")
         # Add examples subsection
         lines.append(f"#### {title} Examples")
