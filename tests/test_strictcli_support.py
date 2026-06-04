@@ -584,6 +584,207 @@ class TestGenerateCliPages:
         assert "new help text" in content
 
 
+class TestCommandPageArgumentsTable:
+    """Test that command pages render the arguments table when args are non-empty."""
+
+    @pytest.fixture()
+    def cli_structure_with_args(self):
+        return {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [
+                {
+                    "name": "deploy",
+                    "help": "deploy stuff",
+                    "flags": [],
+                    "args": [
+                        {
+                            "name": "target",
+                            "required": True,
+                            "help": "deploy target",
+                        },
+                        {
+                            "name": "extra",
+                            "required": False,
+                            "help": "optional extra arg",
+                        },
+                    ],
+                },
+            ],
+            "groups": [],
+        }
+
+    def test_command_page_args_table_header(self, tmp_path, cli_structure_with_args):
+        """Command page renders the arguments table header."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
+            content = f.read()
+
+        assert "## Arguments" in content
+        assert "| Name | Required | Description |" in content
+        assert "|------|----------|-------------|" in content
+
+    def test_command_page_args_required(self, tmp_path, cli_structure_with_args):
+        """Command page renders required=true as 'yes'."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
+            content = f.read()
+
+        assert "| `target` | yes | deploy target |" in content
+
+    def test_command_page_args_optional(self, tmp_path, cli_structure_with_args):
+        """Command page renders required=false as 'no'."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
+            content = f.read()
+
+        assert "| `extra` | no | optional extra arg |" in content
+
+    def test_command_page_args_default_required(self, tmp_path):
+        """When 'required' key is missing, it defaults to True (yes)."""
+        structure = {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [
+                {
+                    "name": "run",
+                    "help": "run something",
+                    "flags": [],
+                    "args": [
+                        {"name": "script", "help": "script to run"},
+                    ],
+                },
+            ],
+            "groups": [],
+        }
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(structure, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-run.md"), "r") as f:
+            content = f.read()
+
+        assert "| `script` | yes | script to run |" in content
+
+
+class TestGroupPageArgumentsTable:
+    """Test that group pages render the arguments table for subcommands with args."""
+
+    @pytest.fixture()
+    def cli_structure_group_with_args(self):
+        return {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [],
+            "groups": [
+                {
+                    "name": "config",
+                    "help": "configuration",
+                    "commands": [
+                        {
+                            "name": "set",
+                            "help": "set a config value",
+                            "flags": [],
+                            "args": [
+                                {
+                                    "name": "key",
+                                    "required": True,
+                                    "help": "config key",
+                                },
+                                {
+                                    "name": "value",
+                                    "required": True,
+                                    "help": "config value",
+                                },
+                            ],
+                        },
+                        {
+                            "name": "get",
+                            "help": "get a config value",
+                            "flags": [],
+                            "args": [
+                                {
+                                    "name": "key",
+                                    "required": True,
+                                    "help": "config key to read",
+                                },
+                                {
+                                    "name": "fallback",
+                                    "required": False,
+                                    "help": "default if missing",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+
+    def test_group_page_args_table_header(
+        self, tmp_path, cli_structure_group_with_args,
+    ):
+        """Group page renders the arguments table header for subcommands."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_group_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
+            content = f.read()
+
+        assert "### Arguments" in content
+        assert "| Name | Required | Description |" in content
+        assert "|------|----------|-------------|" in content
+
+    def test_group_page_args_required(
+        self, tmp_path, cli_structure_group_with_args,
+    ):
+        """Group page renders required=true as 'yes' for subcommand args."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_group_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
+            content = f.read()
+
+        assert "| `key` | yes | config key |" in content
+        assert "| `value` | yes | config value |" in content
+
+    def test_group_page_args_optional(
+        self, tmp_path, cli_structure_group_with_args,
+    ):
+        """Group page renders required=false as 'no' for subcommand args."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_group_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
+            content = f.read()
+
+        assert "| `fallback` | no | default if missing |" in content
+
+    def test_group_page_args_multiple_subcommands(
+        self, tmp_path, cli_structure_group_with_args,
+    ):
+        """Group page renders arguments tables for multiple subcommands."""
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(cli_structure_group_with_args, docs_dir)
+
+        with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
+            content = f.read()
+
+        # Both subcommand sections appear
+        assert "## config set" in content
+        assert "## config get" in content
+        # Both subcommands' args are rendered
+        assert "| `key` | yes | config key to read |" in content
+        assert "| `fallback` | no | default if missing |" in content
+
+
 class TestDescriptionPreservation:
     """Test that user-customized CLI page descriptions survive regeneration."""
 
