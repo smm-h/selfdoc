@@ -97,7 +97,7 @@ def _json_value_repr(value):
 
 
 def _flatten_toml(data, prefix, rows):
-    """Recursively flatten TOML data into table rows."""
+    """Recursively flatten TOML data into row data lists."""
     for key, value in data.items():
         full_key = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
         if isinstance(value, dict):
@@ -105,7 +105,7 @@ def _flatten_toml(data, prefix, rows):
         else:
             type_name = _json_type_name(value)
             value_repr = _json_value_repr(value)
-            rows.append(f"| `{full_key}` | {type_name} | {value_repr} |")
+            rows.append([f"`{full_key}`", type_name, value_repr])
 
 
 def _config_from_json(full_path, display_path, exclude_keys: set[str] | None = None):
@@ -207,9 +207,6 @@ def _config_from_toml(full_path, display_path, exclude_keys: set[str] | None = N
     data = result
 
     rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
     _flatten_toml(data, "", rows)
 
-    return "\n".join(rows)
+    return render_markdown_table(["Key", "Type", "Value"], rows)
