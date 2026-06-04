@@ -35,6 +35,9 @@ def render_markdown_table(headers, rows, *, align=None, pretty=False):
         ValueError: If a cell contains a newline, or a row has more cells
             than headers, or align contains an invalid value.
     """
+    if not headers:
+        raise ValueError("headers must not be empty")
+
     num_cols = len(headers)
 
     # Validate align

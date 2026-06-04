@@ -248,6 +248,11 @@ class TestValidation:
         with pytest.raises(ValueError, match="3 cells.*2 headers"):
             render_markdown_table(["A", "B"], [["1", "2", "3"]])
 
+    def test_empty_headers_raises(self):
+        """Empty headers list raises ValueError."""
+        with pytest.raises(ValueError, match="headers must not be empty"):
+            render_markdown_table([], [])
+
 
 # -- _parse_table: escaped pipes ---------------------------------------------
 
