@@ -10,6 +10,8 @@ LanguageExtractor methods.
 
 import json
 
+from selfdoc.tables import render_markdown_table
+
 
 def format_error(message):
     """Format a selfdoc error message for display in markdown output."""
@@ -123,15 +125,12 @@ def _config_from_json(full_path, display_path, exclude_keys: set[str] | None = N
     data = result
 
     rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
     for key, value in data.items():
         type_name = _json_type_name(value)
         value_repr = _json_value_repr(value)
-        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
+        rows.append([f"`{key}`", type_name, value_repr])
 
-    return "\n".join(rows)
+    return render_markdown_table(["Key", "Type", "Value"], rows)
 
 
 class BaseExtractor:
