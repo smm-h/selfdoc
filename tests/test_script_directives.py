@@ -60,7 +60,7 @@ class TestConfigSchemaDirective:
         """Each category section has the correct table header."""
         result = self.resolve({}, {}, [])
         header = "| Key | Type | Required | Description |"
-        separator = "|-----|------|----------|-------------|"
+        separator = "| --- | --- | --- | --- |"
         # At least one occurrence per category (6 categories)
         assert result.count(header) == 6
         assert result.count(separator) == 6
@@ -192,7 +192,7 @@ class TestCatalogDirective:
         """Each category section has the correct table header."""
         result = self.resolve({}, {}, [])
         header = "| Directive | Description | Required | Optional |"
-        separator = "|-----------|-------------|----------|----------|"
+        separator = "| --- | --- | --- | --- |"
         # Two categories: code and content
         assert result.count(header) == 2
         assert result.count(separator) == 2
