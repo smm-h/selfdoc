@@ -59,6 +59,7 @@ def render_markdown_table(headers, rows, *, align=None, pretty=False):
         # Check for newlines and escape pipes
         normalized = []
         for cell in row:
+            cell = str(cell)
             if "\n" in cell:
                 raise ValueError("cell values must not contain newline characters")
             normalized.append(_escape_pipes(cell))
