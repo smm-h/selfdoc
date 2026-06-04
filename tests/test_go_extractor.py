@@ -442,6 +442,31 @@ class TestCliDirective:
         assert "Enable verbose output" in result
         assert "Output file path" in result
 
+    def test_extracts_strictcli_commands(self, go_project, source_paths):
+        """strictcli Command() calls render a commands table."""
+        cli_go = os.path.join(go_project, "cmd", "myapp", "commands.go")
+        with open(cli_go, "w", encoding="utf-8") as f:
+            f.write("""\
+package main
+
+func registerCommands(app *App) {
+\tapp.Command("run", "Run the processor")
+\tapp.Command("check", "Check configuration")
+}
+""")
+
+        result = GoExtractor().extract(
+            "code-help",
+            {"path": "cmd/myapp/commands.go"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "| Command | Description |" in result
+        assert "| --- | --- |" in result
+        assert "| `run` | Run the processor |" in result
+        assert "| `check` | Check configuration |" in result
+
     def test_missing_file_error(self, go_project, source_paths):
         result = GoExtractor().extract(
             "code-help",
