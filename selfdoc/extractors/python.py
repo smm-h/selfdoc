@@ -20,6 +20,7 @@ from selfdoc.extractors.base import (
     parse_comma_set,
     read_source,
 )
+from selfdoc.tables import render_markdown_table
 
 
 class PythonExtractor(BaseExtractor):
@@ -425,13 +426,12 @@ def _format_dataclass_fields(node):
         type_str = ast.unparse(child.annotation) if child.annotation else ""
         default_str = ast.unparse(child.value) if child.value else ""
         default_cell = f"`{default_str}`" if default_str else ""
-        rows.append(f"| `{name}` | `{type_str}` | {default_cell} |")
+        rows.append([f"`{name}`", f"`{type_str}`", default_cell])
 
     if not rows:
         return None
 
-    header = "| Field | Type | Default |\n| --- | --- | --- |"
-    return header + "\n" + "\n".join(rows)
+    return render_markdown_table(["Field", "Type", "Default"], rows)
 
 
 def _format_class(node):
@@ -682,10 +682,6 @@ def _extract_class_fields(class_node, source):
     """
     source_lines = source.split("\n")
     rows = []
-    rows.append("| Field | Type | Default | Description |")
-    rows.append("| --- | --- | --- | --- |")
-
-    found_fields = False
 
     for node in ast.iter_child_nodes(class_node):
         # Annotated assignments: field_name: Type = default
@@ -700,16 +696,19 @@ def _extract_class_fields(class_node, source):
             # Try to get a description from an inline comment
             description = _get_inline_comment(source_lines, node.lineno)
 
-            rows.append(
-                f"| `{field_name}` | `{type_str}` | "
-                f"{_format_default(default_str)} | {description} |"
-            )
-            found_fields = True
+            rows.append([
+                f"`{field_name}`",
+                f"`{type_str}`",
+                _format_default(default_str),
+                description,
+            ])
 
-    if not found_fields:
+    if not rows:
         return format_error(f"no fields found in class '{class_node.name}'")
 
-    return "\n".join(rows)
+    return render_markdown_table(
+        ["Field", "Type", "Default", "Description"], rows
+    )
 
 
 def _get_inline_comment(source_lines, lineno):
