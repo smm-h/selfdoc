@@ -11,6 +11,7 @@ import re
 
 from selfdoc.content import _read_project_field
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
+from selfdoc.tables import render_markdown_table
 from selfdoc.utils import atomic_write as _atomic_write
 
 
@@ -412,27 +413,33 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
     if flags:
         lines.append("## Flags")
         lines.append("")
-        lines.append("| Name | Short | Type | Default | Env | Description |")
-        lines.append("|------|-------|------|---------|-----|-------------|")
+        flag_rows = []
         for fl in flags:
             short = fl.get("short") or ""
             ftype = fl.get("type", "str")
             default = fl.get("default") or ""
             env = fl.get("env") or ""
             desc = fl.get("help", "")
-            lines.append(
-                f"| `--{fl['name']}` | {_fmt_short(short)} | {ftype} | {default} | {env} | {desc} |"
-            )
+            flag_rows.append([
+                f"`--{fl['name']}`", _fmt_short(short), ftype, default, env, desc,
+            ])
+        lines.append(render_markdown_table(
+            ["Name", "Short", "Type", "Default", "Env", "Description"],
+            flag_rows,
+        ))
         lines.append("")
 
     if args:
         lines.append("## Arguments")
         lines.append("")
-        lines.append("| Name | Required | Description |")
-        lines.append("|------|----------|-------------|")
+        arg_rows = []
         for ar in args:
             req = "yes" if ar.get("required", True) else "no"
-            lines.append(f"| `{ar['name']}` | {req} | {ar.get('help', '')} |")
+            arg_rows.append([f"`{ar['name']}`", req, ar.get("help", "")])
+        lines.append(render_markdown_table(
+            ["Name", "Required", "Description"],
+            arg_rows,
+        ))
         lines.append("")
 
     return "\n".join(lines)
@@ -499,27 +506,33 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
         if flags:
             lines.append("### Flags")
             lines.append("")
-            lines.append("| Name | Short | Type | Default | Env | Description |")
-            lines.append("|------|-------|------|---------|-----|-------------|")
+            flag_rows = []
             for fl in flags:
                 short = fl.get("short") or ""
                 ftype = fl.get("type", "str")
                 default = fl.get("default") or ""
                 env = fl.get("env") or ""
                 desc = fl.get("help", "")
-                lines.append(
-                    f"| `--{fl['name']}` | {_fmt_short(short)} | {ftype} | {default} | {env} | {desc} |"
-                )
+                flag_rows.append([
+                    f"`--{fl['name']}`", _fmt_short(short), ftype, default, env, desc,
+                ])
+            lines.append(render_markdown_table(
+                ["Name", "Short", "Type", "Default", "Env", "Description"],
+                flag_rows,
+            ))
             lines.append("")
 
         if args:
             lines.append("### Arguments")
             lines.append("")
-            lines.append("| Name | Required | Description |")
-            lines.append("|------|----------|-------------|")
+            arg_rows = []
             for ar in args:
                 req = "yes" if ar.get("required", True) else "no"
-                lines.append(f"| `{ar['name']}` | {req} | {ar.get('help', '')} |")
+                arg_rows.append([f"`{ar['name']}`", req, ar.get("help", "")])
+            lines.append(render_markdown_table(
+                ["Name", "Required", "Description"],
+                arg_rows,
+            ))
             lines.append("")
 
     return "\n".join(lines)

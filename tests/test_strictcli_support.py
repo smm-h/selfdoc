@@ -625,7 +625,7 @@ class TestCommandPageArgumentsTable:
 
         assert "## Arguments" in content
         assert "| Name | Required | Description |" in content
-        assert "|------|----------|-------------|" in content
+        assert "| --- | --- | --- |" in content
 
     def test_command_page_args_required(self, tmp_path, cli_structure_with_args):
         """Command page renders required=true as 'yes'."""
@@ -740,7 +740,7 @@ class TestGroupPageArgumentsTable:
 
         assert "### Arguments" in content
         assert "| Name | Required | Description |" in content
-        assert "|------|----------|-------------|" in content
+        assert "| --- | --- | --- |" in content
 
     def test_group_page_args_required(
         self, tmp_path, cli_structure_group_with_args,
