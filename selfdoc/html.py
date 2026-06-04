@@ -1322,6 +1322,21 @@ def _apply_definitions(html):
     return result
 
 
+def _split_table_cells(line):
+    """Split a markdown table line by unescaped pipes, unescaping \\| in cells."""
+    # Strip leading/trailing whitespace
+    stripped = line.strip()
+    # Remove leading pipe if present
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    # Remove trailing pipe if present (but not a trailing \|)
+    if stripped.endswith("|") and not stripped.endswith("\\|"):
+        stripped = stripped[:-1]
+    # Split on unescaped pipes and unescape \| in each cell
+    parts = re.split(r"(?<!\\)\|", stripped)
+    return [p.strip().replace("\\|", "|") for p in parts]
+
+
 def _parse_table(table_lines):
     """Parse markdown table lines into an HTML <table>.
 
@@ -1330,24 +1345,50 @@ def _parse_table(table_lines):
         | ------- | ------- |
         | Cell1   | Cell2   |
 
-    The separator line (containing only |, -, and spaces) is detected
-    and used to separate header from body rows.
+    The separator line (containing only |, -, :, and spaces) is detected
+    and used to separate header from body rows. Alignment markers (:)
+    in the separator produce text-align styles on cells. Escaped pipes
+    (\\|) in cell content are treated as literal pipe characters.
     """
     if not table_lines:
         return ""
 
     rows = []
     for line in table_lines:
-        # Strip leading/trailing pipes and split by |
-        cells = [c.strip() for c in line.strip("|").split("|")]
+        cells = _split_table_cells(line)
         rows.append(cells)
 
-    # Detect separator row (all cells match /^-+$/ or are empty)
+    # Detect separator row (all cells match /^:?-+:?$/ or are empty)
     separator_idx = None
     for idx, row in enumerate(rows):
-        if all(re.match(r"^-+$", cell) or cell == "" for cell in row):
+        if all(re.match(r"^:?-+:?$", cell) or cell == "" for cell in row):
             separator_idx = idx
             break
+
+    # Extract alignment from separator cells
+    alignments = []
+    if separator_idx is not None:
+        for cell in rows[separator_idx]:
+            if cell == "":
+                alignments.append(None)
+            elif cell.startswith(":") and cell.endswith(":"):
+                alignments.append("center")
+            elif cell.startswith(":"):
+                alignments.append("left")
+            elif cell.endswith(":"):
+                alignments.append("right")
+            else:
+                alignments.append(None)
+
+    def _th(content, col_idx):
+        if col_idx < len(alignments) and alignments[col_idx]:
+            return f'<th style="text-align: {alignments[col_idx]}">{_inline_format(content)}</th>'
+        return f"<th>{_inline_format(content)}</th>"
+
+    def _td(content, col_idx):
+        if col_idx < len(alignments) and alignments[col_idx]:
+            return f'<td style="text-align: {alignments[col_idx]}">{_inline_format(content)}</td>'
+        return f"<td>{_inline_format(content)}</td>"
 
     html = "<table>\n"
 
@@ -1355,12 +1396,12 @@ def _parse_table(table_lines):
         # Rows before separator are headers
         html += "<thead>\n"
         for row in rows[:separator_idx]:
-            html += "<tr>" + "".join(f"<th>{_inline_format(c)}</th>" for c in row) + "</tr>\n"
+            html += "<tr>" + "".join(_th(c, i) for i, c in enumerate(row)) + "</tr>\n"
         html += "</thead>\n"
         # Rows after separator are body
         html += "<tbody>\n"
         for row in rows[separator_idx + 1:]:
-            html += "<tr>" + "".join(f"<td>{_inline_format(c)}</td>" for c in row) + "</tr>\n"
+            html += "<tr>" + "".join(_td(c, i) for i, c in enumerate(row)) + "</tr>\n"
         html += "</tbody>\n"
     else:
         # No separator: all rows are body
