@@ -20,6 +20,7 @@ from selfdoc.extractors.base import (
     read_source,
 )
 from selfdoc.extractors.python import _format_docstring
+from selfdoc.tables import render_markdown_table
 
 # Patterns for public Zig declarations (used by ZigExtractor.public_symbols)
 # pub fn name(...)
@@ -602,17 +603,19 @@ def _parse_struct_field(field_line, lines, line_idx):
 def _format_struct_table(struct_info):
     """Format a struct's fields as a markdown table."""
     rows = []
-    rows.append("| Field | Type | Default | Description |")
-    rows.append("| --- | --- | --- | --- |")
 
     for field in struct_info["fields"]:
         default_display = f"`{field['default']}`" if field["default"] else ""
-        rows.append(
-            f"| `{field['name']}` | `{field['type']}` "
-            f"| {default_display} | {field['comment']} |"
-        )
+        rows.append([
+            f"`{field['name']}`",
+            f"`{field['type']}`",
+            default_display,
+            field["comment"],
+        ])
 
-    return "\n".join(rows)
+    return render_markdown_table(
+        ["Field", "Type", "Default", "Description"], rows
+    )
 
 
 # ---------------------------------------------------------------------------
