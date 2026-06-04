@@ -120,6 +120,7 @@ uv run pytest
 - **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors.
 - **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
 - **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
+- **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with alignment, pretty-printing, and pipe escaping.
 - **selfdoc.themes** (`selfdoc/themes/__init__.py`): Theme registry for selfdoc.
 - **selfdoc.tokenizer** (`selfdoc/tokenizer.py`): Standalone Markdown block tokenizer.
 - **selfdoc.unified** (`selfdoc/unified.py`): Monorepo unified site builder.

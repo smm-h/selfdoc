@@ -14,7 +14,7 @@ Build the documentation site
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
-|------|-------|------|---------|-----|-------------|
+| --- | --- | --- | --- | --- | --- |
 | `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
 | `--locale` |  | str |  |  | Build only this locale (e.g., 'en') |
 | `--version` |  | str |  |  | Build only this version (e.g., '1.0.0') |

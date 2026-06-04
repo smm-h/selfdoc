@@ -14,5 +14,5 @@ Generate data files by running sandboxed scripts
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
-|------|-------|------|---------|-----|-------------|
+| --- | --- | --- | --- | --- | --- |
 | `--no-commit` |  | bool |  |  | Skip auto-committing changed files |

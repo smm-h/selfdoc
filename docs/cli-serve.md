@@ -14,5 +14,5 @@ Serve the documentation site locally
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
-|------|-------|------|---------|-----|-------------|
+| --- | --- | --- | --- | --- | --- |
 | `--port` | `-p` | int | 8000 |  | Port to serve on (default: 8000) |

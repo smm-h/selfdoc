@@ -72,11 +72,11 @@
     "description": "597e4a547ca9b61b89dd3548380992cd96548e42da7558f5557321cf6ab07814"
   },
   "en/cli-build.md": {
-    "content": "df329e0297b4a0f3282a00644e7b5a4a12139186378ff23b2597b31bbba51f18",
+    "content": "20bce24c51144a7ca58506a6e0adeba9637a218e58550dd8b76b00c7b5abff26",
     "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8"
   },
   "en/cli-check.md": {
-    "content": "9b089d4ee112451eb379de9dfa9fa3cb69f4cd696a3ab83c4192af6cb8d7c7da",
+    "content": "7735f2f43efc8b20e46928352248e23cec66c2d28b7533e1f8ac55d2ca11a41c",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd"
   },
   "en/cli-deploy.md": {
@@ -84,23 +84,23 @@
     "description": "088395257c4196fcfd1b2d22a4636595ea294293085abc28b88a728287be8f95"
   },
   "en/cli-gen-data.md": {
-    "content": "3abfac56ea661721aa278eba03e4ce9951b30f1f92bc51112005a1f81b159637",
+    "content": "a3df1e9d5ea02aea84a21e34ae6d2708c74a7dbd0ea5aae336bd72f464e7db51",
     "description": "ae2ec87204ace68d67a6aaaccce864bdd6cdf63714801c5f43e0b71f0d188bc6"
   },
   "en/cli-gen.md": {
-    "content": "293e1f4ed0cc55c0ea22a6e344794af46209ad96d20ec10fca0b2f9b11aad779",
+    "content": "267f084974106d0f5c501758dbc900cc908d8e01517d1d050b247dba7da3c3db",
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac"
   },
   "en/cli-index.md": {
-    "content": "c288803ea098cbc5621618fadefa9a80a944d0bab0e496cb7b9c9c02e0ed0106",
+    "content": "4c0d20928a0e00de677765d4a73ae2a4c10bf884d5bfde22598c54a199f83a69",
     "description": "ce584c83335140b2ae900664f37fe8c62f98c29dc72847b32ccea87287cd1458"
   },
   "en/cli-init.md": {
-    "content": "5e8f0f46ebcf5e1e9651a81aa411a02184fe0b4b996fc07bcd537f4e66aff050",
+    "content": "2483cacc52608cf6c80414e003a03e6195b1cf5b3540398f51aa9d69c885ee98",
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb"
   },
   "en/cli-serve.md": {
-    "content": "ea2aadd9609b20c23f3382af79ee0b3e0c89542732939884ee446cf01ca25d69",
+    "content": "7992411c9de8d1cd39bab427a62c32ab5083b609770a1bf43ea7f888d7b0f41a",
     "description": "764bb3e3e5a1599a9fba9de3ab6d0beecdfc58cd56e59c85e6adb4c3df3a5892"
   },
   "en/code-blocks.md": {
@@ -112,7 +112,7 @@
     "description": "b54f7343fd127542f1a22fd1fbf5d9ddf2a00c7f244026f00a0b32f74fa47567"
   },
   "en/configuration.md": {
-    "content": "0b1ac1ff28c7e8f94e82795bd5a864cb0e0ec8acbdb6f09b1229a5d6ee610bd6",
+    "content": "9e19a481715442b80bfed683ffc91d4ef0e57a31b5a07851a2cb5582133cc95e",
     "description": "14e8cf258f8acaa7e5dcb3284c24c802adab82f3e3704b7313e1dcddb3a50fda"
   },
   "en/custom-directives.md": {
@@ -124,7 +124,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "en/directives.md": {
-    "content": "dd1a2d1b1448df2ca783bce33e5ae8506b44faed43af1193f5b00591af9370b6",
+    "content": "01c7f5451bd054a4399eb864a7d54a5c58810b59e72661c7a34aabb88cdaf715",
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/feeds.md": {
@@ -136,7 +136,7 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "9c0fef09754058e0d434ea6cd86eca8fd47070c8c42698cbfee292411fc99031",
+    "content": "0fc344f79802c724ee80e3bebbcb5b75353534aa44a8dac3caa84037cd2932c3",
     "description": "bb3cd9d34f014c0674a9285c25ee14b5b4abc5cf941f0d83594c301405e8f3b6"
   },
   "en/getting-started.md": {
@@ -244,7 +244,7 @@
     "description": "83ac7cbd447a151e8234d4064c0975da465283d5f76a2ae00828876d8601fecb"
   },
   "en/selfdoc-html.md": {
-    "content": "db55980c235ef9beb55ed5d4b0713a21574608cf6d81cc83208c6b99eb5c516b",
+    "content": "1635594bbe0becf1ab868bd9661fad7feca1292d935d28a141aa1c6134527b13",
     "description": "6287e34e73bcc6776b01f2ea020807e7810940ce964af2a4a7a38b708d11cbed"
   },
   "en/selfdoc-icons.md": {
@@ -266,6 +266,10 @@
   "en/selfdoc-strictcli_support.md": {
     "content": "b3bc7558fb379a83785e682d3696b79d93887b505e22b1986823d6afda24f3e1",
     "description": "ba21e34d05da48eae381df63dd5034745cbc1d5ce2d3cccf0b7a509cc89d4196"
+  },
+  "en/selfdoc-tables.md": {
+    "content": "2ef9a227cc33fb97aa0695b0efd49df482de095ccb6079f3ef1f95286b83dbc8",
+    "description": "91b4cbb7f468e1c9e09d2996fbd2813a926e1780cc63f4f6011e67a27f8c0436"
   },
   "en/selfdoc-tokenizer.md": {
     "content": "46c221bfa3be2e7140ce503c11beda01355a8dccce26366ed612f476ef52371e",

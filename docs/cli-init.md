@@ -14,5 +14,5 @@ Initialize selfdoc in the current project
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
-|------|-------|------|---------|-----|-------------|
+| --- | --- | --- | --- | --- | --- |
 | `--no-commit` |  | bool |  |  | Skip auto-committing changed files |

@@ -33,6 +33,7 @@ order: 90
 - [selfdoc.js.loader](selfdoc-js-loader.html)
 - [selfdoc.resolver](selfdoc-resolver.html)
 - [selfdoc.strictcli_support](selfdoc-strictcli_support.html)
+- [selfdoc.tables](selfdoc-tables.html)
 - [selfdoc.tokenizer](selfdoc-tokenizer.html)
 - [selfdoc.unified](selfdoc-unified.html)
 - [selfdoc.utils](selfdoc-utils.html)

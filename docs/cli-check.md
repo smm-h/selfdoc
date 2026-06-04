@@ -14,7 +14,7 @@ Check documentation coverage and consistency
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
-|------|-------|------|---------|-----|-------------|
+| --- | --- | --- | --- | --- | --- |
 | `--ignore` |  | str |  |  | Comma-separated SEO codes to suppress (e.g., SEO007,SEO008) |
 | `--format` |  | str | text |  | Output format (default: text) |
 | `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
