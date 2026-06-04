@@ -11,6 +11,7 @@ Uses regex-based parsing (no Go toolchain required). Handles:
 import os
 import re
 
+from selfdoc.tables import render_markdown_table
 from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
@@ -772,18 +773,17 @@ def _parse_struct_field(field_line, lines, line_idx):
 
 def _format_struct_table(struct_info):
     """Format a struct's fields as a markdown table."""
+    headers = ["Field", "Type", "Tag", "Description"]
     rows = []
-    rows.append("| Field | Type | Tag | Description |")
-    rows.append("| --- | --- | --- | --- |")
-
     for field in struct_info["fields"]:
         tag_display = f"`{field['tag']}`" if field["tag"] else ""
-        rows.append(
-            f"| `{field['name']}` | `{field['type']}` "
-            f"| {tag_display} | {field['comment']} |"
-        )
-
-    return "\n".join(rows)
+        rows.append([
+            f"`{field['name']}`",
+            f"`{field['type']}`",
+            tag_display,
+            field["comment"],
+        ])
+    return render_markdown_table(headers, rows)
 
 
 # ---------------------------------------------------------------------------
@@ -851,13 +851,18 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
         parts.append("")
         parts.append("**Flags:**")
         parts.append("")
-        parts.append("| Flag | Type | Default | Description |")
-        parts.append("| --- | --- | --- | --- |")
+        flag_rows = []
         for flag in flags:
-            parts.append(
-                f"| `{flag['name']}` | {flag['type']} "
-                f"| {flag['default']} | {flag['desc']} |"
-            )
+            flag_rows.append([
+                f"`{flag['name']}`",
+                flag["type"],
+                flag["default"],
+                flag["desc"],
+            ])
+        parts.append(render_markdown_table(
+            ["Flag", "Type", "Default", "Description"],
+            flag_rows,
+        ))
 
     # Extract strictcli commands
     commands = _extract_strictcli_commands(source)
@@ -865,10 +870,13 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
         parts.append("")
         parts.append("**Commands:**")
         parts.append("")
-        parts.append("| Command | Description |")
-        parts.append("| --- | --- |")
+        cmd_rows = []
         for cmd in commands:
-            parts.append(f"| `{cmd['name']}` | {cmd['desc']} |")
+            cmd_rows.append([f"`{cmd['name']}`", cmd["desc"]])
+        parts.append(render_markdown_table(
+            ["Command", "Description"],
+            cmd_rows,
+        ))
 
     if not parts:
         return format_error(f"no CLI documentation found in '{arg}'")
