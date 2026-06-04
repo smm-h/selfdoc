@@ -440,7 +440,7 @@ class TestRefResolution:
         result = resolve_table_endpoint(
             {"path": "events.json"}, str(oneof_spec_dir)
         )
-        assert "string | integer" in result
+        assert r"string \| integer" in result
 
 
 # -- Error handling tests -----------------------------------------------------

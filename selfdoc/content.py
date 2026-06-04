@@ -13,6 +13,7 @@ import json
 import os
 import re
 
+from selfdoc.tables import render_markdown_table
 from selfdoc.utils import detect_project_version
 
 # -- Callout directives -------------------------------------------------------
@@ -181,28 +182,27 @@ def resolve_table_dep(attrs: dict, base_dir: str) -> str:
     except Exception as exc:
         return f"> *[selfdoc: cannot parse '{path}': {exc}]*"
 
+    headers = ["Package", "Version Constraint"]
     rows = []
-    rows.append("| Package | Version Constraint |")
-    rows.append("| --- | --- |")
 
     # Main dependencies
     deps = data.get("project", {}).get("dependencies", [])
     for dep in deps:
         pkg, constraint = _parse_dep_specifier(dep)
-        rows.append(f"| `{pkg}` | {constraint} |")
+        rows.append([f"`{pkg}`", constraint])
 
     # Optional dependency groups
     opt_deps = data.get("project", {}).get("optional-dependencies", {})
     for group, group_deps in opt_deps.items():
-        rows.append(f"| **[{group}]** | |")
+        rows.append([f"**[{group}]**", ""])
         for dep in group_deps:
             pkg, constraint = _parse_dep_specifier(dep)
-            rows.append(f"| `{pkg}` | {constraint} |")
+            rows.append([f"`{pkg}`", constraint])
 
-    if len(rows) == 2:
+    if not rows:
         return "> *[selfdoc: no dependencies found in '{}']*".format(path)
 
-    return "\n".join(rows)
+    return render_markdown_table(headers, rows)
 
 
 def _parse_dep_specifier(spec: str) -> tuple[str, str]:
@@ -404,24 +404,23 @@ def resolve_table_commands(attrs: dict, config: dict, base_dir: str) -> str:
     if cli is None:
         return f"> *[selfdoc: no strictcli app found in '{path}']*"
 
+    headers = ["Command", "Description"]
     rows = []
-    rows.append("| Command | Description |")
-    rows.append("| --- | --- |")
 
     for cmd in cli.get("commands", []):
-        rows.append(f"| `{cmd['name']}` | {cmd.get('help', '')} |")
+        rows.append([f"`{cmd['name']}`", cmd.get("help", "")])
 
     for grp in cli.get("groups", []):
         gname = grp["name"]
         ghelp = grp.get("help", "")
-        rows.append(f"| **{gname}** | {ghelp} |")
+        rows.append([f"**{gname}**", ghelp])
         for cmd in grp.get("commands", []):
-            rows.append(f"| `{gname} {cmd['name']}` | {cmd.get('help', '')} |")
+            rows.append([f"`{gname} {cmd['name']}`", cmd.get("help", "")])
 
-    if len(rows) == 2:
+    if not rows:
         return f"> *[selfdoc: no commands found in '{path}']*"
 
-    return "\n".join(rows)
+    return render_markdown_table(headers, rows)
 
 
 # -- table-directives directive ------------------------------------------------
@@ -431,15 +430,14 @@ def resolve_table_directives() -> str:
     """Produce a Markdown table of all core built-in directives."""
     from selfdoc.catalog import CORE_DIRECTIVES
 
+    headers = ["Directive", "Description"]
     rows = []
-    rows.append("| Directive | Description |")
-    rows.append("| --- | --- |")
 
     for name in sorted(CORE_DIRECTIVES):
         spec = CORE_DIRECTIVES[name]
-        rows.append(f"| `{name}` | {spec.description} |")
+        rows.append([f"`{name}`", spec.description])
 
-    return "\n".join(rows)
+    return render_markdown_table(headers, rows)
 
 
 # -- table-config-schema directive ---------------------------------------------
@@ -449,17 +447,16 @@ def resolve_table_config_schema() -> str:
     """Produce a Markdown table of selfdoc.json configuration fields."""
     from selfdoc.config import CONFIG_SCHEMA
 
+    headers = ["Field", "Required", "Description"]
     rows = []
-    rows.append("| Field | Required | Description |")
-    rows.append("| --- | --- | --- |")
 
     for spec in CONFIG_SCHEMA:
         if spec.internal:
             continue
         required = "yes" if spec.required else "no"
-        rows.append(f"| `{spec.name}` | {required} | {spec.description} |")
+        rows.append([f"`{spec.name}`", required, spec.description])
 
-    return "\n".join(rows)
+    return render_markdown_table(headers, rows)
 
 
 # -- var directive -------------------------------------------------------------
@@ -762,29 +759,31 @@ def _render_endpoint(ep_path: str, method: str, op: dict, spec: dict) -> str:
         lines.append("")
         lines.append("**Path Parameters**")
         lines.append("")
-        lines.append("| Name | Type | Required | Description |")
-        lines.append("| --- | --- | --- | --- |")
+        param_headers = ["Name", "Type", "Required", "Description"]
+        param_rows = []
         for p in path_params:
             name = p.get("name", "")
             p_schema = p.get("schema", {})
             p_type = _extract_type(p_schema, spec) if p_schema else "string"
             required = "yes" if p.get("required", False) else "no"
             p_desc = p.get("description", "")
-            lines.append(f"| `{name}` | {p_type} | {required} | {p_desc} |")
+            param_rows.append([f"`{name}`", p_type, required, p_desc])
+        lines.append(render_markdown_table(param_headers, param_rows))
 
     if query_params:
         lines.append("")
         lines.append("**Query Parameters**")
         lines.append("")
-        lines.append("| Name | Type | Required | Description |")
-        lines.append("| --- | --- | --- | --- |")
+        param_headers = ["Name", "Type", "Required", "Description"]
+        param_rows = []
         for p in query_params:
             name = p.get("name", "")
             p_schema = p.get("schema", {})
             p_type = _extract_type(p_schema, spec) if p_schema else "string"
             required = "yes" if p.get("required", False) else "no"
             p_desc = p.get("description", "")
-            lines.append(f"| `{name}` | {p_type} | {required} | {p_desc} |")
+            param_rows.append([f"`{name}`", p_type, required, p_desc])
+        lines.append(render_markdown_table(param_headers, param_rows))
 
     # Request body
     request_body = op.get("requestBody", {})
@@ -809,11 +808,12 @@ def _render_endpoint(ep_path: str, method: str, op: dict, spec: dict) -> str:
                 lines.append("")
                 lines.append("**Request Body**")
                 lines.append("")
-                lines.append("| Field | Type | Required | Description |")
-                lines.append("| --- | --- | --- | --- |")
+                body_headers = ["Field", "Type", "Required", "Description"]
+                body_rows = []
                 for name, prop_type, required, desc in props:
                     req_str = "yes" if required else "no"
-                    lines.append(f"| `{name}` | {prop_type} | {req_str} | {desc} |")
+                    body_rows.append([f"`{name}`", prop_type, req_str, desc])
+                lines.append(render_markdown_table(body_headers, body_rows))
 
     # Responses
     responses = op.get("responses", {})
@@ -840,10 +840,11 @@ def _render_endpoint(ep_path: str, method: str, op: dict, spec: dict) -> str:
             lines.append("")
             lines.append(f"**Response {status_code}**")
             lines.append("")
-            lines.append("| Field | Type | Description |")
-            lines.append("| --- | --- | --- |")
+            resp_headers = ["Field", "Type", "Description"]
+            resp_rows = []
             for name, prop_type, _required, desc in props:
-                lines.append(f"| `{name}` | {prop_type} | {desc} |")
+                resp_rows.append([f"`{name}`", prop_type, desc])
+            lines.append(render_markdown_table(resp_headers, resp_rows))
 
     return "\n".join(lines)
 
