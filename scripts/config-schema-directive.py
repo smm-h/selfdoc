@@ -273,6 +273,8 @@ CATEGORY_ORDER = ["Core", "Features", "SEO", "Deploy", "Branding", "Generation"]
 
 def resolve(attrs, config, body):
     """Generate a Markdown configuration reference grouped by category."""
+    from selfdoc.tables import render_markdown_table
+
     lines = []
 
     for category in CATEGORY_ORDER:
@@ -282,9 +284,9 @@ def resolve(attrs, config, body):
 
         lines.append(f"### {category}")
         lines.append("")
-        lines.append("| Key | Type | Required | Description |")
-        lines.append("|-----|------|----------|-------------|")
 
+        headers = ["Key", "Type", "Required", "Description"]
+        rows = []
         for field in fields:
             key = f"`{field['key']}`"
             ftype = f"`{field['type']}`"
@@ -295,8 +297,9 @@ def resolve(attrs, config, body):
             else:
                 req = field["required"]
             desc = field["description"]
-            lines.append(f"| {key} | {ftype} | {req} | {desc} |")
+            rows.append([key, ftype, req, desc])
 
+        lines.append(render_markdown_table(headers, rows))
         lines.append("")
 
     return "\n".join(lines)
