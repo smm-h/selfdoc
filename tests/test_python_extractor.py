@@ -166,6 +166,35 @@ class TestModuleDirective:
         )
         assert "requires" in result
 
+    def test_dataclass_field_table_via_ref(self, sample_project, source_paths):
+        """Dataclass without docstring renders a 3-column field table."""
+        dc_py = os.path.join(sample_project, "mylib", "settings.py")
+        with open(dc_py, "w", encoding="utf-8") as f:
+            f.write('''\
+"""Settings module."""
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Settings:
+    host: str = "localhost"
+    port: int = 8080
+    debug: bool = False
+    _internal: str = "hidden"
+''')
+
+        result = PythonExtractor().extract(
+            "ref", {"path": "settings"}, [], source_paths, str(sample_project)
+        )
+        assert "### Settings" in result
+        assert "| Field | Type | Default |" in result
+        assert "| --- | --- | --- |" in result
+        assert "| `host` | `str` | `'localhost'` |" in result
+        assert "| `port` | `int` | `8080` |" in result
+        assert "| `debug` | `bool` | `False` |" in result
+        assert "_internal" not in result
+
 
 # ---------------------------------------------------------------------------
 # :::test tests
