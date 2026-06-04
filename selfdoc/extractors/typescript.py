@@ -23,6 +23,7 @@ from selfdoc.extractors.base import (
     parse_comma_set,
     read_source,
 )
+from selfdoc.tables import render_markdown_table
 
 # Patterns for exported TS/JS symbols (used by TypeScriptExtractor.public_symbols)
 _TS_NAMED_FUNC_RE = re.compile(
@@ -739,14 +740,11 @@ def _schema_from_ts(source, type_name, display_path):
         return format_error(f"no fields found in '{name}'")
 
     rows = []
-    rows.append("| Field | Type | Description |")
-    rows.append("| --- | --- | --- |")
-
     for field in fields:
         desc = field.get("description", "")
-        rows.append(f"| `{field['name']}` | `{field['type']}` | {desc} |")
+        rows.append([f"`{field['name']}`", f"`{field['type']}`", desc])
 
-    return "\n".join(rows)
+    return render_markdown_table(["Field", "Type", "Description"], rows)
 
 
 def _extract_brace_block(source, open_brace_pos):
@@ -1021,15 +1019,12 @@ def _config_from_jsonc(full_path, display_path, exclude_keys: set[str] | None = 
     data = result
 
     rows = []
-    rows.append("| Key | Type | Value |")
-    rows.append("| --- | --- | --- |")
-
     for key, value in data.items():
         type_name = _json_type_name(value)
         value_repr = _json_value_repr(value)
-        rows.append(f"| `{key}` | {type_name} | {value_repr} |")
+        rows.append([f"`{key}`", type_name, value_repr])
 
-    return "\n".join(rows)
+    return render_markdown_table(["Key", "Type", "Value"], rows)
 
 
 def _strip_jsonc_comments(text):
