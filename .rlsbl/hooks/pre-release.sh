@@ -3,9 +3,6 @@ set -euo pipefail
 
 echo "Running pre-release checks..."
 
-echo "  Updating CLI schema..."
-uv run selfdoc --dump-schema
-
 if [ -f go.mod ]; then
   echo "  Go: vet + build + test"
   go vet ./...
