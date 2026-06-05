@@ -2,16 +2,15 @@
 
 # Changelog
 
+## 0.15.1
+
+Fix pipe escaping in unclosed backtick spans.
+
+### Fixes
+
+- **Bug fix.** Pipes inside unclosed backtick spans in table cells are now correctly escaped.
+
 ## 0.15.0
-
-Generic markdown table renderer as public API, with full internal refactoring.
-
-<details>
-<summary>Context</summary>
-
-Added render_markdown_table in selfdoc.tables -- a public utility for custom directive authors to render markdown tables with alignment, pretty-print, and pipe escaping. Refactored all 25 internal table-building callsites to use it, eliminating duplicated table construction across extractors, content directives, and strictcli support. Also updated html.py to handle escaped pipes and alignment markers in table parsing.
-
-</details>
 
 ### Features
 
