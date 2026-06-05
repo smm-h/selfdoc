@@ -120,6 +120,32 @@ class TestAlignment:
         )
         assert "| --- | --- |" in result
 
+    def test_align_shorter_than_headers(self):
+        """Align shorter than headers: only specified columns get alignment."""
+        result = render_markdown_table(
+            ["A", "B", "C"],
+            [["1", "2", "3"]],
+            align=["left"],
+        )
+        sep_line = result.split("\n")[1]
+        parts = [p.strip() for p in sep_line.strip("|").split("|")]
+        assert parts[0] == ":---"
+        assert parts[1] == "---"
+        assert parts[2] == "---"
+
+    def test_align_longer_than_headers(self):
+        """Align longer than headers: extra alignments silently ignored."""
+        result = render_markdown_table(
+            ["A", "B"],
+            [["1", "2"]],
+            align=["left", "center", "right", "left"],
+        )
+        sep_line = result.split("\n")[1]
+        parts = [p.strip() for p in sep_line.strip("|").split("|")]
+        assert len(parts) == 2
+        assert parts[0] == ":---"
+        assert parts[1] == ":---:"
+
     def test_invalid_alignment_raises(self):
         """Invalid alignment value raises ValueError."""
         with pytest.raises(ValueError, match="invalid alignment"):
@@ -214,6 +240,15 @@ class TestPipeEscaping:
             [["1"]],
         )
         assert "A\\|B" in result
+
+    def test_unclosed_backtick_pipe_escaped(self):
+        """Pipe after unclosed backtick is escaped."""
+        result = render_markdown_table(
+            ["Col"],
+            [["a`b|c"]],
+        )
+        # The backtick never closes, so the pipe should be escaped
+        assert "a`b\\|c" in result
 
 
 # -- render_markdown_table: validation ---------------------------------------
@@ -396,3 +431,30 @@ class TestParseTableBackwardCompat:
     def test_empty_input(self):
         """Empty input returns empty string."""
         assert _parse_table([]) == ""
+
+
+# -- Round-trip: render_markdown_table -> _parse_table -------------------------
+
+
+class TestRoundTrip:
+    """Render a table then parse it back to HTML and verify alignment."""
+
+    def test_roundtrip_alignment(self):
+        """Alignment markers survive render -> parse round-trip."""
+        md = render_markdown_table(
+            ["Left", "Center", "Right"],
+            [["a", "b", "c"]],
+            align=["left", "center", "right"],
+        )
+        html = _parse_table(md.split("\n"))
+        assert 'style="text-align: left"' in html
+        assert 'style="text-align: center"' in html
+        assert 'style="text-align: right"' in html
+        # Headers get alignment too
+        assert '<th style="text-align: left">Left</th>' in html
+        assert '<th style="text-align: center">Center</th>' in html
+        assert '<th style="text-align: right">Right</th>' in html
+        # Data cells
+        assert '<td style="text-align: left">a</td>' in html
+        assert '<td style="text-align: center">b</td>' in html
+        assert '<td style="text-align: right">c</td>' in html
