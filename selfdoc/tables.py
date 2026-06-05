@@ -2,20 +2,42 @@
 
 
 def _escape_pipes(text):
-    """Escape pipe characters in text, preserving pipes inside backtick spans."""
+    """Escape pipe characters in text, preserving pipes inside backtick spans.
+
+    If a backtick opens a span but never closes, pipes after the unclosed
+    backtick are escaped as if the span never opened.
+    """
     result = []
     in_backtick = False
+    backtick_start = None
     i = 0
     while i < len(text):
         ch = text[i]
         if ch == "`":
-            in_backtick = not in_backtick
+            if not in_backtick:
+                in_backtick = True
+                backtick_start = len(result)
+            else:
+                in_backtick = False
+                backtick_start = None
             result.append(ch)
         elif ch == "|" and not in_backtick:
             result.append("\\|")
         else:
             result.append(ch)
         i += 1
+
+    if in_backtick:
+        # Unclosed backtick: re-scan from the backtick position and escape pipes
+        tail = result[backtick_start:]
+        escaped_tail = []
+        for ch in tail:
+            if ch == "|":
+                escaped_tail.append("\\|")
+            else:
+                escaped_tail.append(ch)
+        result[backtick_start:] = escaped_tail
+
     return "".join(result)
 
 
