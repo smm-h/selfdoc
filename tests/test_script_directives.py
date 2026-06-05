@@ -33,41 +33,41 @@ def _load_resolve(script_name):
 class TestConfigSchemaDirective:
     """Tests for scripts/config-schema-directive.py."""
 
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.resolve = _load_resolve("config-schema-directive.py")
+    @pytest.fixture()
+    def resolve(self):
+        return _load_resolve("config-schema-directive.py")
 
-    def test_returns_string(self):
-        result = self.resolve({}, {}, [])
+    def test_returns_string(self, resolve):
+        result = resolve({}, {}, [])
         assert isinstance(result, str)
 
-    def test_category_headings_present(self):
+    def test_category_headings_present(self, resolve):
         """All six category headings appear in the output."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         for category in ("Core", "Features", "SEO", "Deploy", "Branding", "Generation"):
             assert f"### {category}" in result
 
-    def test_category_order(self):
+    def test_category_order(self, resolve):
         """Categories appear in the canonical order."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         positions = []
         for category in ("Core", "Features", "SEO", "Deploy", "Branding", "Generation"):
             pos = result.index(f"### {category}")
             positions.append(pos)
         assert positions == sorted(positions)
 
-    def test_table_headers(self):
+    def test_table_headers(self, resolve):
         """Each category section has the correct table header."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         header = "| Key | Type | Required | Description |"
         separator = "| --- | --- | --- | --- |"
         # At least one occurrence per category (6 categories)
         assert result.count(header) == 6
         assert result.count(separator) == 6
 
-    def test_required_fields_show_yes(self):
+    def test_required_fields_show_yes(self, resolve):
         """Required fields (language, source, base_url) show 'Yes'."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         for line in lines:
             if "| `language` |" in line:
@@ -76,9 +76,9 @@ class TestConfigSchemaDirective:
         else:
             pytest.fail("`language` row not found")
 
-    def test_optional_fields_show_no(self):
+    def test_optional_fields_show_no(self, resolve):
         """Optional fields show 'No' in the Required column."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         for line in lines:
             if "| `theme` |" in line:
@@ -87,9 +87,9 @@ class TestConfigSchemaDirective:
         else:
             pytest.fail("`theme` row not found")
 
-    def test_conditional_required_fields(self):
+    def test_conditional_required_fields(self, resolve):
         """Fields with conditional required values show the condition text."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         for line in lines:
             if "| `deploy.provider` |" in line:
@@ -98,9 +98,9 @@ class TestConfigSchemaDirective:
         else:
             pytest.fail("`deploy.provider` row not found")
 
-    def test_key_column_is_backtick_wrapped(self):
+    def test_key_column_is_backtick_wrapped(self, resolve):
         """Key names are wrapped in backticks."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         data_rows = [
             l for l in lines
@@ -112,9 +112,9 @@ class TestConfigSchemaDirective:
             cells = [c.strip() for c in row.split("|") if c.strip()]
             assert cells[0].startswith("`") and cells[0].endswith("`")
 
-    def test_type_column_is_backtick_wrapped(self):
+    def test_type_column_is_backtick_wrapped(self, resolve):
         """Type values are wrapped in backticks."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         data_rows = [
             l for l in lines
@@ -124,7 +124,7 @@ class TestConfigSchemaDirective:
             cells = [c.strip() for c in row.split("|") if c.strip()]
             assert cells[1].startswith("`") and cells[1].endswith("`")
 
-    def test_all_schema_entries_appear(self):
+    def test_all_schema_entries_appear(self, resolve):
         """Every entry in the SCHEMA list produces a row in the output."""
         # Import the SCHEMA to count entries
         spec = importlib.util.spec_from_file_location(
@@ -135,19 +135,19 @@ class TestConfigSchemaDirective:
         spec.loader.exec_module(module)
         schema = module.SCHEMA
 
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         for entry in schema:
             assert f"| `{entry['key']}` |" in result
 
-    def test_ignores_attrs_config_body(self):
+    def test_ignores_attrs_config_body(self, resolve):
         """Output is the same regardless of attrs, config, and body."""
-        baseline = self.resolve({}, {}, [])
-        with_attrs = self.resolve({"path": "foo"}, {"language": "go"}, ["body line"])
+        baseline = resolve({}, {}, [])
+        with_attrs = resolve({"path": "foo"}, {"language": "go"}, ["body line"])
         assert baseline == with_attrs
 
-    def test_specific_row_content(self):
+    def test_specific_row_content(self, resolve):
         """Spot-check a specific row for exact content."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         for line in lines:
             if "| `source` |" in line:
@@ -167,45 +167,45 @@ class TestConfigSchemaDirective:
 class TestCatalogDirective:
     """Tests for scripts/catalog-directive.py."""
 
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.resolve = _load_resolve("catalog-directive.py")
+    @pytest.fixture()
+    def resolve(self):
+        return _load_resolve("catalog-directive.py")
 
-    def test_returns_string(self):
-        result = self.resolve({}, {}, [])
+    def test_returns_string(self, resolve):
+        result = resolve({}, {}, [])
         assert isinstance(result, str)
 
-    def test_category_headings_present(self):
+    def test_category_headings_present(self, resolve):
         """Code Extraction and Content Blocks headings appear."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         assert "### Code Extraction" in result
         assert "### Content Blocks" in result
 
-    def test_category_order(self):
+    def test_category_order(self, resolve):
         """Code Extraction appears before Content Blocks."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         code_pos = result.index("### Code Extraction")
         content_pos = result.index("### Content Blocks")
         assert code_pos < content_pos
 
-    def test_table_headers(self):
+    def test_table_headers(self, resolve):
         """Each category section has the correct table header."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         header = "| Directive | Description | Required | Optional |"
         separator = "| --- | --- | --- | --- |"
         # Two categories: code and content
         assert result.count(header) == 2
         assert result.count(separator) == 2
 
-    def test_all_core_directives_appear(self):
+    def test_all_core_directives_appear(self, resolve):
         """Every CORE_DIRECTIVES entry appears in the output."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         for name in CORE_DIRECTIVES:
             assert f"| `{name}` |" in result
 
-    def test_code_directives_in_code_section(self):
+    def test_code_directives_in_code_section(self, resolve):
         """Directives with category='code' appear under Code Extraction."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         code_section_start = result.index("### Code Extraction")
         content_section_start = result.index("### Content Blocks")
         code_section = result[code_section_start:content_section_start]
@@ -218,9 +218,9 @@ class TestCatalogDirective:
         for name in code_directives:
             assert f"| `{name}` |" in code_section
 
-    def test_content_directives_in_content_section(self):
+    def test_content_directives_in_content_section(self, resolve):
         """Directives with category='content' appear under Content Blocks."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         content_section_start = result.index("### Content Blocks")
         content_section = result[content_section_start:]
 
@@ -232,9 +232,9 @@ class TestCatalogDirective:
         for name in content_directives:
             assert f"| `{name}` |" in content_section
 
-    def test_required_attrs_formatting(self):
+    def test_required_attrs_formatting(self, resolve):
         """Required attrs are backtick-wrapped and comma-separated."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         # 'ref' has required_attrs=["path"]
         lines = result.split("\n")
         for line in lines:
@@ -244,9 +244,9 @@ class TestCatalogDirective:
         else:
             pytest.fail("`ref` row not found")
 
-    def test_optional_attrs_formatting(self):
+    def test_optional_attrs_formatting(self, resolve):
         """Optional attrs are backtick-wrapped and comma-separated."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         # 'ref' has optional_attrs=["target"]
         lines = result.split("\n")
         for line in lines:
@@ -256,9 +256,9 @@ class TestCatalogDirective:
         else:
             pytest.fail("`ref` row not found")
 
-    def test_em_dash_for_empty_attrs(self):
+    def test_em_dash_for_empty_attrs(self, resolve):
         """Directives with no required or optional attrs show em dash."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         # callout-note has no required_attrs and no optional_attrs
         lines = result.split("\n")
         for line in lines:
@@ -271,29 +271,29 @@ class TestCatalogDirective:
         else:
             pytest.fail("`callout-note` row not found")
 
-    def test_examples_sections_present(self):
+    def test_examples_sections_present(self, resolve):
         """Example subsections appear for both categories."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         assert "#### Code Extraction Examples" in result
         assert "#### Content Blocks Examples" in result
 
-    def test_examples_use_code_fences(self):
+    def test_examples_use_code_fences(self, resolve):
         """Examples are wrapped in markdown code fences."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         assert "```markdown" in result
         assert "```" in result
 
-    def test_directives_with_examples_appear_in_examples_section(self):
+    def test_directives_with_examples_appear_in_examples_section(self, resolve):
         """Each directive that has a non-empty example appears in its examples section."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         for name, spec in CORE_DIRECTIVES.items():
             if spec.example:
                 assert f"**`{name}`**:" in result
                 assert spec.example in result
 
-    def test_directives_sorted_within_categories(self):
+    def test_directives_sorted_within_categories(self, resolve):
         """Directives are sorted alphabetically within each category."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
 
         # Extract directive names from table rows in order
@@ -318,17 +318,17 @@ class TestCatalogDirective:
 
         assert content_names == sorted(content_names)
 
-    def test_ignores_attrs_config_body(self):
+    def test_ignores_attrs_config_body(self, resolve):
         """Output is the same regardless of attrs, config, and body."""
-        baseline = self.resolve({}, {}, [])
-        with_extras = self.resolve(
+        baseline = resolve({}, {}, [])
+        with_extras = resolve(
             {"key": "val"}, {"language": "python"}, ["some body"],
         )
         assert baseline == with_extras
 
-    def test_specific_row_content(self):
+    def test_specific_row_content(self, resolve):
         """Spot-check table-schema row for expected content."""
-        result = self.resolve({}, {}, [])
+        result = resolve({}, {}, [])
         lines = result.split("\n")
         for line in lines:
             if "| `table-schema` |" in line:
