@@ -1,8 +1,8 @@
 {
   ".github/workflows/ci.yml": "e627a27fd73a988ac9fab0710bcaddd29d93d5651630129a4252d7d141644f0a",
-  ".github/workflows/publish.yml": "9be1d0e37c89baa6340336c799fae83518944a220748a29561acb4c42a135115",
+  ".github/workflows/publish.yml": "3a3635b40d5e49352d5e522e2c79779fdde70b1bac49ac66368c84399c92f9bf",
   "CLAUDE.md": "d616e99c7bd5f1d8f03735c14f4cafa7cabac6886e8792f8a3200b04130d45af",
-  ".rlsbl/hooks/pre-release.sh": "bb20a1ea350e5ed30ede93498e4aff1d1397eaeb37397d4a7168a7c9006ac1a7",
+  ".rlsbl/hooks/pre-release.sh": "0445053307c19abe3e9dc07008e90e2dd155a28e6032c63f539e349e7e8b38ee",
   ".rlsbl/hooks/post-release.sh": "b455f8511e0b2655509ecf5dcb0ab7da5bb7c961f47910ff8e00cab5bd51f833",
   ".claude/settings.json": "78922a784ee78e9e50587e93628cd3b9d4dfbe49087adc4514e6781cea38cbb9",
   ".gitignore": "ee37752fb7d7b4638c9350763bb5e264e3651fea769ae7e56eea75a79beb6c15",
