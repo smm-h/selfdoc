@@ -13,7 +13,8 @@ from dataclasses import dataclass, field
 import re
 
 from selfdoc.build import _extract_version_content
-from selfdoc.docs import parse_frontmatter as _parse_frontmatter, resolve_all_docs
+from selfdoc.utils import parse_frontmatter as _parse_frontmatter
+from selfdoc.docs import resolve_all_docs
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
     tokenize, Heading, Paragraph, BlankLine, CodeBlock,

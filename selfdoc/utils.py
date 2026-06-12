@@ -8,6 +8,71 @@ import tempfile
 import tomllib
 
 
+def parse_frontmatter(content):
+    """Parse YAML-like frontmatter from markdown content (Feature 34).
+
+    If the content starts with '---', extracts key: value pairs until the
+    closing '---'. Returns (metadata_dict, remaining_content). If no
+    frontmatter is found, returns ({}, original_content).
+
+    Simple parser: splits on ':' (first occurrence), strips whitespace.
+    No YAML library needed.
+    """
+    if not content.startswith("---"):
+        return {}, content
+
+    lines = content.split("\n")
+    # Find closing ---
+    end_idx = None
+    for idx in range(1, len(lines)):
+        if lines[idx].strip() == "---":
+            end_idx = idx
+            break
+
+    if end_idx is None:
+        return {}, content
+
+    metadata = {}
+    for line in lines[1:end_idx]:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        colon_pos = line.find(":")
+        if colon_pos == -1:
+            continue
+        key = line[:colon_pos].strip()
+        value = line[colon_pos + 1:].strip()
+        # Strip wrapping quotes (single or double) from string values
+        if (
+            len(value) >= 2
+            and value[0] == value[-1]
+            and value[0] in ('"', "'")
+        ):
+            value = value[1:-1]
+        # Bracket-delimited lists: [a, b, c] -> ["a", "b", "c"]
+        if value.startswith("[") and value.endswith("]"):
+            inner = value[1:-1]
+            value = [item.strip() for item in inner.split(",") if item.strip()]
+        # Convert boolean-like strings
+        elif value.lower() == "true":
+            value = True
+        elif value.lower() == "false":
+            value = False
+        else:
+            # Try to convert numeric values
+            try:
+                value = int(value)
+            except ValueError:
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+        metadata[key] = value
+
+    remaining = "\n".join(lines[end_idx + 1:]).lstrip("\n")
+    return metadata, remaining
+
+
 def extract_module_docstring(filepath):
     """Extract the first line of a Python module's docstring.
 

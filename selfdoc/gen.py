@@ -6,7 +6,7 @@ import re
 import stat
 from dataclasses import dataclass, field
 
-from selfdoc.docs import parse_frontmatter as _parse_frontmatter
+from selfdoc.utils import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.directives import resolve_directives
 from selfdoc.extractors import EXTRACTORS
