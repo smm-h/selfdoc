@@ -452,6 +452,20 @@ def _run_lints(all_docs, docs_dir, resolver, config):
 
     _known_pages = set(all_docs.keys())
 
+    # DQ001 helpers -- strip common suffixes and normalize for comparison
+    _DQ_SUFFIXES = {
+        "module", "class", "function", "package",
+        "type", "interface", "method",
+    }
+
+    def _normalize_dq(text):
+        t = text.lower().strip()
+        t = t.replace("_", " ").replace("-", " ")
+        t = re.sub(r'[^a-z0-9\s]', '', t)
+        words = t.split()
+        words = [w for w in words if w not in _DQ_SUFFIXES]
+        return " ".join(words)
+
     for rel_path in sorted(all_docs):
         metadata, _resolved, body_content, fm_offset = all_docs[rel_path]
         tokens = tokenize(body_content)
@@ -803,6 +817,44 @@ def _run_lints(all_docs, docs_dir, resolver, config):
                             message=f"link to '{target}' resolves to unknown page",
                             severity="warning",
                         ))
+
+        # DQ001 -- Description restates the symbol/page name
+        fm_desc = metadata.get("description", "")
+        if fm_desc:
+            page_title = metadata.get("title")
+            if not page_title and h1_tokens:
+                page_title = h1_tokens[0].text
+            if not page_title:
+                page_title = os.path.splitext(os.path.basename(rel_path))[0]
+                page_title = page_title.replace("_", " ").replace("-", " ")
+
+            norm_desc = _normalize_dq(fm_desc)
+            norm_title = _normalize_dq(page_title)
+
+            if norm_desc and norm_title:
+                is_restated = (
+                    norm_desc == norm_title
+                    or norm_desc in norm_title
+                    or norm_title in norm_desc
+                )
+                if not is_restated:
+                    # Token overlap check
+                    desc_words = set(norm_desc.split())
+                    title_words = set(norm_title.split())
+                    if desc_words and title_words:
+                        overlap = len(desc_words & title_words)
+                        max_len = max(len(desc_words), len(title_words))
+                        if overlap / max_len > 0.8:
+                            is_restated = True
+
+                if is_restated:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=None,
+                        code="DQ001",
+                        message="description restates the symbol name",
+                        severity="warning",
+                    ))
 
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)

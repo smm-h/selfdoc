@@ -3629,3 +3629,43 @@ def test_xref001_relative_link(lint_project):
     results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     xref001 = [r for r in results if r.code == "XREF001"]
     assert len(xref001) == 0
+
+
+def test_dq001_restated_name(lint_project):
+    """DQ001: description that restates the page name triggers warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "load_config.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Load config\n---\n"
+            "# load_config\n\nSome content.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq001 = [r for r in results if r.code == "DQ001"]
+    assert len(dq001) == 1
+    assert dq001[0].severity == "warning"
+
+
+def test_dq001_good_description(lint_project):
+    """DQ001: meaningful description does not trigger."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "load_config.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Reads configuration from selfdoc.json and applies defaults for missing keys\n---\n"
+            "# load_config\n\nSome content.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq001 = [r for r in results if r.code == "DQ001"]
+    assert len(dq001) == 0
+
+
+def test_dq001_description_with_suffix(lint_project):
+    """DQ001: 'Config module' on page 'config' triggers (suffix stripped)."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "config.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Config module\n---\n"
+            "# Config\n\nSome content.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq001 = [r for r in results if r.code == "DQ001"]
+    assert len(dq001) == 1
