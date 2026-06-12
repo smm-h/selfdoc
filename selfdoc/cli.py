@@ -9,7 +9,7 @@ import threading
 
 import strictcli
 
-from selfdoc import __version__
+from selfdoc._version import __version__
 
 
 app = strictcli.App(
