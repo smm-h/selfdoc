@@ -856,6 +856,20 @@ def _run_lints(all_docs, docs_dir, resolver, config):
                         severity="warning",
                     ))
 
+        # DQ002 -- Description too short
+        fm_desc_raw = metadata.get("description")
+        if fm_desc_raw is not None and len(str(fm_desc_raw)) < 20:
+            results.append(LintResult(
+                file=rel_path,
+                line=None,
+                code="DQ002",
+                message=(
+                    f"description too short ({len(str(fm_desc_raw))} chars,"
+                    f" minimum 20)"
+                ),
+                severity="warning",
+            ))
+
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
 

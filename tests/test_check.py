@@ -3669,3 +3669,44 @@ def test_dq001_description_with_suffix(lint_project):
     results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     dq001 = [r for r in results if r.code == "DQ001"]
     assert len(dq001) == 1
+
+
+def test_dq002_short_description(lint_project):
+    """DQ002: description shorter than 20 chars triggers warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Too short\n---\n"
+            "# Page\n\nContent.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq002 = [r for r in results if r.code == "DQ002"]
+    assert len(dq002) == 1
+    assert dq002[0].severity == "warning"
+    assert "9 chars" in dq002[0].message
+
+
+def test_dq002_adequate_description(lint_project):
+    """DQ002: description of 25+ chars does not trigger."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: This is a fairly long description text\n---\n"
+            "# Page\n\nContent.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq002 = [r for r in results if r.code == "DQ002"]
+    assert len(dq002) == 0
+
+
+def test_dq002_no_description(lint_project):
+    """DQ002: missing description does not trigger (SEO006 handles that)."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ntitle: My Page\n---\n"
+            "# Page\n\nContent.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq002 = [r for r in results if r.code == "DQ002"]
+    assert len(dq002) == 0
