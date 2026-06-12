@@ -15,6 +15,7 @@ import re
 from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
+    _extract_brace_block,
     _json_type_name,
     _json_value_repr,
     apply_exclude_keys,
@@ -719,49 +720,6 @@ def _schema_from_ts(source, type_name, display_path):
         rows.append([f"`{field['name']}`", f"`{field['type']}`", desc])
 
     return render_markdown_table(["Field", "Type", "Description"], rows)
-
-
-def _extract_brace_block(source, open_brace_pos):
-    """Extract the content between matched braces starting at open_brace_pos.
-
-    Returns the content between { and } (exclusive), or None if unmatched.
-    """
-    if source[open_brace_pos] != "{":
-        return None
-
-    depth = 0
-    pos = open_brace_pos
-    in_string = False
-    string_char = None
-
-    while pos < len(source):
-        ch = source[pos]
-
-        if in_string:
-            if ch == "\\" :
-                pos += 2
-                continue
-            if ch == string_char:
-                in_string = False
-            pos += 1
-            continue
-
-        if ch in ("'", '"', "`"):
-            in_string = True
-            string_char = ch
-            pos += 1
-            continue
-
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return source[open_brace_pos + 1 : pos]
-
-        pos += 1
-
-    return None
 
 
 def _parse_interface_fields(body):

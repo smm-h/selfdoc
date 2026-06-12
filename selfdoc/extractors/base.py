@@ -411,3 +411,46 @@ def _split_param_line(text):
     name = text[:colon_idx].strip()
     desc = text[colon_idx + 1 :].strip()
     return name, desc
+
+
+def _extract_brace_block(source, open_brace_pos):
+    """Extract the content between matched braces starting at open_brace_pos.
+
+    Returns the content between { and } (exclusive), or None if unmatched.
+    """
+    if source[open_brace_pos] != "{":
+        return None
+
+    depth = 0
+    pos = open_brace_pos
+    in_string = False
+    string_char = None
+
+    while pos < len(source):
+        ch = source[pos]
+
+        if in_string:
+            if ch == "\\" :
+                pos += 2
+                continue
+            if ch == string_char:
+                in_string = False
+            pos += 1
+            continue
+
+        if ch in ("'", '"', "`"):
+            in_string = True
+            string_char = ch
+            pos += 1
+            continue
+
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return source[open_brace_pos + 1 : pos]
+
+        pos += 1
+
+    return None
