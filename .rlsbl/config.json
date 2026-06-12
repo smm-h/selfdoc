@@ -21,16 +21,6 @@
   "private": false,
   "push_timeout": 120,
   "batch_limits": {
-    "exclusions": [
-      {
-        "reason": "**New feature.** Dart language extractor with class/mixin modifier detection, doc comment parsing, part file following, and export following with show/hide combinators and cycle detection.",
-        "entries": [
-          {
-            "version": "unreleased",
-            "line": 35
-          }
-        ]
-      }
-    ]
+    "exclusions": []
   }
 }
