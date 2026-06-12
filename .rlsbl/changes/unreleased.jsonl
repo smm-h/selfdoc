@@ -24,3 +24,4 @@
 {"commits":["f2a0b53abd3df2a4550512f924c7f1eac4912ce0"],"user_facing":false}
 {"commits":["750238f50d661d0f72843027fc662f56b2a52e3e"],"user_facing":true,"description":"**New feature.** Swift language extractor with doc comment parsing, struct schema extraction, and public symbol detection.","type":"feature"}
 {"commits":["2e167f4d02b40f3936dd4217a810b1c3a9657ad8"],"user_facing":true,"description":"**New feature.** Kotlin language extractor with KDoc parsing.","type":"feature"}
+{"commits":["823e919f3fa7afae4703506c90d614a50380a375"],"user_facing":true,"description":"**New extractor.** Svelte language extractor for component documentation -- extracts props, instance/module exports, and JSDoc from .svelte files.","type":"feature"}
