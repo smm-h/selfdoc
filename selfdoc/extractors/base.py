@@ -454,3 +454,54 @@ def _extract_brace_block(source, open_brace_pos):
         pos += 1
 
     return None
+
+
+def collect_comment_lines_above(lines, start_line, prefix, skip_blank_lines=True):
+    """Collect contiguous comment lines above start_line matching a prefix.
+
+    Walks upward from start_line - 1, optionally skipping blank lines
+    first, then collecting lines whose stripped form starts with prefix.
+    The prefix and one optional trailing space are stripped from each line.
+
+    Args:
+        lines: Source file split into lines.
+        start_line: The line index of the declaration (0-based).
+        prefix: The comment prefix to match (e.g., '//' or '///').
+        skip_blank_lines: If True, skip blank lines between the declaration
+            and the comment block. If False, stop at the first blank line.
+
+    Returns:
+        The collected comment text as a single string (lines joined with
+        newlines), or empty string if no comments found.
+    """
+    if start_line <= 0:
+        return ""
+
+    idx = start_line - 1
+
+    # Optionally skip blank lines
+    if skip_blank_lines:
+        while idx >= 0 and lines[idx].strip() == "":
+            idx -= 1
+
+    if idx < 0:
+        return ""
+
+    # Collect contiguous comment lines going upward
+    comment_lines = []
+    while idx >= 0:
+        stripped = lines[idx].strip()
+        if stripped.startswith(prefix):
+            text = stripped[len(prefix):]
+            if text.startswith(" "):
+                text = text[1:]
+            comment_lines.append(text)
+            idx -= 1
+        else:
+            break
+
+    if not comment_lines:
+        return ""
+
+    comment_lines.reverse()
+    return "\n".join(comment_lines)

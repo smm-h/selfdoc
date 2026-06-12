@@ -6,6 +6,7 @@ from selfdoc.extractors.base import (
     _config_from_json,
     _config_from_toml,
     apply_exclude_keys,
+    collect_comment_lines_above,
     parse_comma_set,
 )
 
@@ -158,3 +159,87 @@ class TestConfigFromTomlExclude:
 
         result = _config_from_toml(str(path), "config.toml", exclude_keys={"missing"})
         assert "selfdoc:" in result
+
+
+# -- collect_comment_lines_above -----------------------------------------------
+
+
+class TestCollectCommentLinesAbove:
+    def test_go_style_comments(self):
+        lines = [
+            "// Package doc comment",
+            "// with second line",
+            "package main",
+        ]
+        result = collect_comment_lines_above(lines, 2, "//")
+        assert result == "Package doc comment\nwith second line"
+
+    def test_zig_style_doc_comments(self):
+        lines = [
+            "/// Doc comment for fn",
+            "/// second line",
+            "pub fn foo() void {}",
+        ]
+        result = collect_comment_lines_above(lines, 2, "///")
+        assert result == "Doc comment for fn\nsecond line"
+
+    def test_skips_blank_lines(self):
+        lines = [
+            "// comment",
+            "",
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 2, "//")
+        assert result == "comment"
+
+    def test_no_skip_blank_lines(self):
+        lines = [
+            "// comment",
+            "",
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 2, "//", skip_blank_lines=False)
+        assert result == ""
+
+    def test_no_comments(self):
+        lines = [
+            "import fmt",
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 1, "//")
+        assert result == ""
+
+    def test_start_at_first_line(self):
+        lines = [
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 0, "//")
+        assert result == ""
+
+    def test_stops_at_non_comment(self):
+        lines = [
+            "var x = 1",
+            "// only this comment",
+            "// and this one",
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 3, "//")
+        assert result == "only this comment\nand this one"
+
+    def test_prefix_with_no_space(self):
+        lines = [
+            "//no space after prefix",
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 1, "//")
+        assert result == "no space after prefix"
+
+    def test_empty_comment_line(self):
+        lines = [
+            "// first",
+            "//",
+            "// third",
+            "func foo() {}",
+        ]
+        result = collect_comment_lines_above(lines, 3, "//")
+        assert result == "first\n\nthird"
