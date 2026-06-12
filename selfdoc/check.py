@@ -239,6 +239,28 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # Run lint checks (SEO and other diagnostics)
     result.lints = _run_lints(all_docs, docs_dir, resolver, config)
 
+    # XREF002: directive path validation -- verify resolved directive
+    # source files actually exist on disk.
+    for rd in resolved_directives:
+        path_arg = rd.attrs.get("path", "")
+        if not path_arg or rd.source_entry is None:
+            continue
+        entry = rd.source_entry
+        resolved_path = entry.extractor.resolve_path(
+            path_arg, [entry.path], dir_path,
+        )
+        if resolved_path is None or not os.path.isfile(resolved_path):
+            result.lints.append(LintResult(
+                file=rd.file,
+                line=None,
+                code="XREF002",
+                message=(
+                    f"directive path '{path_arg}' resolves but"
+                    f" file does not exist on disk"
+                ),
+                severity="error",
+            ))
+
     # LANG001: unsupported language detection via StubExtractor
     from selfdoc.extractors.base import StubExtractor as _StubExtractor
     for entry in src_entries:
