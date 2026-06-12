@@ -4,7 +4,7 @@ import importlib.util
 import os
 
 from selfdoc.content import resolve_content
-from selfdoc.extractors import EXTRACTORS, SourceEntry
+from selfdoc.extractors import SourceEntry
 
 
 def _load_custom_directive(script_path, name):
