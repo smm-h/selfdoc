@@ -833,12 +833,14 @@ def _run_lints(all_docs, docs_dir, resolver, config):
 
             if norm_desc and norm_title:
                 is_restated = norm_desc == norm_title
-                # Substring check: only when the shorter side has 2+
-                # words, so single-word titles like "API" or "Config"
-                # don't match every description that mentions them.
+                # Substring check: only when the shorter side is at
+                # least 50% of the longer, so a 2-word title like
+                # "selfdoc build" inside a 20-word description is not
+                # considered a restatement.
                 if not is_restated:
                     shorter = min(norm_desc, norm_title, key=len)
-                    if len(shorter.split()) >= 2:
+                    longer = max(norm_desc, norm_title, key=len)
+                    if len(shorter.split()) >= 2 and len(shorter) >= len(longer) * 0.5:
                         is_restated = (
                             norm_desc in norm_title
                             or norm_title in norm_desc
