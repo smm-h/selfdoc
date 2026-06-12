@@ -36,3 +36,8 @@
 {"commits":["37532584423cdba1446b43c28d54c257ab2947b1"],"user_facing":false}
 {"commits":["96f2bf655567a996e4d2965ad5322d3f224ccf63","55fa3fccace4910e0cda6285307ed1dfc61849fd"],"user_facing":true,"description":"**New feature.** SQL schema extractor for PostgreSQL DDL -- parses CREATE TABLE/VIEW/TYPE/FUNCTION statements and COMMENT ON documentation from .sql files.","type":"feature"}
 {"commits":["5916e9a02f5b9b9d242aed7e59711d2cef1f2c3a","41ce68f4d9ac2b93719279d7fb562ddec21caf6b","8f6dcf837969f5985e2a2ce1473612553c60527b"],"user_facing":true,"description":"**New feature.** XREF002 lint check -- verifies that resolved directive source files actually exist on disk.","type":"feature"}
+{"commits":["8a9665f69da1ecdaccf166e987ae128e523a047c"],"user_facing":false}
+{"commits":["2869839af42970c9ed3c4993dbedf506e3f6b80a"],"user_facing":false}
+{"commits":["0b8f79e29d98c29c63f5c3bc6a146765c62c5ce3"],"user_facing":false}
+{"commits":["61150ef6ab32eb3bacbc5b2c6cd875882e94347f"],"user_facing":false}
+{"commits":["71322a4e93cac4457e63efb73279aae78ae4cb2b"],"user_facing":false}
