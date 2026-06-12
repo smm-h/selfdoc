@@ -106,12 +106,12 @@ uv run pytest
 - **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates.
 - **selfdoc.extractors** (`selfdoc/extractors/__init__.py`): Language extractor registry and auto-detection.
 - **selfdoc.extractors.base** (`selfdoc/extractors/base.py`): Shared utilities for language extractors.
-- **selfdoc.extractors.dart** (`selfdoc/extractors/dart.py`): Dart source extractor for selfdoc -- parses .dart files to extract public
+- **selfdoc.extractors.dart** (`selfdoc/extractors/dart.py`): Dart source extractor for selfdoc -- parses .dart files to extract public declarations, doc comments, part files, and exports for documentation pages.
 - **selfdoc.extractors.go** (`selfdoc/extractors/go.py`): Go source extractor -- resolves directives by extracting from .go files.
 - **selfdoc.extractors.kotlin** (`selfdoc/extractors/kotlin.py`): Kotlin source extractor for selfdoc -- parses .kt files to extract public declarations, KDoc comments, and data class schemas for documentation pages.
 - **selfdoc.extractors.protocol** (`selfdoc/extractors/protocol.py`): Language extractor protocol -- defines the interface all extractors must implement.
 - **selfdoc.extractors.python** (`selfdoc/extractors/python.py`): Python source extractor -- resolves directives by extracting from .py files.
-- **selfdoc.extractors.sql** (`selfdoc/extractors/sql.py`): SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract
+- **selfdoc.extractors.sql** (`selfdoc/extractors/sql.py`): SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract table definitions, views, types, functions, and COMMENT ON documentation.
 - **selfdoc.extractors.svelte** (`selfdoc/extractors/svelte.py`): Svelte source extractor for selfdoc -- parses .svelte files to extract component props, exports, and documentation.
 - **selfdoc.extractors.swift** (`selfdoc/extractors/swift.py`): Swift source extractor for selfdoc -- parses .swift files to extract public declarations, doc comments, and struct schemas for documentation pages.
 - **selfdoc.extractors.typescript** (`selfdoc/extractors/typescript.py`): TypeScript/JavaScript source extractor -- resolves directives by extracting from .ts/.js files.
