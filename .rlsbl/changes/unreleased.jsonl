@@ -26,3 +26,4 @@
 {"commits":["2e167f4d02b40f3936dd4217a810b1c3a9657ad8"],"user_facing":true,"description":"**New feature.** Kotlin language extractor with KDoc parsing.","type":"feature"}
 {"commits":["823e919f3fa7afae4703506c90d614a50380a375"],"user_facing":true,"description":"**New extractor.** Svelte language extractor for component documentation -- extracts props, instance/module exports, and JSDoc from .svelte files.","type":"feature"}
 {"commits":["8e51c13747c89a261541570c312f32d3bc225070"],"user_facing":true,"description":"**Fix.** Svelte detection now runs before TypeScript in auto-detection order, preventing Svelte projects from being misidentified as TypeScript.","type":"fix"}
+{"commits":["868b9c703884047231eee6b72911d164aa0e6650"],"user_facing":false}
