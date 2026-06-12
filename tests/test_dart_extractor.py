@@ -298,6 +298,288 @@ class TestResolvePath:
         assert result.endswith("my_package.dart")
 
 
+class TestDocComments:
+    def test_doc_comment_on_class(self, tmp_path):
+        dart_file = tmp_path / "pubspec.yaml"
+        dart_file.write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// A widget that displays a greeting.
+///
+/// Use this widget in your app:
+/// ```dart
+/// Greeting('Hello')
+/// ```
+class Greeting {}
+""")
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
+        assert "A widget that displays a greeting" in result
+        assert "### Greeting" in result
+
+    def test_doc_comment_cross_reference(self, tmp_path):
+        dart_file = tmp_path / "pubspec.yaml"
+        dart_file.write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// Returns a [Widget] based on [BuildContext].
+class MyWidget {}
+""")
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
+        assert "`Widget`" in result
+        assert "`BuildContext`" in result
+
+    def test_doc_comment_across_blank_lines(self, tmp_path):
+        """Dart associates /// comments with declarations across blank lines."""
+        dart_file = tmp_path / "pubspec.yaml"
+        dart_file.write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// This doc comment is above a blank line.
+
+class Spaced {}
+""")
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
+        assert "This doc comment is above a blank line" in result
+
+    def test_doc_comment_with_macro_tags(self, tmp_path):
+        dart_file = tmp_path / "pubspec.yaml"
+        dart_file.write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// {@macro my_widget}
+/// This uses a macro reference.
+class MacroWidget {}
+""")
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
+        assert "{@macro my_widget}" in result
+
+    def test_doc_comment_preserves_markdown_links(self, tmp_path):
+        dart_file = tmp_path / "pubspec.yaml"
+        dart_file.write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// See [documentation](https://example.com) for details.
+/// Also references [Widget] type.
+class LinkedDoc {}
+""")
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
+        # Markdown link should be preserved
+        assert "[documentation](https://example.com)" in result
+        # Cross-reference should be converted
+        assert "`Widget`" in result
+
+
+class TestRef:
+    def test_ref_extracts_library_doc(self, tmp_path):
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// The main library.
+/// Provides utilities for testing.
+library my_lib;
+
+class Foo {}
+""")
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
+        assert "The main library" in result
+        assert "Provides utilities for testing" in result
+        assert "### Foo" in result
+
+    def test_ref_extracts_declarations(self, dart_project):
+        ext = DartExtractor()
+        result = ext.extract(
+            "ref", {"path": "lib/my_package.dart"}, [], [], str(dart_project)
+        )
+        assert "### Animal" in result
+        assert "### Dog" in result
+        assert "### greet" in result
+        assert "### fetchNumbers" in result
+        assert "### Color" in result
+        assert "### Meters" in result
+        assert "### StringCallback" in result
+        assert "```dart" in result
+        # Private symbols should not appear
+        assert "_privateHelper" not in result
+        assert "_PrivateClass" not in result
+
+    def test_ref_no_arg_errors(self):
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": ""}, [], [], "/tmp")
+        assert "selfdoc:" in result
+        assert "requires" in result
+
+    def test_ref_not_found_errors(self, tmp_path):
+        ext = DartExtractor()
+        result = ext.extract(
+            "ref", {"path": "nonexistent.dart"}, [], [], str(tmp_path)
+        )
+        assert "selfdoc:" in result
+        assert "not found" in result
+
+    def test_ref_directory(self, dart_project):
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib"}, [], [], str(dart_project))
+        # Should include declarations from dart files in the directory
+        assert "## lib" in result
+
+
+class TestProseDesc:
+    def test_prose_desc_extracts_library_doc(self, tmp_path):
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "lib.dart"
+        src.write_text("""\
+/// The main library.
+/// Provides utilities for testing.
+library my_lib;
+
+class Foo {}
+""")
+        ext = DartExtractor()
+        result = ext.extract(
+            "prose-desc", {"path": "lib.dart"}, [], [], str(tmp_path)
+        )
+        assert "The main library" in result
+        assert "Provides utilities for testing" in result
+        assert "### Foo" not in result
+
+    def test_prose_desc_no_doc(self, tmp_path):
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "nodoc.dart"
+        src.write_text("class Foo {}\n")
+        ext = DartExtractor()
+        result = ext.extract(
+            "prose-desc", {"path": "nodoc.dart"}, [], [], str(tmp_path)
+        )
+        assert "selfdoc:" in result
+        assert "no library doc" in result
+
+
+class TestTableSchema:
+    def test_table_schema_extracts_fields(self, tmp_path):
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "models.dart"
+        src.write_text("""\
+/// A user model.
+class User {
+  /// The user's unique identifier.
+  final String id;
+  final String name;
+  int age = 0;
+  String? email;
+
+  User(this.id, this.name);
+}
+""")
+        ext = DartExtractor()
+        result = ext.extract(
+            "table-schema",
+            {"path": "models.dart", "target": "User"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "| Field | Type | Default | Description |" in result
+        assert "`id`" in result
+        assert "`String`" in result
+        assert "`age`" in result
+        assert "`0`" in result
+        assert "unique identifier" in result
+
+    def test_table_schema_all_classes(self, tmp_path):
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "models.dart"
+        src.write_text("""\
+class Point {
+  final double x;
+  final double y;
+
+  Point(this.x, this.y);
+}
+
+class Size {
+  final double width;
+  final double height;
+
+  Size(this.width, this.height);
+}
+""")
+        ext = DartExtractor()
+        result = ext.extract(
+            "table-schema", {"path": "models.dart"}, [], [], str(tmp_path)
+        )
+        assert "### Point" in result
+        assert "### Size" in result
+        assert "`x`" in result
+        assert "`width`" in result
+
+    def test_table_schema_class_not_found(self, tmp_path):
+        """When the file has a class with fields but the target name doesn't match."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "models.dart"
+        src.write_text("""\
+class Foo {
+  final String name;
+  Foo(this.name);
+}
+""")
+        ext = DartExtractor()
+        result = ext.extract(
+            "table-schema",
+            {"path": "models.dart", "target": "Bar"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "selfdoc:" in result
+        assert "not found" in result
+
+    def test_table_schema_no_fields(self, tmp_path):
+        """When the file has a class but it has no fields."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "models.dart"
+        src.write_text("class Foo {}\n")
+        ext = DartExtractor()
+        result = ext.extract(
+            "table-schema",
+            {"path": "models.dart", "target": "Foo"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "selfdoc:" in result
+        assert "no classes with fields" in result
+
+    def test_table_schema_skips_private_fields(self, tmp_path):
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        src = tmp_path / "models.dart"
+        src.write_text("""\
+class Config {
+  final String host;
+  final int _port;
+  String? _cache;
+
+  Config(this.host);
+}
+""")
+        ext = DartExtractor()
+        result = ext.extract(
+            "table-schema",
+            {"path": "models.dart", "target": "Config"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "`host`" in result
+        assert "_port" not in result
+        assert "_cache" not in result
+
+
 class TestUnknownDirective:
     def test_unknown_directive_errors(self):
         ext = DartExtractor()
