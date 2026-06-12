@@ -431,6 +431,10 @@ def _resolve_and_extract_exports(export_path, file_dir, base_dir, visited):
     if full_path is None or not os.path.isfile(full_path):
         return []
 
+    # Skip generated files
+    if _is_generated_file(full_path):
+        return []
+
     target_source, err = read_source(full_path)
     if err or target_source is None:
         return []
@@ -516,6 +520,10 @@ def _resolve_and_extract_export_declarations(export_path, file_dir, base_dir, vi
         full_path = os.path.normpath(os.path.join(file_dir, export_path))
 
     if full_path is None or not os.path.isfile(full_path):
+        return []
+
+    # Skip generated files
+    if _is_generated_file(full_path):
         return []
 
     target_source, err = read_source(full_path)

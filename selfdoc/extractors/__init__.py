@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from selfdoc.extractors.base import StubExtractor
+from selfdoc.extractors.dart import DartExtractor
 from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.kotlin import KotlinExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
@@ -19,6 +20,7 @@ EXTRACTORS: dict[str, LanguageExtractor] = {
     "zig": ZigExtractor(),
     "swift": SwiftExtractor(),
     "kotlin": KotlinExtractor(),
+    "dart": DartExtractor(),
     "svelte": SvelteExtractor(),
 }
 
@@ -42,6 +44,7 @@ _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["zig"],
     EXTRACTORS["swift"],
     EXTRACTORS["kotlin"],
+    EXTRACTORS["dart"],
 ]
 
 

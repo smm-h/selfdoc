@@ -1012,3 +1012,145 @@ class Delta {}
         assert "Beta" in symbols
         assert "Gamma" not in symbols
         assert "Delta" not in symbols
+
+
+class TestEndToEnd:
+    def test_full_library_with_parts_and_exports(self, tmp_path):
+        """A complete Dart library with parts, exports, and doc comments."""
+        (tmp_path / "pubspec.yaml").write_text("name: marketplace\nversion: 1.0.0\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        # Main barrel file
+        (lib_dir / "marketplace.dart").write_text("""\
+/// The marketplace library.
+///
+/// Provides models and utilities for the marketplace.
+library marketplace;
+
+export 'src/models.dart';
+export 'src/cart.dart' show Cart;
+""", encoding="utf-8")
+
+        # Models file with part
+        (src_dir / "models.dart").write_text("""\
+/// Models for the marketplace.
+library;
+
+part 'models_impl.dart';
+
+/// A product in the marketplace.
+class Product {
+  final String name;
+  final double price;
+
+  Product(this.name, this.price);
+}
+""", encoding="utf-8")
+
+        # Part file with additional model
+        (src_dir / "models_impl.dart").write_text("""\
+part of 'models.dart';
+
+/// A category for organizing products.
+class Category {
+  final String label;
+
+  Category(this.label);
+}
+""", encoding="utf-8")
+
+        # Cart file (only Cart is shown in barrel)
+        (src_dir / "cart.dart").write_text("""\
+/// A shopping cart.
+class Cart {
+  final List<dynamic> items;
+
+  Cart() : items = [];
+}
+
+/// Internal cart item -- hidden by show combinator.
+class CartItem {
+  final String productId;
+  final int quantity;
+
+  CartItem(this.productId, this.quantity);
+}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+
+        # Test symbol extraction from barrel
+        symbols = ext.public_symbols(str(lib_dir / "marketplace.dart"))
+        assert "Product" in symbols
+        assert "Category" in symbols  # From part file via export
+        assert "Cart" in symbols       # show combinator
+        assert "CartItem" not in symbols  # Hidden by show combinator
+
+        # Test ref handler
+        result = ext.extract("ref", {"path": "lib/marketplace.dart"}, [], [], str(tmp_path))
+        assert "The marketplace library" in result
+        assert "### Product" in result
+        assert "### Category" in result
+        assert "### Cart" in result
+        assert "### CartItem" not in result  # Hidden by show combinator
+        assert "A product in the marketplace" in result
+        assert "A category for organizing" in result
+        assert "A shopping cart" in result
+
+    def test_package_import_in_exports(self, tmp_path):
+        """Package-style imports in exports should be resolved."""
+        (tmp_path / "pubspec.yaml").write_text("name: myapp\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "myapp.dart").write_text("""\
+export 'src/core.dart';
+""", encoding="utf-8")
+
+        (src_dir / "core.dart").write_text("""\
+class AppCore {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "myapp.dart"))
+        assert "AppCore" in symbols
+
+    def test_detection_in_registry(self, tmp_path):
+        """DartExtractor should be usable via the registry."""
+        from selfdoc.extractors import EXTRACTORS, detect_language
+
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+
+        assert "dart" in EXTRACTORS
+        assert detect_language(str(tmp_path)) == "dart"
+
+    def test_generated_files_throughout_pipeline(self, tmp_path):
+        """Generated files should be skipped at every level."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir()
+
+        (lib_dir / "test.dart").write_text("""\
+part 'test.g.dart';
+export 'test.freezed.dart';
+
+class RealClass {}
+""", encoding="utf-8")
+
+        (lib_dir / "test.g.dart").write_text("""\
+part of 'test.dart';
+class Generated1 {}
+""", encoding="utf-8")
+
+        (lib_dir / "test.freezed.dart").write_text("""\
+class Generated2 {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "test.dart"))
+        assert "RealClass" in symbols
+        assert "Generated1" not in symbols
+        assert "Generated2" not in symbols
