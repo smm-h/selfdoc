@@ -185,6 +185,7 @@ Custom directives take priority over built-in names.
 | `source` | yes | List of source entries to extract documentation from. |
 | `base_url` | yes | Base URL of the generated site, used for canonical links and SEO. |
 | `version` | no | Project version. When present, used by deploy instead of reading from pyproject.toml/package.json. |
+| `version_source` | no | Manifest file to read the project version from. |
 | `docs` | no | Directory containing Markdown documentation templates. |
 | `output` | no | Output directory for generated HTML files. |
 | `theme` | no | Visual theme for the generated site. |
