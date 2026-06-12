@@ -33,3 +33,4 @@
 {"commits":["4b6151c80c6f0cedafb14231777ebbbb2a6be66c"],"user_facing":false}
 {"commits":["8ea8bbb78a06db4e89bbedd53bb15f499a15181e"],"user_facing":false}
 {"commits":["2f72fbed5f2c74355c52d48c5df57a1ee4aa4152","18a9a081e3762f9289b3cdd131b345de1fd447a9","45a3be7e9b596934cb5391fb8be73948be141c74","4b6151c80c6f0cedafb14231777ebbbb2a6be66c","8ea8bbb78a06db4e89bbedd53bb15f499a15181e","c41487b9cde02c6d65ba27257586e56368be98c4"],"user_facing":true,"description":"**New feature.** Dart language extractor with class/mixin modifier detection, doc comment parsing, part file following, and export following with show/hide combinators and cycle detection.","type":"feature"}
+{"commits":["37532584423cdba1446b43c28d54c257ab2947b1"],"user_facing":false}
