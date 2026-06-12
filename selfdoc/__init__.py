@@ -1,7 +1,6 @@
 """selfdoc: Code-aware static site generator with directive-based content extraction."""
 
 import os
-import sys
 
 
 def _detect_version():
