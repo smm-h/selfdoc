@@ -3534,24 +3534,22 @@ def test_xref002_missing_source_file(python_project):
             ':-: ref path="mylib"\n'
         )
 
-    # Patch resolve_path so the resolver's call succeeds (allowing directive
-    # resolution to complete) but the XREF002 re-check call returns None.
-    # The resolver calls resolve_path once to set last_source_entry.
-    # The XREF002 check calls resolve_path once more.
-    # extract() uses _resolve_module_path internally, not resolve_path,
-    # so it is unaffected by this patch.
+    # resolve_path is called 4 times during check_docs:
+    #   0: resolve_all_docs (docs.py)
+    #   1: _validate_directives via resolver (sets last_source_entry)
+    #   2: _compute_coverage
+    #   3: XREF002 re-check
+    # We let calls 0-2 succeed and return None on call 3.
     from selfdoc.extractors.python import PythonExtractor
 
     _orig_resolve = PythonExtractor.resolve_path
-    _resolved_once = {"done": False}
+    _call_count = {"n": 0}
 
     def _patched_resolve(self, path_arg, source_paths, base_dir):
-        result = _orig_resolve(self, path_arg, source_paths, base_dir)
-        if result is not None and not _resolved_once["done"]:
-            _resolved_once["done"] = True
-        elif _resolved_once["done"]:
+        _call_count["n"] += 1
+        if _call_count["n"] > 3:
             return None
-        return result
+        return _orig_resolve(self, path_arg, source_paths, base_dir)
 
     with mock.patch.object(PythonExtractor, "resolve_path", _patched_resolve):
         result = check_docs(str(python_project))
