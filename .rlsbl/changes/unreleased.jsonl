@@ -27,3 +27,5 @@
 {"commits":["823e919f3fa7afae4703506c90d614a50380a375"],"user_facing":true,"description":"**New extractor.** Svelte language extractor for component documentation -- extracts props, instance/module exports, and JSDoc from .svelte files.","type":"feature"}
 {"commits":["8e51c13747c89a261541570c312f32d3bc225070"],"user_facing":true,"description":"**Fix.** Svelte detection now runs before TypeScript in auto-detection order, preventing Svelte projects from being misidentified as TypeScript.","type":"fix"}
 {"commits":["868b9c703884047231eee6b72911d164aa0e6650"],"user_facing":false}
+{"commits":["2f72fbed5f2c74355c52d48c5df57a1ee4aa4152"],"user_facing":false}
+{"commits":["18a9a081e3762f9289b3cdd131b345de1fd447a9"],"user_facing":false}
