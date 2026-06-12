@@ -24,6 +24,9 @@ from selfdoc.tables import render_markdown_table
 # Generated file detection: matches .g.dart, .freezed.dart, etc.
 _GENERATED_SUFFIX_RE = re.compile(r"\.\w+\.dart$")
 
+# Part directive: part 'path/to/file.dart';
+_DART_PART_RE = re.compile(r"^part\s+['\"]([^'\"]+)['\"];")
+
 # ---------------------------------------------------------------------------
 # Declaration patterns
 # ---------------------------------------------------------------------------
@@ -253,6 +256,77 @@ def _resolve_dart_path(path_arg, source_paths, base_dir):
             return dart_candidate
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Part file following
+# ---------------------------------------------------------------------------
+
+
+def _follow_parts(file_path, source):
+    """Follow part directives and collect symbols from part files.
+
+    Scans source for `part 'xxx.dart';` directives. For each part,
+    resolves the path relative to the library file's directory and
+    extracts public symbols. Skips generated part files.
+
+    Returns a list of public symbol names from all part files.
+    """
+    lib_dir = os.path.dirname(file_path)
+    symbols = []
+
+    for line in source.split("\n"):
+        stripped = line.strip()
+        m = _DART_PART_RE.match(stripped)
+        if m:
+            part_path = m.group(1)
+            full_part_path = os.path.join(lib_dir, part_path)
+            full_part_path = os.path.normpath(full_part_path)
+
+            # Skip generated part files
+            if _is_generated_file(full_part_path):
+                continue
+
+            part_source, err = read_source(full_part_path)
+            if err or part_source is None:
+                continue
+
+            # Extract symbols from the part file
+            part_symbols = _extract_public_symbols(part_source)
+            for sym in part_symbols:
+                if sym not in symbols:
+                    symbols.append(sym)
+
+    return symbols
+
+
+def _follow_parts_declarations(file_path, source):
+    """Follow part directives and collect declarations from part files.
+
+    Like _follow_parts but returns full declaration dicts instead of just names.
+    """
+    lib_dir = os.path.dirname(file_path)
+    declarations = []
+
+    for line in source.split("\n"):
+        stripped = line.strip()
+        m = _DART_PART_RE.match(stripped)
+        if m:
+            part_path = m.group(1)
+            full_part_path = os.path.join(lib_dir, part_path)
+            full_part_path = os.path.normpath(full_part_path)
+
+            if _is_generated_file(full_part_path):
+                continue
+
+            part_source, err = read_source(full_part_path)
+            if err or part_source is None:
+                continue
+
+            part_decls = _extract_declarations(part_source)
+            declarations.extend(part_decls)
+
+    return declarations
 
 
 # ---------------------------------------------------------------------------
@@ -587,7 +661,15 @@ class DartExtractor(BaseExtractor):
         except (OSError, UnicodeDecodeError):
             return []
 
-        return _extract_public_symbols(source)
+        symbols = _extract_public_symbols(source)
+
+        # Include symbols from part files
+        part_symbols = _follow_parts(file_path, source)
+        for sym in part_symbols:
+            if sym not in symbols:
+                symbols.append(sym)
+
+        return symbols
 
 
 # ---------------------------------------------------------------------------
@@ -640,6 +722,11 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
     for _filename in sorted(file_contents.keys()):
         source = file_contents[_filename]
         declarations.extend(_extract_declarations(source))
+
+    # Follow part directives for single-file mode
+    if not os.path.isdir(resolved):
+        part_decls = _follow_parts_declarations(resolved, list(file_contents.values())[0])
+        declarations.extend(part_decls)
 
     # Group by kind
     kind_order = ["class", "mixin", "enum", "extension_type", "typedef", "const", "var", "function"]

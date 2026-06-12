@@ -618,6 +618,148 @@ class TestPackageResolution:
         assert result.endswith("helper.dart")
 
 
+class TestPartFiles:
+    def test_part_file_symbols_included(self, tmp_path):
+        """Symbols from part files should appear in the library's symbol list."""
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir()
+        src_dir = lib_dir / "src"
+        src_dir.mkdir()
+
+        # Library file with part directive
+        (lib_dir / "mylib.dart").write_text("""\
+/// My library.
+library mylib;
+
+part 'src/models.dart';
+part 'src/utils.dart';
+
+class LibraryClass {}
+""", encoding="utf-8")
+
+        # Part file 1
+        (src_dir / "models.dart").write_text("""\
+part of '../mylib.dart';
+
+class User {}
+class Product {}
+""", encoding="utf-8")
+
+        # Part file 2
+        (src_dir / "utils.dart").write_text("""\
+part of '../mylib.dart';
+
+String formatName(String name) => name.trim();
+const defaultTimeout = 30;
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "mylib.dart"))
+        assert "LibraryClass" in symbols
+        assert "User" in symbols
+        assert "Product" in symbols
+        assert "formatName" in symbols
+        assert "defaultTimeout" in symbols
+
+    def test_generated_part_files_skipped(self, tmp_path):
+        """Generated part files (.g.dart, .freezed.dart) should be skipped."""
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir()
+
+        (lib_dir / "model.dart").write_text("""\
+library model;
+
+part 'model.g.dart';
+part 'model.freezed.dart';
+
+class Model {}
+""", encoding="utf-8")
+
+        (lib_dir / "model.g.dart").write_text("""\
+part of 'model.dart';
+class GeneratedModel {}
+""", encoding="utf-8")
+
+        (lib_dir / "model.freezed.dart").write_text("""\
+part of 'model.dart';
+class FreezedModel {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "model.dart"))
+        assert "Model" in symbols
+        assert "GeneratedModel" not in symbols
+        assert "FreezedModel" not in symbols
+
+    def test_part_files_in_ref_handler(self, tmp_path):
+        """The ref handler should include declarations from part files."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir()
+
+        (lib_dir / "mylib.dart").write_text("""\
+/// My library docs.
+library mylib;
+
+part 'part_a.dart';
+
+class MainClass {}
+""", encoding="utf-8")
+
+        (lib_dir / "part_a.dart").write_text("""\
+part of 'mylib.dart';
+
+/// A utility class from part file.
+class PartClass {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib/mylib.dart"}, [], [], str(tmp_path))
+        assert "### MainClass" in result
+        assert "### PartClass" in result
+        assert "A utility class from part file" in result
+
+    def test_missing_part_file_skipped(self, tmp_path):
+        """If a part file doesn't exist, it should be silently skipped."""
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir()
+
+        (lib_dir / "mylib.dart").write_text("""\
+library mylib;
+
+part 'missing.dart';
+
+class Present {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "mylib.dart"))
+        assert "Present" in symbols
+
+    def test_private_symbols_in_part_files_skipped(self, tmp_path):
+        """Private symbols in part files should not be included."""
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir()
+
+        (lib_dir / "mylib.dart").write_text("""\
+library mylib;
+part 'impl.dart';
+class Public {}
+""", encoding="utf-8")
+
+        (lib_dir / "impl.dart").write_text("""\
+part of 'mylib.dart';
+class _Private {}
+class AlsoPublic {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "mylib.dart"))
+        assert "Public" in symbols
+        assert "AlsoPublic" in symbols
+        assert "_Private" not in symbols
+
+
 class TestUnknownDirective:
     def test_unknown_directive_errors(self):
         ext = DartExtractor()
