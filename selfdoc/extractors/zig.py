@@ -13,11 +13,9 @@ import re
 
 from selfdoc.extractors.base import (
     BaseExtractor,
-    _config_from_json,
-    _config_from_toml,
     _format_docstring,
     format_error,
-    parse_comma_set,
+    handle_table_config,
     read_source,
 )
 from selfdoc.tables import render_markdown_table
@@ -447,7 +445,7 @@ def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
 
     # JSON/TOML files are config files, not Zig source -- delegate
     if file_path.endswith((".json", ".toml")):
-        return _handle_table_config(file_path, body, source_paths, base_dir, attrs)
+        return handle_table_config(file_path, body, source_paths, base_dir, attrs)
 
     full_path = _resolve_file_path(file_path, source_paths, base_dir)
     if full_path is None:
@@ -704,41 +702,10 @@ def _extract_all_test_blocks(source):
     return tests
 
 
-# ---------------------------------------------------------------------------
-# :::table-config
-# ---------------------------------------------------------------------------
-
-
-def _handle_table_config(arg, body, source_paths, base_dir, attrs):
-    """Extract config file contents as a documented table.
-
-    Supports JSON and TOML. Detects format from file extension.
-    """
-    if not arg:
-        return format_error(":::table-config requires a file path argument")
-
-    full_path = os.path.join(base_dir, arg)
-    if not os.path.isfile(full_path):
-        return format_error(f"config file '{arg}' not found")
-
-    ext = os.path.splitext(arg)[1].lower()
-    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
-
-    if ext == ".json":
-        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
-    elif ext == ".toml":
-        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
-    else:
-        content, err = read_source(full_path)
-        if err:
-            return format_error(f"cannot read '{arg}': {err}")
-        return f"```\n{content.rstrip()}\n```"
-
-
 ZigExtractor._HANDLERS = {
     "ref": _handle_ref,
     "prose-desc": _handle_prose_desc,
     "table-schema": _handle_table_schema,
     "code-test": _handle_code_test,
-    "table-config": _handle_table_config,
+    "table-config": handle_table_config,
 }

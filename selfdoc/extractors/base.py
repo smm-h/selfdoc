@@ -9,6 +9,7 @@ LanguageExtractor methods.
 """
 
 import json
+import os
 
 from selfdoc.tables import render_markdown_table
 
@@ -232,6 +233,33 @@ def _config_from_toml(full_path, display_path, exclude_keys: set[str] | None = N
     _flatten_toml(data, "", rows)
 
     return render_markdown_table(["Key", "Type", "Value"], rows)
+
+
+def handle_table_config(arg, body, source_paths, base_dir, attrs):
+    """Shared handler for table-config directives.
+
+    Supports JSON and TOML. Detects format from file extension.
+    Subclasses can override by mapping "table-config" to a different handler.
+    """
+    if not arg:
+        return format_error("table-config requires a file path argument")
+
+    full_path = os.path.join(base_dir, arg)
+    if not os.path.isfile(full_path):
+        return format_error(f"config file '{arg}' not found")
+
+    ext = os.path.splitext(arg)[1].lower()
+    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
+
+    if ext == ".json":
+        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
+    elif ext == ".toml":
+        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
+    else:
+        content, err = read_source(full_path)
+        if err:
+            return format_error(f"cannot read '{arg}': {err}")
+        return f"```\n{content.rstrip()}\n```"
 
 
 # Section headers recognized in Google-style docstrings

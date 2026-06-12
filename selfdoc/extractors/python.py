@@ -15,9 +15,9 @@ import textwrap
 from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
-    _config_from_toml,
     _format_docstring,
     format_error,
+    handle_table_config,
     parse_comma_set,
     read_source,
 )
@@ -614,38 +614,6 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
 
 
 # ---------------------------------------------------------------------------
-# :::config
-# ---------------------------------------------------------------------------
-
-
-def _handle_config(arg, body, source_paths, base_dir, attrs):
-    """Extract config file contents as a documented table.
-
-    Supports JSON and TOML. Detects format from file extension.
-    """
-    if not arg:
-        return format_error(":::config requires a file path argument")
-
-    full_path = os.path.join(base_dir, arg)
-    if not os.path.isfile(full_path):
-        return format_error(f"config file '{arg}' not found")
-
-    ext = os.path.splitext(arg)[1].lower()
-    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
-
-    if ext == ".json":
-        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
-    elif ext == ".toml":
-        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
-    else:
-        # Unsupported format -- show as code block
-        content, err = read_source(full_path)
-        if err:
-            return format_error(f"cannot read '{arg}': {err}")
-        return f"```\n{content.rstrip()}\n```"
-
-
-# ---------------------------------------------------------------------------
 # :::prose-desc
 # ---------------------------------------------------------------------------
 
@@ -684,6 +652,6 @@ PythonExtractor._HANDLERS = {
     "code-test": _handle_test,
     "table-schema": _handle_schema,
     "code-help": _handle_cli,
-    "table-config": _handle_config,
+    "table-config": handle_table_config,
     "prose-desc": _handle_prose_desc,
 }

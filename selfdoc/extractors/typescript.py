@@ -15,11 +15,11 @@ import re
 from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
-    _config_from_toml,
     _json_type_name,
     _json_value_repr,
     apply_exclude_keys,
     format_error,
+    handle_table_config,
     parse_comma_set,
     read_source,
 )
@@ -944,32 +944,16 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
 
 
 def _handle_config(arg, body, source_paths, base_dir, attrs):
-    """Extract config file contents as a documented table.
-
-    Supports JSON, JSONC (strips // and /* */ comments), and TOML.
-    """
-    if not arg:
-        return format_error(":::config requires a file path argument")
-
-    full_path = os.path.join(base_dir, arg)
-    if not os.path.isfile(full_path):
-        return format_error(f"config file '{arg}' not found")
-
-    ext = os.path.splitext(arg)[1].lower()
-    exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
-
-    if ext == ".json":
-        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
-    elif ext == ".jsonc":
-        return _config_from_jsonc(full_path, arg, exclude_keys=exclude_keys)
-    elif ext == ".toml":
-        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
-    else:
-        # Unsupported format -- show as code block
-        content, err = read_source(full_path)
-        if err:
-            return format_error(f"cannot read '{arg}': {err}")
-        return f"```\n{content.rstrip()}\n```"
+    """TypeScript config handler -- adds JSONC support to the base handler."""
+    if arg:
+        ext = os.path.splitext(arg)[1].lower()
+        if ext == ".jsonc":
+            full_path = os.path.join(base_dir, arg)
+            if not os.path.isfile(full_path):
+                return format_error(f"config file '{arg}' not found")
+            exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
+            return _config_from_jsonc(full_path, arg, exclude_keys=exclude_keys)
+    return handle_table_config(arg, body, source_paths, base_dir, attrs)
 
 
 def _config_from_jsonc(full_path, display_path, exclude_keys: set[str] | None = None):
