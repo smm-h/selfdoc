@@ -2,6 +2,32 @@
 
 # Changelog
 
+## 0.16.0
+
+Five new language extractors (Swift, Kotlin, Svelte, Dart, SQL), version_source config, and doc quality checks.
+
+<details>
+<summary>Context</summary>
+
+This release adds five new language extractors: Swift (doc comments, struct schemas, public symbol detection), Kotlin (KDoc parsing), Svelte (component props, instance/module exports, JSDoc), Dart (class/mixin modifiers, doc comments, part file following, export following with show/hide combinators), and SQL (PostgreSQL DDL -- CREATE TABLE/VIEW/TYPE/FUNCTION and COMMENT ON). It also introduces the version_source config field for reading the project version from the primary manifest, and four new doc quality lint checks: XREF001 (internal page link validation), XREF002 (directive path validation), DQ001 (description restates symbol name), DQ002 (description too short), and DQ003 (function-referencing pages need substantive descriptions). Several base extractor utilities were refactored into shared helpers to reduce duplication across extractors.
+
+</details>
+
+### Features
+
+- **New feature.** `version_source` config field for reading version from primary manifest.
+- **New feature.** Swift language extractor with doc comment parsing, struct schema extraction, and public symbol detection.
+- **New feature.** Kotlin language extractor with KDoc parsing.
+- **New extractor.** Svelte language extractor for component documentation -- extracts props, instance/module exports, and JSDoc from .svelte files.
+- **New feature.** Dart language extractor with class/mixin modifier detection, doc comment parsing, part file following, and export following with show/hide combinators and cycle detection.
+- **New feature.** SQL schema extractor for PostgreSQL DDL -- parses CREATE TABLE/VIEW/TYPE/FUNCTION statements and COMMENT ON documentation from .sql files.
+- **New feature.** XREF002 lint check -- verifies that resolved directive source files actually exist on disk.
+- **New feature.** Doc quality checks: XREF001 (broken page links), DQ001 (restated description), DQ002 (short description), DQ003 (missing function info).
+
+### Fixes
+
+- **Fix.** Svelte detection now runs before TypeScript in auto-detection order, preventing Svelte projects from being misidentified as TypeScript.
+
 ## 0.15.1
 
 Fix pipe escaping in unclosed backtick spans.
@@ -12,6 +38,15 @@ Fix pipe escaping in unclosed backtick spans.
 
 ## 0.15.0
 
+Generic markdown table renderer as public API, with full internal refactoring.
+
+<details>
+<summary>Context</summary>
+
+Added render_markdown_table in selfdoc.tables -- a public utility for custom directive authors to render markdown tables with alignment, pretty-print, and pipe escaping. Refactored all 25 internal table-building callsites to use it, eliminating duplicated table construction across extractors, content directives, and strictcli support. Also updated html.py to handle escaped pipes and alignment markers in table parsing.
+
+</details>
+
 ### Features
 
 - **New utility.** `render_markdown_table` in `selfdoc.tables` -- public API for rendering markdown tables with alignment support, pretty-print mode, and backtick-aware pipe escaping.
@@ -19,11 +54,15 @@ Fix pipe escaping in unclosed backtick spans.
 
 ## 0.14.1
 
+Exclude Python test files from coverage
+
 ### Fixes
 
 - **Fix.** Python test files (`test_*.py`, `conftest.py`) and test directories (`tests/`, `test/`, `__tests__/`) are now excluded from documentation coverage, matching what `selfdoc gen` already excluded.
 
 ## 0.14.0
+
+Stub extractors for unsupported languages, skip .venv in source walks, remove javascript alias
 
 ### Breaking
 
@@ -39,11 +78,15 @@ Fix pipe escaping in unclosed backtick spans.
 
 ## 0.13.1
 
+Fix Go root package ambiguity in multi-language projects
+
 ### Fixes
 
 - **Fix.** Go root packages in multi-source-path projects no longer crash with ambiguity errors. Each source path's root package gets a unique qualified path instead of the ambiguous `path="."`.
 
 ## 0.13.0
+
+Multi-language project support and Zig extractor
 
 ### Breaking
 
