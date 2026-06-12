@@ -44,3 +44,4 @@
 {"commits":["b7b48135f165de805df6c9026c8cf403a3047c56"],"user_facing":false}
 {"commits":["93368b2e81b9985e78b1219993b6564015b61272"],"user_facing":false}
 {"commits":["8a9665f69da1ecdaccf166e987ae128e523a047c","2869839af42970c9ed3c4993dbedf506e3f6b80a","0b8f79e29d98c29c63f5c3bc6a146765c62c5ce3","61150ef6ab32eb3bacbc5b2c6cd875882e94347f","93368b2e81b9985e78b1219993b6564015b61272"],"user_facing":true,"description":"**New feature.** Doc quality checks: XREF001 (broken page links), DQ001 (restated description), DQ002 (short description), DQ003 (missing function info).","type":"feature"}
+{"commits":["01e23cd568962fbb487bf1adfa61766331e7586b"],"user_facing":false}
