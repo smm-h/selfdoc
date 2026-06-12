@@ -361,7 +361,9 @@ def _check_version_consistency(config, dir_path):
     config_version = config.get("version")
 
     # VER002: config version vs detected project version
-    if config_version:
+    # Skip when version_source is set -- the version was already read from
+    # the manifest during config loading, so it cannot diverge.
+    if config_version and not config.get("version_source"):
         detected = detect_project_version(dir_path)
         if detected and detected != config_version:
             results.append(LintResult(

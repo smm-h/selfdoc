@@ -2670,6 +2670,47 @@ class TestVersionConsistencyLints:
         ver003 = [l for l in result.lints if l.code == "VER003"]
         assert len(ver003) == 0
 
+    def test_ver002_skipped_with_version_source(self, tmp_path):
+        """VER002 is skipped entirely when version_source is set."""
+        config = {
+            "source": [{"path": "mylib/", "language": "python"}],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version_source": "pyproject.toml",
+        }
+        self._make_project(tmp_path, config, pyproject_version="1.0.0")
+        # Also create a package.json with a different version to ensure
+        # VER002 doesn't pick it up via detect_project_version fallback
+        pkg = os.path.join(tmp_path, "package.json")
+        with open(pkg, "w") as f:
+            json.dump({"name": "test", "version": "9.9.9"}, f)
+
+        result = check_docs(str(tmp_path))
+        ver002 = [l for l in result.lints if l.code == "VER002"]
+        assert len(ver002) == 0
+
+    def test_ver003_works_with_version_source(self, tmp_path):
+        """VER003 fires when versions array mismatches version from version_source."""
+        config = {
+            "source": [{"path": "mylib/", "language": "python"}],
+            "docs": "docs/",
+            "output": "docs/_build/",
+            "base_url": "https://example.com",
+            "version_source": "pyproject.toml",
+            "versions": [
+                {"version": "1.0.0", "indexed": True},
+                {"version": "1.5.0", "indexed": True},
+            ],
+        }
+        self._make_project(tmp_path, config, pyproject_version="2.0.0")
+
+        result = check_docs(str(tmp_path))
+        ver003 = [l for l in result.lints if l.code == "VER003"]
+        assert len(ver003) == 1
+        assert "1.5.0" in ver003[0].message
+        assert "2.0.0" in ver003[0].message
+
 
 # -- Two-tier coverage (skeleton vs documented pages) --
 
