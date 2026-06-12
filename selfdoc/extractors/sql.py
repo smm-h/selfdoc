@@ -232,8 +232,7 @@ def _parse_column_def(col_text):
     Returns {name, type, nullable, default, constraints, description} or
     None if this is a table-level constraint.
     """
-    # Strip trailing ) and ; from the last column
-    col_text = col_text.rstrip(");").rstrip()
+    col_text = col_text.strip()
     if not col_text:
         return None
 

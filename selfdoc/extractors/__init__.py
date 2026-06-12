@@ -8,6 +8,7 @@ from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.kotlin import KotlinExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
+from selfdoc.extractors.sql import SqlExtractor
 from selfdoc.extractors.svelte import SvelteExtractor
 from selfdoc.extractors.swift import SwiftExtractor
 from selfdoc.extractors.typescript import TypeScriptExtractor
@@ -22,6 +23,7 @@ EXTRACTORS: dict[str, LanguageExtractor] = {
     "kotlin": KotlinExtractor(),
     "dart": DartExtractor(),
     "svelte": SvelteExtractor(),
+    "sql": SqlExtractor(),
 }
 
 
