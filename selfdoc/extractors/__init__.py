@@ -32,15 +32,16 @@ class SourceEntry:
     extractor: LanguageExtractor
 
 
-# Ordered list for detection priority (Python, Go, TypeScript, Zig, Swift, Kotlin, Svelte).
+# Ordered list for detection priority.
+# Svelte must come BEFORE TypeScript -- a Svelte project also has TypeScript files.
 _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["python"],
     EXTRACTORS["go"],
+    EXTRACTORS["svelte"],
     EXTRACTORS["typescript"],
     EXTRACTORS["zig"],
     EXTRACTORS["swift"],
     EXTRACTORS["kotlin"],
-    EXTRACTORS["svelte"],
 ]
 
 
