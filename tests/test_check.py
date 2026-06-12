@@ -3710,3 +3710,45 @@ def test_dq002_no_description(lint_project):
     results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     dq002 = [r for r in results if r.code == "DQ002"]
     assert len(dq002) == 0
+
+
+def test_dq003_ref_directive_short_description(lint_project):
+    """DQ003: ref directive page with short description triggers warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            '---\ndescription: API reference\n---\n'
+            "# API\n\n"
+            ':-: ref path="mylib"\n'
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq003 = [r for r in results if r.code == "DQ003"]
+    assert len(dq003) == 1
+    assert dq003[0].severity == "warning"
+
+
+def test_dq003_ref_directive_long_description(lint_project):
+    """DQ003: ref directive page with long description does not trigger."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            '---\ndescription: Comprehensive API reference for the mylib module covering all public functions\n---\n'
+            "# API\n\n"
+            ':-: ref path="mylib"\n'
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq003 = [r for r in results if r.code == "DQ003"]
+    assert len(dq003) == 0
+
+
+def test_dq003_no_ref_directive(lint_project):
+    """DQ003: page without ref directive does not trigger even with short desc."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: A guide\n---\n"
+            "# Guide\n\nContent.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    dq003 = [r for r in results if r.code == "DQ003"]
+    assert len(dq003) == 0

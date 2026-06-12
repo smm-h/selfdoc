@@ -870,6 +870,24 @@ def _run_lints(all_docs, docs_dir, resolver, config):
                 severity="warning",
             ))
 
+        # DQ003 -- Function-referencing pages need substantive descriptions
+        # If a page contains ref directives and has a short description,
+        # it likely needs more detail about the function's purpose.
+        if fm_desc_raw is not None:
+            has_ref_directive = bool(re.search(r':-:\s*ref\s', body_content))
+            if has_ref_directive and len(str(fm_desc_raw)) < 30:
+                results.append(LintResult(
+                    file=rel_path,
+                    line=None,
+                    code="DQ003",
+                    message=(
+                        f"page with ref directive has short description"
+                        f" ({len(str(fm_desc_raw))} chars, minimum 30"
+                        f" for API reference pages)"
+                    ),
+                    severity="warning",
+                ))
+
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
 
