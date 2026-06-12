@@ -580,6 +580,44 @@ class Config {
         assert "_cache" not in result
 
 
+class TestPackageResolution:
+    def test_resolve_package_path(self, dart_project):
+        ext = DartExtractor()
+        result = ext.resolve_path(
+            "package:my_package/my_package.dart", [], str(dart_project)
+        )
+        assert result is not None
+        assert result.endswith("my_package.dart")
+        assert "/lib/" in result
+
+    def test_resolve_package_path_wrong_name(self, dart_project):
+        ext = DartExtractor()
+        result = ext.resolve_path(
+            "package:wrong_name/my_package.dart", [], str(dart_project)
+        )
+        assert result is None
+
+    def test_resolve_package_path_nonexistent_file(self, dart_project):
+        ext = DartExtractor()
+        result = ext.resolve_path(
+            "package:my_package/nonexistent.dart", [], str(dart_project)
+        )
+        assert result is None
+
+    def test_resolve_package_path_subdirectory(self, dart_project):
+        """Package paths can reference files in subdirectories."""
+        src_file = os.path.join(dart_project, "lib", "src", "helper.dart")
+        os.makedirs(os.path.dirname(src_file), exist_ok=True)
+        with open(src_file, "w") as f:
+            f.write("class Helper {}\n")
+        ext = DartExtractor()
+        result = ext.resolve_path(
+            "package:my_package/src/helper.dart", [], str(dart_project)
+        )
+        assert result is not None
+        assert result.endswith("helper.dart")
+
+
 class TestUnknownDirective:
     def test_unknown_directive_errors(self):
         ext = DartExtractor()

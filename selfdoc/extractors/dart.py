@@ -190,12 +190,53 @@ def _extract_public_symbols(source):
 # ---------------------------------------------------------------------------
 
 
+def _read_package_name(base_dir):
+    """Read the package name from pubspec.yaml."""
+    pubspec_path = os.path.join(base_dir, "pubspec.yaml")
+    try:
+        with open(pubspec_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("name:"):
+                    return line[5:].strip().strip("'\"")
+    except OSError:
+        pass
+    return None
+
+
+def _resolve_package_path(path_arg, base_dir):
+    """Resolve a package:name/path.dart import to a file path.
+
+    package:pkg_name/foo.dart resolves to lib/foo.dart within the package.
+    """
+    rest = path_arg[len("package:"):]
+    slash_idx = rest.find("/")
+    if slash_idx < 0:
+        return None
+    pkg_name = rest[:slash_idx]
+    file_path = rest[slash_idx + 1:]
+
+    actual_name = _read_package_name(base_dir)
+    if actual_name is None or actual_name != pkg_name:
+        return None
+
+    candidate = os.path.join(base_dir, "lib", file_path)
+    if os.path.isfile(candidate):
+        return candidate
+    return None
+
+
 def _resolve_dart_path(path_arg, source_paths, base_dir):
     """Resolve a path argument to a Dart source file or directory.
 
-    Tries each source_path prefix, then the base_dir directly.
+    Handles package: imports (e.g., package:pkg_name/foo.dart -> lib/foo.dart).
+    Otherwise tries each source_path prefix, then the base_dir directly.
     Checks for both directories containing .dart files and direct .dart files.
     """
+    # Handle package: imports
+    if path_arg.startswith("package:"):
+        return _resolve_package_path(path_arg, base_dir)
+
     candidates = []
     for sp in source_paths:
         candidates.append(os.path.join(base_dir, sp, path_arg))
