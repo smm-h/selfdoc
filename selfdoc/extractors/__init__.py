@@ -6,6 +6,7 @@ from selfdoc.extractors.base import StubExtractor
 from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
+from selfdoc.extractors.swift import SwiftExtractor
 from selfdoc.extractors.typescript import TypeScriptExtractor
 from selfdoc.extractors.zig import ZigExtractor
 
@@ -14,6 +15,7 @@ EXTRACTORS: dict[str, LanguageExtractor] = {
     "go": GoExtractor(),
     "typescript": TypeScriptExtractor(),
     "zig": ZigExtractor(),
+    "swift": SwiftExtractor(),
 }
 
 
@@ -26,12 +28,13 @@ class SourceEntry:
     extractor: LanguageExtractor
 
 
-# Ordered list for detection priority (Python, Go, TypeScript, Zig).
+# Ordered list for detection priority (Python, Go, TypeScript, Zig, Swift).
 _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["python"],
     EXTRACTORS["go"],
     EXTRACTORS["typescript"],
     EXTRACTORS["zig"],
+    EXTRACTORS["swift"],
 ]
 
 

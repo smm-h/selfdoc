@@ -75,12 +75,12 @@ class TestStubExtractor:
         assert result.startswith("> *[selfdoc:")
 
     def test_resolve_source_entries_unsupported_uses_stub(self):
-        config = {"source": [{"path": "ios/Sources/", "language": "swift"}]}
+        config = {"source": [{"path": "src/", "language": "rust"}]}
         entries = resolve_source_entries(config)
         assert len(entries) == 1
         assert isinstance(entries[0].extractor, StubExtractor)
-        assert entries[0].extractor.name == "swift"
-        assert entries[0].path == "ios/Sources/"
+        assert entries[0].extractor.name == "rust"
+        assert entries[0].path == "src/"
 
 
 # ---------------------------------------------------------------------------
@@ -591,7 +591,7 @@ class TestResolvePath:
 
 class TestRegistry:
     def test_extractors_has_all_keys(self):
-        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "zig"}
+        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "zig", "swift"}
 
     def test_all_extractors_are_language_extractors(self):
         for name, ext in EXTRACTORS.items():

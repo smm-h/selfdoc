@@ -3292,7 +3292,7 @@ def test_lang001_for_unsupported_language(tmp_path):
     """LANG001: config with an unsupported language produces a lint error."""
     config = {
         "version": "1.0.0",
-        "source": [{"path": "ios/Sources/", "language": "swift"}],
+        "source": [{"path": "src/", "language": "rust"}],
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
@@ -3310,8 +3310,8 @@ def test_lang001_for_unsupported_language(tmp_path):
     lang001 = [lint for lint in result.lints if lint.code == "LANG001"]
     assert len(lang001) == 1
     assert lang001[0].severity == "error"
-    assert "swift" in lang001[0].message
-    assert "ios/Sources/" in lang001[0].message
+    assert "rust" in lang001[0].message
+    assert "src/" in lang001[0].message
 
 
 def test_supported_languages_no_lang001(python_project):
