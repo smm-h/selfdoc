@@ -16,11 +16,11 @@ from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
     _config_from_toml,
+    _format_docstring,
     format_error,
     parse_comma_set,
     read_source,
 )
-from selfdoc.extractors.python import _format_docstring
 
 # Patterns for exported Go symbols (used by GoExtractor.public_symbols)
 _GO_FUNC_RE = re.compile(r"^func\s+([A-Z]\w*)\s*\(")

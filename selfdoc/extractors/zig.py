@@ -15,11 +15,11 @@ from selfdoc.extractors.base import (
     BaseExtractor,
     _config_from_json,
     _config_from_toml,
+    _format_docstring,
     format_error,
     parse_comma_set,
     read_source,
 )
-from selfdoc.extractors.python import _format_docstring
 from selfdoc.tables import render_markdown_table
 
 # Patterns for public Zig declarations (used by ZigExtractor.public_symbols)
