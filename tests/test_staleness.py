@@ -174,6 +174,7 @@ def test_staleness_integration_with_check(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "version": "1.0.0",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -229,6 +230,7 @@ def test_staleness_no_error_when_description_updated(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "version": "1.0.0",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -360,6 +362,7 @@ def _setup_project(tmp_path, *, locales=None, page_content=None):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "version": "1.0.0",
     }
     if locales is not None:
         config["locales"] = locales

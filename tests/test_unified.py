@@ -390,6 +390,7 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
     core_config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com/core",
+        "version": "1.0.0",
     }
     _write_json(str(core_dir / "selfdoc.json"), core_config)
     (core_dir / "src").mkdir()
@@ -424,6 +425,7 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
         "unified": {
             "projects": [{"path": "../core"}],
         },
+        "version": "2.0.0",
         "versions": [
             {
                 "version": "1.0.0",

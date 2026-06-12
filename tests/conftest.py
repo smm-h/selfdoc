@@ -45,6 +45,7 @@ def default_config(**overrides):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "versions": [{"version": "1.0.0", "indexed": True}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
@@ -117,6 +118,7 @@ def make_versioned_project(tmp_path):
         config = {
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "version": versions[-1],
             "versions": versions_config,
             "locales": locales_config,
         }
@@ -176,6 +178,7 @@ def make_localized_project(tmp_path):
         config = {
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "version": "1.0.0",
             "locales": locales,
             "versions": [{"version": "1.0.0", "indexed": True}],
         }
@@ -229,6 +232,7 @@ def make_unified_project(tmp_path):
             proj_config = {
                 "source": [{"path": "src/", "language": lang}],
                 "base_url": f"https://example.com/{name}",
+                "version": "1.0.0",
             }
             proj_dir.mkdir(exist_ok=True)
             _write_json(str(proj_dir / "selfdoc.json"), proj_config)
@@ -257,6 +261,7 @@ def make_unified_project(tmp_path):
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
             "unified": {"projects": unified_entries},
+            "version": "1.0.0",
             "versions": [{"version": "1.0.0", "indexed": True}],
             "locales": [
                 {"code": "en", "label": "English", "default": True},

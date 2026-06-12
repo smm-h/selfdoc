@@ -1066,6 +1066,7 @@ class TestCheckIntegration:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "version": "1.0.0",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
             json.dump(config, f)
@@ -1104,6 +1105,7 @@ class TestCheckIntegration:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "version": "1.0.0",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
             json.dump(config, f)
@@ -1141,6 +1143,7 @@ class TestCheckIntegration:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "version": "1.0.0",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
             json.dump(config, f)

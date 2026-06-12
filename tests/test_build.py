@@ -5971,6 +5971,7 @@ def test_build_missing_versions_raises(tmp_path):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
@@ -6020,6 +6021,7 @@ def test_build_missing_locales_raises(tmp_path):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "versions": [{"version": "1.0.0", "indexed": True}],
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")

@@ -14,6 +14,7 @@ def python_project(tmp_path):
     """Create a minimal Python project with selfdoc config and source files."""
     # selfdoc.json
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -299,6 +300,7 @@ def test_print_results_no_directives_with_lints(capsys):
 def test_no_docs_dir_raises(tmp_path):
     """check_docs raises when docs/ directory is missing."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -485,6 +487,7 @@ def lint_project(tmp_path):
     docs_dir = os.path.join(tmp_path, "docs")
     os.makedirs(docs_dir)
     config = {
+        "version": "1.0.0",
         "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -1730,6 +1733,7 @@ def test_skeleton_only_symbols_printed(tmp_path, capsys):
     import selfdoc.check as check_mod
 
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -1881,6 +1885,7 @@ def test_coverage_per_symbol(tmp_path):
     """
     # selfdoc.json
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -1961,6 +1966,7 @@ def test_coverage_per_symbol(tmp_path):
 def test_coverage_multi_directive(tmp_path):
     """table-schema and code-test directives contribute to coverage."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2024,6 +2030,7 @@ def test_coverage_multi_directive(tmp_path):
 def test_coverage_threshold_partial_fails(tmp_path):
     """3/4 documented (75%) fails the hardcoded 100% requirement."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2061,6 +2068,7 @@ def test_coverage_threshold_partial_fails(tmp_path):
 def test_coverage_threshold_low_fails(tmp_path):
     """1/3 documented (33%) fails the hardcoded 100% requirement."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2101,6 +2109,7 @@ def test_coverage_threshold_low_fails(tmp_path):
 def test_coverage_100_percent_passes(tmp_path):
     """Project where all public symbols are documented passes coverage check."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2142,6 +2151,7 @@ def test_coverage_100_percent_passes(tmp_path):
 def test_coverage_zero_symbols_passes(tmp_path):
     """Project with no public symbols passes coverage check (no division by zero)."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2175,6 +2185,7 @@ def test_coverage_zero_symbols_passes(tmp_path):
 def test_exit_code_0_when_only_warnings(tmp_path, capsys):
     """Exit code is 0 when only warnings (no errors) exist."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2216,6 +2227,7 @@ def test_exit_code_0_when_only_warnings(tmp_path, capsys):
 def test_exit_code_1_when_errors_exist(tmp_path, capsys):
     """Exit code is 1 when lint errors exist."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2255,6 +2267,7 @@ def test_go_coverage_basic(tmp_path):
     """Create a Go project with exported and unexported symbols, verify coverage."""
     # selfdoc.json
     config = {
+        "version": "1.0.0",
         "source": [{"path": "pkg/", "language": "go"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2320,6 +2333,7 @@ def test_go_coverage_basic(tmp_path):
 def test_ts_coverage_basic(tmp_path):
     """Create a TypeScript project with exports, verify coverage."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "src/", "language": "typescript"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -2568,13 +2582,14 @@ class TestVersionConsistencyLints:
         ver002 = [l for l in result.lints if l.code == "VER002"]
         assert len(ver002) == 0
 
-    def test_ver002_no_lint_when_no_config_version(self, tmp_path):
-        """VER002 does not fire when config has no version field."""
+    def test_ver002_no_lint_when_version_from_version_source(self, tmp_path):
+        """VER002 does not fire when version comes from version_source."""
         config = {
             "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "version_source": "pyproject.toml",
         }
         self._make_project(tmp_path, config, pyproject_version="1.0.0")
 
@@ -2740,6 +2755,7 @@ class TestTwoTierCoverage:
     def _make_project(self, tmp_path):
         """Create a project with source files and both skeleton and hand-written pages."""
         config = {
+            "version": "1.0.0",
             "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
@@ -2912,6 +2928,7 @@ class TestTwoTierCoverage:
     def test_coverage_check_uses_documented_not_referenced(self, tmp_path):
         """Hardcoded 100% check uses documented count, not referenced."""
         config = {
+            "version": "1.0.0",
             "source": [{"path": "mylib/", "language": "python"}],
             "docs": "docs/",
             "output": "docs/_build/",
@@ -3035,7 +3052,7 @@ class TestTwoTierCoverage:
         extractor = EXTRACTORS["python"]
         import tempfile
         with tempfile.TemporaryDirectory() as td:
-            config = {"source": [{"path": "src/", "language": "python"}]}
+            config = {"version": "1.0.0", "source": [{"path": "src/", "language": "python"}]}
             os.makedirs(os.path.join(td, "src"))
             entries = [SourceEntry(path="src/", language="python", extractor=extractor)]
             stats = _compute_coverage(config, td, [], entries, None)
@@ -3050,6 +3067,7 @@ class TestTwoTierCoverage:
 def test_multi_language_coverage(tmp_path):
     """Coverage counts symbols from both Python and Go sources."""
     config = {
+        "version": "1.0.0",
         "source": [
             {"path": "pylib/", "language": "python"},
             {"path": "golib/", "language": "go"},
@@ -3109,6 +3127,7 @@ def test_multi_language_coverage(tmp_path):
 def test_multi_language_100_percent_enforcement(tmp_path):
     """All Python documented but Go undocumented yields partial coverage."""
     config = {
+        "version": "1.0.0",
         "source": [
             {"path": "pylib/", "language": "python"},
             {"path": "golib/", "language": "go"},
@@ -3171,6 +3190,7 @@ def test_multi_language_100_percent_enforcement(tmp_path):
 def test_single_language_coverage_unchanged(tmp_path):
     """Single-language (Python) coverage works exactly as before."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -3230,6 +3250,7 @@ def test_single_language_coverage_unchanged(tmp_path):
 def test_lang001_for_unsupported_language(tmp_path):
     """LANG001: config with an unsupported language produces a lint error."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "ios/Sources/", "language": "swift"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -3270,6 +3291,7 @@ def test_supported_languages_no_lang001(python_project):
 def test_coverage_excludes_python_test_files(tmp_path):
     """Python test files (test_*.py, conftest.py) should not count toward coverage."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "src/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -3332,6 +3354,7 @@ def test_coverage_excludes_python_test_files(tmp_path):
 def test_coverage_excludes_tests_directory(tmp_path):
     """Files inside tests/ directories should not count toward coverage."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "mylib/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",
@@ -3385,6 +3408,7 @@ def test_coverage_excludes_tests_directory(tmp_path):
 def test_coverage_excludes_test_and__tests__directories(tmp_path):
     """Files inside test/ and __tests__/ directories should not count."""
     config = {
+        "version": "1.0.0",
         "source": [{"path": "pkg/", "language": "python"}],
         "docs": "docs/",
         "output": "docs/_build/",

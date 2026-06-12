@@ -142,6 +142,7 @@ def python_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "version": "1.0.0",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -237,6 +238,7 @@ def test_check_output_empty_coverage(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "version": "1.0.0",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
