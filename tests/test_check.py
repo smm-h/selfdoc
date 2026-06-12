@@ -3508,3 +3508,56 @@ def test_coverage_excludes_test_and__tests__directories(tmp_path):
     assert result.coverage.total_public == 1
     assert result.coverage.referenced == 1
     assert len(result.coverage.unreferenced_symbols) == 0
+
+
+def test_xref002_valid_source_file(python_project):
+    """XREF002 should not fire when source file exists."""
+    docs_dir = os.path.join(python_project, "docs")
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: API reference for mylib\n---\n"
+            "# API\n\n"
+            ':-: ref path="mylib"\n'
+        )
+    result = check_docs(str(python_project))
+    xref002 = [r for r in result.lints if r.code == "XREF002"]
+    assert len(xref002) == 0
+
+
+def test_xref002_missing_source_file(python_project):
+    """XREF002 fires when source file disappears after resolution."""
+    docs_dir = os.path.join(python_project, "docs")
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: API reference for mylib\n---\n"
+            "# API\n\n"
+            ':-: ref path="mylib"\n'
+        )
+
+    # Patch resolve_path so the resolver's call succeeds (allowing directive
+    # resolution to complete) but the XREF002 re-check call returns None.
+    # The resolver calls resolve_path once to set last_source_entry.
+    # The XREF002 check calls resolve_path once more.
+    # extract() uses _resolve_module_path internally, not resolve_path,
+    # so it is unaffected by this patch.
+    from selfdoc.extractors.python import PythonExtractor
+
+    _orig_resolve = PythonExtractor.resolve_path
+    _resolved_once = {"done": False}
+
+    def _patched_resolve(self, path_arg, source_paths, base_dir):
+        result = _orig_resolve(self, path_arg, source_paths, base_dir)
+        if result is not None and not _resolved_once["done"]:
+            _resolved_once["done"] = True
+        elif _resolved_once["done"]:
+            return None
+        return result
+
+    with mock.patch.object(PythonExtractor, "resolve_path", _patched_resolve):
+        result = check_docs(str(python_project))
+
+    xref002 = [r for r in result.lints if r.code == "XREF002"]
+    assert len(xref002) == 1
+    assert xref002[0].severity == "error"
+    assert "mylib" in xref002[0].message
+    assert xref002[0].file == "api.md"
