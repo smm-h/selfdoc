@@ -832,11 +832,17 @@ def _run_lints(all_docs, docs_dir, resolver, config):
             norm_title = _normalize_dq(page_title)
 
             if norm_desc and norm_title:
-                is_restated = (
-                    norm_desc == norm_title
-                    or norm_desc in norm_title
-                    or norm_title in norm_desc
-                )
+                is_restated = norm_desc == norm_title
+                # Substring check: only when the shorter side has 2+
+                # words, so single-word titles like "API" or "Config"
+                # don't match every description that mentions them.
+                if not is_restated:
+                    shorter = min(norm_desc, norm_title, key=len)
+                    if len(shorter.split()) >= 2:
+                        is_restated = (
+                            norm_desc in norm_title
+                            or norm_title in norm_desc
+                        )
                 if not is_restated:
                     # Token overlap check
                     desc_words = set(norm_desc.split())
