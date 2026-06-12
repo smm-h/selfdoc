@@ -137,8 +137,30 @@ class BaseExtractor:
     """Base class for language extractors.
 
     Provides default implementations for optional LanguageExtractor
-    methods. Subclasses must implement name, detect, and extract.
+    methods. Subclasses must implement name and detect. The extract()
+    method dispatches to _HANDLERS, which subclasses populate.
     """
+
+    _HANDLERS: dict[str, object] = {}
+
+    def extract(
+        self,
+        directive_name: str,
+        attrs: dict[str, str],
+        body: list[str],
+        source_paths: list[str],
+        base_dir: str,
+    ) -> str:
+        path = attrs.get("path", "")
+        target = attrs.get("target", "")
+        arg = f"{path} {target}".strip() if target else path
+
+        handler = self._HANDLERS.get(directive_name)
+        if handler is None:
+            return format_error(
+                f"unknown directive '{directive_name}' for {self.name} extractor"
+            )
+        return handler(arg, body, source_paths, base_dir, attrs)
 
     def file_extensions(self) -> list[str]:
         return []

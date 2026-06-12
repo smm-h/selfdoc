@@ -50,32 +50,6 @@ class ZigExtractor(BaseExtractor):
     ) -> str | None:
         return _resolve_zig_path(path_arg, source_paths, base_dir)
 
-    def extract(
-        self,
-        directive_name: str,
-        attrs: dict[str, str],
-        body: list[str],
-        source_paths: list[str],
-        base_dir: str,
-    ) -> str:
-        path = attrs.get("path", "")
-        target = attrs.get("target", "")
-        arg = f"{path} {target}".strip() if target else path
-
-        handlers = {
-            "ref": _handle_ref,
-            "prose-desc": _handle_prose_desc,
-            "table-schema": _handle_table_schema,
-            "code-test": _handle_code_test,
-            "table-config": _handle_table_config,
-        }
-        handler = handlers.get(directive_name)
-        if handler is None:
-            return format_error(
-                f"unknown directive '{directive_name}' for Zig extractor"
-            )
-        return handler(arg, body, source_paths, base_dir, attrs)
-
     def file_extensions(self) -> list[str]:
         return [".zig"]
 
@@ -759,3 +733,12 @@ def _handle_table_config(arg, body, source_paths, base_dir, attrs):
         if err:
             return format_error(f"cannot read '{arg}': {err}")
         return f"```\n{content.rstrip()}\n```"
+
+
+ZigExtractor._HANDLERS = {
+    "ref": _handle_ref,
+    "prose-desc": _handle_prose_desc,
+    "table-schema": _handle_table_schema,
+    "code-test": _handle_code_test,
+    "table-config": _handle_table_config,
+}

@@ -45,32 +45,6 @@ class GoExtractor(BaseExtractor):
     ) -> str | None:
         return _resolve_package_dir(path_arg, source_paths, base_dir)
 
-    def extract(
-        self,
-        directive_name: str,
-        attrs: dict[str, str],
-        body: list[str],
-        source_paths: list[str],
-        base_dir: str,
-    ) -> str:
-        # Reconstruct the old positional arg from attrs
-        path = attrs.get("path", "")
-        target = attrs.get("target", "")
-        arg = f"{path} {target}".strip() if target else path
-
-        handlers = {
-            "ref": _handle_module,
-            "code-test": _handle_test,
-            "table-schema": _handle_schema,
-            "code-help": _handle_cli,
-            "table-config": _handle_config,
-            "prose-desc": _handle_prose_desc,
-        }
-        handler = handlers.get(directive_name)
-        if handler is None:
-            return format_error(f"unknown directive '{directive_name}' for Go extractor")
-        return handler(arg, body, source_paths, base_dir, attrs)
-
     def file_extensions(self) -> list[str]:
         return [".go"]
 
@@ -1122,3 +1096,13 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
         return format_error(f"no package doc comment found in '{arg}'")
 
     return _format_docstring(package_doc)
+
+
+GoExtractor._HANDLERS = {
+    "ref": _handle_module,
+    "code-test": _handle_test,
+    "table-schema": _handle_schema,
+    "code-help": _handle_cli,
+    "table-config": _handle_config,
+    "prose-desc": _handle_prose_desc,
+}
