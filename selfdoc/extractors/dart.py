@@ -27,6 +27,14 @@ _GENERATED_SUFFIX_RE = re.compile(r"\.\w+\.dart$")
 # Part directive: part 'path/to/file.dart';
 _DART_PART_RE = re.compile(r"^part\s+['\"]([^'\"]+)['\"];")
 
+# Export directive: export 'path.dart'; or with show/hide combinators
+# Also handles conditional exports: export 'a.dart' if (dart.library.io) 'b.dart';
+_DART_EXPORT_RE = re.compile(
+    r"^export\s+['\"]([^'\"]+)['\"]\s*"
+    r"(?:if\s*\([^)]+\)\s*['\"]([^'\"]+)['\"]\s*)?"
+    r"(?:(show|hide)\s+([\w\s,]+))?\s*;"
+)
+
 # ---------------------------------------------------------------------------
 # Declaration patterns
 # ---------------------------------------------------------------------------
@@ -258,6 +266,19 @@ def _resolve_dart_path(path_arg, source_paths, base_dir):
     return None
 
 
+def _find_project_root(file_path):
+    """Find the project root by walking up to find pubspec.yaml."""
+    current = os.path.dirname(os.path.abspath(file_path))
+    for _ in range(20):  # Safety limit
+        if os.path.isfile(os.path.join(current, "pubspec.yaml")):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Part file following
 # ---------------------------------------------------------------------------
@@ -327,6 +348,191 @@ def _follow_parts_declarations(file_path, source):
             declarations.extend(part_decls)
 
     return declarations
+
+
+# ---------------------------------------------------------------------------
+# Export following
+# ---------------------------------------------------------------------------
+
+
+def _follow_exports(file_path, source, base_dir, visited=None):
+    """Follow export directives and collect re-exported symbols.
+
+    Scans source for `export 'path.dart'` directives. For each export:
+    1. Resolves the path relative to the current file's directory
+    2. Recursively follows exports in the target (transitive)
+    3. Applies show/hide combinators
+    4. Handles conditional exports (includes all variants)
+
+    Uses a visited set to prevent infinite loops from circular exports.
+    Returns a list of public symbol names.
+    """
+    if visited is None:
+        visited = set()
+
+    abs_path = os.path.abspath(file_path)
+    if abs_path in visited:
+        return []
+    visited.add(abs_path)
+
+    file_dir = os.path.dirname(file_path)
+    symbols = []
+
+    for line in source.split("\n"):
+        stripped = line.strip()
+        m = _DART_EXPORT_RE.match(stripped)
+        if not m:
+            continue
+
+        primary_path = m.group(1)
+        conditional_path = m.group(2)  # from if (...) 'alt.dart'
+        combinator = m.group(3)  # "show" or "hide" or None
+        names_str = m.group(4)  # "A, B, C" or None
+
+        # Collect paths to process (primary + conditional variant)
+        paths_to_process = [primary_path]
+        if conditional_path:
+            paths_to_process.append(conditional_path)
+
+        # Parse combinator names
+        combinator_names = set()
+        if combinator and names_str:
+            combinator_names = {n.strip() for n in names_str.split(",")}
+
+        for export_path in paths_to_process:
+            exported_symbols = _resolve_and_extract_exports(
+                export_path, file_dir, base_dir, visited
+            )
+
+            # Apply show/hide filtering
+            if combinator == "show":
+                exported_symbols = [s for s in exported_symbols if s in combinator_names]
+            elif combinator == "hide":
+                exported_symbols = [s for s in exported_symbols if s not in combinator_names]
+
+            for sym in exported_symbols:
+                if sym not in symbols:
+                    symbols.append(sym)
+
+    return symbols
+
+
+def _resolve_and_extract_exports(export_path, file_dir, base_dir, visited):
+    """Resolve an export path and extract symbols from the target file.
+
+    Handles both relative paths and package: paths.
+    Recursively follows exports in the target file (transitive exports).
+    """
+    if export_path.startswith("package:"):
+        full_path = _resolve_package_path(export_path, base_dir)
+    else:
+        full_path = os.path.normpath(os.path.join(file_dir, export_path))
+
+    if full_path is None or not os.path.isfile(full_path):
+        return []
+
+    target_source, err = read_source(full_path)
+    if err or target_source is None:
+        return []
+
+    # Get symbols defined directly in the target file
+    direct_symbols = _extract_public_symbols(target_source)
+
+    # Get symbols from the target's part files
+    part_symbols = _follow_parts(full_path, target_source)
+    for sym in part_symbols:
+        if sym not in direct_symbols:
+            direct_symbols.append(sym)
+
+    # Recursively follow exports in the target file (transitive)
+    transitive_symbols = _follow_exports(full_path, target_source, base_dir, visited)
+    for sym in transitive_symbols:
+        if sym not in direct_symbols:
+            direct_symbols.append(sym)
+
+    return direct_symbols
+
+
+def _follow_exports_declarations(file_path, source, base_dir, visited=None):
+    """Follow export directives and collect re-exported declarations.
+
+    Like _follow_exports but returns full declaration dicts.
+    """
+    if visited is None:
+        visited = set()
+
+    abs_path = os.path.abspath(file_path)
+    if abs_path in visited:
+        return []
+    visited.add(abs_path)
+
+    file_dir = os.path.dirname(file_path)
+    declarations = []
+    seen_names = set()
+
+    for line in source.split("\n"):
+        stripped = line.strip()
+        m = _DART_EXPORT_RE.match(stripped)
+        if not m:
+            continue
+
+        primary_path = m.group(1)
+        conditional_path = m.group(2)
+        combinator = m.group(3)
+        names_str = m.group(4)
+
+        paths_to_process = [primary_path]
+        if conditional_path:
+            paths_to_process.append(conditional_path)
+
+        combinator_names = set()
+        if combinator and names_str:
+            combinator_names = {n.strip() for n in names_str.split(",")}
+
+        for export_path in paths_to_process:
+            decls = _resolve_and_extract_export_declarations(
+                export_path, file_dir, base_dir, visited
+            )
+
+            # Apply show/hide filtering
+            if combinator == "show":
+                decls = [d for d in decls if d["name"] in combinator_names]
+            elif combinator == "hide":
+                decls = [d for d in decls if d["name"] not in combinator_names]
+
+            for d in decls:
+                if d["name"] not in seen_names:
+                    seen_names.add(d["name"])
+                    declarations.append(d)
+
+    return declarations
+
+
+def _resolve_and_extract_export_declarations(export_path, file_dir, base_dir, visited):
+    """Resolve an export path and extract declarations from the target file."""
+    if export_path.startswith("package:"):
+        full_path = _resolve_package_path(export_path, base_dir)
+    else:
+        full_path = os.path.normpath(os.path.join(file_dir, export_path))
+
+    if full_path is None or not os.path.isfile(full_path):
+        return []
+
+    target_source, err = read_source(full_path)
+    if err or target_source is None:
+        return []
+
+    decls = _extract_declarations(target_source)
+
+    # Include part file declarations
+    part_decls = _follow_parts_declarations(full_path, target_source)
+    decls.extend(part_decls)
+
+    # Recursively follow exports (transitive)
+    transitive_decls = _follow_exports_declarations(full_path, target_source, base_dir, visited)
+    decls.extend(transitive_decls)
+
+    return decls
 
 
 # ---------------------------------------------------------------------------
@@ -669,6 +875,14 @@ class DartExtractor(BaseExtractor):
             if sym not in symbols:
                 symbols.append(sym)
 
+        # Include symbols from export directives
+        base_dir = _find_project_root(file_path)
+        if base_dir:
+            export_symbols = _follow_exports(file_path, source, base_dir)
+            for sym in export_symbols:
+                if sym not in symbols:
+                    symbols.append(sym)
+
         return symbols
 
 
@@ -727,6 +941,18 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
     if not os.path.isdir(resolved):
         part_decls = _follow_parts_declarations(resolved, list(file_contents.values())[0])
         declarations.extend(part_decls)
+
+        # Follow export directives
+        base_dir_ref = _find_project_root(resolved)
+        if base_dir_ref:
+            export_decls = _follow_exports_declarations(
+                resolved, list(file_contents.values())[0], base_dir_ref
+            )
+            # Local declarations shadow re-exported names
+            local_names = {d["name"] for d in declarations}
+            for d in export_decls:
+                if d["name"] not in local_names:
+                    declarations.append(d)
 
     # Group by kind
     kind_order = ["class", "mixin", "enum", "extension_type", "typedef", "const", "var", "function"]

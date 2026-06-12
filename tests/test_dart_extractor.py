@@ -772,3 +772,243 @@ class TestUnknownDirective:
         )
         assert "selfdoc:" in result
         assert "unknown directive" in result
+
+
+class TestExportFollowing:
+    def test_basic_export(self, tmp_path):
+        """Exported symbols should appear in the barrel file's symbol list."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        # Barrel file
+        (lib_dir / "test.dart").write_text("""\
+export 'src/models.dart';
+export 'src/utils.dart';
+""", encoding="utf-8")
+
+        (src_dir / "models.dart").write_text("""\
+class User {}
+class Product {}
+""", encoding="utf-8")
+
+        (src_dir / "utils.dart").write_text("""\
+String formatName(String name) => name.trim();
+const apiVersion = '1.0';
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "test.dart"))
+        assert "User" in symbols
+        assert "Product" in symbols
+        assert "formatName" in symbols
+        assert "apiVersion" in symbols
+
+    def test_export_show_combinator(self, tmp_path):
+        """show combinator should filter to only the listed symbols."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "barrel.dart").write_text("""\
+export 'src/models.dart' show User;
+""", encoding="utf-8")
+
+        (src_dir / "models.dart").write_text("""\
+class User {}
+class Product {}
+class Order {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "barrel.dart"))
+        assert "User" in symbols
+        assert "Product" not in symbols
+        assert "Order" not in symbols
+
+    def test_export_hide_combinator(self, tmp_path):
+        """hide combinator should exclude the listed symbols."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "barrel.dart").write_text("""\
+export 'src/models.dart' hide Product;
+""", encoding="utf-8")
+
+        (src_dir / "models.dart").write_text("""\
+class User {}
+class Product {}
+class Order {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "barrel.dart"))
+        assert "User" in symbols
+        assert "Product" not in symbols
+        assert "Order" in symbols
+
+    def test_transitive_exports(self, tmp_path):
+        """Exports should be followed transitively (A exports B which exports C)."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "test.dart").write_text("""\
+export 'src/layer1.dart';
+""", encoding="utf-8")
+
+        (src_dir / "layer1.dart").write_text("""\
+export 'layer2.dart';
+class FromLayer1 {}
+""", encoding="utf-8")
+
+        (src_dir / "layer2.dart").write_text("""\
+class FromLayer2 {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "test.dart"))
+        assert "FromLayer1" in symbols
+        assert "FromLayer2" in symbols
+
+    def test_circular_export_detection(self, tmp_path):
+        """Circular exports should not cause infinite loops."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir(parents=True)
+
+        (lib_dir / "a.dart").write_text("""\
+export 'b.dart';
+class FromA {}
+""", encoding="utf-8")
+
+        (lib_dir / "b.dart").write_text("""\
+export 'a.dart';
+class FromB {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        # Should not hang or crash
+        symbols = ext.public_symbols(str(lib_dir / "a.dart"))
+        assert "FromA" in symbols
+        assert "FromB" in symbols
+
+    def test_conditional_export(self, tmp_path):
+        """Conditional exports should include all variants."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "test.dart").write_text("""\
+export 'src/stub.dart' if (dart.library.io) 'src/native.dart';
+""", encoding="utf-8")
+
+        (src_dir / "stub.dart").write_text("""\
+class StubImpl {}
+""", encoding="utf-8")
+
+        (src_dir / "native.dart").write_text("""\
+class NativeImpl {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "test.dart"))
+        assert "StubImpl" in symbols
+        assert "NativeImpl" in symbols
+
+    def test_export_with_local_declarations(self, tmp_path):
+        """Local declarations should shadow re-exported names in ref output."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "test.dart").write_text("""\
+/// The main API.
+export 'src/models.dart';
+
+/// Local override of User.
+class User {}
+""", encoding="utf-8")
+
+        (src_dir / "models.dart").write_text("""\
+/// Exported User.
+class User {}
+class Product {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib/test.dart"}, [], [], str(tmp_path))
+        # Should have User (local) and Product (exported)
+        assert "### User" in result
+        assert "### Product" in result
+        # The local User's doc should win (shadow)
+        assert "Local override" in result
+
+    def test_export_missing_file_skipped(self, tmp_path):
+        """Missing export targets should be silently skipped."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        lib_dir.mkdir(parents=True)
+
+        (lib_dir / "test.dart").write_text("""\
+export 'nonexistent.dart';
+class Local {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "test.dart"))
+        assert "Local" in symbols
+
+    def test_export_in_ref_handler(self, tmp_path):
+        """The ref handler should include declarations from exports."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "test.dart").write_text("""\
+/// Package API.
+export 'src/widget.dart';
+""", encoding="utf-8")
+
+        (src_dir / "widget.dart").write_text("""\
+/// A custom widget.
+class MyWidget {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        result = ext.extract("ref", {"path": "lib/test.dart"}, [], [], str(tmp_path))
+        assert "### MyWidget" in result
+        assert "A custom widget" in result
+
+    def test_show_combinator_multiple_names(self, tmp_path):
+        """show combinator with multiple names."""
+        (tmp_path / "pubspec.yaml").write_text("name: test\n")
+        lib_dir = tmp_path / "lib"
+        src_dir = lib_dir / "src"
+        src_dir.mkdir(parents=True)
+
+        (lib_dir / "barrel.dart").write_text("""\
+export 'src/all.dart' show Alpha, Beta;
+""", encoding="utf-8")
+
+        (src_dir / "all.dart").write_text("""\
+class Alpha {}
+class Beta {}
+class Gamma {}
+class Delta {}
+""", encoding="utf-8")
+
+        ext = DartExtractor()
+        symbols = ext.public_symbols(str(lib_dir / "barrel.dart"))
+        assert "Alpha" in symbols
+        assert "Beta" in symbols
+        assert "Gamma" not in symbols
+        assert "Delta" not in symbols
