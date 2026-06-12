@@ -1,5 +1,4 @@
-"""Dart source extractor for selfdoc -- parses .dart files to extract public
-declarations, doc comments, part files, and exports for documentation pages.
+"""Dart source extractor for selfdoc -- parses .dart files to extract public declarations, doc comments, part files, and exports for documentation pages.
 
 Uses regex-based parsing (no Dart toolchain required). Handles:
 - :::ref        -- extract library doc, pub declarations with doc comments

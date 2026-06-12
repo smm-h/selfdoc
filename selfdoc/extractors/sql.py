@@ -1,5 +1,4 @@
-"""SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract
-table definitions, views, types, functions, and COMMENT ON documentation.
+"""SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract table definitions, views, types, functions, and COMMENT ON documentation.
 
 Uses regex-based parsing (no database connection required). Handles:
 - :::ref         -- list all CREATE objects with comments, grouped by type
