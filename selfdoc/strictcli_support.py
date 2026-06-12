@@ -9,8 +9,7 @@ import json
 import os
 import re
 
-from selfdoc.content import _read_project_field
-from selfdoc.utils import parse_frontmatter as _parse_frontmatter
+from selfdoc.utils import _read_project_field, parse_frontmatter as _parse_frontmatter
 from selfdoc.tables import render_markdown_table
 from selfdoc.utils import atomic_write as _atomic_write
 

@@ -181,3 +181,62 @@ def detect_project_version(base_dir: str, fallback: str = "") -> str:
             pass
 
     return fallback
+
+
+def _read_project_field(base_dir: str, field: str) -> str:
+    """Read a project metadata field from pyproject.toml, package.json, or go.mod."""
+    # For version, delegate to the shared utility
+    if field == "version":
+        return detect_project_version(base_dir, fallback="unknown")
+
+    # For other fields (e.g. "name"), use the original lookup chain
+    # Try pyproject.toml
+    pyproject = os.path.join(base_dir, "pyproject.toml")
+    if os.path.isfile(pyproject):
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            try:
+                import tomli as tomllib  # type: ignore[no-redef]
+            except ModuleNotFoundError:
+                pass
+            else:
+                return _read_toml_field(pyproject, field, tomllib)
+        else:
+            return _read_toml_field(pyproject, field, tomllib)
+
+    # Try package.json
+    pkg_json = os.path.join(base_dir, "package.json")
+    if os.path.isfile(pkg_json):
+        try:
+            with open(pkg_json, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return str(data.get(field, "unknown"))
+        except (OSError, json.JSONDecodeError):
+            return "unknown"
+
+    # Try go.mod (only for "name")
+    go_mod = os.path.join(base_dir, "go.mod")
+    if os.path.isfile(go_mod):
+        if field == "name":
+            try:
+                with open(go_mod, "r", encoding="utf-8") as f:
+                    for line in f:
+                        m = re.match(r"^module\s+(.+)", line.strip())
+                        if m:
+                            return m.group(1).strip()
+            except OSError:
+                pass
+        return "unknown"
+
+    return "unknown"
+
+
+def _read_toml_field(path: str, field: str, tomllib) -> str:
+    """Read a field from pyproject.toml's [project] table."""
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        return str(data.get("project", {}).get(field, "unknown"))
+    except Exception:
+        return "unknown"
