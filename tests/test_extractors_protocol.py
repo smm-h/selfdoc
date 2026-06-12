@@ -591,7 +591,7 @@ class TestResolvePath:
 
 class TestRegistry:
     def test_extractors_has_all_keys(self):
-        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "zig", "swift"}
+        assert set(EXTRACTORS.keys()) == {"python", "go", "typescript", "zig", "swift", "kotlin"}
 
     def test_all_extractors_are_language_extractors(self):
         for name, ext in EXTRACTORS.items():

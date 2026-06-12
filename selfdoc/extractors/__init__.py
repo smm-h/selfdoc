@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from selfdoc.extractors.base import StubExtractor
 from selfdoc.extractors.go import GoExtractor
+from selfdoc.extractors.kotlin import KotlinExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
 from selfdoc.extractors.swift import SwiftExtractor
@@ -16,6 +17,7 @@ EXTRACTORS: dict[str, LanguageExtractor] = {
     "typescript": TypeScriptExtractor(),
     "zig": ZigExtractor(),
     "swift": SwiftExtractor(),
+    "kotlin": KotlinExtractor(),
 }
 
 
@@ -28,13 +30,14 @@ class SourceEntry:
     extractor: LanguageExtractor
 
 
-# Ordered list for detection priority (Python, Go, TypeScript, Zig, Swift).
+# Ordered list for detection priority (Python, Go, TypeScript, Zig, Swift, Kotlin).
 _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["python"],
     EXTRACTORS["go"],
     EXTRACTORS["typescript"],
     EXTRACTORS["zig"],
     EXTRACTORS["swift"],
+    EXTRACTORS["kotlin"],
 ]
 
 
