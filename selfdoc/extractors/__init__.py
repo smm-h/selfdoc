@@ -7,6 +7,7 @@ from selfdoc.extractors.go import GoExtractor
 from selfdoc.extractors.kotlin import KotlinExtractor
 from selfdoc.extractors.protocol import LanguageExtractor
 from selfdoc.extractors.python import PythonExtractor
+from selfdoc.extractors.svelte import SvelteExtractor
 from selfdoc.extractors.swift import SwiftExtractor
 from selfdoc.extractors.typescript import TypeScriptExtractor
 from selfdoc.extractors.zig import ZigExtractor
@@ -18,6 +19,7 @@ EXTRACTORS: dict[str, LanguageExtractor] = {
     "zig": ZigExtractor(),
     "swift": SwiftExtractor(),
     "kotlin": KotlinExtractor(),
+    "svelte": SvelteExtractor(),
 }
 
 
@@ -30,7 +32,7 @@ class SourceEntry:
     extractor: LanguageExtractor
 
 
-# Ordered list for detection priority (Python, Go, TypeScript, Zig, Swift, Kotlin).
+# Ordered list for detection priority (Python, Go, TypeScript, Zig, Swift, Kotlin, Svelte).
 _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["python"],
     EXTRACTORS["go"],
@@ -38,6 +40,7 @@ _DETECTION_ORDER: list[LanguageExtractor] = [
     EXTRACTORS["zig"],
     EXTRACTORS["swift"],
     EXTRACTORS["kotlin"],
+    EXTRACTORS["svelte"],
 ]
 
 
