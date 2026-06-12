@@ -13,3 +13,4 @@
 {"commits":["be94b973ef6d4cc0f768a5b348fa50812c8d07ed"],"user_facing":false}
 {"commits":["3e0b399e5945e2459b15f6464ec1c380560826cb"],"user_facing":false}
 {"commits":["6151bd14f5b42c4317ea070d9b98f79e7b10664d"],"user_facing":false}
+{"commits":["8d5a489376b0ed2496d20c538d4dd0f58523f071"],"user_facing":true,"description":"**New feature.** `version_source` config field for reading version from primary manifest.","type":"feature"}
