@@ -28,6 +28,7 @@ def test_valid_config_loads(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "docs": "docs/",
         "output": "docs/_build/",
         "deploy": {"provider": "github-pages"},
@@ -44,6 +45,7 @@ def test_defaults_applied(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "pkg/", "language": "go"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["docs"] == "docs/"
@@ -91,6 +93,7 @@ def test_unsupported_language_accepted_in_config(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "lib/", "language": "ruby"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     config = load_config(str(config_dir))
     assert config is not None
@@ -155,6 +158,7 @@ def test_multi_language_source(config_dir):
             {"path": "pkg/", "language": "go"},
         ],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert len(cfg["source"]) == 2
@@ -179,6 +183,7 @@ def test_cloudflare_requires_project(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "lib/", "language": "typescript"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "deploy": {"provider": "cloudflare-pages"},
     })
     with pytest.raises(ConfigError, match="'deploy.project' is required"):
@@ -189,6 +194,7 @@ def test_cloudflare_with_project(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "lib/", "language": "typescript"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "deploy": {"provider": "cloudflare-pages", "project": "my-docs"},
     })
     cfg = load_config(str(config_dir))
@@ -212,6 +218,7 @@ def test_all_new_fields_present(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "lang": "en",
         "author": {"name": "Jane Doe", "url": "https://jane.dev", "type": "Person"},
         "description": "A great project",
@@ -229,6 +236,7 @@ def test_new_fields_absent_backward_compat(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["lang"] is None
@@ -291,6 +299,7 @@ def test_author_name_only(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "author": {"name": "Jane Doe"},
     })
     cfg = load_config(str(config_dir))
@@ -305,6 +314,7 @@ def test_twitter_in_author(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "author": {"name": "Test", "twitter": "@test"},
     })
     cfg = load_config(str(config_dir))
@@ -316,6 +326,7 @@ def test_twitter_top_level(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "twitter": "@test",
     })
     cfg = load_config(str(config_dir))
@@ -327,6 +338,7 @@ def test_twitter_author_takes_precedence(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "author": {"name": "Test", "twitter": "@author_handle"},
         "twitter": "@top_handle",
     })
@@ -354,6 +366,7 @@ def test_valid_bcp47_lang_tags(config_dir, tag):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "lang": tag,
     })
     cfg = load_config(str(config_dir))
@@ -381,6 +394,7 @@ def test_search_valid_values(config_dir, value):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "search": value,
     })
     cfg = load_config(str(config_dir))
@@ -392,6 +406,7 @@ def test_search_absent_is_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["search"] is None
@@ -427,6 +442,7 @@ def test_feedback_absent_is_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["feedback"] is None
@@ -437,6 +453,7 @@ def test_feedback_webhook_only(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "feedback": {"webhook": "https://hooks.example.com/fb"},
     })
     cfg = load_config(str(config_dir))
@@ -448,6 +465,7 @@ def test_feedback_ga_only(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "feedback": {"ga": "G-ABCDEF1234"},
     })
     cfg = load_config(str(config_dir))
@@ -459,6 +477,7 @@ def test_feedback_both_keys(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "feedback": {"webhook": "https://hooks.example.com/fb", "ga": "G-ABCDEF1234"},
     })
     cfg = load_config(str(config_dir))
@@ -471,6 +490,7 @@ def test_feedback_empty_object(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "feedback": {},
     })
     with pytest.raises(ConfigError, match="at least one of 'webhook' or 'ga'"):
@@ -540,6 +560,7 @@ def test_branch_valid(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "branch": "main",
     })
     cfg = load_config(str(config_dir))
@@ -551,6 +572,7 @@ def test_branch_absent_is_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["branch"] is None
@@ -587,6 +609,7 @@ def test_search_engine_valid_values(config_dir, value):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "search_engine": value,
     })
     cfg = load_config(str(config_dir))
@@ -609,6 +632,7 @@ def test_search_engine_default_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["search_engine"] is None
@@ -622,6 +646,7 @@ def test_branding_valid_full(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "branding": {
             "tagline": "Build docs fast",
             "cta_text": "Get Started",
@@ -648,6 +673,7 @@ def test_branding_valid_minimal(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "branding": {"tagline": "Docs made easy"},
     })
     cfg = load_config(str(config_dir))
@@ -701,6 +727,7 @@ def test_branding_default_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["branding"] is None
@@ -728,6 +755,7 @@ def test_glossary_default_true(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["glossary"] is True
@@ -738,6 +766,7 @@ def test_glossary_false(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "glossary": False,
     })
     cfg = load_config(str(config_dir))
@@ -752,6 +781,7 @@ def test_feed_max_entries_valid(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "feed_max_entries": 10,
     })
     cfg = load_config(str(config_dir))
@@ -774,6 +804,7 @@ def test_feed_max_entries_default_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["feed_max_entries"] is None
@@ -787,6 +818,7 @@ def test_gen_data_passed_through(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "gen_data": {
             "scripts": [
                 {"command": "python gen.py", "output": "data/api.json", "mounts": ["/src"]},
@@ -802,6 +834,7 @@ def test_gen_data_absent_is_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["gen_data"] is None
@@ -927,6 +960,7 @@ def test_gen_valid(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "gen": {"exclude": ["test_*.py", "__pycache__"]},
     })
     cfg = load_config(str(config_dir))
@@ -938,6 +972,7 @@ def test_gen_absent_is_none(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
     })
     cfg = load_config(str(config_dir))
     assert cfg["gen"] is None
@@ -1020,6 +1055,7 @@ def test_root_files_valid(config_dir):
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "version": "1.0.0",
         "root_files": ["docs/_CLAUDE.md"],
     })
     cfg = load_config(str(config_dir))
@@ -1089,14 +1125,14 @@ def test_version_valid(config_dir):
     assert cfg["version"] == "1.2.3"
 
 
-def test_version_absent_is_none(config_dir):
-    """Missing version field defaults to None."""
+def test_version_missing_without_version_source_errors(config_dir):
+    """Missing both version and version_source raises ConfigError."""
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] is None
+    with pytest.raises(ConfigError, match="no project version"):
+        load_config(str(config_dir))
 
 
 def test_version_invalid_pattern(config_dir):
@@ -1119,3 +1155,166 @@ def test_version_non_string(config_dir):
     })
     with pytest.raises(ConfigError, match="'version' must be a string"):
         load_config(str(config_dir))
+
+
+# -- version_source field --
+
+
+def test_version_source_invalid_rejected(config_dir):
+    """Invalid version_source value raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "setup.py",
+    })
+    with pytest.raises(ConfigError, match="invalid version_source"):
+        load_config(str(config_dir))
+
+
+def test_version_source_absent_is_none(config_dir):
+    """Missing version_source field defaults to None."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["version_source"] is None
+    assert cfg["version"] == "1.0.0"
+
+
+def test_version_source_reads_pyproject_toml(config_dir):
+    """version_source reads version from pyproject.toml."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "pyproject.toml",
+    })
+    pyproject = os.path.join(config_dir, "pyproject.toml")
+    with open(pyproject, "w") as f:
+        f.write('[project]\nname = "test"\nversion = "3.2.1"\n')
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "3.2.1"
+
+
+def test_version_source_reads_package_json(config_dir):
+    """version_source reads version from package.json."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "package.json",
+    })
+    pkg = os.path.join(config_dir, "package.json")
+    with open(pkg, "w") as f:
+        json.dump({"name": "test", "version": "4.5.6"}, f)
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "4.5.6"
+
+
+def test_version_source_reads_cargo_toml(config_dir):
+    """version_source reads version from Cargo.toml."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "Cargo.toml",
+    })
+    cargo = os.path.join(config_dir, "Cargo.toml")
+    with open(cargo, "w") as f:
+        f.write('[package]\nname = "test"\nversion = "7.8.9"\n')
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "7.8.9"
+
+
+def test_version_source_reads_version_file(config_dir):
+    """version_source reads version from VERSION file."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "VERSION",
+    })
+    vfile = os.path.join(config_dir, "VERSION")
+    with open(vfile, "w") as f:
+        f.write("2.3.4\n")
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "2.3.4"
+
+
+def test_version_source_missing_file_errors(config_dir):
+    """version_source pointing to nonexistent file raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "pyproject.toml",
+    })
+    # No pyproject.toml created
+    with pytest.raises(ConfigError, match="does not exist"):
+        load_config(str(config_dir))
+
+
+def test_version_source_missing_version_field_errors(config_dir):
+    """version_source file exists but has no version field raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "pyproject.toml",
+    })
+    pyproject = os.path.join(config_dir, "pyproject.toml")
+    with open(pyproject, "w") as f:
+        f.write('[project]\nname = "test"\n')  # no version
+    with pytest.raises(ConfigError, match="no \\[project\\]\\.version"):
+        load_config(str(config_dir))
+
+
+def test_version_source_and_version_conflict_errors(config_dir):
+    """version_source and explicit version that conflict raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "pyproject.toml",
+        "version": "9.9.9",
+    })
+    pyproject = os.path.join(config_dir, "pyproject.toml")
+    with open(pyproject, "w") as f:
+        f.write('[project]\nname = "test"\nversion = "1.0.0"\n')
+    with pytest.raises(ConfigError, match="remove one or make them match"):
+        load_config(str(config_dir))
+
+
+def test_version_source_and_version_matching_ok(config_dir):
+    """version_source and explicit version that match is accepted."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "pyproject.toml",
+        "version": "1.0.0",
+    })
+    pyproject = os.path.join(config_dir, "pyproject.toml")
+    with open(pyproject, "w") as f:
+        f.write('[project]\nname = "test"\nversion = "1.0.0"\n')
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "1.0.0"
+
+
+def test_neither_version_nor_version_source_errors(config_dir):
+    """Neither version nor version_source set raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+    })
+    with pytest.raises(ConfigError, match="no project version"):
+        load_config(str(config_dir))
+
+
+def test_version_source_alone_works(config_dir):
+    """version_source without explicit version works."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version_source": "package.json",
+    })
+    pkg = os.path.join(config_dir, "package.json")
+    with open(pkg, "w") as f:
+        json.dump({"name": "test", "version": "5.6.7"}, f)
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] == "5.6.7"
+    assert cfg["version_source"] == "package.json"

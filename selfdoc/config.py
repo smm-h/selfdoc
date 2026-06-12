@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tomllib
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -94,6 +95,14 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         default=None,
         pattern=r"^\d+\.\d+\.\d+",
         description="Project version. When present, used by deploy instead of reading from pyproject.toml/package.json.",
+    ),
+    FieldSpec(
+        name="version_source",
+        type=_S,
+        required=False,
+        default=None,
+        choices=("pyproject.toml", "package.json", "Cargo.toml", "VERSION"),
+        description="Manifest file to read the project version from.",
     ),
     FieldSpec(
         name="docs",
@@ -763,6 +772,79 @@ def _validate_field(spec: FieldSpec, value, path: str) -> Any:
     raise ConfigError(f"unknown field type {spec.type!r} for '{path}'")
 
 
+def _read_version_from_manifest(dir_path: str, source: str) -> str:
+    """Read project version from a specific manifest file.
+
+    Raises ConfigError if the file does not exist or the version field is missing.
+    """
+    filepath = os.path.join(dir_path, source)
+    if not os.path.isfile(filepath):
+        raise ConfigError(
+            f"version_source {source!r} does not exist at {filepath}"
+        )
+
+    if source == "pyproject.toml":
+        try:
+            with open(filepath, "rb") as f:
+                data = tomllib.load(f)
+            version = data.get("project", {}).get("version")
+        except (tomllib.TOMLDecodeError, KeyError) as exc:
+            raise ConfigError(
+                f"failed to read version from {source}: {exc}"
+            ) from exc
+        if not version:
+            raise ConfigError(
+                f"version_source {source!r} exists but has no [project].version field"
+            )
+        return version
+
+    if source == "Cargo.toml":
+        try:
+            with open(filepath, "rb") as f:
+                data = tomllib.load(f)
+            version = data.get("package", {}).get("version")
+        except (tomllib.TOMLDecodeError, KeyError) as exc:
+            raise ConfigError(
+                f"failed to read version from {source}: {exc}"
+            ) from exc
+        if not version:
+            raise ConfigError(
+                f"version_source {source!r} exists but has no [package].version field"
+            )
+        return version
+
+    if source == "package.json":
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            version = data.get("version")
+        except (json.JSONDecodeError, KeyError) as exc:
+            raise ConfigError(
+                f"failed to read version from {source}: {exc}"
+            ) from exc
+        if not version:
+            raise ConfigError(
+                f"version_source {source!r} exists but has no 'version' field"
+            )
+        return version
+
+    if source == "VERSION":
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                version = f.read().strip()
+        except OSError as exc:
+            raise ConfigError(
+                f"failed to read version from {source}: {exc}"
+            ) from exc
+        if not version:
+            raise ConfigError(
+                f"version_source {source!r} exists but is empty"
+            )
+        return version
+
+    raise ConfigError(f"unsupported version_source {source!r}")
+
+
 def _post_validate(config: dict) -> dict:
     """Apply cross-field validation rules after individual field validation.
 
@@ -893,5 +975,22 @@ def load_config(dir_path="."):
         raw_value = raw.get(spec.name, _MISSING)
         validated = _validate_field(spec, raw_value, spec.name)
         result[spec.name] = validated
+
+    # Version resolution: version_source takes precedence
+    version_source = result.get("version_source")
+    if version_source:
+        resolved = _read_version_from_manifest(dir_path, version_source)
+        existing = result.get("version")
+        if existing and existing != resolved:
+            raise ConfigError(
+                f"version_source {version_source!r} gives version"
+                f" {resolved!r} but config 'version' is {existing!r}"
+                " -- remove one or make them match"
+            )
+        result["version"] = resolved
+    elif result.get("version") is None:
+        raise ConfigError(
+            "no project version: set 'version' or 'version_source' in selfdoc.json"
+        )
 
     return _post_validate(result)
