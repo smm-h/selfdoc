@@ -3559,3 +3559,73 @@ def test_xref002_missing_source_file(python_project):
     assert xref002[0].severity == "error"
     assert "mylib" in xref002[0].message
     assert xref002[0].file == "api.md"
+
+
+def test_xref001_broken_internal_link(lint_project):
+    """XREF001: link to nonexistent .md page triggers warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page\n---\n"
+            "# Page\n\n"
+            "See [other](other.md) for details.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    xref001 = [r for r in results if r.code == "XREF001"]
+    assert len(xref001) == 1
+    assert xref001[0].severity == "warning"
+    assert "other.md" in xref001[0].message
+
+
+def test_xref001_valid_internal_link(lint_project):
+    """XREF001: link to existing .md page produces no lint."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page\n---\n"
+            "# Page\n\n"
+            "See [other](other.md) for details.\n"
+        )
+    with open(os.path.join(docs_dir, "other.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: other page\n---\n"
+            "# Other\n\nContent here.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    xref001 = [r for r in results if r.code == "XREF001"]
+    assert len(xref001) == 0
+
+
+def test_xref001_external_link_ignored(lint_project):
+    """XREF001: http/https links are not checked."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page\n---\n"
+            "# Page\n\n"
+            "See [docs](https://example.com/other.md) for details.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    xref001 = [r for r in results if r.code == "XREF001"]
+    assert len(xref001) == 0
+
+
+def test_xref001_relative_link(lint_project):
+    """XREF001: relative paths are resolved against the current page."""
+    _, docs_dir, config = lint_project
+    subdir = os.path.join(docs_dir, "guides")
+    os.makedirs(subdir)
+    with open(os.path.join(subdir, "setup.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: setup guide\n---\n"
+            "# Setup\n\n"
+            "See [API](../api.md) for reference.\n"
+        )
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: API reference\n---\n"
+            "# API\n\nAPI content.\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    xref001 = [r for r in results if r.code == "XREF001"]
+    assert len(xref001) == 0

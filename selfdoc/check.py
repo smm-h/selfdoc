@@ -450,6 +450,8 @@ def _run_lints(all_docs, docs_dir, resolver, config):
         "link", "read more", "more", "learn more",
     }
 
+    _known_pages = set(all_docs.keys())
+
     for rel_path in sorted(all_docs):
         metadata, _resolved, body_content, fm_offset = all_docs[rel_path]
         tokens = tokenize(body_content)
@@ -766,6 +768,39 @@ def _run_lints(all_docs, docs_dir, resolver, config):
                                 f"Generic anchor text '{m.group(1).strip()}';"
                                 f" use descriptive link text"
                             ),
+                            severity="warning",
+                        ))
+
+        # XREF001 -- Broken internal page links
+        # Scan for markdown links to .md files and verify they exist.
+        for tok in tokens:
+            if not isinstance(tok, _TEXT_TYPES):
+                continue
+            tok_lines = _token_text_lines(tok)
+            for offset, line in enumerate(tok_lines):
+                for m in re.finditer(r'\[([^\]]*)\]\(([^)]+)\)', line):
+                    target = m.group(2)
+                    # Skip external links, anchors, and non-.md links
+                    if target.startswith(('http://', 'https://', '#', 'mailto:')):
+                        continue
+                    # Strip anchor fragment
+                    target = target.split('#')[0]
+                    if not target.endswith('.md'):
+                        continue
+                    # Resolve relative paths
+                    if not target.startswith('/'):
+                        page_dir = os.path.dirname(rel_path)
+                        target = os.path.normpath(os.path.join(page_dir, target))
+                    else:
+                        target = target.lstrip('/')
+                    # Normalize path separators
+                    target = target.replace('\\', '/')
+                    if target not in _known_pages:
+                        results.append(LintResult(
+                            file=rel_path,
+                            line=tok.start + offset + fm_offset,
+                            code="XREF001",
+                            message=f"link to '{target}' resolves to unknown page",
                             severity="warning",
                         ))
 
