@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.dart
-description: "Dart source extractor for selfdoc -- parses .dart files to extract public"
+description: "Dart source extractor for selfdoc -- parses .dart files to extract public declarations, doc comments, part files, and exports for documentation pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 13
