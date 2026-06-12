@@ -1,6 +1,6 @@
 {
   ".github/workflows/ci.yml": "e627a27fd73a988ac9fab0710bcaddd29d93d5651630129a4252d7d141644f0a",
-  ".github/workflows/publish.yml": "3a3635b40d5e49352d5e522e2c79779fdde70b1bac49ac66368c84399c92f9bf",
+  ".github/workflows/publish.yml": "6ec2583ede889b11babc9514eff3769e7d9d00f5f3a6be9ebbf82c38a3c98b8a",
   "CLAUDE.md": "d616e99c7bd5f1d8f03735c14f4cafa7cabac6886e8792f8a3200b04130d45af",
   ".rlsbl/hooks/pre-release.sh": "0445053307c19abe3e9dc07008e90e2dd155a28e6032c63f539e349e7e8b38ee",
   ".rlsbl/hooks/post-release.sh": "b455f8511e0b2655509ecf5dcb0ab7da5bb7c961f47910ff8e00cab5bd51f833",
@@ -11,5 +11,7 @@
   ".rlsbl/lint/go.toml": "807d5cf760baad6d571a5bfd43cb163efe356f7462ba9f1918d72de45f62339f",
   ".rlsbl/lint/npm.toml": "baa36014e65923d8cc5c8b83c77fa651da79351627570476402da66840027645",
   ".rlsbl/changes/unreleased.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ".npmignore": "7c0eea9785c0318aeb39bf8b670ce8384f4a5b812fde69ce23d7d018057325a3"
+  ".npmignore": "7c0eea9785c0318aeb39bf8b670ce8384f4a5b812fde69ce23d7d018057325a3",
+  ".github/workflows/ci-pypi.yml": "291a3518642567003ffd7983d88efd46ab75992e606dbec7b593593ed25fb035",
+  "CHANGELOG.md": "35916a15ff18c20ed87f904d69680813224c29fcb25f9011989c4888f859406d"
 }
