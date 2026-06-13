@@ -68,7 +68,7 @@ def page(browser_instance, http_server):
     ctx.grant_permissions(["clipboard-read", "clipboard-write"])
     pg = ctx.new_page()
     pg.goto(f"http://127.0.0.1:{http_server}/demo/index.html")
-    pg.wait_for_load_state("networkidle")
+    pg.wait_for_load_state("domcontentloaded")
     yield pg
     pg.close()
     ctx.close()
@@ -106,7 +106,7 @@ def test_page_loads_without_js_errors(browser_instance, http_server):
     errors = []
     pg.on("pageerror", lambda exc: errors.append(str(exc)))
     pg.goto(f"http://127.0.0.1:{http_server}/demo/index.html")
-    pg.wait_for_load_state("networkidle")
+    pg.wait_for_load_state("domcontentloaded")
     pg.close()
     ctx.close()
     assert errors == [], f"Page produced JS errors: {errors}"
@@ -710,7 +710,7 @@ def test_url_hash_decoded_on_load(browser_instance, http_server):
     pg.goto(
         f"http://127.0.0.1:{http_server}/demo/index.html#accent-color=purple"
     )
-    pg.wait_for_load_state("networkidle")
+    pg.wait_for_load_state("domcontentloaded")
 
     result = pg.evaluate(
         "getComputedStyle(document.documentElement)"
@@ -736,7 +736,7 @@ def test_url_hash_priority_over_localstorage(browser_instance, http_server):
     # First page: set border-radius to "16px" in localStorage
     pg1 = ctx.new_page()
     pg1.goto(f"http://127.0.0.1:{http_server}/demo/index.html")
-    pg1.wait_for_load_state("networkidle")
+    pg1.wait_for_load_state("domcontentloaded")
     pg1.evaluate(
         "localStorage.setItem('selfdoc-design-border-radius', '16px')"
     )
@@ -747,7 +747,7 @@ def test_url_hash_priority_over_localstorage(browser_instance, http_server):
     pg2.goto(
         f"http://127.0.0.1:{http_server}/demo/index.html#border-radius=0"
     )
-    pg2.wait_for_load_state("networkidle")
+    pg2.wait_for_load_state("domcontentloaded")
 
     result = pg2.evaluate(
         "getComputedStyle(document.documentElement)"
