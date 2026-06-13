@@ -3968,3 +3968,118 @@ def test_cli001_no_strictcli(tmp_path):
     result = check_docs(str(tmp_path))
     cli001 = [l for l in result.lints if l.code == "CLI001"]
     assert len(cli001) == 0
+
+
+# -- EXAMPLE001: code block syntax validation --
+
+
+def test_example001_valid_python(lint_project):
+    """EXAMPLE001: valid Python code block produces no lint."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page with valid python\n---\n"
+            "# Example\n\n"
+            "```python\n"
+            "def greet(name):\n"
+            "    return f'Hello, {name}'\n"
+            "\n"
+            "print(greet('world'))\n"
+            "```\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 0
+
+
+def test_example001_invalid_python(lint_project):
+    """EXAMPLE001: invalid Python code block triggers a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page with invalid python\n---\n"
+            "# Example\n\n"
+            "```python\n"
+            "def greet(name)\n"
+            "    return f'Hello, {name}'\n"
+            "\n"
+            "print(greet('world'))\n"
+            "```\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 1
+    assert ex001[0].severity == "warning"
+    assert "Python syntax error" in ex001[0].message
+    assert ex001[0].code == "EXAMPLE001"
+
+
+def test_example001_short_snippet_skipped(lint_project):
+    """EXAMPLE001: code blocks with fewer than 3 lines are skipped."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page with short snippet\n---\n"
+            "# Example\n\n"
+            "```python\n"
+            "x = 1\n"
+            "y = 2\n"
+            "```\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 0
+
+
+def test_example001_directive_block_skipped(lint_project):
+    """EXAMPLE001: code blocks containing directive markers are skipped."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page with directive block\n---\n"
+            "# Example\n\n"
+            "```python\n"
+            "# This is a template example\n"
+            ':-: ref path="mylib"\n'
+            "# more content here\n"
+            "print('done')\n"
+            "```\n"
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 0
+
+
+def test_example001_valid_json(lint_project):
+    """EXAMPLE001: valid JSON code block produces no lint."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page with valid json\n---\n"
+            "# Example\n\n"
+            '```json\n'
+            '{"key": "value", "num": 42}\n'
+            '```\n'
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 0
+
+
+def test_example001_invalid_json(lint_project):
+    """EXAMPLE001: invalid JSON code block triggers a warning."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test page with invalid json\n---\n"
+            "# Example\n\n"
+            '```json\n'
+            '{"key": "value",}\n'
+            '```\n'
+        )
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 1
+    assert ex001[0].severity == "warning"
+    assert "JSON syntax error" in ex001[0].message
+    assert ex001[0].code == "EXAMPLE001"
