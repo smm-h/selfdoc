@@ -16,3 +16,4 @@
 {"commits":["1c7cb151bb4a04c6e37e4fbdff349f7d1b7ae093","03e83fa87161a4cc0f0e7c54e6db00e4302f151e"],"user_facing":false}
 {"commits":["7c9e2fb45295ccae1d76e5f98e7adf9683349302"],"user_facing":false}
 {"commits":["572d96296fcc0fc346755ee89baee3ac342a8e2b"],"user_facing":true,"description":"**Fix.** XREF002 no longer fires false positives on Go package paths (directories).","type":"fix"}
+{"commits":["350e93d84f59706d43bf50119075ad2537a5fa10"],"user_facing":false}
