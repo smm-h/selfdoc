@@ -4204,3 +4204,181 @@ def test_drift001_source_unchanged(tmp_path):
     result = check_docs(str(tmp_path))
     drift = [l for l in result.lints if l.code == "DRIFT001"]
     assert len(drift) == 0
+
+
+# -- PARAM001: parameter documentation completeness --
+
+
+from selfdoc.extractors import SourceEntry
+from selfdoc.extractors.python import PythonExtractor
+
+
+def test_param001_undocumented_param(lint_project):
+    """PARAM001: function with undocumented param triggers warning."""
+    tmp_path, docs_dir, config = lint_project
+
+    # Create a source file with a function that has 3 params, 2 documented
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def greet(name: str, greeting: str, loud: bool = False) -> str:\n'
+            '    """Say hello.\n'
+            '\n'
+            '    Args:\n'
+            '        name: The person to greet.\n'
+            '        greeting: The greeting to use.\n'
+            '    """\n'
+            '    pass\n'
+        )
+
+    # Write a docs page
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about greet\n---\n# Greet\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "greet"},
+            content="def greet(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    param001 = [r for r in results if r.code == "PARAM001"]
+    assert len(param001) == 1
+    assert "loud" in param001[0].message
+    assert param001[0].severity == "warning"
+
+
+def test_param001_all_documented(lint_project):
+    """PARAM001: all params documented produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def greet(name: str, greeting: str) -> str:\n'
+            '    """Say hello.\n'
+            '\n'
+            '    Args:\n'
+            '        name: The person to greet.\n'
+            '        greeting: The greeting to use.\n'
+            '    """\n'
+            '    pass\n'
+        )
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about greet\n---\n# Greet\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "greet"},
+            content="def greet(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    param001 = [r for r in results if r.code == "PARAM001"]
+    assert len(param001) == 0
+
+
+def test_param001_no_params(lint_project):
+    """PARAM001: function with no params produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def do_stuff() -> None:\n'
+            '    """Do stuff."""\n'
+            '    pass\n'
+        )
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about do_stuff\n---\n# Do Stuff\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "do_stuff"},
+            content="def do_stuff(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    param001 = [r for r in results if r.code == "PARAM001"]
+    assert len(param001) == 0
+
+
+def test_param001_no_target(lint_project):
+    """PARAM001: ref without target attr produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write('"""Module docstring."""\n')
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about the module\n---\n# Module\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod"},
+            content="module content",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    param001 = [r for r in results if r.code == "PARAM001"]
+    assert len(param001) == 0
+
+
+def test_param001_non_python(lint_project):
+    """PARAM001: extractor returning None for symbol_details produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about Go code\n---\n# Go Code\n\nContent.\n")
+
+    from selfdoc.extractors.base import BaseExtractor
+    entry = SourceEntry(path="src/", language="go", extractor=BaseExtractor())
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "DoStuff"},
+            content="func DoStuff(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    param001 = [r for r in results if r.code == "PARAM001"]
+    assert len(param001) == 0

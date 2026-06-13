@@ -1035,6 +1035,37 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
 
+    # PARAM001 -- parameter documentation completeness
+    # RETURN001 -- return type documentation
+    base_dir = os.path.dirname(os.path.abspath(docs_dir))
+    for rd in (resolved_directives or []):
+        if rd.name != "ref" or rd.source_entry is None:
+            continue
+        target = rd.attrs.get("target", "")
+        if not target:
+            continue
+        resolved_path = rd.source_entry.extractor.resolve_path(
+            rd.attrs.get("path", ""), [rd.source_entry.path], base_dir,
+        )
+        if resolved_path is None:
+            continue
+        details = rd.source_entry.extractor.symbol_details(
+            resolved_path, target,
+        )
+        if details is None:
+            continue
+        for param in details["params"]:
+            if param["name"] in ("self", "cls"):
+                continue
+            if not param["documented"]:
+                results.append(LintResult(
+                    file=rd.file,
+                    line=None,
+                    code="PARAM001",
+                    message=f"parameter '{param['name']}' not documented",
+                    severity="warning",
+                ))
+
     return results
 
 
