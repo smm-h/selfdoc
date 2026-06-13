@@ -557,3 +557,75 @@ def test_inline_multiline_output_error():
 
     with pytest.raises(RuntimeError, match="multi-line output"):
         resolve_directives(content, resolver)
+
+
+# -- parse_directives: inline detection (Directive dataclass) ------------------
+
+
+def test_parse_directives_finds_inline():
+    """parse_directives returns inline directives with inline=True."""
+    content = 'text :-: var end'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].name == "var"
+    assert result[0].inline is True
+    assert result[0].body == []
+
+
+def test_parse_directives_inline_has_column():
+    """Column field is set correctly for inline directives."""
+    content = 'prefix :-: var end'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].column == 7  # "prefix " is 7 chars
+    assert result[0].line_number == 1
+
+
+def test_parse_directives_inline_in_fence_excluded():
+    """Inline directives inside fenced code blocks are not detected."""
+    content = (
+        "```\n"
+        'text :-: var end\n'
+        "```\n"
+    )
+    result = parse_directives(content)
+    assert result == []
+
+
+def test_parse_directives_standalone_not_inline():
+    """Standalone directives have inline=False and column=None."""
+    content = ':-: ref src="foo"'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].inline is False
+    assert result[0].column is None
+
+
+def test_parse_directives_mixed_standalone_and_inline():
+    """Both standalone and inline directives are detected."""
+    content = (
+        ':-: ref src="foo"\n'
+        'text :-: var end\n'
+    )
+    result = parse_directives(content)
+    assert len(result) == 2
+    assert result[0].name == "ref"
+    assert result[0].inline is False
+    assert result[1].name == "var"
+    assert result[1].inline is True
+
+
+def test_parse_directives_inline_with_attrs():
+    """Inline directives parse attributes correctly."""
+    content = 'see :-: var key="val" here'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].attrs == {"key": "val"}
+    assert result[0].inline is True
+
+
+def test_parse_directives_inline_in_backtick_excluded():
+    """Inline directives inside backtick spans are not detected."""
+    content = 'see `:-: var` here'
+    result = parse_directives(content)
+    assert result == []

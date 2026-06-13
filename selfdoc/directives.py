@@ -60,6 +60,8 @@ class Directive:
     attrs: dict[str, str] = field(default_factory=dict)
     body: list[str] = field(default_factory=list)
     line_number: int = 0
+    inline: bool = False
+    column: int | None = None
 
 
 def _parse_attrs(text: str) -> dict[str, str]:
@@ -202,6 +204,7 @@ def parse_directives(content: str, valid_names: set[str] | None = None) -> list[
     """Extract all directive blocks from markdown content.
 
     Returns a list of Directive dataclass instances in document order.
+    Includes both standalone (pass 1) and inline (pass 2) directives.
     Directives inside fenced code blocks are ignored.
     Raises DirectiveError if a directive is opened but never closed,
     or if a directive name is not in valid_names (when provided).
@@ -218,60 +221,122 @@ def parse_directives(content: str, valid_names: set[str] | None = None) -> list[
             raise DirectiveError(
                 f"Unclosed directive '{name}' opened at line {line_num}"
             )
+
+    # Pass 2: scan non-directive, non-fenced lines for inline directives.
+    # Re-scan from original content with fence tracking to get line numbers.
+    if content:
+        lines = content.split("\n")
+        fence_char: str | None = None
+        fence_len: int = 0
+        for line_idx, line in enumerate(lines):
+            stripped = line.strip()
+            fence_match = _FENCE_RE.match(stripped)
+            if fence_match:
+                marker = fence_match.group(1)
+                if fence_char is None:
+                    fence_char = marker[0]
+                    fence_len = len(marker)
+                elif marker[0] == fence_char and len(marker) >= fence_len:
+                    fence_char = None
+                    fence_len = 0
+                continue
+            if fence_char is not None:
+                continue
+            # Skip lines that are standalone directives (handled by pass 1)
+            if _ONELINER_RE.match(stripped):
+                continue
+            # Find inline directives
+            directives.extend(find_inline_directives(line, line_idx + 1))
+
     return directives
-
-
-def _resolve_inline_match(match: re.Match, resolver: callable) -> str:
-    """Resolve a single inline :-: match by calling the resolver."""
-    name = match.group(1)
-    attrs = _parse_attrs(match.group(2))
-    result = resolver(name, attrs, [])
-    if "\n" in result:
-        raise RuntimeError(
-            f"Inline directive '{name}' returned multi-line output; "
-            "only single-line output is allowed for inline directives."
-        )
-    return result
 
 
 # Single-backtick code span: `...` (not double-backtick — known limitation)
 _BACKTICK_SPAN_RE = re.compile(r"`[^`]+`")
 
 
-def _resolve_line_inline(line: str, resolver: callable) -> str:
-    """Resolve inline :-: directives in a single line, skipping backtick spans.
+def _mask_backtick_spans(line: str) -> tuple[str, list[str]]:
+    """Replace backtick code spans with null-byte placeholders.
 
-    Masks backtick-enclosed regions with placeholders before running re.sub,
-    then restores them. Double-backtick spans (``...``) are a known limitation
-    and are not handled.
+    Returns (masked_line, placeholders) where placeholders[i] is the original
+    text for placeholder i. Double-backtick spans (``...``) are a known
+    limitation and are not handled.
     """
-    # Collect backtick span regions
     spans = list(_BACKTICK_SPAN_RE.finditer(line))
     if not spans:
-        return _INLINE_RE.sub(
-            lambda m: _resolve_inline_match(m, resolver), line
-        )
+        return line, []
 
-    # Replace backtick spans with null-byte placeholders to protect them
     placeholders: list[str] = []
-    protected = line
-    # Process in reverse order to preserve positions
+    masked = line
     for match in reversed(spans):
         placeholder = f"\x00BTCK{len(placeholders)}\x00"
         placeholders.append(match.group(0))
-        protected = protected[:match.start()] + placeholder + protected[match.end():]
+        masked = masked[:match.start()] + placeholder + masked[match.end():]
     placeholders.reverse()
+    return masked, placeholders
 
-    # Now resolve inline directives on the protected line
-    protected = _INLINE_RE.sub(
-        lambda m: _resolve_inline_match(m, resolver), protected
-    )
 
-    # Restore backtick spans
+def _unmask_backtick_spans(line: str, placeholders: list[str]) -> str:
+    """Restore backtick span placeholders to their original text."""
     for i, original in enumerate(placeholders):
-        protected = protected.replace(f"\x00BTCK{i}\x00", original)
+        line = line.replace(f"\x00BTCK{i}\x00", original)
+    return line
 
-    return protected
+
+def find_inline_directives(line: str, line_num: int) -> list[Directive]:
+    """Find inline :-: directives in a line, skipping backtick code spans.
+
+    Returns Directive objects with inline=True and column set to the match
+    position in the original (unmasked) line.
+    """
+    masked, placeholders = _mask_backtick_spans(line)
+    directives: list[Directive] = []
+    for match in _INLINE_RE.finditer(masked):
+        name = match.group(1)
+        attrs = _parse_attrs(match.group(2))
+        # Column in masked line equals column in original line when the match
+        # falls outside placeholders (which it does, since backtick spans are
+        # masked). Compute original column by counting placeholder length diffs
+        # before this position.
+        col = match.start()
+        offset = 0
+        for i, ph_original in enumerate(placeholders):
+            ph_text = f"\x00BTCK{i}\x00"
+            ph_pos = masked.index(ph_text)
+            if ph_pos < match.start():
+                offset += len(ph_original) - len(ph_text)
+            else:
+                break
+        directives.append(
+            Directive(
+                name=name,
+                attrs=attrs,
+                body=[],
+                line_number=line_num,
+                inline=True,
+                column=col + offset,
+            )
+        )
+    return directives
+
+
+def _resolve_line_inline(line: str, resolver: callable) -> str:
+    """Resolve inline :-: directives in a single line, skipping backtick spans."""
+    masked, placeholders = _mask_backtick_spans(line)
+
+    def _resolve_match(match: re.Match) -> str:
+        name = match.group(1)
+        attrs = _parse_attrs(match.group(2))
+        result = resolver(name, attrs, [])
+        if "\n" in result:
+            raise RuntimeError(
+                f"Inline directive '{name}' returned multi-line output; "
+                "only single-line output is allowed for inline directives."
+            )
+        return result
+
+    resolved = _INLINE_RE.sub(_resolve_match, masked)
+    return _unmask_backtick_spans(resolved, placeholders)
 
 
 def _resolve_inline_pass(
