@@ -2,3 +2,4 @@
 {"commits":["4c0b035847cf2e9e91e06aab9e94e32ab0d3b097"],"user_facing":false}
 {"commits":["a3db4b724b7be92845535884a3b21f3b69b16f4a"],"user_facing":false}
 {"commits":["aff292bb7f303aa4a7b87b52fc73e6b202ff5efa"],"user_facing":false}
+{"commits":["3b3ac6600e507ed1aca00bd6d12052c66c4ed64a"],"user_facing":true,"description":"**New feature.** CLI001 lint checks CLI reference completeness for strictcli-based projects.","type":"feature"}
