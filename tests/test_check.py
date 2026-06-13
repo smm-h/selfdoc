@@ -4382,3 +4382,163 @@ def test_param001_non_python(lint_project):
     results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
     param001 = [r for r in results if r.code == "PARAM001"]
     assert len(param001) == 0
+
+
+# -- RETURN001: return type documentation --
+
+
+def test_return001_missing_return_docs(lint_project):
+    """RETURN001: function with return type but no Returns section triggers warning."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def fetch(url: str) -> str:\n'
+            '    """Fetch a URL.\n'
+            '\n'
+            '    Args:\n'
+            '        url: The URL to fetch.\n'
+            '    """\n'
+            '    pass\n'
+        )
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about fetch\n---\n# Fetch\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "fetch"},
+            content="def fetch(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    return001 = [r for r in results if r.code == "RETURN001"]
+    assert len(return001) == 1
+    assert "str" in return001[0].message
+    assert return001[0].severity == "warning"
+
+
+def test_return001_return_documented(lint_project):
+    """RETURN001: function with documented return type produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def fetch(url: str) -> str:\n'
+            '    """Fetch a URL.\n'
+            '\n'
+            '    Args:\n'
+            '        url: The URL to fetch.\n'
+            '\n'
+            '    Returns:\n'
+            '        The response body.\n'
+            '    """\n'
+            '    pass\n'
+        )
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about fetch\n---\n# Fetch\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "fetch"},
+            content="def fetch(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    return001 = [r for r in results if r.code == "RETURN001"]
+    assert len(return001) == 0
+
+
+def test_return001_no_return_type(lint_project):
+    """RETURN001: function with no return annotation produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def process(data):\n'
+            '    """Process data.\n'
+            '\n'
+            '    Args:\n'
+            '        data: The data to process.\n'
+            '    """\n'
+            '    pass\n'
+        )
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about process\n---\n# Process\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "process"},
+            content="def process(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    return001 = [r for r in results if r.code == "RETURN001"]
+    assert len(return001) == 0
+
+
+def test_return001_none_return(lint_project):
+    """RETURN001: function annotated -> None produces no lint."""
+    tmp_path, docs_dir, config = lint_project
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "mod.py"), "w") as f:
+        f.write(
+            'def cleanup(path: str) -> None:\n'
+            '    """Clean up files.\n'
+            '\n'
+            '    Args:\n'
+            '        path: The path to clean.\n'
+            '    """\n'
+            '    pass\n'
+        )
+
+    with open(os.path.join(docs_dir, "page.md"), "w") as f:
+        f.write("---\ndescription: A page about cleanup\n---\n# Cleanup\n\nContent.\n")
+
+    extractor = PythonExtractor()
+    entry = SourceEntry(path="src/", language="python", extractor=extractor)
+
+    directives = [
+        ResolvedDirective(
+            name="ref",
+            attrs={"path": "mod", "target": "cleanup"},
+            content="def cleanup(...)",
+            file="page.md",
+            source_entry=entry,
+        ),
+    ]
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
+    return001 = [r for r in results if r.code == "RETURN001"]
+    assert len(return001) == 0

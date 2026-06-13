@@ -1065,6 +1065,20 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                     message=f"parameter '{param['name']}' not documented",
                     severity="warning",
                 ))
+        # RETURN001 -- return type documentation
+        return_type = details["return_type"]
+        if (
+            return_type is not None
+            and return_type not in ("None", "NoneType")
+            and not details["return_documented"]
+        ):
+            results.append(LintResult(
+                file=rd.file,
+                line=None,
+                code="RETURN001",
+                message=f"return type '{return_type}' not documented",
+                severity="warning",
+            ))
 
     return results
 
