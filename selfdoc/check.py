@@ -6,6 +6,8 @@ languages, computes coverage: how many public/exported symbols are
 referenced by directives vs. the total in source files.
 """
 
+import ast
+import json
 import os
 import sys
 from dataclasses import dataclass, field
@@ -27,6 +29,8 @@ from selfdoc.extractors import EXTRACTORS, SourceEntry
 from selfdoc.resolver import make_resolver, Resolver
 from selfdoc.staleness import update_hashes
 from selfdoc.gen import _DEFAULT_DESCRIPTION_RE
+
+_DIRECTIVE_MARKERS = {":-:", ":<:", ":>:", ":@:", ":=:", ":::"}
 
 
 @dataclass
@@ -275,6 +279,62 @@ def check_docs(dir_path=".", config=None, dry_run=False):
                 ),
                 severity="error",
             ))
+
+    # CLI001: CLI reference completeness for strictcli projects
+    from selfdoc.strictcli_support import read_schema_json, expected_cli_page_filenames
+    cli_schema = read_schema_json(dir_path)
+    if cli_schema is not None:
+        expected_pages = expected_cli_page_filenames(cli_schema)
+        docs_dir_path = os.path.join(dir_path, config["docs"].rstrip("/"))
+
+        # Check which expected pages exist
+        for page_name in expected_pages:
+            page_path = os.path.join(docs_dir_path, page_name)
+            if not os.path.isfile(page_path):
+                # Determine the command name from the filename
+                # cli-index.md -> index, cli-foo.md -> foo
+                cmd_name = page_name.replace("cli-", "").replace(".md", "")
+                result.lints.append(LintResult(
+                    file=page_name,
+                    line=None,
+                    code="CLI001",
+                    message=f"missing CLI page for command '{cmd_name}'",
+                    severity="warning",
+                ))
+            else:
+                # Page exists -- check if all flags from schema are documented
+                with open(page_path, "r", encoding="utf-8") as f:
+                    page_content = f.read()
+
+                # Find the command/group in the schema that corresponds
+                cmd_name = page_name.replace("cli-", "").replace(".md", "")
+                if cmd_name == "index":
+                    continue  # index page doesn't document individual flags
+
+                # Look for the command in top-level commands
+                flags = []
+                for cmd in cli_schema.get("commands", []):
+                    if cmd["name"] == cmd_name:
+                        flags = cmd.get("flags", [])
+                        break
+                else:
+                    # Check groups
+                    for grp in cli_schema.get("groups", []):
+                        if grp["name"] == cmd_name:
+                            for subcmd in grp.get("commands", []):
+                                flags.extend(subcmd.get("flags", []))
+                            break
+
+                for flag in flags:
+                    flag_name = f"--{flag['name']}"
+                    if flag_name not in page_content:
+                        result.lints.append(LintResult(
+                            file=page_name,
+                            line=None,
+                            code="CLI001",
+                            message=f"flag '{flag_name}' not documented",
+                            severity="warning",
+                        ))
 
     # Project-level version consistency checks
     result.lints.extend(_check_version_consistency(config, dir_path))
@@ -903,6 +963,54 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                     ),
                     severity="warning",
                 ))
+
+        # EXAMPLE001 -- code block syntax validation
+        for tok in tokens:
+            if not isinstance(tok, CodeBlock):
+                continue
+            # Python code blocks
+            if tok.lang in ("python", "py", "python3"):
+                if len(tok.lines) < 3:
+                    continue
+                if any(
+                    marker in line
+                    for line in tok.lines
+                    for marker in _DIRECTIVE_MARKERS
+                ):
+                    continue
+                try:
+                    ast.parse("\n".join(tok.lines))
+                except SyntaxError as e:
+                    if isinstance(e, IndentationError):
+                        continue
+                    lineno = e.lineno if e.lineno is not None else 0
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=tok.start + lineno,
+                        code="EXAMPLE001",
+                        message=f"Python syntax error in code block: {e.msg}",
+                        severity="warning",
+                    ))
+            # JSON code blocks
+            elif tok.lang == "json":
+                if len(tok.lines) < 1:
+                    continue
+                if any(
+                    marker in line
+                    for line in tok.lines
+                    for marker in _DIRECTIVE_MARKERS
+                ):
+                    continue
+                try:
+                    json.loads("\n".join(tok.lines))
+                except json.JSONDecodeError as e:
+                    results.append(LintResult(
+                        file=rel_path,
+                        line=tok.start + e.lineno,
+                        code="EXAMPLE001",
+                        message=f"JSON syntax error in code block: {e.msg}",
+                        severity="warning",
+                    ))
 
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)

@@ -3776,3 +3776,195 @@ def test_run_lints_accepts_resolved_directives(lint_project):
         _build_all_docs(docs_dir), docs_dir, None, config, directives,
     )
     assert isinstance(results, list)
+
+
+# -- CLI001: CLI reference completeness --
+
+
+def test_cli001_missing_page(tmp_path):
+    """CLI001: missing CLI page for a command triggers a warning."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "src/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+        f.write('"""Module."""\n')
+
+    schema_dir = os.path.join(tmp_path, ".strictcli")
+    os.makedirs(schema_dir)
+    schema = {
+        "name": "myapp",
+        "project_id": "unknown",
+        "version": "1.0.0",
+        "help": "My app",
+        "commands": {
+            "run": {
+                "name": "run",
+                "help": "Run something",
+                "flags": [],
+                "args": [],
+            }
+        },
+        "groups": {},
+    }
+    with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        json.dump(schema, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "cli-index.md"), "w") as f:
+        f.write("---\ndescription: CLI index page for the application\n---\n# CLI\n\nOverview.\n")
+
+    result = check_docs(str(tmp_path))
+    cli001 = [l for l in result.lints if l.code == "CLI001"]
+    assert len(cli001) == 1
+    assert "missing CLI page" in cli001[0].message
+    assert "run" in cli001[0].message
+
+
+def test_cli001_missing_flag(tmp_path):
+    """CLI001: page exists but missing a flag triggers a warning."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "src/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+        f.write('"""Module."""\n')
+
+    schema_dir = os.path.join(tmp_path, ".strictcli")
+    os.makedirs(schema_dir)
+    schema = {
+        "name": "myapp",
+        "project_id": "unknown",
+        "version": "1.0.0",
+        "help": "My app",
+        "commands": {
+            "run": {
+                "name": "run",
+                "help": "Run something",
+                "flags": [
+                    {"name": "verbose", "help": "Enable verbose output", "type": "bool"},
+                    {"name": "output", "help": "Output file", "type": "str"},
+                ],
+                "args": [],
+            }
+        },
+        "groups": {},
+    }
+    with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        json.dump(schema, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "cli-index.md"), "w") as f:
+        f.write("---\ndescription: CLI index page for the application\n---\n# CLI\n\nOverview.\n")
+    with open(os.path.join(docs_dir, "cli-run.md"), "w") as f:
+        f.write(
+            "---\ndescription: Reference for the myapp run command with usage details\n---\n"
+            "# myapp run\n\n## Flags\n\n| Name | Description |\n|------|-------------|\n"
+            "| `--verbose` | Enable verbose output |\n"
+        )
+
+    result = check_docs(str(tmp_path))
+    cli001 = [l for l in result.lints if l.code == "CLI001"]
+    assert len(cli001) == 1
+    assert "--output" in cli001[0].message
+    assert "not documented" in cli001[0].message
+
+
+def test_cli001_complete(tmp_path):
+    """CLI001: all CLI pages and flags documented produces no lint."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "src/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+        f.write('"""Module."""\n')
+
+    schema_dir = os.path.join(tmp_path, ".strictcli")
+    os.makedirs(schema_dir)
+    schema = {
+        "name": "myapp",
+        "project_id": "unknown",
+        "version": "1.0.0",
+        "help": "My app",
+        "commands": {
+            "run": {
+                "name": "run",
+                "help": "Run something",
+                "flags": [
+                    {"name": "verbose", "help": "Verbose", "type": "bool"},
+                ],
+                "args": [],
+            }
+        },
+        "groups": {},
+    }
+    with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+        json.dump(schema, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "cli-index.md"), "w") as f:
+        f.write("---\ndescription: CLI index page for the application\n---\n# CLI\n\nOverview.\n")
+    with open(os.path.join(docs_dir, "cli-run.md"), "w") as f:
+        f.write(
+            "---\ndescription: Reference for the myapp run command with usage details\n---\n"
+            "# myapp run\n\n## Flags\n\n| Name | Description |\n|------|-------------|\n"
+            "| `--verbose` | Verbose |\n"
+        )
+
+    result = check_docs(str(tmp_path))
+    cli001 = [l for l in result.lints if l.code == "CLI001"]
+    assert len(cli001) == 0
+
+
+def test_cli001_no_strictcli(tmp_path):
+    """CLI001: project without strictcli produces no CLI001 lints."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "src/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w") as f:
+        f.write('"""Module."""\n')
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w") as f:
+        f.write("---\ndescription: Project index page with useful information\n---\n# Home\n\nContent.\n")
+
+    result = check_docs(str(tmp_path))
+    cli001 = [l for l in result.lints if l.code == "CLI001"]
+    assert len(cli001) == 0
