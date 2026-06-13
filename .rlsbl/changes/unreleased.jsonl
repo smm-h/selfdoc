@@ -4,3 +4,4 @@
 {"commits":["aff292bb7f303aa4a7b87b52fc73e6b202ff5efa"],"user_facing":false}
 {"commits":["3b3ac6600e507ed1aca00bd6d12052c66c4ed64a"],"user_facing":true,"description":"**New feature.** CLI001 lint checks CLI reference completeness for strictcli-based projects.","type":"feature"}
 {"commits":["d39c70319148e5cba630b9db24832af407d9071c"],"user_facing":true,"description":"**New feature.** EXAMPLE001 lint validates Python and JSON syntax in code blocks.","type":"feature"}
+{"commits":["64bded6358d100c41385caec16145b82e91edb88"],"user_facing":true,"description":"**New feature.** DRIFT001 lint detects when source docstrings change without corresponding documentation updates.","type":"feature"}
