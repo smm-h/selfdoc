@@ -543,3 +543,17 @@ def test_inline_outside_backtick_resolved():
 
     result = resolve_directives(content, resolver)
     assert result == "text `code` then [VAR] end"
+
+
+# -- Inline directives: multi-line output guard --------------------------------
+
+
+def test_inline_multiline_output_error():
+    """Inline directive returning multi-line output raises RuntimeError."""
+    content = 'text :-: var end'
+
+    def resolver(name, attrs, body):
+        return "line1\nline2"
+
+    with pytest.raises(RuntimeError, match="multi-line output"):
+        resolve_directives(content, resolver)
