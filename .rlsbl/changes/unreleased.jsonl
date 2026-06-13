@@ -9,3 +9,4 @@
 {"commits":["d28d160a68d3c97e2aa3ebac767e248aa847bdb7"],"user_facing":true,"description":"**New feature.** PARAM001 lint warns when function parameters are not documented.","type":"feature"}
 {"commits":["d491d90c29928740bffaa4d4c8256b57533e9738"],"user_facing":true,"description":"**New feature.** RETURN001 lint warns when return types are not documented.","type":"feature"}
 {"commits":["68a7b99c19a0bab3b54973c2a0ff27b1d376ce90"],"user_facing":false}
+{"commits":["b8c21863fb455cc16930cf0f6a3a3c477ad329bf"],"user_facing":false}
