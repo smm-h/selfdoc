@@ -6,3 +6,5 @@
 {"commits":["d39c70319148e5cba630b9db24832af407d9071c"],"user_facing":true,"description":"**New feature.** EXAMPLE001 lint validates Python and JSON syntax in code blocks.","type":"feature"}
 {"commits":["64bded6358d100c41385caec16145b82e91edb88"],"user_facing":true,"description":"**New feature.** DRIFT001 lint detects when source docstrings change without corresponding documentation updates.","type":"feature"}
 {"commits":["eb670ba6c9578a176a61db0cef1f487cb05a75e9"],"user_facing":false}
+{"commits":["d28d160a68d3c97e2aa3ebac767e248aa847bdb7"],"user_facing":true,"description":"**New feature.** PARAM001 lint warns when function parameters are not documented.","type":"feature"}
+{"commits":["d491d90c29928740bffaa4d4c8256b57533e9738"],"user_facing":true,"description":"**New feature.** RETURN001 lint warns when return types are not documented.","type":"feature"}
