@@ -134,7 +134,7 @@ selfdoc check --format json
 
 Returns a JSON object with `directives`, `coverage`, `lints`, and `exit_code` fields. Example structure:
 
-```json
+```text
 {
   "directives": [{"file": "index.md", "line": 12, "status": "OK", ...}],
   "coverage": {"total_public": 23, "referenced": 15, ...},

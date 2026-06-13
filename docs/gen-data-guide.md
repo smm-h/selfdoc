@@ -100,14 +100,16 @@ selfdoc dogfoods this feature to generate a JSON inventory of its directive cata
 The selfdoc.json config for this:
 
 ```json
-"gen_data": {
-  "scripts": [
-    {
-      "command": "python3 scripts/gen-directive-stats.py",
-      "output": "directive-stats.json",
-      "mounts": ["selfdoc/", "scripts/"]
-    }
-  ]
+{
+  "gen_data": {
+    "scripts": [
+      {
+        "command": "python3 scripts/gen-directive-stats.py",
+        "output": "directive-stats.json",
+        "mounts": ["selfdoc/", "scripts/"]
+      }
+    ]
+  }
 }
 ```
 
