@@ -3752,3 +3752,27 @@ def test_dq003_no_ref_directive(lint_project):
     results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
     dq003 = [r for r in results if r.code == "DQ003"]
     assert len(dq003) == 0
+
+
+from selfdoc.check import ResolvedDirective
+
+
+def test_run_lints_accepts_resolved_directives(lint_project):
+    """_run_lints accepts resolved_directives and returns results normally."""
+    _, docs_dir, config = lint_project
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: A page\n---\n"
+            "# Page\n\nSome content.\n"
+        )
+
+    directives = [
+        ResolvedDirective(name="ref", attrs={"path": "mod"}, content="x", file="page.md"),
+        ResolvedDirective(name="ref", attrs={"path": "lib"}, content="y", file="page.md"),
+        ResolvedDirective(name="ref", attrs={"path": "other"}, content="z", file="other.md"),
+    ]
+
+    results = _run_lints(
+        _build_all_docs(docs_dir), docs_dir, None, config, directives,
+    )
+    assert isinstance(results, list)

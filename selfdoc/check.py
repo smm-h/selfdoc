@@ -237,7 +237,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
         )
 
     # Run lint checks (SEO and other diagnostics)
-    result.lints = _run_lints(all_docs, docs_dir, resolver, config)
+    result.lints = _run_lints(all_docs, docs_dir, resolver, config, resolved_directives)
 
     # XREF002: directive path validation -- verify resolved directive
     # source files actually exist on disk.
@@ -330,7 +330,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
             ver_resolver = make_resolver(config, cache_dir)
             ver_docs = resolve_all_docs(config, base_dir=cache_dir)
 
-            ver_dir_results, _ = _validate_directives(
+            ver_dir_results, ver_resolved = _validate_directives(
                 ver_docs, ver_resolver, valid_names,
                 file_prefix=f"[{ver_str}] ",
             )
@@ -343,6 +343,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
             if os.path.isdir(ver_docs_dir):
                 ver_lints = _run_lints(
                     ver_docs, ver_docs_dir, ver_resolver, config,
+                    ver_resolved,
                 )
                 for lint in ver_lints:
                     lint.file = f"[{ver_str}] {lint.file}"
@@ -418,7 +419,7 @@ def _check_version_consistency(config, dir_path):
     return results
 
 
-def _run_lints(all_docs, docs_dir, resolver, config):
+def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
     """Run lint checks on documentation templates.
 
     Args:
@@ -427,12 +428,19 @@ def _run_lints(all_docs, docs_dir, resolver, config):
         docs_dir: Absolute path to the docs directory.
         resolver: Directive resolver callable.
         config: Project configuration dict.
+        resolved_directives: List of ResolvedDirective objects from
+            directive validation, or None.
 
     Returns a list of LintResult diagnostics covering SEO best practices:
     multiple H1s, heading level gaps, empty alt text, title length,
     missing base_url, and missing description.
     """
     results = []
+
+    # Build per-page directive lookup for downstream lint checks.
+    page_directives: dict[str, list] = {}
+    for rd in (resolved_directives or []):
+        page_directives.setdefault(rd.file, []).append(rd)
 
     project_name = os.path.basename(os.path.dirname(os.path.abspath(docs_dir)))
 
