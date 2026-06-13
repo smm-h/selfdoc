@@ -234,13 +234,54 @@ def _resolve_inline_match(match: re.Match, resolver: callable) -> str:
     return result
 
 
+# Single-backtick code span: `...` (not double-backtick — known limitation)
+_BACKTICK_SPAN_RE = re.compile(r"`[^`]+`")
+
+
+def _resolve_line_inline(line: str, resolver: callable) -> str:
+    """Resolve inline :-: directives in a single line, skipping backtick spans.
+
+    Masks backtick-enclosed regions with placeholders before running re.sub,
+    then restores them. Double-backtick spans (``...``) are a known limitation
+    and are not handled.
+    """
+    # Collect backtick span regions
+    spans = list(_BACKTICK_SPAN_RE.finditer(line))
+    if not spans:
+        return _INLINE_RE.sub(
+            lambda m: _resolve_inline_match(m, resolver), line
+        )
+
+    # Replace backtick spans with null-byte placeholders to protect them
+    placeholders: list[str] = []
+    protected = line
+    # Process in reverse order to preserve positions
+    for match in reversed(spans):
+        placeholder = f"\x00BTCK{len(placeholders)}\x00"
+        placeholders.append(match.group(0))
+        protected = protected[:match.start()] + placeholder + protected[match.end():]
+    placeholders.reverse()
+
+    # Now resolve inline directives on the protected line
+    protected = _INLINE_RE.sub(
+        lambda m: _resolve_inline_match(m, resolver), protected
+    )
+
+    # Restore backtick spans
+    for i, original in enumerate(placeholders):
+        protected = protected.replace(f"\x00BTCK{i}\x00", original)
+
+    return protected
+
+
 def _resolve_inline_pass(
     output: list[str], resolver: callable
 ) -> list[str]:
     """Pass 2: scan output lines for inline :-: directives and resolve them.
 
     Skips lines inside fenced code blocks (``` or ~~~), tracked with the same
-    _FENCE_RE pattern used by _walk_blocks.
+    _FENCE_RE pattern used by _walk_blocks. Also skips directives inside
+    single-backtick code spans on each line.
     """
     result: list[str] = []
     fence_char: str | None = None
@@ -269,9 +310,7 @@ def _resolve_inline_pass(
             continue
 
         if _INLINE_RE.search(line):
-            line = _INLINE_RE.sub(
-                lambda m: _resolve_inline_match(m, resolver), line
-            )
+            line = _resolve_line_inline(line, resolver)
         result.append(line)
     return result
 

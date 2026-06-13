@@ -503,3 +503,43 @@ def test_standalone_not_affected():
 
     result = resolve_directives(content, resolver)
     assert result == "[RESOLVED ref: selfdoc.config]"
+
+
+# -- Inline directives: code fence and backtick safety -------------------------
+
+
+def test_inline_in_code_fence_not_resolved():
+    """:-: inside a fenced code block is literal, not resolved."""
+    content = (
+        "```\n"
+        'use :-: var key="x" here\n'
+        "```\n"
+    )
+
+    def resolver(name, attrs, body):
+        raise AssertionError("Should not be called for fenced content")
+
+    result = resolve_directives(content, resolver)
+    assert ':-: var key="x"' in result
+
+
+def test_inline_in_backtick_span_not_resolved():
+    """:-: inside a single-backtick code span is literal, not resolved."""
+    content = 'see `:-: var key="x"` for details'
+
+    def resolver(name, attrs, body):
+        raise AssertionError("Should not be called for backtick span content")
+
+    result = resolve_directives(content, resolver)
+    assert result == 'see `:-: var key="x"` for details'
+
+
+def test_inline_outside_backtick_resolved():
+    """:-: outside backtick spans is resolved, backtick content is preserved."""
+    content = 'text `code` then :-: var end'
+
+    def resolver(name, attrs, body):
+        return "[VAR]"
+
+    result = resolve_directives(content, resolver)
+    assert result == "text `code` then [VAR] end"
