@@ -15,7 +15,7 @@ from selfdoc.unified import (
     _validate_rlsbl_workspace,
     build_unified,
 )
-from tests.conftest import _git, _write_json, _write_text
+from conftest import _git, _write_json, _write_text
 
 
 # -- Helper --
