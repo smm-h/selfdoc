@@ -60,18 +60,26 @@ def browser_instance():
         browser.close()
 
 
-@pytest.fixture()
-def page(browser_instance, http_server):
-    """Create a fresh page that navigates to the demo for each test."""
+@pytest.fixture(scope="session")
+def browser_context(browser_instance):
+    """Create a single browser context shared across all tests."""
     ctx = browser_instance.new_context()
     # Grant clipboard permissions for the export test
     ctx.grant_permissions(["clipboard-read", "clipboard-write"])
-    pg = ctx.new_page()
+    yield ctx
+    ctx.close()
+
+
+@pytest.fixture()
+def page(browser_context, http_server):
+    """Create a fresh page within the shared context for each test."""
+    pg = browser_context.new_page()
     pg.goto(f"http://127.0.0.1:{http_server}/demo/index.html")
     pg.wait_for_load_state("domcontentloaded")
+    # Clear localStorage to prevent state leakage between tests
+    pg.evaluate("localStorage.clear()")
     yield pg
     pg.close()
-    ctx.close()
 
 
 # ---------------------------------------------------------------------------
