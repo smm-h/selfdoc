@@ -459,3 +459,47 @@ def test_body_line_empty_after_prefix():
     )
     result = parse_directives(content)
     assert result[0].body == [""]
+
+
+# -- Inline directives (pass 2) -----------------------------------------------
+
+
+def test_inline_directive_basic():
+    content = 'has :-: var key="x" features'
+
+    def resolver(name, attrs, body):
+        return f"[{name}:{attrs.get('key', '')}]"
+
+    result = resolve_directives(content, resolver)
+    assert result == "has [var:x] features"
+
+
+def test_inline_directive_mid_sentence():
+    content = 'The value is :-: version and more text.'
+
+    def resolver(name, attrs, body):
+        return "1.2.3"
+
+    result = resolve_directives(content, resolver)
+    assert result == "The value is 1.2.3 and more text."
+
+
+def test_inline_multiple_per_line():
+    content = 'A :-: foo then :-: bar end'
+
+    def resolver(name, attrs, body):
+        return f"[{name}]"
+
+    result = resolve_directives(content, resolver)
+    assert result == "A [foo] then [bar] end"
+
+
+def test_standalone_not_affected():
+    """Standalone :-: on its own line still works as before (pass 1)."""
+    content = ':-: ref src="selfdoc.config"'
+
+    def resolver(name, attrs, body):
+        return f"[RESOLVED {name}: {attrs.get('src', '')}]"
+
+    result = resolve_directives(content, resolver)
+    assert result == "[RESOLVED ref: selfdoc.config]"

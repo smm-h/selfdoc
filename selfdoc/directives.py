@@ -44,6 +44,9 @@ _FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 # Attribute key="value" pair extractor
 _ATTR_KV_RE = re.compile(r'(\w+)="([^"]*)"')
 
+# Inline one-liner: :-: name [attrs] (non-anchored, for pass 2)
+_INLINE_RE = re.compile(r':-:\s+(\S+)((?:\s+\w+="[^"]*")*)')
+
 
 class DirectiveError(Exception):
     """Raised when a directive is malformed (e.g. unclosed at EOF)."""
@@ -218,6 +221,61 @@ def parse_directives(content: str, valid_names: set[str] | None = None) -> list[
     return directives
 
 
+def _resolve_inline_match(match: re.Match, resolver: callable) -> str:
+    """Resolve a single inline :-: match by calling the resolver."""
+    name = match.group(1)
+    attrs = _parse_attrs(match.group(2))
+    result = resolver(name, attrs, [])
+    if "\n" in result:
+        raise RuntimeError(
+            f"Inline directive '{name}' returned multi-line output; "
+            "only single-line output is allowed for inline directives."
+        )
+    return result
+
+
+def _resolve_inline_pass(
+    output: list[str], resolver: callable
+) -> list[str]:
+    """Pass 2: scan output lines for inline :-: directives and resolve them.
+
+    Skips lines inside fenced code blocks (``` or ~~~), tracked with the same
+    _FENCE_RE pattern used by _walk_blocks.
+    """
+    result: list[str] = []
+    fence_char: str | None = None
+    fence_len: int = 0
+
+    for line in output:
+        stripped = line.strip()
+        fence_match = _FENCE_RE.match(stripped)
+
+        if fence_match:
+            marker = fence_match.group(1)
+            if fence_char is None:
+                # Opening a fence
+                fence_char = marker[0]
+                fence_len = len(marker)
+            elif marker[0] == fence_char and len(marker) >= fence_len:
+                # Closing the fence
+                fence_char = None
+                fence_len = 0
+            result.append(line)
+            continue
+
+        if fence_char is not None:
+            # Inside a fenced code block — pass through
+            result.append(line)
+            continue
+
+        if _INLINE_RE.search(line):
+            line = _INLINE_RE.sub(
+                lambda m: _resolve_inline_match(m, resolver), line
+            )
+        result.append(line)
+    return result
+
+
 def resolve_directives(
     content: str, resolver: callable, valid_names: set[str] | None = None
 ) -> str:
@@ -238,4 +296,8 @@ def resolve_directives(
             raise DirectiveError(
                 f"Unclosed directive '{name}' during resolution"
             )
+
+    # Pass 2: resolve inline :-: directives in output lines
+    output = _resolve_inline_pass(output, resolver)
+
     return "\n".join(output)
