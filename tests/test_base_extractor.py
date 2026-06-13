@@ -8,6 +8,7 @@ from selfdoc.extractors.base import (
     apply_exclude_keys,
     collect_comment_lines_above,
     parse_comma_set,
+    parse_docstring_sections,
 )
 
 
@@ -243,3 +244,91 @@ class TestCollectCommentLinesAbove:
         ]
         result = collect_comment_lines_above(lines, 3, "//")
         assert result == "first\n\nthird"
+
+
+# -- parse_docstring_sections ------------------------------------------------
+
+
+class TestParseDocstringSections:
+    def test_basic_args_and_returns(self):
+        doc = """\
+Do something useful.
+
+Args:
+    x: The first value.
+    y: The second value.
+
+Returns:
+    The sum of x and y."""
+        result = parse_docstring_sections(doc)
+        assert result["description"] == "Do something useful."
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "x", "type": None, "description": "The first value."}
+        assert result["params"][1] == {"name": "y", "type": None, "description": "The second value."}
+        assert result["returns"] == "The sum of x and y."
+        assert result["raises"] == []
+
+    def test_typed_params(self):
+        doc = """\
+Process data.
+
+Args:
+    name (str): The name to use.
+    count (int): How many times."""
+        result = parse_docstring_sections(doc)
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "name", "type": "str", "description": "The name to use."}
+        assert result["params"][1] == {"name": "count", "type": "int", "description": "How many times."}
+
+    def test_raises_section(self):
+        doc = """\
+Open a file.
+
+Raises:
+    FileNotFoundError: If the file does not exist.
+    PermissionError: If access is denied."""
+        result = parse_docstring_sections(doc)
+        assert result["description"] == "Open a file."
+        assert len(result["raises"]) == 2
+        assert result["raises"][0] == {"type": "FileNotFoundError", "description": "If the file does not exist."}
+        assert result["raises"][1] == {"type": "PermissionError", "description": "If access is denied."}
+
+    def test_no_sections(self):
+        doc = "Just a simple description.\n\nWith a second paragraph."
+        result = parse_docstring_sections(doc)
+        assert result["description"] == "Just a simple description.\n\nWith a second paragraph."
+        assert result["params"] == []
+        assert result["returns"] is None
+        assert result["raises"] == []
+
+    def test_empty_docstring(self):
+        result = parse_docstring_sections("")
+        assert result["description"] == ""
+        assert result["params"] == []
+        assert result["returns"] is None
+        assert result["raises"] == []
+
+    def test_continuation_lines(self):
+        doc = """\
+Do work.
+
+Args:
+    path: The file path to process,
+        which can be relative or absolute.
+    mode: The mode to use."""
+        result = parse_docstring_sections(doc)
+        assert len(result["params"]) == 2
+        assert "relative or absolute" in result["params"][0]["description"]
+        assert result["params"][1] == {"name": "mode", "type": None, "description": "The mode to use."}
+
+    def test_star_args_and_kwargs(self):
+        doc = """\
+Flexible function.
+
+Args:
+    *args: Positional arguments.
+    **kwargs: Keyword arguments."""
+        result = parse_docstring_sections(doc)
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "*args", "type": None, "description": "Positional arguments."}
+        assert result["params"][1] == {"name": "**kwargs", "type": None, "description": "Keyword arguments."}

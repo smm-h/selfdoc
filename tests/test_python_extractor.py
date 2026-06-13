@@ -552,6 +552,177 @@ class TestConfigDirective:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# symbol_details tests
+# ---------------------------------------------------------------------------
+
+
+class TestSymbolDetails:
+    def test_all_params_documented(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+def greet(name: str, loud: bool = False) -> str:
+    """Say hello.
+
+    Args:
+        name: The name.
+        loud: Whether to shout.
+
+    Returns:
+        The greeting string.
+    """
+    pass
+''')
+        result = PythonExtractor().symbol_details(str(py), "greet")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "name", "type": "str", "documented": True}
+        assert result["params"][1] == {"name": "loud", "type": "bool", "documented": True}
+        assert result["return_type"] == "str"
+        assert result["return_documented"] is True
+
+    def test_some_params_undocumented(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+def process(x: int, y: int, z: int) -> int:
+    """Process values.
+
+    Args:
+        x: The first value.
+    """
+    return x + y + z
+''')
+        result = PythonExtractor().symbol_details(str(py), "process")
+        assert result is not None
+        assert result["params"][0]["documented"] is True
+        assert result["params"][1]["documented"] is False
+        assert result["params"][2]["documented"] is False
+
+    def test_return_type_with_returns_section(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+def compute(a: int) -> float:
+    """Compute something.
+
+    Args:
+        a: Input.
+
+    Returns:
+        The result as float.
+    """
+    return float(a)
+''')
+        result = PythonExtractor().symbol_details(str(py), "compute")
+        assert result["return_type"] == "float"
+        assert result["return_documented"] is True
+
+    def test_return_type_no_returns_section(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+def compute(a: int) -> float:
+    """Compute something."""
+    return float(a)
+''')
+        result = PythonExtractor().symbol_details(str(py), "compute")
+        assert result["return_type"] == "float"
+        assert result["return_documented"] is False
+
+    def test_no_return_type_annotation(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+def do_stuff(x):
+    """Do stuff."""
+    pass
+''')
+        result = PythonExtractor().symbol_details(str(py), "do_stuff")
+        assert result["return_type"] is None
+
+    def test_self_and_cls_skipped(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+class MyClass:
+    def method(self, x: int) -> None:
+        """A method.
+
+        Args:
+            x: The value.
+        """
+        pass
+
+    @classmethod
+    def from_value(cls, v: str) -> "MyClass":
+        """Create from value.
+
+        Args:
+            v: The value.
+        """
+        pass
+''')
+        # Test instance method
+        result = PythonExtractor().symbol_details(str(py), "method")
+        assert result is not None
+        param_names = [p["name"] for p in result["params"]]
+        assert "self" not in param_names
+        assert "x" in param_names
+        assert len(result["params"]) == 1
+
+        # Test classmethod
+        result = PythonExtractor().symbol_details(str(py), "from_value")
+        param_names = [p["name"] for p in result["params"]]
+        assert "cls" not in param_names
+        assert "v" in param_names
+
+    def test_class_symbol_returns_init_details(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+class Widget:
+    """A widget."""
+
+    def __init__(self, name: str, size: int = 10):
+        """Create a widget.
+
+        Args:
+            name: The widget name.
+            size: The widget size.
+        """
+        self.name = name
+        self.size = size
+''')
+        result = PythonExtractor().symbol_details(str(py), "Widget")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "name", "type": "str", "documented": True}
+        assert result["params"][1] == {"name": "size", "type": "int", "documented": True}
+
+    def test_class_without_init(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+class Empty:
+    """An empty class."""
+    pass
+''')
+        result = PythonExtractor().symbol_details(str(py), "Empty")
+        assert result is not None
+        assert result["params"] == []
+        assert result["return_type"] is None
+        assert result["return_documented"] is True
+
+    def test_symbol_not_found(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+def existing():
+    pass
+''')
+        result = PythonExtractor().symbol_details(str(py), "nonexistent")
+        assert result is None
+
+    def test_file_with_syntax_error(self, tmp_path):
+        py = tmp_path / "bad.py"
+        py.write_text("def broken(\n")
+        result = PythonExtractor().symbol_details(str(py), "broken")
+        assert result is None
+
+
 class TestEdgeCases:
     def test_unknown_directive(self, sample_project, source_paths):
         """Unknown directive name should produce an error message."""

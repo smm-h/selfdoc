@@ -19,6 +19,7 @@ from selfdoc.extractors.base import (
     format_error,
     handle_table_config,
     parse_comma_set,
+    parse_docstring_sections,
     read_source,
 )
 from selfdoc.tables import render_markdown_table
@@ -93,6 +94,106 @@ class PythonExtractor(BaseExtractor):
                 if not node.name.startswith("_"):
                     symbols.append(node.name)
         return symbols
+
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a symbol."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        try:
+            tree = ast.parse(source, filename=file_path)
+        except SyntaxError:
+            return None
+
+        # Search top-level nodes
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name == symbol_name:
+                    return _build_symbol_details(node)
+            elif isinstance(node, ast.ClassDef):
+                if node.name == symbol_name:
+                    return _class_symbol_details(node)
+                # Also check methods within classes
+                for item in ast.iter_child_nodes(node):
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        if item.name == symbol_name:
+                            return _build_symbol_details(item)
+
+        return None
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_symbol_details(node):
+    """Build a symbol_details dict from a FunctionDef/AsyncFunctionDef node."""
+    args = node.args
+    skip_names = {"self", "cls"}
+
+    # Collect all parameters
+    all_args = []
+    posonlyargs = getattr(args, "posonlyargs", [])
+    for arg in posonlyargs + args.args:
+        if arg.arg not in skip_names:
+            all_args.append(arg)
+    if args.vararg:
+        all_args.append(args.vararg)
+    for arg in args.kwonlyargs:
+        all_args.append(arg)
+    if args.kwarg:
+        all_args.append(args.kwarg)
+
+    # Parse docstring for documented params
+    docstring = ast.get_docstring(node)
+    doc_sections = parse_docstring_sections(docstring) if docstring else {
+        "description": "",
+        "params": [],
+        "returns": None,
+        "raises": [],
+    }
+    documented_param_names = {p["name"] for p in doc_sections["params"]}
+
+    params = []
+    for arg in all_args:
+        name = arg.arg
+        # Prefix vararg/kwarg with */  **
+        if arg is args.vararg:
+            name = f"*{name}"
+        elif arg is args.kwarg:
+            name = f"**{name}"
+        type_str = _annotation_str(arg.annotation) or None
+        documented = name.lstrip("*") in documented_param_names or name in documented_param_names
+        params.append({
+            "name": name,
+            "type": type_str,
+            "documented": documented,
+        })
+
+    return_type = _annotation_str(node.returns) or None
+    return_documented = doc_sections["returns"] is not None
+
+    return {
+        "params": params,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
+
+def _class_symbol_details(node):
+    """Build symbol_details for a class by extracting __init__ details."""
+    for item in ast.iter_child_nodes(node):
+        if isinstance(item, ast.FunctionDef) and item.name == "__init__":
+            return _build_symbol_details(item)
+    return {
+        "params": [],
+        "return_type": None,
+        "return_documented": True,
+    }
+
 
 # ---------------------------------------------------------------------------
 # :::module

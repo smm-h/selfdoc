@@ -174,6 +174,9 @@ class BaseExtractor:
     ) -> str | None:
         return None
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        return None
+
 
 class StubExtractor(BaseExtractor):
     """Stub extractor for unsupported languages.
@@ -282,6 +285,170 @@ _SECTION_HEADERS = {
     "Keyword Args",
     "Keyword Arguments",
 }
+
+
+def parse_docstring_sections(text: str) -> dict:
+    """Parse a Google-style docstring into structured sections.
+
+    Returns a dict with keys: description, params, returns, raises.
+    """
+    lines = text.split("\n")
+    description_lines: list[str] = []
+    params: list[dict] = []
+    returns: str | None = None
+    raises: list[dict] = []
+
+    i = 0
+
+    # Collect description lines (everything before the first section header)
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if _match_section_header(stripped) is not None:
+            break
+        description_lines.append(stripped)
+        i += 1
+
+    description = "\n".join(description_lines).strip()
+
+    # Process sections
+    while i < len(lines):
+        stripped = lines[i].strip()
+        header_name = _match_section_header(stripped)
+        if header_name is None:
+            i += 1
+            continue
+
+        i += 1
+
+        # Determine base indent from first content line
+        if i < len(lines):
+            first_content = lines[i]
+            base_indent = len(first_content) - len(first_content.lstrip())
+        else:
+            base_indent = 4
+
+        if header_name in ("Args", "Arguments", "Keyword Args", "Keyword Arguments"):
+            # Collect param entries
+            while i < len(lines):
+                content_line = lines[i]
+                if not content_line.strip():
+                    # Peek ahead for continued section
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines):
+                        next_indent = len(lines[j]) - len(lines[j].lstrip())
+                        if next_indent >= base_indent:
+                            i += 1
+                            continue
+                    break
+
+                current_indent = len(content_line) - len(content_line.lstrip())
+                if current_indent < base_indent:
+                    break
+
+                text_stripped = content_line.strip()
+                if current_indent == base_indent and _is_param_line(text_stripped):
+                    name_part, desc_part = _split_param_line(text_stripped)
+                    # Parse optional type from "name (type)" format
+                    param_type = None
+                    param_name = name_part
+                    if name_part.endswith(")"):
+                        paren_idx = name_part.rfind("(")
+                        if paren_idx > 0:
+                            param_type = name_part[paren_idx + 1:-1].strip()
+                            param_name = name_part[:paren_idx].strip()
+                    params.append({
+                        "name": param_name,
+                        "type": param_type,
+                        "description": desc_part,
+                    })
+                elif current_indent > base_indent and params:
+                    # Continuation line -- append to last param's description
+                    params[-1]["description"] += " " + text_stripped
+                i += 1
+
+        elif header_name in ("Returns", "Return", "Yields", "Yield"):
+            # Collect return description
+            return_lines: list[str] = []
+            while i < len(lines):
+                content_line = lines[i]
+                if not content_line.strip():
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines):
+                        next_indent = len(lines[j]) - len(lines[j].lstrip())
+                        if next_indent >= base_indent:
+                            i += 1
+                            continue
+                    break
+
+                current_indent = len(content_line) - len(content_line.lstrip())
+                if current_indent < base_indent:
+                    break
+
+                return_lines.append(content_line.strip())
+                i += 1
+            if return_lines:
+                returns = " ".join(return_lines)
+
+        elif header_name == "Raises":
+            # Collect raises entries
+            while i < len(lines):
+                content_line = lines[i]
+                if not content_line.strip():
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines):
+                        next_indent = len(lines[j]) - len(lines[j].lstrip())
+                        if next_indent >= base_indent:
+                            i += 1
+                            continue
+                    break
+
+                current_indent = len(content_line) - len(content_line.lstrip())
+                if current_indent < base_indent:
+                    break
+
+                text_stripped = content_line.strip()
+                if current_indent == base_indent and _is_param_line(text_stripped):
+                    exc_name, exc_desc = _split_param_line(text_stripped)
+                    raises.append({
+                        "type": exc_name,
+                        "description": exc_desc,
+                    })
+                elif current_indent > base_indent and raises:
+                    raises[-1]["description"] += " " + text_stripped
+                i += 1
+
+        else:
+            # Skip other sections (Note, Examples, etc.)
+            while i < len(lines):
+                content_line = lines[i]
+                if not content_line.strip():
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines):
+                        next_indent = len(lines[j]) - len(lines[j].lstrip())
+                        if next_indent >= base_indent:
+                            i += 1
+                            continue
+                    break
+
+                current_indent = len(content_line) - len(content_line.lstrip())
+                if current_indent < base_indent:
+                    break
+                i += 1
+
+    return {
+        "description": description,
+        "params": params,
+        "returns": returns,
+        "raises": raises,
+    }
 
 
 def _format_docstring(docstring):
