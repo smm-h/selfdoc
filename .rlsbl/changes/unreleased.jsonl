@@ -12,3 +12,4 @@
 {"commits":["b8c21863fb455cc16930cf0f6a3a3c477ad329bf"],"user_facing":false}
 {"commits":["88ae667509016461fded04a515b24367260f8954"],"user_facing":false}
 {"commits":["2bfce30296ec5123554aac47721f5addfc87f970"],"user_facing":false}
+{"commits":["b8c21863fb455cc16930cf0f6a3a3c477ad329bf","88ae667509016461fded04a515b24367260f8954","2bfce30296ec5123554aac47721f5addfc87f970","6c261600874731754633aaa2f7e2dbe48cd1dccd"],"user_facing":true,"description":"**New feature.** Inline directive support: self-closing directives can now appear mid-line for dynamic values in prose.","type":"feature"}
