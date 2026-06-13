@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.svelte
-description: "Svelte source extractor for selfdoc -- parses .svelte files to extract component props, exports, and documentation."
+description: "Svelte source extractor for selfdoc. Parses .svelte files to extract component props, exports, slots, events, and documentation comments for API reference pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 18

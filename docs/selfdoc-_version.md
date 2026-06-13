@@ -1,6 +1,6 @@
 ---
 title: selfdoc._version
-description: "Version detection for selfdoc."
+description: "Version detection module for selfdoc. Reads and resolves the project version from pyproject.toml, package.json, or other manifest files during documentation builds."
 generated: true
 nav_group: "API Reference"
 nav_order: 3
