@@ -339,25 +339,45 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # Project-level version consistency checks
     result.lints.extend(_check_version_consistency(config, dir_path))
 
-    # Description staleness detection: check if page content changed
-    # but frontmatter description was not updated.
+    # Description staleness and source docstring drift detection.
     # Uses frontmatter and resolved content from resolve_all_docs instead
     # of re-walking docs/ and re-resolving directives.
     # Prefix hash keys with locale code (matching build.py) so that gen
     # and check use the same key space in hashes.json.
+
+    # Build per-page directive lookup for drift detection.
+    _drift_directives: dict[str, list] = {}
+    for rd in resolved_directives:
+        _drift_directives.setdefault(rd.file, []).append(rd)
+
     locales = config.get("locales") or []
     if locales:
         locale_code = locales[0]["code"]
         prefixed_docs = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
-        stale_warnings = update_hashes(prefixed_docs, dir_path, dry_run=dry_run)
+        prefixed_directives = {f"{locale_code}/{rp}": v for rp, v in _drift_directives.items()}
+        stale_warnings, drift_warnings = update_hashes(
+            prefixed_docs, dir_path, dry_run=dry_run,
+            page_directives=prefixed_directives,
+        )
     else:
-        stale_warnings = update_hashes(all_docs, dir_path, dry_run=dry_run)
+        stale_warnings, drift_warnings = update_hashes(
+            all_docs, dir_path, dry_run=dry_run,
+            page_directives=_drift_directives,
+        )
     for rel_path, stale_msg in stale_warnings:
         result.lints.append(LintResult(
             file=rel_path,
             line=None,
             code="STALE001",
             message=stale_msg,
+            severity="error",
+        ))
+    for rel_path, drift_msg in drift_warnings:
+        result.lints.append(LintResult(
+            file=rel_path,
+            line=None,
+            code="DRIFT001",
+            message=drift_msg,
             severity="error",
         ))
 

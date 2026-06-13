@@ -6,9 +6,12 @@ import os
 import pytest
 
 from selfdoc.staleness import (
+    check_drift,
     check_staleness,
     compute_content_hash,
     compute_description_hash,
+    compute_source_docstring_hash,
+    extract_module_docstring,
     load_hashes,
     save_hashes,
     update_hashes,
@@ -307,14 +310,14 @@ def test_update_hashes_detects_stale(tmp_path):
     all_docs_v1 = _make_all_docs([
         ("page.md", "Original description", "# Page\n\nOriginal content."),
     ])
-    warnings_v1 = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
     assert len(warnings_v1) == 0  # new page, no staleness
 
     # Second pass: change content but keep same description
     all_docs_v2 = _make_all_docs([
         ("page.md", "Original description", "# Page\n\nCompletely new content."),
     ])
-    warnings_v2 = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
     assert len(warnings_v2) == 1
     rel_path, stale_msg = warnings_v2[0]
     assert rel_path == "page.md"
@@ -331,7 +334,7 @@ def test_update_hashes_no_stale_when_both_change(tmp_path):
     all_docs_v2 = _make_all_docs([
         ("page.md", "Desc v2", "# Page\n\nContent v2."),
     ])
-    warnings = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
     assert len(warnings) == 0
 
 
@@ -340,7 +343,7 @@ def test_update_hashes_skips_pages_without_description(tmp_path):
     all_docs = _make_all_docs([
         ("no-desc.md", None, "# No Description\n\nJust content."),
     ])
-    warnings = update_hashes(all_docs, str(tmp_path), dry_run=False)
+    warnings, _ = update_hashes(all_docs, str(tmp_path), dry_run=False)
     assert len(warnings) == 0
 
     hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
@@ -460,3 +463,139 @@ def test_no_locales_no_prefix(tmp_path):
     for key in data:
         assert not key.startswith("en/"), f"Unexpected locale prefix on key {key!r}"
     assert "page.md" in data
+
+
+# -- extract_module_docstring --
+
+
+def test_extract_module_docstring_python(tmp_path):
+    """Extracts module docstring from a Python file."""
+    py_file = os.path.join(tmp_path, "mod.py")
+    with open(py_file, "w", encoding="utf-8") as f:
+        f.write('"""This is the module docstring."""\n\ndef foo(): pass\n')
+    result = extract_module_docstring(py_file, "python")
+    assert result == "This is the module docstring."
+
+
+def test_extract_module_docstring_python_no_docstring(tmp_path):
+    """Returns empty string when Python file has no module docstring."""
+    py_file = os.path.join(tmp_path, "mod.py")
+    with open(py_file, "w", encoding="utf-8") as f:
+        f.write("def foo(): pass\n")
+    result = extract_module_docstring(py_file, "python")
+    assert result == ""
+
+
+def test_extract_module_docstring_python_syntax_error(tmp_path):
+    """Returns empty string on syntax error."""
+    py_file = os.path.join(tmp_path, "bad.py")
+    with open(py_file, "w", encoding="utf-8") as f:
+        f.write("def broken(\n")
+    result = extract_module_docstring(py_file, "python")
+    assert result == ""
+
+
+def test_extract_module_docstring_nonexistent_file():
+    """Returns empty string for a nonexistent file."""
+    result = extract_module_docstring("/nonexistent/path.py", "python")
+    assert result == ""
+
+
+def test_extract_module_docstring_non_python():
+    """Returns empty string for non-Python languages."""
+    result = extract_module_docstring("whatever.go", "go")
+    assert result == ""
+    result = extract_module_docstring("whatever.ts", "typescript")
+    assert result == ""
+
+
+# -- compute_source_docstring_hash --
+
+
+def test_compute_source_docstring_hash_with_docstrings(tmp_path):
+    """Returns a hash when source files have docstrings."""
+    f1 = os.path.join(tmp_path, "a.py")
+    f2 = os.path.join(tmp_path, "b.py")
+    with open(f1, "w") as f:
+        f.write('"""Module A."""\n')
+    with open(f2, "w") as f:
+        f.write('"""Module B."""\n')
+    result = compute_source_docstring_hash([(f1, "python"), (f2, "python")])
+    assert result is not None
+    assert len(result) == 64
+
+
+def test_compute_source_docstring_hash_no_docstrings(tmp_path):
+    """Returns None when no source files have docstrings."""
+    f1 = os.path.join(tmp_path, "a.py")
+    with open(f1, "w") as f:
+        f.write("x = 1\n")
+    result = compute_source_docstring_hash([(f1, "python")])
+    assert result is None
+
+
+def test_compute_source_docstring_hash_sorted_determinism(tmp_path):
+    """Hash is the same regardless of input order (sorted by path)."""
+    f1 = os.path.join(tmp_path, "a.py")
+    f2 = os.path.join(tmp_path, "b.py")
+    with open(f1, "w") as f:
+        f.write('"""A."""\n')
+    with open(f2, "w") as f:
+        f.write('"""B."""\n')
+    h1 = compute_source_docstring_hash([(f1, "python"), (f2, "python")])
+    h2 = compute_source_docstring_hash([(f2, "python"), (f1, "python")])
+    assert h1 == h2
+
+
+def test_compute_source_docstring_hash_non_python_skipped(tmp_path):
+    """Non-Python files contribute empty strings; if all empty, returns None."""
+    f1 = os.path.join(tmp_path, "main.go")
+    with open(f1, "w") as f:
+        f.write("package main\n")
+    result = compute_source_docstring_hash([(f1, "go")])
+    assert result is None
+
+
+# -- check_drift --
+
+
+def test_check_drift_no_source_hash():
+    """Returns None when source_docstring_hash is None."""
+    result = check_drift("page.md", None, "d_hash", {})
+    assert result is None
+
+
+def test_check_drift_new_page():
+    """Returns None for a new page not in stored hashes."""
+    result = check_drift("page.md", "sd_hash", "d_hash", {})
+    assert result is None
+
+
+def test_check_drift_no_stored_source_docstring():
+    """Returns None when stored hashes exist but lack source_docstring key."""
+    stored = {"page.md": {"content": "c", "description": "d"}}
+    result = check_drift("page.md", "sd_hash", "d", stored)
+    assert result is None
+
+
+def test_check_drift_source_unchanged():
+    """Returns None when source docstring hash is unchanged."""
+    stored = {"page.md": {"content": "c", "description": "d", "source_docstring": "same"}}
+    result = check_drift("page.md", "same", "d", stored)
+    assert result is None
+
+
+def test_check_drift_source_changed_description_updated():
+    """Returns None when source changed but description was also updated."""
+    stored = {"page.md": {"content": "c", "description": "old_d", "source_docstring": "old_sd"}}
+    result = check_drift("page.md", "new_sd", "new_d", stored)
+    assert result is None
+
+
+def test_check_drift_source_changed_description_unchanged():
+    """Returns error when source changed but description stayed the same."""
+    stored = {"page.md": {"content": "c", "description": "same_d", "source_docstring": "old_sd"}}
+    result = check_drift("page.md", "new_sd", "same_d", stored)
+    assert result is not None
+    assert "page.md" in result
+    assert "documentation drift" in result

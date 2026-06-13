@@ -4082,4 +4082,125 @@ def test_example001_invalid_json(lint_project):
     assert len(ex001) == 1
     assert ex001[0].severity == "warning"
     assert "JSON syntax error" in ex001[0].message
-    assert ex001[0].code == "EXAMPLE001"
+
+
+# -- DRIFT001: source docstring drift detection --
+
+
+def _make_drift_project(tmp_path, docstring="My library module.", description="Describes my library"):
+    """Create a minimal Python project for DRIFT001 tests.
+
+    The project has a source file with a module docstring and a docs page
+    with a ref directive pointing to it.
+    """
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir, exist_ok=True)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            f'"""{docstring}"""\n'
+            "\n"
+            "def greet(name):\n"
+            '    """Say hello."""\n'
+            "    return f'Hello, {name}'\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir, exist_ok=True)
+    with open(os.path.join(docs_dir, "mylib.md"), "w", encoding="utf-8") as f:
+        f.write(
+            f"---\ndescription: {description}\n---\n"
+            "# My Library\n\n"
+            ':-: ref path="mylib"\n'
+        )
+
+    return config
+
+
+def test_drift001_source_changed_description_unchanged(tmp_path):
+    """DRIFT001: source docstring changed but page description stayed the same."""
+    # First run: establish baseline
+    _make_drift_project(tmp_path, docstring="Original docstring.", description="Library docs")
+    result1 = check_docs(str(tmp_path))
+    drift1 = [l for l in result1.lints if l.code == "DRIFT001"]
+    assert len(drift1) == 0
+
+    # Second run: change the source docstring, keep page description
+    _make_drift_project(tmp_path, docstring="Completely rewritten docstring.", description="Library docs")
+    result2 = check_docs(str(tmp_path))
+    drift2 = [l for l in result2.lints if l.code == "DRIFT001"]
+    assert len(drift2) == 1
+    assert "source docstrings changed" in drift2[0].message
+    assert drift2[0].severity == "error"
+
+
+def test_drift001_source_and_description_both_changed(tmp_path):
+    """DRIFT001: no lint when both source docstring and description are updated."""
+    # First run: establish baseline
+    _make_drift_project(tmp_path, docstring="Original docstring.", description="Original desc")
+    check_docs(str(tmp_path))
+
+    # Second run: change both source docstring AND page description
+    _make_drift_project(tmp_path, docstring="New docstring.", description="New desc")
+    result = check_docs(str(tmp_path))
+    drift = [l for l in result.lints if l.code == "DRIFT001"]
+    assert len(drift) == 0
+
+
+def test_drift001_no_ref_directives(tmp_path):
+    """DRIFT001: page without ref directives does not trigger DRIFT001."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "src/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir)
+    with open(os.path.join(src_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""Module."""\n')
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
+        f.write("---\ndescription: A guide\n---\n# Guide\n\nSome content.\n")
+
+    # First run
+    check_docs(str(tmp_path))
+    # Second run (nothing changed either, but even if we changed the source
+    # file, this page has no ref directive so DRIFT001 won't fire)
+    result = check_docs(str(tmp_path))
+    drift = [l for l in result.lints if l.code == "DRIFT001"]
+    assert len(drift) == 0
+
+
+def test_drift001_first_run_no_hash(tmp_path):
+    """DRIFT001: first run with no stored hash does not trigger lint."""
+    _make_drift_project(tmp_path, docstring="Initial docstring.", description="Desc")
+    result = check_docs(str(tmp_path))
+    drift = [l for l in result.lints if l.code == "DRIFT001"]
+    assert len(drift) == 0
+
+
+def test_drift001_source_unchanged(tmp_path):
+    """DRIFT001: no lint when source docstring is unchanged between runs."""
+    _make_drift_project(tmp_path, docstring="Stable docstring.", description="Stable desc")
+    check_docs(str(tmp_path))
+
+    # Second run: same source, same description
+    result = check_docs(str(tmp_path))
+    drift = [l for l in result.lints if l.code == "DRIFT001"]
+    assert len(drift) == 0
