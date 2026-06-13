@@ -253,7 +253,7 @@ def check_docs(dir_path=".", config=None, dry_run=False):
         resolved_path = entry.extractor.resolve_path(
             path_arg, [entry.path], dir_path,
         )
-        if resolved_path is None or not os.path.isfile(resolved_path):
+        if resolved_path is None or not (os.path.isfile(resolved_path) or os.path.isdir(resolved_path)):
             result.lints.append(LintResult(
                 file=rd.file,
                 line=None,
