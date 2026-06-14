@@ -110,6 +110,272 @@ class SwiftExtractor(BaseExtractor):
             return ""
         return _extract_module_doc(source)
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a Swift function."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        lines = source.split("\n")
+
+        # Regex matching both public/open func and unmodified func
+        func_re = re.compile(
+            r"^(?:(?:public|open)\s+)?(?:(?:static|class|final)\s+)*func\s+"
+            + re.escape(symbol_name)
+            + r"\s*\("
+        )
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("//"):
+                continue
+            if func_re.match(stripped):
+                return _swift_symbol_details(lines, i)
+
+        return None
+
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_swift_params(param_str):
+    """Parse Swift function parameter list into structured dicts.
+
+    Takes the text between '(' and ')' of a Swift function signature.
+    Swift params: ``func f(label name: Type, _ name: Type = default)``
+
+    Returns list of {"name": str, "type": str|None}.
+    """
+    params = []
+    if not param_str.strip():
+        return params
+
+    # Split on commas respecting nested brackets/parens/generics
+    parts = _split_swift_params(param_str)
+
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+
+        # Strip default value: everything after top-level '='
+        eq_idx = _find_top_level_char(part, "=")
+        if eq_idx >= 0:
+            part = part[:eq_idx].strip()
+
+        # Split on ':' to separate name(s) from type
+        colon_idx = _find_top_level_char(part, ":")
+        if colon_idx < 0:
+            # No type annotation (unusual but possible in closures)
+            name = part.strip()
+            if name == "self":
+                continue
+            params.append({"name": name, "type": None})
+            continue
+
+        name_part = part[:colon_idx].strip()
+        type_part = part[colon_idx + 1:].strip()
+
+        # Parse name_part: could be "label name", "_ name", or just "name"
+        tokens = name_part.split()
+        if len(tokens) == 2:
+            # (label name) or (_ name) -- use the internal name (second)
+            name = tokens[1]
+        elif len(tokens) == 1:
+            name = tokens[0]
+        else:
+            # Unusual, take the last token
+            name = tokens[-1] if tokens else name_part
+
+        if name == "self":
+            continue
+
+        # Clean type: strip @escaping, @autoclosure etc. but keep them
+        # as part of the type for accuracy
+        param_type = type_part if type_part else None
+
+        params.append({"name": name, "type": param_type})
+
+    return params
+
+
+def _split_swift_params(s):
+    """Split a Swift parameter string on commas, respecting nested brackets."""
+    parts = []
+    depth = 0
+    current = []
+    for ch in s:
+        if ch in "(<[":
+            depth += 1
+            current.append(ch)
+        elif ch in ")>]":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        parts.append("".join(current))
+    return parts
+
+
+def _find_top_level_char(s, char):
+    """Find the first occurrence of char at nesting depth 0."""
+    depth = 0
+    for i, ch in enumerate(s):
+        if ch in "(<[":
+            depth += 1
+        elif ch in ")>]":
+            depth -= 1
+        elif ch == char and depth == 0:
+            return i
+    return -1
+
+
+def _extract_swift_doc_param_names(doc_text):
+    """Extract parameter names documented in Swift doc comments.
+
+    Handles both:
+    - ``- Parameter name: desc`` (individual syntax)
+    - ``- Parameters:`` block with ``  - name: desc`` sub-items
+    """
+    names = set()
+    if not doc_text:
+        return names
+
+    lines = doc_text.split("\n")
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+
+        # Individual: - Parameter name: desc
+        m = re.match(r"^-\s+Parameter\s+(\w+)\s*:", stripped)
+        if m:
+            names.add(m.group(1))
+            i += 1
+            continue
+
+        # Block: - Parameters:
+        if re.match(r"^-\s+Parameters\s*:", stripped):
+            i += 1
+            while i < len(lines):
+                sub_stripped = lines[i].strip()
+                sub_m = re.match(r"^-\s+(\w+)\s*:", sub_stripped)
+                if sub_m and len(lines[i]) > len(lines[i].lstrip()):
+                    names.add(sub_m.group(1))
+                    i += 1
+                elif not sub_stripped:
+                    i += 1
+                else:
+                    break
+            continue
+
+        i += 1
+
+    return names
+
+
+def _has_swift_return_doc(doc_text):
+    """Check whether Swift doc text contains a ``- Returns:`` tag."""
+    if not doc_text:
+        return False
+    return bool(re.search(r"^-\s+Returns\s*:", doc_text, re.MULTILINE))
+
+
+def _extract_swift_return_type(signature):
+    """Extract the return type from a Swift function signature.
+
+    Looks for ``-> ReturnType`` after the closing ``)`` of the parameter list.
+    """
+    # Find the last ')' that closes the parameter list
+    paren_depth = 0
+    last_close = -1
+    for idx, ch in enumerate(signature):
+        if ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                last_close = idx
+                break
+
+    if last_close < 0:
+        return None
+
+    after_params = signature[last_close + 1:].strip()
+
+    # Handle throws/rethrows before return type
+    after_params = re.sub(r"^(?:throws|rethrows)\s*", "", after_params).strip()
+
+    # Look for -> ReturnType
+    arrow_match = re.match(r"^->\s*(.+)$", after_params)
+    if not arrow_match:
+        return None
+
+    return_type = arrow_match.group(1).strip()
+    # Remove trailing { or where clause
+    return_type = re.sub(r"\s*\{.*$", "", return_type).strip()
+    return_type = re.sub(r"\s+where\s+.*$", "", return_type).strip()
+
+    return return_type if return_type else None
+
+
+def _swift_symbol_details(lines, decl_line_idx):
+    """Build symbol_details dict for a Swift function declaration."""
+    sig = _extract_func_signature(lines, decl_line_idx)
+    doc_text = collect_comment_lines_above(
+        lines, decl_line_idx, "///", skip_blank_lines=False
+    )
+
+    # Extract params from signature
+    paren_start = sig.find("(")
+    if paren_start < 0:
+        return {
+            "params": [],
+            "return_type": _extract_swift_return_type(sig),
+            "return_documented": _has_swift_return_doc(doc_text),
+        }
+
+    # Find matching close paren
+    paren_depth = 0
+    paren_end = -1
+    for idx in range(paren_start, len(sig)):
+        if sig[idx] == "(":
+            paren_depth += 1
+        elif sig[idx] == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                paren_end = idx
+                break
+
+    if paren_end < 0:
+        inner = sig[paren_start + 1:]
+    else:
+        inner = sig[paren_start + 1:paren_end]
+
+    documented_names = _extract_swift_doc_param_names(doc_text)
+    parsed_params = _parse_swift_params(inner)
+
+    params = []
+    for p in parsed_params:
+        params.append({
+            "name": p["name"],
+            "type": p["type"],
+            "documented": p["name"] in documented_names,
+        })
+
+    return {
+        "params": params,
+        "return_type": _extract_swift_return_type(sig),
+        "return_documented": _has_swift_return_doc(doc_text),
+    }
+
 
 # ---------------------------------------------------------------------------
 # Path resolution

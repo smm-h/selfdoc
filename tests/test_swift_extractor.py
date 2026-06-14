@@ -435,3 +435,100 @@ class TestModuleDocstring:
         ext = SwiftExtractor()
         result = ext.module_docstring(str(swift_file))
         assert result == "Parser module for source code.\nHandles incremental parsing."
+
+
+class TestSymbolDetails:
+    def test_symbol_details_documented_params(self, swift_project):
+        """Function with - Parameter doc tags reports params as documented."""
+        ext = SwiftExtractor()
+        filepath = os.path.join(swift_project, "Sources", "Parser.swift")
+        result = ext.symbol_details(filepath, "parse")
+        assert result is not None
+        assert len(result["params"]) == 1
+        p = result["params"][0]
+        assert p["name"] == "source"
+        assert p["type"] == "String"
+        assert p["documented"] is True
+
+    def test_symbol_details_undocumented_params(self, tmp_path):
+        """Function without doc tags reports params as undocumented."""
+        swift_file = tmp_path / "Funcs.swift"
+        swift_file.write_text(
+            "public func process(input: Data, count: Int) -> Bool {\n"
+            "    return true\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = SwiftExtractor()
+        result = ext.symbol_details(str(swift_file), "process")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "input", "type": "Data", "documented": False}
+        assert result["params"][1] == {"name": "count", "type": "Int", "documented": False}
+
+    def test_symbol_details_no_params(self, tmp_path):
+        """Function with no parameters returns empty params list."""
+        swift_file = tmp_path / "Empty.swift"
+        swift_file.write_text(
+            "public func doSomething() {\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = SwiftExtractor()
+        result = ext.symbol_details(str(swift_file), "doSomething")
+        assert result is not None
+        assert result["params"] == []
+        assert result["return_type"] is None
+        assert result["return_documented"] is False
+
+    def test_symbol_details_unknown_symbol(self, swift_project):
+        """Returns None for a symbol that doesn't exist."""
+        ext = SwiftExtractor()
+        filepath = os.path.join(swift_project, "Sources", "Parser.swift")
+        result = ext.symbol_details(filepath, "nonexistent")
+        assert result is None
+
+    def test_symbol_details_return_type(self, swift_project):
+        """Verifies return type extraction and return_documented flag."""
+        ext = SwiftExtractor()
+        filepath = os.path.join(swift_project, "Sources", "Parser.swift")
+        result = ext.symbol_details(filepath, "parse")
+        assert result is not None
+        assert result["return_type"] == "ASTNode"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_parameters_block_syntax(self, swift_project):
+        """Function with - Parameters: block syntax documents params correctly."""
+        ext = SwiftExtractor()
+        filepath = os.path.join(swift_project, "Sources", "Parser.swift")
+        result = ext.symbol_details(filepath, "configure")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0]["name"] == "mode"
+        assert result["params"][0]["type"] == "ParseMode"
+        assert result["params"][0]["documented"] is True
+        assert result["params"][1]["name"] == "flags"
+        assert result["params"][1]["type"] == "[String]"
+        assert result["params"][1]["documented"] is True
+        assert result["return_type"] == "Parser"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_external_label(self, tmp_path):
+        """External label and internal name: uses the internal name."""
+        swift_file = tmp_path / "Labels.swift"
+        swift_file.write_text(
+            "/// - Parameter value: The value.\n"
+            "public func set(for value: Int, _ name: String) -> Void {\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = SwiftExtractor()
+        result = ext.symbol_details(str(swift_file), "set")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0]["name"] == "value"
+        assert result["params"][0]["type"] == "Int"
+        assert result["params"][0]["documented"] is True
+        assert result["params"][1]["name"] == "name"
+        assert result["params"][1]["type"] == "String"
+        assert result["params"][1]["documented"] is False
