@@ -421,6 +421,165 @@ class SvelteExtractor(BaseExtractor):
             return ""
         return _extract_component_doc(source)
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for an exported function."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        blocks = _extract_script_blocks(source)
+
+        for script_content in (blocks["instance"], blocks["module"]):
+            if not script_content:
+                continue
+            result = _symbol_details_from_script(script_content, symbol_name)
+            if result is not None:
+                return result
+
+        return None
+
+
+def _symbol_details_from_script(script_content, symbol_name):
+    """Search a script block for an exported function and build symbol_details."""
+    # Build a regex that matches only the target function name
+    func_re = re.compile(
+        r"export\s+(?:async\s+)?function\s+"
+        + re.escape(symbol_name)
+        + r"\s*(\([^)]*\)(?:\s*:\s*[^{;]+)?)",
+    )
+    match = func_re.search(script_content)
+    if not match:
+        return None
+
+    params_and_return = match.group(1).strip()
+
+    # Parse params from the parenthesized portion
+    paren_end = params_and_return.index(")")
+    params_str = params_and_return[1:paren_end]  # strip ( and )
+    params = _parse_func_params(params_str)
+
+    # Parse return type from after the closing paren
+    after_paren = params_and_return[paren_end + 1:].strip()
+    return_type = None
+    if after_paren.startswith(":"):
+        return_type = after_paren[1:].strip() or None
+
+    # Find JSDoc immediately before this function declaration
+    jsdoc = _find_jsdoc_before(script_content, match.start())
+    documented_param_names = set()
+    return_documented = False
+    if jsdoc:
+        parsed = _parse_jsdoc_text(jsdoc)
+        documented_param_names = {p["name"] for p in parsed["params"]}
+        return_documented = bool(parsed["returns"])
+
+    param_dicts = []
+    for name, ptype in params:
+        param_dicts.append({
+            "name": name,
+            "type": ptype,
+            "documented": name in documented_param_names,
+        })
+
+    return {
+        "params": param_dicts,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
+
+def _parse_func_params(params_str):
+    """Parse a TypeScript function parameter list into (name, type|None) pairs.
+
+    Handles: name, name: Type, name?: Type, name: Type = default
+    """
+    params_str = params_str.strip()
+    if not params_str:
+        return []
+
+    result = []
+    # Split by comma, respecting nested angle brackets and parens
+    parts = _split_params(params_str)
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+
+        # Strip default value (everything after = at depth 0)
+        eq_idx = _find_top_level_eq(part)
+        if eq_idx >= 0:
+            part = part[:eq_idx].strip()
+
+        # Split name and type on colon
+        colon_idx = part.find(":")
+        if colon_idx > 0:
+            name = part[:colon_idx].strip().rstrip("?")
+            ptype = part[colon_idx + 1:].strip()
+            result.append((name, ptype if ptype else None))
+        else:
+            name = part.strip().rstrip("?")
+            result.append((name, None))
+
+    return result
+
+
+def _split_params(s):
+    """Split parameter string by commas, respecting nested brackets/parens."""
+    parts = []
+    depth = 0
+    current = []
+    for ch in s:
+        if ch in ("(", "<", "[", "{"):
+            depth += 1
+            current.append(ch)
+        elif ch in (")", ">", "]", "}"):
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        parts.append("".join(current))
+    return parts
+
+
+def _find_top_level_eq(s):
+    """Find the first '=' at depth 0 in a string. Returns index or -1."""
+    depth = 0
+    for i, ch in enumerate(s):
+        if ch in ("(", "<", "[", "{"):
+            depth += 1
+        elif ch in (")", ">", "]", "}"):
+            depth -= 1
+        elif ch == "=" and depth == 0:
+            return i
+    return -1
+
+
+def _find_jsdoc_before(script_content, pos):
+    """Find JSDoc comment (/** ... */) ending right before pos.
+
+    Returns the raw JSDoc body (between /** and */) or None.
+    """
+    # Look at the text before pos, stripped of trailing whitespace
+    before = script_content[:pos].rstrip()
+    if not before.endswith("*/"):
+        return None
+
+    # Find the matching /**
+    block_end = len(before)
+    start = before.rfind("/**")
+    if start < 0:
+        return None
+
+    # Extract the content between /** and */
+    jsdoc_body = before[start + 3:block_end - 2]
+    return jsdoc_body
+
 
 # ---------------------------------------------------------------------------
 # :::ref handler

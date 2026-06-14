@@ -693,3 +693,58 @@ class TestModuleDocstring:
         ext = SvelteExtractor()
         result = ext.module_docstring(str(svelte_file))
         assert result == "A counter component with reset."
+
+
+# ---------------------------------------------------------------------------
+# symbol_details
+# ---------------------------------------------------------------------------
+
+
+class TestSymbolDetails:
+    def test_symbol_details_exported_function(self, tmp_path):
+        svelte_file = tmp_path / "Greet.svelte"
+        svelte_file.write_text(
+            "<script>\n"
+            "/**\n"
+            " * Greet someone.\n"
+            " * @param name The person's name\n"
+            " */\n"
+            "export function greet(name: string, count: number): string {\n"
+            "    return `Hello ${name}! (${count})`;\n"
+            "}\n"
+            "</script>\n",
+            encoding="utf-8",
+        )
+        ext = SvelteExtractor()
+        result = ext.symbol_details(str(svelte_file), "greet")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "name", "type": "string", "documented": True}
+        assert result["params"][1] == {"name": "count", "type": "number", "documented": False}
+        assert result["return_type"] == "string"
+        assert result["return_documented"] is False
+
+    def test_symbol_details_component_returns_none(self, tmp_path):
+        svelte_file = tmp_path / "MyComponent.svelte"
+        svelte_file.write_text(
+            "<script lang=\"ts\">\n"
+            "let { name, count }: { name: string; count: number } = $props();\n"
+            "</script>\n"
+            "<p>{name}: {count}</p>\n",
+            encoding="utf-8",
+        )
+        ext = SvelteExtractor()
+        result = ext.symbol_details(str(svelte_file), "MyComponent")
+        assert result is None
+
+    def test_symbol_details_unknown_returns_none(self, tmp_path):
+        svelte_file = tmp_path / "Simple.svelte"
+        svelte_file.write_text(
+            "<script>\n"
+            "export function hello() {}\n"
+            "</script>\n",
+            encoding="utf-8",
+        )
+        ext = SvelteExtractor()
+        result = ext.symbol_details(str(svelte_file), "nonexistent")
+        assert result is None
