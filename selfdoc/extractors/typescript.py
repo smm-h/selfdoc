@@ -1133,7 +1133,7 @@ def _handle_config(path, target, body, source_paths, base_dir, attrs):
                 return format_error(f"config file '{path}' not found")
             exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
             return _config_from_jsonc(full_path, path, exclude_keys=exclude_keys)
-    return handle_table_config(path, target, body, source_paths, base_dir, attrs)
+    return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
 
 def _config_from_jsonc(full_path, display_path, exclude_keys: set[str] | None = None):
