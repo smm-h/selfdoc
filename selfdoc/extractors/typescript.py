@@ -618,9 +618,21 @@ def _extract_module_jsdoc(source):
     if after_text.startswith("import ") or after_text.startswith("import{"):
         return _parse_jsdoc_text(match.group(1))
 
-    # If followed directly by an export, it's attached to that export, not module-level
+    # If followed by an export, distinguish module-level from function-attached JSDoc
     if re.match(r"export\s", after_text):
-        return _parse_jsdoc_text(match.group(1))
+        parsed = _parse_jsdoc_text(match.group(1))
+        # @module tag -- always module-level
+        if any(t["tag"] == "module" for t in parsed.get("tags", [])):
+            return parsed
+        # @param or @returns/@return tags -- function doc, not module-level
+        if parsed.get("params") or parsed.get("returns"):
+            return None
+        # Check for blank line between JSDoc end and export
+        gap = source[after_pos:][: len(source[after_pos:]) - len(source[after_pos:].lstrip())]
+        if gap.count("\n") >= 2:
+            return parsed
+        # No blank line -- attached to the export, not module-level
+        return None
 
     # Otherwise it's a standalone module doc
     return _parse_jsdoc_text(match.group(1))

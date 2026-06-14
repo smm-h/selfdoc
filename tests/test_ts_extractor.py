@@ -713,6 +713,74 @@ def test_module_docstring(tmp_path):
     assert result == "Module description here."
 
 
+class TestModuleJsdocDetection:
+    """Tests for _extract_module_jsdoc heuristics."""
+
+    def test_module_jsdoc_not_function_doc(self, tmp_path):
+        """JSDoc with @param before export returns None."""
+        ts_file = os.path.join(tmp_path, "func.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write(
+                "/**\n"
+                " * Process the data.\n"
+                " *\n"
+                " * @param data - The input data\n"
+                " * @returns The result\n"
+                " */\n"
+                "export function process(data: string): string {\n"
+                "  return data;\n"
+                "}\n"
+            )
+        ext = TypeScriptExtractor()
+        result = ext.module_docstring(str(ts_file))
+        assert result == ""
+
+    def test_module_jsdoc_with_blank_line(self, tmp_path):
+        """JSDoc + blank line + export = module-level."""
+        ts_file = os.path.join(tmp_path, "mod.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write(
+                "/**\n"
+                " * This is the module description.\n"
+                " */\n"
+                "\n"
+                "export function doStuff(): void {}\n"
+            )
+        ext = TypeScriptExtractor()
+        result = ext.module_docstring(str(ts_file))
+        assert result == "This is the module description."
+
+    def test_module_jsdoc_no_blank_line(self, tmp_path):
+        """JSDoc immediately before export = NOT module-level."""
+        ts_file = os.path.join(tmp_path, "attached.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write(
+                "/**\n"
+                " * A widget class.\n"
+                " */\n"
+                "export class Widget {}\n"
+            )
+        ext = TypeScriptExtractor()
+        result = ext.module_docstring(str(ts_file))
+        assert result == ""
+
+    def test_module_jsdoc_with_module_tag(self, tmp_path):
+        """@module tag = always module-level regardless of proximity."""
+        ts_file = os.path.join(tmp_path, "tagged.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write(
+                "/**\n"
+                " * The utilities module.\n"
+                " *\n"
+                " * @module utils\n"
+                " */\n"
+                "export function helper(): void {}\n"
+            )
+        ext = TypeScriptExtractor()
+        result = ext.module_docstring(str(ts_file))
+        assert result == "The utilities module."
+
+
 # ---------------------------------------------------------------------------
 # symbol_details tests
 # ---------------------------------------------------------------------------
