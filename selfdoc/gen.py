@@ -10,10 +10,7 @@ from selfdoc.utils import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.directives import resolve_directives
 from selfdoc.extractors import EXTRACTORS
-from selfdoc.extractors.base import read_source
-from selfdoc.extractors.go import _extract_package_doc
 from selfdoc.resolver import make_resolver
-from selfdoc.utils import extract_module_docstring as _extract_module_docstring
 from selfdoc.utils import atomic_write as _atomic_write
 
 
@@ -33,6 +30,28 @@ _DEFAULT_DESCRIPTION_RE = re.compile(
     r"auto-generated documentation covering public functions, "
     r"classes, and type signatures\.?$"
 )
+
+
+def _truncate_to_description(docstring: str) -> str:
+    """Truncate a full docstring to a short description.
+
+    Takes the first line, extracts the first sentence (up to the first
+    period followed by whitespace or end-of-string), and truncates to
+    155 characters.  Returns empty string if input is empty.
+    """
+    if not docstring:
+        return ""
+    first_line = docstring.split("\n", 1)[0].strip()
+    if not first_line:
+        return ""
+    match = re.search(r"\.\s", first_line)
+    if match:
+        first_line = first_line[: match.start() + 1]
+    elif first_line.endswith("."):
+        pass  # already ends with period
+    if len(first_line) > 155:
+        first_line = first_line[:152] + "..."
+    return first_line
 
 
 # Default exclusion patterns (always applied in addition to user-configured ones).
@@ -162,55 +181,6 @@ def _go_root_package_name(base_dir):
     if name:
         return name
     return os.path.basename(os.path.abspath(base_dir))
-
-
-def _extract_go_package_description(pkg_dir):
-    """Extract the package doc comment from a Go package directory.
-
-    Reads .go files (excluding _test.go), preferring doc.go, then the file
-    matching the directory name, then any file with a package doc comment.
-    Returns the first line of the doc comment (truncated to 155 chars), or None.
-    """
-    go_files = sorted(
-        f for f in os.listdir(pkg_dir)
-        if f.endswith(".go") and not f.endswith("_test.go")
-    )
-    if not go_files:
-        return None
-
-    # Prioritise doc.go and the file matching the directory basename
-    dir_basename = os.path.basename(pkg_dir)
-    priority_names = ["doc.go", f"{dir_basename}.go"]
-    ordered = []
-    for pn in priority_names:
-        if pn in go_files:
-            ordered.append(pn)
-    for gf in go_files:
-        if gf not in ordered:
-            ordered.append(gf)
-
-    file_contents = {}
-    for gf in ordered:
-        content, _err = read_source(os.path.join(pkg_dir, gf))
-        file_contents[gf] = content if content is not None else ""
-
-    _pkg_name, doc = _extract_package_doc(file_contents)
-    if not doc:
-        return None
-
-    # Take first line, truncate to 155 chars
-    first_line = doc.split("\n", 1)[0].strip()
-    if not first_line:
-        return None
-    # Take up to the first sentence-ending period
-    match = re.search(r"\.\s", first_line)
-    if match:
-        first_line = first_line[: match.start() + 1]
-    elif first_line.endswith("."):
-        pass
-    if len(first_line) > 155:
-        first_line = first_line[:152] + "..."
-    return first_line
 
 
 def _collect_go_packages(source_paths, base_dir, exclude_patterns):
@@ -690,13 +660,8 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
         # Try module/package docstring when no custom description exists
         docstring_description = None
         if existing_description is None:
-            if language == "go":
-                # src_path is a package directory for Go
-                docstring_description = _extract_go_package_description(
-                    src_path
-                )
-            else:
-                docstring_description = _extract_module_docstring(src_path)
+            raw = extractor.module_docstring(src_path)
+            docstring_description = _truncate_to_description(raw) or None
         content = _generate_page_content(
             mod_name, mod_path, nav_order,
             existing_description=existing_description,
