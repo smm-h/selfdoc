@@ -4,3 +4,4 @@
 {"commits":["51a86abb5bc53a195802770136de37c663039769"],"user_facing":true,"description":"**Fixed.** Coverage computation no longer falsely matches symbols that are substrings of other symbol names.","type":"fix"}
 {"commits":["2f0a8fdacf1063067986df49bda2800038919e20"],"user_facing":true,"description":"**New lint.** CLI002 warns when CLI help texts are shorter than 50 characters (commands, flags, args, and group subcommands).","type":"feature"}
 {"commits":["5cbe0dd98c52378ab254c6cdbeb8c330c6b8b02f"],"user_facing":false}
+{"commits":["5e4e3e33a5bdade288c7a595f6a55dfa7b3987cb"],"user_facing":true,"description":"**All languages get auto-extracted descriptions.** gen now uses the `module_docstring` protocol method for all extractors instead of hardcoded Go/Python paths. TypeScript, Zig, Swift, Kotlin, Svelte, Dart, and SQL pages now show real module descriptions.","type":"feature"}
