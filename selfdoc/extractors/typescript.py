@@ -149,6 +149,222 @@ class TypeScriptExtractor(BaseExtractor):
             return ""
         return result.get("description", "")
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a symbol."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        # Try exported functions first, then non-exported
+        func_re = re.compile(
+            r"(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+"
+            + re.escape(symbol_name)
+            + r"\s*\(",
+        )
+        match = func_re.search(source)
+        if match is None:
+            return None
+
+        return _ts_symbol_details(source, match)
+
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _ts_symbol_details(source, decl_match):
+    """Build a symbol_details dict from a function declaration match.
+
+    decl_match should point to the start of the function declaration.
+    Extracts parameters, return type, and JSDoc documentation status.
+    """
+    # Find the opening paren
+    paren_start = source.index("(", decl_match.start())
+    # Extract everything from ( to the matching )
+    paren_end = _find_matching_paren(source, paren_start)
+    if paren_end is None:
+        return None
+
+    params_str = source[paren_start + 1 : paren_end]
+    params = _parse_ts_params(params_str)
+
+    # Extract return type from after ) up to { or newline
+    return_type = _extract_ts_return_type(source[paren_end:])
+
+    # Find JSDoc above the declaration
+    jsdoc = _find_jsdoc_before(source, decl_match.start())
+    documented_param_names = set()
+    return_documented = False
+    if jsdoc:
+        documented_param_names = {p["name"] for p in jsdoc["params"]}
+        return_documented = jsdoc["returns"] is not None
+
+    param_dicts = []
+    for p in params:
+        param_dicts.append({
+            "name": p["name"],
+            "type": p["type"],
+            "documented": p["name"].lstrip("...") in documented_param_names,
+        })
+
+    return {
+        "params": param_dicts,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
+
+def _find_matching_paren(source, open_pos):
+    """Find the closing ) that matches the ( at open_pos."""
+    depth = 0
+    i = open_pos
+    while i < len(source):
+        ch = source[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        elif ch in ("'", '"', "`"):
+            # Skip string literals
+            quote = ch
+            i += 1
+            while i < len(source):
+                if source[i] == "\\":
+                    i += 2
+                    continue
+                if source[i] == quote:
+                    break
+                i += 1
+        i += 1
+    return None
+
+
+def _parse_ts_params(param_str):
+    """Parse content between ( and ) into a list of {"name": str, "type": str|None}.
+
+    Handles: name, name: Type, name?: Type, name: Type = default, ...rest: Type[]
+    """
+    param_str = param_str.strip()
+    if not param_str:
+        return []
+
+    parts = _split_ts_params(param_str)
+    result = []
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+
+        # Strip default value (everything after = at depth 0)
+        eq_idx = _find_top_level_eq(part)
+        if eq_idx >= 0:
+            part = part[:eq_idx].strip()
+
+        # Handle rest params: ...name: Type
+        rest_prefix = ""
+        if part.startswith("..."):
+            rest_prefix = "..."
+            part = part[3:]
+
+        # Split name and type on the first colon at depth 0
+        colon_idx = _find_top_level_colon(part)
+        if colon_idx > 0:
+            name = rest_prefix + part[:colon_idx].strip().rstrip("?")
+            ptype = part[colon_idx + 1 :].strip()
+            result.append({"name": name, "type": ptype if ptype else None})
+        else:
+            name = rest_prefix + part.strip().rstrip("?")
+            result.append({"name": name, "type": None})
+
+    return result
+
+
+def _split_ts_params(s):
+    """Split parameter string by commas, respecting nested brackets/parens."""
+    parts = []
+    depth = 0
+    current = []
+    for ch in s:
+        if ch in ("(", "<", "[", "{"):
+            depth += 1
+            current.append(ch)
+        elif ch in (")", ">", "]", "}"):
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        parts.append("".join(current))
+    return parts
+
+
+def _find_top_level_eq(s):
+    """Find the first '=' at depth 0 that is not part of => or ==."""
+    depth = 0
+    for i, ch in enumerate(s):
+        if ch in ("(", "<", "[", "{"):
+            depth += 1
+        elif ch in (")", ">", "]", "}"):
+            depth -= 1
+        elif ch == "=" and depth == 0:
+            # Skip => (arrow) and == / === (equality)
+            if i + 1 < len(s) and s[i + 1] in ("=", ">"):
+                continue
+            return i
+    return -1
+
+
+def _find_top_level_colon(s):
+    """Find the first ':' at depth 0 in a string. Returns index or -1."""
+    depth = 0
+    for i, ch in enumerate(s):
+        if ch in ("(", "<", "[", "{"):
+            depth += 1
+        elif ch in (")", ">", "]", "}"):
+            depth -= 1
+        elif ch == ":" and depth == 0:
+            return i
+    return -1
+
+
+def _extract_ts_return_type(after_paren):
+    """Extract return type from the text after the closing ')'.
+
+    Looks for ': ReturnType' before '{' or newline.
+    """
+    # after_paren starts with ')'
+    text = after_paren.lstrip(")")
+    text = text.lstrip()
+    if not text.startswith(":"):
+        return None
+    text = text[1:].lstrip()
+
+    # Collect until { or newline, respecting nested brackets
+    depth = 0
+    result = []
+    for ch in text:
+        if ch in ("{",) and depth == 0:
+            break
+        if ch == "\n" and depth == 0:
+            break
+        if ch in ("(", "<", "["):
+            depth += 1
+        elif ch in (")", ">", "]"):
+            depth -= 1
+        result.append(ch)
+
+    return_type = "".join(result).strip()
+    return return_type if return_type else None
+
+
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------

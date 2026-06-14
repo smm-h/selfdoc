@@ -711,3 +711,108 @@ def test_module_docstring(tmp_path):
     ext = TypeScriptExtractor()
     result = ext.module_docstring(str(ts_file))
     assert result == "Module description here."
+
+
+# ---------------------------------------------------------------------------
+# symbol_details tests
+# ---------------------------------------------------------------------------
+
+
+class TestSymbolDetails:
+    @pytest.fixture()
+    def sample_ts(self, tmp_path):
+        """Create a sample TS file with various function signatures."""
+        ts_file = os.path.join(tmp_path, "funcs.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write('''\
+/**
+ * Create a widget.
+ *
+ * @param name - The widget name
+ * @param options - Configuration options
+ * @returns The created widget
+ */
+export function createWidget(name: string, options?: WidgetOptions): Widget {
+  return { name };
+}
+
+export function noDoc(x: number, y: number): boolean {
+  return x > y;
+}
+
+function internalHelper(data: string): void {
+  console.log(data);
+}
+
+export async function fetchData(url: string, retries: number = 3): Promise<Response> {
+  return fetch(url);
+}
+
+export function withRest(first: string, ...rest: any[]): void {
+  console.log(first, ...rest);
+}
+''')
+        return ts_file
+
+    def test_symbol_details_with_jsdoc(self, sample_ts):
+        """Function with @param and @returns tags."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "createWidget")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "name", "type": "string", "documented": True}
+        assert result["params"][1] == {"name": "options", "type": "WidgetOptions", "documented": True}
+        assert result["return_type"] == "Widget"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_undocumented(self, sample_ts):
+        """Function without JSDoc has documented=False for all params."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "noDoc")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "x", "type": "number", "documented": False}
+        assert result["params"][1] == {"name": "y", "type": "number", "documented": False}
+        assert result["return_type"] == "boolean"
+        assert result["return_documented"] is False
+
+    def test_symbol_details_optional_params(self, sample_ts):
+        """Function with optional params strips ? from name."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "createWidget")
+        assert result is not None
+        # options? should have name "options" (not "options?") and type "WidgetOptions"
+        assert result["params"][1]["name"] == "options"
+        assert result["params"][1]["type"] == "WidgetOptions"
+
+    def test_symbol_details_return_type(self, sample_ts):
+        """Return type is correctly extracted including generics."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "fetchData")
+        assert result is not None
+        assert result["return_type"] == "Promise<Response>"
+        # Default param should still have its type, default stripped
+        assert result["params"][1]["name"] == "retries"
+        assert result["params"][1]["type"] == "number"
+
+    def test_symbol_details_unknown(self, sample_ts):
+        """Returns None for unknown symbol."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "nonExistent")
+        assert result is None
+
+    def test_symbol_details_rest_params(self, sample_ts):
+        """Rest params preserve ... prefix in name."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "withRest")
+        assert result is not None
+        assert result["params"][1]["name"] == "...rest"
+        assert result["params"][1]["type"] == "any[]"
+
+    def test_symbol_details_non_exported(self, sample_ts):
+        """Non-exported functions are also found."""
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(sample_ts, "internalHelper")
+        assert result is not None
+        assert result["params"][0] == {"name": "data", "type": "string", "documented": False}
+        assert result["return_type"] == "void"
