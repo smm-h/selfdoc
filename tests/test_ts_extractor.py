@@ -884,3 +884,61 @@ export function withRest(first: string, ...rest: any[]): void {
         assert result is not None
         assert result["params"][0] == {"name": "data", "type": "string", "documented": False}
         assert result["return_type"] == "void"
+
+
+# ---------------------------------------------------------------------------
+# Re-export handling in ref output
+# ---------------------------------------------------------------------------
+
+
+class TestReexportInRefOutput:
+    def test_reexport_appears_in_ref_output(self, tmp_path):
+        """export { Foo } from './foo' produces a ref entry for Foo."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "index.ts").write_text(
+            "export { Foo } from './foo';\n"
+            "export { Bar } from './bar';\n"
+        )
+        result = TypeScriptExtractor().extract(
+            "ref", {"path": "index.ts"}, [], ["src/"], str(tmp_path)
+        )
+        assert "### Foo" in result
+        assert "### Bar" in result
+        assert "from './foo'" in result
+        assert "from './bar'" in result
+
+    def test_reexport_local_declaration(self, tmp_path):
+        """export { Foo } with a local class Foo uses the class signature."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.ts").write_text(
+            "/**\n"
+            " * A widget class.\n"
+            " */\n"
+            "class Foo {\n"
+            "  run() {}\n"
+            "}\n"
+            "\n"
+            "export { Foo }\n"
+        )
+        result = TypeScriptExtractor().extract(
+            "ref", {"path": "mod.ts"}, [], ["src/"], str(tmp_path)
+        )
+        assert "### Foo" in result
+        assert "class Foo" in result
+        assert "A widget class." in result
+
+    def test_reexport_with_alias(self, tmp_path):
+        """export { Foo as Bar } produces a ref entry named Bar."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "aliases.ts").write_text(
+            "export { Foo as Bar } from './foo';\n"
+        )
+        result = TypeScriptExtractor().extract(
+            "ref", {"path": "aliases.ts"}, [], ["src/"], str(tmp_path)
+        )
+        assert "### Bar" in result
+        assert "Foo as Bar" in result
+        assert "from './foo'" in result

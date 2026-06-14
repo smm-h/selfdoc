@@ -673,6 +673,59 @@ def _extract_exports(source):
             {"name": name, "signature": signature, "jsdoc": jsdoc}
         )
 
+    # Second pass: scan for re-export patterns like export { X } and
+    # export { X } from './other'. These are handled by public_symbols
+    # but were missing from ref output.
+    # Use MULTILINE so ^ matches each line start in the full source.
+    reexport_pattern = re.compile(r"^export\s*\{([^}]+)\}", re.MULTILINE)
+    seen_names = {r["name"] for r in results}
+    for match in reexport_pattern.finditer(source):
+        # Extract the full line to check for a from clause
+        line_start = match.start()
+        line_end = source.find("\n", line_start)
+        if line_end == -1:
+            line_end = len(source)
+        full_line = source[line_start:line_end].strip()
+
+        # Parse the from clause if present
+        from_match = re.search(r"""from\s+['"]([^'"]+)['"]""", full_line)
+        from_module = from_match.group(1) if from_match else None
+
+        names_str = match.group(1)
+        for name_part in names_str.split(","):
+            name_part = name_part.strip()
+            if not name_part:
+                continue
+
+            # Handle aliases: export { Foo as Bar }
+            if " as " in name_part:
+                original, alias = name_part.split(" as ", 1)
+                original = original.strip()
+                exported_name = alias.strip()
+            else:
+                original = name_part
+                exported_name = name_part
+
+            if exported_name in seen_names:
+                continue
+            seen_names.add(exported_name)
+
+            # Try to find a local declaration for the original name
+            local = _find_local_declaration(source, original)
+            if local:
+                signature = local["signature"]
+                jsdoc = local["jsdoc"]
+            elif from_module:
+                signature = f"export {{ {name_part} }} from '{from_module}'"
+                jsdoc = None
+            else:
+                signature = f"export {{ {name_part} }}"
+                jsdoc = None
+
+            results.append(
+                {"name": exported_name, "signature": signature, "jsdoc": jsdoc}
+            )
+
     return results
 
 
@@ -688,6 +741,30 @@ def _extract_name_from_signature(sig):
     if m:
         return m.group(1)
     return None
+
+
+def _find_local_declaration(source, name):
+    """Find a local (non-exported or exported) declaration for a symbol name.
+
+    Searches for class, function, interface, type, const/let/var, and enum
+    declarations. Returns {"signature": str, "jsdoc": parsed|None} or None.
+    """
+    # Pattern matches both exported and non-exported declarations
+    decl_pattern = re.compile(
+        r"^((?:export\s+)?(?:default\s+)?(?:async\s+)?"
+        r"(?:function\s*\*?\s*|class\s+|interface\s+|type\s+|const\s+|let\s+|var\s+|enum\s+)"
+        + re.escape(name)
+        + r"[^\n{;]*(?:[{;]|\([^)]*\)[^{;]*[{;])?)",
+        re.MULTILINE,
+    )
+    match = decl_pattern.search(source)
+    if match is None:
+        return None
+
+    sig_raw = match.group(1).strip()
+    signature = re.sub(r"\s*[{;]\s*$", "", sig_raw).strip()
+    jsdoc = _find_jsdoc_before(source, match.start())
+    return {"signature": signature, "jsdoc": jsdoc}
 
 
 # ---------------------------------------------------------------------------
