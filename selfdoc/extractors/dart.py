@@ -12,6 +12,7 @@ import re
 
 from selfdoc.extractors.base import (
     BaseExtractor,
+    _extract_brace_block,
     _format_docstring,
     collect_comment_lines_above,
     format_error,
@@ -1084,6 +1085,54 @@ def _dart_symbol_details(lines, decl_line_idx, func_name):
     }
 
 
+def _dotted_symbol_details(source, symbol_name):
+    """Resolve a dotted symbol like ``UserRepository.findById`` to method details.
+
+    Finds the class, abstract class, or mixin declaration for the type part,
+    extracts its brace-delimited body, then searches within for a method
+    matching the member name.
+    """
+    type_name, member_name = symbol_name.rsplit(".", 1)
+
+    # Find class or mixin declaration:
+    #   [abstract] [base|interface|final] [mixin] class TypeName
+    #   [base] mixin TypeName
+    type_re = re.compile(
+        r"(?:abstract\s+)?(?:(?:base|interface|final|sealed)\s+)?"
+        r"(?:mixin\s+)?(?:class|mixin)\s+"
+        + re.escape(type_name)
+        + r"(?:\s|[<{])",
+    )
+    type_match = type_re.search(source)
+    if type_match is None:
+        return None
+
+    # Find the opening brace of the type body
+    brace_pos = source.find("{", type_match.start())
+    if brace_pos == -1:
+        return None
+
+    body = _extract_brace_block(source, brace_pos)
+    if body is None:
+        return None
+
+    # Search within the body for a function declaration matching member_name.
+    # Dart methods look like: ReturnType methodName( or just methodName(
+    body_lines = body.split("\n")
+    for i, line in enumerate(body_lines):
+        stripped = line.strip()
+
+        # Skip comments
+        if stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+
+        m = _DART_FUNC_RE.match(stripped)
+        if m and m.group(1) == member_name and m.group(1) not in _DART_KEYWORDS:
+            return _dart_symbol_details(body_lines, i, member_name)
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Extractor class
 # ---------------------------------------------------------------------------
@@ -1150,12 +1199,20 @@ class DartExtractor(BaseExtractor):
         return _extract_library_doc(source)
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
-        """Extract detailed parameter and return info for a symbol."""
+        """Extract detailed parameter and return info for a symbol.
+
+        Supports dotted names like ``UserRepository.findById`` to target
+        a specific method within a class, abstract class, or mixin.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
         except (OSError, UnicodeDecodeError):
             return None
+
+        # Dotted name: resolve as TypeName.member
+        if "." in symbol_name:
+            return _dotted_symbol_details(source, symbol_name)
 
         lines = source.split("\n")
 

@@ -1295,3 +1295,87 @@ class TestSymbolDetails:
         ext = DartExtractor()
         result = ext.symbol_details(str(dart_file), "nonexistent")
         assert result is None
+
+    def test_symbol_details_dotted_class_method(self, tmp_path):
+        """Dotted name resolves to a method within a class."""
+        dart_file = tmp_path / "repo.dart"
+        dart_file.write_text(
+            "class UserRepository {\n"
+            "  /// Finds a user by their [id].\n"
+            "  /// Returns the user or null if not found.\n"
+            "  Future<User?> findById(int id) async {\n"
+            "    return null;\n"
+            "  }\n"
+            "\n"
+            "  void deleteAll() {}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "UserRepository.findById")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0] == {"name": "id", "type": "int", "documented": True}
+        assert result["return_type"] == "Future<User?>"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_dotted_abstract_class(self, tmp_path):
+        """Dotted name works with abstract classes."""
+        dart_file = tmp_path / "service.dart"
+        dart_file.write_text(
+            "abstract class AuthService {\n"
+            "  /// Authenticates a [user] with [password].\n"
+            "  Future<bool> login(String user, String password);\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "AuthService.login")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0]["name"] == "user"
+        assert result["params"][1]["name"] == "password"
+        assert result["return_type"] == "Future<bool>"
+
+    def test_symbol_details_dotted_mixin(self, tmp_path):
+        """Dotted name works with mixins."""
+        dart_file = tmp_path / "mixin.dart"
+        dart_file.write_text(
+            "mixin Loggable {\n"
+            "  void log(String message) {\n"
+            "    print(message);\n"
+            "  }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "Loggable.log")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "message"
+
+    def test_symbol_details_dotted_unknown_type(self, tmp_path):
+        """Dotted name with nonexistent type returns None."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "class Foo {\n"
+            "  void bar() {}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "NonExistent.bar")
+        assert result is None
+
+    def test_symbol_details_dotted_unknown_member(self, tmp_path):
+        """Dotted name with nonexistent member returns None."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "class Foo {\n"
+            "  void bar() {}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "Foo.nonexistent")
+        assert result is None
