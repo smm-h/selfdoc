@@ -1,0 +1,1 @@
+{"commits":["d06a794e296d1453dca628368eb252505d6f4353"],"user_facing":true,"description":"**Breaking.** Removed `version_source` config field. rlsbl already handles selfdoc.json version bumping during releases.","type":"breaking"}
