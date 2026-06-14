@@ -18,3 +18,4 @@
 {"commits":["7f5d3f258f61429557838b43f7fc5dc6d0595629"],"user_facing":true,"description":"**Zig extractor.** symbol_details method for function parameter and return type extraction.","type":"feature"}
 {"commits":["45d2bb0715aefc2f5e4e2d07ca02faca44ab0726"],"user_facing":true,"description":"**Fix.** Inline directives inside double-backtick code spans are no longer resolved.","type":"fix"}
 {"commits":["e4cda3782ddae04e036eb6dba7ccc602ff7e727a"],"user_facing":false}
+{"commits":["dc80bbad720a5cd5d95b27e285a83182950bb8a7"],"user_facing":true,"description":"**Fixed inline directive resolution inside code fences.** Directives shown as examples inside code fences in resolved content (e.g., the catalog directive's output) were incorrectly matched and resolved by pass 2, causing errors like 'list-modules returned multi-line output'. Fence tracking now correctly handles multi-line resolver output.","type":"fix"}
