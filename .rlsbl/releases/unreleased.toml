@@ -1,8 +1,0 @@
-# Version bump type: patch, minor, or major
-bump = "minor"
-# Short description of this release (required)
-description = "module_docstring and symbol_details protocol methods for all extractors, handler signature refactor, and inline directive fixes."
-# Optional context explaining why these changes were made
-context = "Handler functions now receive path and target as separate arguments, eliminating the latent arg-combining bug. module_docstring protocol method replaces language-string dispatch in staleness.py, enabling DRIFT001 across all languages. symbol_details implemented for all 9 extractors, enabling PARAM001/RETURN001 cross-language. Double-backtick inline directive spans now masked correctly. Inline pass 2 fixed to split multi-line resolver output before fence tracking."
-include = ["npm", "pypi"]
-exclude = []
