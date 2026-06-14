@@ -662,3 +662,110 @@ class TestSymbolDetails:
         ext = KotlinExtractor()
         result = ext.symbol_details(str(kt_file), "nonexistent")
         assert result is None
+
+    def test_symbol_details_dotted_class_method(self, tmp_path):
+        kt_file = tmp_path / "UserService.kt"
+        kt_file.write_text(
+            'class UserService {\n'
+            '    /**\n'
+            '     * Find a user by ID.\n'
+            '     * @param id The user ID\n'
+            '     * @return The user, or null if not found\n'
+            '     */\n'
+            '    fun findUser(id: Int): User? {\n'
+            '        return null\n'
+            '    }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "UserService.findUser")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0] == {"name": "id", "type": "Int", "documented": True}
+        assert result["return_type"] == "User?"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_dotted_data_class(self, tmp_path):
+        kt_file = tmp_path / "Repo.kt"
+        kt_file.write_text(
+            'data class Repo(val name: String) {\n'
+            '    fun fullName(org: String): String {\n'
+            '        return "$org/$name"\n'
+            '    }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "Repo.fullName")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "org"
+        assert result["return_type"] == "String"
+
+    def test_symbol_details_dotted_object_method(self, tmp_path):
+        kt_file = tmp_path / "Factory.kt"
+        kt_file.write_text(
+            'object Factory {\n'
+            '    fun create(name: String): Item {\n'
+            '        return Item(name)\n'
+            '    }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "Factory.create")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "name"
+
+    def test_symbol_details_dotted_interface_method(self, tmp_path):
+        kt_file = tmp_path / "Service.kt"
+        kt_file.write_text(
+            'interface Service {\n'
+            '    fun execute(command: String): Boolean\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "Service.execute")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "command"
+        assert result["return_type"] == "Boolean"
+
+    def test_symbol_details_dotted_sealed_class(self, tmp_path):
+        kt_file = tmp_path / "Result.kt"
+        kt_file.write_text(
+            'sealed class Result {\n'
+            '    fun describe(): String {\n'
+            '        return "result"\n'
+            '    }\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "Result.describe")
+        assert result is not None
+        assert result["return_type"] == "String"
+
+    def test_symbol_details_dotted_not_found(self, tmp_path):
+        kt_file = tmp_path / "Empty.kt"
+        kt_file.write_text(
+            'class Empty {\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "Empty.missing")
+        assert result is None
+
+    def test_symbol_details_dotted_type_not_found(self, tmp_path):
+        kt_file = tmp_path / "Other.kt"
+        kt_file.write_text(
+            'fun standalone(): Unit {}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "Missing.method")
+        assert result is None

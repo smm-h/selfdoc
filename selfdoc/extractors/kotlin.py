@@ -12,6 +12,7 @@ import re
 
 from selfdoc.extractors.base import (
     BaseExtractor,
+    _extract_brace_block,
     _format_docstring,
     format_error,
     handle_table_config,
@@ -158,12 +159,20 @@ class KotlinExtractor(BaseExtractor):
         return _extract_module_doc(source)
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
-        """Extract detailed parameter and return info for a symbol."""
+        """Extract detailed parameter and return info for a symbol.
+
+        Supports dotted names like ``UserService.findUser`` to target a
+        specific method within a class, object, or interface.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
         except (OSError, UnicodeDecodeError):
             return None
+
+        # Dotted name: resolve as TypeName.member
+        if "." in symbol_name:
+            return _dotted_symbol_details(source, symbol_name)
 
         lines = source.split("\n")
 
@@ -357,6 +366,59 @@ def _extract_module_doc(source):
 # ---------------------------------------------------------------------------
 # symbol_details helpers
 # ---------------------------------------------------------------------------
+
+
+def _dotted_symbol_details(source, symbol_name):
+    """Resolve a dotted symbol like ``UserService.findUser`` to method details.
+
+    Finds the class, object, or interface declaration for the type part,
+    extracts its brace-delimited body, then searches within for the member
+    function.
+    """
+    type_name, member_name = symbol_name.rsplit(".", 1)
+
+    # Match Kotlin type declarations: class, data class, object, interface,
+    # sealed class, abstract class, enum class, etc.
+    type_re = re.compile(
+        r"(?:(?:sealed|abstract|data|inner|open|enum|annotation|value)\s+)*"
+        r"(?:class|object|interface)\s+"
+        + re.escape(type_name)
+        + r"(?:\s|[<({]|$)",
+    )
+    type_match = type_re.search(source)
+    if type_match is None:
+        return None
+
+    # Find the opening brace of the type body
+    brace_pos = source.find("{", type_match.start())
+    if brace_pos == -1:
+        return None
+
+    body = _extract_brace_block(source, brace_pos)
+    if body is None:
+        return None
+
+    # Search for the member function within the body
+    method_re = re.compile(
+        r"(?:(?:public|private|protected|internal|override|open|final|abstract)\s+)*"
+        r"fun\s+(?:<[^>]+>\s+)?"
+        + re.escape(member_name)
+        + r"\s*\(",
+    )
+    method_match = method_re.search(body)
+    if method_match is None:
+        return None
+
+    # Compute absolute position in the full source so line-based helpers work
+    body_offset = brace_pos + 1
+    abs_start = body_offset + method_match.start()
+
+    # Find which line the method declaration is on
+    line_start = source.rfind("\n", 0, abs_start)
+    decl_line_idx = source.count("\n", 0, abs_start)
+
+    lines = source.split("\n")
+    return _func_symbol_details(lines, decl_line_idx)
 
 
 def _extract_kdoc_param_names(kdoc_text):
@@ -909,6 +971,10 @@ def _extract_func_signature(lines, start_idx):
     sig_parts = []
     for i in range(start_idx, min(start_idx + 10, len(lines))):
         line = lines[i].strip()
+        if i > start_idx and line == "}":
+            # Closing brace of enclosing scope (e.g., interface body) --
+            # not part of the function signature
+            break
         sig_parts.append(line)
         if "{" in line:
             break
