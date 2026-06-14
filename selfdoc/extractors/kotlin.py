@@ -741,37 +741,37 @@ def _clean_prop_signature(line):
 # ---------------------------------------------------------------------------
 
 
-def _handle_ref(arg, body, source_paths, base_dir, attrs):
+def _handle_ref(path, target, body, source_paths, base_dir, attrs):
     """Extract module doc and all public declarations with their KDoc comments.
 
-    arg is a file path (e.g. "src/main/kotlin/Parser.kt") or a directory path.
+    path is a file path (e.g. "src/main/kotlin/Parser.kt") or a directory path.
     """
-    if not arg:
+    if not path:
         return format_error(":::ref requires a file path argument")
 
-    resolved = _resolve_kotlin_path(arg, source_paths, base_dir)
+    resolved = _resolve_kotlin_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     if os.path.isdir(resolved):
         kt_files = sorted(
             f for f in os.listdir(resolved) if f.endswith(".kt")
         )
         if not kt_files:
-            return format_error(f"no .kt files in '{arg}'")
+            return format_error(f"no .kt files in '{path}'")
         file_contents = {}
         for kf in kt_files:
-            path = os.path.join(resolved, kf)
-            content, _err = read_source(path)
+            fpath = os.path.join(resolved, kf)
+            content, _err = read_source(fpath)
             file_contents[kf] = content if content is not None else ""
     else:
         content, err = read_source(resolved)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         file_contents = {os.path.basename(resolved): content}
 
     parts = []
-    parts.append(f"## {arg}")
+    parts.append(f"## {path}")
 
     # Extract module doc from the first file that has one
     for _filename, source in file_contents.items():
@@ -808,14 +808,14 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the module-level KDoc comments as prose markdown."""
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a file path argument")
 
-    resolved = _resolve_kotlin_path(arg, source_paths, base_dir)
+    resolved = _resolve_kotlin_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     if os.path.isdir(resolved):
         kt_files = sorted(
@@ -827,14 +827,14 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
                 doc = _extract_module_doc(content)
                 if doc:
                     return _format_docstring(doc)
-        return format_error(f"no module doc comment found in '{arg}'")
+        return format_error(f"no module doc comment found in '{path}'")
     else:
         content, err = read_source(resolved)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         doc = _extract_module_doc(content)
         if not doc:
-            return format_error(f"no module doc comment found in '{arg}'")
+            return format_error(f"no module doc comment found in '{path}'")
         return _format_docstring(doc)
 
 
@@ -843,44 +843,40 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract data class fields as a markdown table.
 
-    arg format: <file_path> [ClassName]
+    path is the file path, target is the optional class name.
     """
-    if not arg:
+    if not path:
         return format_error(":::table-schema requires a file path argument")
 
-    parts_split = arg.split(None, 1)
-    file_path = parts_split[0]
-    type_name = parts_split[1] if len(parts_split) > 1 else None
-
     # JSON/TOML files are config files, not Kotlin source -- delegate
-    if file_path.endswith((".json", ".toml")):
-        return handle_table_config(file_path, body, source_paths, base_dir, attrs)
+    if path.endswith((".json", ".toml")):
+        return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
-    full_path = _resolve_file_path(file_path, source_paths, base_dir)
+    full_path = _resolve_file_path(path, source_paths, base_dir)
     if full_path is None:
-        return format_error(f"file '{file_path}' not found")
+        return format_error(f"file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     data_classes = _extract_data_class_fields(source)
 
     if not data_classes:
-        return format_error(f"no data class types found in '{file_path}'")
+        return format_error(f"no data class types found in '{path}'")
 
-    if type_name:
-        target = next(
-            (dc for dc in data_classes if dc["name"] == type_name), None
+    if target:
+        matched = next(
+            (dc for dc in data_classes if dc["name"] == target), None
         )
-        if target is None:
+        if matched is None:
             return format_error(
-                f"data class '{type_name}' not found in '{file_path}'"
+                f"data class '{target}' not found in '{path}'"
             )
-        return _format_data_class_table(target)
+        return _format_data_class_table(matched)
 
     # No type specified: format all data classes
     results = []

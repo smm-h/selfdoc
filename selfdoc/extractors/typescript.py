@@ -314,21 +314,21 @@ def _format_jsdoc_as_markdown(jsdoc):
 # ---------------------------------------------------------------------------
 
 
-def _handle_module(arg, body, source_paths, base_dir, attrs):
+def _handle_module(path, target, body, source_paths, base_dir, attrs):
     """Extract module-level JSDoc and exported declarations from a TS/JS file."""
-    if not arg:
+    if not path:
         return format_error(":::module requires a file path argument")
 
-    filepath = _resolve_file_path(arg, source_paths, base_dir)
+    filepath = _resolve_file_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"module '{arg}' not found")
+        return format_error(f"module '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     # Display name: strip extension, use forward slashes
-    display_name = arg.replace("\\", "/")
+    display_name = path.replace("\\", "/")
     for ext in _TS_JS_EXTENSIONS:
         if display_name.endswith(ext):
             display_name = display_name[: -len(ext)]
@@ -456,42 +456,39 @@ def _extract_name_from_signature(sig):
 # ---------------------------------------------------------------------------
 
 
-def _handle_test(arg, body, source_paths, base_dir, attrs):
+def _handle_test(path, target, body, source_paths, base_dir, attrs):
     """Extract test source code from a test file.
 
-    arg format: <file_path> [TestName]
+    path: file path to the test file
+    target: optional test name (describe/it/test block name)
 
     For TS/JS test files, looks for describe("TestName", ...),
     it("TestName", ...), or test("TestName", ...) blocks.
     """
-    if not arg:
+    if not path:
         return format_error(":::test requires a file path argument")
 
-    parts = arg.split(None, 1)
-    file_path = parts[0]
-    target_name = parts[1] if len(parts) > 1 else None
-
     # Resolve the file
-    full_path = os.path.join(base_dir, file_path)
+    full_path = os.path.join(base_dir, path)
     if not os.path.isfile(full_path):
         # Try with source paths
-        full_path = _resolve_file_path(file_path, source_paths, base_dir)
+        full_path = _resolve_file_path(path, source_paths, base_dir)
         if full_path is None:
-            return format_error(f"test file '{file_path}' not found")
+            return format_error(f"test file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     lang = "typescript" if full_path.endswith((".ts", ".tsx")) else "javascript"
 
-    if target_name is None:
+    if target is None:
         return f"```{lang}\n{source.rstrip()}\n```"
 
     # Find the target test block by name
-    block = _extract_test_block(source, target_name)
+    block = _extract_test_block(source, target)
     if block is None:
-        return format_error(f"'{target_name}' not found in '{file_path}'")
+        return format_error(f"'{target}' not found in '{path}'")
 
     return f"```{lang}\n{block}\n```"
 
@@ -629,40 +626,38 @@ def _extract_test_block(source, target_name):
 # ---------------------------------------------------------------------------
 
 
-def _handle_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract interface or type definition fields as a markdown table.
 
-    arg format:
+    path: file path (JSON or TS/JS)
+    target: optional type name for TS/JS files
+
+    Modes:
       - path/to/file.json  -> render JSON keys as table
       - path/to/file.ts TypeName -> extract interface/type fields
       - path/to/file.ts -> if only one interface, extract it
     """
-    if not arg:
+    if not path:
         return format_error(":::schema requires an argument")
 
-    parts = arg.split(None, 1)
-    file_or_module = parts[0]
-
     # Check if it's a JSON file
-    if file_or_module.endswith(".json"):
-        full_path = os.path.join(base_dir, file_or_module)
+    if path.endswith(".json"):
+        full_path = os.path.join(base_dir, path)
         if not os.path.isfile(full_path):
-            return format_error(f"JSON file '{file_or_module}' not found")
+            return format_error(f"JSON file '{path}' not found")
         exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
-        return _config_from_json(full_path, file_or_module, exclude_keys=exclude_keys)
+        return _config_from_json(full_path, path, exclude_keys=exclude_keys)
 
     # TS/JS file with optional type name
-    type_name = parts[1] if len(parts) > 1 else None
-
-    filepath = _resolve_file_path(file_or_module, source_paths, base_dir)
+    filepath = _resolve_file_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"file '{file_or_module}' not found")
+        return format_error(f"file '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{file_or_module}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
-    return _schema_from_ts(source, type_name, file_or_module)
+    return _schema_from_ts(source, target, path)
 
 
 
@@ -848,7 +843,7 @@ def _find_inline_comment(line):
 # ---------------------------------------------------------------------------
 
 
-def _handle_cli(arg, body, source_paths, base_dir, attrs):
+def _handle_cli(path, target, body, source_paths, base_dir, attrs):
     """Extract CLI help/usage information from a TS/JS file.
 
     Looks for:
@@ -856,16 +851,16 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
     - const help = "..." or const usage = "..." string constants
     - yargs/commander setup patterns
     """
-    if not arg:
+    if not path:
         return format_error(":::cli requires a file path argument")
 
-    filepath = _resolve_file_path(arg, source_paths, base_dir)
+    filepath = _resolve_file_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"module '{arg}' not found")
+        return format_error(f"module '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     parts = []
 
@@ -891,7 +886,7 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
             parts.append(f"```\n{value.strip()}\n```")
 
     if not parts:
-        return format_error(f"no CLI documentation found in '{arg}'")
+        return format_error(f"no CLI documentation found in '{path}'")
 
     return "\n\n".join(parts)
 
@@ -901,17 +896,17 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_config(arg, body, source_paths, base_dir, attrs):
+def _handle_config(path, target, body, source_paths, base_dir, attrs):
     """TypeScript config handler -- adds JSONC support to the base handler."""
-    if arg:
-        ext = os.path.splitext(arg)[1].lower()
+    if path:
+        ext = os.path.splitext(path)[1].lower()
         if ext == ".jsonc":
-            full_path = os.path.join(base_dir, arg)
+            full_path = os.path.join(base_dir, path)
             if not os.path.isfile(full_path):
-                return format_error(f"config file '{arg}' not found")
+                return format_error(f"config file '{path}' not found")
             exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
-            return _config_from_jsonc(full_path, arg, exclude_keys=exclude_keys)
-    return handle_table_config(arg, body, source_paths, base_dir, attrs)
+            return _config_from_jsonc(full_path, path, exclude_keys=exclude_keys)
+    return handle_table_config(path, target, body, source_paths, base_dir, attrs)
 
 
 def _config_from_jsonc(full_path, display_path, exclude_keys: set[str] | None = None):
@@ -999,26 +994,26 @@ def _strip_jsonc_comments(text):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the module-level JSDoc as prose markdown.
 
     Unlike :::module which also lists exported declarations, this directive
     returns just the module-level JSDoc description.
     """
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a file path argument")
 
-    filepath = _resolve_file_path(arg, source_paths, base_dir)
+    filepath = _resolve_file_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"module '{arg}' not found")
+        return format_error(f"module '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     module_jsdoc = _extract_module_jsdoc(source)
     if not module_jsdoc or not module_jsdoc["description"]:
-        return format_error(f"no module-level JSDoc found in '{arg}'")
+        return format_error(f"no module-level JSDoc found in '{path}'")
 
     return module_jsdoc["description"]
 

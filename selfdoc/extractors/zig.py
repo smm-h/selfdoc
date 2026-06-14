@@ -212,17 +212,17 @@ def _collect_doc_comment_above(lines, target_line_idx):
 # ---------------------------------------------------------------------------
 
 
-def _handle_ref(arg, body, source_paths, base_dir, attrs):
+def _handle_ref(path, target, body, source_paths, base_dir, attrs):
     """Extract module doc and all pub declarations with their doc comments.
 
-    arg is a file path (e.g. "src/core/audio.zig") or a directory path.
+    path is a file path (e.g. "src/core/audio.zig") or a directory path.
     """
-    if not arg:
+    if not path:
         return format_error(":::ref requires a file path argument")
 
-    resolved = _resolve_zig_path(arg, source_paths, base_dir)
+    resolved = _resolve_zig_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     # If it's a directory, collect all .zig files
     if os.path.isdir(resolved):
@@ -230,20 +230,20 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
             f for f in os.listdir(resolved) if f.endswith(".zig")
         )
         if not zig_files:
-            return format_error(f"no .zig files in '{arg}'")
+            return format_error(f"no .zig files in '{path}'")
         file_contents = {}
         for zf in zig_files:
-            path = os.path.join(resolved, zf)
-            content, _err = read_source(path)
+            zf_path = os.path.join(resolved, zf)
+            content, _err = read_source(zf_path)
             file_contents[zf] = content if content is not None else ""
     else:
         content, err = read_source(resolved)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         file_contents = {os.path.basename(resolved): content}
 
     parts = []
-    parts.append(f"## {arg}")
+    parts.append(f"## {path}")
 
     # Extract module doc from the first file that has one
     for _filename, source in file_contents.items():
@@ -395,14 +395,14 @@ def _clean_signature(line):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the module-level //! doc comments as prose markdown."""
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a file path argument")
 
-    resolved = _resolve_zig_path(arg, source_paths, base_dir)
+    resolved = _resolve_zig_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     if os.path.isdir(resolved):
         # Try each .zig file for module doc
@@ -415,14 +415,14 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
                 doc = _extract_module_doc(content)
                 if doc:
                     return _format_docstring(doc)
-        return format_error(f"no module doc comment found in '{arg}'")
+        return format_error(f"no module doc comment found in '{path}'")
     else:
         content, err = read_source(resolved)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         doc = _extract_module_doc(content)
         if not doc:
-            return format_error(f"no module doc comment found in '{arg}'")
+            return format_error(f"no module doc comment found in '{path}'")
         return _format_docstring(doc)
 
 
@@ -431,42 +431,38 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract struct fields as a markdown table.
 
-    arg format: <file_path> [StructName]
+    path is the file path, target is an optional struct name.
     """
-    if not arg:
+    if not path:
         return format_error(":::table-schema requires a file path argument")
 
-    parts_split = arg.split(None, 1)
-    file_path = parts_split[0]
-    type_name = parts_split[1] if len(parts_split) > 1 else None
-
     # JSON/TOML files are config files, not Zig source -- delegate
-    if file_path.endswith((".json", ".toml")):
-        return handle_table_config(file_path, body, source_paths, base_dir, attrs)
+    if path.endswith((".json", ".toml")):
+        return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
-    full_path = _resolve_file_path(file_path, source_paths, base_dir)
+    full_path = _resolve_file_path(path, source_paths, base_dir)
     if full_path is None:
-        return format_error(f"file '{file_path}' not found")
+        return format_error(f"file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     structs = _extract_structs(source)
 
     if not structs:
-        return format_error(f"no struct types found in '{file_path}'")
+        return format_error(f"no struct types found in '{path}'")
 
-    if type_name:
-        target = next((s for s in structs if s["name"] == type_name), None)
-        if target is None:
+    if target:
+        matched = next((s for s in structs if s["name"] == target), None)
+        if matched is None:
             return format_error(
-                f"struct '{type_name}' not found in '{file_path}'"
+                f"struct '{target}' not found in '{path}'"
             )
-        return _format_struct_table(target)
+        return _format_struct_table(matched)
 
     # No type specified: format all pub structs
     results = []
@@ -595,33 +591,31 @@ def _format_struct_table(struct_info):
 # ---------------------------------------------------------------------------
 
 
-def _handle_code_test(arg, body, source_paths, base_dir, attrs):
+def _handle_code_test(path, target, body, source_paths, base_dir, attrs):
     """Extract test blocks from Zig source.
 
-    arg format: <file_path> [test_name]
-    If test_name is provided, extracts only that test block.
+    path is the file path, target is an optional test name.
+    If target is provided, extracts only that test block.
     Otherwise, extracts all test blocks.
     """
-    if not arg:
+    if not path:
         return format_error(":::code-test requires a file path argument")
 
-    parts_split = arg.split(None, 1)
-    file_path = parts_split[0]
-    target_name = parts_split[1].strip('"') if len(parts_split) > 1 else None
+    target_name = target.strip('"') if target else None
 
-    full_path = _resolve_file_path(file_path, source_paths, base_dir)
+    full_path = _resolve_file_path(path, source_paths, base_dir)
     if full_path is None:
-        return format_error(f"test file '{file_path}' not found")
+        return format_error(f"test file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     if target_name is None:
         # Extract all test blocks
         tests = _extract_all_test_blocks(source)
         if not tests:
-            return format_error(f"no test blocks found in '{file_path}'")
+            return format_error(f"no test blocks found in '{path}'")
         results = []
         for test_name, test_source in tests:
             results.append(f"```zig\n{test_source}\n```")
@@ -630,7 +624,7 @@ def _handle_code_test(arg, body, source_paths, base_dir, attrs):
     # Extract specific test block
     extracted = _extract_test_block(source, target_name)
     if extracted is None:
-        return format_error(f"test '{target_name}' not found in '{file_path}'")
+        return format_error(f"test '{target_name}' not found in '{path}'")
 
     return f"```zig\n{extracted}\n```"
 

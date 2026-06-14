@@ -814,21 +814,21 @@ def _extract_comment_string(text):
 # ---------------------------------------------------------------------------
 
 
-def _handle_ref(arg, body, source_paths, base_dir, attrs):
+def _handle_ref(path, target, body, source_paths, base_dir, attrs):
     """List all CREATE objects with their COMMENT ON descriptions, grouped by type.
 
-    arg is a file path to a .sql file.
+    path is a file path to a .sql file.
     """
-    if not arg:
+    if not path:
         return format_error(":::ref requires a file path argument")
 
-    resolved = _resolve_sql_path(arg, source_paths, base_dir)
+    resolved = _resolve_sql_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     source, err = read_source(resolved)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     tables = _parse_create_table(source)
     views = _parse_create_view(source)
@@ -836,7 +836,7 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
     functions = _parse_create_function(source)
 
     if not tables and not views and not types and not functions:
-        return format_error(f"no CREATE objects found in '{arg}'")
+        return format_error(f"no CREATE objects found in '{path}'")
 
     comments = _parse_comments(source)
 
@@ -912,31 +912,26 @@ def _lookup_comment(comments, obj_type, name, schema):
     return comments.get((obj_type, name))
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Return the COMMENT ON TABLE text for the targeted table.
 
-    arg format: <file_path> [TableName]
-    The table name comes from the second word in arg.
+    path is the file path, target is the table name.
     """
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a file path argument")
-
-    parts_split = arg.split(None, 1)
-    file_path = parts_split[0]
-    target = parts_split[1] if len(parts_split) > 1 else None
 
     if not target:
         return format_error(
             "prose-desc requires a target table name for SQL files"
         )
 
-    resolved = _resolve_sql_path(file_path, source_paths, base_dir)
+    resolved = _resolve_sql_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{file_path}' not found")
+        return format_error(f"'{path}' not found")
 
     source, err = read_source(resolved)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     comments = _parse_comments(source)
 
@@ -952,35 +947,31 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
     return format_error(f"no comment found for table '{target}'")
 
 
-def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     """Present columns of the targeted table as a markdown table.
 
-    arg format: <file_path> [TableName]
+    path is the file path, target is the table name (or None).
     If no table name and only one table, use it.
     If no table name and multiple tables, show all with ### headings.
     """
-    if not arg:
+    if not path:
         return format_error(":::table-schema requires a file path argument")
 
-    parts_split = arg.split(None, 1)
-    file_path = parts_split[0]
-    table_name = parts_split[1] if len(parts_split) > 1 else None
-
     # JSON/TOML files are config files -- delegate
-    if file_path.endswith((".json", ".toml")):
-        return handle_table_config(file_path, body, source_paths, base_dir, attrs)
+    if path.endswith((".json", ".toml")):
+        return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
-    resolved = _resolve_sql_path(file_path, source_paths, base_dir)
+    resolved = _resolve_sql_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{file_path}' not found")
+        return format_error(f"'{path}' not found")
 
     source, err = read_source(resolved)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     tables = _parse_create_table(source)
     if not tables:
-        return format_error(f"no tables found in '{file_path}'")
+        return format_error(f"no tables found in '{path}'")
 
     comments = _parse_comments(source)
 
@@ -993,13 +984,13 @@ def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
             if desc:
                 col["description"] = desc
 
-    if table_name:
-        target = next((t for t in tables if t["name"] == table_name), None)
-        if target is None:
+    if target:
+        matched = next((t for t in tables if t["name"] == target), None)
+        if matched is None:
             return format_error(
-                f"table '{table_name}' not found in '{file_path}'"
+                f"table '{target}' not found in '{path}'"
             )
-        return _format_table_schema(target)
+        return _format_table_schema(matched)
 
     # No table name specified
     if len(tables) == 1:

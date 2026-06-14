@@ -153,15 +153,14 @@ class BaseExtractor:
         base_dir: str,
     ) -> str:
         path = attrs.get("path", "")
-        target = attrs.get("target", "")
-        arg = f"{path} {target}".strip() if target else path
+        target = attrs.get("target")
 
         handler = self._HANDLERS.get(directive_name)
         if handler is None:
             return format_error(
                 f"unknown directive '{directive_name}' for {self.name} extractor"
             )
-        return handler(arg, body, source_paths, base_dir, attrs)
+        return handler(path, target, body, source_paths, base_dir, attrs)
 
     def file_extensions(self) -> list[str]:
         return []
@@ -238,30 +237,30 @@ def _config_from_toml(full_path, display_path, exclude_keys: set[str] | None = N
     return render_markdown_table(["Key", "Type", "Value"], rows)
 
 
-def handle_table_config(arg, body, source_paths, base_dir, attrs):
+def handle_table_config(path, target, body, source_paths, base_dir, attrs):
     """Shared handler for table-config directives.
 
     Supports JSON and TOML. Detects format from file extension.
     Subclasses can override by mapping "table-config" to a different handler.
     """
-    if not arg:
+    if not path:
         return format_error("table-config requires a file path argument")
 
-    full_path = os.path.join(base_dir, arg)
+    full_path = os.path.join(base_dir, path)
     if not os.path.isfile(full_path):
-        return format_error(f"config file '{arg}' not found")
+        return format_error(f"config file '{path}' not found")
 
-    ext = os.path.splitext(arg)[1].lower()
+    ext = os.path.splitext(path)[1].lower()
     exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
 
     if ext == ".json":
-        return _config_from_json(full_path, arg, exclude_keys=exclude_keys)
+        return _config_from_json(full_path, path, exclude_keys=exclude_keys)
     elif ext == ".toml":
-        return _config_from_toml(full_path, arg, exclude_keys=exclude_keys)
+        return _config_from_toml(full_path, path, exclude_keys=exclude_keys)
     else:
         content, err = read_source(full_path)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         return f"```\n{content.rstrip()}\n```"
 
 

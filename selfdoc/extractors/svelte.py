@@ -419,22 +419,22 @@ class SvelteExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 
 
-def _handle_ref(arg, body, source_paths, base_dir, attrs):
+def _handle_ref(path, target, body, source_paths, base_dir, attrs):
     """Extract component reference documentation from a .svelte file.
 
     Shows component name, component-level JSDoc, props table, instance
     exports, and module exports.
     """
-    if not arg:
+    if not path:
         return format_error("ref requires a file path argument")
 
-    filepath = _resolve_svelte_path(arg, source_paths, base_dir)
+    filepath = _resolve_svelte_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"component '{arg}' not found")
+        return format_error(f"component '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     # Component name from filename
     basename = os.path.basename(filepath)
@@ -503,22 +503,22 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the component-level JSDoc as prose markdown."""
-    if not arg:
+    if not path:
         return format_error("prose-desc requires a file path argument")
 
-    filepath = _resolve_svelte_path(arg, source_paths, base_dir)
+    filepath = _resolve_svelte_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"component '{arg}' not found")
+        return format_error(f"component '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     doc = _extract_component_doc(source)
     if not doc:
-        return format_error(f"no component-level JSDoc found in '{arg}'")
+        return format_error(f"no component-level JSDoc found in '{path}'")
 
     return doc
 
@@ -528,27 +528,27 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract props as a markdown table.
 
     For .svelte files, extracts the props table.
     For JSON/TOML files, delegates to handle_table_config.
     """
-    if not arg:
+    if not path:
         return format_error("table-schema requires a file path argument")
 
     # Check if it's a config file (JSON/TOML)
-    _, ext = os.path.splitext(arg)
+    _, ext = os.path.splitext(path)
     if ext.lower() in (".json", ".toml"):
-        return handle_table_config(arg, body, source_paths, base_dir, attrs)
+        return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
-    filepath = _resolve_svelte_path(arg, source_paths, base_dir)
+    filepath = _resolve_svelte_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"component '{arg}' not found")
+        return format_error(f"component '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     blocks = _extract_script_blocks(source)
 
@@ -558,7 +558,7 @@ def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
         props = _extract_legacy_props(blocks["instance"])
 
     if not props:
-        return format_error(f"no props found in '{arg}'")
+        return format_error(f"no props found in '{path}'")
 
     rows = []
     for prop in props:

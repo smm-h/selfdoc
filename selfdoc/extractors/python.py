@@ -200,30 +200,30 @@ def _class_symbol_details(node):
 # ---------------------------------------------------------------------------
 
 
-def _handle_module(arg, body, source_paths, base_dir, attrs):
+def _handle_module(path, target, body, source_paths, base_dir, attrs):
     """Extract module docstring, functions, and classes.
 
     Resolves dotted.path or file path to a .py file, parses with ast,
     and formats the result as markdown.
     """
-    if not arg:
+    if not path:
         return format_error(":::module requires a module path argument")
 
-    filepath = _resolve_module_path(arg, source_paths, base_dir)
+    filepath = _resolve_module_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"module '{arg}' not found")
+        return format_error(f"module '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     try:
         tree = ast.parse(source, filename=filepath)
     except SyntaxError as exc:
-        return format_error(f"syntax error in '{arg}': {exc}")
+        return format_error(f"syntax error in '{path}': {exc}")
 
     # Determine display name from the dotted path
-    module_name = arg.replace("/", ".")
+    module_name = path.replace("/", ".")
     if module_name.endswith(".py"):
         module_name = module_name[:-3]
     if module_name.endswith(".__init__"):
@@ -485,27 +485,24 @@ def _annotation_str(node):
 # ---------------------------------------------------------------------------
 
 
-def _handle_test(arg, body, source_paths, base_dir, attrs):
+def _handle_test(path, target, body, source_paths, base_dir, attrs):
     """Extract test source code from a test file.
 
-    arg format: <file_path> [TestClassName or test_function_name]
+    path: file path to the test file
+    target: optional TestClassName or test_function_name
     """
-    if not arg:
+    if not path:
         return format_error(":::test requires a file path argument")
 
-    parts = arg.split(None, 1)
-    file_path = parts[0]
-    target_name = parts[1] if len(parts) > 1 else None
-
-    full_path = os.path.join(base_dir, file_path)
+    full_path = os.path.join(base_dir, path)
     if not os.path.isfile(full_path):
-        return format_error(f"test file '{file_path}' not found")
+        return format_error(f"test file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
-    if target_name is None:
+    if target is None:
         # Show the whole file as a code block
         return f"```python\n{source.rstrip()}\n```"
 
@@ -513,21 +510,21 @@ def _handle_test(arg, body, source_paths, base_dir, attrs):
     try:
         tree = ast.parse(source, filename=full_path)
     except SyntaxError as exc:
-        return format_error(f"syntax error in '{file_path}': {exc}")
+        return format_error(f"syntax error in '{path}': {exc}")
 
     source_lines = source.split("\n")
 
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if node.name == target_name:
+            if node.name == target:
                 extracted = _extract_node_source(source_lines, node)
                 return f"```python\n{extracted}\n```"
         elif isinstance(node, ast.ClassDef):
-            if node.name == target_name:
+            if node.name == target:
                 extracted = _extract_node_source(source_lines, node)
                 return f"```python\n{extracted}\n```"
 
-    return format_error(f"'{target_name}' not found in '{file_path}'")
+    return format_error(f"'{target}' not found in '{path}'")
 
 
 def _extract_node_source(source_lines, node):
@@ -544,36 +541,29 @@ def _extract_node_source(source_lines, node):
 # ---------------------------------------------------------------------------
 
 
-def _handle_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract schema information from JSON or Python dataclass.
 
-    arg format:
-      - path/to/file.json  -> render JSON keys as table
-      - dotted.module ClassName -> extract dataclass fields
+    path: file path or dotted module path
+    target: class name (for Python dataclass) or None (for JSON)
     """
-    if not arg:
+    if not path:
         return format_error(":::schema requires an argument")
 
-    # Check if it's a JSON file
-    parts = arg.split(None, 1)
-    file_or_module = parts[0]
-
-    if file_or_module.endswith(".json"):
-        full_path = os.path.join(base_dir, file_or_module)
+    if path.endswith(".json"):
+        full_path = os.path.join(base_dir, path)
         if not os.path.isfile(full_path):
-            return format_error(f"JSON file '{file_or_module}' not found")
+            return format_error(f"JSON file '{path}' not found")
         exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
-        return _config_from_json(full_path, file_or_module, exclude_keys=exclude_keys)
+        return _config_from_json(full_path, path, exclude_keys=exclude_keys)
 
     # Otherwise, treat as Python module + class name
-    if len(parts) < 2:
+    if target is None:
         return format_error(
             ":::schema for Python requires 'module_path ClassName' format"
         )
 
-    module_path = parts[0]
-    class_name = parts[1]
-    return _schema_from_dataclass(module_path, class_name, source_paths, base_dir)
+    return _schema_from_dataclass(path, target, source_paths, base_dir)
 
 
 
@@ -669,27 +659,27 @@ def _format_default(default_str):
 # ---------------------------------------------------------------------------
 
 
-def _handle_cli(arg, body, source_paths, base_dir, attrs):
+def _handle_cli(path, target, body, source_paths, base_dir, attrs):
     """Extract CLI help/usage information from a module.
 
     For v1: extracts the module docstring and any string constants named
     HELP or USAGE, formatted as a code block.
     """
-    if not arg:
+    if not path:
         return format_error(":::cli requires a module path argument")
 
-    filepath = _resolve_module_path(arg, source_paths, base_dir)
+    filepath = _resolve_module_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"module '{arg}' not found")
+        return format_error(f"module '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     try:
         tree = ast.parse(source, filename=filepath)
     except SyntaxError as exc:
-        return format_error(f"syntax error in '{arg}': {exc}")
+        return format_error(f"syntax error in '{path}': {exc}")
 
     parts = []
 
@@ -701,15 +691,15 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
     # Look for HELP or USAGE string constants
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id in ("HELP", "USAGE"):
+            for t in node.targets:
+                if isinstance(t, ast.Name) and t.id in ("HELP", "USAGE"):
                     if isinstance(node.value, ast.Constant) and isinstance(
                         node.value.value, str
                     ):
                         parts.append(f"```\n{node.value.value.strip()}\n```")
 
     if not parts:
-        return format_error(f"no CLI documentation found in '{arg}'")
+        return format_error(f"no CLI documentation found in '{path}'")
 
     return "\n\n".join(parts)
 
@@ -719,31 +709,31 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the module docstring as prose markdown.
 
     Unlike :::module which also lists functions and classes, this directive
     returns just the module-level docstring formatted as prose text.
     """
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a module path argument")
 
-    filepath = _resolve_module_path(arg, source_paths, base_dir)
+    filepath = _resolve_module_path(path, source_paths, base_dir)
     if filepath is None:
-        return format_error(f"module '{arg}' not found")
+        return format_error(f"module '{path}' not found")
 
     source, err = read_source(filepath)
     if err:
-        return format_error(f"cannot read '{arg}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     try:
         tree = ast.parse(source, filename=filepath)
     except SyntaxError as exc:
-        return format_error(f"syntax error in '{arg}': {exc}")
+        return format_error(f"syntax error in '{path}': {exc}")
 
     module_doc = ast.get_docstring(tree)
     if not module_doc:
-        return format_error(f"no docstring found in '{arg}'")
+        return format_error(f"no docstring found in '{path}'")
 
     return _format_docstring(module_doc)
 

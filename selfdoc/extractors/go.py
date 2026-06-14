@@ -136,19 +136,19 @@ class GoExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 
 
-def _handle_module(arg, body, source_paths, base_dir, attrs):
+def _handle_module(path, target, body, source_paths, base_dir, attrs):
     """Extract package doc, exported funcs, types, consts, and vars.
 
-    arg is a package directory path (e.g. "internal/commit").
+    path is a package directory path (e.g. "internal/commit").
     Finds all .go files in that directory (excluding _test.go),
     extracts the package doc comment and all exported declarations.
     """
-    if not arg:
+    if not path:
         return format_error(":::module requires a package path argument")
 
-    pkg_dir = _resolve_package_dir(arg, source_paths, base_dir)
+    pkg_dir = _resolve_package_dir(path, source_paths, base_dir)
     if pkg_dir is None:
-        return format_error(f"package '{arg}' not found")
+        return format_error(f"package '{path}' not found")
 
     # Collect all non-test .go files
     go_files = sorted(
@@ -158,20 +158,20 @@ def _handle_module(arg, body, source_paths, base_dir, attrs):
     )
 
     if not go_files:
-        return format_error(f"no .go files in '{arg}'")
+        return format_error(f"no .go files in '{path}'")
 
     # Read all files and concatenate for processing
     file_contents = {}
     for gf in go_files:
-        path = os.path.join(pkg_dir, gf)
-        content, _err = read_source(path)
+        file_path = os.path.join(pkg_dir, gf)
+        content, _err = read_source(file_path)
         file_contents[gf] = content if content is not None else ""
 
     # Extract package doc from the first file that has a package declaration
     package_name, package_doc = _extract_package_doc(file_contents)
 
     parts = []
-    parts.append(f"## {arg}")
+    parts.append(f"## {path}")
 
     if package_doc:
         parts.append("")
@@ -522,33 +522,30 @@ def _extract_var_block(lines, block_start_idx, declarations, seen_names):
 # ---------------------------------------------------------------------------
 
 
-def _handle_test(arg, body, source_paths, base_dir, attrs):
+def _handle_test(path, target, body, source_paths, base_dir, attrs):
     """Extract test source code from a Go test file.
 
-    arg format: <file_path> [TestFuncName]
+    path: file path to the test file
+    target: optional test function name to extract
     """
-    if not arg:
+    if not path:
         return format_error(":::test requires a file path argument")
 
-    parts = arg.split(None, 1)
-    file_path = parts[0]
-    target_name = parts[1] if len(parts) > 1 else None
-
-    full_path = _resolve_file_path(file_path, source_paths, base_dir)
+    full_path = _resolve_file_path(path, source_paths, base_dir)
     if full_path is None:
-        return format_error(f"test file '{file_path}' not found")
+        return format_error(f"test file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
-    if target_name is None:
+    if target is None:
         return f"```go\n{source.rstrip()}\n```"
 
     # Extract the specific test function
-    extracted = _extract_go_function(source, target_name)
+    extracted = _extract_go_function(source, target)
     if extracted is None:
-        return format_error(f"'{target_name}' not found in '{file_path}'")
+        return format_error(f"'{target}' not found in '{path}'")
 
     return f"```go\n{extracted}\n```"
 
@@ -613,43 +610,40 @@ def _extract_go_function(source, func_name):
 # ---------------------------------------------------------------------------
 
 
-def _handle_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract struct type fields as a markdown table.
 
-    arg format: <file_path> [TypeName]
-    If TypeName is omitted, extracts the first exported struct found.
+    path: file path to the Go source or config file
+    target: optional struct type name to extract
+    If target is omitted, extracts the first exported struct found.
     """
-    if not arg:
+    if not path:
         return format_error(":::schema requires a file path argument")
 
-    parts = arg.split(None, 1)
-    file_path = parts[0]
-    type_name = parts[1] if len(parts) > 1 else None
-
     # JSON/TOML/YAML files are config files, not Go source -- delegate
-    if file_path.endswith((".json", ".toml", ".yaml", ".yml")):
-        return handle_table_config(file_path, body, source_paths, base_dir, attrs)
+    if path.endswith((".json", ".toml", ".yaml", ".yml")):
+        return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
-    full_path = _resolve_file_path(file_path, source_paths, base_dir)
+    full_path = _resolve_file_path(path, source_paths, base_dir)
     if full_path is None:
-        return format_error(f"file '{file_path}' not found")
+        return format_error(f"file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     structs = _extract_structs(source)
 
     if not structs:
-        return format_error(f"no struct types found in '{file_path}'")
+        return format_error(f"no struct types found in '{path}'")
 
-    if type_name:
-        target = next((s for s in structs if s["name"] == type_name), None)
-        if target is None:
+    if target:
+        match = next((s for s in structs if s["name"] == target), None)
+        if match is None:
             return format_error(
-                f"struct '{type_name}' not found in '{file_path}'"
+                f"struct '{target}' not found in '{path}'"
             )
-        return _format_struct_table(target)
+        return _format_struct_table(match)
 
     # No type specified: format all exported structs
     results = []
@@ -763,7 +757,7 @@ def _format_struct_table(struct_info):
 # ---------------------------------------------------------------------------
 
 
-def _handle_cli(arg, body, source_paths, base_dir, attrs):
+def _handle_cli(path, target, body, source_paths, base_dir, attrs):
     """Extract CLI usage/help text and flag definitions from Go source.
 
     Looks for:
@@ -771,14 +765,14 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
     - flag.StringVar, flag.BoolVar, etc. calls
     - strictcli BoolFlag/StringFlag/Command calls
 
-    The arg can be a file path or a package directory path (like :::module).
+    path can be a file path or a package directory path (like :::module).
     Resolves via _resolve_package_dir first, then _resolve_file_path as fallback.
     """
-    if not arg:
+    if not path:
         return format_error(":::cli requires a file path argument")
 
     # Try resolving as a package directory first (handles "." and package paths)
-    pkg_dir = _resolve_package_dir(arg, source_paths, base_dir)
+    pkg_dir = _resolve_package_dir(path, source_paths, base_dir)
     if pkg_dir is not None:
         # Read all non-test .go files in the package
         go_files = sorted(
@@ -794,13 +788,13 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
         source = "\n".join(sources)
     else:
         # Fall back to single file resolution
-        full_path = _resolve_file_path(arg, source_paths, base_dir)
+        full_path = _resolve_file_path(path, source_paths, base_dir)
         if full_path is None:
-            return format_error(f"file '{arg}' not found")
+            return format_error(f"file '{path}' not found")
 
         source, err = read_source(full_path)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
 
     parts = []
 
@@ -851,7 +845,7 @@ def _handle_cli(arg, body, source_paths, base_dir, attrs):
         ))
 
     if not parts:
-        return format_error(f"no CLI documentation found in '{arg}'")
+        return format_error(f"no CLI documentation found in '{path}'")
 
     return "\n".join(parts)
 
@@ -1026,18 +1020,18 @@ def _extract_strictcli_commands(source):
 # ---------------------------------------------------------------------------
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the package doc comment as prose markdown.
 
     Unlike :::module which also lists exported declarations, this directive
     returns just the package-level doc comment.
     """
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a package path argument")
 
-    pkg_dir = _resolve_package_dir(arg, source_paths, base_dir)
+    pkg_dir = _resolve_package_dir(path, source_paths, base_dir)
     if pkg_dir is None:
-        return format_error(f"package '{arg}' not found")
+        return format_error(f"package '{path}' not found")
 
     # Collect all non-test .go files
     go_files = sorted(
@@ -1047,18 +1041,18 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
     )
 
     if not go_files:
-        return format_error(f"no .go files in '{arg}'")
+        return format_error(f"no .go files in '{path}'")
 
     file_contents = {}
     for gf in go_files:
-        path = os.path.join(pkg_dir, gf)
-        content, _err = read_source(path)
+        file_path = os.path.join(pkg_dir, gf)
+        content, _err = read_source(file_path)
         file_contents[gf] = content if content is not None else ""
 
     _package_name, package_doc = _extract_package_doc(file_contents)
 
     if not package_doc:
-        return format_error(f"no package doc comment found in '{arg}'")
+        return format_error(f"no package doc comment found in '{path}'")
 
     return _format_docstring(package_doc)
 

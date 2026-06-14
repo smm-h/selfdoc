@@ -898,14 +898,14 @@ class DartExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 
 
-def _handle_ref(arg, body, source_paths, base_dir, attrs):
+def _handle_ref(path, target, body, source_paths, base_dir, attrs):
     """Extract library doc and all public declarations with doc comments."""
-    if not arg:
+    if not path:
         return format_error(":::ref requires a file path argument")
 
-    resolved = _resolve_dart_path(arg, source_paths, base_dir)
+    resolved = _resolve_dart_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     if os.path.isdir(resolved):
         dart_files = sorted(
@@ -913,22 +913,22 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
             if f.endswith(".dart") and not _is_generated_file(f)
         )
         if not dart_files:
-            return format_error(f"no .dart files in '{arg}'")
+            return format_error(f"no .dart files in '{path}'")
         file_contents = {}
         for df in dart_files:
-            path = os.path.join(resolved, df)
-            content, _err = read_source(path)
+            fpath = os.path.join(resolved, df)
+            content, _err = read_source(fpath)
             file_contents[df] = content if content is not None else ""
     else:
         if _is_generated_file(resolved):
-            return format_error(f"'{arg}' is a generated file")
+            return format_error(f"'{path}' is a generated file")
         content, err = read_source(resolved)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         file_contents = {os.path.basename(resolved): content}
 
     parts = []
-    parts.append(f"## {arg}")
+    parts.append(f"## {path}")
 
     # Extract library doc from the first file that has one
     for _filename, source in file_contents.items():
@@ -977,14 +977,14 @@ def _handle_ref(arg, body, source_paths, base_dir, attrs):
     return "\n".join(parts)
 
 
-def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     """Extract only the library-level doc comments as prose markdown."""
-    if not arg:
+    if not path:
         return format_error(":::prose-desc requires a file path argument")
 
-    resolved = _resolve_dart_path(arg, source_paths, base_dir)
+    resolved = _resolve_dart_path(path, source_paths, base_dir)
     if resolved is None:
-        return format_error(f"'{arg}' not found")
+        return format_error(f"'{path}' not found")
 
     if os.path.isdir(resolved):
         dart_files = sorted(
@@ -997,48 +997,44 @@ def _handle_prose_desc(arg, body, source_paths, base_dir, attrs):
                 doc = _extract_library_doc(content)
                 if doc:
                     return _parse_dart_doc(doc)
-        return format_error(f"no library doc comment found in '{arg}'")
+        return format_error(f"no library doc comment found in '{path}'")
     else:
         content, err = read_source(resolved)
         if err:
-            return format_error(f"cannot read '{arg}': {err}")
+            return format_error(f"cannot read '{path}': {err}")
         doc = _extract_library_doc(content)
         if not doc:
-            return format_error(f"no library doc comment found in '{arg}'")
+            return format_error(f"no library doc comment found in '{path}'")
         return _parse_dart_doc(doc)
 
 
-def _handle_table_schema(arg, body, source_paths, base_dir, attrs):
+def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     """Extract class fields as a markdown table."""
-    if not arg:
+    if not path:
         return format_error(":::table-schema requires a file path argument")
 
-    parts_split = arg.split(None, 1)
-    file_path = parts_split[0]
-    type_name = parts_split[1] if len(parts_split) > 1 else None
-
     # JSON/TOML files are config files -- delegate
-    if file_path.endswith((".json", ".toml")):
-        return handle_table_config(file_path, body, source_paths, base_dir, attrs)
+    if path.endswith((".json", ".toml")):
+        return handle_table_config(path, None, body, source_paths, base_dir, attrs)
 
-    full_path = _resolve_dart_path(file_path, source_paths, base_dir)
+    full_path = _resolve_dart_path(path, source_paths, base_dir)
     if full_path is None or os.path.isdir(full_path):
-        return format_error(f"file '{file_path}' not found")
+        return format_error(f"file '{path}' not found")
 
     source, err = read_source(full_path)
     if err:
-        return format_error(f"cannot read '{file_path}': {err}")
+        return format_error(f"cannot read '{path}': {err}")
 
     classes = _extract_class_fields(source)
 
     if not classes:
-        return format_error(f"no classes with fields found in '{file_path}'")
+        return format_error(f"no classes with fields found in '{path}'")
 
-    if type_name:
-        target = next((c for c in classes if c["name"] == type_name), None)
-        if target is None:
-            return format_error(f"class '{type_name}' not found in '{file_path}'")
-        return _format_class_table(target)
+    if target:
+        matched = next((c for c in classes if c["name"] == target), None)
+        if matched is None:
+            return format_error(f"class '{target}' not found in '{path}'")
+        return _format_class_table(matched)
 
     results = []
     for c in classes:
