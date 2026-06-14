@@ -12,6 +12,7 @@ import re
 
 from selfdoc.extractors.base import (
     BaseExtractor,
+    _extract_brace_block,
     _format_docstring,
     collect_comment_lines_above,
     format_error,
@@ -111,12 +112,21 @@ class SwiftExtractor(BaseExtractor):
         return _extract_module_doc(source)
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
-        """Extract detailed parameter and return info for a Swift function."""
+        """Extract detailed parameter and return info for a Swift function.
+
+        Supports dotted names like ``Router.handle`` to target a specific
+        method within a type (class, struct, enum, protocol, actor).
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
         except (OSError, UnicodeDecodeError):
             return None
+
+        # Dotted name: resolve as TypeName.member
+        if "." in symbol_name:
+            type_name, member_name = symbol_name.rsplit(".", 1)
+            return _dotted_symbol_details(source, type_name, member_name)
 
         lines = source.split("\n")
 
@@ -140,6 +150,81 @@ class SwiftExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 # symbol_details helpers
 # ---------------------------------------------------------------------------
+
+
+# Type declaration keywords for dotted name resolution
+_SWIFT_TYPE_KEYWORDS = ("class", "struct", "enum", "protocol", "actor")
+
+# Regex to match a type declaration line (with or without access modifiers)
+_SWIFT_TYPE_DECL_RE = re.compile(
+    r"^(?:(?:public|open)\s+)?(?:final\s+)?(?:"
+    + "|".join(_SWIFT_TYPE_KEYWORDS)
+    + r")\s+(\w+)"
+)
+
+
+def _dotted_symbol_details(source, type_name, member_name):
+    """Resolve a dotted symbol (TypeName.member) within Swift source.
+
+    Finds the type declaration, extracts its brace-delimited body, then
+    searches within the body for the member function.
+    """
+    lines = source.split("\n")
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            continue
+
+        m = _SWIFT_TYPE_DECL_RE.match(stripped)
+        if m and m.group(1) == type_name:
+            # Find the opening brace on this line or subsequent lines
+            brace_pos = _find_open_brace(source, lines, i)
+            if brace_pos is None:
+                return None
+
+            body = _extract_brace_block(source, brace_pos)
+            if body is None:
+                return None
+
+            # Search within the body for the member function
+            body_lines = body.split("\n")
+            func_re = re.compile(
+                r"^(?:(?:public|open)\s+)?(?:(?:static|class|final)\s+)*func\s+"
+                + re.escape(member_name)
+                + r"\s*\("
+            )
+            for j, body_line in enumerate(body_lines):
+                body_stripped = body_line.strip()
+                if body_stripped.startswith("//"):
+                    continue
+                if func_re.match(body_stripped):
+                    return _swift_symbol_details(body_lines, j)
+
+            return None
+
+    return None
+
+
+def _find_open_brace(source, lines, decl_line_idx):
+    """Find the position of the opening brace for a declaration.
+
+    Scans forward from the declaration line to find '{'. Returns
+    the position in the source string, or None if not found.
+    """
+    # Calculate the offset of decl_line_idx in source
+    offset = sum(len(lines[k]) + 1 for k in range(decl_line_idx))
+
+    # Scan forward from the declaration line (up to 10 lines)
+    end_offset = offset
+    for k in range(decl_line_idx, min(decl_line_idx + 10, len(lines))):
+        end_offset += len(lines[k]) + 1
+
+    for pos in range(offset, min(end_offset, len(source))):
+        if source[pos] == "{":
+            return pos
+
+    return None
 
 
 def _parse_swift_params(param_str):

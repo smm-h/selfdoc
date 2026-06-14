@@ -532,3 +532,31 @@ class TestSymbolDetails:
         assert result["params"][1]["name"] == "name"
         assert result["params"][1]["type"] == "String"
         assert result["params"][1]["documented"] is False
+
+    def test_symbol_details_dotted_type_method(self, tmp_path):
+        """Dotted name resolves a method within a type declaration."""
+        swift_file = tmp_path / "Router.swift"
+        swift_file.write_text(
+            "/// A network router.\n"
+            "class Router {\n"
+            "    /// Handle an incoming request.\n"
+            "    ///\n"
+            "    /// - Parameter request: The URL request to handle.\n"
+            "    /// - Returns: The response for this request.\n"
+            "    func handle(request: URLRequest) -> Response {\n"
+            "        return Response()\n"
+            "    }\n"
+            "\n"
+            "    func other() {}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = SwiftExtractor()
+        result = ext.symbol_details(str(swift_file), "Router.handle")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "request"
+        assert result["params"][0]["type"] == "URLRequest"
+        assert result["params"][0]["documented"] is True
+        assert result["return_type"] == "Response"
+        assert result["return_documented"] is True
