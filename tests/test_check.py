@@ -4759,7 +4759,7 @@ def test_coverage_heading_match(tmp_path):
 
 
 def test_coverage_dotted_heading_match(tmp_path):
-    """Symbol 'Run' matches '### Server.Run' heading (Go method style)."""
+    """Symbol 'Server.Run' matches '### Server.Run' heading (Go method style)."""
     config = {
         "version": "1.0.0",
         "source": [{"path": "pkg/", "language": "go"}],
@@ -4790,8 +4790,8 @@ def test_coverage_dotted_heading_match(tmp_path):
 
     result = check_docs(str(tmp_path))
     assert result.coverage is not None
-    run_syms = [s for s in result.coverage.referenced_symbols if s.endswith(":Run")]
+    run_syms = [s for s in result.coverage.referenced_symbols if s.endswith(":Server.Run")]
     assert len(run_syms) > 0, (
-        f"'Run' should match '### Server.Run' heading. "
+        f"'Server.Run' should match '### Server.Run' heading. "
         f"Referenced: {result.coverage.referenced_symbols}"
     )

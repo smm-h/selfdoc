@@ -805,3 +805,34 @@ func (v Vec2) Length() float64 {
         ext = GoExtractor()
         result = ext.symbol_details(pkg_dir, "WrongType.Handle")
         assert result is None
+
+
+class TestPublicSymbolsDottedMethods:
+    def test_public_symbols_method_dotted_name(self, tmp_path):
+        go_file = tmp_path / "server.go"
+        go_file.write_text(
+            "package main\n\n"
+            "type Server struct{}\n\n"
+            "func (s *Server) Handle() {}\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "Server.Handle" in symbols
+        assert "Server" in symbols
+
+    def test_public_symbols_dotted_methods_no_collision(self, tmp_path):
+        go_file = tmp_path / "multi.go"
+        go_file.write_text(
+            "package main\n\n"
+            "type Server struct{}\n"
+            "func (s *Server) Run() {}\n\n"
+            "type Client struct{}\n"
+            "func (c *Client) Run() {}\n",
+            encoding="utf-8",
+        )
+        symbols = GoExtractor().public_symbols(str(go_file))
+        assert "Server.Run" in symbols
+        assert "Client.Run" in symbols
+        assert "Run" not in symbols
+        assert "Server" in symbols
+        assert "Client" in symbols

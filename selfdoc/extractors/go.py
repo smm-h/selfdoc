@@ -22,7 +22,7 @@ from selfdoc.extractors.base import (
 
 # Patterns for exported Go symbols (used by GoExtractor.public_symbols)
 _GO_FUNC_RE = re.compile(r"^func\s+([A-Z]\w*)\s*\(")
-_GO_METHOD_RE = re.compile(r"^func\s+\([^)]+\)\s+([A-Z]\w*)\s*\(")
+_GO_METHOD_RE = re.compile(r"^func\s+\(\s*\w+\s+\*?(\w+)\s*\)\s+([A-Z]\w*)\s*\(")
 _GO_TYPE_RE = re.compile(r"^type\s+([A-Z]\w*)\s+")
 _GO_VAR_RE = re.compile(r"^var\s+([A-Z]\w*)")
 _GO_CONST_RE = re.compile(r"^const\s+([A-Z]\w*)")
@@ -154,7 +154,10 @@ class GoExtractor(BaseExtractor):
             ):
                 m = pattern.match(stripped)
                 if m:
-                    sym_name = m.group(1)
+                    if pattern is _GO_METHOD_RE:
+                        sym_name = f"{m.group(1)}.{m.group(2)}"
+                    else:
+                        sym_name = m.group(1)
                     if sym_name not in symbols:
                         symbols.append(sym_name)
                     break
