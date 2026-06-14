@@ -129,7 +129,7 @@ class TestListModules:
 class TestTableCommands:
     def test_lists_selfdoc_commands(self):
         result = resolve_table_commands(
-            {"path": "selfdoc/"},
+            {"path": "."},
             _SELFDOC_CONFIG,
             _PROJECT_DIR,
         )
@@ -150,9 +150,33 @@ class TestTableCommands:
         )
         assert "no strictcli app found" in result
 
+    def test_path_attribute_joins_with_base_dir(self, tmp_path):
+        """path attribute is joined with base_dir for schema lookup."""
+        import json
+
+        schema_dir = tmp_path / "myapp" / ".strictcli"
+        schema_dir.mkdir(parents=True)
+        schema = {
+            "project_id": "test-app",
+            "name": "testcli",
+            "version": "1.0.0",
+            "help": "A test CLI",
+            "commands": {"hello": {"help": "Say hello", "arguments": [], "options": []}},
+            "groups": {},
+        }
+        (schema_dir / "schema.json").write_text(json.dumps(schema))
+
+        result = resolve_table_commands(
+            {"path": "myapp"},
+            _SELFDOC_CONFIG,
+            str(tmp_path),
+        )
+        assert "`hello`" in result
+        assert "Say hello" in result
+
     def test_via_resolve_content(self):
         result = resolve_content(
-            "table-commands", {"path": "selfdoc/"}, [],
+            "table-commands", {"path": "."}, [],
             _PROJECT_DIR, config=_SELFDOC_CONFIG,
         )
         assert result is not None

@@ -165,7 +165,7 @@ Custom directives take priority over built-in names.
 
 ## Commands
 
-:-: table-commands path="selfdoc/"
+:-: table-commands path="."
 
 ## Deploy
 

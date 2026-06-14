@@ -400,7 +400,7 @@ def resolve_table_commands(attrs: dict, config: dict, base_dir: str) -> str:
 
     from selfdoc.strictcli_support import read_schema_json
 
-    cli = read_schema_json(base_dir)
+    cli = read_schema_json(os.path.join(base_dir, path))
     if cli is None:
         return f"> *[selfdoc: no strictcli app found in '{path}']*"
 
