@@ -17,3 +17,4 @@
 {"commits":["5ad233c02928cd656024b51e77f8f966e3baf7f3"],"user_facing":true,"description":"**Go extractor.** Implement `symbol_details` for extracting function parameter types, return types, and documentation status from Go source files.","type":"feature"}
 {"commits":["7f5d3f258f61429557838b43f7fc5dc6d0595629"],"user_facing":true,"description":"**Zig extractor.** symbol_details method for function parameter and return type extraction.","type":"feature"}
 {"commits":["45d2bb0715aefc2f5e4e2d07ca02faca44ab0726"],"user_facing":true,"description":"**Fix.** Inline directives inside double-backtick code spans are no longer resolved.","type":"fix"}
+{"commits":["e4cda3782ddae04e036eb6dba7ccc602ff7e727a"],"user_facing":false}
