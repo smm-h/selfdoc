@@ -506,3 +506,19 @@ class TestSymbolDetails:
         assert result["params"][1]["documented"] is False
         assert result["return_type"] == "u32"
         assert result["return_documented"] is False
+
+    def test_symbol_details_anytype(self, tmp_path):
+        zig_file = tmp_path / "generic.zig"
+        zig_file.write_text(
+            "pub fn print(value: anytype) void {\n"
+            "    _ = value;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "print")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "value"
+        assert result["params"][0]["type"] == "anytype"
+        assert result["params"][0]["documented"] is False
