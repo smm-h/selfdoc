@@ -629,3 +629,46 @@ def test_parse_directives_inline_in_backtick_excluded():
     content = 'see `:-: var` here'
     result = parse_directives(content)
     assert result == []
+
+
+# -- Inline directives: double-backtick spans ----------------------------------
+
+
+def test_inline_in_double_backtick_not_resolved():
+    """:-: inside a double-backtick code span is literal, not resolved."""
+    content = 'see ``:-: var key="x"`` for details'
+
+    def resolver(name, attrs, body):
+        raise AssertionError("Should not be called for double-backtick span content")
+
+    result = resolve_directives(content, resolver)
+    assert result == 'see ``:-: var key="x"`` for details'
+
+
+def test_inline_outside_double_backtick_resolved():
+    """:-: outside double-backtick spans is resolved, span content preserved."""
+    content = 'text ``code`` then :-: var end'
+
+    def resolver(name, attrs, body):
+        return "[VAR]"
+
+    result = resolve_directives(content, resolver)
+    assert result == "text ``code`` then [VAR] end"
+
+
+def test_mixed_single_double_backtick():
+    """Both single and double backtick spans mask correctly on the same line."""
+    content = '`single` and ``double :-: var`` then :-: ref end'
+
+    def resolver(name, attrs, body):
+        return "[RESOLVED]"
+
+    result = resolve_directives(content, resolver)
+    assert result == '`single` and ``double :-: var`` then [RESOLVED] end'
+
+
+def test_parse_directives_inline_in_double_backtick_excluded():
+    """Inline directives inside double-backtick spans are not detected."""
+    content = 'see ``:-: var`` here'
+    result = parse_directives(content)
+    assert result == []

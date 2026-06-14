@@ -251,28 +251,29 @@ def parse_directives(content: str, valid_names: set[str] | None = None) -> list[
     return directives
 
 
-# Single-backtick code span: `...` (not double-backtick — known limitation)
-_BACKTICK_SPAN_RE = re.compile(r"`[^`]+`")
+# Backtick code span: matches `...`, ``...``, ```...```, etc. per CommonMark rules.
+# Uses a backreference so the closing delimiter has the same number of backticks.
+_BACKTICK_SPAN_RE = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 
 
 def _mask_backtick_spans(line: str) -> tuple[str, list[str]]:
     """Replace backtick code spans with null-byte placeholders.
 
     Returns (masked_line, placeholders) where placeholders[i] is the original
-    text for placeholder i. Double-backtick spans (``...``) are a known
-    limitation and are not handled.
+    text for placeholder i. Handles any backtick-span length (`, ``, ```, etc.)
+    per CommonMark rules.
     """
     spans = list(_BACKTICK_SPAN_RE.finditer(line))
     if not spans:
         return line, []
 
-    placeholders: list[str] = []
+    placeholders: list[str] = [""] * len(spans)
     masked = line
-    for match in reversed(spans):
-        placeholder = f"\x00BTCK{len(placeholders)}\x00"
-        placeholders.append(match.group(0))
+    for idx, match in enumerate(reversed(spans)):
+        pos = len(spans) - 1 - idx
+        placeholder = f"\x00BTCK{pos}\x00"
+        placeholders[pos] = match.group(0)
         masked = masked[:match.start()] + placeholder + masked[match.end():]
-    placeholders.reverse()
     return masked, placeholders
 
 
@@ -346,7 +347,7 @@ def _resolve_inline_pass(
 
     Skips lines inside fenced code blocks (``` or ~~~), tracked with the same
     _FENCE_RE pattern used by _walk_blocks. Also skips directives inside
-    single-backtick code spans on each line.
+    backtick code spans on each line.
     """
     result: list[str] = []
     fence_char: str | None = None
