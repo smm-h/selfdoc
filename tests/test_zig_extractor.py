@@ -507,6 +507,76 @@ class TestSymbolDetails:
         assert result["return_type"] == "u32"
         assert result["return_documented"] is False
 
+    def test_symbol_details_dotted_struct_method(self, tmp_path):
+        zig_file = tmp_path / "config.zig"
+        zig_file.write_text(
+            "const std = @import(\"std\");\n"
+            "\n"
+            "pub const Config = struct {\n"
+            "    width: u32 = 800,\n"
+            "    height: u32 = 600,\n"
+            "\n"
+            "    /// Initialize config with default values.\n"
+            "    /// Returns a new Config instance.\n"
+            "    pub fn init(self: *Config, allocator: std.mem.Allocator) !void {\n"
+            "        _ = self;\n"
+            "        _ = allocator;\n"
+            "    }\n"
+            "\n"
+            "    pub fn deinit(self: *Config) void {\n"
+            "        _ = self;\n"
+            "    }\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "Config.init")
+        assert result is not None
+        # self is skipped by _parse_zig_params
+        assert len(result["params"]) == 1
+        assert result["params"][0]["name"] == "allocator"
+        assert result["params"][0]["type"] == "std.mem.Allocator"
+        assert result["return_type"] == "!void"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_dotted_not_found(self, tmp_path):
+        zig_file = tmp_path / "config2.zig"
+        zig_file.write_text(
+            "pub const Config = struct {\n"
+            "    pub fn init(self: *Config) void {\n"
+            "        _ = self;\n"
+            "    }\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        # Member not found
+        result = ext.symbol_details(str(zig_file), "Config.nonexistent")
+        assert result is None
+        # Type not found
+        result = ext.symbol_details(str(zig_file), "Other.init")
+        assert result is None
+
+    def test_symbol_details_dotted_enum_method(self, tmp_path):
+        zig_file = tmp_path / "state.zig"
+        zig_file.write_text(
+            "pub const State = enum(u8) {\n"
+            "    idle,\n"
+            "    running,\n"
+            "    stopped,\n"
+            "\n"
+            "    pub fn isActive(self: State) bool {\n"
+            "        return self == .running;\n"
+            "    }\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "State.isActive")
+        assert result is not None
+        assert len(result["params"]) == 0  # self is skipped
+        assert result["return_type"] == "bool"
+
     def test_symbol_details_anytype(self, tmp_path):
         zig_file = tmp_path / "generic.zig"
         zig_file.write_text(

@@ -13,6 +13,7 @@ import re
 
 from selfdoc.extractors.base import (
     BaseExtractor,
+    _extract_brace_block,
     _format_docstring,
     format_error,
     handle_table_config,
@@ -101,12 +102,19 @@ class ZigExtractor(BaseExtractor):
         return _extract_module_doc(source)
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
-        """Extract detailed parameter and return info for a Zig function."""
+        """Extract detailed parameter and return info for a Zig function.
+
+        Supports dotted names (e.g. "Config.init") to extract a method
+        from within a struct/enum/union body.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
         except (OSError, UnicodeDecodeError):
             return None
+
+        if "." in symbol_name:
+            return _dotted_symbol_details(source, symbol_name)
 
         lines = source.split("\n")
         pattern = re.compile(
@@ -128,6 +136,55 @@ class ZigExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 # symbol_details helpers
 # ---------------------------------------------------------------------------
+
+
+def _dotted_symbol_details(source, symbol_name):
+    """Extract symbol details for a dotted name like "Config.init".
+
+    Finds the container type (struct/enum/union), extracts its brace-delimited
+    body, then searches within that body for the member function.
+    """
+    type_name, member_name = symbol_name.rsplit(".", 1)
+
+    # Find the container declaration line
+    container_re = re.compile(
+        r"^pub\s+const\s+" + re.escape(type_name)
+        + r"\s*=\s*(?:struct|enum|union)(?:\s*\(.*?\))?\s*\{"
+    )
+
+    lines = source.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            continue
+        if container_re.match(stripped):
+            # Find the position of the opening brace in the full source
+            # by computing offset up to line i, then finding '{' in that line
+            line_start = sum(len(l) + 1 for l in lines[:i])
+            brace_offset = lines[i].index("{")
+            open_brace_pos = line_start + brace_offset
+
+            body = _extract_brace_block(source, open_brace_pos)
+            if body is None:
+                return None
+
+            # Search within the body for the member function
+            body_lines = body.split("\n")
+            member_pattern = re.compile(
+                r"^(?:pub\s+)?(?:extern\s+|export\s+|inline\s+)?fn\s+"
+                + re.escape(member_name)
+                + r"\s*\("
+            )
+            for j, bline in enumerate(body_lines):
+                bstripped = bline.strip()
+                if bstripped.startswith("//"):
+                    continue
+                if member_pattern.match(bstripped):
+                    return _zig_symbol_details(body_lines, j)
+
+            return None
+
+    return None
 
 
 def _parse_zig_params(param_str):
