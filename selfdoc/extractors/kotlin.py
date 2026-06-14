@@ -157,6 +157,42 @@ class KotlinExtractor(BaseExtractor):
             return ""
         return _extract_module_doc(source)
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a symbol."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        lines = source.split("\n")
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+
+            # Skip restricted visibility
+            if _KOTLIN_PRIVATE_RE.match(stripped):
+                continue
+
+            # Strip visibility keyword for pattern matching
+            work = stripped
+            if work.startswith("public "):
+                work = work[len("public "):].strip()
+
+            # Check for data class
+            dc_match = re.match(
+                r"^data\s+class\s+(\w+)\s*\(", work
+            )
+            if dc_match and dc_match.group(1) == symbol_name:
+                return _data_class_symbol_details(lines, i, stripped)
+
+            # Check for function
+            func_match = _KOTLIN_FUNC_RE.match(work)
+            if func_match and func_match.group(1) == symbol_name:
+                return _func_symbol_details(lines, i)
+
+        return None
+
 
 # ---------------------------------------------------------------------------
 # Path resolution
@@ -316,6 +352,164 @@ def _extract_module_doc(source):
                 doc_lines.append(text)
 
     return ""
+
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_kdoc_param_names(kdoc_text):
+    """Extract the set of parameter names documented via @param or @property tags."""
+    names = set()
+    for m in re.finditer(r"@param\s*\[(\w+)\]|@param\s+(\w+)", kdoc_text):
+        names.add(m.group(1) or m.group(2))
+    for m in re.finditer(r"@property\s+(\w+)", kdoc_text):
+        names.add(m.group(1))
+    return names
+
+
+def _has_return_doc(kdoc_text):
+    """Check whether KDoc text contains a @return or @returns tag."""
+    return bool(re.search(r"@returns?\s", kdoc_text))
+
+
+def _extract_return_type(signature):
+    """Extract the return type from a function signature string.
+
+    Looks for `: ReturnType` after the closing `)` of the parameter list,
+    before `{` or `=` (expression-body). Returns None if no return type.
+    """
+    # Find the last `)` that closes the parameter list
+    paren_depth = 0
+    last_close = -1
+    for idx, ch in enumerate(signature):
+        if ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                last_close = idx
+                break
+
+    if last_close < 0:
+        return None
+
+    after_params = signature[last_close + 1:].strip()
+    if not after_params.startswith(":"):
+        return None
+
+    # Strip the leading `:`
+    type_text = after_params[1:].strip()
+
+    # Remove trailing `{` or `=` (expression body)
+    type_text = re.sub(r"\s*[{=].*$", "", type_text).strip()
+
+    return type_text if type_text else None
+
+
+def _func_symbol_details(lines, decl_line_idx):
+    """Build symbol_details for a function declaration."""
+    sig = _extract_func_signature(lines, decl_line_idx)
+    kdoc_text = _extract_kdoc_block(lines, decl_line_idx)
+
+    # Extract params from signature
+    # Find content between first `(` and matching `)`
+    paren_start = sig.find("(")
+    if paren_start < 0:
+        return {
+            "params": [],
+            "return_type": _extract_return_type(sig),
+            "return_documented": _has_return_doc(kdoc_text) if kdoc_text else False,
+        }
+
+    # Find matching close paren
+    paren_depth = 0
+    paren_end = -1
+    for idx in range(paren_start, len(sig)):
+        if sig[idx] == "(":
+            paren_depth += 1
+        elif sig[idx] == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                paren_end = idx
+                break
+
+    if paren_end < 0:
+        inner = sig[paren_start + 1:]
+    else:
+        inner = sig[paren_start + 1:paren_end]
+
+    documented_names = _extract_kdoc_param_names(kdoc_text) if kdoc_text else set()
+
+    params = []
+    for param_text in _split_constructor_params(inner):
+        param_text = param_text.strip()
+        if not param_text:
+            continue
+        parsed = _parse_constructor_param(param_text, {})
+        if parsed:
+            params.append({
+                "name": parsed["name"],
+                "type": parsed["type"] if parsed["type"] else None,
+                "documented": parsed["name"] in documented_names,
+            })
+
+    return_type = _extract_return_type(sig)
+    return_documented = _has_return_doc(kdoc_text) if kdoc_text else False
+
+    return {
+        "params": params,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
+
+def _data_class_symbol_details(lines, decl_line_idx, stripped):
+    """Build symbol_details for a data class declaration."""
+    kdoc_text = _extract_kdoc_block(lines, decl_line_idx)
+
+    # Collect constructor text spanning multiple lines
+    constructor_text = stripped[stripped.index("("):]
+    j = decl_line_idx
+    paren_depth = 0
+    for ch in constructor_text:
+        if ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth -= 1
+    while paren_depth > 0 and j + 1 < len(lines):
+        j += 1
+        constructor_text += " " + lines[j].strip()
+        for ch in lines[j].strip():
+            if ch == "(":
+                paren_depth += 1
+            elif ch == ")":
+                paren_depth -= 1
+
+    # Parse fields from constructor text
+    inner = constructor_text[1:]
+    close_idx = inner.rfind(")")
+    if close_idx >= 0:
+        inner = inner[:close_idx]
+
+    documented_names = _extract_kdoc_param_names(kdoc_text) if kdoc_text else set()
+
+    params = []
+    for param_text in _split_constructor_params(inner):
+        parsed = _parse_constructor_param(param_text.strip(), {})
+        if parsed:
+            params.append({
+                "name": parsed["name"],
+                "type": parsed["type"] if parsed["type"] else None,
+                "documented": parsed["name"] in documented_names,
+            })
+
+    return {
+        "params": params,
+        "return_type": None,
+        "return_documented": True,
+    }
 
 
 # ---------------------------------------------------------------------------

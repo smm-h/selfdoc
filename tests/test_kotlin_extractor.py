@@ -571,3 +571,94 @@ class TestModuleDocstring:
         ext = KotlinExtractor()
         result = ext.module_docstring(str(kt_file))
         assert result == "Parser module for Kotlin sources.\nHandles incremental parsing."
+
+
+class TestSymbolDetails:
+    def test_symbol_details_function_all_documented(self, tmp_path):
+        kt_file = tmp_path / "Calc.kt"
+        kt_file.write_text(
+            '/**\n'
+            ' * Calculate the sum.\n'
+            ' * @param x First number\n'
+            ' * @param y Second number\n'
+            ' * @return The sum\n'
+            ' */\n'
+            'fun calculate(x: Int, y: Double): Double {\n'
+            '    return x + y\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "calculate")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "x", "type": "Int", "documented": True}
+        assert result["params"][1] == {"name": "y", "type": "Double", "documented": True}
+        assert result["return_type"] == "Double"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_function_some_undocumented(self, tmp_path):
+        kt_file = tmp_path / "Proc.kt"
+        kt_file.write_text(
+            '/**\n'
+            ' * Process items.\n'
+            ' * @param items The list to process\n'
+            ' */\n'
+            'fun process(items: List<String>, verbose: Boolean = false): Int {\n'
+            '    return items.size\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "process")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "items", "type": "List<String>", "documented": True}
+        assert result["params"][1] == {"name": "verbose", "type": "Boolean", "documented": False}
+        assert result["return_type"] == "Int"
+        assert result["return_documented"] is False
+
+    def test_symbol_details_data_class(self, tmp_path):
+        kt_file = tmp_path / "User.kt"
+        kt_file.write_text(
+            '/**\n'
+            ' * A user record.\n'
+            ' * @property name The user\'s name\n'
+            ' * @property age The user\'s age\n'
+            ' */\n'
+            'data class User(val name: String, val age: Int, val email: String)\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "User")
+        assert result is not None
+        assert len(result["params"]) == 3
+        assert result["params"][0] == {"name": "name", "type": "String", "documented": True}
+        assert result["params"][1] == {"name": "age", "type": "Int", "documented": True}
+        assert result["params"][2] == {"name": "email", "type": "String", "documented": False}
+        assert result["return_type"] is None
+        assert result["return_documented"] is True
+
+    def test_symbol_details_no_params(self, tmp_path):
+        kt_file = tmp_path / "Time.kt"
+        kt_file.write_text(
+            '/** Get the current timestamp. */\n'
+            'fun now(): Long = System.currentTimeMillis()\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "now")
+        assert result is not None
+        assert result["params"] == []
+        assert result["return_type"] == "Long"
+        assert result["return_documented"] is False
+
+    def test_symbol_details_unknown_returns_none(self, tmp_path):
+        kt_file = tmp_path / "Any.kt"
+        kt_file.write_text(
+            'fun something(): Unit {}\n',
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.symbol_details(str(kt_file), "nonexistent")
+        assert result is None
