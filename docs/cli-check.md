@@ -9,13 +9,13 @@ nav_order: 2
 
 # selfdoc check
 
-Check documentation coverage and consistency
+Check documentation coverage, directive resolution, and lint rules
 
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
 | `--ignore` |  | str |  |  | Comma-separated SEO codes to suppress (e.g., SEO007,SEO008) |
-| `--format` |  | str | text |  | Output format (default: text) |
-| `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
-| `--dry-run` |  | bool |  |  | Report staleness without writing hashes |
+| `--format` |  | str | text |  | Output format for check results (text or json) |
+| `--no-commit` |  | bool |  |  | Skip auto-committing updated content hash tracking files |
+| `--dry-run` |  | bool |  |  | Report staleness without writing hash files to disk |

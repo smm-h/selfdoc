@@ -9,10 +9,10 @@ nav_order: 5
 
 # selfdoc gen-data
 
-Generate data files by running sandboxed scripts
+Generate data files by running sandboxed scripts via bwrap
 
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
+| `--no-commit` |  | bool |  |  | Skip auto-committing generated data output files |

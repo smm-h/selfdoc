@@ -12,14 +12,14 @@ order: 91
 
 Code-aware static site generator with directive-based content extraction
 
-Version: 0.19.0
+Version: 0.19.1
 
 ## Commands
 
-- [init](cli-init.html) -- Initialize selfdoc in the current project
-- [build](cli-build.html) -- Build the documentation site
-- [serve](cli-serve.html) -- Serve the documentation site locally
-- [deploy](cli-deploy.html) -- Deploy the documentation site
-- [check](cli-check.html) -- Check documentation coverage and consistency
+- [init](cli-init.html) -- Initialize selfdoc configuration and starter docs template
+- [build](cli-build.html) -- Build the documentation site from templates and source code
+- [serve](cli-serve.html) -- Serve the documentation site locally with live reload
+- [deploy](cli-deploy.html) -- Deploy the built documentation site to the configured provider
+- [check](cli-check.html) -- Check documentation coverage, directive resolution, and lint rules
 - [gen](cli-gen.html) -- Auto-generate documentation pages from project structure
-- [gen-data](cli-gen-data.html) -- Generate data files by running sandboxed scripts
+- [gen-data](cli-gen-data.html) -- Generate data files by running sandboxed scripts via bwrap

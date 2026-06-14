@@ -15,4 +15,4 @@ Auto-generate documentation pages from project structure
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
+| `--no-commit` |  | bool |  |  | Skip auto-committing generated docs and root files |

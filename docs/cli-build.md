@@ -9,12 +9,12 @@ nav_order: 1
 
 # selfdoc build
 
-Build the documentation site
+Build the documentation site from templates and source code
 
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
-| `--locale` |  | str |  |  | Build only this locale (e.g., 'en') |
-| `--version` |  | str |  |  | Build only this version (e.g., '1.0.0') |
+| `--no-commit` |  | bool |  |  | Skip auto-committing updated content hash tracking files |
+| `--locale` |  | str |  |  | Build only the specified locale instead of all (e.g., 'en') |
+| `--version` |  | str |  |  | Build only the specified version instead of all (e.g., '1.0.0') |

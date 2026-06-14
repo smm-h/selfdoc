@@ -9,10 +9,10 @@ nav_order: 7
 
 # selfdoc serve
 
-Serve the documentation site locally
+Serve the documentation site locally with live reload
 
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--port` | `-p` | int | 8000 |  | Port to serve on (default: 8000) |
+| `--port` | `-p` | int | 8000 |  | HTTP port number to serve on (default: 8000, e.g., 3000) |

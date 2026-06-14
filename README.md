@@ -222,13 +222,13 @@ Custom directives take priority over built-in names.
 
 | Command | Description |
 | --- | --- |
-| `init` | Initialize selfdoc in the current project |
-| `build` | Build the documentation site |
-| `serve` | Serve the documentation site locally |
-| `deploy` | Deploy the documentation site |
-| `check` | Check documentation coverage and consistency |
+| `init` | Initialize selfdoc configuration and starter docs template |
+| `build` | Build the documentation site from templates and source code |
+| `serve` | Serve the documentation site locally with live reload |
+| `deploy` | Deploy the built documentation site to the configured provider |
+| `check` | Check documentation coverage, directive resolution, and lint rules |
 | `gen` | Auto-generate documentation pages from project structure |
-| `gen-data` | Generate data files by running sandboxed scripts |
+| `gen-data` | Generate data files by running sandboxed scripts via bwrap |
 
 ## Deploy
 

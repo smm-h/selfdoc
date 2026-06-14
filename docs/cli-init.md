@@ -9,10 +9,10 @@ nav_order: 6
 
 # selfdoc init
 
-Initialize selfdoc in the current project
+Initialize selfdoc configuration and starter docs template
 
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--no-commit` |  | bool |  |  | Skip auto-committing changed files |
+| `--no-commit` |  | bool |  |  | Skip auto-committing generated config and template files |

@@ -9,4 +9,4 @@ nav_order: 3
 
 # selfdoc deploy
 
-Deploy the documentation site
+Deploy the built documentation site to the configured provider
