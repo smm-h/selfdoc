@@ -1125,14 +1125,14 @@ def test_version_valid(config_dir):
     assert cfg["version"] == "1.2.3"
 
 
-def test_version_missing_without_version_source_errors(config_dir):
-    """Missing both version and version_source raises ConfigError."""
+def test_version_absent_is_none(config_dir):
+    """Missing version field defaults to None."""
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
     })
-    with pytest.raises(ConfigError, match="no project version"):
-        load_config(str(config_dir))
+    cfg = load_config(str(config_dir))
+    assert cfg["version"] is None
 
 
 def test_version_invalid_pattern(config_dir):
@@ -1157,164 +1157,3 @@ def test_version_non_string(config_dir):
         load_config(str(config_dir))
 
 
-# -- version_source field --
-
-
-def test_version_source_invalid_rejected(config_dir):
-    """Invalid version_source value raises ConfigError."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "setup.py",
-    })
-    with pytest.raises(ConfigError, match="invalid version_source"):
-        load_config(str(config_dir))
-
-
-def test_version_source_absent_is_none(config_dir):
-    """Missing version_source field defaults to None."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version": "1.0.0",
-    })
-    cfg = load_config(str(config_dir))
-    assert cfg["version_source"] is None
-    assert cfg["version"] == "1.0.0"
-
-
-def test_version_source_reads_pyproject_toml(config_dir):
-    """version_source reads version from pyproject.toml."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "pyproject.toml",
-    })
-    pyproject = os.path.join(config_dir, "pyproject.toml")
-    with open(pyproject, "w") as f:
-        f.write('[project]\nname = "test"\nversion = "3.2.1"\n')
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] == "3.2.1"
-
-
-def test_version_source_reads_package_json(config_dir):
-    """version_source reads version from package.json."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "package.json",
-    })
-    pkg = os.path.join(config_dir, "package.json")
-    with open(pkg, "w") as f:
-        json.dump({"name": "test", "version": "4.5.6"}, f)
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] == "4.5.6"
-
-
-def test_version_source_reads_cargo_toml(config_dir):
-    """version_source reads version from Cargo.toml."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "Cargo.toml",
-    })
-    cargo = os.path.join(config_dir, "Cargo.toml")
-    with open(cargo, "w") as f:
-        f.write('[package]\nname = "test"\nversion = "7.8.9"\n')
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] == "7.8.9"
-
-
-def test_version_source_reads_version_file(config_dir):
-    """version_source reads version from VERSION file."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "VERSION",
-    })
-    vfile = os.path.join(config_dir, "VERSION")
-    with open(vfile, "w") as f:
-        f.write("2.3.4\n")
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] == "2.3.4"
-
-
-def test_version_source_missing_file_errors(config_dir):
-    """version_source pointing to nonexistent file raises ConfigError."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "pyproject.toml",
-    })
-    # No pyproject.toml created
-    with pytest.raises(ConfigError, match="does not exist"):
-        load_config(str(config_dir))
-
-
-def test_version_source_missing_version_field_errors(config_dir):
-    """version_source file exists but has no version field raises ConfigError."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "pyproject.toml",
-    })
-    pyproject = os.path.join(config_dir, "pyproject.toml")
-    with open(pyproject, "w") as f:
-        f.write('[project]\nname = "test"\n')  # no version
-    with pytest.raises(ConfigError, match="no \\[project\\]\\.version"):
-        load_config(str(config_dir))
-
-
-def test_version_source_and_version_conflict_errors(config_dir):
-    """version_source and explicit version that conflict raises ConfigError."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "pyproject.toml",
-        "version": "9.9.9",
-    })
-    pyproject = os.path.join(config_dir, "pyproject.toml")
-    with open(pyproject, "w") as f:
-        f.write('[project]\nname = "test"\nversion = "1.0.0"\n')
-    with pytest.raises(ConfigError, match="remove one or make them match"):
-        load_config(str(config_dir))
-
-
-def test_version_source_and_version_matching_ok(config_dir):
-    """version_source and explicit version that match is accepted."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "pyproject.toml",
-        "version": "1.0.0",
-    })
-    pyproject = os.path.join(config_dir, "pyproject.toml")
-    with open(pyproject, "w") as f:
-        f.write('[project]\nname = "test"\nversion = "1.0.0"\n')
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] == "1.0.0"
-
-
-def test_neither_version_nor_version_source_errors(config_dir):
-    """Neither version nor version_source set raises ConfigError."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-    })
-    with pytest.raises(ConfigError, match="no project version"):
-        load_config(str(config_dir))
-
-
-def test_version_source_alone_works(config_dir):
-    """version_source without explicit version works."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version_source": "package.json",
-    })
-    pkg = os.path.join(config_dir, "package.json")
-    with open(pkg, "w") as f:
-        json.dump({"name": "test", "version": "5.6.7"}, f)
-    cfg = load_config(str(config_dir))
-    assert cfg["version"] == "5.6.7"
-    assert cfg["version_source"] == "package.json"
