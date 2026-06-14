@@ -336,6 +336,55 @@ def check_docs(dir_path=".", config=None, dry_run=False):
                             severity="warning",
                         ))
 
+        # CLI002: minimum help text length
+        _MIN_HELP_LEN = 50
+
+        def _check_help_len(element_kind, element_name, help_text, page_file):
+            """Emit CLI002 if help_text is shorter than _MIN_HELP_LEN."""
+            if help_text and len(help_text) < _MIN_HELP_LEN:
+                result.lints.append(LintResult(
+                    file=page_file,
+                    line=None,
+                    code="CLI002",
+                    severity="warning",
+                    message=(
+                        f"{element_kind} '{element_name}' help text too short "
+                        f"({len(help_text)} chars, minimum {_MIN_HELP_LEN})"
+                    ),
+                ))
+
+        for cmd in cli_schema.get("commands", []):
+            cmd_name = cmd["name"]
+            page_file = f"cli-{cmd_name}.md"
+            _check_help_len("command", cmd_name, cmd.get("help", ""), page_file)
+            for fl in cmd.get("flags", []):
+                _check_help_len(
+                    "flag", f"--{fl['name']}", fl.get("help", ""), page_file,
+                )
+            for ar in cmd.get("args", []):
+                _check_help_len(
+                    "arg", ar["name"], ar.get("help", ""), page_file,
+                )
+
+        for grp in cli_schema.get("groups", []):
+            grp_name = grp["name"]
+            page_file = f"cli-{grp_name}.md"
+            _check_help_len("group", grp_name, grp.get("help", ""), page_file)
+            for subcmd in grp.get("commands", []):
+                subcmd_name = subcmd["name"]
+                _check_help_len(
+                    "command", f"{grp_name} {subcmd_name}",
+                    subcmd.get("help", ""), page_file,
+                )
+                for fl in subcmd.get("flags", []):
+                    _check_help_len(
+                        "flag", f"--{fl['name']}", fl.get("help", ""), page_file,
+                    )
+                for ar in subcmd.get("args", []):
+                    _check_help_len(
+                        "arg", ar["name"], ar.get("help", ""), page_file,
+                    )
+
     # Project-level version consistency checks
     result.lints.extend(_check_version_consistency(config, dir_path))
 
