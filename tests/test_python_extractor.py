@@ -722,6 +722,52 @@ def existing():
         result = PythonExtractor().symbol_details(str(py), "broken")
         assert result is None
 
+    def test_symbol_details_dotted_class_method(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+class MyClass:
+    """A sample class."""
+
+    def my_method(self, x: int, y: str = "hi") -> bool:
+        """Do something.
+
+        Args:
+            x: First arg.
+            y: Second arg.
+
+        Returns:
+            True if ok.
+        """
+        return True
+''')
+        result = PythonExtractor().symbol_details(str(py), "MyClass.my_method")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "x", "type": "int", "documented": True}
+        assert result["params"][1] == {"name": "y", "type": "str", "documented": True}
+        assert result["return_type"] == "bool"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_dotted_class_not_found(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+class Other:
+    def method(self):
+        pass
+''')
+        result = PythonExtractor().symbol_details(str(py), "Missing.method")
+        assert result is None
+
+    def test_symbol_details_dotted_member_not_found(self, tmp_path):
+        py = tmp_path / "mod.py"
+        py.write_text('''\
+class MyClass:
+    def existing(self):
+        pass
+''')
+        result = PythonExtractor().symbol_details(str(py), "MyClass.nonexistent")
+        assert result is None
+
 
 class TestEdgeCases:
     def test_unknown_directive(self, sample_project, source_paths):

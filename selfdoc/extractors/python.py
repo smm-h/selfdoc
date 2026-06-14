@@ -109,7 +109,11 @@ class PythonExtractor(BaseExtractor):
         return ast.get_docstring(tree) or ""
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
-        """Extract detailed parameter and return info for a symbol."""
+        """Extract detailed parameter and return info for a symbol.
+
+        Supports dotted names like ``MyClass.my_method`` to target a specific
+        member (method or attribute) within a class.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
@@ -119,6 +123,21 @@ class PythonExtractor(BaseExtractor):
         try:
             tree = ast.parse(source, filename=file_path)
         except SyntaxError:
+            return None
+
+        # Dotted name: resolve as ClassName.member
+        if "." in symbol_name:
+            type_name, member_name = symbol_name.rsplit(".", 1)
+            for node in ast.iter_child_nodes(tree):
+                if isinstance(node, ast.ClassDef) and node.name == type_name:
+                    for item in ast.iter_child_nodes(node):
+                        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            if item.name == member_name:
+                                return _build_symbol_details(item)
+                        elif isinstance(item, ast.ClassDef):
+                            if item.name == member_name:
+                                return _class_symbol_details(item)
+                    return None
             return None
 
         # Search top-level nodes
