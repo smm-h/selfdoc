@@ -100,6 +100,123 @@ class ZigExtractor(BaseExtractor):
             return ""
         return _extract_module_doc(source)
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a Zig function."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        lines = source.split("\n")
+        pattern = re.compile(
+            r"^(?:pub\s+)?(?:extern\s+|export\s+|inline\s+)?fn\s+"
+            + re.escape(symbol_name)
+            + r"\s*\("
+        )
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("//"):
+                continue
+            if pattern.match(stripped):
+                return _zig_symbol_details(lines, i)
+
+        return None
+
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_zig_params(param_str):
+    """Parse Zig function parameters from the text between parentheses.
+
+    Returns list of {"name": str, "type": str|None}.
+    Strips comptime keyword. Skips 'self' parameter.
+    """
+    params = []
+    for part in param_str.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        # Strip comptime keyword
+        if part.startswith("comptime "):
+            part = part[len("comptime "):]
+        # Split on first colon
+        if ":" not in part:
+            continue
+        name, type_str = part.split(":", 1)
+        name = name.strip()
+        type_str = type_str.strip()
+        # Skip self parameter
+        if name == "self":
+            continue
+        params.append({
+            "name": name,
+            "type": type_str if type_str else None,
+        })
+    return params
+
+
+def _zig_symbol_details(lines, decl_line_idx):
+    """Build symbol_details dict for a Zig function declaration."""
+    sig = _extract_fn_signature(lines, decl_line_idx)
+
+    # Extract parameter string between first ( and matching )
+    open_idx = sig.find("(")
+    if open_idx == -1:
+        return {"params": [], "return_type": None, "return_documented": False}
+
+    depth = 0
+    close_idx = None
+    for i in range(open_idx, len(sig)):
+        if sig[i] == "(":
+            depth += 1
+        elif sig[i] == ")":
+            depth -= 1
+            if depth == 0:
+                close_idx = i
+                break
+
+    if close_idx is None:
+        return {"params": [], "return_type": None, "return_documented": False}
+
+    param_str = sig[open_idx + 1 : close_idx]
+    raw_params = _parse_zig_params(param_str)
+
+    # Extract return type: everything after the closing paren
+    return_type_str = sig[close_idx + 1 :].strip()
+    return_type = return_type_str if return_type_str else None
+
+    # Get doc comment
+    doc_text = _collect_doc_comment_above(lines, decl_line_idx)
+
+    # Check param documentation
+    params = []
+    for p in raw_params:
+        documented = bool(
+            doc_text and re.search(rf"\b{re.escape(p['name'])}\b", doc_text)
+        )
+        params.append({
+            "name": p["name"],
+            "type": p["type"],
+            "documented": documented,
+        })
+
+    return_documented = (
+        bool(re.search(r"\breturns?\b", doc_text, re.IGNORECASE))
+        if doc_text
+        else False
+    )
+
+    return {
+        "params": params,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
 
 # ---------------------------------------------------------------------------
 # Path resolution

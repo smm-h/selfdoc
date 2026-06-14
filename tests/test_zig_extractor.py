@@ -407,3 +407,102 @@ class TestModuleDocstring:
         ext = ZigExtractor()
         result = ext.module_docstring(str(zig_file))
         assert result == "Audio system for mixing.\nSupports 16 channels."
+
+
+class TestSymbolDetails:
+    def test_symbol_details_with_params(self, tmp_path):
+        zig_file = tmp_path / "audio.zig"
+        zig_file.write_text(
+            "/// Initialize the audio system with the given config.\n"
+            "/// The sample_rate controls audio quality.\n"
+            "/// Returns an error if the device cannot be opened.\n"
+            "pub fn init(sample_rate: u32, channels: u8) !void {\n"
+            "    // ...\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "init")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0]["name"] == "sample_rate"
+        assert result["params"][0]["type"] == "u32"
+        assert result["params"][0]["documented"] is True
+        assert result["params"][1]["name"] == "channels"
+        assert result["params"][1]["type"] == "u8"
+        assert result["params"][1]["documented"] is False
+        assert result["return_type"] == "!void"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_comptime(self, tmp_path):
+        zig_file = tmp_path / "container.zig"
+        zig_file.write_text(
+            "/// Generic container type.\n"
+            "/// The type T determines element storage.\n"
+            "pub fn Container(comptime T: type, allocator: std.mem.Allocator) !*Self {\n"
+            "    // ...\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "Container")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0]["name"] == "T"
+        assert result["params"][0]["type"] == "type"
+        assert result["params"][0]["documented"] is True
+        assert result["params"][1]["name"] == "allocator"
+        assert result["params"][1]["type"] == "std.mem.Allocator"
+        assert result["params"][1]["documented"] is False
+        assert result["return_type"] == "!*Self"
+        assert result["return_documented"] is False
+
+    def test_symbol_details_error_union_return(self, tmp_path):
+        zig_file = tmp_path / "stream.zig"
+        zig_file.write_text(
+            "/// Read bytes from the stream.\n"
+            "/// Returns the number of bytes actually read.\n"
+            "pub fn read(buffer: []u8, flags: u32) anyerror!usize {\n"
+            "    return 0;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "read")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["return_type"] == "anyerror!usize"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_unknown(self, tmp_path):
+        zig_file = tmp_path / "simple.zig"
+        zig_file.write_text(
+            "pub fn exists(x: u32) u32 {\n"
+            "    return x;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "nonexistent")
+        assert result is None
+
+    def test_symbol_details_no_doc(self, tmp_path):
+        zig_file = tmp_path / "nodoc.zig"
+        zig_file.write_text(
+            "pub fn noDoc(x: u32, y: u32) u32 {\n"
+            "    return x + y;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.symbol_details(str(zig_file), "noDoc")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0]["name"] == "x"
+        assert result["params"][0]["type"] == "u32"
+        assert result["params"][0]["documented"] is False
+        assert result["params"][1]["name"] == "y"
+        assert result["params"][1]["type"] == "u32"
+        assert result["params"][1]["documented"] is False
+        assert result["return_type"] == "u32"
+        assert result["return_documented"] is False
