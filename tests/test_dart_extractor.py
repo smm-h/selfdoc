@@ -428,6 +428,39 @@ class Foo {}
         # Should include declarations from dart files in the directory
         assert "## lib" in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified symbol."""
+        dart_file = tmp_path / "core.dart"
+        dart_file.write_text(
+            "/// Initializes the system.\n"
+            "void initialize() {}\n\n"
+            "/// Processes the input data.\n"
+            "String process(String data) => data;\n",
+            encoding="utf-8",
+        )
+        result = DartExtractor().extract(
+            "ref",
+            {"path": "core.dart", "target": "process"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### process" in result
+        assert "Processes the input" in result
+        assert "initialize" not in result
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        dart_file = tmp_path / "core.dart"
+        dart_file.write_text("void foo() {}\n", encoding="utf-8")
+        result = DartExtractor().extract(
+            "ref",
+            {"path": "core.dart", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 class TestProseDesc:
     def test_prose_desc_extracts_library_doc(self, tmp_path):

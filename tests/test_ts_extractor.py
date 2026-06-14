@@ -202,6 +202,43 @@ class TestModuleDirective:
         )
         assert "requires" in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified symbol."""
+        ts_file = tmp_path / "mod.ts"
+        ts_file.write_text(
+            '/** Adds two numbers. */\n'
+            'export function add(a: number, b: number): number { return a + b; }\n\n'
+            '/** Subtracts two numbers. */\n'
+            'export function subtract(a: number, b: number): number { return a - b; }\n',
+            encoding="utf-8",
+        )
+        result = TypeScriptExtractor().extract(
+            "ref",
+            {"path": "mod.ts", "target": "subtract"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### subtract" in result
+        assert "Subtracts" in result
+        assert "add" not in result.replace("subtract", "")  # "add" shouldn't appear except in "subtract"
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        """ref directive with nonexistent target returns error."""
+        ts_file = tmp_path / "mod.ts"
+        ts_file.write_text(
+            'export function foo(): void {}\n',
+            encoding="utf-8",
+        )
+        result = TypeScriptExtractor().extract(
+            "ref",
+            {"path": "mod.ts", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 # ---------------------------------------------------------------------------
 # :::test tests

@@ -160,6 +160,39 @@ class TestRef:
         assert "selfdoc:" in result
         assert "not found" in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified symbol."""
+        zig_file = tmp_path / "core.zig"
+        zig_file.write_text(
+            "/// Initializes the system.\n"
+            "pub fn init() void {}\n\n"
+            "/// Shuts down the system.\n"
+            "pub fn deinit() void {}\n",
+            encoding="utf-8",
+        )
+        result = ZigExtractor().extract(
+            "ref",
+            {"path": "core.zig", "target": "deinit"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### deinit" in result
+        assert "Shuts down" in result
+        assert "init" not in result.split("deinit")[0]  # "init" shouldn't appear before "deinit"
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        zig_file = tmp_path / "core.zig"
+        zig_file.write_text("pub fn init() void {}\n", encoding="utf-8")
+        result = ZigExtractor().extract(
+            "ref",
+            {"path": "core.zig", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 class TestProseDesc:
     def test_prose_desc_extracts_module_doc_only(self, zig_project):

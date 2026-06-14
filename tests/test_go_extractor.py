@@ -266,6 +266,44 @@ class TestModuleDirective:
         )
         assert "requires" in result
 
+    def test_ref_with_target(self, go_project, source_paths):
+        """ref directive with target renders only the specified symbol."""
+        result = GoExtractor().extract(
+            "ref",
+            {"path": "internal/commit", "target": "NewPipeline"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "### NewPipeline" in result
+        assert "creates a new Pipeline" in result
+        assert "Execute" not in result
+        assert "CommitError" not in result
+
+    def test_ref_with_target_method(self, go_project, source_paths):
+        """ref directive with target for a method uses dotted name."""
+        result = GoExtractor().extract(
+            "ref",
+            {"path": "internal/commit", "target": "Pipeline.Execute"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "### Pipeline.Execute" in result
+        assert "two-phase commit pipeline" in result
+        assert "NewPipeline" not in result
+
+    def test_ref_with_target_not_found(self, go_project, source_paths):
+        """ref directive with nonexistent target returns error."""
+        result = GoExtractor().extract(
+            "ref",
+            {"path": "internal/commit", "target": "NonExistent"},
+            [],
+            source_paths,
+            str(go_project),
+        )
+        assert "not found" in result
+
 
 # ---------------------------------------------------------------------------
 # :::test tests

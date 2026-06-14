@@ -639,6 +639,22 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
 
     # Extract all exported declarations with their JSDoc
     exports = _extract_exports(source)
+
+    if target:
+        matched = [e for e in exports if e["name"] == target]
+        if not matched:
+            return format_error(f"symbol '{target}' not found in '{path}'")
+        export = matched[0]
+        parts_t = []
+        parts_t.append(f"### {export['name']}")
+        parts_t.append("")
+        lang = "typescript" if filepath.endswith((".ts", ".tsx")) else "javascript"
+        parts_t.append(f"```{lang}\n{export['signature']}\n```")
+        if export["jsdoc"]:
+            parts_t.append("")
+            parts_t.append(_format_jsdoc_as_markdown(export["jsdoc"]))
+        return "\n".join(parts_t)
+
     for export in exports:
         parts.append("")
         parts.append(f"### {export['name']}")

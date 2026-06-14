@@ -609,19 +609,54 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
 
     blocks = _extract_script_blocks(source)
 
-    parts = []
-    parts.append(f"## {component_name}")
-
-    # Component-level doc
+    # Extract all data before rendering
     comp_doc = _extract_component_doc(source)
-    if comp_doc:
-        parts.append("")
-        parts.append(comp_doc)
-
-    # Props (try Svelte 5 first, fall back to legacy)
     props = _extract_props(blocks["instance"])
     if not props:
         props = _extract_legacy_props(blocks["instance"])
+    inst_exports = _extract_instance_exports(blocks["instance"])
+    mod_exports = _extract_module_exports(blocks["module"])
+
+    # Target filtering: render only the matched symbol
+    if target:
+        for prop in props:
+            if prop["name"] == target:
+                parts_t = []
+                parts_t.append(f"### {prop['name']}")
+                parts_t.append("")
+                row = [
+                    f"`{prop['name']}`",
+                    f"`{prop['type']}`" if prop["type"] else "",
+                    f"`{prop['default']}`" if prop["default"] else "",
+                    "Yes" if prop["bindable"] else "No",
+                ]
+                parts_t.append(render_markdown_table(
+                    ["Prop", "Type", "Default", "Bindable"], [row]
+                ))
+                return "\n".join(parts_t)
+        for exp in inst_exports:
+            if exp["name"] == target:
+                parts_t = []
+                parts_t.append(f"### {exp['name']}")
+                parts_t.append("")
+                parts_t.append(f"```typescript\n{exp['signature']}\n```")
+                return "\n".join(parts_t)
+        for exp in mod_exports:
+            if exp["name"] == target:
+                parts_t = []
+                parts_t.append(f"### {exp['name']}")
+                parts_t.append("")
+                parts_t.append(f"```typescript\n{exp['signature']}\n```")
+                return "\n".join(parts_t)
+        return format_error(f"symbol '{target}' not found in '{path}'")
+
+    # Full component reference rendering
+    parts = []
+    parts.append(f"## {component_name}")
+
+    if comp_doc:
+        parts.append("")
+        parts.append(comp_doc)
 
     if props:
         parts.append("")
@@ -640,8 +675,6 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
             ["Prop", "Type", "Default", "Bindable"], rows
         ))
 
-    # Instance exports
-    inst_exports = _extract_instance_exports(blocks["instance"])
     if inst_exports:
         parts.append("")
         parts.append("### Instance Exports")
@@ -651,8 +684,6 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
             parts.append("")
             parts.append(f"```typescript\n{exp['signature']}\n```")
 
-    # Module exports
-    mod_exports = _extract_module_exports(blocks["module"])
     if mod_exports:
         parts.append("")
         parts.append("### Module Exports")

@@ -1027,6 +1027,44 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
 
     comments = _parse_comments(source)
 
+    if target:
+        # Search all object types for the target
+        for t in tables:
+            if t["name"] == target:
+                desc = _lookup_comment(comments, "table", t["name"], t["schema"])
+                if desc:
+                    return f"### {t['name']}\n\n{desc}"
+                return f"### {t['name']}"
+        for v in views:
+            if v["name"] == target:
+                desc = _lookup_comment(comments, "view", v["name"], v["schema"])
+                if desc:
+                    return f"### {v['name']}\n\n{desc}"
+                return f"### {v['name']}"
+        for t in types:
+            if t["name"] == target:
+                desc = _lookup_comment(comments, "type", t["name"], t["schema"])
+                if t["kind"] == "enum":
+                    vals = ", ".join(t["values"])
+                    label = f"ENUM: {vals}"
+                else:
+                    fields_str = ", ".join(
+                        f"{f['name']} {f['type']}" for f in t["fields"]
+                    )
+                    label = f"COMPOSITE: {fields_str}"
+                parts_t = [f"### {t['name']}", "", label]
+                if desc:
+                    parts_t.append("")
+                    parts_t.append(desc)
+                return "\n".join(parts_t)
+        for f in functions:
+            if f["name"] == target:
+                desc = _lookup_comment(comments, "function", f["name"], f["schema"])
+                if desc:
+                    return f"### {f['name']}\n\n{desc}"
+                return f"### {f['name']}"
+        return format_error(f"symbol '{target}' not found in '{path}'")
+
     parts = []
     parts.append(f"## {os.path.basename(resolved)}")
 

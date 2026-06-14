@@ -495,6 +495,44 @@ class TestRef:
         assert "selfdoc:" in result
         assert "requires" in result
 
+    def test_ref_with_target_prop(self, tmp_path):
+        """ref directive with target for a prop renders only that prop."""
+        svelte_file = tmp_path / "Button.svelte"
+        svelte_file.write_text(
+            '<script lang="ts">\n'
+            '  let { label = "Click", disabled = false }: { label?: string; disabled?: boolean } = $props();\n'
+            '</script>\n'
+            '<button {disabled}>{label}</button>\n',
+            encoding="utf-8",
+        )
+        result = SvelteExtractor().extract(
+            "ref",
+            {"path": "Button.svelte", "target": "label"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### label" in result or "label" in result
+        assert "disabled" not in result
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        svelte_file = tmp_path / "Button.svelte"
+        svelte_file.write_text(
+            '<script>\n'
+            '  export let name = "world";\n'
+            '</script>\n'
+            '<p>Hello {name}</p>\n',
+            encoding="utf-8",
+        )
+        result = SvelteExtractor().extract(
+            "ref",
+            {"path": "Button.svelte", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 # ---------------------------------------------------------------------------
 # :::prose-desc handler

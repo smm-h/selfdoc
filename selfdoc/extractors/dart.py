@@ -1299,6 +1299,20 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
                 if d["name"] not in local_names:
                     declarations.append(d)
 
+    if target:
+        matched = [d for d in declarations if d["name"] == target]
+        if not matched:
+            return format_error(f"symbol '{target}' not found in '{path}'")
+        decl = matched[0]
+        parts_t = []
+        parts_t.append(f"### {decl['name']}")
+        parts_t.append("")
+        parts_t.append(f"```dart\n{decl['signature']}\n```")
+        if decl["doc"]:
+            parts_t.append("")
+            parts_t.append(_parse_dart_doc(decl["doc"]))
+        return "\n".join(parts_t)
+
     # Group by kind
     kind_order = ["class", "mixin", "enum", "extension_type", "typedef", "const", "var", "function"]
     for kind in kind_order:

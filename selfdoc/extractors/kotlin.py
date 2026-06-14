@@ -1055,6 +1055,20 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         source = file_contents[_filename]
         declarations.extend(_extract_pub_declarations(source))
 
+    if target:
+        matched = [d for d in declarations if d["name"] == target]
+        if not matched:
+            return format_error(f"symbol '{target}' not found in '{path}'")
+        decl = matched[0]
+        parts_t = []
+        parts_t.append(f"### {decl['name']}")
+        parts_t.append("")
+        parts_t.append(f"```kotlin\n{decl['signature']}\n```")
+        if decl["doc"]:
+            parts_t.append("")
+            parts_t.append(decl["doc"])
+        return "\n".join(parts_t)
+
     # Group by kind: types first, then functions, then properties
     kind_order = ["type", "func", "prop"]
     for kind in kind_order:

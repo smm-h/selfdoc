@@ -795,6 +795,48 @@ class TestRefHandler:
         assert "selfdoc:" in result
         assert "no CREATE objects" in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified object."""
+        sql_file = tmp_path / "schema.sql"
+        sql_file.write_text(
+            "CREATE TABLE users (\n"
+            "    id SERIAL PRIMARY KEY,\n"
+            "    name TEXT NOT NULL\n"
+            ");\n\n"
+            "CREATE TABLE orders (\n"
+            "    id SERIAL PRIMARY KEY,\n"
+            "    user_id INTEGER REFERENCES users(id)\n"
+            ");\n\n"
+            "COMMENT ON TABLE users IS 'User accounts';\n"
+            "COMMENT ON TABLE orders IS 'Customer orders';\n",
+            encoding="utf-8",
+        )
+        result = SqlExtractor().extract(
+            "ref",
+            {"path": "schema.sql", "target": "users"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "users" in result
+        assert "User accounts" in result
+        assert "orders" not in result
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        sql_file = tmp_path / "schema.sql"
+        sql_file.write_text(
+            "CREATE TABLE users (id SERIAL PRIMARY KEY);\n",
+            encoding="utf-8",
+        )
+        result = SqlExtractor().extract(
+            "ref",
+            {"path": "schema.sql", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 # ---------------------------------------------------------------------------
 # prose-desc handler

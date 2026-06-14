@@ -426,6 +426,39 @@ class TestRef:
         assert "internalSetup" not in result
         assert "protectedValue" not in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified symbol."""
+        kt_file = tmp_path / "Parser.kt"
+        kt_file.write_text(
+            "/**\n * Parses input strings.\n */\n"
+            "fun parse(input: String): Boolean = true\n\n"
+            "/**\n * Formats output.\n */\n"
+            "fun format(data: Any): String = data.toString()\n",
+            encoding="utf-8",
+        )
+        result = KotlinExtractor().extract(
+            "ref",
+            {"path": "Parser.kt", "target": "format"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### format" in result
+        assert "Formats output" in result
+        assert "parse" not in result
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        kt_file = tmp_path / "Parser.kt"
+        kt_file.write_text("fun foo() {}\n", encoding="utf-8")
+        result = KotlinExtractor().extract(
+            "ref",
+            {"path": "Parser.kt", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 class TestProseDesc:
     def test_prose_desc_handler(self, kotlin_project):

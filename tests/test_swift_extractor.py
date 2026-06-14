@@ -299,6 +299,41 @@ class TestRef:
         assert "internalHelper" not in result
         assert "defaultAccessHelper" not in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified symbol."""
+        swift_file = tmp_path / "Core.swift"
+        swift_file.write_text(
+            "/// Initializes the parser.\n"
+            "public func initialize() {}\n\n"
+            "/// Parses the input.\n"
+            "public func parse(_ input: String) -> Bool {\n"
+            "    return true\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        result = SwiftExtractor().extract(
+            "ref",
+            {"path": "Core.swift", "target": "parse"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### parse" in result
+        assert "Parses the input" in result
+        assert "initialize" not in result
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        swift_file = tmp_path / "Core.swift"
+        swift_file.write_text("public func foo() {}\n", encoding="utf-8")
+        result = SwiftExtractor().extract(
+            "ref",
+            {"path": "Core.swift", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 class TestProseDesc:
     def test_prose_desc_handler(self, swift_project):

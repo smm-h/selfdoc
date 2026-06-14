@@ -441,6 +441,20 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         source = file_contents[_filename]
         declarations.extend(_extract_pub_declarations(source))
 
+    if target:
+        matched = [d for d in declarations if d["name"] == target]
+        if not matched:
+            return format_error(f"symbol '{target}' not found in '{path}'")
+        decl = matched[0]
+        parts_t = []
+        parts_t.append(f"### {decl['name']}")
+        parts_t.append("")
+        parts_t.append(f"```zig\n{decl['signature']}\n```")
+        if decl["doc"]:
+            parts_t.append("")
+            parts_t.append(_format_docstring(decl["doc"]))
+        return "\n".join(parts_t)
+
     # Group by kind
     kind_order = ["const", "var", "fn"]
     for kind in kind_order:

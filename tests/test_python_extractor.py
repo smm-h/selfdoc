@@ -195,6 +195,49 @@ class Settings:
         assert "| `debug` | `bool` | `False` |" in result
         assert "_internal" not in result
 
+    def test_ref_with_target(self, tmp_path):
+        """ref directive with target renders only the specified symbol."""
+        src = tmp_path / "mymod.py"
+        src.write_text(
+            '"""Module docstring."""\n\n'
+            'def foo():\n'
+            '    """Foo doc."""\n'
+            '    pass\n\n'
+            'def bar():\n'
+            '    """Bar doc."""\n'
+            '    pass\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref",
+            {"path": "mymod.py", "target": "bar"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "### bar" in result
+        assert "Bar doc" in result
+        assert "foo" not in result
+        assert "Module docstring" not in result
+
+    def test_ref_with_target_not_found(self, tmp_path):
+        """ref directive with nonexistent target returns error."""
+        src = tmp_path / "mymod.py"
+        src.write_text(
+            'def foo():\n'
+            '    """Foo doc."""\n'
+            '    pass\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref",
+            {"path": "mymod.py", "target": "nonexistent"},
+            [],
+            [],
+            str(tmp_path),
+        )
+        assert "not found" in result
+
 
 # ---------------------------------------------------------------------------
 # :::test tests

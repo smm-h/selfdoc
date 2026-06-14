@@ -254,6 +254,21 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
     except SyntaxError as exc:
         return format_error(f"syntax error in '{path}': {exc}")
 
+    if target:
+        # Find the specific symbol
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.ClassDef) and node.name == target:
+                cls_md = _format_class(node)
+                if cls_md:
+                    return cls_md
+                return format_error(f"symbol '{target}' in '{path}' has no documentation")
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == target:
+                func_md = _format_function(node, heading_level=3)
+                if func_md:
+                    return func_md
+                return format_error(f"symbol '{target}' in '{path}' has no documentation")
+        return format_error(f"symbol '{target}' not found in '{path}'")
+
     # Determine display name from the dotted path
     module_name = path.replace("/", ".")
     if module_name.endswith(".py"):
