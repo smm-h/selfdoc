@@ -1,2 +1,3 @@
 {"commits":["f73481f2df6f0075e83169a6a652abb2a2de62cc"],"user_facing":false}
 {"commits":["2b9688731482633ec2b20d52d6818681ed34778e"],"user_facing":false}
+{"commits":["929adde63640ebd59e5021664c4bd7a9613932dd"],"user_facing":true,"description":"**Fixed.** TypeScript module-level JSDoc detection no longer misidentifies function-attached JSDoc as module documentation.","type":"fix"}
