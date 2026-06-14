@@ -1102,3 +1102,74 @@ class TestRegistration:
         from selfdoc.extractors import _DETECTION_ORDER
         for ext in _DETECTION_ORDER:
             assert ext.name != "sql"
+
+
+# ---------------------------------------------------------------------------
+# symbol_details
+# ---------------------------------------------------------------------------
+
+
+class TestSymbolDetails:
+    def test_symbol_details_function(self, tmp_path):
+        sql_file = tmp_path / "funcs.sql"
+        sql_file.write_text(
+            "CREATE OR REPLACE FUNCTION calculate_total(\n"
+            "    user_id INTEGER,\n"
+            "    IN amount NUMERIC,\n"
+            "    discount NUMERIC DEFAULT 0\n"
+            ") RETURNS NUMERIC\n"
+            "LANGUAGE plpgsql\n"
+            "AS $$\n"
+            "BEGIN\n"
+            "    RETURN amount - discount;\n"
+            "END;\n"
+            "$$;\n"
+            "\n"
+            "COMMENT ON FUNCTION calculate_total IS "
+            "'Calculate the total after discount.';\n",
+            encoding="utf-8",
+        )
+        ext = SqlExtractor()
+        details = ext.symbol_details(str(sql_file), "calculate_total")
+        assert details is not None
+
+        params = details["params"]
+        assert len(params) == 3
+
+        assert params[0]["name"] == "user_id"
+        assert params[0]["type"] == "INTEGER"
+        assert params[0]["documented"] is False
+
+        assert params[1]["name"] == "amount"
+        assert params[1]["type"] == "NUMERIC"
+        assert params[1]["documented"] is False
+
+        assert params[2]["name"] == "discount"
+        assert params[2]["type"] == "NUMERIC"
+        assert params[2]["documented"] is False
+
+        assert details["return_type"] == "NUMERIC"
+        assert details["return_documented"] is True
+
+    def test_symbol_details_table_returns_none(self, tmp_path):
+        sql_file = tmp_path / "tables.sql"
+        sql_file.write_text(
+            "CREATE TABLE users (\n"
+            "    id SERIAL PRIMARY KEY,\n"
+            "    name TEXT NOT NULL\n"
+            ");\n",
+            encoding="utf-8",
+        )
+        ext = SqlExtractor()
+        details = ext.symbol_details(str(sql_file), "users")
+        assert details is None
+
+    def test_symbol_details_unknown_returns_none(self, tmp_path):
+        sql_file = tmp_path / "any.sql"
+        sql_file.write_text(
+            "CREATE TABLE t (id serial);\n",
+            encoding="utf-8",
+        )
+        ext = SqlExtractor()
+        details = ext.symbol_details(str(sql_file), "nonexistent")
+        assert details is None

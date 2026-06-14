@@ -68,6 +68,22 @@ class SqlExtractor(BaseExtractor):
                 symbols.append(sym_name)
         return symbols
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Return parameter and return type details for a CREATE FUNCTION.
+
+        Returns None for non-function symbols (tables, views, types) or
+        if the symbol is not found.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        clean = _strip_sql_comments(source)
+        comments = _parse_comments(source)
+        return _function_symbol_details(clean, symbol_name, comments)
+
 
 # ---------------------------------------------------------------------------
 # Path resolution
@@ -718,6 +734,177 @@ def _parse_create_function(source):
                 "schema": schema,
             })
     return functions
+
+
+# ---------------------------------------------------------------------------
+# symbol_details for functions
+# ---------------------------------------------------------------------------
+
+# Mode keywords that can prefix a function parameter
+_PARAM_MODE_RE = re.compile(r"^(INOUT|IN|OUT)\b", re.IGNORECASE)
+
+# Keywords that terminate the RETURNS type clause
+_RETURNS_END_RE = re.compile(
+    r"\b(?:AS|LANGUAGE|BEGIN|IMMUTABLE|STABLE|VOLATILE|STRICT|"
+    r"SECURITY|COST|ROWS|SET|CALLED|RETURNS|PARALLEL)\b",
+    re.IGNORECASE,
+)
+
+
+def _function_symbol_details(clean_source, func_name, comments):
+    """Build a symbol_details dict for a CREATE FUNCTION.
+
+    Returns None if the function is not found in the source.
+    """
+    for m in _CREATE_FUNCTION_RE.finditer(clean_source):
+        matched_name = m.group(2)
+        if matched_name.lower() != func_name.lower():
+            continue
+
+        # Find the closing ) of the parameter list.
+        # m.end() is right after the opening (.
+        paren_start = m.end() - 1
+        depth = 0
+        close_paren = paren_start
+        for idx in range(paren_start, len(clean_source)):
+            if clean_source[idx] == "(":
+                depth += 1
+            elif clean_source[idx] == ")":
+                depth -= 1
+                if depth == 0:
+                    close_paren = idx
+                    break
+
+        # Parse parameters
+        params_text = clean_source[paren_start + 1 : close_paren]
+        params = _parse_function_params(params_text)
+
+        # Parse RETURNS clause
+        after_params = clean_source[close_paren + 1 :]
+        return_type = _parse_returns_clause(after_params)
+
+        # Check COMMENT ON FUNCTION for return_documented
+        return_documented = _has_function_comment(comments, func_name)
+
+        return {
+            "params": params,
+            "return_type": return_type,
+            "return_documented": return_documented,
+        }
+
+    return None
+
+
+def _parse_function_params(params_text):
+    """Parse a SQL function parameter list into a list of param dicts.
+
+    Each dict has {name, type, documented}. documented is always False
+    because SQL has no standard per-parameter documentation mechanism.
+    """
+    parts = _split_column_defs(params_text)
+    params = []
+
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+
+        # Strip optional IN/OUT/INOUT mode prefix
+        mode_match = _PARAM_MODE_RE.match(part)
+        if mode_match:
+            part = part[mode_match.end():].strip()
+
+        # Split into name and type
+        tokens = part.split()
+        if not tokens:
+            continue
+
+        param_name = tokens[0]
+
+        # Everything after the name is the type, up to DEFAULT
+        type_tokens = []
+        i = 1
+        while i < len(tokens):
+            if tokens[i].upper() == "DEFAULT":
+                break
+            type_tokens.append(tokens[i])
+            i += 1
+
+        param_type = " ".join(type_tokens) if type_tokens else None
+
+        params.append({
+            "name": param_name,
+            "type": param_type,
+            "documented": False,
+        })
+
+    return params
+
+
+def _parse_returns_clause(after_params):
+    """Extract the return type from text following the closing ) of params.
+
+    Looks for RETURNS <type> and stops at the next SQL keyword (AS, LANGUAGE,
+    BEGIN, etc.) or at $$ delimiter.
+    """
+    # Find RETURNS keyword
+    returns_match = re.search(r"\bRETURNS\s+", after_params, re.IGNORECASE)
+    if not returns_match:
+        return None
+
+    rest = after_params[returns_match.end():]
+
+    # Collect the type until we hit a terminator keyword or $$
+    type_tokens = []
+    i = 0
+    n = len(rest)
+
+    while i < n:
+        # Skip whitespace
+        while i < n and rest[i].isspace():
+            i += 1
+        if i >= n:
+            break
+
+        # Check for $$ (dollar-quote start)
+        if rest[i] == "$":
+            break
+
+        # Check for semicolon
+        if rest[i] == ";":
+            break
+
+        # Read a word
+        word_start = i
+        while i < n and not rest[i].isspace() and rest[i] not in "$;":
+            i += 1
+        word = rest[word_start:i]
+
+        if not word:
+            break
+
+        # Check if this word is a terminator keyword
+        if _RETURNS_END_RE.fullmatch(word):
+            break
+
+        type_tokens.append(word)
+
+    return " ".join(type_tokens) if type_tokens else None
+
+
+def _has_function_comment(comments, func_name):
+    """Check if there is a COMMENT ON FUNCTION for the given function name.
+
+    Tries both unqualified and all schema-qualified variants.
+    """
+    for (obj_type, obj_name), _ in comments.items():
+        if obj_type != "function":
+            continue
+        # obj_name could be "func_name" or "schema.func_name"
+        bare_name = obj_name.split(".")[-1] if "." in obj_name else obj_name
+        if bare_name.lower() == func_name.lower():
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
