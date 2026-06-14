@@ -166,7 +166,16 @@ class GoExtractor(BaseExtractor):
 
         file_path may be a directory (Go's resolve_path returns directories)
         or a single .go file. For directories, scans all non-test .go files.
+
+        Supports dotted names (e.g., "Server.Handle") to target a method
+        with a specific receiver type.
         """
+        # Dotted name: split into receiver type and method name
+        if "." in symbol_name:
+            type_name, method_name = symbol_name.rsplit(".", 1)
+        else:
+            type_name, method_name = None, symbol_name
+
         if os.path.isdir(file_path):
             try:
                 go_files = sorted(
@@ -191,12 +200,23 @@ class GoExtractor(BaseExtractor):
             lines = source.split("\n")
             for i, line in enumerate(lines):
                 stripped = line.strip()
-                # Match function/method declaration with the target name
-                if re.match(
-                    rf"^func\s+(?:\(.*?\)\s+)?{re.escape(symbol_name)}\s*\(",
-                    stripped,
-                ):
-                    return _go_symbol_details(lines, i)
+                if type_name is not None:
+                    # Dotted target: match method with specific receiver type
+                    m = re.match(
+                        r"^func\s+\(\s*\w+\s+\*?(\w+)\s*\)\s+"
+                        + re.escape(method_name)
+                        + r"\s*\(",
+                        stripped,
+                    )
+                    if m and m.group(1) == type_name:
+                        return _go_symbol_details(lines, i)
+                else:
+                    # Plain name: match any function/method with this name
+                    if re.match(
+                        rf"^func\s+(?:\(.*?\)\s+)?{re.escape(method_name)}\s*\(",
+                        stripped,
+                    ):
+                        return _go_symbol_details(lines, i)
 
         return None
 

@@ -747,3 +747,61 @@ class TestSymbolDetails:
         ext = GoExtractor()
         result = ext.symbol_details(pkg_dir, "DoesNotExist")
         assert result is None
+
+    def test_symbol_details_dotted_receiver_method(self, tmp_path):
+        """Dotted name 'Server.Handle' matches method with *Server receiver."""
+        source = """\
+package server
+
+// Server handles HTTP requests.
+type Server struct {
+    Addr string
+}
+
+// Handle processes an HTTP request.
+// Returns the response.
+func (s *Server) Handle(req Request) Response {
+    return Response{}
+}
+"""
+        pkg_dir = self._write_go_dir(tmp_path, source=source)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "Server.Handle")
+        assert result is not None
+        params = result["params"]
+        assert len(params) == 1
+        assert params[0]["name"] == "req"
+        assert params[0]["type"] == "Request"
+        assert result["return_type"] == "Response"
+        # Receiver 's' must not appear as a parameter
+        param_names = [p["name"] for p in params]
+        assert "s" not in param_names
+
+    def test_symbol_details_dotted_value_receiver(self, tmp_path):
+        """Dotted name works with value receivers (no pointer)."""
+        source = """\
+package math
+
+// Vec2 is a 2D vector.
+type Vec2 struct {
+    X, Y float64
+}
+
+// Length returns the magnitude of the vector.
+func (v Vec2) Length() float64 {
+    return 0
+}
+"""
+        pkg_dir = self._write_go_dir(tmp_path, source=source)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "Vec2.Length")
+        assert result is not None
+        assert result["params"] == []
+        assert result["return_type"] == "float64"
+
+    def test_symbol_details_dotted_wrong_type(self, tmp_path):
+        """Dotted name with wrong type returns None."""
+        pkg_dir = self._write_go_dir(tmp_path)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "WrongType.Handle")
+        assert result is None
