@@ -69,8 +69,8 @@ def _detect_main_module():
     return os.path.basename(os.path.abspath("."))
 
 
-@app.command("init", help="Initialize selfdoc in the current project")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+@app.command("init", help="Initialize selfdoc configuration and starter docs template")
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing generated config and template files")
 def _cmd_init(no_commit=False):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
@@ -154,10 +154,10 @@ def _cmd_init(no_commit=False):
     return 0
 
 
-@app.command("build", help="Build the documentation site")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
-@strictcli.flag("locale", type=str, default="", help="Build only this locale (e.g., 'en')")
-@strictcli.flag("version", type=str, default="", help="Build only this version (e.g., '1.0.0')")
+@app.command("build", help="Build the documentation site from templates and source code")
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing updated content hash tracking files")
+@strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
+@strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
 def _cmd_build(no_commit=False, locale="", version=""):
     """Build the documentation site."""
     from selfdoc.config import load_config
@@ -229,8 +229,8 @@ def _cmd_build(no_commit=False, locale="", version=""):
     return 0
 
 
-@app.command("serve", help="Serve the documentation site locally")
-@strictcli.flag("port", short="p", type=int, default=8000, help="Port to serve on (default: 8000)")
+@app.command("serve", help="Serve the documentation site locally with live reload")
+@strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
 def _cmd_serve(port=8000):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
@@ -378,7 +378,7 @@ def _cmd_serve(port=8000):
     return 0
 
 
-@app.command("deploy", help="Deploy the documentation site")
+@app.command("deploy", help="Deploy the built documentation site to the configured provider")
 def _cmd_deploy():
     """Deploy the documentation site."""
     from selfdoc.config import load_config
@@ -434,11 +434,11 @@ def _cmd_deploy():
 
 
 
-@app.command("check", help="Check documentation coverage and consistency")
+@app.command("check", help="Check documentation coverage, directive resolution, and lint rules")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
-@strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format (default: text)")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
-@strictcli.flag("dry-run", type=bool, help="Report staleness without writing hashes")
+@strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing updated content hash tracking files")
+@strictcli.flag("dry-run", type=bool, help="Report staleness without writing hash files to disk")
 def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, check_unified, filter_lints, print_results
@@ -543,7 +543,7 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
 
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing generated docs and root files")
 def _cmd_gen(no_commit=False):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
@@ -619,8 +619,8 @@ def _cmd_gen(no_commit=False):
     return 0
 
 
-@app.command("gen-data", help="Generate data files by running sandboxed scripts")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing changed files")
+@app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap")
+@strictcli.flag("no-commit", type=bool, help="Skip auto-committing generated data output files to git")
 def _cmd_gen_data(no_commit=False):
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config

@@ -38,17 +38,17 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
       "name": "init",
-      "help": "Initialize selfdoc in the current project",
+      "help": "Initialize selfdoc configuration and starter docs template",
       "flags": [
         {
           "name": "no-commit",
           "type": "bool",
-          "help": "Skip auto-committing changed files",
+          "help": "Skip auto-committing generated config and template files",
           "default": false,
           "negatable": true
         }
@@ -56,37 +56,37 @@
     },
     "build": {
       "name": "build",
-      "help": "Build the documentation site",
+      "help": "Build the documentation site from templates and source code",
       "flags": [
         {
           "name": "no-commit",
           "type": "bool",
-          "help": "Skip auto-committing changed files",
+          "help": "Skip auto-committing updated content hash tracking files",
           "default": false,
           "negatable": true
         },
         {
           "name": "locale",
           "type": "str",
-          "help": "Build only this locale (e.g., 'en')",
+          "help": "Build only the specified locale instead of all (e.g., 'en')",
           "default": ""
         },
         {
           "name": "version",
           "type": "str",
-          "help": "Build only this version (e.g., '1.0.0')",
+          "help": "Build only the specified version instead of all (e.g., '1.0.0')",
           "default": ""
         }
       ]
     },
     "serve": {
       "name": "serve",
-      "help": "Serve the documentation site locally",
+      "help": "Serve the documentation site locally with live reload",
       "flags": [
         {
           "name": "port",
           "type": "int",
-          "help": "Port to serve on (default: 8000)",
+          "help": "HTTP port number to serve on (default: 8000, e.g., 3000)",
           "short": "p",
           "default": 8000
         }
@@ -94,11 +94,11 @@
     },
     "deploy": {
       "name": "deploy",
-      "help": "Deploy the documentation site"
+      "help": "Deploy the built documentation site to the configured provider"
     },
     "check": {
       "name": "check",
-      "help": "Check documentation coverage and consistency",
+      "help": "Check documentation coverage, directive resolution, and lint rules",
       "flags": [
         {
           "name": "ignore",
@@ -109,7 +109,7 @@
         {
           "name": "format",
           "type": "str",
-          "help": "Output format (default: text)",
+          "help": "Output format for check results: text (human) or json (machine)",
           "default": "text",
           "choices": [
             "text",
@@ -119,14 +119,14 @@
         {
           "name": "no-commit",
           "type": "bool",
-          "help": "Skip auto-committing changed files",
+          "help": "Skip auto-committing updated content hash tracking files",
           "default": false,
           "negatable": true
         },
         {
           "name": "dry-run",
           "type": "bool",
-          "help": "Report staleness without writing hashes",
+          "help": "Report staleness without writing hash files to disk",
           "default": false,
           "negatable": true
         }
@@ -139,7 +139,7 @@
         {
           "name": "no-commit",
           "type": "bool",
-          "help": "Skip auto-committing changed files",
+          "help": "Skip auto-committing generated docs and root files",
           "default": false,
           "negatable": true
         }
@@ -147,12 +147,12 @@
     },
     "gen-data": {
       "name": "gen-data",
-      "help": "Generate data files by running sandboxed scripts",
+      "help": "Generate data files by running sandboxed scripts via bwrap",
       "flags": [
         {
           "name": "no-commit",
           "type": "bool",
-          "help": "Skip auto-committing changed files",
+          "help": "Skip auto-committing generated data output files to git",
           "default": false,
           "negatable": true
         }
