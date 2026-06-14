@@ -1,0 +1,8 @@
+# Version bump type: patch, minor, or major
+bump = "patch"
+# Short description of this release (required)
+description = "Remove version_source config field (redundant with rlsbl)."
+# Optional context explaining why these changes were made
+context = "version_source was added in v0.16.0 to read the project version from manifest files. Investigation revealed rlsbl already bumps selfdoc.json during releases via _bump_selfdoc_version, making version_source redundant. Reverted to reduce complexity."
+include = ["npm", "pypi"]
+exclude = []
