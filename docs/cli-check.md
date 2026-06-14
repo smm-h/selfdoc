@@ -16,6 +16,6 @@ Check documentation coverage, directive resolution, and lint rules
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
 | `--ignore` |  | str |  |  | Comma-separated SEO codes to suppress (e.g., SEO007,SEO008) |
-| `--format` |  | str | text |  | Output format for check results (text or json) |
+| `--format` |  | str | text |  | Output format for check results: text (human) or json (machine) |
 | `--no-commit` |  | bool |  |  | Skip auto-committing updated content hash tracking files |
 | `--dry-run` |  | bool |  |  | Report staleness without writing hash files to disk |
