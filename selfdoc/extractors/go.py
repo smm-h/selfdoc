@@ -161,6 +161,259 @@ class GoExtractor(BaseExtractor):
 
         return symbols
 
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract parameter and return type details for a Go function/method.
+
+        file_path may be a directory (Go's resolve_path returns directories)
+        or a single .go file. For directories, scans all non-test .go files.
+        """
+        if os.path.isdir(file_path):
+            try:
+                go_files = sorted(
+                    os.path.join(file_path, f)
+                    for f in os.listdir(file_path)
+                    if f.endswith(".go") and not f.endswith("_test.go")
+                )
+            except OSError:
+                return None
+        elif os.path.isfile(file_path):
+            go_files = [file_path]
+        else:
+            return None
+
+        for gf in go_files:
+            try:
+                with open(gf, "r", encoding="utf-8") as f:
+                    source = f.read()
+            except (OSError, UnicodeDecodeError):
+                continue
+
+            lines = source.split("\n")
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                # Match function/method declaration with the target name
+                if re.match(
+                    rf"^func\s+(?:\(.*?\)\s+)?{re.escape(symbol_name)}\s*\(",
+                    stripped,
+                ):
+                    return _go_symbol_details(lines, i)
+
+        return None
+
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _go_symbol_details(lines, decl_line_idx):
+    """Build a symbol_details dict from a Go function declaration line.
+
+    Parses the function signature for parameters and return type,
+    and checks the doc comment for parameter/return documentation.
+    """
+    # Collect the full signature (may span multiple lines)
+    sig = lines[decl_line_idx].strip()
+    # If the signature doesn't contain the opening brace or a closing paren
+    # for the return type, it may span multiple lines
+    j = decl_line_idx + 1
+    while j < len(lines) and "{" not in sig and not sig.rstrip().endswith(")"):
+        sig += " " + lines[j].strip()
+        j += 1
+    # Include one more line if we still haven't found the opening brace
+    if j < len(lines) and "{" not in sig:
+        sig += " " + lines[j].strip()
+
+    # Collect doc comment above
+    doc_text = _collect_comment_block_above(lines, decl_line_idx)
+
+    # Strip receiver: func (x *Type) Name(...) -> find Name(
+    # We need to find the parameter list, skipping the receiver
+    m = re.match(
+        r"^func\s+"
+        r"(?:\([^)]*\)\s+)?"  # optional receiver
+        r"\w+\s*"             # function name
+        r"\((.*)",            # opening paren + rest
+        sig,
+    )
+    if not m:
+        return {"params": [], "return_type": None, "return_documented": False}
+
+    rest = m.group(1)
+
+    # Find the matching close paren for the param list
+    param_str, after_params = _split_at_matching_paren(rest)
+
+    # Parse parameters
+    params = _parse_go_params(param_str)
+
+    # Check documentation for each param
+    for p in params:
+        p["documented"] = bool(
+            doc_text and re.search(rf"\b{re.escape(p['name'])}\b", doc_text)
+        )
+
+    # Parse return type from after_params
+    return_type = _extract_go_return_type(after_params)
+
+    # Check if return is documented
+    return_documented = bool(
+        doc_text and re.search(r"\breturn", doc_text, re.IGNORECASE)
+    )
+
+    return {
+        "params": params,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
+
+def _split_at_matching_paren(s):
+    """Split string at the matching closing paren.
+
+    Given the content after the opening '(' of the param list,
+    returns (param_content, rest_after_close_paren).
+    """
+    depth = 1
+    for i, ch in enumerate(s):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return s[:i], s[i + 1:]
+    return s, ""
+
+
+def _parse_go_params(param_str):
+    """Parse a Go parameter list string into a list of param dicts.
+
+    Handles grouped params (a, b int), variadic (...Type),
+    pointer types (*Type), and qualified types (pkg.Type).
+    """
+    param_str = param_str.strip()
+    if not param_str:
+        return []
+
+    # Split on commas, respecting parentheses depth (for func types)
+    segments = _split_go_params(param_str)
+
+    # Parse each segment into (names, type_str) pairs
+    # Process right-to-left to propagate types for grouped params
+    parsed = []
+    for seg in segments:
+        seg = seg.strip()
+        if not seg:
+            continue
+        # Try to split into name + type
+        name, type_str = _parse_go_param_segment(seg)
+        parsed.append((name, type_str))
+
+    # Right-to-left type propagation for grouped params
+    # e.g., "a, b int, sep string" -> segments: ["a", "b int", "sep string"]
+    # "a" has no type, "b int" has type "int", so "a" gets "int"
+    current_type = None
+    for i in range(len(parsed) - 1, -1, -1):
+        name, type_str = parsed[i]
+        if type_str is not None:
+            current_type = type_str
+        else:
+            type_str = current_type
+        parsed[i] = (name, type_str)
+
+    return [
+        {"name": name, "type": type_str}
+        for name, type_str in parsed
+    ]
+
+
+def _split_go_params(param_str):
+    """Split a Go parameter string by commas, respecting parentheses."""
+    segments = []
+    depth = 0
+    current = []
+    for ch in param_str:
+        if ch == "(":
+            depth += 1
+            current.append(ch)
+        elif ch == ")":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            segments.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        segments.append("".join(current))
+    return segments
+
+
+def _parse_go_param_segment(seg):
+    """Parse a single Go parameter segment into (name, type_str | None).
+
+    A segment is either:
+    - "name Type" (has both) -> ("name", "Type")
+    - "name" (type comes from next group) -> ("name", None)
+    - "name ...Type" (variadic) -> ("name", "...Type")
+    """
+    seg = seg.strip()
+    # Variadic: "name ...Type"
+    m = re.match(r"^(\w+)\s+(\.\.\.[\w.*\[\]]+)$", seg)
+    if m:
+        return m.group(1), m.group(2)
+
+    # "name Type" where Type can be *pkg.Type, []Type, map[K]V, func(...), etc.
+    # Strategy: first token is the name, rest is the type
+    parts = seg.split(None, 1)
+    if len(parts) == 2:
+        name_candidate, type_candidate = parts
+        # Verify the first part looks like a Go identifier (not a type)
+        # Types start with *, [, map, func, chan, interface, struct, or uppercase
+        # Names are lowercase identifiers
+        if re.match(r"^[a-z_]\w*$", name_candidate):
+            return name_candidate, type_candidate
+        # If the whole thing looks like a single type (unnamed param),
+        # this shouldn't happen for exported functions normally
+        return name_candidate, type_candidate
+
+    # Single token: just a name (type comes from the next group)
+    return seg, None
+
+
+def _extract_go_return_type(after_params):
+    """Extract the return type from the text after the param closing paren.
+
+    Examples:
+    - " int {" -> "int"
+    - " (int, error) {" -> "(int, error)"
+    - " {" -> None (no return type)
+    - "" -> None
+    """
+    s = after_params.strip()
+    if not s or s.startswith("{"):
+        return None
+
+    # Multiple/named returns: (...)
+    if s.startswith("("):
+        # Find matching close paren
+        depth = 0
+        for i, ch in enumerate(s):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    return s[: i + 1]
+        return None
+
+    # Single return type: everything before '{'
+    brace_idx = s.find("{")
+    if brace_idx >= 0:
+        return s[:brace_idx].strip() or None
+    return s.strip() or None
+
+
 # ---------------------------------------------------------------------------
 # :::module
 # ---------------------------------------------------------------------------

@@ -649,3 +649,101 @@ def test_module_docstring_from_doc_go(tmp_path):
     ext = GoExtractor()
     result = ext.module_docstring(str(pkg_dir))
     assert result == "Package mypkg provides utilities."
+
+
+# ---------------------------------------------------------------------------
+# symbol_details
+# ---------------------------------------------------------------------------
+
+
+_SYMBOL_DETAILS_GO_SOURCE = """\
+package server
+
+// Merge combines two values with a separator.
+// The a and b values are concatenated using sep.
+func Merge(a, b int, sep string) string {
+    return ""
+}
+
+// Handle processes an HTTP request.
+// Returns the response status code.
+func (s *Server) Handle(req *http.Request) (int, error) {
+    return 200, nil
+}
+
+// Printf formats and prints.
+func Printf(format string, args ...interface{}) {
+}
+
+// NoDoc has no documentation.
+func NoDoc(x int) {
+}
+"""
+
+
+class TestSymbolDetails:
+    """Tests for GoExtractor.symbol_details."""
+
+    def _write_go_dir(self, tmp_path, source=_SYMBOL_DETAILS_GO_SOURCE):
+        """Create a Go package directory with source file."""
+        pkg_dir = os.path.join(tmp_path, "pkg")
+        os.makedirs(pkg_dir, exist_ok=True)
+        with open(os.path.join(pkg_dir, "server.go"), "w", encoding="utf-8") as f:
+            f.write(source)
+        return pkg_dir
+
+    def test_symbol_details_grouped_params(self, tmp_path):
+        """Grouped params like 'a, b int' give both a and b type int."""
+        pkg_dir = self._write_go_dir(tmp_path)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "Merge")
+        assert result is not None
+        params = result["params"]
+        assert len(params) == 3
+        assert params[0] == {"name": "a", "type": "int", "documented": True}
+        assert params[1] == {"name": "b", "type": "int", "documented": True}
+        assert params[2] == {"name": "sep", "type": "string", "documented": True}
+        assert result["return_type"] == "string"
+
+    def test_symbol_details_receiver_excluded(self, tmp_path):
+        """Method receiver (s *Server) is not included in params."""
+        pkg_dir = self._write_go_dir(tmp_path)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "Handle")
+        assert result is not None
+        params = result["params"]
+        assert len(params) == 1
+        assert params[0]["name"] == "req"
+        assert params[0]["type"] == "*http.Request"
+        # 's' should NOT be in params
+        param_names = [p["name"] for p in params]
+        assert "s" not in param_names
+
+    def test_symbol_details_variadic(self, tmp_path):
+        """Variadic param 'args ...interface{}' has type '...interface{}'."""
+        pkg_dir = self._write_go_dir(tmp_path)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "Printf")
+        assert result is not None
+        params = result["params"]
+        assert len(params) == 2
+        # "format" does not appear as a standalone word in "Printf formats and prints."
+        assert params[0] == {"name": "format", "type": "string", "documented": False}
+        assert params[1]["name"] == "args"
+        assert params[1]["type"] == "...interface{}"
+
+    def test_symbol_details_multiple_returns(self, tmp_path):
+        """Multiple return values are captured as '(int, error)'."""
+        pkg_dir = self._write_go_dir(tmp_path)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "Handle")
+        assert result is not None
+        assert result["return_type"] == "(int, error)"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_unknown(self, tmp_path):
+        """Unknown symbol returns None."""
+        pkg_dir = self._write_go_dir(tmp_path)
+        ext = GoExtractor()
+        result = ext.symbol_details(pkg_dir, "DoesNotExist")
+        assert result is None
