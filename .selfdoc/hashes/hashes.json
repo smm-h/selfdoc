@@ -68,7 +68,7 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/check-guide.md": {
-    "content": "43838477ccef70192ca8e7ed3e5f741cc4c06d791cf4aacb96146abfd7fda386",
+    "content": "c1c370bc9ef1073132bd71f4455b2b6e9165d99210d158129552f4cc273010cf",
     "description": "597e4a547ca9b61b89dd3548380992cd96548e42da7558f5557321cf6ab07814"
   },
   "en/cli-build.md": {
@@ -132,7 +132,7 @@
     "description": "6464fca42fdb52aaa26b9f9e280835b324810beb538bc7d1bfb5d914da1a8ae0"
   },
   "en/gen-data-guide.md": {
-    "content": "b3cfb9c99cb750d16457bf5100fecdd69b1d1069600ecab0e7ccb25158f5c201",
+    "content": "48454682401bb0406a3c12bfdfd9a7adb6dff3339c13113c10bccc668a9424b8",
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
@@ -185,7 +185,7 @@
   },
   "en/selfdoc-_version.md": {
     "content": "06889d5c564b2216ac2e489210e77d3f4ef1781bb4d156899f8c2edd03f943ae",
-    "description": "0e3385677344a8b1e0547611a2b3bfa1b1763001dfb7255a3df3596e1038afb9",
+    "description": "d2d33974045ebfce7993f4b544f918b965686cdbc6f7fd3dec6d10456b66cc67",
     "source_docstring": "13e8c576286ae3ce7649331f168566669a7397454b03036cc21b6b399fec391f"
   },
   "en/selfdoc-build.md": {
@@ -255,7 +255,7 @@
   },
   "en/selfdoc-extractors-svelte.md": {
     "content": "17376f202871e5acf71c5349e3eedbb65ecab4240c6ead7717aaad15b4e1116d",
-    "description": "a7a30ccfcada677d79ad736ebcc568b5e508b90f288f782f079048a689ea5a1f",
+    "description": "5cde86107272a5a9d38bc868629498d8d12f452aad2ac1282e9605c4d63f7b8a",
     "source_docstring": "fb1b5242436bd98dc6b97340803d377f8b4978c43fbb871b8fd3c30fd88e93d2"
   },
   "en/selfdoc-extractors-swift.md": {
