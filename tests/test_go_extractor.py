@@ -629,3 +629,23 @@ class TestExcludeSupport:
         )
         assert "server.host" in result
         assert "logging" not in result
+
+
+# ---------------------------------------------------------------------------
+# module_docstring
+# ---------------------------------------------------------------------------
+
+
+def test_module_docstring_from_doc_go(tmp_path):
+    """module_docstring extracts package doc from doc.go in a Go package directory."""
+    pkg_dir = os.path.join(tmp_path, "mypkg")
+    os.makedirs(pkg_dir)
+    # doc.go has the package documentation
+    with open(os.path.join(pkg_dir, "doc.go"), "w", encoding="utf-8") as f:
+        f.write("// Package mypkg provides utilities.\npackage mypkg\n")
+    # main.go has code but no doc
+    with open(os.path.join(pkg_dir, "main.go"), "w", encoding="utf-8") as f:
+        f.write("package mypkg\n\nfunc Hello() string { return \"hello\" }\n")
+    ext = GoExtractor()
+    result = ext.module_docstring(str(pkg_dir))
+    assert result == "Package mypkg provides utilities."

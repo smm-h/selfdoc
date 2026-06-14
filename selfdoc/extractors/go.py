@@ -46,6 +46,36 @@ class GoExtractor(BaseExtractor):
     def file_extensions(self) -> list[str]:
         return [".go"]
 
+    def module_docstring(self, path: str) -> str:
+        """Extract package-level doc comment from a Go package.
+
+        path may be a directory (Go's resolve_path returns directories)
+        or a single .go file. For directories, reads all non-test .go
+        files and passes them to _extract_package_doc.
+        """
+        if os.path.isdir(path):
+            pkg_dir = path
+        elif os.path.isfile(path):
+            pkg_dir = os.path.dirname(path)
+        else:
+            return ""
+        file_contents = {}
+        try:
+            for name in os.listdir(pkg_dir):
+                if name.endswith(".go") and not name.endswith("_test.go"):
+                    full = os.path.join(pkg_dir, name)
+                    try:
+                        with open(full, "r", encoding="utf-8") as f:
+                            file_contents[name] = f.read()
+                    except (OSError, UnicodeDecodeError):
+                        continue
+        except OSError:
+            return ""
+        if not file_contents:
+            return ""
+        _pkg_name, doc = _extract_package_doc(file_contents)
+        return doc
+
     def public_symbols(self, file_path: str) -> list[str]:
         """Extract exported (capitalized) symbols from a Go source file.
 
