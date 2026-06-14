@@ -5,7 +5,6 @@ When a page's content changes but its description stays the same,
 the description is considered "stale" and check will report an error.
 """
 
-import ast
 import hashlib
 import json
 import os
@@ -27,39 +26,24 @@ def compute_description_hash(description: str) -> str:
     return hashlib.sha256(description.encode("utf-8")).hexdigest()
 
 
-def extract_module_docstring(file_path: str, language: str) -> str:
-    """Extract the module-level docstring from a source file.
-
-    Currently supports Python (via ast.get_docstring). Other languages
-    return empty string and can be added later.
-    """
-    if language != "python":
-        return ""
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError):
-        return ""
-    try:
-        tree = ast.parse(source, filename=file_path)
-    except SyntaxError:
-        return ""
-    return ast.get_docstring(tree) or ""
+def extract_module_docstring(path: str, extractor: object) -> str:
+    """Extract the module-level docstring from a source file via its extractor."""
+    return extractor.module_docstring(path)
 
 
 def compute_source_docstring_hash(
-    source_files: list[tuple[str, str]],
+    source_files: list[tuple[str, object]],
 ) -> str | None:
     """Compute SHA-256 hash of concatenated module docstrings from source files.
 
     Args:
-        source_files: List of (file_path, language) tuples.
+        source_files: List of (file_path, extractor) tuples.
 
     Returns:
         Hash string, or None if no docstrings were extracted.
     """
     sorted_files = sorted(source_files, key=lambda x: x[0])
-    docstrings = [extract_module_docstring(fp, lang) for fp, lang in sorted_files]
+    docstrings = [extract_module_docstring(fp, ext) for fp, ext in sorted_files]
     if not any(docstrings):
         return None
     combined = "\n".join(docstrings)
@@ -216,8 +200,8 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None):
                 resolved_path = source_entry.extractor.resolve_path(
                     path_arg, [source_entry.path], base_dir,
                 )
-                if resolved_path is not None and os.path.isfile(resolved_path):
-                    source_files.append((resolved_path, source_entry.language))
+                if resolved_path is not None and (os.path.isfile(resolved_path) or os.path.isdir(resolved_path)):
+                    source_files.append((resolved_path, source_entry.extractor))
             if not source_files:
                 continue
             sd_hash = compute_source_docstring_hash(source_files)

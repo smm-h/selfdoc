@@ -95,6 +95,19 @@ class PythonExtractor(BaseExtractor):
                     symbols.append(node.name)
         return symbols
 
+    def module_docstring(self, path: str) -> str:
+        """Extract the module-level docstring from a Python file."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return ""
+        try:
+            tree = ast.parse(source, filename=path)
+        except SyntaxError:
+            return ""
+        return ast.get_docstring(tree) or ""
+
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
         """Extract detailed parameter and return info for a symbol."""
         try:

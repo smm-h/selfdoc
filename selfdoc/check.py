@@ -1055,8 +1055,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         if details is None:
             continue
         for param in details["params"]:
-            if param["name"] in ("self", "cls"):
-                continue
             if not param["documented"]:
                 results.append(LintResult(
                     file=rd.file,

@@ -176,6 +176,9 @@ class BaseExtractor:
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
         return None
 
+    def module_docstring(self, path: str) -> str:
+        return ""
+
 
 class StubExtractor(BaseExtractor):
     """Stub extractor for unsupported languages.

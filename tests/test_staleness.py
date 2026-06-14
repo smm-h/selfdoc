@@ -5,6 +5,7 @@ import os
 
 import pytest
 
+from selfdoc.extractors.python import PythonExtractor
 from selfdoc.staleness import (
     check_drift,
     check_staleness,
@@ -473,7 +474,7 @@ def test_extract_module_docstring_python(tmp_path):
     py_file = os.path.join(tmp_path, "mod.py")
     with open(py_file, "w", encoding="utf-8") as f:
         f.write('"""This is the module docstring."""\n\ndef foo(): pass\n')
-    result = extract_module_docstring(py_file, "python")
+    result = extract_module_docstring(py_file, PythonExtractor())
     assert result == "This is the module docstring."
 
 
@@ -482,7 +483,7 @@ def test_extract_module_docstring_python_no_docstring(tmp_path):
     py_file = os.path.join(tmp_path, "mod.py")
     with open(py_file, "w", encoding="utf-8") as f:
         f.write("def foo(): pass\n")
-    result = extract_module_docstring(py_file, "python")
+    result = extract_module_docstring(py_file, PythonExtractor())
     assert result == ""
 
 
@@ -491,21 +492,21 @@ def test_extract_module_docstring_python_syntax_error(tmp_path):
     py_file = os.path.join(tmp_path, "bad.py")
     with open(py_file, "w", encoding="utf-8") as f:
         f.write("def broken(\n")
-    result = extract_module_docstring(py_file, "python")
+    result = extract_module_docstring(py_file, PythonExtractor())
     assert result == ""
 
 
 def test_extract_module_docstring_nonexistent_file():
     """Returns empty string for a nonexistent file."""
-    result = extract_module_docstring("/nonexistent/path.py", "python")
+    result = extract_module_docstring("/nonexistent/path.py", PythonExtractor())
     assert result == ""
 
 
-def test_extract_module_docstring_non_python():
-    """Returns empty string for non-Python languages."""
-    result = extract_module_docstring("whatever.go", "go")
-    assert result == ""
-    result = extract_module_docstring("whatever.ts", "typescript")
+def test_extract_module_docstring_base_extractor():
+    """Returns empty string for base extractor (no language-specific logic)."""
+    from selfdoc.extractors.base import BaseExtractor
+    ext = BaseExtractor()
+    result = extract_module_docstring("whatever.go", ext)
     assert result == ""
 
 
@@ -520,7 +521,7 @@ def test_compute_source_docstring_hash_with_docstrings(tmp_path):
         f.write('"""Module A."""\n')
     with open(f2, "w") as f:
         f.write('"""Module B."""\n')
-    result = compute_source_docstring_hash([(f1, "python"), (f2, "python")])
+    result = compute_source_docstring_hash([(f1, PythonExtractor()), (f2, PythonExtractor())])
     assert result is not None
     assert len(result) == 64
 
@@ -530,7 +531,7 @@ def test_compute_source_docstring_hash_no_docstrings(tmp_path):
     f1 = os.path.join(tmp_path, "a.py")
     with open(f1, "w") as f:
         f.write("x = 1\n")
-    result = compute_source_docstring_hash([(f1, "python")])
+    result = compute_source_docstring_hash([(f1, PythonExtractor())])
     assert result is None
 
 
@@ -542,17 +543,18 @@ def test_compute_source_docstring_hash_sorted_determinism(tmp_path):
         f.write('"""A."""\n')
     with open(f2, "w") as f:
         f.write('"""B."""\n')
-    h1 = compute_source_docstring_hash([(f1, "python"), (f2, "python")])
-    h2 = compute_source_docstring_hash([(f2, "python"), (f1, "python")])
+    h1 = compute_source_docstring_hash([(f1, PythonExtractor()), (f2, PythonExtractor())])
+    h2 = compute_source_docstring_hash([(f2, PythonExtractor()), (f1, PythonExtractor())])
     assert h1 == h2
 
 
-def test_compute_source_docstring_hash_non_python_skipped(tmp_path):
-    """Non-Python files contribute empty strings; if all empty, returns None."""
+def test_compute_source_docstring_hash_base_extractor_skipped(tmp_path):
+    """Base extractor contributes empty strings; if all empty, returns None."""
+    from selfdoc.extractors.base import BaseExtractor
     f1 = os.path.join(tmp_path, "main.go")
     with open(f1, "w") as f:
         f.write("package main\n")
-    result = compute_source_docstring_hash([(f1, "go")])
+    result = compute_source_docstring_hash([(f1, BaseExtractor())])
     assert result is None
 
 
