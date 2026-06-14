@@ -2,3 +2,4 @@
 {"commits":["b90365ac64791bff5db22162dd90a40a53b0ad20"],"user_facing":false}
 {"commits":["417c23ad7f6213a069b10eb2199da98a823d6c6d"],"user_facing":false}
 {"commits":["481cd2e14be8c27dc1e29064237327689dd8ae0c"],"user_facing":true,"description":"**Breaking.** Handler functions now receive path and target as separate arguments instead of a combined string.","type":"breaking"}
+{"commits":["8bb81ced287b1db6b2e42e2c3bbf6f722da6efa0"],"user_facing":true,"description":"**Fix.** table-commands directive now correctly joins path attribute with base_dir for monorepo sub-project schema lookup.","type":"fix"}
