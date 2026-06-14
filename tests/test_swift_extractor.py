@@ -420,3 +420,18 @@ class TestResolvePath:
         result = ext.resolve_path("Sources/Parser", [], str(swift_project))
         assert result is not None
         assert result.endswith("Parser.swift")
+
+
+class TestModuleDocstring:
+    def test_module_docstring(self, tmp_path):
+        swift_file = tmp_path / "Mod.swift"
+        swift_file.write_text(
+            "/// Parser module for source code.\n"
+            "/// Handles incremental parsing.\n"
+            "\n"
+            "import Foundation\n",
+            encoding="utf-8",
+        )
+        ext = SwiftExtractor()
+        result = ext.module_docstring(str(swift_file))
+        assert result == "Parser module for source code.\nHandles incremental parsing."

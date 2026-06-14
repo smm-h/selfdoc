@@ -554,3 +554,20 @@ class TestResolvePath:
         )
         assert result is not None
         assert result.endswith("Parser.kt")
+
+
+class TestModuleDocstring:
+    def test_module_docstring(self, tmp_path):
+        kt_file = tmp_path / "Mod.kt"
+        kt_file.write_text(
+            "/**\n"
+            " * Parser module for Kotlin sources.\n"
+            " * Handles incremental parsing.\n"
+            " */\n"
+            "\n"
+            "package com.example\n",
+            encoding="utf-8",
+        )
+        ext = KotlinExtractor()
+        result = ext.module_docstring(str(kt_file))
+        assert result == "Parser module for Kotlin sources.\nHandles incremental parsing."

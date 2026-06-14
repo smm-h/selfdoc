@@ -92,6 +92,14 @@ class ZigExtractor(BaseExtractor):
 
         return symbols
 
+    def module_docstring(self, path: str) -> str:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return ""
+        return _extract_module_doc(source)
+
 
 # ---------------------------------------------------------------------------
 # Path resolution

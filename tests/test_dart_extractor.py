@@ -1154,3 +1154,17 @@ class Generated2 {}
         assert "RealClass" in symbols
         assert "Generated1" not in symbols
         assert "Generated2" not in symbols
+
+
+class TestModuleDocstring:
+    def test_module_docstring(self, tmp_path):
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// The main library for my_package.\n"
+            "/// Provides utilities for parsing.\n"
+            "library my_package;\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.module_docstring(str(dart_file))
+        assert result == "The main library for my_package.\nProvides utilities for parsing."

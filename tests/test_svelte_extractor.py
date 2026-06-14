@@ -676,3 +676,20 @@ class TestResolvePath:
             "nonexistent.svelte", [], str(svelte_project)
         )
         assert result is None
+
+
+class TestModuleDocstring:
+    def test_module_docstring(self, tmp_path):
+        svelte_file = tmp_path / "Counter.svelte"
+        svelte_file.write_text(
+            "<script>\n"
+            "/**\n"
+            " * A counter component with reset.\n"
+            " */\n"
+            "let x = 1;\n"
+            "</script>\n",
+            encoding="utf-8",
+        )
+        ext = SvelteExtractor()
+        result = ext.module_docstring(str(svelte_file))
+        assert result == "A counter component with reset."

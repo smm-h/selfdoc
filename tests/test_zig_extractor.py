@@ -392,3 +392,18 @@ class TestTaggedEnum:
         )
         symbols = ZigExtractor().public_symbols(str(zig_file))
         assert symbols == ["EntryType"]
+
+
+class TestModuleDocstring:
+    def test_module_docstring(self, tmp_path):
+        zig_file = tmp_path / "mod.zig"
+        zig_file.write_text(
+            "//! Audio system for mixing.\n"
+            "//! Supports 16 channels.\n"
+            "\n"
+            "const std = @import(\"std\");\n",
+            encoding="utf-8",
+        )
+        ext = ZigExtractor()
+        result = ext.module_docstring(str(zig_file))
+        assert result == "Audio system for mixing.\nSupports 16 channels."
