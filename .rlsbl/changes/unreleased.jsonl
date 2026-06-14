@@ -12,3 +12,5 @@
 {"commits":["5b776ccdab3513812f94da80e94780b157625843"],"user_facing":false}
 {"commits":["a1898183842345573d3d554bc7c47513eba7f76d"],"user_facing":false}
 {"commits":["f8594e3c6bc5cb499609ce110a46ccfd40c48431"],"user_facing":false}
+{"commits":["b454b4e2459750b007e5ddecf7e21a832f994856"],"user_facing":true,"description":"**TypeScript extractor.** Implement `symbol_details` method for extracting function parameters, types, return types, and JSDoc documentation status.","type":"feature"}
+{"commits":["79d42379c126d03c162eccfdf9de4713c78f6fb8"],"user_facing":true,"description":"**Swift extractor.** Implement `symbol_details` for function parameter, return type, and documentation extraction.","type":"feature"}
