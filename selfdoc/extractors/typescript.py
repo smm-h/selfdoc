@@ -138,6 +138,17 @@ class TypeScriptExtractor(BaseExtractor):
 
         return symbols
 
+    def module_docstring(self, path: str) -> str:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return ""
+        result = _extract_module_jsdoc(source)
+        if result is None:
+            return ""
+        return result.get("description", "")
+
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------

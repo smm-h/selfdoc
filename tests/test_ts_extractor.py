@@ -701,3 +701,13 @@ export interface AppConfig {
         assert "Server hostname" in result
         assert "`port`" in result
         assert "Server port" in result
+
+
+def test_module_docstring(tmp_path):
+    """module_docstring extracts JSDoc module description."""
+    ts_file = os.path.join(tmp_path, "mod.ts")
+    with open(ts_file, "w", encoding="utf-8") as f:
+        f.write('/**\n * Module description here.\n */\nimport { foo } from "bar";\n')
+    ext = TypeScriptExtractor()
+    result = ext.module_docstring(str(ts_file))
+    assert result == "Module description here."
