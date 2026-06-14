@@ -885,6 +885,55 @@ export function withRest(first: string, ...rest: any[]): void {
         assert result["params"][0] == {"name": "data", "type": "string", "documented": False}
         assert result["return_type"] == "void"
 
+    def test_symbol_details_dotted_class_method(self, tmp_path):
+        """Dotted name resolves to a method within a class."""
+        ts_file = os.path.join(tmp_path, "router.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write('''\
+/**
+ * HTTP router for handling requests.
+ */
+export class Router {
+  /**
+   * Handle an incoming request.
+   *
+   * @param req - The incoming request
+   * @returns The response
+   */
+  handle(req: Request): Response {
+    return new Response();
+  }
+
+  private log(msg: string): void {
+    console.log(msg);
+  }
+}
+''')
+        ext = TypeScriptExtractor()
+        result = ext.symbol_details(ts_file, "Router.handle")
+        assert result is not None
+        assert len(result["params"]) == 1
+        assert result["params"][0] == {
+            "name": "req",
+            "type": "Request",
+            "documented": True,
+        }
+        assert result["return_type"] == "Response"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_dotted_not_found(self, tmp_path):
+        """Dotted name with unknown member returns None."""
+        ts_file = os.path.join(tmp_path, "svc.ts")
+        with open(ts_file, "w", encoding="utf-8") as f:
+            f.write('''\
+export class Service {
+  start(): void {}
+}
+''')
+        ext = TypeScriptExtractor()
+        assert ext.symbol_details(ts_file, "Service.stop") is None
+        assert ext.symbol_details(ts_file, "NoSuch.start") is None
+
 
 # ---------------------------------------------------------------------------
 # Re-export handling in ref output

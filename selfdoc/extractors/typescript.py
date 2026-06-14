@@ -150,12 +150,20 @@ class TypeScriptExtractor(BaseExtractor):
         return result.get("description", "")
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
-        """Extract detailed parameter and return info for a symbol."""
+        """Extract detailed parameter and return info for a symbol.
+
+        Supports dotted names like ``Router.handle`` to target a specific
+        method within a class or interface.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
         except (OSError, UnicodeDecodeError):
             return None
+
+        # Dotted name: resolve as TypeName.member
+        if "." in symbol_name:
+            return _dotted_symbol_details(source, symbol_name)
 
         # Try exported functions first, then non-exported
         func_re = re.compile(
@@ -173,6 +181,65 @@ class TypeScriptExtractor(BaseExtractor):
 # ---------------------------------------------------------------------------
 # symbol_details helpers
 # ---------------------------------------------------------------------------
+
+
+def _dotted_symbol_details(source, symbol_name):
+    """Resolve a dotted symbol like ``Router.handle`` to method details.
+
+    Finds the class or interface declaration for the type part, extracts
+    its brace-delimited body, then searches within for the method.
+    """
+    type_name, member_name = symbol_name.rsplit(".", 1)
+
+    # Find class or interface declaration
+    type_re = re.compile(
+        r"(?:export\s+)?(?:abstract\s+)?(?:class|interface)\s+"
+        + re.escape(type_name)
+        + r"(?:\s|[<{])",
+    )
+    type_match = type_re.search(source)
+    if type_match is None:
+        return None
+
+    # Find the opening brace of the type body
+    brace_pos = source.find("{", type_match.start())
+    if brace_pos == -1:
+        return None
+
+    body = _extract_brace_block(source, brace_pos)
+    if body is None:
+        return None
+
+    # Search for the method declaration within the body.
+    # Matches: [public/private/protected] [static] [async] memberName(
+    method_re = re.compile(
+        r"(?:(?:public|private|protected)\s+)?"
+        r"(?:static\s+)?"
+        r"(?:async\s+)?"
+        + re.escape(member_name)
+        + r"\s*\(",
+    )
+    method_match = method_re.search(body)
+    if method_match is None:
+        return None
+
+    # Compute the absolute offset so _find_jsdoc_before works on full source
+    body_offset = brace_pos + 1
+    abs_start = body_offset + method_match.start()
+
+    # Build a match-like object pointing into the full source
+    abs_re = re.compile(
+        r"(?:(?:public|private|protected)\s+)?"
+        r"(?:static\s+)?"
+        r"(?:async\s+)?"
+        + re.escape(member_name)
+        + r"\s*\(",
+    )
+    abs_match = abs_re.search(source, abs_start)
+    if abs_match is None:
+        return None
+
+    return _ts_symbol_details(source, abs_match)
 
 
 def _ts_symbol_details(source, decl_match):
