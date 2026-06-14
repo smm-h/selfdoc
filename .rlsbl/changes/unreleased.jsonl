@@ -6,3 +6,10 @@
 {"commits":["5cbe0dd98c52378ab254c6cdbeb8c330c6b8b02f"],"user_facing":false}
 {"commits":["5e4e3e33a5bdade288c7a595f6a55dfa7b3987cb"],"user_facing":true,"description":"**All languages get auto-extracted descriptions.** gen now uses the `module_docstring` protocol method for all extractors instead of hardcoded Go/Python paths. TypeScript, Zig, Swift, Kotlin, Svelte, Dart, and SQL pages now show real module descriptions.","type":"feature"}
 {"commits":["4e4ef08f53382463765c14da2a8b49d246c98694"],"user_facing":true,"description":"**Fix.** TypeScript ref output now includes re-exported symbols (`export { X }` and `export { X } from '...'`), fixing coverage reports that showed them as undocumented.","type":"fix"}
+{"commits":["e9a7fdd25c301d5dbc238b3a378c2eb48a0dac8d"],"user_facing":false}
+{"commits":["a8df15eca9405c075e775ecdd7d9097063aafb10"],"user_facing":false}
+{"commits":["9233f91a3cf7b08f509d6f023f98e28693b6d189"],"user_facing":false}
+{"commits":["ff1e57d8eeae3d47d52769b5c595906eee59eb19"],"user_facing":false}
+{"commits":["d5deb7fe91f575368a3b74fb96a6580c9e1dc388"],"user_facing":false}
+{"commits":["9a86954713725c081e1d9e4010217ff475493230"],"user_facing":false}
+{"commits":["652cb62ed263652e2d430556bfa9129ee91b791d"],"user_facing":false}
