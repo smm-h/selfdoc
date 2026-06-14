@@ -2,3 +2,4 @@
 {"commits":["2b9688731482633ec2b20d52d6818681ed34778e"],"user_facing":false}
 {"commits":["929adde63640ebd59e5021664c4bd7a9613932dd"],"user_facing":true,"description":"**Fixed.** TypeScript module-level JSDoc detection no longer misidentifies function-attached JSDoc as module documentation.","type":"fix"}
 {"commits":["51a86abb5bc53a195802770136de37c663039769"],"user_facing":true,"description":"**Fixed.** Coverage computation no longer falsely matches symbols that are substrings of other symbol names.","type":"fix"}
+{"commits":["2f0a8fdacf1063067986df49bda2800038919e20"],"user_facing":true,"description":"**New lint.** CLI002 warns when CLI help texts are shorter than 50 characters (commands, flags, args, and group subcommands).","type":"feature"}
