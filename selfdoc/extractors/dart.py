@@ -836,6 +836,255 @@ def _format_class_table(class_info):
 
 
 # ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_func_signature(lines, start_idx):
+    """Extract a multi-line function signature from the declaration line.
+
+    Collects lines until parentheses are balanced and we've seen at least
+    one '('. Stops after 20 lines. Then strips the body opener (everything
+    after the closing paren) and async/sync modifiers.
+    """
+    sig_parts = []
+    paren_depth = 0
+    seen_paren = False
+
+    for i in range(start_idx, min(start_idx + 20, len(lines))):
+        line = lines[i].strip()
+        sig_parts.append(line)
+
+        for ch in line:
+            if ch == "(":
+                paren_depth += 1
+                seen_paren = True
+            elif ch == ")":
+                paren_depth -= 1
+
+        if seen_paren and paren_depth == 0:
+            break
+
+    sig = " ".join(sig_parts)
+
+    # Find the position of the closing paren that balances the first '('
+    # and strip everything after it (body opener, async/sync modifiers)
+    depth = 0
+    close_pos = -1
+    for idx, ch in enumerate(sig):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                close_pos = idx
+                # Don't break — we want the LAST balanced close at depth 0
+                # from the first open. Actually, this IS the matching close.
+                break
+
+    if close_pos >= 0:
+        sig = sig[:close_pos + 1]
+
+    return sig.rstrip()
+
+
+def _split_params(text):
+    """Split parameter text by commas, respecting nested delimiters."""
+    params = []
+    depth = 0
+    current = []
+
+    for ch in text:
+        if ch in ("<", "(", "[", "{"):
+            depth += 1
+            current.append(ch)
+        elif ch in (">", ")", "]", "}"):
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            params.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+
+    if current:
+        remaining = "".join(current).strip()
+        if remaining:
+            params.append(remaining)
+
+    return params
+
+
+def _parse_dart_param(param_text):
+    """Parse a single Dart parameter. Returns {"name": str, "type": str|None} or None.
+
+    Handles positional, named (required), nullable, default values,
+    covariant, and function-type params. Skips this.x and super.x.
+    """
+    text = param_text.strip()
+    if not text:
+        return None
+
+    # Remove default value: find last '=' at depth 0
+    depth = 0
+    last_eq = -1
+    for idx, ch in enumerate(text):
+        if ch in ("<", "(", "[", "{"):
+            depth += 1
+        elif ch in (">", ")", "]", "}"):
+            depth -= 1
+        elif ch == "=" and depth == 0:
+            last_eq = idx
+    if last_eq >= 0:
+        text = text[:last_eq].strip()
+
+    # Strip leading 'required' keyword
+    if text.startswith("required "):
+        text = text[len("required "):].strip()
+
+    # Strip leading 'covariant' keyword
+    if text.startswith("covariant "):
+        text = text[len("covariant "):].strip()
+
+    # Skip constructor shorthands
+    if text.startswith("this.") or text.startswith("super."):
+        return None
+
+    # The name is the last identifier
+    m = re.search(r"(\w+)\s*$", text)
+    if not m:
+        return None
+
+    name = m.group(1)
+    param_type = text[:m.start()].strip()
+    if not param_type:
+        param_type = None
+
+    return {"name": name, "type": param_type}
+
+
+def _extract_dart_return_type(signature, func_name):
+    """Extract return type from a Dart function signature.
+
+    In Dart, the return type precedes the function name:
+      Future<List<Item>> fetchItems(...) -> "Future<List<Item>>"
+      void greet(...) -> "void"
+    """
+    # Find func_name followed by '(' or '<' (for generic functions)
+    pattern = r"\b" + re.escape(func_name) + r"\s*(?:<[^>]*>\s*)?\("
+    m = re.search(pattern, signature)
+    if not m:
+        return None
+
+    before = signature[:m.start()].strip()
+    if not before:
+        return None
+
+    # Strip modifiers
+    for modifier in ("static", "external", "abstract"):
+        before = re.sub(r"\b" + modifier + r"\b", "", before).strip()
+
+    return before if before else None
+
+
+def _is_param_documented(param_name, doc_text):
+    """Check if a parameter is documented in Dart /// doc comments.
+
+    Dart convention is [paramName] brackets (not followed by '(' which
+    would be a markdown link).
+    """
+    if not doc_text:
+        return False
+    pattern = r"\[" + re.escape(param_name) + r"\](?!\()"
+    return bool(re.search(pattern, doc_text))
+
+
+def _has_dart_return_doc(doc_text):
+    """Check if a return value is documented (looks for 'Returns' keyword)."""
+    if not doc_text:
+        return False
+    return bool(re.search(r"\bReturns?\b", doc_text))
+
+
+def _strip_section_brackets(inner):
+    """Remove Dart named-param {} and optional-positional [] section markers.
+
+    Dart uses { } to mark named parameters and [ ] to mark optional
+    positional parameters. These are section markers, not nesting
+    delimiters — they need to be removed before comma-splitting so
+    params inside them are split correctly.
+
+    Examples:
+      "String a, {required String b, int c}" -> "String a, required String b, int c"
+      "String a, [int b = 0, String? c]"     -> "String a, int b = 0, String? c"
+    """
+    result = []
+    for ch in inner:
+        if ch in ("{", "}", "[", "]"):
+            continue
+        result.append(ch)
+    return "".join(result)
+
+
+def _dart_symbol_details(lines, decl_line_idx, func_name):
+    """Build the symbol_details dict for a Dart function declaration."""
+    sig = _extract_func_signature(lines, decl_line_idx)
+    doc_text = collect_comment_lines_above(
+        lines, decl_line_idx, "///", skip_blank_lines=True
+    )
+
+    # Extract params from signature
+    paren_start = sig.find("(")
+    if paren_start < 0:
+        return {
+            "params": [],
+            "return_type": _extract_dart_return_type(sig, func_name),
+            "return_documented": _has_dart_return_doc(doc_text),
+        }
+
+    # Find matching close paren
+    paren_depth = 0
+    paren_end = -1
+    for idx in range(paren_start, len(sig)):
+        if sig[idx] == "(":
+            paren_depth += 1
+        elif sig[idx] == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                paren_end = idx
+                break
+
+    if paren_end < 0:
+        inner = sig[paren_start + 1:]
+    else:
+        inner = sig[paren_start + 1:paren_end]
+
+    # Strip section markers before splitting — { } for named params,
+    # [ ] for optional positional params
+    inner = _strip_section_brackets(inner.strip())
+
+    params = []
+    for param_text in _split_params(inner):
+        param_text = param_text.strip()
+        if not param_text:
+            continue
+        parsed = _parse_dart_param(param_text)
+        if parsed:
+            documented = _is_param_documented(parsed["name"], doc_text)
+            params.append({
+                "name": parsed["name"],
+                "type": parsed["type"],
+                "documented": documented,
+            })
+
+    return {
+        "params": params,
+        "return_type": _extract_dart_return_type(sig, func_name),
+        "return_documented": _has_dart_return_doc(doc_text),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Extractor class
 # ---------------------------------------------------------------------------
 
@@ -899,6 +1148,30 @@ class DartExtractor(BaseExtractor):
         except (OSError, UnicodeDecodeError):
             return ""
         return _extract_library_doc(source)
+
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a symbol."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        lines = source.split("\n")
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+
+            # Skip comments
+            if stripped.startswith("//") or stripped.startswith("/*"):
+                continue
+
+            # Check for function declaration matching symbol_name
+            m = _DART_FUNC_RE.match(stripped)
+            if m and m.group(1) == symbol_name and m.group(1) not in _DART_KEYWORDS:
+                return _dart_symbol_details(lines, i, symbol_name)
+
+        return None
 
 
 # ---------------------------------------------------------------------------

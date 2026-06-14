@@ -1168,3 +1168,130 @@ class TestModuleDocstring:
         ext = DartExtractor()
         result = ext.module_docstring(str(dart_file))
         assert result == "The main library for my_package.\nProvides utilities for parsing."
+
+
+class TestSymbolDetails:
+    def test_symbol_details_basic_function(self, tmp_path):
+        """Function with all params documented."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// Greets the [name] with a [greeting].\n"
+            "/// Returns the formatted message.\n"
+            "String greet(String name, String greeting) {\n"
+            "  return '$greeting, $name!';\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "greet")
+        assert result is not None
+        assert len(result["params"]) == 2
+        assert result["params"][0] == {"name": "name", "type": "String", "documented": True}
+        assert result["params"][1] == {"name": "greeting", "type": "String", "documented": True}
+        assert result["return_type"] == "String"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_undocumented_params(self, tmp_path):
+        """Some params not in doc brackets."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// Sends a message to [recipient].\n"
+            "void sendMessage(String recipient, String body, int priority) {\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "sendMessage")
+        assert result is not None
+        assert len(result["params"]) == 3
+        assert result["params"][0]["name"] == "recipient"
+        assert result["params"][0]["documented"] is True
+        assert result["params"][1]["name"] == "body"
+        assert result["params"][1]["documented"] is False
+        assert result["params"][2]["name"] == "priority"
+        assert result["params"][2]["documented"] is False
+
+    def test_symbol_details_named_params(self, tmp_path):
+        """Named required params with {required Type name}."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// Fetches items for [userId] with [limit].\n"
+            "Future<List<String>> fetchItems(\n"
+            "  String userId,\n"
+            "  {required int limit,\n"
+            "   bool includeDeleted = false}\n"
+            ") async {\n"
+            "  return [];\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "fetchItems")
+        assert result is not None
+        assert len(result["params"]) == 3
+        assert result["params"][0] == {"name": "userId", "type": "String", "documented": True}
+        assert result["params"][1] == {"name": "limit", "type": "int", "documented": True}
+        assert result["params"][2] == {"name": "includeDeleted", "type": "bool", "documented": False}
+        assert result["return_type"] == "Future<List<String>>"
+
+    def test_symbol_details_optional_positional(self, tmp_path):
+        """Optional positional params with [Type name = default]."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// Logs [message] with optional [level].\n"
+            "void log(String message, [int level = 0, String? tag]) {\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "log")
+        assert result is not None
+        assert len(result["params"]) == 3
+        assert result["params"][0] == {"name": "message", "type": "String", "documented": True}
+        assert result["params"][1] == {"name": "level", "type": "int", "documented": True}
+        assert result["params"][2] == {"name": "tag", "type": "String?", "documented": False}
+
+    def test_symbol_details_return_type(self, tmp_path):
+        """Function with return type and Returns doc."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// Computes the sum.\n"
+            "/// Returns the total.\n"
+            "int sum(int a, int b) {\n"
+            "  return a + b;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "sum")
+        assert result is not None
+        assert result["return_type"] == "int"
+        assert result["return_documented"] is True
+
+    def test_symbol_details_no_return_type(self, tmp_path):
+        """Void function."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "/// Prints hello.\n"
+            "void sayHello() {\n"
+            "  print('hello');\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "sayHello")
+        assert result is not None
+        assert result["params"] == []
+        assert result["return_type"] == "void"
+        assert result["return_documented"] is False
+
+    def test_symbol_details_unknown(self, tmp_path):
+        """Unknown symbol returns None."""
+        dart_file = tmp_path / "lib.dart"
+        dart_file.write_text(
+            "void hello() {}\n",
+            encoding="utf-8",
+        )
+        ext = DartExtractor()
+        result = ext.symbol_details(str(dart_file), "nonexistent")
+        assert result is None
