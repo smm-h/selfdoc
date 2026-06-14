@@ -4542,3 +4542,123 @@ def test_return001_none_return(lint_project):
     results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config, directives)
     return001 = [r for r in results if r.code == "RETURN001"]
     assert len(return001) == 0
+
+
+def test_coverage_substring_no_false_positive(tmp_path):
+    """Symbol 'Config' should NOT match if only 'RunConfig' appears in prose content."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Handles RunConfig lifecycle management."""\n'
+            "\n"
+            "class Config:\n"
+            '    """Config class."""\n'
+            "    pass\n"
+            "\n"
+            "class RunConfig:\n"
+            '    """RunConfig class."""\n'
+            "    pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: prose-desc path="mylib"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    assert result.coverage.total_public == 2
+    # Neither symbol should be counted as referenced by prose-desc
+    # because prose content has no headings
+    config_referenced = any(
+        "Config" in s and "RunConfig" not in s
+        for s in result.coverage.referenced_symbols
+    )
+    assert not config_referenced, (
+        "Config should not match via substring of RunConfig in prose"
+    )
+
+
+def test_coverage_heading_match(tmp_path):
+    """Symbol 'Config' DOES match if '### Config' heading exists in ref output."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n'
+            "\n"
+            "class Config:\n"
+            '    """Config class."""\n'
+            "    pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="mylib"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    assert result.coverage.total_public == 1
+    assert result.coverage.referenced == 1
+    assert any("Config" in s for s in result.coverage.referenced_symbols)
+
+
+def test_coverage_dotted_heading_match(tmp_path):
+    """Symbol 'Run' matches '### Server.Run' heading (Go method style)."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "pkg/", "language": "go"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    pkg_dir = os.path.join(tmp_path, "pkg")
+    os.makedirs(pkg_dir)
+    with open(os.path.join(pkg_dir, "server.go"), "w", encoding="utf-8") as f:
+        f.write(
+            "package pkg\n"
+            "\n"
+            "// Server handles requests.\n"
+            "type Server struct{}\n"
+            "\n"
+            "// Run starts the server.\n"
+            "func (s *Server) Run() {}\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="pkg"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    run_syms = [s for s in result.coverage.referenced_symbols if s.endswith(":Run")]
+    assert len(run_syms) > 0, (
+        f"'Run' should match '### Server.Run' heading. "
+        f"Referenced: {result.coverage.referenced_symbols}"
+    )

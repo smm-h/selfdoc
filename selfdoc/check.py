@@ -1385,7 +1385,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                 )
                 if os.path.abspath(file_dir).startswith(dir_abs):
                     for sym in syms:
-                        if sym in rd.content:
+                        if re.search(r'^#{2,4}\s+(?:\w+\.)?' + re.escape(sym) + r'\s*$', rd.content, re.MULTILINE):
                             qualified = f"{rel_path}:{sym}"
                             referenced_set.add(qualified)
                             if not is_skeleton:
@@ -1397,7 +1397,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                 # For ref directives, check each symbol against content
                 if rd.name == "ref":
                     for sym in all_symbols[rel_path]:
-                        if sym in rd.content:
+                        if re.search(r'^#{2,4}\s+(?:\w+\.)?' + re.escape(sym) + r'\s*$', rd.content, re.MULTILINE):
                             qualified = f"{rel_path}:{sym}"
                             referenced_set.add(qualified)
                             if not is_skeleton:
@@ -1414,7 +1414,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                     else:
                         # No target -- check all symbols against content
                         for sym in all_symbols[rel_path]:
-                            if sym in rd.content:
+                            if re.search(r'^#{2,4}\s+(?:\w+\.)?' + re.escape(sym) + r'\s*$', rd.content, re.MULTILINE):
                                 qualified = f"{rel_path}:{sym}"
                                 referenced_set.add(qualified)
                                 if not is_skeleton:
