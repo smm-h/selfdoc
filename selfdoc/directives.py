@@ -395,7 +395,7 @@ def resolve_directives(
             output.append(event[1])
         elif event[0] == "directive":
             _, name, attrs, body, _line_num = event
-            output.append(resolver(name, attrs, body))
+            output.extend(resolver(name, attrs, body).split("\n"))
         elif event[0] == "unclosed":
             _, name, _line_num = event
             raise DirectiveError(
