@@ -229,17 +229,17 @@
     "source_docstring": "eef7598ab3a72a1f3dbad952a7fb91d5b222b027b5c3830224114bc2253cc3db"
   },
   "en/selfdoc-extractors-dart.md": {
-    "content": "d4f7e988a9f42fcd13b11f1718b81e8c559a3fe5b871b3b75925b61089c56203",
+    "content": "038ec41c3c9ad0676c1a9a1a58eca15805f443b7977f0b933ddcbc1b4f3c90b2",
     "description": "0c3973cd12724e494330588d89bba7fd35e1b8d5d14d5c8ab67462b476dd6b34",
     "source_docstring": "4e42be73bcc71a810f9239537e4d330f98c0db990fdd6cbbdd79d64452951118"
   },
   "en/selfdoc-extractors-go.md": {
-    "content": "63d61b7ccf7d841a576906a363b3620aeecfcabf579a918351db7872adfdcb0e",
+    "content": "8b559dec56c78ba949443bbc385581ab2553369878dec1e3d438392ade29f3e9",
     "description": "da3775034594ff0572d308f49e52040fc5837a35114aafb93501ce0b497020b6",
     "source_docstring": "dd1413bf3a8f354c9000135bda694556fdde6a883fda14b9c097b2e856dd39f2"
   },
   "en/selfdoc-extractors-kotlin.md": {
-    "content": "2b825f86609e5ee2901d1ea817574e37b47d4e0b1294ff6352b26c3dd9ea3398",
+    "content": "cac8197e9ecc0c1cefa0ba11499ac7d3cbc879204187631f8b6a70861c4cbd87",
     "description": "fcceadeeb8b133840a602d1215eedbb7678b69d447f305c993ec10c8ba09cbcf",
     "source_docstring": "43db63f0ae7ad7f432e8a54250454958db9460023fd66222415137daa9e5c783"
   },
@@ -259,17 +259,17 @@
     "source_docstring": "fb1b5242436bd98dc6b97340803d377f8b4978c43fbb871b8fd3c30fd88e93d2"
   },
   "en/selfdoc-extractors-swift.md": {
-    "content": "ea129291f2e3b3b98943f6498fd72a0dd48844ccf0a4f1c8208b264f0ecfacbf",
+    "content": "6772d1657a3a8ce3454db5eac12a1410192b00e7e6f672f8f6542cde1ad694a8",
     "description": "0833e0419305faa0812bce12086098e6c0f32997fd90f0899a7eeca2bffee4e0",
     "source_docstring": "5b18e63ddec2e6bc78b39b8f36398af2a31fd37b6df80bd196afb1469ccaf350"
   },
   "en/selfdoc-extractors-typescript.md": {
-    "content": "bc2fb247508325b9ac99adeec07bca632744a2e4234f6848b8cfb2131aab1187",
+    "content": "75e454c8063efb8f40849d03366033fbcd7a4d7247def7c6692d886b74e28a0d",
     "description": "2af505cc5f5387e2f049dd0ef9ae7de54b6acc749d0bf775019dbf3f4372c46f",
     "source_docstring": "e3f9dad67e980c4fd85c378fe0dd90ea39f89b71a0b2b100df5d8c4e0772aaa2"
   },
   "en/selfdoc-extractors-zig.md": {
-    "content": "aa92c59c15ebf285a6a40a34e48a1501ea49bc93aeb62acad028dcf5a0a53c13",
+    "content": "9f090dff0a744fc0c4246636f16a122741cc27ccced0bf928043c2aee5c0dcbb",
     "description": "e6fa59fcbd6ec31eaa6d869217da75d413c75ea70beb194eb92196d1ebc9c6ef",
     "source_docstring": "4c645c85e97837a4aba335eeef9b4b0b61e26a45df2df20c1f5acaafb0eee611"
   },
