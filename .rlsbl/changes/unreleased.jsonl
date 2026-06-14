@@ -15,3 +15,4 @@
 {"commits":["b454b4e2459750b007e5ddecf7e21a832f994856"],"user_facing":true,"description":"**TypeScript extractor.** Implement `symbol_details` method for extracting function parameters, types, return types, and JSDoc documentation status.","type":"feature"}
 {"commits":["79d42379c126d03c162eccfdf9de4713c78f6fb8"],"user_facing":true,"description":"**Swift extractor.** Implement `symbol_details` for function parameter, return type, and documentation extraction.","type":"feature"}
 {"commits":["5ad233c02928cd656024b51e77f8f966e3baf7f3"],"user_facing":true,"description":"**Go extractor.** Implement `symbol_details` for extracting function parameter types, return types, and documentation status from Go source files.","type":"feature"}
+{"commits":["7f5d3f258f61429557838b43f7fc5dc6d0595629"],"user_facing":true,"description":"**Zig extractor.** symbol_details method for function parameter and return type extraction.","type":"feature"}
