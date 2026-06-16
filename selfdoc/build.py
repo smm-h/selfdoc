@@ -894,9 +894,14 @@ def _generate_atom_feed(
                 summary = _first_sentence(line)
                 break
 
-        # Get page date (modified date from tuple)
-        date_tuple = page_dates.get(md_path)
-        page_date = date_tuple[1] if date_tuple else ""
+        # Posts use their publication date (frontmatter date field);
+        # docs use the modification date from page_dates.
+        page_type = meta.get("type", "")
+        if page_type == "post" and meta.get("date"):
+            page_date = str(meta["date"])
+        else:
+            date_tuple = page_dates.get(md_path)
+            page_date = date_tuple[1] if date_tuple else ""
 
         page_full_url = url_builder.page_url(url_path) if url_builder else f"{base_url}/{url_path}"
 
@@ -905,6 +910,7 @@ def _generate_atom_feed(
             url=page_full_url,
             date=page_date,
             summary=summary,
+            page_type=page_type,
         ))
 
     # Sort by modification date descending (most recent first)
