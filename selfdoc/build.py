@@ -468,18 +468,21 @@ def _build_search_index(
             tags_val = [tags_val] if tags_val else []
         page_tags = list(tags_val)
 
-        # Derive page type from frontmatter and nav group
-        base_name = md_path.replace(".md", "").lower()
-        if page_meta.get("generated") is True and "API" in nav_group:
-            page_type = "api"
-        elif page_meta.get("generated") is True and "CLI" in nav_group:
-            page_type = "cli"
-        elif "changelog" in base_name:
-            page_type = "changelog"
-        elif "glossary" in base_name:
-            page_type = "glossary"
+        # Derive page type: explicit frontmatter overrides heuristic
+        if page_meta.get("type"):
+            page_type = page_meta["type"]
         else:
-            page_type = "guide"
+            base_name = md_path.replace(".md", "").lower()
+            if page_meta.get("generated") is True and "API" in nav_group:
+                page_type = "api"
+            elif page_meta.get("generated") is True and "CLI" in nav_group:
+                page_type = "cli"
+            elif "changelog" in base_name:
+                page_type = "changelog"
+            elif "glossary" in base_name:
+                page_type = "glossary"
+            else:
+                page_type = "guide"
 
         def _flush():
             if current_title is not None:
