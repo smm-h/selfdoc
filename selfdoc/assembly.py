@@ -145,3 +145,16 @@ def assembly_rebuild(
         )
         for slug, info in projects.items()
     ]
+
+
+def generate_redirects_file(slug: str, docs_base: str) -> str:
+    """Return the content of a Cloudflare Pages _redirects file.
+
+    Redirects all paths from the old per-project CF Pages site to the
+    assembly site under the project's slug prefix.
+
+    slug: project's URL path segment (e.g. "selfdoc")
+    docs_base: base URL of the assembly site (e.g. "https://docs.smmh.dev")
+    """
+    docs_base = docs_base.rstrip("/")
+    return f"/* {docs_base}/{slug}/:splat 301\n"

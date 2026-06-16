@@ -1182,6 +1182,25 @@ def _cmd_assembly_rebuild():
     return 0
 
 
+@assembly_group.command("redirects", help="Generate a CF Pages _redirects file for this project")
+@strictcli.flag("slug", type=str, help="Project slug for URL path segment")
+@strictcli.flag("docs_base", type=str, help="Base URL of the assembly site")
+def _cmd_assembly_redirects(slug="", docs_base=""):
+    """Print the _redirects file content for redirecting to the assembly site."""
+    from selfdoc.assembly import generate_redirects_file
+
+    if not slug:
+        print("Error: --slug is required.", file=sys.stderr)
+        sys.exit(1)
+    if not docs_base:
+        print("Error: --docs-base is required.", file=sys.stderr)
+        sys.exit(1)
+
+    content = generate_redirects_file(slug, docs_base)
+    print(content, end="")
+    return 0
+
+
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
     app.run()
