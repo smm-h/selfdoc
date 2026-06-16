@@ -238,8 +238,25 @@ def test_discover_posts_duplicate_slugs(tmp_path):
 
 
 def test_discover_posts_slug_immutability_ok(tmp_path):
-    posts_dir = tmp_path / "posts"
-    manifest_path = tmp_path / "manifest.json"
+    """Slug unchanged between committed manifest and post -> passes."""
+    import subprocess
+    # Set up git repo
+    subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True,
+                   timeout=10, check=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"],
+                   cwd=str(tmp_path), capture_output=True, timeout=10, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"],
+                   cwd=str(tmp_path), capture_output=True, timeout=10, check=True)
+    # Initial commit
+    readme = tmp_path / "README.md"
+    readme.write_text("# test\n")
+    subprocess.run(["git", "add", "README.md"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+
+    posts_dir = tmp_path / ".selfdoc" / "posts"
+    manifest_path = tmp_path / ".selfdoc" / "manifest.json"
     _write_post(
         str(posts_dir),
         "hello.md",
@@ -249,28 +266,58 @@ def test_discover_posts_slug_immutability_ok(tmp_path):
         str(manifest_path),
         [{"path": "hello.md", "slug": "hello"}],
     )
+    # Commit the manifest
+    subprocess.run(["git", "add", ".selfdoc/manifest.json"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+    subprocess.run(["git", "commit", "-m", "add manifest"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+
     result = discover_posts(str(posts_dir), manifest_path=str(manifest_path))
     assert len(result) == 1
     assert result[0]["slug"] == "hello"
 
 
 def test_discover_posts_slug_immutability_violation(tmp_path):
-    posts_dir = tmp_path / "posts"
-    manifest_path = tmp_path / "manifest.json"
+    """Slug differs from committed manifest -> RuntimeError."""
+    import subprocess
+    # Set up git repo
+    subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True,
+                   timeout=10, check=True)
+    subprocess.run(["git", "config", "user.email", "test@test.com"],
+                   cwd=str(tmp_path), capture_output=True, timeout=10, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"],
+                   cwd=str(tmp_path), capture_output=True, timeout=10, check=True)
+    # Initial commit
+    readme = tmp_path / "README.md"
+    readme.write_text("# test\n")
+    subprocess.run(["git", "add", "README.md"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+
+    posts_dir = tmp_path / ".selfdoc" / "posts"
+    manifest_path = tmp_path / ".selfdoc" / "manifest.json"
     _write_post(
         str(posts_dir),
         "hello.md",
         ["title: Hello", "date: 2025-01-01", "slug: hello-new"],
     )
+    # Commit manifest with OLD slug
     _write_manifest(
         str(manifest_path),
         [{"path": "hello.md", "slug": "hello-old"}],
     )
+    subprocess.run(["git", "add", ".selfdoc/manifest.json"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+    subprocess.run(["git", "commit", "-m", "add manifest"], cwd=str(tmp_path),
+                   capture_output=True, timeout=10, check=True)
+
     with pytest.raises(RuntimeError, match="Slug immutability violation"):
         discover_posts(str(posts_dir), manifest_path=str(manifest_path))
 
 
 def test_discover_posts_slug_immutability_no_manifest(tmp_path):
+    """No committed manifest (not a git repo) -> check skipped, no error."""
     posts_dir = tmp_path / "posts"
     manifest_path = tmp_path / "no-such-manifest.json"
     _write_post(
@@ -278,7 +325,8 @@ def test_discover_posts_slug_immutability_no_manifest(tmp_path):
         "hello.md",
         ["title: Hello", "date: 2025-01-01", "slug: hello"],
     )
-    # manifest_path points to a non-existent file; load_manifest returns None
+    # Not a git repo, manifest_path points to nonexistent file.
+    # load_manifest_from_git returns None -> check skipped.
     result = discover_posts(str(posts_dir), manifest_path=str(manifest_path))
     assert len(result) == 1
 
