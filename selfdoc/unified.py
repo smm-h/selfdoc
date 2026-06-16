@@ -14,6 +14,7 @@ import re
 import shutil
 
 from selfdoc.build import (
+    BuildResult,
     _build_search_index,
     _compress_output,
     _extract_critical_css,
@@ -415,13 +416,7 @@ def build_unified(dir_path=".", config=None):
                 output_subdir = f"{locale_code}/{slug}/{ver_str}"
                 url_prefix = output_subdir
 
-                (
-                    html_files, markdown_files, frontmatter, page_dates,
-                    nav_items, search_entries, project_name, version, _cfg,
-                    proj_docs_dir, other_files, has_custom_css, _raw_css,
-                    _theme_meta, _crit_css, config_description, base_url,
-                    feed_url, lang,
-                ) = build_single(
+                result = build_single(
                     dir_path=build_dir,
                     config=proj_config,
                     output_subdir=output_subdir,
@@ -434,6 +429,12 @@ def build_unified(dir_path=".", config=None):
                     current_locale=locale_code,
                     is_latest=is_latest,
                 )
+                html_files = result.html_files
+                search_entries = result.search_entries
+                proj_docs_dir = result.docs_dir
+                other_files = result.other_files
+                nav_items = result.nav_items
+                config_description = result.config_description
 
                 # Override the project field in search entries
                 patched_entries = []
@@ -478,13 +479,7 @@ def build_unified(dir_path=".", config=None):
         common_subdir = f"{locale_code}/common/{latest_version}"
         common_url_prefix = common_subdir
 
-        (
-            html_files, markdown_files, frontmatter, page_dates,
-            nav_items, search_entries, project_name, version, _cfg,
-            common_docs_dir, other_files, has_custom_css, _raw_css,
-            _theme_meta, _crit_css, config_description, base_url,
-            feed_url, lang,
-        ) = build_single(
+        result = build_single(
             dir_path=dir_path,
             config=config,
             output_subdir=common_subdir,
@@ -497,6 +492,11 @@ def build_unified(dir_path=".", config=None):
             current_locale=locale_code,
             is_latest=True,
         )
+        html_files = result.html_files
+        search_entries = result.search_entries
+        common_docs_dir = result.docs_dir
+        other_files = result.other_files
+        nav_items = result.nav_items
 
         # Mark common search entries
         patched_entries = []
@@ -524,19 +524,19 @@ def build_unified(dir_path=".", config=None):
         if locale_code == default_locale_code:
             common_nav = nav_items
             common_latest_build = {
-                "html_files": html_files,
-                "markdown_files": markdown_files,
-                "frontmatter": frontmatter,
-                "page_dates": page_dates,
-                "project_name": project_name,
-                "version": version,
+                "html_files": result.html_files,
+                "markdown_files": result.markdown_files,
+                "frontmatter": result.frontmatter,
+                "page_dates": result.page_dates,
+                "project_name": result.project_name,
+                "version": result.version,
                 "docs_dir": common_docs_dir,
-                "has_custom_css": has_custom_css,
-                "config_description": config_description,
-                "base_url": base_url,
-                "url_builder": SimpleURLBuilder(base_url) if base_url else None,
-                "feed_url": feed_url,
-                "lang": lang,
+                "has_custom_css": result.has_custom_css,
+                "config_description": result.config_description,
+                "base_url": result.base_url,
+                "url_builder": SimpleURLBuilder(result.base_url) if result.base_url else None,
+                "feed_url": result.feed_url,
+                "lang": result.lang,
             }
 
     # --- Build unified nav ---

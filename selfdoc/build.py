@@ -1,6 +1,7 @@
 """Build pipeline for selfdoc: template scanning, directive resolution, HTML output."""
 
 import dataclasses
+from dataclasses import dataclass
 import gzip
 import json
 import os
@@ -32,6 +33,32 @@ try:
     _HAS_PREDRAW = True
 except ImportError:
     _HAS_PREDRAW = False
+
+
+@dataclass(frozen=True, slots=True)
+class BuildResult:
+    """Result of build_single() -- all outputs needed by callers."""
+
+    html_files: dict
+    markdown_files: dict
+    frontmatter: dict
+    page_dates: dict
+    nav_items: list
+    search_entries: list
+    project_name: str
+    version: str
+    config: dict
+    docs_dir: str
+    other_files: list
+    has_custom_css: bool
+    raw_theme_css: str
+    theme_meta: dict
+    critical_css: str
+    config_description: str
+    base_url: str | None
+    feed_url: str
+    lang: str
+    url_builder: object | None = None
 
 
 def _read_png_dimensions(filepath):
@@ -1224,11 +1251,26 @@ def build_single(dir_path=".", config=None, output_subdir="",
         nav_items=nav_items,
     )
 
-    return (
-        html_files, markdown_files, frontmatter, page_dates,
-        nav_items, search_entries, project_name, version, config,
-        docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
-        critical_css, config_description, base_url, feed_url, lang,
+    return BuildResult(
+        html_files=html_files,
+        markdown_files=markdown_files,
+        frontmatter=frontmatter,
+        page_dates=page_dates,
+        nav_items=nav_items,
+        search_entries=search_entries,
+        project_name=project_name,
+        version=version,
+        config=config,
+        docs_dir=docs_dir,
+        other_files=other_files,
+        has_custom_css=has_custom_css,
+        raw_theme_css=raw_theme_css,
+        theme_meta=theme_meta,
+        critical_css=critical_css,
+        config_description=config_description,
+        base_url=base_url,
+        feed_url=feed_url,
+        lang=lang,
     )
 
 
@@ -1385,12 +1427,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
             locale_config = dict(config)
             locale_config["docs"] = os.path.relpath(locale_docs_dir, build_dir)
 
-            (
-                html_files, markdown_files, frontmatter, page_dates,
-                nav_items, search_entries, project_name, version, _cfg,
-                docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
-                critical_css, config_description, base_url, feed_url, lang,
-            ) = build_single(
+            result = build_single(
                 dir_path=build_dir,
                 config=locale_config,
                 output_subdir=output_subdir,
@@ -1403,6 +1440,24 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
                 current_locale=locale_code,
                 is_latest=is_latest,
             )
+            html_files = result.html_files
+            markdown_files = result.markdown_files
+            frontmatter = result.frontmatter
+            page_dates = result.page_dates
+            nav_items = result.nav_items
+            search_entries = result.search_entries
+            project_name = result.project_name
+            version = result.version
+            docs_dir = result.docs_dir
+            other_files = result.other_files
+            has_custom_css = result.has_custom_css
+            raw_theme_css = result.raw_theme_css
+            theme_meta = result.theme_meta
+            critical_css = result.critical_css
+            config_description = result.config_description
+            base_url = result.base_url
+            feed_url = result.feed_url
+            lang = result.lang
 
             all_search_entries.extend(search_entries)
 
