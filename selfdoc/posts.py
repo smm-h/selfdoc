@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 
-from selfdoc.manifest import _to_kebab, load_manifest
+from selfdoc.manifest import _to_kebab, load_manifest_from_git
 from selfdoc.utils import parse_frontmatter
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -43,10 +43,13 @@ def discover_posts(
     if not os.path.isdir(posts_dir):
         return []
 
-    # Load manifest for slug immutability check (if requested).
+    # Load manifest from git for slug immutability check.
+    # We read from git HEAD (not disk) because selfdoc gen may have
+    # already regenerated manifest.json with new slugs by this point.
     manifest = None
     if manifest_path is not None:
-        manifest = load_manifest(manifest_path)
+        dir_path = os.path.dirname(os.path.dirname(manifest_path))
+        manifest = load_manifest_from_git(dir_path)
 
     # Build a lookup from path -> slug for manifest posts.
     manifest_slugs: dict[str, str] = {}
