@@ -1447,12 +1447,44 @@ def _check_reserved_paths(version_strs, config):
             )
 
 
+def _render_post_listing(published_posts):
+    """Render a Markdown post listing page from published post metadata.
+
+    Returns the full Markdown content including frontmatter.
+    ``published_posts`` should already be sorted newest-first and
+    filtered (no drafts unless --drafts was used).
+    """
+    lines = [
+        "---",
+        "title: Posts",
+        "versioned: false",
+        "type: post-listing",
+        "order: 95",
+        "feed: false",
+        "---",
+        "",
+        "# Posts",
+        "",
+    ]
+    if not published_posts:
+        lines.append("No posts yet.")
+    else:
+        for post in published_posts:
+            date = post["date"]
+            title = post["title"]
+            slug = post["slug"]
+            lines.append(f"- **{date}** -- [{title}](posts/{slug}.html)")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     """Write post markdown files into docs/posts/ for the build pipeline.
 
     Discovers posts from the configured posts directory, filters drafts
     unless ``include_drafts`` is True, and writes each post as a ``.md``
-    file under ``docs_dir/posts/``.  The written files are picked up by
+    file under ``docs_dir/posts/``.  Also generates a listing page at
+    ``docs_dir/posts/index.md``.  The written files are picked up by
     ``resolve_all_docs`` and partitioned as unversioned pages (they have
     ``versioned: false`` in their frontmatter).
 
@@ -1470,10 +1502,12 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     all_posts = discover_posts(posts_dir, manifest_path=manifest_path)
 
     injected = []
+    published_posts = []
     for post in all_posts:
         if post["draft"] and not include_drafts:
             continue
 
+        published_posts.append(post)
         post_docs_path = os.path.join(docs_dir, "posts", f"{post['slug']}.md")
         os.makedirs(os.path.dirname(post_docs_path), exist_ok=True)
 
@@ -1494,6 +1528,15 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
         with open(post_docs_path, "w", encoding="utf-8") as f:
             f.write(full_content)
         injected.append(post_docs_path)
+
+    # Generate the listing page
+    if published_posts:
+        listing_content = _render_post_listing(published_posts)
+        listing_path = os.path.join(docs_dir, "posts", "index.md")
+        os.makedirs(os.path.dirname(listing_path), exist_ok=True)
+        with open(listing_path, "w", encoding="utf-8") as f:
+            f.write(listing_content)
+        injected.append(listing_path)
 
     return injected
 

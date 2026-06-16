@@ -86,14 +86,20 @@ def test_inject_posts_basic(tmp_path):
 
     injected = _inject_posts_into_docs(str(project), config, docs_dir, False)
 
-    assert len(injected) == 1
+    # 1 post + 1 listing page
+    assert len(injected) == 2
     expected_path = os.path.join(docs_dir, "posts", "hello-world.md")
-    assert injected[0] == expected_path
+    assert expected_path in injected
     assert os.path.isfile(expected_path)
 
     content = open(expected_path).read()
     assert "Hello World" in content
     assert "This is the post content." in content
+
+    # Listing page generated
+    listing_path = os.path.join(docs_dir, "posts", "index.md")
+    assert listing_path in injected
+    assert os.path.isfile(listing_path)
 
 
 def test_inject_posts_draft_excluded(tmp_path):

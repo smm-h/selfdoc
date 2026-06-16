@@ -1806,30 +1806,53 @@ def _build_nav(markdown_files, frontmatter=None,
             "items": group_data["items"],
         })
 
-    # Append unversioned pages as a persistent nav group at the end.
+    # Append unversioned pages as persistent nav groups at the end.
     # Used by versioned builds so that unversioned pages appear in
     # the sidebar regardless of which version is selected.
+    # Posts (type: post) are separated into their own "Posts" group,
+    # sorted by date descending (newest first).
     if unversioned_pages:
         uv_fm = unversioned_frontmatter or {}
         uv_items = []
+        post_items = []
         for md_path in sorted(unversioned_pages.keys()):
             meta = uv_fm.get(md_path, {})
             label = meta.get("title") or md_path.replace(".md", "").replace("/", " / ")
             nav_order = meta.get("nav_order", 0)
             if not isinstance(nav_order, (int, float)):
                 nav_order = 0
-            uv_items.append({
+            item = {
                 "label": label,
                 "path": _md_to_html_path(md_path),
                 "md_path": md_path,
                 "unversioned": True,
                 "_nav_order": nav_order,
+                "_date": str(meta.get("date", "")),
+            }
+            if meta.get("type") == "post":
+                post_items.append(item)
+            else:
+                uv_items.append(item)
+
+        # Posts group: sorted by date descending (newest first)
+        if post_items:
+            post_items.sort(key=lambda x: x["_date"], reverse=True)
+            for item in post_items:
+                item.pop("_nav_order", None)
+                item.pop("_date", None)
+            nav.append({
+                "group": "Posts",
+                "slug": "posts",
+                "items": post_items,
+                "unversioned": True,
             })
-        # Sort by nav_order then path
-        uv_items.sort(key=lambda x: (x.get("_nav_order", 0), x["md_path"]))
-        for item in uv_items:
-            item.pop("_nav_order", None)
+
+        # General group: non-post unversioned pages
         if uv_items:
+            uv_items.sort(key=lambda x: (x.get("_nav_order", 0), x["md_path"]))
+            for item in uv_items:
+                item.pop("_nav_order", None)
+                item.pop("_date", None)
             nav.append({
                 "group": "General",
                 "slug": "general",
