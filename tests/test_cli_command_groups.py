@@ -23,8 +23,12 @@ def test_post_group_has_new_command():
     assert "new" in app._groups["post"].commands
 
 
-def test_assembly_group_no_commands_yet():
-    assert app._groups["assembly"].commands == {}
+def test_assembly_group_has_commands():
+    cmds = app._groups["assembly"].commands
+    assert "init" in cmds
+    assert "push" in cmds
+    assert "status" in cmds
+    assert "rebuild" in cmds
 
 
 def test_post_help_runs():

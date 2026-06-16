@@ -1166,7 +1166,7 @@ def _cmd_assembly_rebuild():
     dispatches = assembly_rebuild(repo, projects)
 
     for dispatch in dispatches:
-        slug = dispatch.get("slug", "unknown")
+        slug = dispatch["payload"]["client_payload"]["slug"]
         print(f"Dispatching rebuild for {slug}...")
         payload = json.dumps(dispatch["payload"])
         result = subprocess.run(
