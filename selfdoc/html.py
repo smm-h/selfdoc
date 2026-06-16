@@ -3093,6 +3093,18 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<script data-ga-id="{ga_id}">{ga_js}</script>\n'
         )
 
+    # Pagefind metadata attributes for the <article> element
+    if search_engine == "pagefind":
+        pf_attrs = ' data-pagefind-body'
+        pf_attrs += f' data-pagefind-meta="project:{_escape_html(project_name)}"'
+        if page_type:
+            pf_attrs += f' data-pagefind-meta="type:{_escape_html(page_type)}"'
+        if date_published:
+            pf_attrs += f' data-pagefind-meta="date:{_escape_html(date_published)}"'
+        pf_attrs += f' data-pagefind-filter="version:{_escape_html(version)}"'
+    else:
+        pf_attrs = ""
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -3126,7 +3138,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</nav>\n'
         f'<main class="content" id="main-content">\n'
         f'{meta["version_banner_html"]}\n'
-        f'<article>\n'
+        f'<article{pf_attrs}>\n'
         f'{meta["breadcrumbs_html"]}\n'
         f'{meta["mobile_toc_html"]}\n'
         f'{meta["summary_html"]}\n'
