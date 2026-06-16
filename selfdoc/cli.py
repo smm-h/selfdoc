@@ -321,7 +321,8 @@ def _cmd_build(no_commit=False, locale="", version="", drafts=False):
 
 @app.command("serve", help="Serve the documentation site locally with live reload")
 @strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
-def _cmd_serve(port=8000):
+@strictcli.flag("drafts", type=bool, help="Rebuild with draft posts included before serving")
+def _cmd_serve(port=8000, drafts=False):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
 
@@ -329,6 +330,22 @@ def _cmd_serve(port=8000):
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
+
+    if drafts:
+        if config.get("unified"):
+            from selfdoc.unified import build_unified
+            try:
+                build_unified(".", config=config, include_drafts=True)
+            except RuntimeError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            from selfdoc.build import build
+            try:
+                build(".", include_drafts=True)
+            except RuntimeError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
 
     output_dir = config["output"].rstrip("/")
     if not os.path.isdir(output_dir):
