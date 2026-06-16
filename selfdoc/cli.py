@@ -698,10 +698,28 @@ def _cmd_gen(no_commit=False):
         update_hashes(all_docs, ".")
     all_commit_files.append(".selfdoc/hashes/hashes.json")
 
+    # Discover posts for manifest
+    from selfdoc.posts import discover_posts
+
+    posts_config = config.get("posts") or {}
+    posts_dir = posts_config.get("dir", ".selfdoc/posts/")
+    posts = discover_posts(posts_dir)
+    posts_data = [
+        {
+            "path": p["path"],
+            "title": p["title"],
+            "date": p["date"],
+            "slug": p["slug"],
+            "tags": p["tags"],
+        }
+        for p in posts
+        if not p.get("draft")
+    ]
+
     # Generate manifest (.selfdoc/manifest.json)
     from selfdoc.manifest import generate_manifest
 
-    generate_manifest(config, all_docs, dir_path=".")
+    generate_manifest(config, all_docs, posts_data=posts_data, dir_path=".")
     all_commit_files.append(".selfdoc/manifest.json")
 
     if all_commit_files and not no_commit:
