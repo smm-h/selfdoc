@@ -13,6 +13,7 @@ from datetime import datetime
 
 from selfdoc.icons import get_icon
 from selfdoc.themes import get_theme, get_theme_meta
+from selfdoc.urls import SimpleURLBuilder
 from selfdoc.tokenizer import (
     tokenize as tokenize_md,
     Heading as TokHeading,
@@ -298,7 +299,7 @@ def _generate_features_html(branding, nav_items):
 
 def generate_html(markdown_files, project_name=None, version=None,
                    has_custom_css=False, repo=None, docs_dir_name="docs/",
-                   base_url=None, frontmatter=None, lang="en",
+                   base_url=None, url_builder=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
                    critical_css=None, twitter_site=None, search=None,
                    feedback=None, branch="main", search_engine=None,
@@ -675,6 +676,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             repo=repo,
             source_path=pd["source_path"],
             base_url=base_url,
+            url_builder=url_builder,
             page_path=pd["html_path"],
             description=pd["description"],
             lang=lang,
@@ -711,7 +713,8 @@ def generate_html(markdown_files, project_name=None, version=None,
 
 
 def generate_404_page(project_name=None, version=None, has_custom_css=False,
-                      nav_items=None, repo=None, base_url=None, lang="en",
+                      nav_items=None, repo=None, base_url=None, url_builder=None,
+                      lang="en",
                       feed_url=None, critical_css=None, theme_meta=None):
     """Generate a custom 404 page using the standard page template (Feature 39).
 
@@ -769,6 +772,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         custom_css_href="custom.css" if has_custom_css else None,
         prefix="",
         base_url=base_url,
+        url_builder=url_builder,
         page_path=None,
         lang=lang,
         feed_url=feed_url,
@@ -1964,13 +1968,17 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
                      date_modified, lang, breadcrumbs, schema,
                      twitter_site, deploy_target,
                      available_locales=None, current_locale="",
-                     url_prefix=""):
+                     url_prefix="", url_builder=None):
     """Build SEO tags: JSON-LD structured data, OG meta, canonical, hreflang, security."""
+    if url_builder is None and base_url is not None:
+        url_builder = SimpleURLBuilder(base_url)
     seo_tags = ""
     escaped_title = _escape_html(title)
     escaped_project = _escape_html(project_name)
     canonical_url = (
-        f"{base_url}/{_html_path_to_url(page_path)}" if page_path else None
+        url_builder.page_url(_html_path_to_url(page_path))
+        if url_builder and page_path
+        else (f"{base_url}/{_html_path_to_url(page_path)}" if page_path else None)
     )
 
     # TechArticle JSON-LD -- emitted when page_path is set
@@ -2023,7 +2031,7 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             "@type": "ListItem",
             "position": 1,
             "name": "Home",
-            "item": f"{base_url}/{_html_path_to_url('index.html')}",
+            "item": url_builder.page_url(_html_path_to_url('index.html')) if url_builder else f"{base_url}/{_html_path_to_url('index.html')}",
         }
         items = [home_item]
         # Use logical path (strip trailing /index.html) for breadcrumb
@@ -2038,7 +2046,7 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
                 "@type": "ListItem",
                 "position": len(items) + 1,
                 "name": dir_name.capitalize(),
-                "item": f"{base_url}/{dir_path}/",
+                "item": url_builder.page_url(f"{dir_path}/") if url_builder else f"{base_url}/{dir_path}/",
             }
             items.append(entry)
         # Final page entry (no item URL per Google spec)
@@ -2064,10 +2072,11 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             "@context": "https://schema.org",
             "@type": "WebSite",
             "name": project_name,
-            "url": f"{base_url}/",
+            "url": url_builder.page_url("") if url_builder else f"{base_url}/",
             "potentialAction": {
                 "@type": "SearchAction",
-                "target": f"{base_url}/?q={{search_term_string}}",
+                "target": (url_builder.page_url("?q={search_term_string}") if url_builder
+                           else f"{base_url}/?q={{search_term_string}}"),
                 "query-input": "required name=search_term_string",
             },
         }
@@ -2097,7 +2106,7 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
         if author and author.get("url"):
             org_ld["url"] = author["url"]
         else:
-            org_ld["url"] = base_url
+            org_ld["url"] = url_builder.base() if url_builder else base_url
 
         # sameAs: collect social profile URLs
         same_as = []
@@ -2285,14 +2294,15 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
         slug = _html_to_md_path(page_path).replace(".md", "")
         # og:image:alt -- use description if available, otherwise title
         og_image_alt = _escape_html(description if description else title)
+        og_image_url = url_builder.asset_url(f"og-{slug}.png") if url_builder else f"{base_url}/og-{slug}.png"
         seo_tags += (
-            f'\n<meta property="og:image" content="{base_url}/og-{slug}.png">'
+            f'\n<meta property="og:image" content="{og_image_url}">'
             f'\n<meta property="og:image:type" content="image/png">'
             f'\n<meta property="og:image:width" content="1200">'
             f'\n<meta property="og:image:height" content="630">'
             f'\n<meta property="og:image:alt" content="{og_image_alt}">'
             f'\n<meta property="og:url" content="{canonical_url}">'
-            f'\n<meta name="twitter:image" content="{base_url}/og-{slug}.png">'
+            f'\n<meta name="twitter:image" content="{og_image_url}">'
         )
 
     # Canonical URL -- needs base_url
@@ -2315,7 +2325,7 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             if loc.get("default") is True:
                 default_locale_code = code
             locale_prefix = f"{code}/{version_part}" if version_part else code
-            href = f"{base_url}/{locale_prefix}/{page_url_suffix}"
+            href = url_builder.page_url(f"{locale_prefix}/{page_url_suffix}") if url_builder else f"{base_url}/{locale_prefix}/{page_url_suffix}"
             seo_tags += f'\n<link rel="alternate" hreflang="{code}" href="{href}">'
 
         # x-default points to the default locale (or first locale)
@@ -2325,7 +2335,7 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             f"{default_locale_code}/{version_part}"
             if version_part else default_locale_code
         )
-        default_href = f"{base_url}/{default_prefix}/{page_url_suffix}"
+        default_href = url_builder.page_url(f"{default_prefix}/{page_url_suffix}") if url_builder else f"{base_url}/{default_prefix}/{page_url_suffix}"
         seo_tags += f'\n<link rel="alternate" hreflang="x-default" href="{default_href}">'
 
     # Security meta tags for GitHub Pages (Phase 7.1)
@@ -2797,7 +2807,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", repo=None, source_path=None,
-               base_url=None, page_path=None, description="",
+               base_url=None, url_builder=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
                schema=None, twitter_site=None, search=None,
@@ -2838,7 +2848,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
 
     # Build SEO tags and security meta
     seo_tags, security_meta = _render_seo_tags(
-        title=title, base_url=base_url, page_path=page_path,
+        title=title, base_url=base_url, url_builder=url_builder,
+        page_path=page_path,
         description=description, body_html=body_html, author=author,
         project_name=project_name, repo=repo, date_published=date_published,
         date_modified=date_modified, lang=lang, breadcrumbs=breadcrumbs,
@@ -2864,8 +2875,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             parts = url_prefix.split("/")
             if len(parts) >= 2:
                 latest_prefix = f"{parts[0]}/{latest_ver}"
+                base = url_builder.base() if url_builder else base_url
                 canonical_latest = (
-                    f"{base_url}/{latest_prefix}/"
+                    f"{base}/{latest_prefix}/"
                     f"{_html_path_to_url(page_path)}"
                 )
                 seo_tags = re.sub(

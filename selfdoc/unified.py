@@ -37,6 +37,7 @@ from selfdoc.html import (
     get_css,
 )
 from selfdoc.themes import get_theme_meta
+from selfdoc.urls import SimpleURLBuilder
 
 
 def _resolve_project_path(project_entry, docs_site_dir):
@@ -533,6 +534,7 @@ def build_unified(dir_path=".", config=None):
                 "has_custom_css": has_custom_css,
                 "config_description": config_description,
                 "base_url": base_url,
+                "url_builder": SimpleURLBuilder(base_url) if base_url else None,
                 "feed_url": feed_url,
                 "lang": lang,
             }
@@ -636,6 +638,7 @@ def build_unified(dir_path=".", config=None):
         theme_meta=theme_meta,
         deploy=config.get("deploy"),
         feed_max_entries=config.get("feed_max_entries"),
+        url_builder=lb["url_builder"],
     )
     written.update(aux_written)
 
