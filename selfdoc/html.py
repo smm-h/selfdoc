@@ -2582,17 +2582,61 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
     )
 
 
-def _render_search_dialog(prefix, current_version=""):
+def _pagefind_init_script():
+    """Return inline script that initializes Pagefind UI and wires Cmd+K."""
+    return (
+        '<script>\n'
+        'document.addEventListener("DOMContentLoaded", function() {\n'
+        '  new PagefindUI({ element: "#pagefind-container", showSubResults: true });\n'
+        '  var dialog = document.getElementById("search-dialog");\n'
+        '  document.addEventListener("keydown", function(e) {\n'
+        '    if ((e.metaKey || e.ctrlKey) && e.key === "k") {\n'
+        '      e.preventDefault();\n'
+        '      if (dialog.open) { dialog.close(); } else {\n'
+        '        dialog.showModal();\n'
+        '        var input = dialog.querySelector(".pagefind-ui--search-input");\n'
+        '        if (input) input.focus();\n'
+        '      }\n'
+        '    }\n'
+        '    if (e.key === "Escape" && dialog.open) { dialog.close(); }\n'
+        '  });\n'
+        '  var closeBtn = dialog.querySelector(".search-close");\n'
+        '  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });\n'
+        '  dialog.addEventListener("click", function(e) {\n'
+        '    if (e.target === dialog) dialog.close();\n'
+        '  });\n'
+        '});\n'
+        '</script>'
+    )
+
+
+def _render_search_dialog(prefix, current_version="", search_engine=None):
     """Build the search dialog HTML.
 
     Args:
         prefix: Relative path prefix back to root.
         current_version: Current version string for the default-version
             filter attribute (e.g. "1.0.0").
+        search_engine: Search engine name (None, "builtin", "fuse",
+            "minisearch", or "pagefind").
     """
     version_attr = ""
     if current_version:
         version_attr = f' data-default-version="{_escape_html(current_version)}"'
+
+    if search_engine == "pagefind":
+        return (
+            f'<dialog class="search-dialog" id="search-dialog" data-search-base="/"{version_attr} aria-label="Search documentation">\n'
+            f'<div class="search-inner">\n'
+            f'<div class="search-header">\n'
+            f'<span class="search-header-title">Search</span>\n'
+            f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
+            f'</div>\n'
+            f'<div id="pagefind-container"></div>\n'
+            f'</div>\n'
+            f'</dialog>'
+        )
+
     return (
         f'<dialog class="search-dialog" id="search-dialog" data-search-base="/"{version_attr} aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
@@ -3029,7 +3073,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     )
 
     # Build search dialog
-    search_dialog_html = _render_search_dialog(prefix, current_version=current_version)
+    search_dialog_html = _render_search_dialog(prefix, current_version=current_version, search_engine=search_engine)
 
     # Load JS from external files via the loader module
     from selfdoc.js.loader import load_js, assemble_body_js
@@ -3066,6 +3110,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{version_seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
+        f'{"<link href=\"" + prefix + "pagefind/pagefind-ui.css\" rel=\"stylesheet\">" + chr(10) + "<script src=\"" + prefix + "pagefind/pagefind-ui.js\"></script>" + chr(10) if search_engine == "pagefind" else ""}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/minisearch@7.1.1/dist/umd/index.min.js\"></script>" + chr(10) if search_engine == "minisearch" else ""}'
         f'</head>\n'
@@ -3098,7 +3143,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
         f'{search_dialog_html}\n'
-        f'<script defer src="{prefix}search.js"></script>\n'
+        f'{_pagefind_init_script() if search_engine == "pagefind" else "<script defer src=\"" + prefix + "search.js\"></script>"}\n'
         f'</body>\n'
         f'</html>\n'
     )
