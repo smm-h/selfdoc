@@ -1,4 +1,11 @@
-"""URL builder interface for decoupling URL generation from hardcoded base_url usage."""
+"""URL builder interface for decoupling URL generation from hardcoded base_url usage.
+
+Project identification uses two canonical identifiers:
+- slug: machine identifier (URL-safe, lowercase, hyphens) used in URLs,
+  directory names, cross-references, frontmatter, and manifest keys.
+- name: human-readable display name (may contain spaces, capitals, special
+  characters) used in UI, homepages, and documentation.
+"""
 
 from __future__ import annotations
 
