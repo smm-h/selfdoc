@@ -7,7 +7,7 @@ by date descending, with feed_max_entries truncation applied after sorting.
 
 import re
 
-from selfdoc.build import _make_feed_entry, _generate_atom_feed
+from selfdoc.build import _make_feed_entry, _generate_atom_feed, SimpleURLBuilder
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +103,7 @@ def _generate_feed(tmp_path, markdown_files, frontmatter, page_dates,
         markdown_files=markdown_files,
         frontmatter=frontmatter,
         page_dates=page_dates,
+        url_builder=SimpleURLBuilder("https://example.com"),
         feed_max_entries=feed_max_entries,
     )
     return (tmp_path / "feed.xml").read_text()

@@ -12,7 +12,7 @@ import gzip as gzip_module
 
 from unittest import mock
 
-from selfdoc.build import build, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _make_feed_entry, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg
+from selfdoc.build import build, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _make_feed_entry, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg, SimpleURLBuilder
 from selfdoc.config import ConfigError
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
@@ -173,7 +173,7 @@ def test_build_generates_sidebar(project_dir):
 
 def test_robots_txt_with_base_url(tmp_path):
     """robots.txt includes Sitemap line when base_url is set."""
-    path = _generate_robots_txt(str(tmp_path), "https://example.com")
+    path = _generate_robots_txt(str(tmp_path), "https://example.com", SimpleURLBuilder("https://example.com"))
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -183,7 +183,7 @@ def test_robots_txt_with_base_url(tmp_path):
 
 def test_robots_txt_ai_crawlers(tmp_path):
     """robots.txt contains entries for all AI crawler user-agents."""
-    path = _generate_robots_txt(str(tmp_path), "https://example.com")
+    path = _generate_robots_txt(str(tmp_path), "https://example.com", SimpleURLBuilder("https://example.com"))
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -829,6 +829,7 @@ def test_feed_max_entries_truncates(tmp_path):
         markdown_files=markdown_files,
         frontmatter={},
         page_dates=page_dates,
+        url_builder=SimpleURLBuilder("https://example.com"),
         feed_max_entries=2,
     )
     with open(feed_path, "r", encoding="utf-8") as f:

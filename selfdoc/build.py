@@ -754,18 +754,14 @@ def _generate_og_png(project_name, title, accent_color="#0969da"):
         return _generate_og_png_basic(accent_color)
 
 
-def _generate_sitemap(base_url, html_paths, page_dates=None, url_builder=None):
+def _generate_sitemap(html_paths, url_builder, page_dates=None):
     """Generate a sitemap.xml string for the given HTML paths.
 
     Args:
-        base_url: Base URL for constructing full URLs (kept for backward compat).
         html_paths: List of HTML file paths (e.g. ["index.html", "guide.html"]).
+        url_builder: URLBuilder for constructing URLs.
         page_dates: Optional dict mapping md paths to (published, modified) tuples.
-        url_builder: Optional URLBuilder for constructing URLs. When provided,
-            used instead of raw base_url string concatenation.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     if page_dates is None:
         page_dates = {}
     urls = []
@@ -785,7 +781,7 @@ def _generate_sitemap(base_url, html_paths, page_dates=None, url_builder=None):
                     date_tuple = page_dates.get("/".join(parts[2:]))
         # Use modified date for lastmod
         date = date_tuple[1] if date_tuple else None
-        full_url = url_builder.page_url(url) if url_builder else f"{base_url}/{url}"
+        full_url = url_builder.page_url(url)
         if date:
             urls.append(
                 f"  <url><loc>{full_url}</loc>"
@@ -818,13 +814,11 @@ def _first_sentence(text):
     return text[:100]
 
 
-def _generate_llms_txt(project_name, markdown_files, base_url=None, url_builder=None):
+def _generate_llms_txt(project_name, markdown_files, url_builder):
     """Generate llms.txt (brief index) content.
 
     Lists each page with its title and first sentence.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     lines = [f"# {project_name} Documentation", ""]
 
     # Try to get description from index.md first paragraph
@@ -855,7 +849,7 @@ def _generate_llms_txt(project_name, markdown_files, base_url=None, url_builder=
                 first = _first_sentence(line)
                 break
 
-        url = url_builder.page_url(url_path) if url_builder else f"{base_url}/{url_path}"
+        url = url_builder.page_url(url_path)
         lines.append(f"- [{title}]({url}): {first}")
 
     return "\n".join(lines) + "\n"
@@ -918,14 +912,12 @@ def _make_feed_entry(title, url, date, summary="", page_type=""):
 def _generate_atom_feed(
     output_dir, base_url, project_name, description,
     markdown_files, frontmatter, page_dates,
-    feed_max_entries=None, url_builder=None,
+    url_builder, feed_max_entries=None,
 ):
     """Generate an Atom feed (feed.xml) for the documentation site.
 
     Returns the path written.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     if frontmatter is None:
         frontmatter = {}
     if page_dates is None:
@@ -960,7 +952,7 @@ def _generate_atom_feed(
             date_tuple = page_dates.get(md_path)
             page_date = date_tuple[1] if date_tuple else ""
 
-        page_full_url = url_builder.page_url(url_path) if url_builder else f"{base_url}/{url_path}"
+        page_full_url = url_builder.page_url(url_path)
 
         entries.append(_make_feed_entry(
             title=title,
@@ -987,8 +979,8 @@ def _generate_atom_feed(
     if description:
         subtitle_line = f"  <subtitle>{_escape_html(description)}</subtitle>\n"
 
-    feed_self_url = url_builder.feed_url() if url_builder else f"{base_url}/feed.xml"
-    feed_home_url = url_builder.page_url("") if url_builder else f"{base_url}/"
+    feed_self_url = url_builder.feed_url()
+    feed_home_url = url_builder.page_url("")
     feed_xml = (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<feed xmlns="http://www.w3.org/2005/Atom">\n'
@@ -2009,17 +2001,15 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
     if len(build_locales) > 1:
         locale_sitemap_paths = _generate_per_locale_sitemaps(
             output_dir=output_dir,
-            base_url=lb["base_url"],
             per_locale_indexed_html=per_locale_indexed_html,
-            page_dates=lb["page_dates"],
             url_builder=lb["url_builder"],
+            page_dates=lb["page_dates"],
         )
         for sp in locale_sitemap_paths:
             written[sp] = True
 
         sitemap_index_path = _generate_sitemap_index(
             output_dir=output_dir,
-            base_url=lb["base_url"],
             locale_codes=list(per_locale_indexed_html.keys()),
             url_builder=lb["url_builder"],
         )
@@ -2123,18 +2113,16 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
 
 def _generate_auxiliary_files(
     output_dir, project_name, version, markdown_files, html_paths,
-    base_url, has_custom_css, repo, lang="en", page_dates=None,
+    base_url, has_custom_css, repo, url_builder, lang="en", page_dates=None,
     frontmatter=None, description="", feed_url=None, critical_css=None,
     accent_color="#0969da", theme_meta=None, deploy=None,
-    feed_max_entries=None, has_sitemap_index=False, url_builder=None,
+    feed_max_entries=None, has_sitemap_index=False,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
     Called by build() after the main HTML pages and static files are written.
     Returns a dict of {output_path: True} for files written.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     written = {}
 
     # Generate OG social card PNGs (Feature 21)
@@ -2149,16 +2137,15 @@ def _generate_auxiliary_files(
         written[png_path] = True
 
     # Generate sitemap.xml (Feature 22)
-    sitemap_content = _generate_sitemap(base_url, html_paths, page_dates,
-                                        url_builder=url_builder)
+    sitemap_content = _generate_sitemap(html_paths, url_builder,
+                                        page_dates=page_dates)
     sitemap_path = os.path.join(output_dir, "sitemap.xml")
     with open(sitemap_path, "w", encoding="utf-8") as f:
         f.write(sitemap_content)
     written[sitemap_path] = True
 
     # Generate llms.txt and llms-full.txt (Feature 24)
-    llms_txt = _generate_llms_txt(project_name, markdown_files, base_url,
-                                  url_builder=url_builder)
+    llms_txt = _generate_llms_txt(project_name, markdown_files, url_builder)
     llms_path = os.path.join(output_dir, "llms.txt")
     with open(llms_path, "w", encoding="utf-8") as f:
         f.write(llms_txt)
@@ -2179,8 +2166,8 @@ def _generate_auxiliary_files(
         markdown_files=markdown_files,
         frontmatter=frontmatter,
         page_dates=page_dates,
-        feed_max_entries=feed_max_entries,
         url_builder=url_builder,
+        feed_max_entries=feed_max_entries,
     )
     written[feed_path] = True
 
@@ -2212,8 +2199,8 @@ def _generate_auxiliary_files(
     written[favicon_path] = True
 
     # Generate robots.txt (allow all crawlers including AI bots)
-    robots_path = _generate_robots_txt(output_dir, base_url, has_sitemap_index,
-                                       url_builder=url_builder)
+    robots_path = _generate_robots_txt(output_dir, base_url, url_builder,
+                                       has_sitemap_index=has_sitemap_index)
     written[robots_path] = True
 
     # Generate _headers only for Cloudflare Pages deploy target
@@ -2228,14 +2215,12 @@ def _generate_auxiliary_files(
     return written
 
 
-def _generate_robots_txt(output_dir, base_url, has_sitemap_index=False, url_builder=None):
+def _generate_robots_txt(output_dir, base_url, url_builder, has_sitemap_index=False):
     """Generate robots.txt allowing all crawlers including AI bots.
 
     When ``has_sitemap_index`` is True, references ``sitemap-index.xml``
     instead of ``sitemap.xml``.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     sitemap_file = "sitemap-index.xml" if has_sitemap_index else "sitemap.xml"
     lines = [
         "User-agent: *",
@@ -2262,7 +2247,7 @@ def _generate_robots_txt(output_dir, base_url, has_sitemap_index=False, url_buil
         "User-agent: OAI-SearchBot",
         "Allow: /",
         "",
-        f"Sitemap: {url_builder.asset_url(sitemap_file) if url_builder else f'{base_url}/{sitemap_file}'}",
+        f"Sitemap: {url_builder.asset_url(sitemap_file)}",
     ]
     content = "\n".join(lines) + "\n"
     path = os.path.join(output_dir, "robots.txt")
@@ -2271,18 +2256,16 @@ def _generate_robots_txt(output_dir, base_url, has_sitemap_index=False, url_buil
     return path
 
 
-def _generate_per_locale_sitemaps(output_dir, base_url, per_locale_indexed_html,
-                                  page_dates=None, url_builder=None):
+def _generate_per_locale_sitemaps(output_dir, per_locale_indexed_html,
+                                  url_builder, page_dates=None):
     """Generate per-locale sitemap.xml files at output_dir/{locale}/sitemap.xml.
 
     Returns a list of written file paths.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     written = []
     for locale_code, html_paths in per_locale_indexed_html.items():
-        sitemap_content = _generate_sitemap(base_url, html_paths, page_dates,
-                                            url_builder=url_builder)
+        sitemap_content = _generate_sitemap(html_paths, url_builder,
+                                            page_dates=page_dates)
         locale_dir = os.path.join(output_dir, locale_code)
         os.makedirs(locale_dir, exist_ok=True)
         sitemap_path = os.path.join(locale_dir, "sitemap.xml")
@@ -2292,17 +2275,14 @@ def _generate_per_locale_sitemaps(output_dir, base_url, per_locale_indexed_html,
     return written
 
 
-def _generate_sitemap_index(output_dir, base_url, locale_codes, url_builder=None):
+def _generate_sitemap_index(output_dir, locale_codes, url_builder):
     """Generate sitemap-index.xml at the output root listing per-locale sitemaps.
 
     Returns the written file path.
     """
-    if url_builder is None and base_url is not None:
-        url_builder = SimpleURLBuilder(base_url)
     entries = []
     for code in sorted(locale_codes):
-        loc_url = (url_builder.asset_url(f"{code}/sitemap.xml")
-                   if url_builder else f"{base_url}/{code}/sitemap.xml")
+        loc_url = url_builder.asset_url(f"{code}/sitemap.xml")
         entries.append(
             f"  <sitemap><loc>{loc_url}</loc></sitemap>"
         )
