@@ -370,18 +370,15 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
-    written = {}
-    all_search_entries = []
-    all_site_terms = []
-    projects_info = []
-    projects_nav_data = []
-
     # Get theme info from docs-site config
     theme_name = config.get("theme", "minimal")
     raw_theme_css = get_css(theme_name)
     theme_meta = get_theme_meta(theme_name)
     critical_css, _ = _extract_critical_css(raw_theme_css)
     critical_css = _minify_css(critical_css)
+
+    # Track all injected post files for cleanup: list of (files, docs_dir) tuples
+    all_injected_posts = []
 
     # --- Partition pages for each constituent project ---
     # slug -> (versioned_set, unversioned_set, uv_markdown, uv_frontmatter)
@@ -394,6 +391,12 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
             proj_docs_dir = os.path.join(
                 project_path, proj_config["docs"].rstrip("/"),
             )
+            # Inject posts for this constituent project
+            proj_injected = _inject_posts_into_docs(
+                project_path, proj_config, proj_docs_dir, include_drafts,
+            )
+            if proj_injected:
+                all_injected_posts.append((proj_injected, proj_docs_dir))
             v_pages, uv_pages, uv_md, uv_fm = _partition_pages(
                 proj_config, proj_docs_dir, project_path,
             )
@@ -406,10 +409,47 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
     injected_post_files = _inject_posts_into_docs(
         dir_path, config, docs_site_docs_dir, include_drafts,
     )
+    if injected_post_files:
+        all_injected_posts.append((injected_post_files, docs_site_docs_dir))
 
     ds_versioned, ds_unversioned, ds_uv_markdown, ds_uv_frontmatter = _partition_pages(
         config, docs_site_docs_dir, dir_path,
     )
+
+    try:
+        written = _build_unified_body(
+            dir_path, config, unified_config, locales, versions,
+            default_locale_code, latest_version, output_dir,
+            docs_site_docs_dir, project_page_partitions,
+            ds_versioned, ds_unversioned, ds_uv_markdown,
+            ds_uv_frontmatter, raw_theme_css, theme_meta,
+            critical_css, include_drafts,
+        )
+    finally:
+        for files, d_dir in all_injected_posts:
+            _cleanup_injected_posts(files, d_dir)
+
+    return written
+
+
+def _build_unified_body(
+    dir_path, config, unified_config, locales, versions,
+    default_locale_code, latest_version, output_dir,
+    docs_site_docs_dir, project_page_partitions,
+    ds_versioned, ds_unversioned, ds_uv_markdown,
+    ds_uv_frontmatter, raw_theme_css, theme_meta,
+    critical_css, include_drafts,
+):
+    """Core build logic for unified sites.
+
+    Extracted so ``build_unified`` can wrap it in try/finally for
+    post-injection cleanup.
+    """
+    written = {}
+    all_search_entries = []
+    all_site_terms = []
+    projects_info = []
+    projects_nav_data = []
 
     # Check reserved paths and collisions
     version_strs = [v["version"] for v in versions]
@@ -837,9 +877,6 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
             f"Pre-compressed {compress_count} files "
             f"(gzip only, install brotli for better compression)"
         )
-
-    # Clean up injected post files from docs-site's docs/
-    _cleanup_injected_posts(injected_post_files, docs_site_docs_dir)
 
     return written
 

@@ -1711,6 +1711,32 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
     # Check for collisions between unversioned output paths and version strings
     _check_unversioned_collisions(unversioned_pages, version_strs)
 
+    try:
+        written = _build_body(
+            dir_path, config, locales, versions, default_locale_code,
+            latest_version, build_versions, build_locales, output_dir,
+            docs_dir_name, latest_docs_dir, versioned_pages,
+            unversioned_pages, uv_markdown, uv_frontmatter,
+            version_strs, include_drafts,
+        )
+    finally:
+        _cleanup_injected_posts(injected_post_files, latest_docs_dir)
+
+    return written
+
+
+def _build_body(
+    dir_path, config, locales, versions, default_locale_code,
+    latest_version, build_versions, build_locales, output_dir,
+    docs_dir_name, latest_docs_dir, versioned_pages,
+    unversioned_pages, uv_markdown, uv_frontmatter,
+    version_strs, include_drafts,
+):
+    """Core build logic for single-project sites.
+
+    Extracted so ``build`` can wrap it in try/finally for
+    post-injection cleanup.
+    """
     written = {}
     all_search_entries = []
     latest_build = None
@@ -2104,9 +2130,6 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         print("OG cards: rich (predraw)")
     else:
         print("OG cards: basic (install predraw for text)")
-
-    # Clean up injected post files from docs/
-    _cleanup_injected_posts(injected_post_files, latest_docs_dir)
 
     return written
 
