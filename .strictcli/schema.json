@@ -38,7 +38,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -76,6 +76,13 @@
           "type": "str",
           "help": "Build only the specified version instead of all (e.g., '1.0.0')",
           "default": ""
+        },
+        {
+          "name": "drafts",
+          "type": "bool",
+          "help": "Include draft posts in the build output",
+          "default": false,
+          "negatable": true
         }
       ]
     },
@@ -89,6 +96,13 @@
           "help": "HTTP port number to serve on (default: 8000, e.g., 3000)",
           "short": "p",
           "default": 8000
+        },
+        {
+          "name": "drafts",
+          "type": "bool",
+          "help": "Rebuild with draft posts included before serving",
+          "default": false,
+          "negatable": true
         }
       ]
     },
@@ -157,6 +171,139 @@
           "negatable": true
         }
       ]
+    }
+  },
+  "groups": {
+    "post": {
+      "name": "post",
+      "help": "Manage blog posts and chronological content",
+      "commands": {
+        "new": {
+          "name": "new",
+          "help": "Scaffold a new blog post with frontmatter template",
+          "flags": [
+            {
+              "name": "title",
+              "type": "str",
+              "help": "Title for the new post (required)"
+            }
+          ]
+        },
+        "list": {
+          "name": "list",
+          "help": "List all discovered blog posts with date, title, slug, and draft status"
+        },
+        "generate": {
+          "name": "generate",
+          "help": "Generate a blog post from release metadata",
+          "flags": [
+            {
+              "name": "from-release",
+              "type": "bool",
+              "help": "Generate from release metadata (required)",
+              "default": false,
+              "negatable": true
+            },
+            {
+              "name": "version",
+              "type": "str",
+              "help": "The released version (required)"
+            },
+            {
+              "name": "prev-version",
+              "type": "str",
+              "help": "Previous version for comparison"
+            },
+            {
+              "name": "bump-type",
+              "type": "str",
+              "help": "Bump type: patch, minor, or major"
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "help": "Release description text"
+            },
+            {
+              "name": "context",
+              "type": "str",
+              "help": "Release context text"
+            },
+            {
+              "name": "changelog-file",
+              "type": "str",
+              "help": "Path to a file containing changelog markdown"
+            },
+            {
+              "name": "body-file",
+              "type": "str",
+              "help": "Path to a file containing user-written post body"
+            },
+            {
+              "name": "project-name",
+              "type": "str",
+              "help": "Project name for the post title"
+            },
+            {
+              "name": "release-url",
+              "type": "str",
+              "help": "URL to the GitHub release"
+            },
+            {
+              "name": "registry-url",
+              "type": "str",
+              "help": "Package registry URL (repeatable)",
+              "default": [],
+              "repeatable": true
+            },
+            {
+              "name": "dry-run",
+              "type": "bool",
+              "help": "Print generated content without writing files",
+              "default": false,
+              "negatable": true
+            }
+          ]
+        }
+      }
+    },
+    "assembly": {
+      "name": "assembly",
+      "help": "Manage the unified documentation assembly",
+      "commands": {
+        "init": {
+          "name": "init",
+          "help": "Initialize the assembly repository on GitHub"
+        },
+        "push": {
+          "name": "push",
+          "help": "Trigger assembly rebuild for this project"
+        },
+        "status": {
+          "name": "status",
+          "help": "Show recent assembly build status"
+        },
+        "rebuild": {
+          "name": "rebuild",
+          "help": "Trigger rebuild for all projects in the assembly"
+        },
+        "redirects": {
+          "name": "redirects",
+          "help": "Generate a CF Pages _redirects file for this project",
+          "flags": [
+            {
+              "name": "slug",
+              "type": "str",
+              "help": "Project slug for URL path segment"
+            },
+            {
+              "name": "docs_base",
+              "type": "str",
+              "help": "Base URL of the assembly site"
+            }
+          ]
+        }
+      }
     }
   }
 }

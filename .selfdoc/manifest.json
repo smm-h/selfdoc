@@ -1,0 +1,373 @@
+{
+  "schema_version": 1,
+  "name": "selfdoc",
+  "slug": "selfdoc",
+  "version": "0.20.0",
+  "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
+  "language": "python",
+  "base_url": "https://selfdoc.smmh.dev",
+  "pages": [
+    {
+      "path": "architecture.md",
+      "title": "Architecture",
+      "type": "doc"
+    },
+    {
+      "path": "check-guide.md",
+      "title": "Check Guide",
+      "type": "doc"
+    },
+    {
+      "path": "cli-assembly.md",
+      "title": "selfdoc assembly",
+      "type": "doc"
+    },
+    {
+      "path": "cli-build.md",
+      "title": "selfdoc build",
+      "type": "doc"
+    },
+    {
+      "path": "cli-check.md",
+      "title": "selfdoc check",
+      "type": "doc"
+    },
+    {
+      "path": "cli-deploy.md",
+      "title": "selfdoc deploy",
+      "type": "doc"
+    },
+    {
+      "path": "cli-gen-data.md",
+      "title": "selfdoc gen-data",
+      "type": "doc"
+    },
+    {
+      "path": "cli-gen.md",
+      "title": "selfdoc gen",
+      "type": "doc"
+    },
+    {
+      "path": "cli-index.md",
+      "title": "selfdoc CLI Reference",
+      "type": "doc"
+    },
+    {
+      "path": "cli-init.md",
+      "title": "selfdoc init",
+      "type": "doc"
+    },
+    {
+      "path": "cli-post.md",
+      "title": "selfdoc post",
+      "type": "doc"
+    },
+    {
+      "path": "cli-serve.md",
+      "title": "selfdoc serve",
+      "type": "doc"
+    },
+    {
+      "path": "code-blocks.md",
+      "title": "Code Blocks",
+      "type": "doc"
+    },
+    {
+      "path": "comparisons.md",
+      "title": "Comparisons",
+      "type": "doc"
+    },
+    {
+      "path": "configuration.md",
+      "title": "Configuration",
+      "type": "doc"
+    },
+    {
+      "path": "custom-directives.md",
+      "title": "Custom Directives",
+      "type": "doc"
+    },
+    {
+      "path": "deployment.md",
+      "title": "Deployment",
+      "type": "doc"
+    },
+    {
+      "path": "directives.md",
+      "title": "Directives Reference",
+      "type": "doc"
+    },
+    {
+      "path": "feeds.md",
+      "title": "Atom Feeds",
+      "type": "doc"
+    },
+    {
+      "path": "gen-data-guide.md",
+      "title": "Data Generation",
+      "type": "doc"
+    },
+    {
+      "path": "gen-index.md",
+      "title": "API Reference",
+      "type": "doc"
+    },
+    {
+      "path": "getting-started.md",
+      "title": "Getting Started",
+      "type": "doc"
+    },
+    {
+      "path": "glossary-guide.md",
+      "title": "Glossary Guide",
+      "type": "doc"
+    },
+    {
+      "path": "glossary-terms.md",
+      "title": "Glossary",
+      "type": "doc"
+    },
+    {
+      "path": "index.md",
+      "title": "selfdoc",
+      "type": "doc"
+    },
+    {
+      "path": "internals.md",
+      "title": "Internals",
+      "type": "doc"
+    },
+    {
+      "path": "llms-txt.md",
+      "title": "llms.txt",
+      "type": "doc"
+    },
+    {
+      "path": "multi-language.md",
+      "title": "Multi-Language Support",
+      "type": "doc"
+    },
+    {
+      "path": "rlsbl-integration.md",
+      "title": "rlsbl Integration",
+      "type": "doc"
+    },
+    {
+      "path": "root-files.md",
+      "title": "Root Files",
+      "type": "doc"
+    },
+    {
+      "path": "search.md",
+      "title": "Search",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-__main__.md",
+      "title": "selfdoc.__main__",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-_version.md",
+      "title": "selfdoc._version",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-assembly.md",
+      "title": "selfdoc.assembly",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-build.md",
+      "title": "selfdoc.build",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-check.md",
+      "title": "selfdoc.check",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-cli.md",
+      "title": "selfdoc.cli",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-config.md",
+      "title": "selfdoc.config",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-context.md",
+      "title": "selfdoc.context",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-deploy.md",
+      "title": "selfdoc.deploy",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-directives.md",
+      "title": "selfdoc.directives",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-docs.md",
+      "title": "selfdoc.docs",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-dart.md",
+      "title": "selfdoc.extractors.dart",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-go.md",
+      "title": "selfdoc.extractors.go",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-kotlin.md",
+      "title": "selfdoc.extractors.kotlin",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-python.md",
+      "title": "selfdoc.extractors.python",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-sql.md",
+      "title": "selfdoc.extractors.sql",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-svelte.md",
+      "title": "selfdoc.extractors.svelte",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-swift.md",
+      "title": "selfdoc.extractors.swift",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-typescript.md",
+      "title": "selfdoc.extractors.typescript",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors-zig.md",
+      "title": "selfdoc.extractors.zig",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-extractors.md",
+      "title": "selfdoc.extractors",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-gen.md",
+      "title": "selfdoc.gen",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-gendata.md",
+      "title": "selfdoc.gendata",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-html.md",
+      "title": "selfdoc.html",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-icons.md",
+      "title": "selfdoc.icons",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-js-loader.md",
+      "title": "selfdoc.js.loader",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-js.md",
+      "title": "selfdoc.js",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-manifest.md",
+      "title": "selfdoc.manifest",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-posts.md",
+      "title": "selfdoc.posts",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-resolver.md",
+      "title": "selfdoc.resolver",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-shared.md",
+      "title": "selfdoc.shared",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-strictcli_support.md",
+      "title": "selfdoc.strictcli_support",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-tables.md",
+      "title": "selfdoc.tables",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-tokenizer.md",
+      "title": "selfdoc.tokenizer",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-unified.md",
+      "title": "selfdoc.unified",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-urls.md",
+      "title": "selfdoc.urls",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc-utils.md",
+      "title": "selfdoc.utils",
+      "type": "doc"
+    },
+    {
+      "path": "selfdoc.md",
+      "title": "selfdoc",
+      "type": "doc"
+    },
+    {
+      "path": "seo.md",
+      "title": "SEO",
+      "type": "doc"
+    },
+    {
+      "path": "staleness.md",
+      "title": "Staleness Detection",
+      "type": "doc"
+    },
+    {
+      "path": "theming.md",
+      "title": "Theming",
+      "type": "doc"
+    }
+  ],
+  "posts": [],
+  "last_gen": "2026-06-16T20:45:43.463577+00:00"
+}

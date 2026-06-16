@@ -212,9 +212,13 @@ Custom directives take priority over built-in names.
 | `auto_detect` | no | Automatic content detection settings for step guides and API entries. |
 | `gen` | no | Configuration for the gen command. |
 | `gen_data` | no | Configuration for the gen-data command. |
+| `schema_types` | no | Mapping from page type to schema.org @type (e.g. guide -> TechArticle). |
 | `versions` | no | List of documentation versions to build. |
 | `locales` | no | List of locales for multi-language documentation. |
 | `unified` | no | Configuration for unified multi-project documentation. |
+| `posts` | no | Blog post configuration. |
+| `topology` | no | Deployment topology for multi-project unified sites. |
+| `assembly` | no | Assembly configuration for unified site deployment. |
 
 `selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json).
 
@@ -229,6 +233,16 @@ Custom directives take priority over built-in names.
 | `check` | Check documentation coverage, directive resolution, and lint rules |
 | `gen` | Auto-generate documentation pages from project structure |
 | `gen-data` | Generate data files by running sandboxed scripts via bwrap |
+| **post** | Manage blog posts and chronological content |
+| `post new` | Scaffold a new blog post with frontmatter template |
+| `post list` | List all discovered blog posts with date, title, slug, and draft status |
+| `post generate` | Generate a blog post from release metadata |
+| **assembly** | Manage the unified documentation assembly |
+| `assembly init` | Initialize the assembly repository on GitHub |
+| `assembly push` | Trigger assembly rebuild for this project |
+| `assembly status` | Show recent assembly build status |
+| `assembly rebuild` | Trigger rebuild for all projects in the assembly |
+| `assembly redirects` | Generate a CF Pages _redirects file for this project |
 
 ## Deploy
 

@@ -12,7 +12,7 @@ order: 91
 
 Code-aware static site generator with directive-based content extraction
 
-Version: 0.19.1
+Version: 0.20.0
 
 ## Commands
 
@@ -23,3 +23,8 @@ Version: 0.19.1
 - [check](cli-check.html) -- Check documentation coverage, directive resolution, and lint rules
 - [gen](cli-gen.html) -- Auto-generate documentation pages from project structure
 - [gen-data](cli-gen-data.html) -- Generate data files by running sandboxed scripts via bwrap
+
+## Command Groups
+
+- [post](cli-post.html) -- Manage blog posts and chronological content
+- [assembly](cli-assembly.html) -- Manage the unified documentation assembly

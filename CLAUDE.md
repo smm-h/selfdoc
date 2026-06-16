@@ -94,6 +94,7 @@ uv run pytest
 - **selfdoc** (`selfdoc/__init__.py`): selfdoc: Code-aware static site generator with directive-based content extraction.
 - **selfdoc.__main__** (`selfdoc/__main__.py`)
 - **selfdoc._version** (`selfdoc/_version.py`): Version detection for selfdoc.
+- **selfdoc.assembly** (`selfdoc/assembly.py`): Assembly infrastructure for unified multi-project documentation deployment.
 - **selfdoc.build** (`selfdoc/build.py`): Build pipeline for selfdoc: template scanning, directive resolution, HTML output.
 - **selfdoc.catalog** (`selfdoc/catalog.py`): Directive catalog: defines all built-in directive names and their status.
 - **selfdoc.check** (`selfdoc/check.py`): Check command -- validate directives and report documentation coverage.
@@ -123,11 +124,15 @@ uv run pytest
 - **selfdoc.icons** (`selfdoc/icons.py`): Language icons for code blocks.
 - **selfdoc.js** (`selfdoc/js/__init__.py`)
 - **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources.
+- **selfdoc.manifest** (`selfdoc/manifest.py`): Manifest generation and loading for selfdoc projects.
+- **selfdoc.posts** (`selfdoc/posts.py`): Post discovery and validation for selfdoc blog posts.
 - **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors.
+- **selfdoc.shared** (`selfdoc/shared.py`): Generate shared elements for multi-project documentation assembly.
 - **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
 - **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
 - **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with alignment, pretty-printing, and pipe escaping.
 - **selfdoc.themes** (`selfdoc/themes/__init__.py`): Theme registry for selfdoc.
 - **selfdoc.tokenizer** (`selfdoc/tokenizer.py`): Standalone Markdown block tokenizer.
 - **selfdoc.unified** (`selfdoc/unified.py`): Monorepo unified site builder.
+- **selfdoc.urls** (`selfdoc/urls.py`): URL builder interface for decoupling URL generation from hardcoded base_url usage.
 - **selfdoc.utils** (`selfdoc/utils.py`): Shared utility functions for selfdoc.
