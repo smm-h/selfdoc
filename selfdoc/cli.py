@@ -78,6 +78,35 @@ def _cmd_post_new(title=""):
     return 0
 
 
+@post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status")
+def _cmd_post_list():
+    """List all discovered blog posts."""
+    from selfdoc.config import load_config
+    from selfdoc.posts import discover_posts
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    posts_config = config.get("posts") or {}
+    posts_dir = posts_config.get("dir", ".selfdoc/posts/")
+
+    posts = discover_posts(posts_dir)
+
+    if not posts:
+        print("No posts found.")
+        return 0
+
+    # Print header and aligned rows
+    for post in posts:
+        draft_marker = "  [DRAFT]" if post["draft"] else ""
+        print(f"{post['date']}  {post['title']}  ({post['slug']}){draft_marker}")
+
+    print(f"\n{len(posts)} post(s) found.")
+    return 0
+
+
 def _detect_source_entries(language):
     """Detect source entries for a given language.
 
