@@ -302,6 +302,16 @@ body::before {
     min-height: 100vh;
 }
 
+/* Narrow layout for post-type pages: two-column (sidebar + content), no TOC */
+.layout.layout--narrow {
+    grid-template-columns: 260px minmax(0, 1fr);
+}
+
+.layout.layout--narrow .content {
+    max-width: 48rem;
+    margin: 0 auto;
+}
+
 /* === Sidebar === */
 
 .sidebar {
