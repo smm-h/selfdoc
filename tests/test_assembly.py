@@ -35,6 +35,13 @@ def test_workflow_yaml_has_concurrency():
     yaml_str = generate_workflow_yaml()
     assert "assembly-deploy" in yaml_str
     assert "cancel-in-progress: false" in yaml_str
+    assert "queue: max" in yaml_str
+
+
+def test_workflow_yaml_has_queue_max():
+    """queue: max enables FIFO queuing of up to 100 pending workflow runs."""
+    yaml_str = generate_workflow_yaml()
+    assert "queue: max" in yaml_str
 
 
 def test_workflow_yaml_has_deploy_job():

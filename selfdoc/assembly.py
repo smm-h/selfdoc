@@ -17,6 +17,7 @@ on:
 concurrency:
   group: assembly-deploy
   cancel-in-progress: false
+  queue: max
 
 jobs:
   deploy:
