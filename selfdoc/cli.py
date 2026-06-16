@@ -107,6 +107,176 @@ def _cmd_post_list():
     return 0
 
 
+@post_group.command("generate", help="Generate a blog post from release metadata")
+@strictcli.flag("from-release", type=bool, help="Generate from release metadata (required)")
+@strictcli.flag("version", type=str, help="The released version (required)")
+@strictcli.flag("prev-version", type=str, help="Previous version for comparison")
+@strictcli.flag("bump-type", type=str, help="Bump type: patch, minor, or major")
+@strictcli.flag("description", type=str, help="Release description text")
+@strictcli.flag("context", type=str, help="Release context text")
+@strictcli.flag("changelog-file", type=str, help="Path to a file containing changelog markdown")
+@strictcli.flag("body-file", type=str, help="Path to a file containing user-written post body")
+@strictcli.flag("project-name", type=str, help="Project name for the post title")
+@strictcli.flag("release-url", type=str, help="URL to the GitHub release")
+@strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL (repeatable)")
+@strictcli.flag("dry-run", type=bool, help="Print generated content without writing files")
+def _cmd_post_generate(
+    from_release=False,
+    version="",
+    prev_version="",
+    bump_type="",
+    description="",
+    context="",
+    changelog_file="",
+    body_file="",
+    project_name="",
+    release_url="",
+    registry_url=None,
+    dry_run=False,
+):
+    """Generate a blog post from release metadata."""
+    from selfdoc.config import load_config
+    from selfdoc.manifest import _to_kebab, generate_manifest, load_manifest
+    from selfdoc.utils import atomic_write
+
+    if not from_release:
+        print("Error: --from-release is required.", file=sys.stderr)
+        sys.exit(1)
+
+    if not version:
+        print("Error: --version is required.", file=sys.stderr)
+        sys.exit(1)
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    posts_config = config.get("posts") or {}
+    posts_dir = posts_config.get("dir", ".selfdoc/posts/")
+
+    # Read file contents if paths provided
+    changelog_content = ""
+    if changelog_file:
+        with open(changelog_file, "r", encoding="utf-8") as f:
+            changelog_content = f.read().strip()
+
+    body_content = ""
+    if body_file:
+        with open(body_file, "r", encoding="utf-8") as f:
+            body_content = f.read().strip()
+
+    # Determine project name
+    if not project_name:
+        project_slug = (config.get("topology") or {}).get("slug")
+        if not project_slug:
+            name = config.get("name") or os.path.basename(os.path.abspath("."))
+            project_slug = _to_kebab(name)
+    else:
+        project_slug = _to_kebab(project_name)
+
+    # Build slug and filename
+    today = datetime.date.today().isoformat()
+    slug = f"release-v{version}"
+    filename = f"{today}-{slug}.md"
+
+    # Build title
+    if project_name:
+        title = f"{project_name} v{version}"
+    else:
+        title = f"Release v{version}"
+
+    # Build frontmatter
+    fm_lines = [
+        "---",
+        f"title: {title}",
+        f"date: {today}",
+        f"slug: {slug}",
+        "draft: false",
+        f"project: {project_slug}",
+        f"version: {version}",
+    ]
+    if prev_version:
+        fm_lines.append(f"prev_version: {prev_version}")
+    if bump_type:
+        fm_lines.append(f"bump_type: {bump_type}")
+    if release_url:
+        fm_lines.append(f"release_url: {release_url}")
+
+    # registry_url is a list from repeatable flag (defaults to [] if none given)
+    registry_urls = registry_url if registry_url else []
+    if registry_urls:
+        urls_str = ", ".join(registry_urls)
+        fm_lines.append(f"registry_urls: [{urls_str}]")
+
+    fm_lines.append(f"tags: [release, v{version}]")
+    fm_lines.append("---")
+
+    # Build body
+    body_parts = []
+    if body_content:
+        body_parts.append(body_content)
+    if changelog_content:
+        body_parts.append(f"## Changelog\n\n{changelog_content}")
+    if not body_parts:
+        body_parts.append(f"Version {version} has been released.")
+
+    post_body = "\n\n".join(body_parts)
+    full_content = "\n".join(fm_lines) + "\n\n" + post_body + "\n"
+
+    if dry_run:
+        print(full_content)
+        return 0
+
+    # Write the post file
+    os.makedirs(posts_dir, exist_ok=True)
+    filepath = os.path.join(posts_dir, filename)
+    atomic_write(filepath, full_content)
+    print(f"Created post: {filepath}")
+
+    # Update manifest
+    manifest_path = os.path.join(".selfdoc", "manifest.json")
+    manifest = load_manifest(manifest_path)
+
+    if manifest is not None:
+        # Update posts list in manifest and version
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest_data = json.load(f)
+
+        # Add new post entry
+        new_post_entry = {
+            "path": filename,
+            "title": title,
+            "date": today,
+            "slug": slug,
+            "tags": ["release", f"v{version}"],
+        }
+        posts_list = manifest_data.get("posts", [])
+        posts_list.append(new_post_entry)
+        manifest_data["posts"] = posts_list
+
+        # Update version
+        manifest_data["version"] = version
+
+        atomic_write(manifest_path, json.dumps(manifest_data, indent=2) + "\n")
+        print(f"Updated manifest: {manifest_path}")
+    else:
+        # No existing manifest - generate one fresh
+        from selfdoc.docs import resolve_all_docs
+        all_docs = resolve_all_docs(config, base_dir=".")
+        posts_data = [{
+            "path": filename,
+            "title": title,
+            "date": today,
+            "slug": slug,
+            "tags": ["release", f"v{version}"],
+        }]
+        generate_manifest(config, all_docs, posts_data=posts_data, dir_path=".")
+        print(f"Created manifest: {manifest_path}")
+
+    return 0
+
+
 def _detect_source_entries(language):
     """Detect source entries for a given language.
 
