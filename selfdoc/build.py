@@ -827,6 +827,37 @@ def _generate_llms_full_txt(project_name, markdown_files):
     return "\n".join(parts) + "\n"
 
 
+def _make_feed_entry(title, url, date, summary="", page_type=""):
+    """Create a single Atom feed entry XML string.
+
+    Takes abstract page metadata (not raw markdown) for reuse across
+    different feed generators (per-project and unified assembly).
+
+    Args:
+        title: Page title (will be XML-escaped).
+        url: Full page URL.
+        date: ISO date string (YYYY-MM-DD).
+        summary: Optional summary text (will be XML-escaped).
+        page_type: Optional page type (reserved for Phase 3 type-aware ordering).
+
+    Returns:
+        Tuple of (date, entry_xml) for sorting by date.
+    """
+    escaped_title = _escape_html(title)
+    escaped_summary = _escape_html(summary) if summary else ""
+    entry = (
+        f"  <entry>\n"
+        f"    <title>{escaped_title}</title>\n"
+        f'    <link href="{url}"/>\n'
+        f"    <id>{url}</id>\n"
+        f"    <updated>{date}T00:00:00Z</updated>\n"
+    )
+    if escaped_summary:
+        entry += f"    <summary>{escaped_summary}</summary>\n"
+    entry += f"  </entry>"
+    return (date, entry)
+
+
 def _generate_atom_feed(
     output_dir, base_url, project_name, description,
     markdown_files, frontmatter, page_dates,
@@ -867,21 +898,14 @@ def _generate_atom_feed(
         date_tuple = page_dates.get(md_path)
         page_date = date_tuple[1] if date_tuple else ""
 
-        # Escape for XML
-        escaped_title = _escape_html(title)
-        escaped_summary = _escape_html(summary)
-
         page_full_url = url_builder.page_url(url_path) if url_builder else f"{base_url}/{url_path}"
-        entry = (
-            f"  <entry>\n"
-            f"    <title>{escaped_title}</title>\n"
-            f"    <link href=\"{page_full_url}\"/>\n"
-            f"    <id>{page_full_url}</id>\n"
-            f"    <updated>{page_date}T00:00:00Z</updated>\n"
-            f"    <summary>{escaped_summary}</summary>\n"
-            f"  </entry>"
-        )
-        entries.append((page_date, entry))
+
+        entries.append(_make_feed_entry(
+            title=title,
+            url=page_full_url,
+            date=page_date,
+            summary=summary,
+        ))
 
     # Sort by modification date descending (most recent first)
     entries.sort(key=lambda e: e[0], reverse=True)
