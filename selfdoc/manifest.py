@@ -6,6 +6,7 @@ import datetime
 import json
 import os
 import re
+import subprocess
 from dataclasses import dataclass, field
 
 from selfdoc.utils import atomic_write, detect_project_version
@@ -172,6 +173,74 @@ def load_manifest(path: str) -> Manifest | None:
     if sv > 1:
         raise RuntimeError(
             f"Unsupported manifest schema_version {sv} (max supported: 1)"
+        )
+
+    return Manifest(
+        schema_version=sv,
+        name=data.get("name", ""),
+        slug=data.get("slug", ""),
+        version=data.get("version", ""),
+        description=data.get("description", ""),
+        language=data.get("language", ""),
+        base_url=data.get("base_url", ""),
+        pages=data.get("pages", []),
+        posts=data.get("posts", []),
+        last_gen=data.get("last_gen", ""),
+    )
+
+
+def load_manifest_from_git(dir_path: str = ".") -> Manifest | None:
+    """Load manifest.json from the last git commit (HEAD).
+
+    Reads ``.selfdoc/manifest.json`` from the git index at HEAD, bypassing
+    the working-tree copy.  This is used for slug immutability checking:
+    comparing post slugs against the *committed* manifest prevents silent
+    slug changes when ``selfdoc gen`` has already regenerated the on-disk
+    manifest.
+
+    Returns ``None`` if: not a git repo, no commits yet, or the file has
+    never been committed.  Raises ``RuntimeError`` on unexpected git
+    failures.
+    """
+    # Check if the file exists in HEAD.
+    result = subprocess.run(
+        ["git", "cat-file", "-e", "HEAD:.selfdoc/manifest.json"],
+        cwd=dir_path,
+        capture_output=True,
+        timeout=10,
+    )
+    if result.returncode == 128:
+        # Not a git repo, or no commits yet (HEAD doesn't resolve).
+        return None
+    if result.returncode == 1:
+        # File does not exist in HEAD (never committed).
+        return None
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Unexpected git error (exit {result.returncode}): "
+            f"{result.stderr.decode().strip()}"
+        )
+
+    # Read the file contents from HEAD.
+    result = subprocess.run(
+        ["git", "show", "HEAD:.selfdoc/manifest.json"],
+        cwd=dir_path,
+        capture_output=True,
+        timeout=10,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Failed to read manifest from git: "
+            f"{result.stderr.decode().strip()}"
+        )
+
+    data = json.loads(result.stdout)
+
+    sv = data.get("schema_version", 1)
+    if sv > 1:
+        raise RuntimeError(
+            f"Unsupported manifest schema_version {sv} in git HEAD "
+            f"(max supported: 1)"
         )
 
     return Manifest(
