@@ -1097,10 +1097,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
         locale_override: Override detected locale string (optional).
 
     Returns:
-        Tuple of (html_files, markdown_files, frontmatter, page_dates,
-        nav_items, search_entries, project_name, version, config,
-        docs_dir, other_files, has_custom_css, raw_theme_css, theme_meta,
-        critical_css, config_description, base_url, feed_url, lang).
+        BuildResult dataclass containing all build outputs for this version/locale.
     """
     if config is None:
         config = load_config(dir_path)

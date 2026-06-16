@@ -50,7 +50,8 @@ class TestPagefindUI:
             "<p>test</p>", "", "Test", "Project", "1.0.0",
             prefix="", search_engine="pagefind",
         )
-        assert "minisearch" not in html.lower() or "pagefind" in html
+        assert "minisearch" not in html.lower()
+        assert "pagefind" in html
 
     def test_cmd_k_shortcut_present(self):
         """Cmd+K keyboard shortcut handler is present for pagefind."""
