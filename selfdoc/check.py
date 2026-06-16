@@ -433,6 +433,9 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # Post validation (POST001-POST005)
     result.lints.extend(_check_posts(config, dir_path))
 
+    # Manifest freshness (STALE002)
+    result.lints.extend(_check_manifest_freshness(config, dir_path))
+
     # Validate old versions when multi-version is configured.
     # The working-tree check above covers the latest version; here we
     # extract each older version from its git tag and run directive
@@ -589,6 +592,95 @@ def _check_posts(config, dir_path):
         )]
 
     return []
+
+
+def _check_manifest_freshness(config, dir_path):
+    """Check manifest pages/posts against files on disk (STALE002)."""
+    from selfdoc.manifest import load_manifest
+
+    manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return []
+
+    manifest = load_manifest(manifest_path)
+    if manifest is None:
+        return []
+
+    docs_dir = os.path.join(dir_path, config.get("docs", "docs/"))
+    posts_dir = os.path.join(
+        dir_path, (config.get("posts") or {}).get("dir", ".selfdoc/posts/"),
+    )
+
+    # Collect pages on disk (exclude underscore-prefixed template files)
+    disk_pages = set()
+    if os.path.isdir(docs_dir):
+        for root, _dirs, files in os.walk(docs_dir):
+            for fname in files:
+                if not fname.endswith(".md"):
+                    continue
+                if fname.startswith("_"):
+                    continue
+                full = os.path.join(root, fname)
+                rel = os.path.relpath(full, docs_dir)
+                disk_pages.add(rel)
+
+    # Collect posts on disk
+    disk_posts = set()
+    if os.path.isdir(posts_dir):
+        for root, _dirs, files in os.walk(posts_dir):
+            for fname in files:
+                if not fname.endswith(".md"):
+                    continue
+                full = os.path.join(root, fname)
+                rel = os.path.relpath(full, posts_dir)
+                disk_posts.add(rel)
+
+    manifest_pages = {p["path"] for p in manifest.pages}
+    manifest_posts = {p["path"] for p in manifest.posts}
+
+    results = []
+
+    # Pages on disk but not in manifest
+    for path in sorted(disk_pages - manifest_pages):
+        results.append(LintResult(
+            file=path,
+            line=None,
+            code="STALE002",
+            message="page exists on disk but not in manifest (run 'selfdoc gen' to update)",
+            severity="warning",
+        ))
+
+    # Manifest pages not on disk
+    for path in sorted(manifest_pages - disk_pages):
+        results.append(LintResult(
+            file=path,
+            line=None,
+            code="STALE002",
+            message=f"manifest lists page '{path}' but file not found on disk",
+            severity="warning",
+        ))
+
+    # Posts on disk but not in manifest
+    for path in sorted(disk_posts - manifest_posts):
+        results.append(LintResult(
+            file=path,
+            line=None,
+            code="STALE002",
+            message="post exists on disk but not in manifest (run 'selfdoc gen' to update)",
+            severity="warning",
+        ))
+
+    # Manifest posts not on disk
+    for path in sorted(manifest_posts - disk_posts):
+        results.append(LintResult(
+            file=path,
+            line=None,
+            code="STALE002",
+            message=f"manifest lists post '{path}' but file not found on disk",
+            severity="warning",
+        ))
+
+    return results
 
 
 def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
