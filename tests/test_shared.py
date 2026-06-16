@@ -3,6 +3,7 @@
 import json
 
 from selfdoc.shared import (
+    _page_path_to_url_segment,
     generate_blog_index,
     generate_homepage,
     generate_nav_json,
@@ -376,3 +377,45 @@ def test_cross_links_slug_based_paths():
     }
     errors = validate_cross_project_links(manifests, link_registry)
     assert errors == []
+
+
+# -- _page_path_to_url_segment ------------------------------------------------
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        ("index.md", ""),
+        ("guide.md", "guide/"),
+        ("api/index.md", "api/"),
+        ("api/reference.md", "api/reference/"),
+        ("deep/nested/index.md", "deep/nested/"),
+    ],
+)
+def test_page_path_to_url_segment(path: str, expected: str):
+    """Standard page paths are converted to correct URL segments."""
+    assert _page_path_to_url_segment(path) == expected
+
+
+def test_page_path_to_url_segment_no_md_extension():
+    """Paths without .md extension still work (no stripping needed)."""
+    assert _page_path_to_url_segment("guide") == "guide/"
+
+
+def test_page_path_to_url_segment_bare_index_no_extension():
+    """Bare 'index' without .md extension returns empty string."""
+    assert _page_path_to_url_segment("index") == ""
+
+
+def test_page_path_to_url_segment_nested_index_no_extension():
+    """Nested index without .md extension returns parent path."""
+    assert _page_path_to_url_segment("api/index") == "api/"
+
+
+def test_page_path_to_url_segment_index_in_name():
+    """Filename containing 'index' but not ending with it is not special-cased."""
+    assert _page_path_to_url_segment("reindex.md") == "reindex/"
+    assert _page_path_to_url_segment("index-page.md") == "index-page/"

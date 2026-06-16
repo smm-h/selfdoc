@@ -212,6 +212,8 @@ def _page_path_to_url_segment(path: str) -> str:
         path = path[:-3]
     if path == "index":
         return ""
+    if path.endswith("/index"):
+        return path[: -len("/index")] + "/"
     return path + "/"
 
 
