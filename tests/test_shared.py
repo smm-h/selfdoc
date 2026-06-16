@@ -188,6 +188,18 @@ def test_nav_json_empty_manifests():
     assert "blog" in result
 
 
+def test_nav_json_default_blog_path():
+    """Default blog path is /blog/."""
+    result = json.loads(generate_nav_json([]))
+    assert result["blog"] == "/blog/"
+
+
+def test_nav_json_custom_blog_path():
+    """Custom blog_path overrides the default."""
+    result = json.loads(generate_nav_json([], blog_path="/articles/"))
+    assert result["blog"] == "/articles/"
+
+
 # -- generate_unified_feed ----------------------------------------------------
 
 
@@ -374,6 +386,49 @@ def test_cross_links_slug_based_paths():
     ]
     link_registry = {
         "overview.md": ["myproj/posts/big-update"],
+    }
+    errors = validate_cross_project_links(manifests, link_registry)
+    assert errors == []
+
+
+def test_cross_links_url_form_page_paths():
+    """URL-form page paths like {slug}/guide/ are recognized as valid targets."""
+    manifests = [
+        _make_manifest("MyProj", "myproj", "1.0.0", pages=[
+            {"path": "guide.md", "title": "Guide"},
+            {"path": "api/reference.md", "title": "API Reference"},
+        ]),
+    ]
+    link_registry = {
+        "overview.md": ["myproj/guide/", "myproj/api/reference/"],
+    }
+    errors = validate_cross_project_links(manifests, link_registry)
+    assert errors == []
+
+
+def test_cross_links_url_form_index_page():
+    """URL-form for index.md resolves to {slug}/ (empty segment)."""
+    manifests = [
+        _make_manifest("MyProj", "myproj", "1.0.0", pages=[
+            {"path": "index.md", "title": "Home"},
+        ]),
+    ]
+    link_registry = {
+        "other.md": ["myproj/"],
+    }
+    errors = validate_cross_project_links(manifests, link_registry)
+    assert errors == []
+
+
+def test_cross_links_url_form_nested_index():
+    """URL-form for nested index.md resolves to {slug}/section/."""
+    manifests = [
+        _make_manifest("MyProj", "myproj", "1.0.0", pages=[
+            {"path": "api/index.md", "title": "API Index"},
+        ]),
+    ]
+    link_registry = {
+        "other.md": ["myproj/api/"],
     }
     errors = validate_cross_project_links(manifests, link_registry)
     assert errors == []

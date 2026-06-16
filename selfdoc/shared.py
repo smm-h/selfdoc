@@ -81,11 +81,12 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
     return "\n".join(parts)
 
 
-def generate_nav_json(manifests: list[dict]) -> str:
+def generate_nav_json(manifests: list[dict], blog_path: str = "/blog/") -> str:
     """Produce a JSON string with navigation data for all projects.
 
     Args:
         manifests: List of loaded manifest dicts.
+        blog_path: URL path for the blog link in navigation.
 
     Returns:
         Pretty-printed JSON string.
@@ -99,7 +100,7 @@ def generate_nav_json(manifests: list[dict]) -> str:
         }
         for m in sorted_manifests
     ]
-    nav = {"projects": projects, "blog": "/blog/"}
+    nav = {"projects": projects, "blog": blog_path}
     return json.dumps(nav, indent=2)
 
 
@@ -232,12 +233,15 @@ def validate_cross_project_links(
     """
     known = set()
     for m in manifests:
+        manifest_slug = m.get("slug", "")
         for page in m.get("pages", []):
             known.add(page.get("path", ""))
+            # Also add the URL-form page path
+            url_segment = _page_path_to_url_segment(page.get("path", ""))
+            known.add(f"{manifest_slug}/{url_segment}")
         for post in m.get("posts", []):
             known.add(post.get("path", ""))
             # Also add the slug-based post path
-            manifest_slug = m.get("slug", "")
             post_slug = post.get("slug", "")
             known.add(f"{manifest_slug}/posts/{post_slug}")
 
