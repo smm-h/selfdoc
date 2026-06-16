@@ -84,5 +84,14 @@
         "description": "Two built-in themes with dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation."
       }
     ]
+  },
+  "topology": {
+    "slug": "selfdoc",
+    "docs_base": "https://docs.smmh.dev",
+    "posts_base": "https://blog.smmh.dev",
+    "assembly": "smm-h/selfdoc-cache"
+  },
+  "assembly": {
+    "repo": "smm-h/selfdoc-cache"
   }
 }
