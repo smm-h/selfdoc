@@ -18,6 +18,9 @@ app = strictcli.App(
     help="Code-aware static site generator with directive-based content extraction",
 )
 
+post_group = app.group("post", help="Manage blog posts and chronological content")
+assembly_group = app.group("assembly", help="Manage the unified documentation assembly")
+
 
 def _detect_source_entries(language):
     """Detect source entries for a given language.
