@@ -381,7 +381,8 @@ def build_unified(dir_path=".", config=None):
     critical_css = _minify_css(critical_css)
 
     # --- Partition pages for each constituent project ---
-    project_page_partitions = {}  # slug -> (versioned_set, unversioned_set)
+    # slug -> (versioned_set, unversioned_set, uv_markdown, uv_frontmatter)
+    project_page_partitions = {}
     for project_entry in unified_config["projects"]:
         slug = _project_slug(project_entry)
         project_path = _resolve_project_path(project_entry, dir_path)
@@ -390,21 +391,21 @@ def build_unified(dir_path=".", config=None):
             proj_docs_dir = os.path.join(
                 project_path, proj_config["docs"].rstrip("/"),
             )
-            v_pages, uv_pages = _partition_pages(
+            v_pages, uv_pages, uv_md, uv_fm = _partition_pages(
                 proj_config, proj_docs_dir, project_path,
             )
-            project_page_partitions[slug] = (v_pages, uv_pages)
+            project_page_partitions[slug] = (v_pages, uv_pages, uv_md, uv_fm)
 
     # Also partition the docs-site's own pages
     docs_site_docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
-    ds_versioned, ds_unversioned = _partition_pages(
+    ds_versioned, ds_unversioned, ds_uv_markdown, ds_uv_frontmatter = _partition_pages(
         config, docs_site_docs_dir, dir_path,
     )
 
     # Check reserved paths and collisions
     version_strs = [v["version"] for v in versions]
     _check_reserved_paths(version_strs, config)
-    for slug, (v_pages, uv_pages) in project_page_partitions.items():
+    for slug, (v_pages, uv_pages, _uv_md, _uv_fm) in project_page_partitions.items():
         _check_unversioned_collisions(uv_pages, version_strs)
     _check_unversioned_collisions(ds_unversioned, version_strs)
 
@@ -447,8 +448,10 @@ def build_unified(dir_path=".", config=None):
                 output_subdir = f"{locale_code}/{slug}/{ver_str}"
                 url_prefix = output_subdir
 
-                proj_v_pages, proj_uv_pages = project_page_partitions.get(
-                    slug, (None, set()),
+                proj_v_pages, proj_uv_pages, proj_uv_md, proj_uv_fm = (
+                    project_page_partitions.get(
+                        slug, (None, set(), {}, {}),
+                    )
                 )
                 result = build_single(
                     dir_path=build_dir,
@@ -463,6 +466,8 @@ def build_unified(dir_path=".", config=None):
                     current_locale=locale_code,
                     is_latest=is_latest,
                     page_filter=proj_v_pages if proj_uv_pages else None,
+                    unversioned_markdown=proj_uv_md if proj_uv_pages else None,
+                    unversioned_frontmatter=proj_uv_fm if proj_uv_pages else None,
                 )
                 html_files = result.html_files
                 search_entries = result.search_entries
@@ -513,7 +518,7 @@ def build_unified(dir_path=".", config=None):
         nav_title = _project_nav_title(project_entry)
         project_path = _resolve_project_path(project_entry, dir_path)
         proj_config = load_config(project_path)
-        _, proj_uv_pages = project_page_partitions.get(slug, (None, set()))
+        _, proj_uv_pages, _, _ = project_page_partitions.get(slug, (None, set(), {}, {}))
 
         if not proj_uv_pages:
             continue
@@ -578,6 +583,8 @@ def build_unified(dir_path=".", config=None):
             current_locale=locale_code,
             is_latest=True,
             page_filter=ds_versioned if ds_unversioned else None,
+            unversioned_markdown=ds_uv_markdown if ds_unversioned else None,
+            unversioned_frontmatter=ds_uv_frontmatter if ds_unversioned else None,
         )
         html_files = result.html_files
         search_entries = result.search_entries

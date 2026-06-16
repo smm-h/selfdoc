@@ -993,7 +993,8 @@ def build_single(dir_path=".", config=None, output_subdir="",
                   locale_override=None,
                   available_versions=None, available_locales=None,
                   current_version="", current_locale="",
-                  is_latest=True, page_filter=None):
+                  is_latest=True, page_filter=None,
+                  unversioned_markdown=None, unversioned_frontmatter=None):
     """Build HTML and search entries for a single version/locale of docs.
 
     Performs config loading, template resolution, HTML generation, image
@@ -1253,6 +1254,8 @@ def build_single(dir_path=".", config=None, output_subdir="",
         current_version=current_version,
         current_locale=current_locale,
         is_latest=is_latest,
+        unversioned_pages=unversioned_markdown,
+        unversioned_frontmatter=unversioned_frontmatter,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
@@ -1271,7 +1274,11 @@ def build_single(dir_path=".", config=None, output_subdir="",
         }
 
     # Build nav items (used by search index and auxiliary files)
-    nav_items = _build_nav(markdown_files, frontmatter)
+    nav_items = _build_nav(
+        markdown_files, frontmatter,
+        unversioned_pages=unversioned_markdown,
+        unversioned_frontmatter=unversioned_frontmatter,
+    )
 
     # Build search index entries (returned to caller for accumulation)
     search_entries = _build_search_index(
@@ -1346,18 +1353,25 @@ def _partition_pages(config, docs_dir, dir_path):
     Resolves all docs once and checks frontmatter for ``versioned: false``.
     Pages without the key (or with ``versioned: true``) are versioned by default.
 
-    Returns (versioned_paths, unversioned_paths) where each is a set of
-    relative md paths.
+    Returns (versioned_paths, unversioned_paths, unversioned_markdown,
+    unversioned_frontmatter) where the first two are sets of relative md paths,
+    ``unversioned_markdown`` maps md_path to resolved content, and
+    ``unversioned_frontmatter`` maps md_path to frontmatter dicts.
     """
     all_docs = resolve_all_docs(config, docs_dir=docs_dir, base_dir=dir_path)
     versioned = set()
     unversioned = set()
-    for rel_path, (fm, _resolved, _raw, _lc) in all_docs.items():
+    unversioned_markdown = {}
+    unversioned_frontmatter = {}
+    for rel_path, (fm, resolved, _raw, _lc) in all_docs.items():
         if fm and fm.get("versioned") is False:
             unversioned.add(rel_path)
+            unversioned_markdown[rel_path] = resolved
+            if fm:
+                unversioned_frontmatter[rel_path] = fm
         else:
             versioned.add(rel_path)
-    return versioned, unversioned
+    return versioned, unversioned, unversioned_markdown, unversioned_frontmatter
 
 
 def _check_unversioned_collisions(unversioned_paths, version_strs):
@@ -1497,7 +1511,9 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
 
     # Resolve docs from the latest (working tree) to discover unversioned pages
     latest_docs_dir = os.path.join(dir_path, docs_dir_name)
-    versioned_pages, unversioned_pages = _partition_pages(config, latest_docs_dir, dir_path)
+    versioned_pages, unversioned_pages, uv_markdown, uv_frontmatter = _partition_pages(
+        config, latest_docs_dir, dir_path,
+    )
 
     # Check for collisions between unversioned output paths and version strings
     _check_unversioned_collisions(unversioned_pages, version_strs)
@@ -1546,6 +1562,8 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
                 current_locale=locale_code,
                 is_latest=is_latest,
                 page_filter=versioned_pages if unversioned_pages else None,
+                unversioned_markdown=uv_markdown if unversioned_pages else None,
+                unversioned_frontmatter=uv_frontmatter if unversioned_pages else None,
             )
             html_files = result.html_files
             markdown_files = result.markdown_files

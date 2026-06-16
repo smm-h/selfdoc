@@ -313,7 +313,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    available_versions=None, available_locales=None,
                    current_version="", current_locale="",
                    is_latest=True,
-                   schema_types=None):
+                   schema_types=None,
+                   unversioned_pages=None, unversioned_frontmatter=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -348,7 +349,11 @@ def generate_html(markdown_files, project_name=None, version=None,
         page_dates = {}
 
     # Build navigation from the file list, using frontmatter for ordering
-    nav_items = _build_nav(markdown_files, frontmatter)
+    nav_items = _build_nav(
+        markdown_files, frontmatter,
+        unversioned_pages=unversioned_pages,
+        unversioned_frontmatter=unversioned_frontmatter,
+    )
 
     # Flatten nav_items for page iteration order (prev/next links)
     flat_nav = _flatten_nav(nav_items)
@@ -1689,7 +1694,8 @@ def _html_to_md_path(html_path):
     return html_path.replace(".html", ".md")
 
 
-def _build_nav(markdown_files, frontmatter=None):
+def _build_nav(markdown_files, frontmatter=None,
+               unversioned_pages=None, unversioned_frontmatter=None):
     """Build navigation items from the markdown file list.
 
     Sorts by frontmatter 'order' (lower = first), then alphabetically
@@ -1700,6 +1706,11 @@ def _build_nav(markdown_files, frontmatter=None):
     overridden via ``nav_group`` frontmatter.  ``nav_order`` frontmatter
     controls sort order within a group (default 0, ties broken
     alphabetically).
+
+    When ``unversioned_pages`` is provided (a dict of md_path -> content),
+    those pages are appended as a "General" nav group at the end.  This
+    is used by versioned builds to include persistent unversioned pages
+    in the sidebar navigation.
 
     Returns list of dicts.  Ungrouped items:
         {"label": str, "path": str, "md_path": str}
@@ -1794,6 +1805,37 @@ def _build_nav(markdown_files, frontmatter=None):
             "slug": slug,
             "items": group_data["items"],
         })
+
+    # Append unversioned pages as a persistent nav group at the end.
+    # Used by versioned builds so that unversioned pages appear in
+    # the sidebar regardless of which version is selected.
+    if unversioned_pages:
+        uv_fm = unversioned_frontmatter or {}
+        uv_items = []
+        for md_path in sorted(unversioned_pages.keys()):
+            meta = uv_fm.get(md_path, {})
+            label = meta.get("title") or md_path.replace(".md", "").replace("/", " / ")
+            nav_order = meta.get("nav_order", 0)
+            if not isinstance(nav_order, (int, float)):
+                nav_order = 0
+            uv_items.append({
+                "label": label,
+                "path": _md_to_html_path(md_path),
+                "md_path": md_path,
+                "unversioned": True,
+                "_nav_order": nav_order,
+            })
+        # Sort by nav_order then path
+        uv_items.sort(key=lambda x: (x.get("_nav_order", 0), x["md_path"]))
+        for item in uv_items:
+            item.pop("_nav_order", None)
+        if uv_items:
+            nav.append({
+                "group": "General",
+                "slug": "general",
+                "items": uv_items,
+                "unversioned": True,
+            })
 
     return nav
 
