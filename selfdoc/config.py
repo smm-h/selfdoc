@@ -630,6 +630,31 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         ),
         description="Configuration for unified multi-project documentation.",
     ),
+    FieldSpec(
+        name="posts",
+        type=_D,
+        description="Blog post configuration.",
+        children=(
+            FieldSpec(name="dir", type=_S, default=".selfdoc/posts/",
+                      description="Directory containing post markdown files."),
+            FieldSpec(name="listing_path", type=_S, default="posts",
+                      description="URL path segment for the post listing page."),
+        ),
+    ),
+    FieldSpec(
+        name="topology",
+        type=_D,
+        description="Deployment topology for multi-project unified sites.",
+    ),
+    FieldSpec(
+        name="assembly",
+        type=_D,
+        description="Assembly configuration for unified site deployment.",
+        children=(
+            FieldSpec(name="repo", type=_S,
+                      description="GitHub repository for the assembly (e.g., owner/repo)."),
+        ),
+    ),
 )
 
 
