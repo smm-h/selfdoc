@@ -957,6 +957,231 @@ def _cmd_gen_data(no_commit=False):
     return 0
 
 
+@assembly_group.command("init", help="Initialize the assembly repository on GitHub")
+def _cmd_assembly_init():
+    """Create the assembly GitHub repo and push initial files."""
+    import base64
+    import subprocess
+
+    from selfdoc.assembly import assembly_init
+    from selfdoc.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    files = assembly_init(repo)
+
+    # Create the private GitHub repo
+    print(f"Creating repository {repo}...")
+    result = subprocess.run(
+        ["gh", "repo", "create", repo, "--private"],
+        check=False, capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        print(f"Error: Failed to create repository: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    # Push initial files via GitHub Contents API
+    for filepath, content in files.items():
+        print(f"  Creating {filepath}...")
+        encoded = base64.b64encode(content.encode()).decode()
+        payload = json.dumps({"message": f"Initial: {filepath}", "content": encoded})
+        result = subprocess.run(
+            ["gh", "api", "--method", "PUT",
+             f"/repos/{repo}/contents/{filepath}",
+             "--input", "-"],
+            input=payload, check=False, capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            print(f"Error: Failed to create {filepath}: {result.stderr.strip()}", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"Assembly repository initialized: {repo}")
+    return 0
+
+
+@assembly_group.command("push", help="Trigger assembly rebuild for this project")
+def _cmd_assembly_push():
+    """Dispatch an assembly rebuild for the current project."""
+    import subprocess
+
+    from selfdoc.assembly import assembly_push
+    from selfdoc.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve assembly repo from config
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        topology = config.get("topology") or {}
+        repo = topology.get("assembly")
+    if not repo:
+        print("Error: assembly.repo (or topology.assembly) not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    topology = config.get("topology") or {}
+    slug = topology.get("slug")
+    if not slug:
+        print("Error: topology.slug not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    # Detect source repo
+    result = subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        check=False, capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        print(f"Error: Failed to detect source repository: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+    source_repo = result.stdout.strip()
+
+    # Detect ref (prefer tag, fall back to commit SHA)
+    result = subprocess.run(
+        ["git", "describe", "--tags", "--exact-match", "HEAD"],
+        check=False, capture_output=True, text=True, timeout=10,
+    )
+    if result.returncode == 0:
+        ref = result.stdout.strip()
+    else:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=False, capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            print("Error: Failed to detect git ref.", file=sys.stderr)
+            sys.exit(1)
+        ref = result.stdout.strip()
+
+    # Detect version
+    version = config.get("version", "")
+    if not version:
+        from selfdoc.utils import detect_project_version
+        version = detect_project_version(".", fallback="0.0.0")
+
+    dispatch = assembly_push(repo, source_repo, slug, version, ref)
+
+    # Execute the dispatch
+    payload = json.dumps(dispatch["payload"])
+    result = subprocess.run(
+        ["gh", "api", "--method", "POST", dispatch["endpoint"], "--input", "-"],
+        input=payload, check=False, capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        print(f"Error: Failed to dispatch rebuild: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Dispatched assembly rebuild for {slug} v{version} (ref: {ref})")
+    return 0
+
+
+@assembly_group.command("status", help="Show recent assembly build status")
+def _cmd_assembly_status():
+    """Show recent assembly build status."""
+    import subprocess
+
+    from selfdoc.assembly import assembly_status
+    from selfdoc.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    commands = assembly_status(repo)
+
+    found_runs = False
+    for cmd in commands:
+        result = subprocess.run(
+            cmd, check=False, capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            print(result.stdout.strip())
+            found_runs = True
+
+    if not found_runs:
+        print("No recent assembly builds found.")
+
+    return 0
+
+
+@assembly_group.command("rebuild", help="Trigger rebuild for all projects in the assembly")
+def _cmd_assembly_rebuild():
+    """Trigger rebuild for all projects in the assembly."""
+    import base64
+    import subprocess
+
+    from selfdoc.assembly import assembly_rebuild
+    from selfdoc.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    # Fetch projects.json from the assembly repo
+    result = subprocess.run(
+        ["gh", "api", f"/repos/{repo}/contents/projects.json",
+         "--jq", ".content"],
+        check=False, capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        print(f"Error: Failed to fetch projects.json from {repo}: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    content_b64 = result.stdout.strip()
+    try:
+        projects = json.loads(base64.b64decode(content_b64).decode())
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"Error: Failed to parse projects.json: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not projects:
+        print("No projects configured in assembly.")
+        return 0
+
+    dispatches = assembly_rebuild(repo, projects)
+
+    for dispatch in dispatches:
+        slug = dispatch.get("slug", "unknown")
+        print(f"Dispatching rebuild for {slug}...")
+        payload = json.dumps(dispatch["payload"])
+        result = subprocess.run(
+            ["gh", "api", "--method", "POST", dispatch["endpoint"], "--input", "-"],
+            input=payload, check=False, capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            print(f"  Warning: Failed to dispatch for {slug}: {result.stderr.strip()}", file=sys.stderr)
+        else:
+            print(f"  Dispatched rebuild for {slug}.")
+
+    print(f"Dispatched {len(dispatches)} rebuild(s).")
+    return 0
+
+
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
     app.run()
