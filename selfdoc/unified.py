@@ -16,6 +16,8 @@ import shutil
 from selfdoc.build import (
     BuildResult,
     _build_search_index,
+    _check_reserved_paths,
+    _check_unversioned_collisions,
     _compress_output,
     _extract_critical_css,
     _extract_version_content,
@@ -23,6 +25,7 @@ from selfdoc.build import (
     _generate_sitemap,
     _minify_css,
     _minify_html,
+    _partition_pages,
     build_single,
 )
 from selfdoc.config import ConfigError, load_config
@@ -377,6 +380,34 @@ def build_unified(dir_path=".", config=None):
     critical_css, _ = _extract_critical_css(raw_theme_css)
     critical_css = _minify_css(critical_css)
 
+    # --- Partition pages for each constituent project ---
+    project_page_partitions = {}  # slug -> (versioned_set, unversioned_set)
+    for project_entry in unified_config["projects"]:
+        slug = _project_slug(project_entry)
+        project_path = _resolve_project_path(project_entry, dir_path)
+        proj_config = load_config(project_path)
+        if proj_config is not None:
+            proj_docs_dir = os.path.join(
+                project_path, proj_config["docs"].rstrip("/"),
+            )
+            v_pages, uv_pages = _partition_pages(
+                proj_config, proj_docs_dir, project_path,
+            )
+            project_page_partitions[slug] = (v_pages, uv_pages)
+
+    # Also partition the docs-site's own pages
+    docs_site_docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
+    ds_versioned, ds_unversioned = _partition_pages(
+        config, docs_site_docs_dir, dir_path,
+    )
+
+    # Check reserved paths and collisions
+    version_strs = [v["version"] for v in versions]
+    _check_reserved_paths(version_strs, config)
+    for slug, (v_pages, uv_pages) in project_page_partitions.items():
+        _check_unversioned_collisions(uv_pages, version_strs)
+    _check_unversioned_collisions(ds_unversioned, version_strs)
+
     # --- Build each constituent project for each docs-site version ---
     for ver_entry in versions:
         ver_str = ver_entry["version"]
@@ -416,6 +447,9 @@ def build_unified(dir_path=".", config=None):
                 output_subdir = f"{locale_code}/{slug}/{ver_str}"
                 url_prefix = output_subdir
 
+                proj_v_pages, proj_uv_pages = project_page_partitions.get(
+                    slug, (None, set()),
+                )
                 result = build_single(
                     dir_path=build_dir,
                     config=proj_config,
@@ -428,6 +462,7 @@ def build_unified(dir_path=".", config=None):
                     current_version=ver_str,
                     current_locale=locale_code,
                     is_latest=is_latest,
+                    page_filter=proj_v_pages if proj_uv_pages else None,
                 )
                 html_files = result.html_files
                 search_entries = result.search_entries
@@ -472,6 +507,57 @@ def build_unified(dir_path=".", config=None):
                         "url_prefix": output_subdir,
                     })
 
+    # --- Build unversioned pages for each constituent project ---
+    for project_entry in unified_config["projects"]:
+        slug = _project_slug(project_entry)
+        nav_title = _project_nav_title(project_entry)
+        project_path = _resolve_project_path(project_entry, dir_path)
+        proj_config = load_config(project_path)
+        _, proj_uv_pages = project_page_partitions.get(slug, (None, set()))
+
+        if not proj_uv_pages:
+            continue
+
+        for locale in locales:
+            locale_code = locale["code"]
+            output_subdir = f"{locale_code}/{slug}"
+            url_prefix = output_subdir
+
+            uv_result = build_single(
+                dir_path=project_path,
+                config=proj_config,
+                output_subdir=output_subdir,
+                url_prefix=url_prefix,
+                version_override="",
+                locale_override=locale_code,
+                available_versions=versions,
+                available_locales=locales,
+                current_version="",
+                current_locale=locale_code,
+                is_latest=True,
+                page_filter=proj_uv_pages,
+            )
+
+            patched_entries = []
+            for entry in uv_result.search_entries:
+                patched = dataclasses.replace(entry, project=slug)
+                patched_entries.append(patched)
+            all_search_entries.extend(patched_entries)
+
+            for rel_path, html_content in uv_result.html_files.items():
+                out_path = os.path.join(output_dir, rel_path)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(_minify_html(html_content))
+                written[out_path] = True
+
+            for rel_path in uv_result.other_files:
+                src = os.path.join(uv_result.docs_dir, rel_path)
+                dst = os.path.join(output_dir, output_subdir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                written[dst] = True
+
     # --- Build the docs-site's own content (common pages) ---
     common_latest_build = None
     for locale in locales:
@@ -491,6 +577,7 @@ def build_unified(dir_path=".", config=None):
             current_version=latest_version,
             current_locale=locale_code,
             is_latest=True,
+            page_filter=ds_versioned if ds_unversioned else None,
         )
         html_files = result.html_files
         search_entries = result.search_entries
@@ -538,6 +625,63 @@ def build_unified(dir_path=".", config=None):
                 "feed_url": result.feed_url,
                 "lang": result.lang,
             }
+
+    # --- Build unversioned docs-site pages ---
+    if ds_unversioned:
+        for locale in locales:
+            locale_code = locale["code"]
+            uv_subdir = f"{locale_code}/common"
+            uv_url_prefix = uv_subdir
+
+            uv_result = build_single(
+                dir_path=dir_path,
+                config=config,
+                output_subdir=uv_subdir,
+                url_prefix=uv_url_prefix,
+                version_override="",
+                locale_override=locale_code,
+                available_versions=versions,
+                available_locales=locales,
+                current_version="",
+                current_locale=locale_code,
+                is_latest=True,
+                page_filter=ds_unversioned,
+            )
+
+            patched_entries = []
+            for entry in uv_result.search_entries:
+                patched = dataclasses.replace(entry, project="common")
+                patched_entries.append(patched)
+            all_search_entries.extend(patched_entries)
+
+            for rel_path, html_content in uv_result.html_files.items():
+                out_path = os.path.join(output_dir, rel_path)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(_minify_html(html_content))
+                written[out_path] = True
+
+            for rel_path in uv_result.other_files:
+                src = os.path.join(uv_result.docs_dir, rel_path)
+                dst = os.path.join(output_dir, uv_subdir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                written[dst] = True
+
+            # Merge unversioned data into common_latest_build for auxiliary files
+            if locale_code == default_locale_code and common_latest_build:
+                common_latest_build["markdown_files"] = {
+                    **common_latest_build["markdown_files"],
+                    **uv_result.markdown_files,
+                }
+                common_latest_build["frontmatter"] = {
+                    **common_latest_build["frontmatter"],
+                    **uv_result.frontmatter,
+                }
+                common_latest_build["page_dates"] = {
+                    **common_latest_build["page_dates"],
+                    **uv_result.page_dates,
+                }
 
     # --- Build unified nav ---
     unified_nav = _build_unified_nav(

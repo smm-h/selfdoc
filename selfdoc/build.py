@@ -993,7 +993,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
                   locale_override=None,
                   available_versions=None, available_locales=None,
                   current_version="", current_locale="",
-                  is_latest=True):
+                  is_latest=True, page_filter=None):
     """Build HTML and search entries for a single version/locale of docs.
 
     Performs config loading, template resolution, HTML generation, image
@@ -1078,6 +1078,12 @@ def build_single(dir_path=".", config=None, output_subdir="",
     else:
         update_hashes(all_docs, dir_path)
 
+    # Apply page filter if provided (used by build() to partition
+    # versioned and unversioned pages into separate build_single calls)
+    if page_filter is not None:
+        markdown_files = {k: v for k, v in markdown_files.items() if k in page_filter}
+        frontmatter = {k: v for k, v in frontmatter.items() if k in page_filter}
+
     # Build page_dates: map md_path -> (published, modified) tuple
     # modified: frontmatter "updated" > frontmatter "date" > file mtime
     # published: frontmatter "date" > file mtime (never use "updated")
@@ -1111,7 +1117,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
             changelog_path = candidate
             break
 
-    if changelog_path is not None:
+    if changelog_path is not None and (page_filter is None or "changelog.md" in page_filter):
         with open(changelog_path, "r", encoding="utf-8") as f:
             changelog_content = f.read()
         # Inject as if it were docs/changelog.md so it flows through
@@ -1124,6 +1130,30 @@ def build_single(dir_path=".", config=None, output_subdir="",
         }
 
     if not markdown_files:
+        if page_filter is not None:
+            # Filtered build may legitimately have no pages (e.g. all pages
+            # are unversioned, so the versioned filter yields nothing)
+            return BuildResult(
+                html_files={},
+                markdown_files={},
+                frontmatter={},
+                page_dates={},
+                nav_items=[],
+                search_entries=[],
+                project_name=os.path.basename(os.path.abspath(dir_path)),
+                version=version_override if version_override is not None else "",
+                config=config,
+                docs_dir=docs_dir,
+                other_files=[],
+                has_custom_css=os.path.isfile(os.path.join(docs_dir, "custom.css")),
+                raw_theme_css=get_css(config.get("theme", "minimal")),
+                theme_meta=get_theme_meta(config.get("theme", "minimal")),
+                critical_css="",
+                config_description=config.get("description", ""),
+                base_url=config.get("base_url"),
+                feed_url="feed.xml",
+                lang=config.get("lang") or "en",
+            )
         raise RuntimeError(
             f"No .md files found in '{config['docs']}'. Nothing to build."
         )
@@ -1310,6 +1340,68 @@ def _resolve_locale_docs_dir(dir_path, docs_dir_name, locale_code, locales):
     )
 
 
+def _partition_pages(config, docs_dir, dir_path):
+    """Partition markdown pages into versioned and unversioned sets.
+
+    Resolves all docs once and checks frontmatter for ``versioned: false``.
+    Pages without the key (or with ``versioned: true``) are versioned by default.
+
+    Returns (versioned_paths, unversioned_paths) where each is a set of
+    relative md paths.
+    """
+    all_docs = resolve_all_docs(config, docs_dir=docs_dir, base_dir=dir_path)
+    versioned = set()
+    unversioned = set()
+    for rel_path, (fm, _resolved, _raw, _lc) in all_docs.items():
+        if fm and fm.get("versioned") is False:
+            unversioned.add(rel_path)
+        else:
+            versioned.add(rel_path)
+    return versioned, unversioned
+
+
+def _check_unversioned_collisions(unversioned_paths, version_strs):
+    """Verify no unversioned page output path collides with versioned paths.
+
+    Unversioned pages output to ``/{locale}/{page_path}/`` (no version segment).
+    If an unversioned page lives in a directory whose name matches a version
+    string, its output would collide with versioned pages in that version.
+
+    Raises RuntimeError on collision.
+    """
+    version_set = set(version_strs)
+    for uv_path in unversioned_paths:
+        parts = uv_path.split("/")
+        if len(parts) > 1 and parts[0] in version_set:
+            raise RuntimeError(
+                f"Unversioned page '{uv_path}' would collide with versioned "
+                f"output under version '{parts[0]}'. Rename the page or remove "
+                f"'versioned: false' from its frontmatter."
+            )
+
+
+def _check_reserved_paths(version_strs, config):
+    """Verify version strings do not clash with reserved URL prefixes.
+
+    Currently the only reserved prefix is the posts listing path
+    (default ``posts``).  Raises RuntimeError on conflict.
+    """
+    reserved = set()
+    posts_config = config.get("posts")
+    if posts_config:
+        listing_path = posts_config.get("listing_path", "posts")
+        reserved.add(listing_path)
+    # Future reserved prefixes can be added here
+
+    for ver_str in version_strs:
+        if ver_str in reserved:
+            raise RuntimeError(
+                f"Version string '{ver_str}' conflicts with reserved URL "
+                f"prefix. Reserved prefixes: {', '.join(sorted(reserved))}. "
+                f"Rename the version or change the conflicting config."
+            )
+
+
 def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
     """Build docs from templates + directives, with multi-locale/multi-version support.
 
@@ -1399,6 +1491,17 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
+    # --- Partition pages into versioned and unversioned ---
+    version_strs = [v["version"] for v in versions]
+    _check_reserved_paths(version_strs, config)
+
+    # Resolve docs from the latest (working tree) to discover unversioned pages
+    latest_docs_dir = os.path.join(dir_path, docs_dir_name)
+    versioned_pages, unversioned_pages = _partition_pages(config, latest_docs_dir, dir_path)
+
+    # Check for collisions between unversioned output paths and version strings
+    _check_unversioned_collisions(unversioned_pages, version_strs)
+
     written = {}
     all_search_entries = []
     latest_build = None
@@ -1442,6 +1545,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
                 current_version=ver_str,
                 current_locale=locale_code,
                 is_latest=is_latest,
+                page_filter=versioned_pages if unversioned_pages else None,
             )
             html_files = result.html_files
             markdown_files = result.markdown_files
@@ -1526,6 +1630,83 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
             "url_builder": SimpleURLBuilder(base_url) if base_url else None,
             "feed_url": feed_url,
             "lang": lang,
+        }
+
+    # --- Build unversioned pages (once per locale, no version segment) ---
+    uv_latest_build = None
+    if unversioned_pages:
+        for locale in build_locales:
+            locale_code = locale["code"]
+            # Unversioned pages output to /{locale}/page/ (no version)
+            uv_output_subdir = locale_code
+            uv_url_prefix = locale_code
+
+            # Resolve locale-specific docs directory
+            locale_docs_dir = _resolve_locale_docs_dir(
+                dir_path, docs_dir_name, locale_code, locales,
+            )
+            locale_config = dict(config)
+            locale_config["docs"] = os.path.relpath(locale_docs_dir, dir_path)
+
+            uv_result = build_single(
+                dir_path=dir_path,
+                config=locale_config,
+                output_subdir=uv_output_subdir,
+                url_prefix=uv_url_prefix,
+                version_override="",
+                locale_override=locale_code,
+                available_versions=versions,
+                available_locales=locales,
+                current_version="",
+                current_locale=locale_code,
+                is_latest=True,
+                page_filter=unversioned_pages,
+            )
+
+            all_search_entries.extend(uv_result.search_entries)
+
+            for rel_path, html_content in uv_result.html_files.items():
+                out_path = os.path.join(output_dir, rel_path)
+                os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(_minify_html(html_content))
+                written[out_path] = True
+
+            for rel_path in uv_result.other_files:
+                src = os.path.join(uv_result.docs_dir, rel_path)
+                dst = os.path.join(output_dir, uv_output_subdir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                written[dst] = True
+
+            # Add to per-locale indexed HTML
+            uv_prefix = os.path.join(output_dir, locale_code)
+            for k in written:
+                if k.startswith(uv_prefix) and k.endswith(".html"):
+                    rel = os.path.relpath(k, output_dir)
+                    if rel not in per_locale_indexed_html[locale_code]:
+                        per_locale_indexed_html[locale_code].append(rel)
+
+            if locale_code == default_locale_code:
+                uv_latest_build = {
+                    "markdown_files": uv_result.markdown_files,
+                    "frontmatter": uv_result.frontmatter,
+                    "page_dates": uv_result.page_dates,
+                }
+
+    # Merge unversioned data into latest_build for auxiliary files
+    if uv_latest_build and latest_build:
+        latest_build["markdown_files"] = {
+            **latest_build["markdown_files"],
+            **uv_latest_build["markdown_files"],
+        }
+        latest_build["frontmatter"] = {
+            **latest_build["frontmatter"],
+            **uv_latest_build["frontmatter"],
+        }
+        latest_build["page_dates"] = {
+            **latest_build["page_dates"],
+            **uv_latest_build["page_dates"],
         }
 
     lb = latest_build
