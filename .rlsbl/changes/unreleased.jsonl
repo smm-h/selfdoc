@@ -1,0 +1,1 @@
+{"commits":["9fc0c71f9209bd6641da9859fa86c0951db9f819","b93a50d0325ff6cbfe411fea1b9186d84ecc0aa2","beb20e8c7ba3cb53b833a092a38d988419755b38","f16c57c1a19b368c7b2cb2e8df31a38eadabb1f4"],"user_facing":true,"description":"**Page type system.** Frontmatter-driven page types with configurable schema.org mapping, per-type layout control, and type-aware labeling.","type":"feature"}
