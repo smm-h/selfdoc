@@ -430,6 +430,9 @@ def check_docs(dir_path=".", config=None, dry_run=False):
             severity="error",
         ))
 
+    # Post validation (POST001-POST005)
+    result.lints.extend(_check_posts(config, dir_path))
+
     # Validate old versions when multi-version is configured.
     # The working-tree check above covers the latest version; here we
     # extract each older version from its git tag and run directive
@@ -544,6 +547,48 @@ def _check_version_consistency(config, dir_path):
             ))
 
     return results
+
+
+def _check_posts(config, dir_path):
+    """Check blog posts for validation errors (POST001-POST005)."""
+    from selfdoc.posts import discover_posts
+
+    posts_config = config.get("posts") or {}
+    posts_dir_rel = posts_config.get("dir", "")
+    if not posts_dir_rel:
+        return []
+
+    posts_dir = os.path.join(dir_path, posts_dir_rel)
+    if not os.path.isdir(posts_dir):
+        return []
+
+    manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
+
+    try:
+        discover_posts(posts_dir, manifest_path=manifest_path)
+    except RuntimeError as exc:
+        msg = str(exc)
+        if "'title' is required" in msg:
+            code = "POST002"
+        elif "'date' is required" in msg:
+            code = "POST001"
+        elif "must be YYYY-MM-DD" in msg:
+            code = "POST003"
+        elif "Duplicate slug" in msg:
+            code = "POST004"
+        elif "Slug immutability violation" in msg:
+            code = "POST005"
+        else:
+            code = "POST001"  # fallback
+        return [LintResult(
+            file=posts_dir_rel,
+            line=None,
+            code=code,
+            message=msg,
+            severity="error",
+        )]
+
+    return []
 
 
 def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
