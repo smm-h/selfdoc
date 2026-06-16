@@ -312,7 +312,8 @@ def generate_html(markdown_files, project_name=None, version=None,
                    url_prefix="",
                    available_versions=None, available_locales=None,
                    current_version="", current_locale="",
-                   is_latest=True):
+                   is_latest=True,
+                   schema_types=None):
     """Convert Markdown files to static HTML.
 
     Args:
@@ -473,6 +474,15 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Schema type from frontmatter (e.g. "itemlist" for ItemList JSON-LD)
         schema = page_meta.get("schema")
 
+        # Page type from frontmatter (e.g. "post", "tutorial") for layout/SEO
+        page_type = page_meta.get("type")
+
+        # Page tags from frontmatter for SEO keywords
+        _tags_val = page_meta.get("tags", [])
+        if isinstance(_tags_val, str):
+            _tags_val = [_tags_val] if _tags_val else []
+        page_tags = list(_tags_val)
+
         # Landing page: inject hero + features for index.html when branding
         # is configured. The hero replaces the page summary block.
         has_hero = False
@@ -554,6 +564,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             "date_modified": date_modified,
             "page_feed_url": page_feed_url,
             "schema": schema,
+            "page_type": page_type,
+            "page_tags": page_tags,
             "page_number": page_idx + 1,
             "total_pages": len(flat_nav),
             "has_hero": has_hero,
@@ -657,6 +669,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             "date_modified": None,
             "page_feed_url": ("../" + feed_url) if feed_url else None,
             "schema": None,
+            "page_type": "glossary",
+            "page_tags": [],
         })
 
     # --- Pass 2: Wrap pages ---
@@ -687,6 +701,9 @@ def generate_html(markdown_files, project_name=None, version=None,
             summary=pd["frontmatter_description"],
             critical_css=critical_css,
             schema=pd["schema"],
+            page_type=pd.get("page_type"),
+            schema_types=schema_types,
+            page_tags=pd.get("page_tags"),
             twitter_site=twitter_site,
             search=search,
             feedback=feedback,
@@ -1968,7 +1985,9 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
                      date_modified, lang, breadcrumbs, schema,
                      twitter_site, deploy_target,
                      available_locales=None, current_locale="",
-                     url_prefix="", url_builder=None):
+                     url_prefix="", url_builder=None,
+                     page_type=None, schema_types=None,
+                     page_tags=None):
     """Build SEO tags: JSON-LD structured data, OG meta, canonical, hreflang, security."""
     if url_builder is None and base_url is not None:
         url_builder = SimpleURLBuilder(base_url)
@@ -1994,34 +2013,50 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
         else:
             author_obj = {"@type": "Organization", "name": project_name}
 
-        tech_article = {
+        # Resolve schema.org @type from page type via schema_types mapping
+        _default_schema_types = {
+            "guide": "TechArticle",
+            "tutorial": "TechArticle",
+            "post": "BlogPosting",
+            "changelog": "WebPage",
+        }
+        _merged = dict(_default_schema_types)
+        if schema_types:
+            _merged.update(schema_types)
+        schema_type = _merged.get(page_type or "guide", "Article")
+
+        ld_obj = {
             "@context": "https://schema.org",
-            "@type": "TechArticle",
+            "@type": schema_type,
             "headline": title,
             "author": author_obj,
         }
         if canonical_url:
-            tech_article["url"] = canonical_url
+            ld_obj["url"] = canonical_url
         if description:
-            tech_article["description"] = description
+            ld_obj["description"] = description
         if date_modified:
-            tech_article["dateModified"] = date_modified
-            tech_article["datePublished"] = date_published or date_modified
+            ld_obj["dateModified"] = date_modified
+            ld_obj["datePublished"] = date_published or date_modified
 
         # Publisher must always be an Organization per Google's spec
         if author and author.get("type") == "Organization":
-            tech_article["publisher"] = author_obj
+            ld_obj["publisher"] = author_obj
         else:
-            tech_article["publisher"] = {
+            ld_obj["publisher"] = {
                 "@type": "Organization",
                 "name": project_name,
             }
 
-        tech_article["inLanguage"] = lang
+        ld_obj["inLanguage"] = lang
+
+        # BlogPosting: add keywords from frontmatter tags
+        if schema_type == "BlogPosting" and page_tags:
+            ld_obj["keywords"] = ", ".join(page_tags)
 
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
-            f'{json.dumps(tech_article)}'
+            f'{json.dumps(ld_obj)}'
             f'\n</script>'
         )
 
@@ -2810,7 +2845,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                base_url=None, url_builder=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
-               schema=None, twitter_site=None, search=None,
+               schema=None, page_type=None, schema_types=None,
+               page_tags=None, twitter_site=None, search=None,
                feedback=None, branch="main", search_engine=None,
                site_terms=None, page_number=None, total_pages=None,
                theme_meta=None, has_hero=False, deploy_target=None,
@@ -2853,7 +2889,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         description=description, body_html=body_html, author=author,
         project_name=project_name, repo=repo, date_published=date_published,
         date_modified=date_modified, lang=lang, breadcrumbs=breadcrumbs,
-        schema=schema, twitter_site=twitter_site,
+        schema=schema, page_type=page_type, schema_types=schema_types,
+        page_tags=page_tags,
+        twitter_site=twitter_site,
         deploy_target=deploy_target,
         available_locales=available_locales,
         current_locale=current_locale,

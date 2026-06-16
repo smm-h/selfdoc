@@ -501,6 +501,13 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         ),
         description="Configuration for the gen-data command.",
     ),
+    FieldSpec(
+        name="schema_types",
+        type=_D,
+        default=None,
+        strict_keys=False,
+        description="Mapping from page type to schema.org @type (e.g. guide -> TechArticle).",
+    ),
     # --- multi-version / multi-locale / unified fields ---
     FieldSpec(
         name="versions",
