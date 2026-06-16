@@ -9,6 +9,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import zlib
 from datetime import datetime
@@ -444,6 +445,39 @@ def _extract_version_content(version, config, base_dir):
     return cache_dir
 
 
+def _run_pagefind(output_dir):
+    """Run Pagefind to generate the search index for the output directory.
+
+    Tries the Python module first (python3 -m pagefind), then the standalone
+    binary.  Raises RuntimeError if neither is available.
+    """
+    # Try Python module first, then standalone binary
+    for cmd in (
+        [sys.executable, "-m", "pagefind", "--site", output_dir],
+        ["pagefind", "--site", output_dir],
+    ):
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode == 0:
+                return
+            # Command found but failed -- report the error
+            raise RuntimeError(
+                f"Pagefind indexing failed (exit {result.returncode}):\n"
+                f"{result.stderr.strip()}"
+            )
+        except FileNotFoundError:
+            continue
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(
+                "Pagefind indexing timed out after 120 seconds."
+            )
+
+    raise RuntimeError(
+        "Pagefind is not installed. Install it with: uv add pagefind\n"
+        "Or install the standalone binary: npm install -g pagefind"
+    )
 
 
 def _build_search_index(
@@ -1923,12 +1957,17 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         )
     written[search_index_path] = True
 
-    # Search JS
+    # Search JS (not needed for pagefind -- it provides its own)
     search_engine = config.get("search_engine") or "builtin"
-    search_js_path = os.path.join(output_dir, "search.js")
-    with open(search_js_path, "w", encoding="utf-8") as f:
-        f.write(_minify_js(_generate_search_js(engine=search_engine)))
-    written[search_js_path] = True
+    if search_engine != "pagefind":
+        search_js_path = os.path.join(output_dir, "search.js")
+        with open(search_js_path, "w", encoding="utf-8") as f:
+            f.write(_minify_js(_generate_search_js(engine=search_engine)))
+        written[search_js_path] = True
+
+    # Pagefind indexing
+    if search_engine == "pagefind":
+        _run_pagefind(output_dir)
 
     # Custom CSS
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")

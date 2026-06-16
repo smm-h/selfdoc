@@ -42,7 +42,7 @@ class FieldSpec:
     internal: bool = False
 
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
-VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch")
+VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch", "pagefind")
 
 _S = FieldType.STR
 _B = FieldType.BOOL
@@ -150,7 +150,7 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         name="search_engine",
         type=_S,
         default=None,
-        choices=("builtin", "fuse", "minisearch"),
+        choices=("builtin", "fuse", "minisearch", "pagefind"),
         description="Client-side search engine implementation to use.",
     ),
     FieldSpec(

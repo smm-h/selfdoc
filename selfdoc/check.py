@@ -9,6 +9,7 @@ referenced by directives vs. the total in source files.
 import ast
 import json
 import os
+import subprocess
 import sys
 from dataclasses import dataclass, field
 
@@ -242,6 +243,34 @@ def check_docs(dir_path=".", config=None, dry_run=False):
 
     # Run lint checks (SEO and other diagnostics)
     result.lints = _run_lints(all_docs, docs_dir, resolver, config, resolved_directives)
+
+    # SEARCH001: pagefind availability check
+    if config.get("search_engine") == "pagefind":
+        _pagefind_available = False
+        for _cmd in (
+            [sys.executable, "-m", "pagefind", "--version"],
+            ["pagefind", "--version"],
+        ):
+            try:
+                _proc = subprocess.run(
+                    _cmd, capture_output=True, text=True, timeout=10,
+                )
+                if _proc.returncode == 0:
+                    _pagefind_available = True
+                    break
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+        if not _pagefind_available:
+            result.lints.append(LintResult(
+                file="selfdoc.json",
+                line=None,
+                code="SEARCH001",
+                message=(
+                    "search_engine is 'pagefind' but pagefind is not installed. "
+                    "Install with: uv add pagefind"
+                ),
+                severity="error",
+            ))
 
     # XREF002: directive path validation -- verify resolved directive
     # source files actually exist on disk.
