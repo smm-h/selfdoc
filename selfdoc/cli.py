@@ -611,6 +611,12 @@ def _cmd_gen(no_commit=False):
         update_hashes(all_docs, ".")
     all_commit_files.append(".selfdoc/hashes/hashes.json")
 
+    # Generate manifest (.selfdoc/manifest.json)
+    from selfdoc.manifest import generate_manifest
+
+    generate_manifest(config, all_docs, dir_path=".")
+    all_commit_files.append(".selfdoc/manifest.json")
+
     if all_commit_files and not no_commit:
         from selfdoc.git import auto_commit
         auto_commit(
