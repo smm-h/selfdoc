@@ -22,6 +22,62 @@ post_group = app.group("post", help="Manage blog posts and chronological content
 assembly_group = app.group("assembly", help="Manage the unified documentation assembly")
 
 
+@post_group.command("new", help="Scaffold a new blog post with frontmatter template")
+@strictcli.flag("title", type=str, help="Title for the new post (required)")
+def _cmd_post_new(title=""):
+    """Create a new blog post file in the posts directory."""
+    from selfdoc.config import load_config
+    from selfdoc.manifest import _to_kebab
+
+    if not title:
+        print("Error: --title is required.", file=sys.stderr)
+        sys.exit(1)
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    posts_config = config.get("posts") or {}
+    posts_dir = posts_config.get("dir", ".selfdoc/posts/")
+
+    slug = _to_kebab(title)
+    today = datetime.date.today().isoformat()
+    filename = f"{today}-{slug}.md"
+
+    # Determine project slug for the post frontmatter
+    project_slug = (config.get("topology") or {}).get("slug")
+    if not project_slug:
+        name = config.get("name") or os.path.basename(os.path.abspath("."))
+        project_slug = _to_kebab(name)
+
+    filepath = os.path.join(posts_dir, filename)
+
+    if os.path.isfile(filepath):
+        print(f"Error: Post file already exists: {filepath}", file=sys.stderr)
+        sys.exit(1)
+
+    os.makedirs(posts_dir, exist_ok=True)
+
+    content = (
+        f"---\n"
+        f"title: {title}\n"
+        f"date: {today}\n"
+        f"slug: {slug}\n"
+        f"tags: []\n"
+        f"draft: true\n"
+        f"project: {project_slug}\n"
+        f"---\n"
+        f"\n"
+    )
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    print(f"Created post: {filepath}")
+    return 0
+
+
 def _detect_source_entries(language):
     """Detect source entries for a given language.
 
