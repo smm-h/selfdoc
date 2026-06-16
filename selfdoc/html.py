@@ -2532,7 +2532,7 @@ def _render_search_dialog(prefix, current_version=""):
         f'<dialog class="search-dialog" id="search-dialog" data-search-base="/"{version_attr} aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
         f'<div class="search-header">\n'
-        f'<input type="search" class="search-input" placeholder="Search docs... (Cmd+K)" aria-controls="search-results">\n'
+        f'<input type="search" class="search-input" placeholder="Search... (Cmd+K)" aria-controls="search-results">\n'
         f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
         f'</div>\n'
         f'<ul class="search-results" id="search-results" role="listbox" aria-live="polite"></ul>\n'
@@ -2550,7 +2550,7 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                      url_prefix="",
                      available_versions=None, available_locales=None,
                      current_version="", current_locale="",
-                     is_latest=True):
+                     is_latest=True, page_type=None):
     """Compute all page metadata variables needed by the template.
 
     Returns a dict with: body_html (possibly modified by cross-page terms),
@@ -2788,8 +2788,11 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         )
 
     # Version banner for old versions (Phase 2)
+    # Suppress for non-doc types (post, essay, etc.) -- only doc types show it
+    _doc_types = {"guide", "api", "cli", "reference", "tutorial", "changelog", "glossary"}
+    _is_doc_type = (page_type or "guide") in _doc_types
     version_banner_html = ""
-    if not is_latest and available_versions and current_version:
+    if _is_doc_type and not is_latest and available_versions and current_version:
         latest_ver = available_versions[-1]["version"] if available_versions else ""
         if latest_ver:
             banner_locale = url_prefix.split("/")[0] if "/" in url_prefix else "en"
@@ -2879,6 +2882,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         current_version=current_version,
         current_locale=current_locale,
         is_latest=is_latest,
+        page_type=page_type,
     )
     body_html = meta["body_html"]
 
