@@ -1278,6 +1278,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
         current_version=current_version,
         current_locale=current_locale,
         is_latest=is_latest,
+        schema_types=config.get("schema_types"),
         unversioned_pages=unversioned_markdown,
         unversioned_frontmatter=unversioned_frontmatter,
     )
