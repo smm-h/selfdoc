@@ -495,6 +495,25 @@ def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
     if key == "project.version":
         return _read_project_field(base_dir, "version")
 
+    if key == "topology.docs_url":
+        topo = config.get("topology") or {}
+        docs_base = topo.get("docs_base", "")
+        slug = topo.get("slug", "")
+        if docs_base and slug:
+            return f"{docs_base}/{slug}"
+        return ""
+
+    if key == "topology.posts_url":
+        topo = config.get("topology") or {}
+        posts_base = topo.get("posts_base", "")
+        if posts_base:
+            return posts_base
+        return ""
+
+    if key == "topology.slug":
+        topo = config.get("topology") or {}
+        return topo.get("slug", "")
+
     return f"> *[selfdoc: unknown var key '{key}']*"
 
 

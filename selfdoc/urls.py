@@ -64,3 +64,62 @@ class SimpleURLBuilder:
     def base(self) -> str:
         """Return the base URL string (no trailing slash)."""
         return self._base_url
+
+
+class TopologyURLBuilder:
+    """URLBuilder for topology-aware multi-project deployments.
+
+    Generates URLs incorporating the project slug under a shared docs base.
+    For example, with docs_base="https://docs.smmh.dev" and slug="selfdoc",
+    page_url("guide/") returns "https://docs.smmh.dev/selfdoc/guide/".
+    """
+
+    def __init__(
+        self,
+        docs_base: str,
+        slug: str,
+        posts_base: str | None = None,
+        projects: dict[str, str] | None = None,
+    ) -> None:
+        self._docs_base = docs_base.rstrip("/")
+        self._slug = slug
+        self._posts_base = posts_base.rstrip("/") if posts_base else None
+        self._projects = projects or {}
+
+    def page_url(self, path: str) -> str:
+        """Return the absolute URL for a page path under this project's slug."""
+        path = path.lstrip("/")
+        if not path:
+            return f"{self._docs_base}/{self._slug}/"
+        return f"{self._docs_base}/{self._slug}/{path}"
+
+    def asset_url(self, path: str) -> str:
+        """Return the absolute URL for an asset path under this project's slug."""
+        path = path.lstrip("/")
+        if not path:
+            return f"{self._docs_base}/{self._slug}/"
+        return f"{self._docs_base}/{self._slug}/{path}"
+
+    def feed_url(self) -> str:
+        """Return the absolute URL for the Atom feed."""
+        return f"{self._docs_base}/{self._slug}/feed.xml"
+
+    def base(self) -> str:
+        """Return the base URL string (docs_base/slug, no trailing slash)."""
+        return f"{self._docs_base}/{self._slug}"
+
+    def cross_project_url(self, project_slug: str, path: str = "") -> str:
+        """Generate a URL to another project's content using the projects dict.
+
+        Falls back to docs_base/project_slug if the project is not in the
+        explicit projects mapping.
+        """
+        base = self._projects.get(project_slug)
+        if base is None:
+            base = f"{self._docs_base}/{project_slug}"
+        else:
+            base = base.rstrip("/")
+        path = path.lstrip("/")
+        if not path:
+            return f"{base}/"
+        return f"{base}/{path}"

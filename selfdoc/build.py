@@ -24,7 +24,7 @@ from selfdoc.html import (
     _generate_search_js, _minify_js,
 )
 from selfdoc.themes import get_theme_meta
-from selfdoc.urls import SimpleURLBuilder
+from selfdoc.urls import SimpleURLBuilder, TopologyURLBuilder
 
 try:
     from predraw.model import Scene, Element, Font
@@ -33,6 +33,29 @@ try:
     _HAS_PREDRAW = True
 except ImportError:
     _HAS_PREDRAW = False
+
+
+def _make_url_builder(config):
+    """Create the appropriate URLBuilder based on config.
+
+    When topology config has docs_base and slug, returns a
+    TopologyURLBuilder. Otherwise falls back to SimpleURLBuilder
+    using base_url.
+    """
+    topology = config.get("topology") or {}
+    docs_base = topology.get("docs_base")
+    slug = topology.get("slug")
+    if docs_base and slug:
+        return TopologyURLBuilder(
+            docs_base=docs_base,
+            slug=slug,
+            posts_base=topology.get("posts_base"),
+            projects=topology.get("projects"),
+        )
+    base_url = config.get("base_url")
+    if base_url:
+        return SimpleURLBuilder(base_url)
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1218,7 +1241,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
 
     # Get base_url for canonical links and sitemap (Feature 22)
     base_url = config.get("base_url", None)
-    url_builder = SimpleURLBuilder(base_url) if base_url else None
+    url_builder = _make_url_builder(config)
 
     # Get lang attribute for HTML pages (default "en").
     # When multiple locales are configured, the locale code is the
