@@ -1441,7 +1441,73 @@ def _check_reserved_paths(version_strs, config):
             )
 
 
-def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
+def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
+    """Write post markdown files into docs/posts/ for the build pipeline.
+
+    Discovers posts from the configured posts directory, filters drafts
+    unless ``include_drafts`` is True, and writes each post as a ``.md``
+    file under ``docs_dir/posts/``.  The written files are picked up by
+    ``resolve_all_docs`` and partitioned as unversioned pages (they have
+    ``versioned: false`` in their frontmatter).
+
+    Returns a list of absolute paths to injected files (for cleanup).
+    """
+    posts_config = config.get("posts") or {}
+    posts_dir_rel = posts_config.get("dir", ".selfdoc/posts/")
+    posts_dir = os.path.join(dir_path, posts_dir_rel)
+    if not os.path.isdir(posts_dir):
+        return []
+
+    from selfdoc.posts import discover_posts
+
+    manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
+    all_posts = discover_posts(posts_dir, manifest_path=manifest_path)
+
+    injected = []
+    for post in all_posts:
+        if post["draft"] and not include_drafts:
+            continue
+
+        post_docs_path = os.path.join(docs_dir, "posts", f"{post['slug']}.md")
+        os.makedirs(os.path.dirname(post_docs_path), exist_ok=True)
+
+        # Reconstruct markdown with frontmatter
+        fm = post["frontmatter"]
+        fm_lines = []
+        for key, val in fm.items():
+            if val is None:
+                continue
+            if isinstance(val, bool):
+                fm_lines.append(f"{key}: {'true' if val else 'false'}")
+            elif isinstance(val, list):
+                fm_lines.append(f"{key}: [{', '.join(str(v) for v in val)}]")
+            else:
+                fm_lines.append(f"{key}: {val}")
+        full_content = "---\n" + "\n".join(fm_lines) + "\n---\n" + post["content"]
+
+        with open(post_docs_path, "w", encoding="utf-8") as f:
+            f.write(full_content)
+        injected.append(post_docs_path)
+
+    return injected
+
+
+def _cleanup_injected_posts(injected_files, docs_dir):
+    """Remove post files injected into docs/ by ``_inject_posts_into_docs``.
+
+    Also removes the ``posts/`` subdirectory under ``docs_dir`` if it
+    becomes empty after cleanup.
+    """
+    for fpath in injected_files:
+        if os.path.isfile(fpath):
+            os.unlink(fpath)
+    posts_subdir = os.path.join(docs_dir, "posts")
+    if os.path.isdir(posts_subdir) and not os.listdir(posts_subdir):
+        os.rmdir(posts_subdir)
+
+
+def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
+          include_drafts=False):
     """Build docs from templates + directives, with multi-locale/multi-version support.
 
     Outer loop iterates locales, inner loop iterates versions. For each
@@ -1455,6 +1521,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
         version_filter: Optional version string to build only that version.
         locale_filter: Optional locale code to build only that locale.
+        include_drafts: Include draft posts in the build output.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -1536,6 +1603,12 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
 
     # Resolve docs from the latest (working tree) to discover unversioned pages
     latest_docs_dir = os.path.join(dir_path, docs_dir_name)
+
+    # Inject posts into docs/posts/ so the normal pipeline discovers them
+    injected_post_files = _inject_posts_into_docs(
+        dir_path, config, latest_docs_dir, include_drafts,
+    )
+
     versioned_pages, unversioned_pages, uv_markdown, uv_frontmatter = _partition_pages(
         config, latest_docs_dir, dir_path,
     )
@@ -1933,6 +2006,9 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None):
         print("OG cards: rich (predraw)")
     else:
         print("OG cards: basic (install predraw for text)")
+
+    # Clean up injected post files from docs/
+    _cleanup_injected_posts(injected_post_files, latest_docs_dir)
 
     return written
 

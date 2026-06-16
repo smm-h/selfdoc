@@ -217,7 +217,8 @@ def _cmd_init(no_commit=False):
 @strictcli.flag("no-commit", type=bool, help="Skip auto-committing updated content hash tracking files")
 @strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
-def _cmd_build(no_commit=False, locale="", version=""):
+@strictcli.flag("drafts", type=bool, help="Include draft posts in the build output")
+def _cmd_build(no_commit=False, locale="", version="", drafts=False):
     """Build the documentation site."""
     from selfdoc.config import load_config
 
@@ -228,7 +229,7 @@ def _cmd_build(no_commit=False, locale="", version=""):
         from selfdoc.unified import build_unified
 
         try:
-            written = build_unified(".", config=config)
+            written = build_unified(".", config=config, include_drafts=drafts)
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
@@ -240,6 +241,7 @@ def _cmd_build(no_commit=False, locale="", version=""):
                 ".",
                 version_filter=version or None,
                 locale_filter=locale or None,
+                include_drafts=drafts,
             )
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)

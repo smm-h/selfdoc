@@ -18,11 +18,13 @@ from selfdoc.build import (
     _build_search_index,
     _check_reserved_paths,
     _check_unversioned_collisions,
+    _cleanup_injected_posts,
     _compress_output,
     _extract_critical_css,
     _extract_version_content,
     _generate_auxiliary_files,
     _generate_sitemap,
+    _inject_posts_into_docs,
     _minify_css,
     _minify_html,
     _partition_pages,
@@ -303,7 +305,7 @@ def _generate_unified_glossary_html(merged_terms, projects_info):
     )
 
 
-def build_unified(dir_path=".", config=None):
+def build_unified(dir_path=".", config=None, include_drafts=False):
     """Build a unified documentation site from multiple constituent projects.
 
     Main entry point for monorepo unified builds. Reads the ``unified``
@@ -315,6 +317,7 @@ def build_unified(dir_path=".", config=None):
     Args:
         dir_path: The docs-site's project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
+        include_drafts: Include draft posts in the build output.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -398,6 +401,12 @@ def build_unified(dir_path=".", config=None):
 
     # Also partition the docs-site's own pages
     docs_site_docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
+
+    # Inject posts into docs-site's docs/posts/ so the normal pipeline discovers them
+    injected_post_files = _inject_posts_into_docs(
+        dir_path, config, docs_site_docs_dir, include_drafts,
+    )
+
     ds_versioned, ds_unversioned, ds_uv_markdown, ds_uv_frontmatter = _partition_pages(
         config, docs_site_docs_dir, dir_path,
     )
@@ -828,6 +837,9 @@ def build_unified(dir_path=".", config=None):
             f"Pre-compressed {compress_count} files "
             f"(gzip only, install brotli for better compression)"
         )
+
+    # Clean up injected post files from docs-site's docs/
+    _cleanup_injected_posts(injected_post_files, docs_site_docs_dir)
 
     return written
 

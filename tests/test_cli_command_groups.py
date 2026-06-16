@@ -19,8 +19,8 @@ def test_assembly_group_help_text():
     assert app._groups["assembly"].help == "Manage the unified documentation assembly"
 
 
-def test_post_group_no_commands_yet():
-    assert app._groups["post"].commands == {}
+def test_post_group_has_new_command():
+    assert "new" in app._groups["post"].commands
 
 
 def test_assembly_group_no_commands_yet():
