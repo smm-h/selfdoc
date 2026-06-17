@@ -41,10 +41,11 @@ jobs:
           echo "SOURCE_REPO=${{ github.event.client_payload.repo }}" >> "$GITHUB_ENV"
 
       - name: Clone triggering project
-        run: |
-          git clone "https://github.com/$SOURCE_REPO.git" "projects/$SLUG"
-          cd "projects/$SLUG"
-          git checkout "$REF"
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          ref: ${{ github.event.client_payload.ref }}
+          path: projects/${{ github.event.client_payload.slug }}
 
       - name: Build documentation
         run: |
