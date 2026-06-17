@@ -42,9 +42,9 @@ jobs:
 
       - name: Clone triggering project
         run: |
-          git clone --depth 1 --branch "$REF" \\
-            "https://github.com/$SOURCE_REPO.git" \\
-            "projects/$SLUG"
+          git clone "https://github.com/$SOURCE_REPO.git" "projects/$SLUG"
+          cd "projects/$SLUG"
+          git checkout "$REF"
 
       - name: Build documentation
         run: |
