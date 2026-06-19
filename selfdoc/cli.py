@@ -1047,7 +1047,7 @@ def _cmd_assembly_push():
         sys.exit(1)
     source_repo = result.stdout.strip()
 
-    # Detect ref (prefer tag, fall back to commit SHA)
+    # Detect ref (prefer exact tag on HEAD, fall back to latest tag)
     result = subprocess.run(
         ["git", "describe", "--tags", "--exact-match", "HEAD"],
         check=False, capture_output=True, text=True, timeout=10,
@@ -1056,13 +1056,14 @@ def _cmd_assembly_push():
         ref = result.stdout.strip()
     else:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["git", "describe", "--tags", "--abbrev=0"],
             check=False, capture_output=True, text=True, timeout=10,
         )
-        if result.returncode != 0:
-            print("Error: Failed to detect git ref.", file=sys.stderr)
+        if result.returncode == 0:
+            ref = result.stdout.strip()
+        else:
+            print("Error: No git tags found. Run a release first.", file=sys.stderr)
             sys.exit(1)
-        ref = result.stdout.strip()
 
     # Detect version
     version = config.get("version", "")
