@@ -79,7 +79,7 @@ jobs:
           rm -rf "site/$SLUG/"
           mkdir -p "site/$SLUG/"
           cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
-          find "site/$SLUG/" \( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \) -delete
+          find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
 
       - name: Update manifest
         run: |
