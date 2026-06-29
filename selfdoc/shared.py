@@ -9,6 +9,42 @@ from datetime import datetime
 from selfdoc.build import _make_feed_entry
 
 
+def wrap_shared_page(title: str, body_html: str, css_url: str = "") -> str:
+    """Wrap an HTML fragment in a complete HTML page.
+
+    Args:
+        title: Page title for the <title> tag.
+        body_html: HTML fragment to place inside <body>.
+        css_url: Optional URL for an external CSS stylesheet.
+
+    Returns:
+        Complete HTML document string.
+    """
+    css_link = ""
+    if css_url:
+        css_link = f'\n    <link rel="stylesheet" href="{html.escape(css_url)}">'
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '    <meta charset="utf-8">\n'
+        '    <meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        f"    <title>{html.escape(title)}</title>{css_link}\n"
+        "    <style>\n"
+        "        body { max-width: 48rem; margin: 0 auto; padding: 1rem 1.5rem;"
+        " font-family: system-ui, -apple-system, sans-serif;"
+        " line-height: 1.6; color: #222; }\n"
+        "        a { color: #0366d6; }\n"
+        "        a:visited { color: #6f42c1; }\n"
+        "    </style>\n"
+        "</head>\n"
+        "<body>\n"
+        f"{body_html}\n"
+        "</body>\n"
+        "</html>\n"
+    )
+
+
 def generate_homepage(manifests: list[dict], docs_base: str) -> str:
     """Produce an HTML content fragment listing all projects.
 
