@@ -91,14 +91,14 @@ def generate_manifest(
     )
 
     # Description
-    description = config.get("description", "")
+    description = config.get("description") or ""
 
     # Language: primary language from first source entry
     source = config.get("source")
     language = source[0]["language"] if source else ""
 
     # Base URL
-    base_url = config.get("base_url", "")
+    base_url = config.get("base_url") or ""
 
     # Pages
     pages = []
