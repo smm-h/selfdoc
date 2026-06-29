@@ -42,6 +42,7 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     # Check for actual changes: tracked files with diffs, deletions,
     # or untracked (new) files
     committable = []
+    untracked_new = []
     for f in files:
         path = f if os.path.isabs(f) else os.path.join(cwd, f)
 
@@ -58,7 +59,7 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
             continue
 
         if ls_result.returncode == 0 and ls_result.stdout.strip():
-            # File is tracked
+            # File is tracked -- commit regardless of gitignore
             if not os.path.exists(path):
                 # Tracked but deleted from disk -- stage the deletion
                 committable.append(f)
@@ -77,9 +78,30 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
                 except (OSError, subprocess.TimeoutExpired):
                     continue
         else:
-            # File is untracked -- it's new and should be committed
+            # File is untracked -- collect for gitignore filtering
             if os.path.exists(path):
-                committable.append(f)
+                untracked_new.append(f)
+
+    # Filter gitignored files from untracked candidates only
+    if untracked_new:
+        try:
+            ci_result = subprocess.run(
+                ["git", "check-ignore", "--stdin"],
+                cwd=cwd,
+                text=True,
+                input="\n".join(untracked_new),
+                capture_output=True,
+                timeout=10,
+            )
+            if ci_result.returncode == 0:
+                # Some files are ignored -- remove them
+                ignored = set(ci_result.stdout.strip().splitlines())
+                untracked_new = [f for f in untracked_new if f not in ignored]
+            # returncode 1 means none are ignored -- keep all
+            # returncode 128+ means error -- keep all (skip filtering)
+        except (OSError, subprocess.TimeoutExpired):
+            pass  # On error, keep all untracked candidates
+        committable.extend(untracked_new)
 
     if not committable:
         return False
@@ -96,10 +118,14 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
                 cmd,
                 cwd=cwd,
                 capture_output=True,
+                text=True,
                 env=env,
                 timeout=30,
             )
-            return result.returncode == 0
+            if result.returncode != 0:
+                print(result.stderr, file=sys.stderr, end="")
+                return False
+            return True
         except (OSError, subprocess.TimeoutExpired) as exc:
             print(
                 f"selfdoc: auto-commit failed (rlsbl): {exc}",
@@ -113,10 +139,14 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
                 cmd,
                 cwd=cwd,
                 capture_output=True,
+                text=True,
                 env=env,
                 timeout=30,
             )
-            return result.returncode == 0
+            if result.returncode != 0:
+                print(result.stderr, file=sys.stderr, end="")
+                return False
+            return True
         except (OSError, subprocess.TimeoutExpired) as exc:
             print(
                 f"selfdoc: auto-commit failed (safegit): {exc}",
@@ -130,19 +160,25 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
                 ["git", "add", "--"] + committable,
                 cwd=cwd,
                 capture_output=True,
+                text=True,
                 env=env,
                 timeout=30,
             )
             if add_result.returncode != 0:
+                print(add_result.stderr, file=sys.stderr, end="")
                 return False
             commit_result = subprocess.run(
                 ["git", "commit", "-m", message, "--"] + committable,
                 cwd=cwd,
                 capture_output=True,
+                text=True,
                 env=env,
                 timeout=30,
             )
-            return commit_result.returncode == 0
+            if commit_result.returncode != 0:
+                print(commit_result.stderr, file=sys.stderr, end="")
+                return False
+            return True
         except (OSError, subprocess.TimeoutExpired) as exc:
             print(
                 f"selfdoc: auto-commit failed (git): {exc}",
