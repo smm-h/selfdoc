@@ -1,0 +1,1 @@
+{"commits":["cc706961f4d2742a4869d55cbafce796e5adb8a3","32010b689e6f42dbe6ec68fd8b65e7aefe19c3db"],"user_facing":true,"description":"**Fix.** Assembly shared element generation no longer crashes when manifest fields are null.","type":"fix"}
