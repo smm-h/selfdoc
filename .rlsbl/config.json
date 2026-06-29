@@ -21,6 +21,16 @@
   "private": false,
   "push_timeout": 120,
   "batch_limits": {
-    "exclusions": []
+    "exclusions": [
+      {
+        "reason": "**Assembly Stage 2.** New `selfdoc assembly generate-shared` command and rewritten assembly workflow for multi-project site aggregation. Each dispatch now surgically updates one project, regenerates shared elements (homepage, blog index, nav, feeds, sitemap, search), commits the combined site, and deploys.",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 3
+          }
+        ]
+      }
+    ]
   }
 }
