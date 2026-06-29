@@ -55,10 +55,32 @@ def test_workflow_yaml_has_checkout_step():
     assert "actions/checkout@v4" in yaml_str
 
 
+def test_workflow_yaml_first_checkout_has_fetch_depth():
+    yaml_str = generate_workflow_yaml()
+    # First checkout should have fetch-depth: 1
+    assert "fetch-depth: 1" in yaml_str
+
+
+def test_workflow_yaml_has_second_checkout_for_source():
+    """Workflow has a second actions/checkout to clone the source project."""
+    yaml_str = generate_workflow_yaml()
+    # There should be two occurrences of actions/checkout@v4
+    count = yaml_str.count("actions/checkout@v4")
+    assert count == 2, f"Expected 2 checkout steps, found {count}"
+    # The second checkout should clone into source/
+    assert "path: source/" in yaml_str
+
+
 def test_workflow_yaml_has_python_setup():
     yaml_str = generate_workflow_yaml()
     assert "actions/setup-python@v5" in yaml_str
     assert "3.12" in yaml_str
+
+
+def test_workflow_yaml_has_permissions():
+    yaml_str = generate_workflow_yaml()
+    assert "permissions:" in yaml_str
+    assert "contents: write" in yaml_str
 
 
 def test_workflow_yaml_has_selfdoc_install():
@@ -76,7 +98,7 @@ def test_workflow_yaml_has_payload_extraction():
 
 def test_workflow_yaml_has_clone_step():
     yaml_str = generate_workflow_yaml()
-    assert "Clone triggering project" in yaml_str
+    assert "Clone source project" in yaml_str
     assert "repository:" in yaml_str
 
 
@@ -85,9 +107,41 @@ def test_workflow_yaml_has_build_step():
     assert "selfdoc build" in yaml_str
 
 
+def test_workflow_yaml_has_git_config_and_push():
+    """Workflow configures git and commits+pushes the built site."""
+    yaml_str = generate_workflow_yaml()
+    assert "git config user.name" in yaml_str
+    assert "git config user.email" in yaml_str
+    assert "git commit" in yaml_str
+    assert "git push" in yaml_str
+
+
+def test_workflow_yaml_has_generate_shared():
+    yaml_str = generate_workflow_yaml()
+    assert "selfdoc assembly generate-shared" in yaml_str
+
+
+def test_workflow_yaml_has_pagefind():
+    yaml_str = generate_workflow_yaml()
+    assert "pagefind --site site/" in yaml_str
+
+
+def test_workflow_yaml_has_projects_json_update():
+    yaml_str = generate_workflow_yaml()
+    assert "projects.json" in yaml_str
+    # The step writes to projects.json via inline Python
+    assert "json.dump" in yaml_str
+
+
+def test_workflow_yaml_has_update_manifest():
+    yaml_str = generate_workflow_yaml()
+    assert "Update manifest" in yaml_str
+    assert "manifests/" in yaml_str
+
+
 def test_workflow_yaml_has_wrangler_deploy():
     yaml_str = generate_workflow_yaml()
-    assert "wrangler pages deploy" in yaml_str
+    assert "wrangler pages deploy site/ --project-name smmh" in yaml_str
 
 
 def test_workflow_yaml_has_secrets():
