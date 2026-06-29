@@ -2,6 +2,14 @@
 
 # Changelog
 
+## 0.22.1
+
+Fix null manifest fields crashing assembly shared element generation.
+
+### Fixes
+
+- **Fix.** Assembly shared element generation no longer crashes when manifest fields are null.
+
 ## 0.22.0
 
 Assembly Stage 2: multi-project site aggregation with shared elements, search indexing, and persistent combined site.
