@@ -53,7 +53,7 @@ jobs:
           selfdoc build
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy "projects/$SLUG/docs/_build" --project-name docs-smmh-dev
+        run: npx wrangler pages deploy "projects/$SLUG/docs/_build" --project-name smmh
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_PAGES_API_TOKEN }}
