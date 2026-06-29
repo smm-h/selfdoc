@@ -15,6 +15,7 @@ Unclosed block directives at EOF raise DirectiveError.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 # -- Marker regexes ----------------------------------------------------------
@@ -44,8 +45,11 @@ _FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 # Attribute key="value" pair extractor
 _ATTR_KV_RE = re.compile(r'(\w+)="([^"]*)"')
 
+# Directive name: starts with a letter, followed by word chars or hyphens
+_DIRECTIVE_NAME = r'[a-zA-Z][\w-]*'
+
 # Inline one-liner: :-: name [attrs] (non-anchored, for pass 2)
-_INLINE_RE = re.compile(r':-:\s+(\S+)((?:\s+\w+="[^"]*")*)')
+_INLINE_RE = re.compile(rf':-:\s+({_DIRECTIVE_NAME})((?:\s+\w+="[^"]*")*)')
 
 
 class DirectiveError(Exception):
@@ -67,6 +71,32 @@ class Directive:
 def _parse_attrs(text: str) -> dict[str, str]:
     """Extract all key="value" pairs from a string."""
     return dict(_ATTR_KV_RE.findall(text))
+
+
+def _validate_directive_name(
+    name: str, valid_names: set[str] | None, line_number: int
+) -> None:
+    """Raise DirectiveError if *name* is not in *valid_names* (when provided)."""
+    if valid_names is not None and name not in valid_names:
+        raise DirectiveError(
+            f"Unknown directive '{name}' at line {line_number}"
+        )
+
+
+_DIRECTIVE_NAME_RE = re.compile(rf"^{_DIRECTIVE_NAME}$")
+
+
+def validate_directive_names(names: Iterable[str]) -> None:
+    """Validate that each *name* matches the directive name format.
+
+    Raises DirectiveError for names that don't match ``[a-zA-Z][\\w-]*``.
+    """
+    for name in names:
+        if not _DIRECTIVE_NAME_RE.match(name):
+            raise DirectiveError(
+                f"Invalid directive name '{name}': "
+                r"must match [a-zA-Z][\w-]*"
+            )
 
 
 def _walk_blocks(content: str, valid_names: set[str] | None = None):
@@ -91,12 +121,6 @@ def _walk_blocks(content: str, valid_names: set[str] | None = None):
     block_attrs: dict[str, str] = {}
     block_body: list[str] = []
     block_line: int = 0
-
-    def _validate_name(name: str, line_num: int) -> None:
-        if valid_names is not None and name not in valid_names:
-            raise DirectiveError(
-                f"Unknown directive '{name}' at line {line_num}"
-            )
 
     for line_idx, line in enumerate(lines):
         line_num = line_idx + 1
@@ -132,7 +156,7 @@ def _walk_blocks(content: str, valid_names: set[str] | None = None):
             m = _ONELINER_RE.match(stripped)
             if m:
                 name = m.group(1)
-                _validate_name(name, line_num)
+                _validate_directive_name(name, valid_names, line_num)
                 attrs = _parse_attrs(m.group(2))
                 yield ("directive", name, attrs, [], line_num)
                 continue
@@ -141,7 +165,7 @@ def _walk_blocks(content: str, valid_names: set[str] | None = None):
             m = _BLOCK_OPEN_RE.match(stripped)
             if m:
                 block_name = m.group(1)
-                _validate_name(block_name, line_num)
+                _validate_directive_name(block_name, valid_names, line_num)
                 block_attrs = _parse_attrs(m.group(2))
                 block_body = []
                 block_line = line_num
@@ -246,7 +270,7 @@ def parse_directives(content: str, valid_names: set[str] | None = None) -> list[
             if _ONELINER_RE.match(stripped):
                 continue
             # Find inline directives
-            directives.extend(find_inline_directives(line, line_idx + 1))
+            directives.extend(find_inline_directives(line, line_idx + 1, valid_names))
 
     return directives
 
@@ -284,7 +308,9 @@ def _unmask_backtick_spans(line: str, placeholders: list[str]) -> str:
     return line
 
 
-def find_inline_directives(line: str, line_num: int) -> list[Directive]:
+def find_inline_directives(
+    line: str, line_num: int, valid_names: set[str] | None = None
+) -> list[Directive]:
     """Find inline :-: directives in a line, skipping backtick code spans.
 
     Returns Directive objects with inline=True and column set to the match
@@ -294,6 +320,7 @@ def find_inline_directives(line: str, line_num: int) -> list[Directive]:
     directives: list[Directive] = []
     for match in _INLINE_RE.finditer(masked):
         name = match.group(1)
+        _validate_directive_name(name, valid_names, line_num)
         attrs = _parse_attrs(match.group(2))
         # Column in masked line equals column in original line when the match
         # falls outside placeholders (which it does, since backtick spans are
@@ -353,7 +380,7 @@ def _resolve_inline_pass(
     fence_char: str | None = None
     fence_len: int = 0
 
-    for line in output:
+    for n, line in enumerate(output, 1):
         stripped = line.strip()
         fence_match = _FENCE_RE.match(stripped)
 
@@ -374,6 +401,31 @@ def _resolve_inline_pass(
             # Inside a fenced code block — pass through
             result.append(line)
             continue
+
+        # Detect malformed directive names before resolution: check each
+        # :-: token and flag names that start with a letter but don't match
+        # the directive name pattern (e.g. "my.directive", "a+b").
+        # A token like "name)" is fine (valid name + trailing punctuation),
+        # but "my.directive" is malformed (word chars after invalid char).
+        # Mask backtick spans so directives inside code spans are skipped.
+        if ":-: " in line:
+            _check_line, _ = _mask_backtick_spans(line)
+            for _malformed_m in re.finditer(r":-:\s+(\S+)", _check_line):
+                token = _malformed_m.group(1)
+                if not token[0:1].isalpha():
+                    continue
+                if _DIRECTIVE_NAME_RE.match(token):
+                    continue
+                # Token starts with a letter but doesn't fully match.
+                # Extract the valid prefix and check if the remainder
+                # contains word chars (malformed) or is just punctuation.
+                prefix_m = re.match(_DIRECTIVE_NAME, token)
+                remainder = token[prefix_m.end():]  # type: ignore[union-attr]
+                if re.search(r"\w", remainder):
+                    raise DirectiveError(
+                        f"Malformed directive name '{token}' at line {n}: "
+                        r"names must match [a-zA-Z][\w-]*"
+                    )
 
         if _INLINE_RE.search(line):
             line = _resolve_line_inline(line, resolver)
