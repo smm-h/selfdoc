@@ -1,0 +1,1 @@
+{"commits":["184ed21cbc4caf4ef071149d0bed4ca3b0e586e4"],"user_facing":true,"description":"**Fix.** Auto-commit no longer silently fails when gitignored files are in the commit list. Gitignored files are filtered out and commit errors are now visible on stderr.","type":"fix"}
