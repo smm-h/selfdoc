@@ -1,12 +1,15 @@
 {
+  "schema_version": 1,
   "defaults": {
+    "schema_version": 1,
     "app": {
       "env_prefix": null,
       "config": false,
       "global_flags": [],
       "commands": {},
       "groups": {},
-      "deprecated": {}
+      "deprecated": {},
+      "tag_contracts": {}
     },
     "flag": {
       "short": null,
@@ -20,25 +23,32 @@
       "hidden": false
     },
     "arg": {
+      "type": "str",
       "required": true,
-      "variadic": false
+      "default": null,
+      "variadic": false,
+      "choices": null
     },
     "command": {
       "passthrough": false,
       "flags": [],
       "args": [],
-      "tags": []
+      "tags": [],
+      "constraints": [],
+      "hidden": false,
+      "interactive": false
     },
     "group": {
       "commands": {},
       "groups": {},
       "deprecated": {},
-      "tags": []
+      "tags": [],
+      "hidden": false
     }
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
