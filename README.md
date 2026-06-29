@@ -243,6 +243,7 @@ Custom directives take priority over built-in names.
 | `assembly status` | Show recent assembly build status |
 | `assembly rebuild` | Trigger rebuild for all projects in the assembly |
 | `assembly redirects` | Generate a CF Pages _redirects file for this project |
+| `assembly generate-shared` | Generate shared elements for the assembled site |
 
 ## Deploy
 

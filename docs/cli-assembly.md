@@ -37,3 +37,14 @@ Generate a CF Pages _redirects file for this project
 | --- | --- | --- | --- | --- | --- |
 | `--slug` |  | str |  |  | Project slug for URL path segment |
 | `--docs_base` |  | str |  |  | Base URL of the assembly site |
+
+## assembly generate-shared
+
+Generate shared elements for the assembled site
+
+### Flags
+
+| Name | Short | Type | Default | Env | Description |
+| --- | --- | --- | --- | --- | --- |
+| `--site-dir` |  | str |  |  | Path to the combined site directory |
+| `--manifests-dir` |  | str |  |  | Path to the manifests directory |
