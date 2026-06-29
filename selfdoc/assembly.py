@@ -14,6 +14,9 @@ on:
   repository_dispatch:
     types: [project-updated]
 
+permissions:
+  contents: write
+
 concurrency:
   group: assembly-deploy
   cancel-in-progress: false
@@ -24,36 +27,105 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install selfdoc
-        run: pip install selfdoc
+      - name: Install tools
+        run: pip install selfdoc 'pagefind[bin]'
 
-      - name: Extract dispatch payload
+      - name: Extract payload
         run: |
           echo "SLUG=${{ github.event.client_payload.slug }}" >> "$GITHUB_ENV"
           echo "VERSION=${{ github.event.client_payload.version }}" >> "$GITHUB_ENV"
           echo "REF=${{ github.event.client_payload.ref }}" >> "$GITHUB_ENV"
           echo "SOURCE_REPO=${{ github.event.client_payload.repo }}" >> "$GITHUB_ENV"
 
-      - name: Clone triggering project
+      - name: Clone source project
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repo }}
           ref: ${{ github.event.client_payload.ref }}
-          path: projects/${{ github.event.client_payload.slug }}
+          path: source/${{ github.event.client_payload.slug }}
+          fetch-depth: 1
+
+      - name: Detect latest version
+        run: |
+          LATEST=$(python3 -c "
+          import json, os
+          cfg_path = 'source/${{ github.event.client_payload.slug }}/selfdoc.json'
+          if os.path.isfile(cfg_path):
+              cfg = json.load(open(cfg_path))
+              versions = cfg.get('versions', [])
+              if versions:
+                  print(versions[-1]['version'])
+          " || true)
+          echo "LATEST_VERSION=$LATEST" >> "$GITHUB_ENV"
 
       - name: Build documentation
         run: |
-          cd "projects/$SLUG"
-          selfdoc build
+          cd "source/$SLUG"
+          if [ -n "$LATEST_VERSION" ]; then
+            selfdoc build --version "$LATEST_VERSION"
+          else
+            selfdoc build
+          fi
+
+      - name: Update project in site
+        run: |
+          rm -rf "site/$SLUG/"
+          mkdir -p "site/$SLUG/"
+          cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
+          find "site/$SLUG/" \( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \) -delete
+
+      - name: Update manifest
+        run: |
+          mkdir -p manifests/
+          if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
+            cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
+          fi
+
+      - name: Update projects.json
+        run: |
+          python3 -c "
+          import json
+          path = 'projects.json'
+          try:
+              data = json.load(open(path))
+          except (FileNotFoundError, json.JSONDecodeError):
+              data = {}
+          data['${{ github.event.client_payload.slug }}'] = {
+              'repo': '${{ github.event.client_payload.repo }}',
+              'ref': '${{ github.event.client_payload.ref }}',
+              'version': '${{ github.event.client_payload.version }}'
+          }
+          with open(path, 'w') as f:
+              json.dump(data, f, indent=2, sort_keys=True)
+              f.write('\n')
+          "
+
+      - name: Generate shared elements
+        run: selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/
+
+      - name: Build search index
+        run: pagefind --site site/
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
+          git add site/ manifests/ projects.json
+          git commit -m "deploy: $SLUG v$VERSION" || echo "No changes to commit"
+          git push
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy "projects/$SLUG/docs/_build" --project-name smmh
+        run: npx wrangler pages deploy site/ --project-name smmh
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_PAGES_API_TOKEN }}
