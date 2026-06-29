@@ -1,1 +1,2 @@
 {"commits":["184ed21cbc4caf4ef071149d0bed4ca3b0e586e4"],"user_facing":true,"description":"**Fix.** Auto-commit no longer silently fails when gitignored files are in the commit list. Gitignored files are filtered out and commit errors are now visible on stderr.","type":"fix"}
+{"commits":["9f7220c630c24dec510fbedd53e2ed4dd9cb8fa1"],"user_facing":true,"description":"**Fix.** Inline directives no longer capture trailing punctuation. `(v:-: name).` now resolves correctly instead of greedily capturing `name).` as the directive name.","type":"fix"}
