@@ -425,3 +425,53 @@ def test_auto_commit_deleted_file_safegit_path(tmp_path):
         assert cmd[0] == "safegit"
         assert cmd[1] == "commit"
         assert "gone.txt" in cmd
+
+
+def test_auto_commit_filters_gitignored_from_mixed_list(tmp_path):
+    """auto_commit should commit legitimate files even when mixed with gitignored ones.
+
+    When a file list contains both a normal untracked file and a gitignored
+    file, auto_commit should filter out the gitignored file and still commit
+    the legitimate one.  Currently it does not check .gitignore, so git add
+    fails on the gitignored file and the entire commit is aborted.
+    """
+    _init_git_repo(tmp_path)
+
+    # Set up .gitignore to ignore the .selfdoc/ directory
+    (tmp_path / ".gitignore").write_text(".selfdoc/\n")
+    subprocess.run(
+        ["git", "add", ".gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Create a legitimate doc file and a gitignored file
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "index.md").write_text("# Hello\n")
+    (tmp_path / ".selfdoc").mkdir()
+    (tmp_path / ".selfdoc" / "hashes.json").write_text("{}\n")
+
+    # Force the git fallback path (no rlsbl, no safegit) for deterministic
+    # behavior -- the real git subprocess will reject the gitignored file.
+    with mock.patch("shutil.which", return_value=None):
+        result = auto_commit(
+            ["docs/index.md", ".selfdoc/hashes.json"],
+            "test commit",
+            str(tmp_path),
+        )
+
+    # The commit should succeed (the legitimate file should be committed)
+    assert result is True
+
+    # The legitimate file should appear in the commit
+    log = subprocess.run(
+        ["git", "log", "--oneline", "--name-only", "-1"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert "docs/index.md" in log.stdout
+
+    # The gitignored file should NOT be in the commit
+    assert ".selfdoc/hashes.json" not in log.stdout
