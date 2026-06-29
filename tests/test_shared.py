@@ -10,6 +10,7 @@ from selfdoc.shared import (
     generate_sitemap,
     generate_unified_feed,
     validate_cross_project_links,
+    wrap_shared_page,
 )
 
 
@@ -474,3 +475,37 @@ def test_page_path_to_url_segment_index_in_name():
     """Filename containing 'index' but not ending with it is not special-cased."""
     assert _page_path_to_url_segment("reindex.md") == "reindex/"
     assert _page_path_to_url_segment("index-page.md") == "index-page/"
+
+
+# -- wrap_shared_page ---------------------------------------------------------
+
+
+def test_wrap_shared_page_has_doctype():
+    """Output starts with <!DOCTYPE html>."""
+    result = wrap_shared_page("Test", "<p>Hello</p>")
+    assert "<!DOCTYPE html>" in result
+
+
+def test_wrap_shared_page_title_in_tag():
+    """Title appears inside a <title> tag."""
+    result = wrap_shared_page("My Page Title", "<p>body</p>")
+    assert "<title>My Page Title</title>" in result
+
+
+def test_wrap_shared_page_body_html_present():
+    """body_html fragment appears in the output."""
+    fragment = '<section class="content"><h1>Welcome</h1></section>'
+    result = wrap_shared_page("Home", fragment)
+    assert fragment in result
+
+
+def test_wrap_shared_page_css_url_produces_link():
+    """When css_url is provided, a <link rel="stylesheet"> tag is present."""
+    result = wrap_shared_page("Styled", "<p>text</p>", css_url="/assets/main.css")
+    assert '<link rel="stylesheet" href="/assets/main.css">' in result
+
+
+def test_wrap_shared_page_no_link_when_css_empty():
+    """When css_url is empty (default), no <link> tag appears."""
+    result = wrap_shared_page("Plain", "<p>text</p>")
+    assert "<link" not in result
