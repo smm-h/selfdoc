@@ -679,3 +679,28 @@ def test_parse_inline_directive_validates_name():
     content = "text :-: valid-name more text"
     with pytest.raises(DirectiveError, match="Unknown directive 'valid-name'"):
         parse_directives(content, valid_names={"other-name"})
+
+
+# -- Inline directives: trailing punctuation -----------------------------------
+
+
+def test_inline_directive_trailing_punctuation():
+    """Inline directive followed by closing paren and period is resolved correctly."""
+    content = '(v:-: test-dir).'
+
+    def resolver(name, attrs, body):
+        if name == "test-dir":
+            return "1.0"
+        raise AssertionError(f"Unexpected directive name: {name!r}")
+
+    result = resolve_directives(content, resolver)
+    assert result == "(v1.0)."
+
+
+def test_parse_inline_directive_trailing_punctuation():
+    """Inline directive name does not capture trailing punctuation."""
+    content = '(v:-: test-dir).'
+    result = parse_directives(content, valid_names={"test-dir"})
+    assert len(result) == 1
+    assert result[0].name == "test-dir"
+    assert result[0].inline is True
