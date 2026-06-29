@@ -112,7 +112,8 @@ def test_auto_commit_uses_rlsbl_when_available(tmp_path):
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
                 mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
-                mock.Mock(returncode=0),       # rlsbl commit
+                mock.Mock(returncode=1, stdout="", stderr=""),  # git check-ignore (none ignored)
+                mock.Mock(returncode=0, stdout="", stderr=""),  # rlsbl commit
             ]
 
             result = auto_commit(["file.txt"], "msg", str(tmp_path))
@@ -141,7 +142,8 @@ def test_auto_commit_uses_safegit_when_available(tmp_path):
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
                 mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
-                mock.Mock(returncode=0),       # safegit commit
+                mock.Mock(returncode=1, stdout="", stderr=""),  # git check-ignore (none ignored)
+                mock.Mock(returncode=0, stdout="", stderr=""),  # safegit commit
             ]
 
             result = auto_commit(["file.txt"], "msg", str(tmp_path))
@@ -163,8 +165,9 @@ def test_auto_commit_falls_back_to_git(tmp_path):
             mock_run.side_effect = [
                 mock.Mock(returncode=0),      # git rev-parse --git-dir
                 mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
-                mock.Mock(returncode=0),       # git add
-                mock.Mock(returncode=0),       # git commit
+                mock.Mock(returncode=1, stdout="", stderr=""),  # git check-ignore (none ignored)
+                mock.Mock(returncode=0, stdout="", stderr=""),  # git add
+                mock.Mock(returncode=0, stdout="", stderr=""),  # git commit
             ]
 
             result = auto_commit(["file.txt"], "msg", str(tmp_path))
@@ -245,8 +248,9 @@ def test_auto_commit_dash_separator_in_subprocess_calls(tmp_path):
             mock_run.side_effect = [
                 mock.Mock(returncode=0),           # git rev-parse --git-dir
                 mock.Mock(returncode=0, stdout=""), # git ls-files (untracked)
-                mock.Mock(returncode=0),            # git add
-                mock.Mock(returncode=0),            # git commit
+                mock.Mock(returncode=1, stdout="", stderr=""),  # git check-ignore (none ignored)
+                mock.Mock(returncode=0, stdout="", stderr=""),  # git add
+                mock.Mock(returncode=0, stdout="", stderr=""),  # git commit
             ]
 
             auto_commit(["file.txt"], "msg", str(tmp_path))
@@ -257,12 +261,12 @@ def test_auto_commit_dash_separator_in_subprocess_calls(tmp_path):
         ls_files_cmd = calls[1][0][0]
         assert ls_files_cmd == ["git", "ls-files", "--", "file.txt"]
 
-        # git add call (index 2) must have "--" before filenames
-        add_cmd = calls[2][0][0]
+        # git add call (index 3) must have "--" before filenames
+        add_cmd = calls[3][0][0]
         assert add_cmd == ["git", "add", "--", "file.txt"]
 
-        # git commit call (index 3) must have "--" before filenames
-        commit_cmd = calls[3][0][0]
+        # git commit call (index 4) must have "--" before filenames
+        commit_cmd = calls[4][0][0]
         assert "--" in commit_cmd
         dash_idx = commit_cmd.index("--")
         assert commit_cmd[dash_idx + 1] == "file.txt"
@@ -475,3 +479,178 @@ def test_auto_commit_filters_gitignored_from_mixed_list(tmp_path):
 
     # The gitignored file should NOT be in the commit
     assert ".selfdoc/hashes.json" not in log.stdout
+
+
+def test_auto_commit_all_files_gitignored(tmp_path):
+    """auto_commit returns False when all candidate files are gitignored."""
+    _init_git_repo(tmp_path)
+
+    (tmp_path / ".gitignore").write_text("*.log\ncache/\n")
+    subprocess.run(
+        ["git", "add", ".gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Create only gitignored files
+    (tmp_path / "debug.log").write_text("log data")
+    (tmp_path / "cache").mkdir()
+    (tmp_path / "cache" / "data.bin").write_text("cached")
+
+    with mock.patch("shutil.which", return_value=None):
+        result = auto_commit(
+            ["debug.log", "cache/data.bin"],
+            "should not commit",
+            str(tmp_path),
+        )
+
+    assert result is False
+
+
+def test_auto_commit_tracked_file_matching_gitignore_still_committed(tmp_path):
+    """A tracked file matching a gitignore pattern should still be committed.
+
+    Gitignore only affects untracked files. If a file is already tracked,
+    it must be committed even if its path matches a gitignore pattern.
+    """
+    _init_git_repo(tmp_path)
+
+    # Create and commit a file
+    (tmp_path / "config.log").write_text("original")
+    subprocess.run(
+        ["git", "add", "config.log"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add config.log"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Now add a gitignore that matches the tracked file
+    (tmp_path / ".gitignore").write_text("*.log\n")
+    subprocess.run(
+        ["git", "add", ".gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Modify the tracked file (it matches gitignore but is tracked)
+    (tmp_path / "config.log").write_text("modified")
+
+    with mock.patch("shutil.which", return_value=None):
+        result = auto_commit(
+            ["config.log"],
+            "update tracked file",
+            str(tmp_path),
+        )
+
+    assert result is True
+
+    log = subprocess.run(
+        ["git", "log", "--oneline", "--name-only", "-1"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert "config.log" in log.stdout
+
+
+def test_auto_commit_git_check_ignore_none_ignored(tmp_path):
+    """When git check-ignore returns exit code 1 (none ignored), all files pass."""
+    _init_git_repo(tmp_path)
+
+    # No gitignore -- all files should pass through
+    (tmp_path / "a.txt").write_text("aaa")
+    (tmp_path / "b.txt").write_text("bbb")
+
+    with mock.patch("shutil.which", return_value=None):
+        result = auto_commit(
+            ["a.txt", "b.txt"],
+            "add both",
+            str(tmp_path),
+        )
+
+    assert result is True
+
+    log = subprocess.run(
+        ["git", "log", "--oneline", "--name-only", "-1"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=10,
+    )
+    assert "a.txt" in log.stdout
+    assert "b.txt" in log.stdout
+
+
+def test_auto_commit_stderr_visible_on_failure(tmp_path, capsys):
+    """When the commit tool fails, stderr output is printed."""
+    _init_git_repo(tmp_path)
+    (tmp_path / "file.txt").write_text("data")
+
+    with mock.patch("shutil.which", return_value=None):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                mock.Mock(returncode=0),       # git rev-parse --git-dir
+                mock.Mock(returncode=0, stdout=""),  # git ls-files (untracked)
+                mock.Mock(returncode=1, stdout="", stderr=""),  # git check-ignore (none ignored)
+                mock.Mock(returncode=0, stdout="", stderr=""),  # git add
+                mock.Mock(
+                    returncode=1,
+                    stdout="",
+                    stderr="error: pathspec 'file.txt' did not match\n",
+                ),  # git commit fails
+            ]
+
+            result = auto_commit(["file.txt"], "msg", str(tmp_path))
+
+    assert result is False
+    captured = capsys.readouterr()
+    assert "error: pathspec" in captured.err
+
+
+def test_auto_commit_mixed_files_rlsbl_path(tmp_path):
+    """With rlsbl, gitignored files are filtered before the commit tool is called."""
+    _init_git_repo(tmp_path)
+
+    # Set up gitignore
+    (tmp_path / ".gitignore").write_text("*.cache\n")
+    subprocess.run(
+        ["git", "add", ".gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "add gitignore"], cwd=str(tmp_path),
+        capture_output=True, timeout=10,
+    )
+
+    # Create both legitimate and gitignored files
+    (tmp_path / "doc.md").write_text("# Doc")
+    (tmp_path / "build.cache").write_text("cached")
+
+    with mock.patch("shutil.which", return_value="/usr/bin/rlsbl"):
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                mock.Mock(returncode=0),       # git rev-parse --git-dir
+                mock.Mock(returncode=0, stdout=""),  # git ls-files doc.md
+                mock.Mock(returncode=0, stdout=""),  # git ls-files build.cache
+                # git check-ignore: build.cache is ignored
+                mock.Mock(returncode=0, stdout="build.cache\n", stderr=""),
+                mock.Mock(returncode=0, stdout="", stderr=""),  # rlsbl commit
+            ]
+
+            result = auto_commit(
+                ["doc.md", "build.cache"],
+                "test commit",
+                str(tmp_path),
+            )
+
+        assert result is True
+
+        # Verify rlsbl was called with only doc.md, not build.cache
+        rlsbl_call = mock_run.call_args_list[-1]
+        cmd = rlsbl_call[0][0]
+        assert cmd[0] == "rlsbl"
+        assert "doc.md" in cmd
+        assert "build.cache" not in cmd
