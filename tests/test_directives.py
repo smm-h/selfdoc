@@ -2,7 +2,13 @@
 
 import pytest
 
-from selfdoc.directives import Directive, DirectiveError, parse_directives, resolve_directives
+from selfdoc.directives import (
+    Directive,
+    DirectiveError,
+    parse_directives,
+    resolve_directives,
+    validate_directive_names,
+)
 
 
 # -- One-liner (:-:) ---------------------------------------------------------
@@ -704,3 +710,124 @@ def test_parse_inline_directive_trailing_punctuation():
     assert len(result) == 1
     assert result[0].name == "test-dir"
     assert result[0].inline is True
+
+
+# -- Inline directives: punctuation boundary tests -----------------------------
+
+
+def test_inline_directive_followed_by_paren():
+    """result :-: name) resolves correctly."""
+    content = "result :-: name)"
+
+    def resolver(name, attrs, body):
+        return "VALUE"
+
+    result = resolve_directives(content, resolver)
+    assert result == "result VALUE)"
+
+
+def test_inline_directive_followed_by_comma():
+    """:-: name, and more resolves correctly."""
+    content = "text :-: name, and more"
+
+    def resolver(name, attrs, body):
+        return "VALUE"
+
+    result = resolve_directives(content, resolver)
+    assert result == "text VALUE, and more"
+
+
+def test_inline_directive_followed_by_bracket():
+    """[:-: name] resolves correctly."""
+    content = "[:-: name]"
+
+    def resolver(name, attrs, body):
+        return "VALUE"
+
+    result = resolve_directives(content, resolver)
+    assert result == "[VALUE]"
+
+
+def test_inline_directive_followed_by_angle():
+    """<:-: name> resolves correctly."""
+    content = "<:-: name>"
+
+    def resolver(name, attrs, body):
+        return "VALUE"
+
+    result = resolve_directives(content, resolver)
+    assert result == "<VALUE>"
+
+
+def test_inline_directive_multiple_with_punctuation():
+    """(:-: a) and (:-: b). resolves both."""
+    content = "(:-: a) and (:-: b)."
+
+    def resolver(name, attrs, body):
+        return f"[{name}]"
+
+    result = resolve_directives(content, resolver)
+    assert result == "([a]) and ([b])."
+
+
+# -- validate_directive_names --------------------------------------------------
+
+
+def test_directive_name_valid_chars():
+    """Valid names: a, a-b, a_b, a1, ABC -- all accepted."""
+    validate_directive_names(["a", "a-b", "a_b", "a1", "ABC"])
+
+
+def test_directive_name_invalid_start_digit():
+    """3d-model rejected by validate_directive_names."""
+    with pytest.raises(DirectiveError, match="Invalid directive name '3d-model'"):
+        validate_directive_names(["3d-model"])
+
+
+def test_directive_name_invalid_start_underscore():
+    """_private rejected by validate_directive_names."""
+    with pytest.raises(DirectiveError, match="Invalid directive name '_private'"):
+        validate_directive_names(["_private"])
+
+
+def test_directive_name_invalid_contains_dot():
+    """my.directive rejected by validate_directive_names."""
+    with pytest.raises(DirectiveError, match="Invalid directive name 'my.directive'"):
+        validate_directive_names(["my.directive"])
+
+
+# -- Standalone invalid name still caught --------------------------------------
+
+
+def test_standalone_invalid_name_still_caught():
+    """:-: 123invalid on its own line with valid_names={"other"} still raises."""
+    content = ":-: 123invalid"
+    with pytest.raises(DirectiveError, match="Unknown directive '123invalid'"):
+        parse_directives(content, valid_names={"other"})
+
+
+# -- Malformed inline directive detection --------------------------------------
+
+
+def test_malformed_inline_directive_detected():
+    """text :-: my.directive here raises DirectiveError about malformed name."""
+    content = "text :-: my.directive here"
+
+    def resolver(name, attrs, body):
+        return "VALUE"
+
+    with pytest.raises(DirectiveError, match="Malformed directive name 'my.directive'"):
+        resolve_directives(content, resolver)
+
+
+def test_inline_not_directive_no_false_positive():
+    """text :-: some random text does NOT raise (not a plausible directive)."""
+    content = "text :-: some random text"
+
+    def resolver(name, attrs, body):
+        return "VALUE"
+
+    # "some" starts with a letter AND matches [a-zA-Z][\w-]*, so it IS a valid
+    # directive name format. It resolves as a directive, not flagged as malformed.
+    result = resolve_directives(content, resolver)
+    assert result == "text VALUE random text"
