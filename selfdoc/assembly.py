@@ -69,9 +69,9 @@ jobs:
         run: |
           cd "source/$SLUG"
           if [ -n "$LATEST_VERSION" ]; then
-            selfdoc build --version "$LATEST_VERSION"
+            selfdoc build --no-commit --version "$LATEST_VERSION"
           else
-            selfdoc build
+            selfdoc build --no-commit
           fi
 
       - name: Update project in site
@@ -122,6 +122,7 @@ jobs:
         run: |
           git add site/ manifests/ projects.json
           git commit -m "deploy: $SLUG v$VERSION" || echo "No changes to commit"
+          git pull --rebase
           git push
 
       - name: Deploy to Cloudflare Pages
