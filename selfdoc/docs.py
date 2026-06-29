@@ -11,7 +11,7 @@ backward compatibility.
 import os
 
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
-from selfdoc.directives import resolve_directives
+from selfdoc.directives import resolve_directives, validate_directive_names
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import parse_frontmatter  # re-export
 
@@ -35,7 +35,9 @@ def resolve_all_docs(config, docs_dir=None, base_dir="."):
     output_dir = os.path.join(base_dir, config.get("output", "docs/_build/").rstrip("/"))
 
     resolver = make_resolver(config, base_dir)
-    valid_names = ALL_BUILTIN_DIRECTIVES | set(config.get("directives", {}).keys())
+    custom_names = set(config.get("directives", {}).keys())
+    validate_directive_names(custom_names)
+    valid_names = ALL_BUILTIN_DIRECTIVES | custom_names
 
     abs_output = os.path.abspath(output_dir)
     result = {}

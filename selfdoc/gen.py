@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 from selfdoc.utils import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
-from selfdoc.directives import resolve_directives
+from selfdoc.directives import resolve_directives, validate_directive_names
 from selfdoc.extractors import EXTRACTORS
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import atomic_write as _atomic_write
@@ -711,9 +711,9 @@ def generate_root_files(config, base_dir="."):
         return []
 
     resolver = make_resolver(config, base_dir)
-    valid_names = ALL_BUILTIN_DIRECTIVES | set(
-        config.get("directives", {}).keys()
-    )
+    custom_names = set(config.get("directives", {}).keys())
+    validate_directive_names(custom_names)
+    valid_names = ALL_BUILTIN_DIRECTIVES | custom_names
 
     generated = []
 

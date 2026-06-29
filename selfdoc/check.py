@@ -25,7 +25,7 @@ from selfdoc.tokenizer import (
     Directive,
 )
 from selfdoc.config import load_config
-from selfdoc.directives import parse_directives
+from selfdoc.directives import parse_directives, validate_directive_names
 from selfdoc.extractors import EXTRACTORS, SourceEntry
 from selfdoc.resolver import make_resolver, Resolver
 from selfdoc.staleness import update_hashes
@@ -206,7 +206,9 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     result = CheckResult()
 
     # Build valid directive names for parse-time validation
-    valid_names = ALL_BUILTIN_DIRECTIVES | set(config.get("directives", {}).keys())
+    custom_names = set(config.get("directives", {}).keys())
+    validate_directive_names(custom_names)
+    valid_names = ALL_BUILTIN_DIRECTIVES | custom_names
 
     # Resolve all docs via the shared pipeline (provides frontmatter,
     # resolved content, raw content, and frontmatter line count).
