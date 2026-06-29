@@ -1202,6 +1202,100 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
     return 0
 
 
+@assembly_group.command("generate-shared", help="Generate shared elements for the assembled site")
+@strictcli.flag("site-dir", type=str, help="Path to the combined site directory")
+@strictcli.flag("manifests-dir", type=str, help="Path to the manifests directory")
+def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
+    """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
+    from selfdoc.shared import (
+        generate_blog_index,
+        generate_homepage,
+        generate_nav_json,
+        generate_sitemap,
+        generate_unified_feed,
+        wrap_shared_page,
+    )
+    from selfdoc.utils import atomic_write
+
+    if not site_dir:
+        print("Error: --site-dir is required.", file=sys.stderr)
+        sys.exit(1)
+    if not manifests_dir:
+        print("Error: --manifests-dir is required.", file=sys.stderr)
+        sys.exit(1)
+
+    # Load all manifest JSON files
+    manifests = []
+    if os.path.isdir(manifests_dir):
+        for fname in sorted(os.listdir(manifests_dir)):
+            if fname.endswith(".json"):
+                fpath = os.path.join(manifests_dir, fname)
+                with open(fpath, "r", encoding="utf-8") as f:
+                    manifests.append(json.load(f))
+
+    # Derive docs_base from first manifest's base_url, or empty string
+    docs_base = ""
+    if manifests:
+        first_base = manifests[0].get("base_url", "")
+        if first_base:
+            # Strip trailing slug segment to get the common base
+            # e.g. "https://docs.example.com/proj" -> "https://docs.example.com"
+            docs_base = first_base.rsplit("/", 1)[0] if "/" in first_base else first_base
+
+    # Generate fragments and wrap
+    homepage_fragment = generate_homepage(manifests, docs_base)
+    blog_fragment = generate_blog_index(manifests, docs_base)
+    nav_json = generate_nav_json(manifests)
+    feed_xml = generate_unified_feed(manifests, docs_base)
+    sitemap_xml = generate_sitemap(manifests, docs_base)
+
+    homepage_html = wrap_shared_page("Projects", homepage_fragment)
+    blog_html = wrap_shared_page("Blog", blog_fragment)
+
+    headers_content = (
+        "/*\n"
+        "  X-Frame-Options: DENY\n"
+        "  X-Content-Type-Options: nosniff\n"
+        "  Referrer-Policy: strict-origin-when-cross-origin\n"
+    )
+
+    # Write outputs
+    written = []
+
+    index_path = os.path.join(site_dir, "index.html")
+    os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
+    atomic_write(index_path, homepage_html)
+    written.append(index_path)
+
+    blog_dir = os.path.join(site_dir, "blog")
+    os.makedirs(blog_dir, exist_ok=True)
+    blog_path = os.path.join(blog_dir, "index.html")
+    atomic_write(blog_path, blog_html)
+    written.append(blog_path)
+
+    nav_path = os.path.join(site_dir, "nav.json")
+    atomic_write(nav_path, nav_json)
+    written.append(nav_path)
+
+    feed_path = os.path.join(site_dir, "feed.xml")
+    atomic_write(feed_path, feed_xml)
+    written.append(feed_path)
+
+    sitemap_path = os.path.join(site_dir, "sitemap.xml")
+    atomic_write(sitemap_path, sitemap_xml)
+    written.append(sitemap_path)
+
+    headers_path = os.path.join(site_dir, "_headers")
+    atomic_write(headers_path, headers_content)
+    written.append(headers_path)
+
+    print(f"Generated {len(written)} shared file(s):")
+    for path in written:
+        print(f"  {path}")
+
+    return 0
+
+
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
     app.run()
