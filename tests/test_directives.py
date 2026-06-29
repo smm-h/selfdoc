@@ -672,3 +672,10 @@ def test_parse_directives_inline_in_double_backtick_excluded():
     content = 'see ``:-: var`` here'
     result = parse_directives(content)
     assert result == []
+
+
+def test_parse_inline_directive_validates_name():
+    """Inline directives must validate names against valid_names, like standalone ones."""
+    content = "text :-: valid-name more text"
+    with pytest.raises(DirectiveError, match="Unknown directive 'valid-name'"):
+        parse_directives(content, valid_names={"other-name"})
