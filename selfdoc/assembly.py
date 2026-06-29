@@ -104,7 +104,7 @@ jobs:
           }
           with open(path, 'w') as f:
               json.dump(data, f, indent=2, sort_keys=True)
-              f.write('\n')
+              f.write('\\n')
           "
 
       - name: Generate shared elements
