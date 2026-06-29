@@ -4,3 +4,4 @@
 {"commits":["8cc5361f47fec9911ad99811fdc03b6c91bc2461"],"user_facing":true,"description":"**CF Pages deploy fix.** Deploy to the correct Cloudflare Pages project name (`smmh` instead of `docs-smmh-dev`).","type":"fix"}
 {"commits":["4541e929efe426fc651b2f16a944d211df0da95e"],"user_facing":false}
 {"commits":["d821b3bf9fd9b30276a32c899e00cffc55fc4be9"],"user_facing":false}
+{"commits":["92b3d6aa4567e0e3b326f16cad8374c8caf9c60e"],"user_facing":false}
