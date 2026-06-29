@@ -111,7 +111,7 @@ jobs:
         run: selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/
 
       - name: Build search index
-        run: pagefind --site site/
+        run: python3 -m pagefind --site site/
 
       - name: Configure git
         run: |
