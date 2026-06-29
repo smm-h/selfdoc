@@ -150,7 +150,7 @@ def _gitignore_content() -> str:
 node_modules/
 .wrangler/
 dist/
-projects/
+source/
 *.log
 """
 
