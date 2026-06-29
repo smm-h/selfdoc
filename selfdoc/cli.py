@@ -1004,6 +1004,46 @@ def _cmd_assembly_init():
             print(f"Error: Failed to create {filepath}: {result.stderr.strip()}", file=sys.stderr)
             sys.exit(1)
 
+    # Create CF Pages project
+    cf_account = os.environ.get("CF_ACCOUNT_ID") or os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+    cf_token = os.environ.get("CF_PAGES_API_TOKEN") or os.environ.get("CLOUDFLARE_API_TOKEN")
+    if cf_account and cf_token:
+        pages_project = repo.split("/")[-1]  # derive from repo name
+        env = os.environ.copy()
+        env["CLOUDFLARE_ACCOUNT_ID"] = cf_account
+        env["CLOUDFLARE_API_TOKEN"] = cf_token
+        result = subprocess.run(
+            ["npx", "wrangler", "pages", "project", "create", pages_project, "--production-branch", "main"],
+            env=env, check=False, capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode == 0:
+            print(f"Created CF Pages project: {pages_project}")
+        else:
+            print(f"Warning: CF Pages project creation failed: {result.stderr.strip()}", file=sys.stderr)
+    else:
+        print("Warning: CF_ACCOUNT_ID/CF_PAGES_API_TOKEN not set, skipping CF Pages project creation.", file=sys.stderr)
+
+    # Set GitHub secrets for CF credentials
+    if cf_account:
+        result = subprocess.run(
+            ["gh", "secret", "set", "CF_ACCOUNT_ID", "--repo", repo, "--body", cf_account],
+            check=False, capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            print("Set GitHub secret: CF_ACCOUNT_ID")
+        else:
+            print(f"Warning: Failed to set CF_ACCOUNT_ID secret: {result.stderr.strip()}", file=sys.stderr)
+
+    if cf_token:
+        result = subprocess.run(
+            ["gh", "secret", "set", "CF_PAGES_API_TOKEN", "--repo", repo, "--body", cf_token],
+            check=False, capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            print("Set GitHub secret: CF_PAGES_API_TOKEN")
+        else:
+            print(f"Warning: Failed to set CF_PAGES_API_TOKEN secret: {result.stderr.strip()}", file=sys.stderr)
+
     print(f"Assembly repository initialized: {repo}")
     return 0
 
