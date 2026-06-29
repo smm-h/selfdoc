@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -310,6 +310,22 @@
               "name": "docs_base",
               "type": "str",
               "help": "Base URL of the assembly site"
+            }
+          ]
+        },
+        "generate-shared": {
+          "name": "generate-shared",
+          "help": "Generate shared elements for the assembled site",
+          "flags": [
+            {
+              "name": "site-dir",
+              "type": "str",
+              "help": "Path to the combined site directory"
+            },
+            {
+              "name": "manifests-dir",
+              "type": "str",
+              "help": "Path to the manifests directory"
             }
           ]
         }
