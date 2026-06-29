@@ -76,7 +76,8 @@ def test_workflow_yaml_has_payload_extraction():
 
 def test_workflow_yaml_has_clone_step():
     yaml_str = generate_workflow_yaml()
-    assert "git clone --depth 1" in yaml_str
+    assert "Clone triggering project" in yaml_str
+    assert "repository:" in yaml_str
 
 
 def test_workflow_yaml_has_build_step():
