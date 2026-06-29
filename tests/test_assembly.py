@@ -57,8 +57,8 @@ def test_workflow_yaml_has_checkout_step():
 
 def test_workflow_yaml_first_checkout_has_fetch_depth():
     yaml_str = generate_workflow_yaml()
-    # First checkout should have fetch-depth: 1
-    assert "fetch-depth: 1" in yaml_str
+    # First checkout uses full clone for push retry support
+    assert "fetch-depth: 0" in yaml_str
 
 
 def test_workflow_yaml_has_second_checkout_for_source():
@@ -135,8 +135,9 @@ def test_workflow_yaml_has_projects_json_update():
 
 def test_workflow_yaml_has_update_manifest():
     yaml_str = generate_workflow_yaml()
-    assert "Update manifest" in yaml_str
+    # Manifest copy is inside the commit-and-push retry loop
     assert "manifests/" in yaml_str
+    assert "manifest.json" in yaml_str
 
 
 def test_workflow_yaml_has_wrangler_deploy():

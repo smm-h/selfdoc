@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -74,45 +74,6 @@ jobs:
             selfdoc build --no-commit
           fi
 
-      - name: Update project in site
-        run: |
-          rm -rf "site/$SLUG/"
-          mkdir -p "site/$SLUG/"
-          cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
-          find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
-
-      - name: Update manifest
-        run: |
-          mkdir -p manifests/
-          if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
-            cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
-          fi
-
-      - name: Update projects.json
-        run: |
-          python3 -c "
-          import json
-          path = 'projects.json'
-          try:
-              data = json.load(open(path))
-          except (FileNotFoundError, json.JSONDecodeError):
-              data = {}
-          data['${{ github.event.client_payload.slug }}'] = {
-              'repo': '${{ github.event.client_payload.repo }}',
-              'ref': '${{ github.event.client_payload.ref }}',
-              'version': '${{ github.event.client_payload.version }}'
-          }
-          with open(path, 'w') as f:
-              json.dump(data, f, indent=2, sort_keys=True)
-              f.write('\\n')
-          "
-
-      - name: Generate shared elements
-        run: selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/
-
-      - name: Build search index
-        run: python3 -m pagefind --site site/
-
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -120,10 +81,59 @@ jobs:
 
       - name: Commit and push
         run: |
-          git add site/ manifests/ projects.json
-          git commit -m "deploy: $SLUG v$VERSION" || echo "No changes to commit"
-          git pull --rebase
-          git push
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt"
+
+            # Sync to latest remote (picks up other runs' pushes)
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Re-apply project-specific files (not affected by other runs)
+            rm -rf "site/$SLUG/"
+            mkdir -p "site/$SLUG/"
+            cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
+            find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+            mkdir -p manifests/
+            if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
+              cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
+            fi
+
+            # Update projects.json on top of latest
+            python3 -c "
+          import json
+          path = 'projects.json'
+          try:
+              data = json.load(open(path))
+          except (FileNotFoundError, json.JSONDecodeError):
+              data = {}
+          data['$SLUG'] = {
+              'repo': '$SOURCE_REPO',
+              'ref': '$REF',
+              'version': '$VERSION'
+          }
+          with open(path, 'w') as f:
+              json.dump(data, f, indent=2, sort_keys=True)
+              f.write('\\n')
+          "
+
+            # Regenerate shared elements with all current manifests
+            selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/
+
+            # Build search index
+            python3 -m pagefind --site site/
+
+            # Commit and try to push
+            git add site/ manifests/ projects.json
+            git commit -m "deploy: $SLUG v$VERSION" || echo "No changes to commit"
+            if git push; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt, retrying..."
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy site/ --project-name smmh
