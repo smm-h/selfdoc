@@ -55,13 +55,13 @@ def generate_homepage(manifests: list[dict], docs_base: str) -> str:
     Returns:
         HTML fragment with project cards.
     """
-    sorted_manifests = sorted(manifests, key=lambda m: m.get("name", "").lower())
+    sorted_manifests = sorted(manifests, key=lambda m: (m.get("name") or "").lower())
     parts = ['<section class="project-list">', "  <h1>Projects</h1>"]
     for m in sorted_manifests:
-        name = html.escape(m.get("name", ""))
-        slug = html.escape(m.get("slug", ""))
-        version = html.escape(m.get("version", ""))
-        description = html.escape(m.get("description", ""))
+        name = html.escape(m.get("name") or "")
+        slug = html.escape(m.get("slug") or "")
+        version = html.escape(m.get("version") or "")
+        description = html.escape(m.get("description") or "")
         href = f"{docs_base}/{slug}/"
         parts.append(f'  <article class="project-card">')
         parts.append(f"    <h2><a href=\"{href}\">{name}</a></h2>")
@@ -86,13 +86,13 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
     """
     posts = []
     for m in manifests:
-        manifest_slug = m.get("slug", "")
-        manifest_name = m.get("name", "")
-        for post in m.get("posts", []):
+        manifest_slug = m.get("slug") or ""
+        manifest_name = m.get("name") or ""
+        for post in m.get("posts") or []:
             posts.append({
-                "date": post.get("date", ""),
-                "title": post.get("title", ""),
-                "slug": post.get("slug", ""),
+                "date": post.get("date") or "",
+                "title": post.get("title") or "",
+                "slug": post.get("slug") or "",
                 "project_name": manifest_name,
                 "manifest_slug": manifest_slug,
             })
@@ -127,12 +127,12 @@ def generate_nav_json(manifests: list[dict], blog_path: str = "/blog/") -> str:
     Returns:
         Pretty-printed JSON string.
     """
-    sorted_manifests = sorted(manifests, key=lambda m: m.get("name", "").lower())
+    sorted_manifests = sorted(manifests, key=lambda m: (m.get("name") or "").lower())
     projects = [
         {
-            "name": m.get("name", ""),
-            "slug": m.get("slug", ""),
-            "version": m.get("version", ""),
+            "name": m.get("name") or "",
+            "slug": m.get("slug") or "",
+            "version": m.get("version") or "",
         }
         for m in sorted_manifests
     ]
@@ -160,11 +160,11 @@ def generate_unified_feed(
 
     entries = []
     for m in manifests:
-        manifest_slug = m.get("slug", "")
-        for post in m.get("posts", []):
-            post_url = f"{docs_base}/{manifest_slug}/posts/{post.get('slug', '')}/"
-            date_val = post.get("date", "")
-            title_val = post.get("title", "")
+        manifest_slug = m.get("slug") or ""
+        for post in m.get("posts") or []:
+            post_url = f"{docs_base}/{manifest_slug}/posts/{post.get('slug') or ''}/"
+            date_val = post.get("date") or ""
+            title_val = post.get("title") or ""
             entries.append(_make_feed_entry(
                 title=title_val,
                 url=post_url,
@@ -209,17 +209,17 @@ def generate_sitemap(manifests: list[dict], docs_base: str) -> str:
     """
     urls = []
     for m in manifests:
-        manifest_slug = m.get("slug", "")
-        for page in m.get("pages", []):
-            path = page.get("path", "")
+        manifest_slug = m.get("slug") or ""
+        for page in m.get("pages") or []:
+            path = page.get("path") or ""
             url_segment = _page_path_to_url_segment(path)
             url = f"{docs_base}/{manifest_slug}/{url_segment}"
             # Ensure trailing slash unless already present
             if not url.endswith("/"):
                 url += "/"
             urls.append(url)
-        for post in m.get("posts", []):
-            post_slug = post.get("slug", "")
+        for post in m.get("posts") or []:
+            post_slug = post.get("slug") or ""
             url = f"{docs_base}/{manifest_slug}/posts/{post_slug}/"
             urls.append(url)
 
@@ -269,16 +269,16 @@ def validate_cross_project_links(
     """
     known = set()
     for m in manifests:
-        manifest_slug = m.get("slug", "")
-        for page in m.get("pages", []):
-            known.add(page.get("path", ""))
+        manifest_slug = m.get("slug") or ""
+        for page in m.get("pages") or []:
+            known.add(page.get("path") or "")
             # Also add the URL-form page path
-            url_segment = _page_path_to_url_segment(page.get("path", ""))
+            url_segment = _page_path_to_url_segment(page.get("path") or "")
             known.add(f"{manifest_slug}/{url_segment}")
-        for post in m.get("posts", []):
-            known.add(post.get("path", ""))
+        for post in m.get("posts") or []:
+            known.add(post.get("path") or "")
             # Also add the slug-based post path
-            post_slug = post.get("slug", "")
+            post_slug = post.get("slug") or ""
             known.add(f"{manifest_slug}/posts/{post_slug}")
 
     errors = []
