@@ -43,6 +43,7 @@ jobs:
           echo "VERSION=${{ github.event.client_payload.version }}" >> "$GITHUB_ENV"
           echo "REF=${{ github.event.client_payload.ref }}" >> "$GITHUB_ENV"
           echo "SOURCE_REPO=${{ github.event.client_payload.repo }}" >> "$GITHUB_ENV"
+          echo "SCOPE=${{ github.event.client_payload.scope }}" >> "$GITHUB_ENV"
 
       - name: Clone source project
         uses: actions/checkout@v4
