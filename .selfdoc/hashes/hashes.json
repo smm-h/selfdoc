@@ -76,7 +76,7 @@
     "description": "0d3a1d65f72e41388a30a1fa89af073c816ed0601b9b9cb430e786a6f8d1328e"
   },
   "en/cli-build.md": {
-    "content": "234e6d9b168cc9ca823141f038ccbfc1dc8ebf6642da26b8d0269316e5a83d0c",
+    "content": "5fbda628553a5b8050d56c223ea3733ed71fec3e04bfefdb397faf3f1961535b",
     "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8"
   },
   "en/cli-check.md": {
@@ -96,7 +96,7 @@
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac"
   },
   "en/cli-index.md": {
-    "content": "60bd6dbc253d94d2e1a83113544d4ab73397a0cd96d596dfa0d1fbfb34869253",
+    "content": "48ee7060119102bb7a123b7ec27f3160a3d63a7b5933bd4b924e01b51281f636",
     "description": "ce584c83335140b2ae900664f37fe8c62f98c29dc72847b32ccea87287cd1458"
   },
   "en/cli-init.md": {
@@ -104,7 +104,7 @@
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb"
   },
   "en/cli-post.md": {
-    "content": "4e953d94eddcfb1130f4afa1d0bf7531ce49726b13b3fdee2b0cdc9ed0f03e6e",
+    "content": "242dd006047f6aadd57231ebd99a414cc8d67cdd66cb31ec4bab29b3cbf344dd",
     "description": "326a3d95e4849ecc34aeec3f6432ac1355f9aaf7b6b01f906ab69d9ffbb12720"
   },
   "en/cli-serve.md": {
@@ -202,7 +202,7 @@
     "source_docstring": "87e98273f98391ec5d956b54aa41baf1d675e94798ad1920dcb9ab4a7de7fd6e"
   },
   "en/selfdoc-build.md": {
-    "content": "464d59092274c12f569435badb2e4892540f8cc6ce53a049ea4891cde376c191",
+    "content": "ece55124f2ee2d8d2a02e6e7736a8cd67815d39797b5466767b947d8a6fffb72",
     "description": "4d7cedf5ab1e4ceca8648d56e5a281ca4afeaeed54215bb505ffe08fa2310e54",
     "source_docstring": "25ec3ea53419eb4126b309ad81d0c2e78e1347f29201a7f1574f6e38e90e4621"
   },
@@ -212,7 +212,7 @@
     "source_docstring": "baeb64a8b787d1f4aff0ff7dd0ef56fe9034dd1b23d43e39eeb2f403dddf104d"
   },
   "en/selfdoc-cli.md": {
-    "content": "406219cb4721d191ebe6041ccc9eb759ec347e2eb9c7967d0997989ac0b5c09d",
+    "content": "0b45466e773c932fc55dc88217dd3f077a7fb5b7d7b4e484de92c71449f460ab",
     "description": "9ca6c2052a0141a05bff8a70677e0f23a2e259bc02cbcee1c86f3cca41c491b0",
     "source_docstring": "ee2400812c86e36d0188ddc98abf76fe402479955e087db0b33b5016e1f500ad"
   },
@@ -321,7 +321,7 @@
     "description": "673fb8266e59c66a4f6e891987c669bd80ac7fd8c41c07d5a445ca04ad7fe743"
   },
   "en/selfdoc-manifest.md": {
-    "content": "d66c2b8508ba426440815a418199e794a6875a271691f89fd878dc95d9c7cb9e",
+    "content": "77a1620ae1dacd78a9089710211cc07dbd6bfd5043195bfe7701748cb7d61efe",
     "description": "282429d240ccffced8a86cb0104593755ac5c5f8ce883f34021ab7d4c19d8446",
     "source_docstring": "282429d240ccffced8a86cb0104593755ac5c5f8ce883f34021ab7d4c19d8446"
   },
