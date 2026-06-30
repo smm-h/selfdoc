@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -93,6 +93,12 @@
           "help": "Include draft posts in the build output",
           "default": false,
           "negatable": true
+        },
+        {
+          "name": "target",
+          "type": "str",
+          "help": "Build target: 'posts' for posts-only build, empty for full build",
+          "default": ""
         }
       ]
     },
@@ -274,6 +280,10 @@
               "negatable": true
             }
           ]
+        },
+        "publish": {
+          "name": "publish",
+          "help": "Publish blog posts to the documentation assembly without a software release"
         }
       }
     },
