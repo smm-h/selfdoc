@@ -115,6 +115,8 @@ jobs:
               if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
                 cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
               fi
+              # Reconcile: remove posts overlay since full build replaces it
+              rm -f "manifests/$SLUG-posts.json"
             fi
 
             # Update projects.json on top of latest
