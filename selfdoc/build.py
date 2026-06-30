@@ -1618,18 +1618,38 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
     """Build only post pages, skipping versioned docs and auxiliary files.
 
     Injects posts into ``docs/posts/``, runs them through
-    ``build_single`` with a page filter, writes the HTML output, and
-    cleans up.  No sitemap, feed, search index, or CSS is generated.
+    ``build_single`` with a page filter, writes the HTML output, cleans
+    up, and generates a post-manifest.  No sitemap, feed, search index,
+    or CSS is generated.
 
     Returns:
         Dict of {output_path: True} for files written.
     """
+    # Discover posts for manifest generation (before injection, which
+    # also calls discover_posts internally)
+    from selfdoc.posts import discover_posts
+    posts_config = config.get("posts") or {}
+    posts_dir_rel = posts_config.get("dir", ".selfdoc/posts/")
+    posts_dir = os.path.join(dir_path, posts_dir_rel)
+    manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
+    discovered_posts = discover_posts(posts_dir, manifest_path=manifest_path)
+
+    # Filter drafts to match what _inject_posts_into_docs will produce
+    if not include_drafts:
+        discovered_posts = [p for p in discovered_posts if not p["draft"]]
+
     injected_paths = _inject_posts_into_docs(
         dir_path, config, docs_dir, include_drafts,
     )
 
     try:
         if not injected_paths:
+            # Generate empty post-manifest even with no posts
+            from selfdoc.manifest import generate_manifest
+            generate_manifest(
+                config, pages_data={}, posts_data=[],
+                dir_path=dir_path, output_name="post-manifest.json",
+            )
             return {}
 
         # Convert absolute injected paths to relative paths within docs_dir
@@ -1653,6 +1673,13 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
             with open(out_path, "w", encoding="utf-8") as f:
                 f.write(_minify_html(html_content))
             written[out_path] = True
+
+        # Generate post-manifest with discovered posts
+        from selfdoc.manifest import generate_manifest
+        generate_manifest(
+            config, pages_data={}, posts_data=discovered_posts,
+            dir_path=dir_path, output_name="post-manifest.json",
+        )
 
         return written
     finally:
