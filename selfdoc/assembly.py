@@ -69,10 +69,14 @@ jobs:
       - name: Build documentation
         run: |
           cd "source/$SLUG"
-          if [ -n "$LATEST_VERSION" ]; then
-            selfdoc build --no-commit --version "$LATEST_VERSION"
+          if [ "$SCOPE" = "posts" ]; then
+            selfdoc build --target posts --no-commit
           else
-            selfdoc build --no-commit
+            if [ -n "$LATEST_VERSION" ]; then
+              selfdoc build --no-commit --version "$LATEST_VERSION"
+            else
+              selfdoc build --no-commit
+            fi
           fi
 
       - name: Configure git
