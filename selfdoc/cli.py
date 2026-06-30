@@ -1266,14 +1266,33 @@ def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
         print("Error: --manifests-dir is required.", file=sys.stderr)
         sys.exit(1)
 
-    # Load all manifest JSON files
-    manifests = []
+    # Load all manifest JSON files, separating base manifests from
+    # post overlays.  Post overlays are files matching *-posts.json;
+    # they carry updated post lists that replace the base manifest's
+    # posts for the same project slug.
+    base_manifests = []
+    post_overlays = []
     if os.path.isdir(manifests_dir):
         for fname in sorted(os.listdir(manifests_dir)):
-            if fname.endswith(".json"):
-                fpath = os.path.join(manifests_dir, fname)
-                with open(fpath, "r", encoding="utf-8") as f:
-                    manifests.append(json.load(f))
+            if not fname.endswith(".json"):
+                continue
+            fpath = os.path.join(manifests_dir, fname)
+            with open(fpath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if fname.endswith("-posts.json"):
+                post_overlays.append(data)
+            else:
+                base_manifests.append(data)
+
+    # Apply post overlays: replace base manifest posts with overlay posts
+    if post_overlays:
+        base_by_slug = {m["slug"]: m for m in base_manifests}
+        for overlay in post_overlays:
+            slug = overlay.get("slug", "")
+            if slug in base_by_slug:
+                base_by_slug[slug]["posts"] = overlay.get("posts", [])
+
+    manifests = base_manifests
 
     # Derive docs_base from first manifest's base_url, or empty string
     docs_base = ""
