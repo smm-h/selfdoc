@@ -94,13 +94,27 @@ jobs:
             git reset --hard origin/main
 
             # Re-apply project-specific files (not affected by other runs)
-            rm -rf "site/$SLUG/"
-            mkdir -p "site/$SLUG/"
-            cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
-            find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
             mkdir -p manifests/
-            if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
-              cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
+            if [ "$SCOPE" = "posts" ]; then
+              # Posts-only: replace only the posts subtree
+              rm -rf "site/$SLUG/posts/"
+              mkdir -p "site/$SLUG/posts/"
+              if [ -d "source/$SLUG/docs/_build/posts/" ]; then
+                cp -r "source/$SLUG/docs/_build/posts/." "site/$SLUG/posts/"
+              fi
+              find "site/$SLUG/posts/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+              if [ -f "source/$SLUG/.selfdoc/post-manifest.json" ]; then
+                cp "source/$SLUG/.selfdoc/post-manifest.json" "manifests/$SLUG-posts.json"
+              fi
+            else
+              # Full build: replace entire project subtree
+              rm -rf "site/$SLUG/"
+              mkdir -p "site/$SLUG/"
+              cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
+              find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+              if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
+                cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
+              fi
             fi
 
             # Update projects.json on top of latest
