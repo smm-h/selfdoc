@@ -65,6 +65,21 @@ jobs:
                   print(versions[-1]['version'])
           " || true)
           echo "LATEST_VERSION=$LATEST" >> "$GITHUB_ENV"
+          if [ -z "$LATEST" ]; then
+            VERSION_COUNT=$(python3 -c "
+          import json, os
+          cfg_path = 'source/${{ github.event.client_payload.slug }}/selfdoc.json'
+          if os.path.isfile(cfg_path):
+              cfg = json.load(open(cfg_path))
+              print(len(cfg.get('versions', [])))
+          else:
+              print('0')
+          " || echo "0")
+            if [ "$VERSION_COUNT" -gt 1 ]; then
+              echo "Error: Could not detect latest version for multi-version project"
+              exit 1
+            fi
+          fi
 
       - name: Build documentation
         run: |
