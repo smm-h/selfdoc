@@ -1602,7 +1602,7 @@ def _cleanup_injected_posts(injected_files, docs_dir):
 
 
 def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
-          include_drafts=False):
+          include_drafts=False, target=""):
     """Build docs from templates + directives, with multi-locale/multi-version support.
 
     Outer loop iterates locales, inner loop iterates versions. For each
@@ -1617,6 +1617,8 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         version_filter: Optional version string to build only that version.
         locale_filter: Optional locale code to build only that locale.
         include_drafts: Include draft posts in the build output.
+        target: Build target. ``"posts"`` for posts-only build, empty
+            string for a full build.
 
     Returns:
         Dict of {output_path: True} for files written.

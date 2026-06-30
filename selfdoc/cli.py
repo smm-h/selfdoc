@@ -417,7 +417,8 @@ def _cmd_init(no_commit=False):
 @strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
 @strictcli.flag("drafts", type=bool, help="Include draft posts in the build output")
-def _cmd_build(no_commit=False, locale="", version="", drafts=False):
+@strictcli.flag("target", type=str, default="", help="Build target: 'posts' for posts-only build, empty for full build")
+def _cmd_build(no_commit=False, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
     from selfdoc.config import load_config
 
@@ -441,6 +442,7 @@ def _cmd_build(no_commit=False, locale="", version="", drafts=False):
                 version_filter=version or None,
                 locale_filter=locale or None,
                 include_drafts=drafts,
+                target=target,
             )
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
