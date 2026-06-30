@@ -58,6 +58,7 @@ def generate_manifest(
     pages_data: dict,
     posts_data: list | None = None,
     dir_path: str = ".",
+    output_name: str = "manifest.json",
 ) -> Manifest:
     """Build a Manifest from config and resolved docs, write it to disk.
 
@@ -73,6 +74,9 @@ def generate_manifest(
         Defaults to an empty list.
     dir_path:
         Project root directory. Defaults to ``"."``.
+    output_name:
+        Filename for the manifest inside ``.selfdoc/``.
+        Defaults to ``"manifest.json"``.
     """
     if posts_data is None:
         posts_data = []
@@ -135,10 +139,10 @@ def generate_manifest(
         last_gen=datetime.datetime.now(datetime.timezone.utc).isoformat(),
     )
 
-    # Write to .selfdoc/manifest.json
+    # Write to .selfdoc/<output_name>
     selfdoc_dir = os.path.join(dir_path, ".selfdoc")
     os.makedirs(selfdoc_dir, exist_ok=True)
-    manifest_path = os.path.join(selfdoc_dir, "manifest.json")
+    manifest_path = os.path.join(selfdoc_dir, output_name)
 
     data = {
         "schema_version": manifest.schema_version,
