@@ -277,6 +277,108 @@ def _cmd_post_generate(
     return 0
 
 
+@post_group.command("publish", help="Publish blog posts to the documentation assembly without a software release")
+def _cmd_post_publish():
+    """Publish blog posts to the assembly without a software release."""
+    import subprocess
+
+    from selfdoc.assembly import assembly_push
+    from selfdoc.config import load_config
+    from selfdoc.posts import discover_posts
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve assembly repo from config
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        topology = config.get("topology") or {}
+        repo = topology.get("assembly")
+    if not repo:
+        print("Error: assembly.repo (or topology.assembly) not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    topology = config.get("topology") or {}
+    slug = topology.get("slug")
+    if not slug:
+        print("Error: topology.slug not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    # Discover posts and filter to non-draft only
+    posts_config = config.get("posts") or {}
+    posts_dir = posts_config.get("dir", ".selfdoc/posts/")
+    posts = discover_posts(posts_dir)
+    non_draft_posts = [p for p in posts if not p["draft"]]
+
+    if not non_draft_posts:
+        print("No non-draft posts to publish.")
+        return 0
+
+    # Validate posts are committed and staged
+    result = subprocess.run(
+        ["git", "status", "--porcelain", ".selfdoc/posts/"],
+        check=False, capture_output=True, text=True, timeout=10,
+    )
+    if result.stdout.strip():
+        print("Error: Uncommitted changes in .selfdoc/posts/. Commit before publishing.", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate pushed to remote
+    result_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=False, capture_output=True, text=True, timeout=10,
+    )
+    result_upstream = subprocess.run(
+        ["git", "rev-parse", "@{u}"],
+        check=False, capture_output=True, text=True, timeout=10,
+    )
+    if result_head.returncode != 0 or result_upstream.returncode != 0:
+        print("Error: Local commits not pushed to remote. Push before publishing.", file=sys.stderr)
+        sys.exit(1)
+    if result_head.stdout.strip() != result_upstream.stdout.strip():
+        print("Error: Local commits not pushed to remote. Push before publishing.", file=sys.stderr)
+        sys.exit(1)
+
+    # Get current commit SHA
+    commit_sha = result_head.stdout.strip()
+
+    # Get source repo
+    result = subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        check=False, capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        print(f"Error: Failed to detect source repository: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+    source_repo = result.stdout.strip()
+
+    # Get version
+    version = config.get("version", "")
+    if not version:
+        from selfdoc.utils import detect_project_version
+        version = detect_project_version(".", fallback="0.0.0")
+
+    # Build dispatch with scope="posts"
+    dispatch = assembly_push(repo, source_repo, slug, version, commit_sha)
+    dispatch["payload"]["client_payload"]["scope"] = "posts"
+
+    # Execute the dispatch
+    payload = json.dumps(dispatch["payload"])
+    result = subprocess.run(
+        ["gh", "api", "--method", "POST", dispatch["endpoint"], "--input", "-"],
+        input=payload, check=False, capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        print(f"Error: Failed to dispatch publish: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Published {len(non_draft_posts)} post(s). Assembly will build and deploy.")
+    return 0
+
+
 def _detect_source_entries(language):
     """Detect source entries for a given language.
 
