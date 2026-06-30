@@ -209,3 +209,136 @@ def test_sitemap_xml_contains_urlset_namespace(tmp_path):
         content = f.read()
 
     assert 'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"' in content
+
+
+# -- Post overlay: replaces base posts -----------------------------------
+
+
+def _write_post_overlay(manifests_dir, slug, posts):
+    """Write a post overlay manifest (*-posts.json) to the manifests directory."""
+    overlay = {
+        "schema_version": 1,
+        "name": slug,
+        "slug": slug,
+        "version": "1.0.0",
+        "description": "",
+        "language": "python",
+        "base_url": f"https://docs.example.com/{slug}",
+        "pages": [],
+        "posts": posts,
+        "last_gen": "2024-01-01T00:00:00+00:00",
+    }
+    fpath = os.path.join(manifests_dir, f"{slug}-posts.json")
+    with open(fpath, "w", encoding="utf-8") as f:
+        json.dump(overlay, f)
+    return overlay
+
+
+def test_overlay_replaces_base_posts(tmp_path):
+    """A post overlay replaces the base manifest's posts list."""
+    site_dir = str(tmp_path / "site")
+    manifests_dir = str(tmp_path / "manifests")
+    os.makedirs(site_dir)
+    os.makedirs(manifests_dir)
+
+    base_posts = [
+        {"title": "Old Post", "slug": "old-post", "date": "2024-01-01"},
+    ]
+    _write_manifest(manifests_dir, "Alpha", "alpha", "1.0.0",
+                    posts=base_posts)
+
+    overlay_posts = [
+        {"title": "New Post", "slug": "new-post", "date": "2024-06-01"},
+        {"title": "Another", "slug": "another", "date": "2024-06-02"},
+    ]
+    _write_post_overlay(manifests_dir, "alpha", overlay_posts)
+
+    _cmd_assembly_generate_shared(site_dir=site_dir, manifests_dir=manifests_dir)
+
+    # Blog page should contain the overlay posts, not the old ones
+    with open(os.path.join(site_dir, "blog", "index.html"), "r",
+              encoding="utf-8") as f:
+        blog_html = f.read()
+
+    assert "New Post" in blog_html
+    assert "Another" in blog_html
+    assert "Old Post" not in blog_html
+
+
+def test_overlay_deleted_post_disappears(tmp_path):
+    """An overlay with fewer posts causes the removed post to disappear."""
+    site_dir = str(tmp_path / "site")
+    manifests_dir = str(tmp_path / "manifests")
+    os.makedirs(site_dir)
+    os.makedirs(manifests_dir)
+
+    base_posts = [
+        {"title": "Keep Me", "slug": "keep-me", "date": "2024-01-01"},
+        {"title": "Remove Me", "slug": "remove-me", "date": "2024-01-02"},
+    ]
+    _write_manifest(manifests_dir, "Beta", "beta", "1.0.0", posts=base_posts)
+
+    # Overlay only has one post -- the removed post should disappear
+    overlay_posts = [
+        {"title": "Keep Me", "slug": "keep-me", "date": "2024-01-01"},
+    ]
+    _write_post_overlay(manifests_dir, "beta", overlay_posts)
+
+    _cmd_assembly_generate_shared(site_dir=site_dir, manifests_dir=manifests_dir)
+
+    with open(os.path.join(site_dir, "blog", "index.html"), "r",
+              encoding="utf-8") as f:
+        blog_html = f.read()
+
+    assert "Keep Me" in blog_html
+    assert "Remove Me" not in blog_html
+
+
+def test_no_overlay_uses_base_posts(tmp_path):
+    """Without an overlay, the base manifest's posts are used unchanged."""
+    site_dir = str(tmp_path / "site")
+    manifests_dir = str(tmp_path / "manifests")
+    os.makedirs(site_dir)
+    os.makedirs(manifests_dir)
+
+    base_posts = [
+        {"title": "Base Post", "slug": "base-post", "date": "2024-03-01"},
+    ]
+    _write_manifest(manifests_dir, "Gamma", "gamma", "1.0.0",
+                    posts=base_posts)
+
+    _cmd_assembly_generate_shared(site_dir=site_dir, manifests_dir=manifests_dir)
+
+    with open(os.path.join(site_dir, "blog", "index.html"), "r",
+              encoding="utf-8") as f:
+        blog_html = f.read()
+
+    assert "Base Post" in blog_html
+
+
+def test_overlay_unknown_slug_ignored(tmp_path):
+    """An overlay for an unknown slug is silently ignored."""
+    site_dir = str(tmp_path / "site")
+    manifests_dir = str(tmp_path / "manifests")
+    os.makedirs(site_dir)
+    os.makedirs(manifests_dir)
+
+    _write_manifest(manifests_dir, "Delta", "delta", "1.0.0",
+                    posts=[{"title": "Delta Post", "slug": "dp",
+                            "date": "2024-04-01"}])
+
+    # Overlay for a slug that has no matching base manifest
+    _write_post_overlay(manifests_dir, "nonexistent",
+                        [{"title": "Ghost", "slug": "ghost",
+                          "date": "2024-05-01"}])
+
+    _cmd_assembly_generate_shared(site_dir=site_dir, manifests_dir=manifests_dir)
+
+    with open(os.path.join(site_dir, "blog", "index.html"), "r",
+              encoding="utf-8") as f:
+        blog_html = f.read()
+
+    # Original delta post is unchanged
+    assert "Delta Post" in blog_html
+    # Ghost from the unmatched overlay should not appear
+    assert "Ghost" not in blog_html
