@@ -1601,6 +1601,52 @@ def _cleanup_injected_posts(injected_files, docs_dir):
         os.rmdir(posts_subdir)
 
 
+def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
+                      docs_dir, include_drafts):
+    """Build only post pages, skipping versioned docs and auxiliary files.
+
+    Injects posts into ``docs/posts/``, runs them through
+    ``build_single`` with a page filter, writes the HTML output, and
+    cleans up.  No sitemap, feed, search index, or CSS is generated.
+
+    Returns:
+        Dict of {output_path: True} for files written.
+    """
+    injected_paths = _inject_posts_into_docs(
+        dir_path, config, docs_dir, include_drafts,
+    )
+
+    try:
+        if not injected_paths:
+            return {}
+
+        # Convert absolute injected paths to relative paths within docs_dir
+        page_filter = {
+            os.path.relpath(p, docs_dir) for p in injected_paths
+        }
+
+        result = build_single(
+            dir_path=dir_path,
+            config=config,
+            output_subdir="",
+            url_prefix="",
+            version_override="",
+            page_filter=page_filter,
+        )
+
+        written = {}
+        for rel_path, html_content in result.html_files.items():
+            out_path = os.path.join(output_dir, rel_path)
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(_minify_html(html_content))
+            written[out_path] = True
+
+        return written
+    finally:
+        _cleanup_injected_posts(injected_paths, docs_dir)
+
+
 def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
           include_drafts=False, target=""):
     """Build docs from templates + directives, with multi-locale/multi-version support.
@@ -1694,12 +1740,19 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
+    # Resolve docs from the latest (working tree)
+    latest_docs_dir = os.path.join(dir_path, docs_dir_name)
+
+    # --- Posts-only build mode ---
+    if target == "posts":
+        return _build_posts_only(
+            dir_path, config, output_dir, docs_dir_name,
+            latest_docs_dir, include_drafts,
+        )
+
     # --- Partition pages into versioned and unversioned ---
     version_strs = [v["version"] for v in versions]
     _check_reserved_paths(version_strs, config)
-
-    # Resolve docs from the latest (working tree) to discover unversioned pages
-    latest_docs_dir = os.path.join(dir_path, docs_dir_name)
 
     # Inject posts into docs/posts/ so the normal pipeline discovers them
     injected_post_files = _inject_posts_into_docs(
