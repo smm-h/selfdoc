@@ -296,3 +296,80 @@ def test_rebuild_uses_project_info():
     assert cp["slug"] == "alpha"
     assert cp["repo"] == "org/alpha-repo"
     assert cp["ref"] == "v3.0.0"
+
+
+# -- workflow: SCOPE extraction -----------------------------------------------
+
+
+def test_workflow_yaml_extracts_scope():
+    """SCOPE is extracted from client_payload in the payload extraction step."""
+    yaml_str = generate_workflow_yaml()
+    assert 'SCOPE=${{ github.event.client_payload.scope }}' in yaml_str
+
+
+# -- workflow: conditional build step -----------------------------------------
+
+
+def test_workflow_yaml_posts_build():
+    """When SCOPE is posts, workflow runs selfdoc build --target posts."""
+    yaml_str = generate_workflow_yaml()
+    assert 'selfdoc build --target posts --no-commit' in yaml_str
+
+
+def test_workflow_yaml_full_build_with_version():
+    """Full build with LATEST_VERSION uses --version flag."""
+    yaml_str = generate_workflow_yaml()
+    assert 'selfdoc build --no-commit --version "$LATEST_VERSION"' in yaml_str
+
+
+def test_workflow_yaml_conditional_build_structure():
+    """Build step uses SCOPE conditional to choose posts vs full build."""
+    yaml_str = generate_workflow_yaml()
+    assert '[ "$SCOPE" = "posts" ]' in yaml_str
+
+
+# -- workflow: conditional subtree replacement --------------------------------
+
+
+def test_workflow_yaml_posts_subtree_replacement():
+    """Posts scope replaces only site/$SLUG/posts/ subtree."""
+    yaml_str = generate_workflow_yaml()
+    assert 'rm -rf "site/$SLUG/posts/"' in yaml_str
+
+
+def test_workflow_yaml_posts_manifest_copy():
+    """Posts scope copies post-manifest.json to manifests/$SLUG-posts.json."""
+    yaml_str = generate_workflow_yaml()
+    assert 'post-manifest.json' in yaml_str
+    assert 'manifests/$SLUG-posts.json' in yaml_str
+
+
+def test_workflow_yaml_full_subtree_replacement():
+    """Full build replaces entire site/$SLUG/ subtree."""
+    yaml_str = generate_workflow_yaml()
+    assert 'rm -rf "site/$SLUG/"' in yaml_str
+
+
+def test_workflow_yaml_full_manifest_copy():
+    """Full build copies manifest.json to manifests/$SLUG.json."""
+    yaml_str = generate_workflow_yaml()
+    assert 'manifests/$SLUG.json' in yaml_str
+
+
+# -- workflow: reconciliation -------------------------------------------------
+
+
+def test_workflow_yaml_reconciles_posts_overlay():
+    """Full build deletes manifests/$SLUG-posts.json to reconcile overlay."""
+    yaml_str = generate_workflow_yaml()
+    assert 'rm -f "manifests/$SLUG-posts.json"' in yaml_str
+
+
+# -- workflow: LATEST_VERSION robustness --------------------------------------
+
+
+def test_workflow_yaml_has_version_count_check():
+    """When LATEST is empty, workflow checks VERSION_COUNT for multi-version error."""
+    yaml_str = generate_workflow_yaml()
+    assert "VERSION_COUNT" in yaml_str
+    assert "Could not detect latest version for multi-version project" in yaml_str
