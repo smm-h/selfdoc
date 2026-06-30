@@ -1067,8 +1067,8 @@ def _compress_output(output_dir):
     return count, has_brotli
 
 
-def build_single(dir_path=".", config=None, output_subdir="",
-                  url_prefix="", version_override=None,
+def build_single(dir_path=".", config=None, output_subdir=None,
+                  url_prefix=None, version_override=None,
                   locale_override=None,
                   available_versions=None, available_locales=None,
                   current_version="", current_locale="",
@@ -1083,8 +1083,12 @@ def build_single(dir_path=".", config=None, output_subdir="",
     Args:
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
-        output_subdir: Subdirectory within output for this build (e.g. "en/0.7.0").
-        url_prefix: URL path prefix for versioned/localized links (e.g. "en/0.7.0").
+        output_subdir: Subdirectory within output for this build (e.g.
+            "en/0.7.0").  Pass ``""`` explicitly for no subdirectory.
+            When ``None`` (default), auto-computed from config.
+        url_prefix: URL path prefix for versioned/localized links (e.g.
+            "en/0.7.0").  Pass ``""`` explicitly for no prefix.  When
+            ``None`` (default), auto-computed from config.
         version_override: Override detected version string (optional).
         locale_override: Override detected locale string (optional).
 
@@ -1100,7 +1104,7 @@ def build_single(dir_path=".", config=None, output_subdir="",
         )
 
     # Compute output_subdir and url_prefix from config if not explicitly set
-    if not output_subdir and not url_prefix:
+    if output_subdir is None and url_prefix is None:
         locales = config.get("locales")
         versions = config.get("versions")
         if locales and versions:
@@ -1114,6 +1118,14 @@ def build_single(dir_path=".", config=None, output_subdir="",
             version_str = versions[0]["version"]
             output_subdir = f"{locale_code}/{version_str}"
             url_prefix = output_subdir
+        else:
+            output_subdir = ""
+            url_prefix = ""
+    else:
+        if output_subdir is None:
+            output_subdir = ""
+        if url_prefix is None:
+            url_prefix = ""
 
     docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
