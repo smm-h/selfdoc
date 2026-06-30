@@ -19,3 +19,4 @@ Build the documentation site from templates and source code
 | `--locale` |  | str |  |  | Build only the specified locale instead of all (e.g., 'en') |
 | `--version` |  | str |  |  | Build only the specified version instead of all (e.g., '1.0.0') |
 | `--drafts` |  | bool |  |  | Include draft posts in the build output |
+| `--target` |  | str |  |  | Build target: 'posts' for posts-only build, empty for full build |

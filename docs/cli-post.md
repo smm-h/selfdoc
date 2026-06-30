@@ -45,3 +45,7 @@ Generate a blog post from release metadata
 | `--release-url` |  | str |  |  | URL to the GitHub release |
 | `--registry-url` |  | str |  |  | Package registry URL (repeatable) |
 | `--dry-run` |  | bool |  |  | Print generated content without writing files |
+
+## post publish
+
+Publish blog posts to the documentation assembly without a software release

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "python",
   "base_url": "https://selfdoc.smmh.dev",
@@ -368,6 +368,18 @@
       "type": "doc"
     }
   ],
-  "posts": [],
-  "last_gen": "2026-06-29T20:49:38.174806+00:00"
+  "posts": [
+    {
+      "path": "2026-06-29-selfdoc-vs-the-competition-documentation-generators-compared.md",
+      "title": "selfdoc vs the Competition: Documentation Generators Compared",
+      "date": "2026-06-29",
+      "slug": "selfdoc-vs-the-competition-documentation-generators-compared",
+      "tags": [
+        "comparison",
+        "documentation",
+        "static-site-generators"
+      ]
+    }
+  ],
+  "last_gen": "2026-06-30T12:35:47.851723+00:00"
 }

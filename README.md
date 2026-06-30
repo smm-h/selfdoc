@@ -237,6 +237,7 @@ Custom directives take priority over built-in names.
 | `post new` | Scaffold a new blog post with frontmatter template |
 | `post list` | List all discovered blog posts with date, title, slug, and draft status |
 | `post generate` | Generate a blog post from release metadata |
+| `post publish` | Publish blog posts to the documentation assembly without a software release |
 | **assembly** | Manage the unified documentation assembly |
 | `assembly init` | Initialize the assembly repository on GitHub |
 | `assembly push` | Trigger assembly rebuild for this project |
