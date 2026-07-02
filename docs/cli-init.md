@@ -15,4 +15,4 @@ Initialize selfdoc configuration and starter docs template
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--no-commit` |  | bool |  |  | Skip auto-committing generated config and template files |
+| `--auto-commit` |  | bool | True |  | Auto-commit generated config and template files |

@@ -15,4 +15,4 @@ Generate data files by running sandboxed scripts via bwrap
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--no-commit` |  | bool |  |  | Skip auto-committing generated data output files to git |
+| `--auto-commit` |  | bool | True |  | Auto-commit generated data output files to git |
