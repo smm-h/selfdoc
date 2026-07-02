@@ -82,12 +82,12 @@ selfdoc check --dry-run
 
 This computes all hashes and reports stale pages but does not write to `.selfdoc/hashes/hashes.json`. Useful for seeing what would be flagged without changing state.
 
-## The `--no-commit` Flag
+## The `--no-auto-commit` Flag
 
-By default, `selfdoc check` auto-commits hash updates when it writes to the hash file, using the best available commit tool (rlsbl, safegit, or plain git). Use `--no-commit` to write the updated hashes to disk without creating a commit, which is useful when the hash update is part of a larger change you will commit manually:
+By default, `selfdoc check` auto-commits hash updates when it writes to the hash file, using the best available commit tool (rlsbl, safegit, or plain git). Use `--no-auto-commit` to write the updated hashes to disk without creating a commit, which is useful when the hash update is part of a larger change you will commit manually:
 
 ```bash
-selfdoc check --no-commit
+selfdoc check --no-auto-commit
 ```
 
 This is useful when you want to update hashes as part of a larger change that you will commit manually.

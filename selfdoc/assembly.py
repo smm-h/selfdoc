@@ -85,12 +85,12 @@ jobs:
         run: |
           cd "source/$SLUG"
           if [ "$SCOPE" = "posts" ]; then
-            selfdoc build --target posts --no-commit
+            selfdoc build --target posts --no-auto-commit
           else
             if [ -n "$LATEST_VERSION" ]; then
-              selfdoc build --no-commit --version "$LATEST_VERSION"
+              selfdoc build --no-auto-commit --version "$LATEST_VERSION"
             else
-              selfdoc build --no-commit
+              selfdoc build --no-auto-commit
             fi
           fi
 

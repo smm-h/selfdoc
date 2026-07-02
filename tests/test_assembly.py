@@ -313,13 +313,13 @@ def test_workflow_yaml_extracts_scope():
 def test_workflow_yaml_posts_build():
     """When SCOPE is posts, workflow runs selfdoc build --target posts."""
     yaml_str = generate_workflow_yaml()
-    assert 'selfdoc build --target posts --no-commit' in yaml_str
+    assert 'selfdoc build --target posts --no-auto-commit' in yaml_str
 
 
 def test_workflow_yaml_full_build_with_version():
     """Full build with LATEST_VERSION uses --version flag."""
     yaml_str = generate_workflow_yaml()
-    assert 'selfdoc build --no-commit --version "$LATEST_VERSION"' in yaml_str
+    assert 'selfdoc build --no-auto-commit --version "$LATEST_VERSION"' in yaml_str
 
 
 def test_workflow_yaml_conditional_build_structure():

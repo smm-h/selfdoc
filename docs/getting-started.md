@@ -48,7 +48,7 @@ This does three things:
 
 If language detection fails, you will see an error listing the supported manifest files. Create the appropriate one first, or write `selfdoc.json` manually.
 
-The `init` command also auto-commits the generated files unless you pass `--no-commit`.
+The `init` command also auto-commits the generated files unless you pass `--no-auto-commit`.
 
 ## Project Structure
 

@@ -119,7 +119,7 @@ def _cmd_post_list():
 @strictcli.flag("project-name", type=str, help="Project name for the post title")
 @strictcli.flag("release-url", type=str, help="URL to the GitHub release")
 @strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL (repeatable)")
-@strictcli.flag("dry-run", type=bool, help="Print generated content without writing files")
+@strictcli.flag("dry-run", type=bool, default=False, help="Print generated content without writing files")
 def _cmd_post_generate(
     from_release=False,
     version="",
@@ -430,8 +430,8 @@ def _detect_main_module():
 
 
 @app.command("init", help="Initialize selfdoc configuration and starter docs template")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing generated config and template files")
-def _cmd_init(no_commit=False):
+@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit generated config and template files")
+def _cmd_init(auto_commit=True):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
 
@@ -505,9 +505,9 @@ def _cmd_init(no_commit=False):
     print(f"  Source:  {', '.join(source_path_strs)}")
     print(f"\nRun 'selfdoc build' to generate documentation.")
 
-    if not no_commit:
-        from selfdoc.git import auto_commit
-        auto_commit(
+    if auto_commit:
+        from selfdoc.git import auto_commit as _auto_commit
+        _auto_commit(
             ["selfdoc.json", "docs/index.md"], "selfdoc init", os.getcwd(),
         )
 
@@ -515,12 +515,12 @@ def _cmd_init(no_commit=False):
 
 
 @app.command("build", help="Build the documentation site from templates and source code")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing updated content hash tracking files")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit updated content hash tracking files")
 @strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
-@strictcli.flag("drafts", type=bool, help="Include draft posts in the build output")
+@strictcli.flag("drafts", type=bool, default=False, help="Include draft posts in the build output")
 @strictcli.flag("target", type=str, default="", help="Build target: 'posts' for posts-only build, empty for full build")
-def _cmd_build(no_commit=False, locale="", version="", drafts=False, target=""):
+def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
     from selfdoc.config import load_config
 
@@ -554,9 +554,9 @@ def _cmd_build(no_commit=False, locale="", version="", drafts=False, target=""):
 
     output_dir = config["output"] if config else "docs/_build/"
 
-    if not no_commit:
-        from selfdoc.git import auto_commit
-        auto_commit(
+    if auto_commit:
+        from selfdoc.git import auto_commit as _auto_commit
+        _auto_commit(
             [".selfdoc/hashes/hashes.json"],
             "selfdoc: update content hashes",
             ".",
@@ -595,7 +595,7 @@ def _cmd_build(no_commit=False, locale="", version="", drafts=False, target=""):
 
 @app.command("serve", help="Serve the documentation site locally with live reload")
 @strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
-@strictcli.flag("drafts", type=bool, help="Rebuild with draft posts included before serving")
+@strictcli.flag("drafts", type=bool, default=False, help="Rebuild with draft posts included before serving")
 def _cmd_serve(port=8000, drafts=False):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
@@ -818,9 +818,9 @@ def _cmd_deploy():
 @app.command("check", help="Check documentation coverage, directive resolution, and lint rules")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing updated content hash tracking files")
-@strictcli.flag("dry-run", type=bool, help="Report staleness without writing hash files to disk")
-def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
+@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit updated content hash tracking files")
+@strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
+def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, check_unified, filter_lints, print_results
     from selfdoc.config import load_config
@@ -836,9 +836,9 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if not no_commit and not dry_run:
-        from selfdoc.git import auto_commit
-        auto_commit(
+    if auto_commit and not dry_run:
+        from selfdoc.git import auto_commit as _auto_commit
+        _auto_commit(
             [".selfdoc/hashes/hashes.json"],
             "selfdoc: update content hashes",
             ".",
@@ -924,8 +924,8 @@ def _cmd_check(ignore="", format="text", no_commit=False, dry_run=False):
 
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing generated docs and root files")
-def _cmd_gen(no_commit=False):
+@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit generated docs and root files")
+def _cmd_gen(auto_commit=True):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
     from selfdoc.gen import generate_docs, generate_root_files
@@ -1013,9 +1013,9 @@ def _cmd_gen(no_commit=False):
     generate_manifest(config, all_docs, posts_data=posts_data, dir_path=".")
     all_commit_files.append(".selfdoc/manifest.json")
 
-    if all_commit_files and not no_commit:
-        from selfdoc.git import auto_commit
-        auto_commit(
+    if all_commit_files and auto_commit:
+        from selfdoc.git import auto_commit as _auto_commit
+        _auto_commit(
             all_commit_files, "selfdoc gen: update generated docs", ".",
         )
 
@@ -1025,8 +1025,8 @@ def _cmd_gen(no_commit=False):
 
 
 @app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap")
-@strictcli.flag("no-commit", type=bool, help="Skip auto-committing generated data output files to git")
-def _cmd_gen_data(no_commit=False):
+@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit generated data output files to git")
+def _cmd_gen_data(auto_commit=True):
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config
     from selfdoc.gendata import GenDataError, generate_data
@@ -1046,12 +1046,12 @@ def _cmd_gen_data(no_commit=False):
         print(f"Generated {len(generated)} data file(s):")
         for path in generated:
             print(f"  {path}")
-        if not no_commit:
-            from selfdoc.git import auto_commit
+        if auto_commit:
+            from selfdoc.git import auto_commit as _auto_commit
             written_files = [
                 os.path.relpath(p, ".") for p in generated
             ]
-            auto_commit(
+            _auto_commit(
                 written_files,
                 "selfdoc gen-data: update generated data",
                 ".",
