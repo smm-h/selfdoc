@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -56,10 +56,10 @@
       "help": "Initialize selfdoc configuration and starter docs template",
       "flags": [
         {
-          "name": "no-commit",
+          "name": "auto-commit",
           "type": "bool",
-          "help": "Skip auto-committing generated config and template files",
-          "default": false,
+          "help": "Auto-commit generated config and template files",
+          "default": true,
           "negatable": true
         }
       ]
@@ -69,10 +69,10 @@
       "help": "Build the documentation site from templates and source code",
       "flags": [
         {
-          "name": "no-commit",
+          "name": "auto-commit",
           "type": "bool",
-          "help": "Skip auto-committing updated content hash tracking files",
-          "default": false,
+          "help": "Auto-commit updated content hash tracking files",
+          "default": true,
           "negatable": true
         },
         {
@@ -147,10 +147,10 @@
           ]
         },
         {
-          "name": "no-commit",
+          "name": "auto-commit",
           "type": "bool",
-          "help": "Skip auto-committing updated content hash tracking files",
-          "default": false,
+          "help": "Auto-commit updated content hash tracking files",
+          "default": true,
           "negatable": true
         },
         {
@@ -167,10 +167,10 @@
       "help": "Auto-generate documentation pages from project structure",
       "flags": [
         {
-          "name": "no-commit",
+          "name": "auto-commit",
           "type": "bool",
-          "help": "Skip auto-committing generated docs and root files",
-          "default": false,
+          "help": "Auto-commit generated docs and root files",
+          "default": true,
           "negatable": true
         }
       ]
@@ -180,10 +180,10 @@
       "help": "Generate data files by running sandboxed scripts via bwrap",
       "flags": [
         {
-          "name": "no-commit",
+          "name": "auto-commit",
           "type": "bool",
-          "help": "Skip auto-committing generated data output files to git",
-          "default": false,
+          "help": "Auto-commit generated data output files to git",
+          "default": true,
           "negatable": true
         }
       ]
@@ -217,7 +217,6 @@
               "name": "from-release",
               "type": "bool",
               "help": "Generate from release metadata (required)",
-              "default": false,
               "negatable": true
             },
             {
