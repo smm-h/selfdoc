@@ -1,0 +1,3 @@
+{"commits":["84e47dbc00ad2ee49785b08d4b8da0dca3543274"],"user_facing":true,"description":"**Breaking:** `--no-commit` renamed to `--auto-commit` (default=True). `--dry-run` and `--drafts` now require explicit defaults. `--from-release` is now required.","type":"breaking"}
+{"commits":["88fb0ddffff8df606790274b4c4d28834098cc1f"],"user_facing":false}
+{"commits":["e2cb6bdaaac2768ef6692bff8fa0f4268ba4addf"],"user_facing":false}
