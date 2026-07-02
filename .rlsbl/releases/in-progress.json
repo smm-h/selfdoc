@@ -1,0 +1,31 @@
+{
+  "new_version": "0.23.0",
+  "tag": "v0.23.0",
+  "branch": "main",
+  "pre_release_sha": "fb7109f988309f8c5aebf6f5792fb971035c7886",
+  "bump_type": "minor",
+  "registry": "npm",
+  "completed_steps": [
+    "VERSION_BUMPED",
+    "COMMITTED",
+    "CHANGELOG_FINALIZED",
+    "RELEASE_FILE_FINALIZED",
+    "TAGGED",
+    "PUSHED",
+    "GITHUB_RELEASE"
+  ],
+  "companion_tags": [],
+  "monorepo_name": null,
+  "releasable_name": null,
+  "commit_msg": "v0.23.0",
+  "description": "Posts-only build mode and post publish command for publishing blog posts without software releases.",
+  "context": "",
+  "include": [
+    "npm",
+    "pypi"
+  ],
+  "exclude": [],
+  "preid": "",
+  "blog": false,
+  "release_mode": "imperative"
+}
