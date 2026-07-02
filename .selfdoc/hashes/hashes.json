@@ -68,7 +68,7 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/check-guide.md": {
-    "content": "c1c370bc9ef1073132bd71f4455b2b6e9165d99210d158129552f4cc273010cf",
+    "content": "8ae17c87e32b773285ba49d49054d471c14b8065dfa2da9baa718de39b6b5ecb",
     "description": "597e4a547ca9b61b89dd3548380992cd96548e42da7558f5557321cf6ab07814"
   },
   "en/cli-assembly.md": {
@@ -148,7 +148,7 @@
     "description": "bb3cd9d34f014c0674a9285c25ee14b5b4abc5cf941f0d83594c301405e8f3b6"
   },
   "en/getting-started.md": {
-    "content": "730fa52cea21d4e69ffa44911b97358de79c423db999100291eaf03552b96b91",
+    "content": "84271fd6aa71fa516b46cc2ef916af51fce2c553375252b808410e888ed6c18f",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -212,7 +212,7 @@
     "source_docstring": "baeb64a8b787d1f4aff0ff7dd0ef56fe9034dd1b23d43e39eeb2f403dddf104d"
   },
   "en/selfdoc-cli.md": {
-    "content": "0b45466e773c932fc55dc88217dd3f077a7fb5b7d7b4e484de92c71449f460ab",
+    "content": "9e6bca91fb97e08aca6767ead653a30deefc1e81baa78382e3371ea065dbfc0e",
     "description": "9ca6c2052a0141a05bff8a70677e0f23a2e259bc02cbcee1c86f3cca41c491b0",
     "source_docstring": "ee2400812c86e36d0188ddc98abf76fe402479955e087db0b33b5016e1f500ad"
   },
@@ -380,7 +380,7 @@
     "description": "7085b4b5fbdb1dcd20c51bb98f8023783d9e4d2740ef34cc39ab8c708451bd32"
   },
   "en/staleness.md": {
-    "content": "e04638952bd0daa6e27fbe84cdf2c9d38adce514d676d8ed967fe49574a09af1",
+    "content": "273cf36b5bfc425aa217b6e1c661020bb3f77de5eedfad9c6cd7a573f5eae7b3",
     "description": "3cbdbb7dfe265c5027278d8604e1a791c8b4310e236671481ee188633aa55f7c"
   },
   "en/theming.md": {
