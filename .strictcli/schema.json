@@ -196,7 +196,7 @@
       "commands": {
         "new": {
           "name": "new",
-          "help": "Scaffold a new blog post with frontmatter template",
+          "help": "Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.",
           "flags": [
             {
               "name": "title",
@@ -207,11 +207,11 @@
         },
         "list": {
           "name": "list",
-          "help": "List all discovered blog posts with date, title, slug, and draft status"
+          "help": "List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft."
         },
         "generate": {
           "name": "generate",
-          "help": "Generate a blog post from release metadata including changelog and version info",
+          "help": "Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.",
           "flags": [
             {
               "name": "from-release",
@@ -282,7 +282,7 @@
         },
         "publish": {
           "name": "publish",
-          "help": "Publish blog posts to the documentation assembly without a software release"
+          "help": "Publish non-draft blog posts to the documentation assembly without performing a software release. Validates that posts are committed and pushed, detects the source repository and version, then dispatches a GitHub Actions workflow to the assembly repository with scope set to posts only."
         }
       }
     },
@@ -292,23 +292,23 @@
       "commands": {
         "init": {
           "name": "init",
-          "help": "Create and initialize the assembly GitHub repository with workflow and config files"
+          "help": "Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication."
         },
         "push": {
           "name": "push",
-          "help": "Dispatch a GitHub Actions workflow to rebuild this project in the assembly"
+          "help": "Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA."
         },
         "status": {
           "name": "status",
-          "help": "Show the status of recent assembly build workflow runs on GitHub"
+          "help": "Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress."
         },
         "rebuild": {
           "name": "rebuild",
-          "help": "Dispatch rebuild workflows for every project registered in the assembly"
+          "help": "Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild."
         },
         "redirects": {
           "name": "redirects",
-          "help": "Generate a CF Pages _redirects file for this project",
+          "help": "Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.",
           "flags": [
             {
               "name": "slug",
@@ -324,7 +324,7 @@
         },
         "generate-shared": {
           "name": "generate-shared",
-          "help": "Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site",
+          "help": "Generate shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.",
           "flags": [
             {
               "name": "site-dir",
