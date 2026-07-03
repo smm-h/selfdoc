@@ -9,23 +9,23 @@ nav_order: 1
 
 # selfdoc assembly
 
-Manage the unified documentation assembly
+Manage the unified multi-project documentation assembly and deployment
 
 ## assembly init
 
-Initialize the assembly repository on GitHub
+Create and initialize the assembly GitHub repository with workflow and config files
 
 ## assembly push
 
-Trigger assembly rebuild for this project
+Dispatch a GitHub Actions workflow to rebuild this project in the assembly
 
 ## assembly status
 
-Show recent assembly build status
+Show the status of recent assembly build workflow runs on GitHub
 
 ## assembly rebuild
 
-Trigger rebuild for all projects in the assembly
+Dispatch rebuild workflows for every project registered in the assembly
 
 ## assembly redirects
 
@@ -35,16 +35,16 @@ Generate a CF Pages _redirects file for this project
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--slug` |  | str |  |  | Project slug for URL path segment |
-| `--docs_base` |  | str |  |  | Base URL of the assembly site |
+| `--slug` |  | str |  |  | Project slug used as the URL path segment in the assembly site structure |
+| `--docs_base` |  | str |  |  | Base URL of the assembly documentation site used for generating redirect targets |
 
 ## assembly generate-shared
 
-Generate shared elements for the assembled site
+Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site
 
 ### Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--site-dir` |  | str |  |  | Path to the combined site directory |
-| `--manifests-dir` |  | str |  |  | Path to the manifests directory |
+| `--site-dir` |  | str |  |  | Path to the combined site output directory where shared HTML files are written |
+| `--manifests-dir` |  | str |  |  | Path to the directory containing per-project manifest JSON files for the assembly |

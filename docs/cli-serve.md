@@ -16,4 +16,4 @@ Serve the documentation site locally with live reload
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
 | `--port` | `-p` | int | 8000 |  | HTTP port number to serve on (default: 8000, e.g., 3000) |
-| `--drafts` |  | bool |  |  | Rebuild with draft posts included before serving |
+| `--drafts` |  | bool |  |  | Rebuild the site with draft posts included before starting the local server |

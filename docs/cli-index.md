@@ -12,7 +12,7 @@ order: 91
 
 Code-aware static site generator with directive-based content extraction
 
-Version: 0.23.0
+Version: 0.24.0
 
 ## Commands
 
@@ -26,5 +26,5 @@ Version: 0.23.0
 
 ## Command Groups
 
-- [post](cli-post.html) -- Manage blog posts and chronological content
-- [assembly](cli-assembly.html) -- Manage the unified documentation assembly
+- [post](cli-post.html) -- Manage blog posts and chronological content for the documentation site
+- [assembly](cli-assembly.html) -- Manage the unified multi-project documentation assembly and deployment

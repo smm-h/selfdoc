@@ -15,8 +15,8 @@ Build the documentation site from templates and source code
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--auto-commit` |  | bool | True |  | Auto-commit updated content hash tracking files |
+| `--auto-commit` |  | bool | True |  | Automatically commit updated content hash tracking files to git after the build |
 | `--locale` |  | str |  |  | Build only the specified locale instead of all (e.g., 'en') |
 | `--version` |  | str |  |  | Build only the specified version instead of all (e.g., '1.0.0') |
-| `--drafts` |  | bool |  |  | Include draft posts in the build output |
+| `--drafts` |  | bool |  |  | Include posts marked as draft in the build output alongside published posts |
 | `--target` |  | str |  |  | Build target: 'posts' for posts-only build, empty for full build |

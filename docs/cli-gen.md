@@ -15,4 +15,4 @@ Auto-generate documentation pages from project structure
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--auto-commit` |  | bool | True |  | Auto-commit generated docs and root files |
+| `--auto-commit` |  | bool | True |  | Automatically commit generated documentation pages and root files to git |

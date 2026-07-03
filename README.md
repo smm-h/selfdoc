@@ -233,18 +233,18 @@ Custom directives take priority over built-in names.
 | `check` | Check documentation coverage, directive resolution, and lint rules |
 | `gen` | Auto-generate documentation pages from project structure |
 | `gen-data` | Generate data files by running sandboxed scripts via bwrap |
-| **post** | Manage blog posts and chronological content |
+| **post** | Manage blog posts and chronological content for the documentation site |
 | `post new` | Scaffold a new blog post with frontmatter template |
 | `post list` | List all discovered blog posts with date, title, slug, and draft status |
-| `post generate` | Generate a blog post from release metadata |
+| `post generate` | Generate a blog post from release metadata including changelog and version info |
 | `post publish` | Publish blog posts to the documentation assembly without a software release |
-| **assembly** | Manage the unified documentation assembly |
-| `assembly init` | Initialize the assembly repository on GitHub |
-| `assembly push` | Trigger assembly rebuild for this project |
-| `assembly status` | Show recent assembly build status |
-| `assembly rebuild` | Trigger rebuild for all projects in the assembly |
+| **assembly** | Manage the unified multi-project documentation assembly and deployment |
+| `assembly init` | Create and initialize the assembly GitHub repository with workflow and config files |
+| `assembly push` | Dispatch a GitHub Actions workflow to rebuild this project in the assembly |
+| `assembly status` | Show the status of recent assembly build workflow runs on GitHub |
+| `assembly rebuild` | Dispatch rebuild workflows for every project registered in the assembly |
 | `assembly redirects` | Generate a CF Pages _redirects file for this project |
-| `assembly generate-shared` | Generate shared elements for the assembled site |
+| `assembly generate-shared` | Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site |
 
 ## Deploy
 

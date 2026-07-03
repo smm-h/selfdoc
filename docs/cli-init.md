@@ -15,4 +15,4 @@ Initialize selfdoc configuration and starter docs template
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--auto-commit` |  | bool | True |  | Auto-commit generated config and template files |
+| `--auto-commit` |  | bool | True |  | Automatically commit the generated selfdoc.json and docs/index.md template files to git |

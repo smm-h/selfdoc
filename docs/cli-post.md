@@ -9,7 +9,7 @@ nav_order: 8
 
 # selfdoc post
 
-Manage blog posts and chronological content
+Manage blog posts and chronological content for the documentation site
 
 ## post new
 
@@ -19,7 +19,7 @@ Scaffold a new blog post with frontmatter template
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--title` |  | str |  |  | Title for the new post (required) |
+| `--title` |  | str |  |  | Title for the new blog post, used in frontmatter and filename generation |
 
 ## post list
 
@@ -27,24 +27,24 @@ List all discovered blog posts with date, title, slug, and draft status
 
 ## post generate
 
-Generate a blog post from release metadata
+Generate a blog post from release metadata including changelog and version info
 
 ### Flags
 
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--from-release` |  | bool |  |  | Generate from release metadata (required) |
-| `--version` |  | str |  |  | The released version (required) |
-| `--prev-version` |  | str |  |  | Previous version for comparison |
-| `--bump-type` |  | str |  |  | Bump type: patch, minor, or major |
-| `--description` |  | str |  |  | Release description text |
-| `--context` |  | str |  |  | Release context text |
-| `--changelog-file` |  | str |  |  | Path to a file containing changelog markdown |
-| `--body-file` |  | str |  |  | Path to a file containing user-written post body |
-| `--project-name` |  | str |  |  | Project name for the post title |
-| `--release-url` |  | str |  |  | URL to the GitHub release |
-| `--registry-url` |  | str |  |  | Package registry URL (repeatable) |
-| `--dry-run` |  | bool |  |  | Print generated content without writing files |
+| `--from-release` |  | bool |  |  | Generate the post from structured release metadata rather than freeform content |
+| `--version` |  | str |  |  | The released version number to feature in the generated blog post title and metadata |
+| `--prev-version` |  | str |  |  | Previous version number, used to show what version this release upgrades from |
+| `--bump-type` |  | str |  |  | Semver bump type (patch, minor, or major) included in the post frontmatter |
+| `--description` |  | str |  |  | Short release description text included as the post summary paragraph |
+| `--context` |  | str |  |  | Additional context explaining the rationale for this release, included in generated blog posts |
+| `--changelog-file` |  | str |  |  | Path to a markdown file whose contents are embedded as the changelog section of the post |
+| `--body-file` |  | str |  |  | Path to a file containing user-written prose to include as the main post body content |
+| `--project-name` |  | str |  |  | Human-readable project name used in the blog post title and frontmatter metadata |
+| `--release-url` |  | str |  |  | Full URL to the GitHub release page, linked from the generated blog post |
+| `--registry-url` |  | str |  |  | Package registry URL such as PyPI or npm page, can be specified multiple times |
+| `--dry-run` |  | bool |  |  | Print the generated post content to stdout without writing any files to disk |
 
 ## post publish
 
