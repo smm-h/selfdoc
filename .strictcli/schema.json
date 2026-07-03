@@ -324,7 +324,7 @@
         },
         "generate-shared": {
           "name": "generate-shared",
-          "help": "Generate shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.",
+          "help": "Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.",
           "flags": [
             {
               "name": "site-dir",
