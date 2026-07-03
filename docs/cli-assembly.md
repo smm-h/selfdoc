@@ -13,23 +13,23 @@ Manage the unified multi-project documentation assembly and deployment
 
 ## assembly init
 
-Create and initialize the assembly GitHub repository with workflow and config files
+Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.
 
 ## assembly push
 
-Dispatch a GitHub Actions workflow to rebuild this project in the assembly
+Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.
 
 ## assembly status
 
-Show the status of recent assembly build workflow runs on GitHub
+Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.
 
 ## assembly rebuild
 
-Dispatch rebuild workflows for every project registered in the assembly
+Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.
 
 ## assembly redirects
 
-Generate a CF Pages _redirects file for this project
+Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.
 
 ### Flags
 
@@ -40,7 +40,7 @@ Generate a CF Pages _redirects file for this project
 
 ## assembly generate-shared
 
-Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site
+Generate shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.
 
 ### Flags
 

@@ -13,7 +13,7 @@ Manage blog posts and chronological content for the documentation site
 
 ## post new
 
-Scaffold a new blog post with frontmatter template
+Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.
 
 ### Flags
 
@@ -23,11 +23,11 @@ Scaffold a new blog post with frontmatter template
 
 ## post list
 
-List all discovered blog posts with date, title, slug, and draft status
+List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.
 
 ## post generate
 
-Generate a blog post from release metadata including changelog and version info
+Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.
 
 ### Flags
 
@@ -48,4 +48,4 @@ Generate a blog post from release metadata including changelog and version info
 
 ## post publish
 
-Publish blog posts to the documentation assembly without a software release
+Publish non-draft blog posts to the documentation assembly without performing a software release. Validates that posts are committed and pushed, detects the source repository and version, then dispatches a GitHub Actions workflow to the assembly repository with scope set to posts only.
