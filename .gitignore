@@ -42,3 +42,5 @@ docs/_build/
 *.pyc
 *.log
 coverage/
+
+.rlsbl-monorepo/lock
