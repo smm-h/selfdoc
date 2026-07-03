@@ -1,4 +1,4 @@
-"""Manifest generation and loading for selfdoc projects."""
+"""Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info."""
 
 from __future__ import annotations
 

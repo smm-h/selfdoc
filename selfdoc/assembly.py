@@ -1,4 +1,4 @@
-"""Assembly infrastructure for unified multi-project documentation deployment."""
+"""Assembly infrastructure for unified multi-project documentation deployment via GitHub Actions dispatch and Cloudflare Pages."""
 
 from __future__ import annotations
 

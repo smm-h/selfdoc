@@ -1,4 +1,4 @@
-"""URL builder interface for decoupling URL generation from hardcoded base_url usage.
+"""URL builder interface for decoupling URL generation from hardcoded base_url usage, supporting locale-prefixed and versioned paths.
 
 Project identification uses two canonical identifiers:
 - slug: machine identifier (URL-safe, lowercase, hyphens) used in URLs,

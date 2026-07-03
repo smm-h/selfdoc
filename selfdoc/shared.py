@@ -1,4 +1,4 @@
-"""Generate shared elements for multi-project documentation assembly."""
+"""Generate shared elements for multi-project documentation assembly including homepage, blog index, nav JSON, RSS feed, and sitemap."""
 
 from __future__ import annotations
 

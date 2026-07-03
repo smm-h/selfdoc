@@ -1,4 +1,4 @@
-"""Post discovery and validation for selfdoc blog posts."""
+"""Post discovery and validation for selfdoc blog posts, scanning the posts directory for dated markdown files with frontmatter metadata."""
 
 from __future__ import annotations
 
