@@ -40,7 +40,7 @@ Generate a Cloudflare Pages _redirects file for this project that redirects stan
 
 ## assembly generate-shared
 
-Generate shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.
+Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.
 
 ### Flags
 
