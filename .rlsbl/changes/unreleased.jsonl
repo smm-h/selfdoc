@@ -6,3 +6,4 @@
 {"commits":["68f3abbb1419717ab80ac7f28719cc1947b0b349"],"user_facing":false}
 {"commits":["e5fc3615d04e93e58b5469dd972d6c7f8c68cb09","bd3c2c0746b47bf4c55fa0d5a9d7c8f7474fbc5d","73cfa1bfa947ba356aa8141ef6bfb87d7caf85c4"],"user_facing":true,"description":"**Expanded CLI help text.** All command and flag help strings now meet the 50-character minimum for documentation quality checks.","type":"fix"}
 {"commits":["196748ecfe14c24aaed389643ec9fc82c393c632"],"user_facing":false}
+{"commits":["eb0c3cb5ab20f831e98f8582bf66333993f3dea2","eef0d8b913a5ea3a3e1e0c511beaa2099dc913f1","c33e5213a2f3eee79c871ff285f39241bccb626e","7dac4fac5257176b710ed9a25529a50c52b0824a"],"user_facing":true,"description":"**Expanded CLI command help text.** All command help descriptions now meet the 40-60 word target for AI citation quality, and include numeric data points where applicable.","type":"fix"}
