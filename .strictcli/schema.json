@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -58,7 +58,7 @@
         {
           "name": "auto-commit",
           "type": "bool",
-          "help": "Auto-commit generated config and template files",
+          "help": "Automatically commit the generated selfdoc.json and docs/index.md template files to git",
           "default": true,
           "negatable": true
         }
@@ -71,7 +71,7 @@
         {
           "name": "auto-commit",
           "type": "bool",
-          "help": "Auto-commit updated content hash tracking files",
+          "help": "Automatically commit updated content hash tracking files to git after the build",
           "default": true,
           "negatable": true
         },
@@ -90,7 +90,7 @@
         {
           "name": "drafts",
           "type": "bool",
-          "help": "Include draft posts in the build output",
+          "help": "Include posts marked as draft in the build output alongside published posts",
           "default": false,
           "negatable": true
         },
@@ -116,7 +116,7 @@
         {
           "name": "drafts",
           "type": "bool",
-          "help": "Rebuild with draft posts included before serving",
+          "help": "Rebuild the site with draft posts included before starting the local server",
           "default": false,
           "negatable": true
         }
@@ -149,7 +149,7 @@
         {
           "name": "auto-commit",
           "type": "bool",
-          "help": "Auto-commit updated content hash tracking files",
+          "help": "Automatically commit updated content hash tracking files to git after checking",
           "default": true,
           "negatable": true
         },
@@ -169,7 +169,7 @@
         {
           "name": "auto-commit",
           "type": "bool",
-          "help": "Auto-commit generated docs and root files",
+          "help": "Automatically commit generated documentation pages and root files to git",
           "default": true,
           "negatable": true
         }
@@ -182,7 +182,7 @@
         {
           "name": "auto-commit",
           "type": "bool",
-          "help": "Auto-commit generated data output files to git",
+          "help": "Automatically commit the generated data output files to git after script execution",
           "default": true,
           "negatable": true
         }
@@ -192,7 +192,7 @@
   "groups": {
     "post": {
       "name": "post",
-      "help": "Manage blog posts and chronological content",
+      "help": "Manage blog posts and chronological content for the documentation site",
       "commands": {
         "new": {
           "name": "new",
@@ -201,7 +201,7 @@
             {
               "name": "title",
               "type": "str",
-              "help": "Title for the new post (required)"
+              "help": "Title for the new blog post, used in frontmatter and filename generation"
             }
           ]
         },
@@ -211,70 +211,70 @@
         },
         "generate": {
           "name": "generate",
-          "help": "Generate a blog post from release metadata",
+          "help": "Generate a blog post from release metadata including changelog and version info",
           "flags": [
             {
               "name": "from-release",
               "type": "bool",
-              "help": "Generate from release metadata (required)",
+              "help": "Generate the post from structured release metadata rather than freeform content",
               "negatable": true
             },
             {
               "name": "version",
               "type": "str",
-              "help": "The released version (required)"
+              "help": "The released version number to feature in the generated blog post title and metadata"
             },
             {
               "name": "prev-version",
               "type": "str",
-              "help": "Previous version for comparison"
+              "help": "Previous version number, used to show what version this release upgrades from"
             },
             {
               "name": "bump-type",
               "type": "str",
-              "help": "Bump type: patch, minor, or major"
+              "help": "Semver bump type (patch, minor, or major) included in the post frontmatter"
             },
             {
               "name": "description",
               "type": "str",
-              "help": "Release description text"
+              "help": "Short release description text included as the post summary paragraph"
             },
             {
               "name": "context",
               "type": "str",
-              "help": "Release context text"
+              "help": "Additional context explaining the rationale for this release, included in generated blog posts"
             },
             {
               "name": "changelog-file",
               "type": "str",
-              "help": "Path to a file containing changelog markdown"
+              "help": "Path to a markdown file whose contents are embedded as the changelog section of the post"
             },
             {
               "name": "body-file",
               "type": "str",
-              "help": "Path to a file containing user-written post body"
+              "help": "Path to a file containing user-written prose to include as the main post body content"
             },
             {
               "name": "project-name",
               "type": "str",
-              "help": "Project name for the post title"
+              "help": "Human-readable project name used in the blog post title and frontmatter metadata"
             },
             {
               "name": "release-url",
               "type": "str",
-              "help": "URL to the GitHub release"
+              "help": "Full URL to the GitHub release page, linked from the generated blog post"
             },
             {
               "name": "registry-url",
               "type": "str",
-              "help": "Package registry URL (repeatable)",
+              "help": "Package registry URL such as PyPI or npm page, can be specified multiple times",
               "default": [],
               "repeatable": true
             },
             {
               "name": "dry-run",
               "type": "bool",
-              "help": "Print generated content without writing files",
+              "help": "Print the generated post content to stdout without writing any files to disk",
               "default": false,
               "negatable": true
             }
@@ -288,23 +288,23 @@
     },
     "assembly": {
       "name": "assembly",
-      "help": "Manage the unified documentation assembly",
+      "help": "Manage the unified multi-project documentation assembly and deployment",
       "commands": {
         "init": {
           "name": "init",
-          "help": "Initialize the assembly repository on GitHub"
+          "help": "Create and initialize the assembly GitHub repository with workflow and config files"
         },
         "push": {
           "name": "push",
-          "help": "Trigger assembly rebuild for this project"
+          "help": "Dispatch a GitHub Actions workflow to rebuild this project in the assembly"
         },
         "status": {
           "name": "status",
-          "help": "Show recent assembly build status"
+          "help": "Show the status of recent assembly build workflow runs on GitHub"
         },
         "rebuild": {
           "name": "rebuild",
-          "help": "Trigger rebuild for all projects in the assembly"
+          "help": "Dispatch rebuild workflows for every project registered in the assembly"
         },
         "redirects": {
           "name": "redirects",
@@ -313,28 +313,28 @@
             {
               "name": "slug",
               "type": "str",
-              "help": "Project slug for URL path segment"
+              "help": "Project slug used as the URL path segment in the assembly site structure"
             },
             {
               "name": "docs_base",
               "type": "str",
-              "help": "Base URL of the assembly site"
+              "help": "Base URL of the assembly documentation site used for generating redirect targets"
             }
           ]
         },
         "generate-shared": {
           "name": "generate-shared",
-          "help": "Generate shared elements for the assembled site",
+          "help": "Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site",
           "flags": [
             {
               "name": "site-dir",
               "type": "str",
-              "help": "Path to the combined site directory"
+              "help": "Path to the combined site output directory where shared HTML files are written"
             },
             {
               "name": "manifests-dir",
               "type": "str",
-              "help": "Path to the manifests directory"
+              "help": "Path to the directory containing per-project manifest JSON files for the assembly"
             }
           ]
         }

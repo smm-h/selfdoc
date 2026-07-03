@@ -18,12 +18,12 @@ app = strictcli.App(
     help="Code-aware static site generator with directive-based content extraction",
 )
 
-post_group = app.group("post", help="Manage blog posts and chronological content")
-assembly_group = app.group("assembly", help="Manage the unified documentation assembly")
+post_group = app.group("post", help="Manage blog posts and chronological content for the documentation site")
+assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
 
 
 @post_group.command("new", help="Scaffold a new blog post with frontmatter template")
-@strictcli.flag("title", type=str, help="Title for the new post (required)")
+@strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
 def _cmd_post_new(title=""):
     """Create a new blog post file in the posts directory."""
     from selfdoc.config import load_config
@@ -107,19 +107,19 @@ def _cmd_post_list():
     return 0
 
 
-@post_group.command("generate", help="Generate a blog post from release metadata")
-@strictcli.flag("from-release", type=bool, help="Generate from release metadata (required)")
-@strictcli.flag("version", type=str, help="The released version (required)")
-@strictcli.flag("prev-version", type=str, help="Previous version for comparison")
-@strictcli.flag("bump-type", type=str, help="Bump type: patch, minor, or major")
-@strictcli.flag("description", type=str, help="Release description text")
-@strictcli.flag("context", type=str, help="Release context text")
-@strictcli.flag("changelog-file", type=str, help="Path to a file containing changelog markdown")
-@strictcli.flag("body-file", type=str, help="Path to a file containing user-written post body")
-@strictcli.flag("project-name", type=str, help="Project name for the post title")
-@strictcli.flag("release-url", type=str, help="URL to the GitHub release")
-@strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL (repeatable)")
-@strictcli.flag("dry-run", type=bool, default=False, help="Print generated content without writing files")
+@post_group.command("generate", help="Generate a blog post from release metadata including changelog and version info")
+@strictcli.flag("from-release", type=bool, help="Generate the post from structured release metadata rather than freeform content")
+@strictcli.flag("version", type=str, help="The released version number to feature in the generated blog post title and metadata")
+@strictcli.flag("prev-version", type=str, help="Previous version number, used to show what version this release upgrades from")
+@strictcli.flag("bump-type", type=str, help="Semver bump type (patch, minor, or major) included in the post frontmatter")
+@strictcli.flag("description", type=str, help="Short release description text included as the post summary paragraph")
+@strictcli.flag("context", type=str, help="Additional context explaining the rationale for this release, included in generated blog posts")
+@strictcli.flag("changelog-file", type=str, help="Path to a markdown file whose contents are embedded as the changelog section of the post")
+@strictcli.flag("body-file", type=str, help="Path to a file containing user-written prose to include as the main post body content")
+@strictcli.flag("project-name", type=str, help="Human-readable project name used in the blog post title and frontmatter metadata")
+@strictcli.flag("release-url", type=str, help="Full URL to the GitHub release page, linked from the generated blog post")
+@strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL such as PyPI or npm page, can be specified multiple times")
+@strictcli.flag("dry-run", type=bool, default=False, help="Print the generated post content to stdout without writing any files to disk")
 def _cmd_post_generate(
     from_release=False,
     version="",
@@ -430,7 +430,7 @@ def _detect_main_module():
 
 
 @app.command("init", help="Initialize selfdoc configuration and starter docs template")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit generated config and template files")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated selfdoc.json and docs/index.md template files to git")
 def _cmd_init(auto_commit=True):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
@@ -515,10 +515,10 @@ def _cmd_init(auto_commit=True):
 
 
 @app.command("build", help="Build the documentation site from templates and source code")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit updated content hash tracking files")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
 @strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
-@strictcli.flag("drafts", type=bool, default=False, help="Include draft posts in the build output")
+@strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output alongside published posts")
 @strictcli.flag("target", type=str, default="", help="Build target: 'posts' for posts-only build, empty for full build")
 def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
@@ -595,7 +595,7 @@ def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target="")
 
 @app.command("serve", help="Serve the documentation site locally with live reload")
 @strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
-@strictcli.flag("drafts", type=bool, default=False, help="Rebuild with draft posts included before serving")
+@strictcli.flag("drafts", type=bool, default=False, help="Rebuild the site with draft posts included before starting the local server")
 def _cmd_serve(port=8000, drafts=False):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
@@ -815,7 +815,7 @@ def _cmd_deploy():
 @app.command("check", help="Check documentation coverage, directive resolution, and lint rules")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit updated content hash tracking files")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
 @strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
 def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
     """Check documentation coverage and consistency."""
@@ -921,7 +921,7 @@ def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
 
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit generated docs and root files")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit generated documentation pages and root files to git")
 def _cmd_gen(auto_commit=True):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
@@ -1022,7 +1022,7 @@ def _cmd_gen(auto_commit=True):
 
 
 @app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Auto-commit generated data output files to git")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated data output files to git after script execution")
 def _cmd_gen_data(auto_commit=True):
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config
@@ -1058,7 +1058,7 @@ def _cmd_gen_data(auto_commit=True):
     return 0
 
 
-@assembly_group.command("init", help="Initialize the assembly repository on GitHub")
+@assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and config files")
 def _cmd_assembly_init():
     """Create the assembly GitHub repo and push initial files."""
     import base64
@@ -1149,7 +1149,7 @@ def _cmd_assembly_init():
     return 0
 
 
-@assembly_group.command("push", help="Trigger assembly rebuild for this project")
+@assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the assembly")
 def _cmd_assembly_push():
     """Dispatch an assembly rebuild for the current project."""
     import subprocess
@@ -1228,7 +1228,7 @@ def _cmd_assembly_push():
     return 0
 
 
-@assembly_group.command("status", help="Show recent assembly build status")
+@assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub")
 def _cmd_assembly_status():
     """Show recent assembly build status."""
     import subprocess
@@ -1264,7 +1264,7 @@ def _cmd_assembly_status():
     return 0
 
 
-@assembly_group.command("rebuild", help="Trigger rebuild for all projects in the assembly")
+@assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly")
 def _cmd_assembly_rebuild():
     """Trigger rebuild for all projects in the assembly."""
     import base64
@@ -1325,8 +1325,8 @@ def _cmd_assembly_rebuild():
 
 
 @assembly_group.command("redirects", help="Generate a CF Pages _redirects file for this project")
-@strictcli.flag("slug", type=str, help="Project slug for URL path segment")
-@strictcli.flag("docs_base", type=str, help="Base URL of the assembly site")
+@strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
+@strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
 def _cmd_assembly_redirects(slug="", docs_base=""):
     """Print the _redirects file content for redirecting to the assembly site."""
     from selfdoc.assembly import generate_redirects_file
@@ -1343,9 +1343,9 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
     return 0
 
 
-@assembly_group.command("generate-shared", help="Generate shared elements for the assembled site")
-@strictcli.flag("site-dir", type=str, help="Path to the combined site directory")
-@strictcli.flag("manifests-dir", type=str, help="Path to the manifests directory")
+@assembly_group.command("generate-shared", help="Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site")
+@strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
+@strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfdoc.shared import (
