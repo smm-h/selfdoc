@@ -2,3 +2,4 @@
 {"commits":["6a732cb9b8c1139edda69407ce7fcfdf919ab5c6"],"user_facing":false}
 {"commits":["caebed7085b380ddb558b78277f75eb334f1a6f1"],"user_facing":true,"description":"**Python version requirement corrected.** `requires-python` bumped from `>=3.11` to `>=3.12` to match actual compatibility (CI tests 3.12/3.13/3.14 only; codebase uses PEP 701 syntax). Dead `tomli` fallback code removed; ruff config added with `target-version = \"py312\"`.","type":"fix"}
 {"commits":["f45fd72e43b5c47ad1cbeafc6c194078f22e18fd"],"user_facing":false}
+{"commits":["08de7f1e185694459f3cf35b2666a7afc6d1e895"],"user_facing":false}
