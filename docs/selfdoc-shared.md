@@ -1,6 +1,6 @@
 ---
 title: selfdoc.shared
-description: "Generate shared elements for multi-project documentation assembly."
+description: "Generate shared elements for multi-project documentation assembly including homepage, blog index, nav JSON, RSS feed, and sitemap."
 generated: true
 nav_group: "API Reference"
 nav_order: 32

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.assembly
-description: "Assembly infrastructure for unified multi-project documentation deployment."
+description: "Assembly infrastructure for unified multi-project documentation deployment via GitHub Actions dispatch and Cloudflare Pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 4

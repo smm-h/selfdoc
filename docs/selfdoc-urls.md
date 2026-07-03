@@ -1,6 +1,6 @@
 ---
 title: selfdoc.urls
-description: "URL builder interface for decoupling URL generation from hardcoded base_url usage."
+description: "URL builder interface for decoupling URL generation from hardcoded base_url usage, supporting locale-prefixed and versioned paths."
 generated: true
 nav_group: "API Reference"
 nav_order: 37

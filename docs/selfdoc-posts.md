@@ -1,6 +1,6 @@
 ---
 title: selfdoc.posts
-description: "Post discovery and validation for selfdoc blog posts."
+description: "Post discovery and validation for selfdoc blog posts, scanning the posts directory for dated markdown files with frontmatter metadata."
 generated: true
 nav_group: "API Reference"
 nav_order: 30
