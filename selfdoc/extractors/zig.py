@@ -160,7 +160,7 @@ def _dotted_symbol_details(source, symbol_name):
         if container_re.match(stripped):
             # Find the position of the opening brace in the full source
             # by computing offset up to line i, then finding '{' in that line
-            line_start = sum(len(l) + 1 for l in lines[:i])
+            line_start = sum(len(line) + 1 for line in lines[:i])
             brace_offset = lines[i].index("{")
             open_brace_pos = line_start + brace_offset
 
