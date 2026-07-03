@@ -1,0 +1,1 @@
+{"commits":["3b2dc9af0926b229ad59c125cde45aefeec8d79c"],"user_facing":true,"description":"Dependency installation no longer requires machine-local checkouts: `uv.lock` previously carried local paths for `strictcli` and `predraw`, breaking installs and CI outside the author's machine. Dependencies now resolve from PyPI (strictcli 0.24.0, predraw 0.2.1).","type":"fix"}
