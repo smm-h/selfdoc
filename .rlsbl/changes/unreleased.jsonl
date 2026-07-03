@@ -5,3 +5,4 @@
 {"commits":["08de7f1e185694459f3cf35b2666a7afc6d1e895"],"user_facing":false}
 {"commits":["68f3abbb1419717ab80ac7f28719cc1947b0b349"],"user_facing":false}
 {"commits":["e5fc3615d04e93e58b5469dd972d6c7f8c68cb09","bd3c2c0746b47bf4c55fa0d5a9d7c8f7474fbc5d","73cfa1bfa947ba356aa8141ef6bfb87d7caf85c4"],"user_facing":true,"description":"**Expanded CLI help text.** All command and flag help strings now meet the 50-character minimum for documentation quality checks.","type":"fix"}
+{"commits":["196748ecfe14c24aaed389643ec9fc82c393c632"],"user_facing":false}
