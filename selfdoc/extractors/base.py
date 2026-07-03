@@ -212,16 +212,7 @@ class StubExtractor(BaseExtractor):
 
 def _config_from_toml(full_path, display_path, exclude_keys: set[str] | None = None):
     """Parse TOML config and render as a key-value table."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ModuleNotFoundError:
-            return format_error(
-                "TOML support requires Python 3.11+ "
-                "or the 'tomli' package"
-            )
+    import tomllib
 
     try:
         with open(full_path, "rb") as f:

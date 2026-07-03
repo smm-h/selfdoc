@@ -168,13 +168,7 @@ def resolve_table_dep(attrs: dict, base_dir: str) -> str:
     if not os.path.isfile(full_path):
         return f"> *[selfdoc: file '{path}' not found]*"
 
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ModuleNotFoundError:
-            return "> *[selfdoc: TOML support requires Python 3.11+ or 'tomli']*"
+    import tomllib
 
     try:
         with open(full_path, "rb") as f:
@@ -521,13 +515,7 @@ def _read_project_description(base_dir: str) -> str:
     """Read the project description from pyproject.toml or package.json."""
     pyproject = os.path.join(base_dir, "pyproject.toml")
     if os.path.isfile(pyproject):
-        try:
-            import tomllib
-        except ModuleNotFoundError:
-            try:
-                import tomli as tomllib  # type: ignore[no-redef]
-            except ModuleNotFoundError:
-                return "unknown"
+        import tomllib
         try:
             with open(pyproject, "rb") as f:
                 data = tomllib.load(f)

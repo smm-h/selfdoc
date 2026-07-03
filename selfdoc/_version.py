@@ -15,10 +15,7 @@ def _detect_version():
             os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
         )
         if os.path.isfile(pyproject_path):
-            try:
-                import tomllib
-            except ModuleNotFoundError:
-                import tomli as tomllib  # type: ignore[no-redef]
+            import tomllib
             with open(pyproject_path, "rb") as f:
                 data = tomllib.load(f)
             return data["project"]["version"]

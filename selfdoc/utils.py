@@ -193,17 +193,8 @@ def _read_project_field(base_dir: str, field: str) -> str:
     # Try pyproject.toml
     pyproject = os.path.join(base_dir, "pyproject.toml")
     if os.path.isfile(pyproject):
-        try:
-            import tomllib
-        except ModuleNotFoundError:
-            try:
-                import tomli as tomllib  # type: ignore[no-redef]
-            except ModuleNotFoundError:
-                pass
-            else:
-                return _read_toml_field(pyproject, field, tomllib)
-        else:
-            return _read_toml_field(pyproject, field, tomllib)
+        import tomllib
+        return _read_toml_field(pyproject, field, tomllib)
 
     # Try package.json
     pkg_json = os.path.join(base_dir, "package.json")

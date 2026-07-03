@@ -5,7 +5,7 @@ description = "Code-aware static site generator with directive-based content ext
 license = "MIT"
 authors = [{ name = "smm-h" }]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
 dependencies = ["strictcli"]
 
@@ -29,3 +29,10 @@ dev = [
     "pytest>=9.0.3",
     "pytest-playwright>=0.7.2",
 ]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["F", "E"]
+ignore = ["E501"]
