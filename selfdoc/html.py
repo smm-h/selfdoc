@@ -589,8 +589,6 @@ def generate_html(markdown_files, project_name=None, version=None,
             term_name = _escape_html(info["term"])
             definition = info["definition"]
             source_page = info["page"]
-            source_slug = _html_to_md_path(source_page).replace(".md", "")
-            source_label = source_slug.replace("-", " ").replace("_", " ").title()
             source_url = _html_path_to_url(source_page)
             glossary_dl_items.append(
                 f'<dt id="{anchor}"><dfn>{term_name}</dfn></dt>'
@@ -1583,7 +1581,6 @@ def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
         result_parts = []
         replaced = False
         # Track nesting of skipped tags
-        skip_depth = 0
         # Split HTML into tags and text segments
         segments = re.split(r"(<[^>]+>)", body_html)
         skip_stack = []

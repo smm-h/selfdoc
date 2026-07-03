@@ -131,7 +131,7 @@ def deploy_github_pages(output_dir, version):
 
         # Prevent Jekyll processing on GitHub
         nojekyll_path = os.path.join(tmp, ".nojekyll")
-        with open(nojekyll_path, "w") as f:
+        with open(nojekyll_path, "w"):
             pass
 
         # Commit all files

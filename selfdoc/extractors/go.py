@@ -505,13 +505,6 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
 
     # Group by kind for cleaner output
     kind_order = ["const", "var", "type", "func", "method"]
-    kind_labels = {
-        "const": "Constants",
-        "var": "Variables",
-        "type": "Types",
-        "func": "Functions",
-        "method": "Methods",
-    }
 
     for kind in kind_order:
         kind_decls = [d for d in declarations if d["kind"] == kind]
@@ -695,7 +688,6 @@ def _extract_exported_declarations(source):
         type_match = re.match(r"^type\s+([A-Z]\w*)\s+(.*)", stripped)
         if type_match:
             type_name = type_match.group(1)
-            type_rest = type_match.group(2)
             sig = stripped.rstrip("{").rstrip()
             doc = _collect_comment_block_above(lines, i)
 

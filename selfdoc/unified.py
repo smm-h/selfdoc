@@ -142,7 +142,6 @@ def _generate_landing_page(projects_info, config):
     """
     cards = []
     for info in projects_info:
-        slug = info["slug"]
         title = _escape_html(info["nav_title"])
         desc = _escape_html(info.get("description", ""))
         version = _escape_html(info.get("version", ""))
@@ -440,7 +439,6 @@ def _build_unified_body(
     """
     written = {}
     all_search_entries = []
-    all_site_terms = []
     projects_info = []
     projects_nav_data = []
 
@@ -658,7 +656,6 @@ def _build_unified_body(
             written[dst] = True
 
         if locale_code == default_locale_code:
-            common_nav = nav_items
             common_latest_build = {
                 "html_files": result.html_files,
                 "markdown_files": result.markdown_files,
@@ -731,11 +728,6 @@ def _build_unified_body(
                     **common_latest_build["page_dates"],
                     **uv_result.page_dates,
                 }
-
-    # --- Build unified nav ---
-    unified_nav = _build_unified_nav(
-        common_nav, projects_nav_data, config,
-    )
 
     # --- Generate landing page ---
     landing_body = _generate_landing_page(projects_info, config)

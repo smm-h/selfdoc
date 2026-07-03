@@ -638,9 +638,7 @@ def _cmd_serve(port=8000, drafts=False):
         b"</script>\n"
     )
 
-    # Shared state for SSE: a threading.Event that the watcher sets
-    # when any file mtime changes, and a list of connected SSE wfiles.
-    reload_event = threading.Event()
+    # Shared state for SSE
     sse_clients = []  # list of wfile objects (socket files)
     sse_lock = threading.Lock()
 
@@ -687,7 +685,6 @@ def _cmd_serve(port=8000, drafts=False):
         def copyfile(self, source, outputfile):
             """Override copyfile to inject reload script into HTML."""
             # Check if this is an HTML response by inspecting headers
-            content_type = None
             for header, value in self._headers_buffer[0:20] if hasattr(self, '_headers_buffer') else []:
                 pass  # can't easily inspect after send
             # Instead, read content and check if it looks like HTML

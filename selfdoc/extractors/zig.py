@@ -497,7 +497,6 @@ def _extract_pub_declarations(source):
             stripped,
         )
         if fn_match:
-            qualifier = (fn_match.group(1) or "").strip()
             fn_name = fn_match.group(2)
             # Build signature up to the opening brace or semicolon
             sig = _extract_fn_signature(lines, i)
@@ -519,7 +518,6 @@ def _extract_pub_declarations(source):
         )
         if const_match:
             const_name = const_match.group(1)
-            rest = const_match.group(2)
             sig = _clean_signature(stripped)
             doc = _collect_doc_comment_above(lines, i)
 

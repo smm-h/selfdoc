@@ -414,7 +414,6 @@ def _dotted_symbol_details(source, symbol_name):
     abs_start = body_offset + method_match.start()
 
     # Find which line the method declaration is on
-    line_start = source.rfind("\n", 0, abs_start)
     decl_line_idx = source.count("\n", 0, abs_start)
 
     lines = source.split("\n")

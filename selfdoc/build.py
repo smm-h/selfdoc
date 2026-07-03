@@ -1882,7 +1882,6 @@ def _build_body(
             markdown_files = result.markdown_files
             frontmatter = result.frontmatter
             page_dates = result.page_dates
-            nav_items = result.nav_items
             search_entries = result.search_entries
             project_name = result.project_name
             version = result.version
