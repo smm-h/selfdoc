@@ -1343,7 +1343,7 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
     return 0
 
 
-@assembly_group.command("generate-shared", help="Generate shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
+@assembly_group.command("generate-shared", help="Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
