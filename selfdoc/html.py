@@ -5,7 +5,6 @@ paragraphs, lists, links, bold/italic, tables, blockquotes, and admonitions.
 Syntax highlighting uses Pygments when available (optional dependency).
 """
 
-import html
 import json
 import re
 import unicodedata

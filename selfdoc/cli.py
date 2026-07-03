@@ -500,10 +500,10 @@ def _cmd_init(auto_commit=True):
     source_path_strs = [e["path"] for e in source_entries]
     langs_str = ", ".join(detected_languages)
     print(f"Initialized selfdoc for {langs_str} project '{project_name}'")
-    print(f"  Created: selfdoc.json")
-    print(f"  Created: docs/index.md")
+    print("  Created: selfdoc.json")
+    print("  Created: docs/index.md")
     print(f"  Source:  {', '.join(source_path_strs)}")
-    print(f"\nRun 'selfdoc build' to generate documentation.")
+    print("\nRun 'selfdoc build' to generate documentation.")
 
     if auto_commit:
         from selfdoc.git import auto_commit as _auto_commit

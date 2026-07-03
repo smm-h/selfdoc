@@ -14,7 +14,7 @@ import os
 import re
 
 from selfdoc.tables import render_markdown_table
-from selfdoc.utils import _read_project_field, detect_project_version
+from selfdoc.utils import _read_project_field
 
 # -- Callout directives -------------------------------------------------------
 

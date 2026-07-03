@@ -63,13 +63,13 @@ def generate_homepage(manifests: list[dict], docs_base: str) -> str:
         version = html.escape(m.get("version") or "")
         description = html.escape(m.get("description") or "")
         href = f"{docs_base}/{slug}/"
-        parts.append(f'  <article class="project-card">')
+        parts.append('  <article class="project-card">')
         parts.append(f"    <h2><a href=\"{href}\">{name}</a></h2>")
         if version:
             parts.append(f'    <span class="version-badge">v{version}</span>')
         if description:
             parts.append(f"    <p>{description}</p>")
-        parts.append(f"  </article>")
+        parts.append("  </article>")
     parts.append("</section>")
     return "\n".join(parts)
 
@@ -108,11 +108,11 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
         project_name = html.escape(post["project_name"])
         title = html.escape(post["title"])
         href = f"{docs_base}/{post['manifest_slug']}/posts/{post['slug']}/"
-        parts.append(f'  <article class="blog-entry">')
+        parts.append('  <article class="blog-entry">')
         parts.append(f"    <time>{date}</time>")
         parts.append(f'    <span class="project-name">{project_name}</span>')
         parts.append(f"    <a href=\"{href}\">{title}</a>")
-        parts.append(f"  </article>")
+        parts.append("  </article>")
     parts.append("</section>")
     return "\n".join(parts)
 

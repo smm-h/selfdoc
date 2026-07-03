@@ -14,8 +14,6 @@ import re
 import shutil
 
 from selfdoc.build import (
-    BuildResult,
-    _build_search_index,
     _check_reserved_paths,
     _check_unversioned_collisions,
     _cleanup_injected_posts,
@@ -23,7 +21,6 @@ from selfdoc.build import (
     _extract_critical_css,
     _extract_version_content,
     _generate_auxiliary_files,
-    _generate_sitemap,
     _inject_posts_into_docs,
     _minify_css,
     _minify_html,
@@ -32,13 +29,9 @@ from selfdoc.build import (
 )
 from selfdoc.config import ConfigError, load_config
 from selfdoc.html import (
-    _build_nav,
     _escape_html,
     _html_path_to_url,
-    _md_to_html_path,
-    _render_nav,
     _slugify,
-    generate_html,
     generate_pygments_css,
     get_css,
 )

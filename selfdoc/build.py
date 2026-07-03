@@ -905,7 +905,7 @@ def _make_feed_entry(title, url, date, summary="", page_type=""):
     )
     if escaped_summary:
         entry += f"    <summary>{escaped_summary}</summary>\n"
-    entry += f"  </entry>"
+    entry += "  </entry>"
     return (date, entry)
 
 

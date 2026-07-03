@@ -7,7 +7,7 @@ import json
 import os
 import re
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from selfdoc.utils import atomic_write, detect_project_version
 

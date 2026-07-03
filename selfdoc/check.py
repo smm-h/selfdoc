@@ -16,7 +16,6 @@ from dataclasses import dataclass, field
 import re
 
 from selfdoc.build import _extract_version_content
-from selfdoc.utils import parse_frontmatter as _parse_frontmatter
 from selfdoc.docs import resolve_all_docs
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
@@ -26,7 +25,7 @@ from selfdoc.tokenizer import (
 )
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, validate_directive_names
-from selfdoc.extractors import EXTRACTORS, SourceEntry
+from selfdoc.extractors import SourceEntry
 from selfdoc.resolver import make_resolver, Resolver
 from selfdoc.staleness import update_hashes
 from selfdoc.gen import _DEFAULT_DESCRIPTION_RE

@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from selfdoc.utils import parse_frontmatter as _parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.directives import resolve_directives, validate_directive_names
-from selfdoc.extractors import EXTRACTORS
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import atomic_write as _atomic_write
 
