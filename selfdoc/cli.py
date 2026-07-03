@@ -22,7 +22,7 @@ post_group = app.group("post", help="Manage blog posts and chronological content
 assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
 
 
-@post_group.command("new", help="Scaffold a new blog post with frontmatter template")
+@post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.")
 @strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
 def _cmd_post_new(title=""):
     """Create a new blog post file in the posts directory."""
@@ -78,7 +78,7 @@ def _cmd_post_new(title=""):
     return 0
 
 
-@post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status")
+@post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.")
 def _cmd_post_list():
     """List all discovered blog posts."""
     from selfdoc.config import load_config
@@ -107,7 +107,7 @@ def _cmd_post_list():
     return 0
 
 
-@post_group.command("generate", help="Generate a blog post from release metadata including changelog and version info")
+@post_group.command("generate", help="Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.")
 @strictcli.flag("from-release", type=bool, help="Generate the post from structured release metadata rather than freeform content")
 @strictcli.flag("version", type=str, help="The released version number to feature in the generated blog post title and metadata")
 @strictcli.flag("prev-version", type=str, help="Previous version number, used to show what version this release upgrades from")
@@ -277,7 +277,7 @@ def _cmd_post_generate(
     return 0
 
 
-@post_group.command("publish", help="Publish blog posts to the documentation assembly without a software release")
+@post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly without performing a software release. Validates that posts are committed and pushed, detects the source repository and version, then dispatches a GitHub Actions workflow to the assembly repository with scope set to posts only.")
 def _cmd_post_publish():
     """Publish blog posts to the assembly without a software release."""
     import subprocess
@@ -1058,7 +1058,7 @@ def _cmd_gen_data(auto_commit=True):
     return 0
 
 
-@assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and config files")
+@assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.")
 def _cmd_assembly_init():
     """Create the assembly GitHub repo and push initial files."""
     import base64
@@ -1149,7 +1149,7 @@ def _cmd_assembly_init():
     return 0
 
 
-@assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the assembly")
+@assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.")
 def _cmd_assembly_push():
     """Dispatch an assembly rebuild for the current project."""
     import subprocess
@@ -1228,7 +1228,7 @@ def _cmd_assembly_push():
     return 0
 
 
-@assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub")
+@assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.")
 def _cmd_assembly_status():
     """Show recent assembly build status."""
     import subprocess
@@ -1264,7 +1264,7 @@ def _cmd_assembly_status():
     return 0
 
 
-@assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly")
+@assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.")
 def _cmd_assembly_rebuild():
     """Trigger rebuild for all projects in the assembly."""
     import base64
@@ -1324,7 +1324,7 @@ def _cmd_assembly_rebuild():
     return 0
 
 
-@assembly_group.command("redirects", help="Generate a CF Pages _redirects file for this project")
+@assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
 @strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
 @strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
 def _cmd_assembly_redirects(slug="", docs_base=""):
@@ -1343,7 +1343,7 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
     return 0
 
 
-@assembly_group.command("generate-shared", help="Generate shared elements like homepage, blog index, nav, feed, and sitemap for the assembled site")
+@assembly_group.command("generate-shared", help="Generate shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
