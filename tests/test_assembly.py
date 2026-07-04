@@ -1,6 +1,9 @@
 """Tests for selfdoc.assembly -- assembly infrastructure for multi-project docs."""
 
 import json
+from unittest.mock import patch
+
+import pytest
 
 from selfdoc.assembly import (
     assembly_init,
@@ -8,6 +11,7 @@ from selfdoc.assembly import (
     assembly_rebuild,
     assembly_status,
     generate_workflow_yaml,
+    push_files_to_repo,
 )
 
 
@@ -373,3 +377,113 @@ def test_workflow_yaml_has_version_count_check():
     yaml_str = generate_workflow_yaml()
     assert "VERSION_COUNT" in yaml_str
     assert "Could not detect latest version for multi-version project" in yaml_str
+
+
+# -- push_files_to_repo -------------------------------------------------------
+
+
+def _mock_run_factory(responses: list[tuple[int, str, str]]):
+    """Return a side_effect callable that yields CompletedProcess objects in order."""
+    call_log = []
+    idx = [0]
+
+    def side_effect(cmd, *, input=None, capture_output=True, text=True, timeout=30):
+        i = idx[0]
+        idx[0] += 1
+        returncode, stdout, stderr = responses[i]
+        call_log.append({"cmd": cmd, "input": input})
+        import subprocess
+
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=returncode, stdout=stdout, stderr=stderr
+        )
+
+    return side_effect, call_log
+
+
+def test_push_files_successful_sequence():
+    """Successful push with 2 files produces correct API call sequence."""
+    responses = [
+        (0, "abc123\n", ""),  # get HEAD ref
+        (0, "tree456\n", ""),  # get tree SHA
+        (0, "blob_a\n", ""),  # create blob for file_a
+        (0, "blob_b\n", ""),  # create blob for file_b
+        (0, "newtree\n", ""),  # create tree
+        (0, "newcommit\n", ""),  # create commit
+        (0, "newcommit\n", ""),  # update ref
+    ]
+    effect, call_log = _mock_run_factory(responses)
+    files = {"dir/a.txt": "content a", "dir/b.txt": "content b"}
+    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+        sha = push_files_to_repo("owner/repo", files, "test commit")
+    assert sha == "newcommit"
+    assert len(call_log) == 7
+    # Verify call sequence: HEAD, tree, blob, blob, tree, commit, ref
+    assert "/repos/owner/repo/git/ref/heads/main" in " ".join(call_log[0]["cmd"])
+    assert "/repos/owner/repo/git/commits/abc123" in " ".join(call_log[1]["cmd"])
+    assert "--method" in call_log[2]["cmd"] and "blobs" in " ".join(call_log[2]["cmd"])
+    assert "--method" in call_log[3]["cmd"] and "blobs" in " ".join(call_log[3]["cmd"])
+    assert "--method" in call_log[4]["cmd"] and "trees" in " ".join(call_log[4]["cmd"])
+    assert "--method" in call_log[5]["cmd"] and "commits" in " ".join(call_log[5]["cmd"])
+    assert "--method" in call_log[6]["cmd"] and "refs" in " ".join(call_log[6]["cmd"])
+
+
+def test_push_files_blob_error_raises():
+    """Error on blob creation raises RuntimeError."""
+    responses = [
+        (0, "abc123\n", ""),  # get HEAD ref
+        (0, "tree456\n", ""),  # get tree SHA
+        (1, "", "Not Found"),  # blob creation fails
+    ]
+    effect, _ = _mock_run_factory(responses)
+    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+        with pytest.raises(RuntimeError, match="create blob"):
+            push_files_to_repo("owner/repo", {"f.txt": "x"}, "msg")
+
+
+def test_push_files_tree_error_raises():
+    """Error on tree creation raises RuntimeError."""
+    responses = [
+        (0, "abc123\n", ""),  # get HEAD ref
+        (0, "tree456\n", ""),  # get tree SHA
+        (0, "blob_a\n", ""),  # blob OK
+        (1, "", "Server Error"),  # tree creation fails
+    ]
+    effect, _ = _mock_run_factory(responses)
+    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+        with pytest.raises(RuntimeError, match="create tree"):
+            push_files_to_repo("owner/repo", {"f.txt": "x"}, "msg")
+
+
+def test_push_files_empty_dict_raises():
+    """Empty files dict raises ValueError."""
+    with pytest.raises(ValueError, match="empty"):
+        push_files_to_repo("owner/repo", {}, "msg")
+
+
+def test_push_files_tree_payload_has_correct_paths_and_shas():
+    """The tree creation payload includes correct paths and blob SHAs."""
+    responses = [
+        (0, "head_sha\n", ""),
+        (0, "base_tree\n", ""),
+        (0, "sha_for_a\n", ""),
+        (0, "sha_for_b\n", ""),
+        (0, "new_tree\n", ""),
+        (0, "new_commit\n", ""),
+        (0, "new_commit\n", ""),
+    ]
+    effect, call_log = _mock_run_factory(responses)
+    files = {"site/index.html": "<html/>", "site/style.css": "body{}"}
+    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+        push_files_to_repo("owner/repo", files, "deploy")
+    # call_log[4] is the tree creation call
+    tree_input = json.loads(call_log[4]["input"])
+    assert tree_input["base_tree"] == "base_tree"
+    tree_entries = tree_input["tree"]
+    paths = {e["path"] for e in tree_entries}
+    shas = {e["sha"] for e in tree_entries}
+    assert paths == {"site/index.html", "site/style.css"}
+    assert shas == {"sha_for_a", "sha_for_b"}
+    for entry in tree_entries:
+        assert entry["mode"] == "100644"
+        assert entry["type"] == "blob"
