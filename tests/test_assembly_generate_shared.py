@@ -342,3 +342,86 @@ def test_overlay_unknown_slug_ignored(tmp_path):
     assert "Delta Post" in blog_html
     # Ghost from the unmatched overlay should not appear
     assert "Ghost" not in blog_html
+
+
+# -- Blog URLs are correct (regression for slug-as-hostname bug) -------------
+
+
+def test_blog_urls_not_broken_without_docs_base(tmp_path):
+    """Without --docs-base, blog links are root-relative, not protocol-only broken URLs.
+
+    Regression test: previously, docs_base was derived from manifest base_url by
+    stripping the last path segment. For URLs like 'https://selfdoc.smmh.dev'
+    (no path segment), rsplit('/') produced 'https:' as docs_base, resulting in
+    href="https:/rlsbl/posts/..." which browsers normalize to
+    href="https://rlsbl/posts/..." (slug treated as hostname).
+    """
+    site_dir = str(tmp_path / "site")
+    manifests_dir = str(tmp_path / "manifests")
+    os.makedirs(site_dir)
+    os.makedirs(manifests_dir)
+
+    # Manifest with a per-project base_url (no path segment, just hostname)
+    manifest = {
+        "schema_version": 1,
+        "name": "rlsbl",
+        "slug": "rlsbl",
+        "version": "1.0.0",
+        "description": "Release tool",
+        "language": "python",
+        "base_url": "https://rlsbl.smmh.dev",
+        "pages": [{"path": "index.md", "title": "Home"}],
+        "posts": [{"title": "First Post", "slug": "first", "date": "2024-01-01"}],
+        "last_gen": "2024-01-01T00:00:00+00:00",
+    }
+    fpath = os.path.join(manifests_dir, "rlsbl.json")
+    with open(fpath, "w", encoding="utf-8") as f:
+        json.dump(manifest, f)
+
+    _cmd_assembly_generate_shared(site_dir=site_dir, manifests_dir=manifests_dir)
+
+    with open(os.path.join(site_dir, "blog", "index.html"), "r",
+              encoding="utf-8") as f:
+        blog_html = f.read()
+
+    # The URL must be root-relative (no docs_base provided)
+    assert 'href="/rlsbl/posts/first/"' in blog_html
+    # Must NOT have broken protocol-only URL
+    assert "https:/rlsbl" not in blog_html
+    assert "://rlsbl" not in blog_html
+
+
+def test_blog_urls_correct_with_docs_base(tmp_path):
+    """With --docs-base, blog links use the provided base URL."""
+    site_dir = str(tmp_path / "site")
+    manifests_dir = str(tmp_path / "manifests")
+    os.makedirs(site_dir)
+    os.makedirs(manifests_dir)
+
+    manifest = {
+        "schema_version": 1,
+        "name": "rlsbl",
+        "slug": "rlsbl",
+        "version": "1.0.0",
+        "description": "Release tool",
+        "language": "python",
+        "base_url": "https://rlsbl.smmh.dev",
+        "pages": [{"path": "index.md", "title": "Home"}],
+        "posts": [{"title": "First Post", "slug": "first", "date": "2024-01-01"}],
+        "last_gen": "2024-01-01T00:00:00+00:00",
+    }
+    fpath = os.path.join(manifests_dir, "rlsbl.json")
+    with open(fpath, "w", encoding="utf-8") as f:
+        json.dump(manifest, f)
+
+    _cmd_assembly_generate_shared(
+        site_dir=site_dir,
+        manifests_dir=manifests_dir,
+        docs_base="https://docs.smmh.dev",
+    )
+
+    with open(os.path.join(site_dir, "blog", "index.html"), "r",
+              encoding="utf-8") as f:
+        blog_html = f.read()
+
+    assert 'href="https://docs.smmh.dev/rlsbl/posts/first/"' in blog_html

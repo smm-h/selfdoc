@@ -1329,7 +1329,8 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
 @assembly_group.command("generate-shared", help="Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
-def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
+@strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
+def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfdoc.shared import (
         generate_blog_index,
@@ -1376,14 +1377,8 @@ def _cmd_assembly_generate_shared(site_dir="", manifests_dir=""):
 
     manifests = base_manifests
 
-    # Derive docs_base from first manifest's base_url, or empty string
-    docs_base = ""
-    if manifests:
-        first_base = manifests[0].get("base_url", "")
-        if first_base:
-            # Strip trailing slug segment to get the common base
-            # e.g. "https://docs.example.com/proj" -> "https://docs.example.com"
-            docs_base = first_base.rsplit("/", 1)[0] if "/" in first_base else first_base
+    # Strip trailing slash from docs_base for consistent URL construction
+    docs_base = docs_base.rstrip("/")
 
     # Generate fragments and wrap
     homepage_fragment = generate_homepage(manifests, docs_base)

@@ -148,6 +148,36 @@ def test_blog_index_shows_project_name():
     assert 'class="project-name"' in result
 
 
+def test_blog_index_root_relative_urls():
+    """When docs_base is empty, URLs are root-relative (slug is a path, not hostname)."""
+    manifests = [
+        _make_manifest("MyProj", "my-proj", "1.0.0", posts=[
+            {"title": "Hello", "slug": "hello-world", "date": "2024-01-01"},
+        ]),
+    ]
+    result = generate_blog_index(manifests, "")
+    # Must be root-relative: /my-proj/posts/hello-world/
+    assert 'href="/my-proj/posts/hello-world/"' in result
+    # Must NOT treat slug as hostname (e.g. href="https://my-proj/posts/...")
+    assert "://my-proj" not in result
+
+
+def test_blog_index_no_protocol_only_docs_base():
+    """Regression: docs_base must not be just a protocol like 'https:' from bad derivation."""
+    manifests = [
+        _make_manifest("rlsbl", "rlsbl", "1.0.0", posts=[
+            {"title": "Post", "slug": "first", "date": "2024-01-01"},
+        ]),
+    ]
+    # A proper docs_base produces proper URLs
+    result = generate_blog_index(manifests, "https://docs.smmh.dev")
+    assert 'href="https://docs.smmh.dev/rlsbl/posts/first/"' in result
+    # A broken docs_base like "https:" would produce "https:/rlsbl/posts/first/"
+    # which browsers normalize to "https://rlsbl/posts/first/" (slug as hostname)
+    broken_result = generate_blog_index(manifests, "https:")
+    assert 'href="https:/rlsbl/' in broken_result  # this is what the bug produced
+
+
 # -- generate_nav_json --------------------------------------------------------
 
 
