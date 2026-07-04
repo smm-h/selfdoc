@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import json
+import subprocess
 
 
 def generate_workflow_yaml() -> str:
@@ -279,3 +281,107 @@ def generate_redirects_file(slug: str, docs_base: str) -> str:
     """
     docs_base = docs_base.rstrip("/")
     return f"/* {docs_base}/{slug}/:splat 301\n"
+
+
+def _gh_api(args: list[str], input_data: str | None = None, step: str = "") -> str:
+    """Run a gh api command and return stdout. Raise RuntimeError on failure."""
+    cmd = ["gh", "api", *args]
+    try:
+        result = subprocess.run(
+            cmd,
+            input=input_data,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"{step}: gh api timed out after 30s")
+    if result.returncode != 0:
+        raise RuntimeError(f"{step}: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def push_files_to_repo(
+    repo: str,
+    files: dict[str, str],
+    message: str,
+    branch: str = "main",
+) -> str:
+    """Push multiple files to a remote repo in a single atomic commit via the Git Data API.
+
+    Uses the GitHub REST API (via gh cli) to create blobs, a tree, a commit,
+    and update the branch ref -- all without cloning.
+
+    Args:
+        repo: GitHub repo identifier (e.g. "smm-h/selfdoc-cache").
+        files: Mapping of file paths to content strings.
+        message: Commit message.
+        branch: Target branch (default "main").
+
+    Returns:
+        The SHA of the new commit.
+
+    Raises:
+        ValueError: If files dict is empty.
+        RuntimeError: If any API call fails.
+    """
+    if not files:
+        raise ValueError("files dict is empty -- nothing to push")
+
+    # 1. Get current HEAD SHA
+    head_sha = _gh_api(
+        [f"/repos/{repo}/git/ref/heads/{branch}", "--jq", ".object.sha"],
+        step="get HEAD ref",
+    )
+
+    # 2. Get the current tree SHA
+    tree_sha = _gh_api(
+        [f"/repos/{repo}/git/commits/{head_sha}", "--jq", ".tree.sha"],
+        step="get tree SHA",
+    )
+
+    # 3. Create a blob for each file
+    blob_shas: dict[str, str] = {}
+    for path, content in files.items():
+        encoded = base64.b64encode(content.encode()).decode()
+        payload = json.dumps({"content": encoded, "encoding": "base64"})
+        blob_sha = _gh_api(
+            ["--method", "POST", f"/repos/{repo}/git/blobs", "--jq", ".sha", "--input", "-"],
+            input_data=payload,
+            step=f"create blob for {path}",
+        )
+        blob_shas[path] = blob_sha
+
+    # 4. Create a new tree
+    tree_entries = [
+        {"path": path, "mode": "100644", "type": "blob", "sha": sha}
+        for path, sha in blob_shas.items()
+    ]
+    tree_payload = json.dumps({"base_tree": tree_sha, "tree": tree_entries})
+    new_tree_sha = _gh_api(
+        ["--method", "POST", f"/repos/{repo}/git/trees", "--jq", ".sha", "--input", "-"],
+        input_data=tree_payload,
+        step="create tree",
+    )
+
+    # 5. Create a commit
+    commit_payload = json.dumps({
+        "message": message,
+        "tree": new_tree_sha,
+        "parents": [head_sha],
+    })
+    new_commit_sha = _gh_api(
+        ["--method", "POST", f"/repos/{repo}/git/commits", "--jq", ".sha", "--input", "-"],
+        input_data=commit_payload,
+        step="create commit",
+    )
+
+    # 6. Update the ref
+    ref_payload = json.dumps({"sha": new_commit_sha})
+    _gh_api(
+        ["--method", "PATCH", f"/repos/{repo}/git/refs/heads/{branch}", "--jq", ".object.sha", "--input", "-"],
+        input_data=ref_payload,
+        step="update ref",
+    )
+
+    return new_commit_sha
