@@ -123,7 +123,7 @@ jobs:
                 if [ -d "source/$SLUG/docs/_build/posts/" ]; then
                   cp -r "source/$SLUG/docs/_build/posts/." "site/$SLUG/posts/"
                 fi
-                find "site/$SLUG/posts/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+                find "site/$SLUG/posts/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' -o -name '_worker.js' \\) -delete
                 if [ -f "source/$SLUG/.selfdoc/post-manifest.json" ]; then
                   cp "source/$SLUG/.selfdoc/post-manifest.json" "manifests/$SLUG-posts.json"
                 fi
@@ -132,7 +132,7 @@ jobs:
                 rm -rf "site/$SLUG/"
                 mkdir -p "site/$SLUG/"
                 cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
-                find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+                find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' -o -name '_worker.js' \\) -delete
                 if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
                   cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
                 fi

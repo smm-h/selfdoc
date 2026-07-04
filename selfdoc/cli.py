@@ -1458,10 +1458,22 @@ def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", p
     atomic_write(headers_path, headers_content)
     written.append(headers_path)
 
-    redirects_content = "https://blog.smmh.dev/* /blog/:splat 301\n"
-    redirects_path = os.path.join(site_dir, "_redirects")
-    atomic_write(redirects_path, redirects_content)
-    written.append(redirects_path)
+    worker_js_content = """\
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.hostname === "blog.smmh.dev") {
+      const target = new URL("/blog" + url.pathname, "https://smmh.dev");
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+    return env.ASSETS.fetch(request);
+  }
+}
+"""
+    worker_js_path = os.path.join(site_dir, "_worker.js")
+    atomic_write(worker_js_path, worker_js_content)
+    written.append(worker_js_path)
 
     print(f"Generated {len(written)} shared file(s):")
     for path in written:

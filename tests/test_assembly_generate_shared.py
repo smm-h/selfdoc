@@ -33,7 +33,7 @@ def _write_manifest(manifests_dir, name, slug, version, description="",
 
 
 def test_generate_shared_creates_all_files(tmp_path):
-    """With 2 manifests, all 6 output files are created."""
+    """With 2 manifests, all 7 output files are created."""
     site_dir = str(tmp_path / "site")
     manifests_dir = str(tmp_path / "manifests")
     os.makedirs(site_dir)
@@ -51,6 +51,7 @@ def test_generate_shared_creates_all_files(tmp_path):
     assert os.path.isfile(os.path.join(site_dir, "feed.xml"))
     assert os.path.isfile(os.path.join(site_dir, "sitemap.xml"))
     assert os.path.isfile(os.path.join(site_dir, "_headers"))
+    assert os.path.isfile(os.path.join(site_dir, "_worker.js"))
 
 
 # -- index.html is a complete HTML page, not a fragment -----------------------
