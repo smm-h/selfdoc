@@ -107,6 +107,9 @@
       "wesktop": "https://docs.smmh.dev/wesktop"
     }
   },
+  "posts": {
+    "repo": "smm-h/posts"
+  },
   "assembly": {
     "repo": "smm-h/selfdoc-cache"
   }
