@@ -170,51 +170,46 @@ jobs:
             else
               # Fallback for selfdoc <= 0.24.0: generate shared, then fix URLs and portfolio
               python3 -c "
-            import json, os, glob
-            from selfdoc.shared import generate_blog_index, generate_homepage, generate_nav_json, generate_unified_feed, generate_sitemap, wrap_shared_page
-            from selfdoc.utils import atomic_write
-
-            manifests = []
-            overlays = []
-            for f in sorted(glob.glob('manifests/*.json')):
-                data = json.load(open(f))
-                if f.endswith('-posts.json'):
-                    overlays.append(data)
-                else:
-                    manifests.append(data)
-            by_slug = {m['slug']: m for m in manifests}
-            for o in overlays:
-                s = o.get('slug', '')
-                if s in by_slug:
-                    by_slug[s]['posts'] = o.get('posts', [])
-
-            docs_base = ''
-            hp = generate_homepage(manifests, docs_base)
-            bl = generate_blog_index(manifests, docs_base)
-            nj = generate_nav_json(manifests)
-            fe = generate_unified_feed(manifests, docs_base)
-            sm = generate_sitemap(manifests, docs_base)
-
-            hp_html = wrap_shared_page('Projects', hp)
-            bl_html = wrap_shared_page('Blog', bl)
-            hdr = '/*\\n  X-Frame-Options: DENY\\n  X-Content-Type-Options: nosniff\\n  Referrer-Policy: strict-origin-when-cross-origin\\n'
-
-            if os.path.isfile('portfolio/index.html'):
-                with open('portfolio/index.html') as pf:
-                    atomic_write('site/index.html', pf.read())
-                os.makedirs('site/projects', exist_ok=True)
-                atomic_write('site/projects/index.html', hp_html)
-            else:
-                atomic_write('site/index.html', hp_html)
-
-            os.makedirs('site/blog', exist_ok=True)
-            atomic_write('site/blog/index.html', bl_html)
-            atomic_write('site/nav.json', nj)
-            atomic_write('site/feed.xml', fe)
-            atomic_write('site/sitemap.xml', sm)
-            atomic_write('site/_headers', hdr)
-            print('Generated shared files (fallback mode)')
-            "
+          import json, os, glob
+          from selfdoc.shared import generate_blog_index, generate_homepage, generate_nav_json, generate_unified_feed, generate_sitemap, wrap_shared_page
+          from selfdoc.utils import atomic_write
+          manifests = []
+          overlays = []
+          for f in sorted(glob.glob('manifests/*.json')):
+              data = json.load(open(f))
+              if f.endswith('-posts.json'):
+                  overlays.append(data)
+              else:
+                  manifests.append(data)
+          by_slug = {m['slug']: m for m in manifests}
+          for o in overlays:
+              s = o.get('slug', '')
+              if s in by_slug:
+                  by_slug[s]['posts'] = o.get('posts', [])
+          docs_base = ''
+          hp = generate_homepage(manifests, docs_base)
+          bl = generate_blog_index(manifests, docs_base)
+          nj = generate_nav_json(manifests)
+          fe = generate_unified_feed(manifests, docs_base)
+          sm = generate_sitemap(manifests, docs_base)
+          hp_html = wrap_shared_page('Projects', hp)
+          bl_html = wrap_shared_page('Blog', bl)
+          hdr = '/*\\n  X-Frame-Options: DENY\\n  X-Content-Type-Options: nosniff\\n  Referrer-Policy: strict-origin-when-cross-origin\\n'
+          if os.path.isfile('portfolio/index.html'):
+              with open('portfolio/index.html') as pf:
+                  atomic_write('site/index.html', pf.read())
+              os.makedirs('site/projects', exist_ok=True)
+              atomic_write('site/projects/index.html', hp_html)
+          else:
+              atomic_write('site/index.html', hp_html)
+          os.makedirs('site/blog', exist_ok=True)
+          atomic_write('site/blog/index.html', bl_html)
+          atomic_write('site/nav.json', nj)
+          atomic_write('site/feed.xml', fe)
+          atomic_write('site/sitemap.xml', sm)
+          atomic_write('site/_headers', hdr)
+          print('Generated shared files (fallback mode)')
+          "
             fi
 
             # Build search index
