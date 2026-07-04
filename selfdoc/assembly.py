@@ -197,7 +197,7 @@ jobs:
 
             hp_html = wrap_shared_page('Projects', hp)
             bl_html = wrap_shared_page('Blog', bl)
-            hdr = '/*\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n'
+            hdr = '/*\\n  X-Frame-Options: DENY\\n  X-Content-Type-Options: nosniff\\n  Referrer-Policy: strict-origin-when-cross-origin\\n'
 
             if os.path.isfile('portfolio/index.html'):
                 with open('portfolio/index.html') as pf:
