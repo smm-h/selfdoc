@@ -417,3 +417,119 @@ def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
     _cmd_post_publish()
 
     assert push_calls[0] == "org/topo-assembly"
+
+
+# -- Posts repo archiving -----------------------------------------------------
+
+
+def test_posts_repo_push_when_configured(tmp_path, monkeypatch, capsys):
+    """When posts.repo is configured, push_files_to_repo is called for both
+    the assembly repo AND the posts repo."""
+    _setup_project(tmp_path, {
+        "posts": {"repo": "owner/posts-archive"},
+    })
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    push_calls = []
+
+    def mock_push(repo, files, message, branch="main"):
+        push_calls.append({"repo": repo, "files": files, "message": message})
+        return "sha"
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        "selfdoc.directives.resolve_directives",
+        lambda content, resolver: f"resolved:{content}",
+    )
+    monkeypatch.setattr(
+        "selfdoc.resolver.make_resolver",
+        lambda config, base_dir: "fake_resolver",
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    # Two push calls: one for assembly, one for posts repo
+    assert len(push_calls) == 2
+    repos_pushed = [c["repo"] for c in push_calls]
+    assert "owner/docs-assembly" in repos_pushed
+    assert "owner/posts-archive" in repos_pushed
+
+
+def test_no_posts_repo_only_assembly_push(tmp_path, monkeypatch, capsys):
+    """When posts.repo is NOT configured, only the assembly repo push happens."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    push_calls = []
+
+    def mock_push(repo, files, message, branch="main"):
+        push_calls.append({"repo": repo, "files": files, "message": message})
+        return "sha"
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    # Only one push call: for the assembly repo
+    assert len(push_calls) == 1
+    assert push_calls[0]["repo"] == "owner/docs-assembly"
+
+
+def test_posts_repo_pushes_resolved_markdown(tmp_path, monkeypatch, capsys):
+    """The resolved markdown (not raw, not HTML) is pushed to the posts repo."""
+    _setup_project(tmp_path, {
+        "posts": {"repo": "owner/posts-archive"},
+    })
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    push_calls = []
+
+    def mock_push(repo, files, message, branch="main"):
+        push_calls.append({"repo": repo, "files": files, "message": message})
+        return "sha"
+
+    def mock_resolve(content, resolver):
+        return f"RESOLVED[{content}]"
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        "selfdoc.directives.resolve_directives", mock_resolve,
+    )
+    monkeypatch.setattr(
+        "selfdoc.resolver.make_resolver",
+        lambda config, base_dir: "fake_resolver",
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    # Find the posts repo push
+    posts_push = [c for c in push_calls if c["repo"] == "owner/posts-archive"]
+    assert len(posts_push) == 1
+
+    # The pushed content should be the resolved markdown, not raw or HTML
+    files = posts_push[0]["files"]
+    for path, content in files.items():
+        assert content.startswith("RESOLVED["), (
+            f"Expected resolved markdown, got: {content[:50]}"
+        )
+        # Verify it's not HTML
+        assert "<html" not in content
+        assert "</html>" not in content
