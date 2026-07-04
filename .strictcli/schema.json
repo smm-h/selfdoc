@@ -282,7 +282,7 @@
         },
         "publish": {
           "name": "publish",
-          "help": "Publish non-draft blog posts to the documentation assembly without performing a software release. Validates that posts are committed and pushed, detects the source repository and version, then dispatches a GitHub Actions workflow to the assembly repository with scope set to posts only."
+          "help": "Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements."
         }
       }
     },
@@ -335,6 +335,16 @@
               "name": "manifests-dir",
               "type": "str",
               "help": "Path to the directory containing per-project manifest JSON files for the assembly"
+            },
+            {
+              "name": "docs-base",
+              "type": "str",
+              "help": "Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs."
+            },
+            {
+              "name": "portfolio-file",
+              "type": "str",
+              "help": "Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html."
             }
           ]
         }
