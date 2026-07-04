@@ -358,6 +358,20 @@ def _cmd_post_publish():
         print(f"Error: Failed to dispatch shared rebuild: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
+    # Archive resolved markdown to the posts repo if configured
+    posts_repo = (config.get("posts") or {}).get("repo")
+    if posts_repo:
+        from selfdoc.directives import resolve_directives
+        from selfdoc.resolver import make_resolver
+
+        resolver = make_resolver(config, ".")
+        post_files = {}
+        for post in non_draft_posts:
+            resolved_content = resolve_directives(post["content"], resolver)
+            post_files[f"{slug}/{post['path']}"] = resolved_content
+        push_files_to_repo(posts_repo, post_files, f"posts: {slug}")
+        print(f"Archived {len(non_draft_posts)} post(s) to {posts_repo}")
+
     print(f"Published {len(non_draft_posts)} post(s) to assembly. Shared elements will regenerate.")
     return 0
 
