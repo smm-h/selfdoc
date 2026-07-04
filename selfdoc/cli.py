@@ -553,7 +553,7 @@ def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target="")
         ignore_codes.update(config.get("lint_ignore", []))
 
     # Run lint checks after build completes
-    check_result = check_docs(".")
+    check_result = check_docs(".", version_filter=version or None)
     lints = filter_lints(check_result.lints, ignore_codes)
     warn_count = 0
     error_count = 0
