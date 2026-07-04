@@ -1,0 +1,1 @@
+{"commits":["f9d24ded09c7b68f1a4d34ac648c39b05a303c66"],"user_facing":true,"description":"**Assembly workflow cleanup.** Removed the 42-line inline Python fallback for selfdoc <= 0.24.0, simplifying the assembly CI workflow.","type":"fix"}
