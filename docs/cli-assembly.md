@@ -48,3 +48,5 @@ Generate 6 shared cross-project elements for the assembled documentation site. R
 | --- | --- | --- | --- | --- | --- |
 | `--site-dir` |  | str |  |  | Path to the combined site output directory where shared HTML files are written |
 | `--manifests-dir` |  | str |  |  | Path to the directory containing per-project manifest JSON files for the assembly |
+| `--docs-base` |  | str |  |  | Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs. |
+| `--portfolio-file` |  | str |  |  | Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html. |

@@ -48,4 +48,4 @@ Generate a blog post markdown file from structured release metadata. Takes versi
 
 ## post publish
 
-Publish non-draft blog posts to the documentation assembly without performing a software release. Validates that posts are committed and pushed, detects the source repository and version, then dispatches a GitHub Actions workflow to the assembly repository with scope set to posts only.
+Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.

@@ -80,7 +80,7 @@
     "description": "597e4a547ca9b61b89dd3548380992cd96548e42da7558f5557321cf6ab07814"
   },
   "en/cli-assembly.md": {
-    "content": "aff9e39c8b540a489e98ea4bcef694df570cd4e0e6bf03d6e83e82798e9e6dbd",
+    "content": "173c5588e5caa73cbaecf4c9d6a850cc0e7bbe16ee472709ac8fc83d86b4790f",
     "description": "0d3a1d65f72e41388a30a1fa89af073c816ed0601b9b9cb430e786a6f8d1328e"
   },
   "en/cli-build.md": {
@@ -112,7 +112,7 @@
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb"
   },
   "en/cli-post.md": {
-    "content": "0f518099c53298ae3e9b79ff826ab89f8bbcd4b28aa67ed8f2499896578571bd",
+    "content": "2a90efcd877e9ca2958e70c7e4d4b403e768c6a2c771c341fafc581eb8b00f42",
     "description": "326a3d95e4849ecc34aeec3f6432ac1355f9aaf7b6b01f906ab69d9ffbb12720"
   },
   "en/cli-serve.md": {
@@ -205,7 +205,7 @@
     "source_docstring": "13e8c576286ae3ce7649331f168566669a7397454b03036cc21b6b399fec391f"
   },
   "en/selfdoc-assembly.md": {
-    "content": "3b0b2d035fc73104a24d34a77436a6fc40226638f72817ff8cb07ca235e33f5d",
+    "content": "e68440979e33193eabd22102c24ada9e741e7380e15afa5b18ba3146e9ea3f5b",
     "description": "3b2e703b3cd3a9aa043aa8a3ed9bfc06a778805025738b4a32aa2ed2ffe8d348",
     "source_docstring": "3b2e703b3cd3a9aa043aa8a3ed9bfc06a778805025738b4a32aa2ed2ffe8d348"
   },
@@ -220,7 +220,7 @@
     "source_docstring": "baeb64a8b787d1f4aff0ff7dd0ef56fe9034dd1b23d43e39eeb2f403dddf104d"
   },
   "en/selfdoc-cli.md": {
-    "content": "9e6bca91fb97e08aca6767ead653a30deefc1e81baa78382e3371ea065dbfc0e",
+    "content": "af15e2adc4937ad9115e8c6284684021baeb5a1d061054fa08857e16968fbae8",
     "description": "9ca6c2052a0141a05bff8a70677e0f23a2e259bc02cbcee1c86f3cca41c491b0",
     "source_docstring": "ee2400812c86e36d0188ddc98abf76fe402479955e087db0b33b5016e1f500ad"
   },
