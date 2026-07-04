@@ -179,3 +179,37 @@ def test_target_posts_multiple_posts(tmp_path):
     )
     assert hello_html in written
     assert second_html in written
+
+
+def test_target_posts_generates_post_manifest(tmp_path):
+    """target=posts writes .selfdoc/post-manifest.json with correct structure."""
+    project = _setup_project_with_posts(
+        tmp_path, posts=[_POST_HELLO, _POST_SECOND],
+    )
+
+    build(str(project), target="posts")
+
+    manifest_path = os.path.join(project, ".selfdoc", "post-manifest.json")
+    assert os.path.isfile(manifest_path), "post-manifest.json should exist"
+
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+
+    assert manifest["schema_version"] == 1
+    assert isinstance(manifest["pages"], list)
+    assert manifest["pages"] == []
+
+    posts = manifest["posts"]
+    assert isinstance(posts, list)
+    assert len(posts) == 2
+
+    # Each post entry has the required fields
+    for post in posts:
+        assert "path" in post
+        assert "title" in post
+        assert "date" in post
+        assert "slug" in post
+        assert "tags" in post
+
+    slugs = {p["slug"] for p in posts}
+    assert slugs == {"hello-world", "second-post"}
