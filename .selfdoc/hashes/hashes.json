@@ -8,7 +8,7 @@
     "description": "597e4a547ca9b61b89dd3548380992cd96548e42da7558f5557321cf6ab07814"
   },
   "cli-assembly.md": {
-    "content": "aff9e39c8b540a489e98ea4bcef694df570cd4e0e6bf03d6e83e82798e9e6dbd",
+    "content": "173c5588e5caa73cbaecf4c9d6a850cc0e7bbe16ee472709ac8fc83d86b4790f",
     "description": "0d3a1d65f72e41388a30a1fa89af073c816ed0601b9b9cb430e786a6f8d1328e"
   },
   "cli-build.md": {
@@ -32,7 +32,7 @@
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac"
   },
   "cli-index.md": {
-    "content": "00fb973a83c05d616c160f14ee8a39eba7ce13552281cb4ac8ab9f78a1b6f92f",
+    "content": "0076a54085d62da6c0d9b3ee8ded7de87587338d5477e87dbb63679d6832a43d",
     "description": "ce584c83335140b2ae900664f37fe8c62f98c29dc72847b32ccea87287cd1458"
   },
   "cli-init.md": {
@@ -40,7 +40,7 @@
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb"
   },
   "cli-post.md": {
-    "content": "0f518099c53298ae3e9b79ff826ab89f8bbcd4b28aa67ed8f2499896578571bd",
+    "content": "2a90efcd877e9ca2958e70c7e4d4b403e768c6a2c771c341fafc581eb8b00f42",
     "description": "326a3d95e4849ecc34aeec3f6432ac1355f9aaf7b6b01f906ab69d9ffbb12720"
   },
   "cli-serve.md": {
@@ -464,7 +464,7 @@
     "description": "4d7cedf5ab1e4ceca8648d56e5a281ca4afeaeed54215bb505ffe08fa2310e54"
   },
   "selfdoc-check.md": {
-    "content": "38de76450d75696f280331bb7fff6180beaed1ab5e07de5d660b79342f53c809",
+    "content": "c5adb5a855493cdedfb1a40a7a27c5bd44b4b3278a5c79ffb3499ba0b003f9eb",
     "description": "b3e82d342254adcd7892e8610337842feaddfdb4a3b4fd347e99d497b7f110c4"
   },
   "selfdoc-cli.md": {
