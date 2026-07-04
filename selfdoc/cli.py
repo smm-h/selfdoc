@@ -1330,7 +1330,8 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
-def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base=""):
+@strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
+def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfdoc.shared import (
         generate_blog_index,
@@ -1400,10 +1401,26 @@ def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base=""):
     # Write outputs
     written = []
 
-    index_path = os.path.join(site_dir, "index.html")
-    os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
-    atomic_write(index_path, homepage_html)
-    written.append(index_path)
+    # When a portfolio file is provided, it becomes the root index.html
+    # and the project listing moves to /projects/index.html
+    if portfolio_file and os.path.isfile(portfolio_file):
+        with open(portfolio_file, "r", encoding="utf-8") as f:
+            portfolio_html = f.read()
+        index_path = os.path.join(site_dir, "index.html")
+        os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
+        atomic_write(index_path, portfolio_html)
+        written.append(index_path)
+
+        projects_dir = os.path.join(site_dir, "projects")
+        os.makedirs(projects_dir, exist_ok=True)
+        projects_path = os.path.join(projects_dir, "index.html")
+        atomic_write(projects_path, homepage_html)
+        written.append(projects_path)
+    else:
+        index_path = os.path.join(site_dir, "index.html")
+        os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
+        atomic_write(index_path, homepage_html)
+        written.append(index_path)
 
     blog_dir = os.path.join(site_dir, "blog")
     os.makedirs(blog_dir, exist_ok=True)

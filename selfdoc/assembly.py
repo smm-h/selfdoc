@@ -160,7 +160,11 @@ jobs:
             fi
 
             # Regenerate shared elements with all current manifests
-            selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/
+            PORTFOLIO_FLAG=""
+            if [ -f portfolio/index.html ]; then
+              PORTFOLIO_FLAG="--portfolio-file portfolio/index.html"
+            fi
+            selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/ $PORTFOLIO_FLAG
 
             # Build search index
             python3 -m pagefind --site site/
