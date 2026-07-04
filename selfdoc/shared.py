@@ -66,7 +66,10 @@ def generate_homepage(manifests: list[dict], docs_base: str) -> str:
         parts.append('  <article class="project-card">')
         parts.append(f"    <h2><a href=\"{href}\">{name}</a></h2>")
         if version:
-            parts.append(f'    <span class="version-badge">v{version}</span>')
+            if version == "0.0.0":
+                parts.append('    <span class="version-badge">monorepo</span>')
+            else:
+                parts.append(f'    <span class="version-badge">v{version}</span>')
         if description:
             parts.append(f"    <p>{description}</p>")
         parts.append("  </article>")
