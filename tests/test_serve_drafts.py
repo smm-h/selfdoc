@@ -77,12 +77,13 @@ _POST_DRAFT = (
 class TestServeDraftsRebuild:
     """Test that --drafts triggers a rebuild with include_drafts=True."""
 
-    def test_serve_drafts_calls_build(self, tmp_path):
+    def test_serve_drafts_calls_build(self, tmp_path, monkeypatch):
         """When --drafts is True (non-unified config): build() is called
         with include_drafts=True."""
         project = _setup_project_with_posts(tmp_path)
         output_dir = os.path.join(project, "docs", "_build")
         os.makedirs(output_dir, exist_ok=True)
+        monkeypatch.chdir(project)
 
         config = {
             "output": "docs/_build/",
@@ -106,12 +107,13 @@ class TestServeDraftsRebuild:
 
             mock_build.assert_called_once_with(".", include_drafts=True)
 
-    def test_serve_drafts_calls_build_unified(self, tmp_path):
+    def test_serve_drafts_calls_build_unified(self, tmp_path, monkeypatch):
         """When --drafts is True (unified config): build_unified() is called
         with include_drafts=True."""
         project = _setup_project_with_posts(tmp_path)
         output_dir = os.path.join(project, "docs", "_build")
         os.makedirs(output_dir, exist_ok=True)
+        monkeypatch.chdir(project)
 
         config = {
             "output": "docs/_build/",
@@ -139,11 +141,12 @@ class TestServeDraftsRebuild:
                 ".", config=config, include_drafts=True,
             )
 
-    def test_serve_no_drafts_skips_build(self, tmp_path):
+    def test_serve_no_drafts_skips_build(self, tmp_path, monkeypatch):
         """When --drafts is False: build is NOT called at all."""
         project = _setup_project_with_posts(tmp_path)
         output_dir = os.path.join(project, "docs", "_build")
         os.makedirs(output_dir, exist_ok=True)
+        monkeypatch.chdir(project)
 
         config = {
             "output": "docs/_build/",
