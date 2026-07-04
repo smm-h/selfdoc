@@ -48,6 +48,7 @@ jobs:
           echo "SCOPE=${{ github.event.client_payload.scope }}" >> "$GITHUB_ENV"
 
       - name: Clone source project
+        if: github.event.client_payload.scope != 'shared-only'
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repo }}
@@ -56,6 +57,7 @@ jobs:
           fetch-depth: 1
 
       - name: Detect latest version
+        if: github.event.client_payload.scope != 'shared-only'
         run: |
           LATEST=$(python3 -c "
           import json, os
@@ -84,6 +86,7 @@ jobs:
           fi
 
       - name: Build documentation
+        if: github.event.client_payload.scope != 'shared-only'
         run: |
           cd "source/$SLUG"
           if [ "$SCOPE" = "posts" ]; then
@@ -112,32 +115,33 @@ jobs:
 
             # Re-apply project-specific files (not affected by other runs)
             mkdir -p manifests/
-            if [ "$SCOPE" = "posts" ]; then
-              # Posts-only: replace only the posts subtree
-              rm -rf "site/$SLUG/posts/"
-              mkdir -p "site/$SLUG/posts/"
-              if [ -d "source/$SLUG/docs/_build/posts/" ]; then
-                cp -r "source/$SLUG/docs/_build/posts/." "site/$SLUG/posts/"
+            if [ "$SCOPE" != "shared-only" ]; then
+              if [ "$SCOPE" = "posts" ]; then
+                # Posts-only: replace only the posts subtree
+                rm -rf "site/$SLUG/posts/"
+                mkdir -p "site/$SLUG/posts/"
+                if [ -d "source/$SLUG/docs/_build/posts/" ]; then
+                  cp -r "source/$SLUG/docs/_build/posts/." "site/$SLUG/posts/"
+                fi
+                find "site/$SLUG/posts/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+                if [ -f "source/$SLUG/.selfdoc/post-manifest.json" ]; then
+                  cp "source/$SLUG/.selfdoc/post-manifest.json" "manifests/$SLUG-posts.json"
+                fi
+              else
+                # Full build: replace entire project subtree
+                rm -rf "site/$SLUG/"
+                mkdir -p "site/$SLUG/"
+                cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
+                find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
+                if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
+                  cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
+                fi
+                # Reconcile: remove posts overlay since full build replaces it
+                rm -f "manifests/$SLUG-posts.json"
               fi
-              find "site/$SLUG/posts/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
-              if [ -f "source/$SLUG/.selfdoc/post-manifest.json" ]; then
-                cp "source/$SLUG/.selfdoc/post-manifest.json" "manifests/$SLUG-posts.json"
-              fi
-            else
-              # Full build: replace entire project subtree
-              rm -rf "site/$SLUG/"
-              mkdir -p "site/$SLUG/"
-              cp -r "source/$SLUG/docs/_build/." "site/$SLUG/"
-              find "site/$SLUG/" \\( -name '*.gz' -o -name '*.br' -o -name '_headers' -o -name '_redirects' \\) -delete
-              if [ -f "source/$SLUG/.selfdoc/manifest.json" ]; then
-                cp "source/$SLUG/.selfdoc/manifest.json" "manifests/$SLUG.json"
-              fi
-              # Reconcile: remove posts overlay since full build replaces it
-              rm -f "manifests/$SLUG-posts.json"
-            fi
 
-            # Update projects.json on top of latest
-            python3 -c "
+              # Update projects.json on top of latest
+              python3 -c "
           import json
           path = 'projects.json'
           try:
@@ -153,6 +157,7 @@ jobs:
               json.dump(data, f, indent=2, sort_keys=True)
               f.write('\\n')
           "
+            fi
 
             # Regenerate shared elements with all current manifests
             selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/
