@@ -166,7 +166,7 @@ jobs:
               if [ -f portfolio/index.html ]; then
                 PORTFOLIO_FLAG="--portfolio-file portfolio/index.html"
               fi
-              selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/ $PORTFOLIO_FLAG
+              selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' $PORTFOLIO_FLAG
             else
               # Fallback for selfdoc <= 0.24.0: generate shared, then fix URLs and portfolio
               python3 -c "
