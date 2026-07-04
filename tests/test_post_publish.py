@@ -17,6 +17,8 @@ def _setup_project(tmp_path, config_overrides=None):
         "version": "1.0.0",
         "versions": [{"version": "1.0.0", "indexed": True}],
         "locales": [{"code": "en", "label": "English", "default": True}],
+        "output": "docs/_build/",
+        "docs": "docs/",
         "assembly": {"repo": "owner/docs-assembly"},
         "topology": {"slug": "myproject", "assembly": "owner/docs-assembly"},
     }
@@ -25,6 +27,7 @@ def _setup_project(tmp_path, config_overrides=None):
     (tmp_path / "selfdoc.json").write_text(json.dumps(config))
     (tmp_path / "src").mkdir(exist_ok=True)
     (tmp_path / "src" / "__init__.py").write_text("")
+    (tmp_path / "docs").mkdir(exist_ok=True)
     return config
 
 
@@ -47,131 +50,6 @@ def _create_post(tmp_path, filename="2026-06-01-hello.md", draft=False):
     )
     (posts_dir / filename).write_text(content)
     return posts_dir / filename
-
-
-# -- Validation: uncommitted posts -------------------------------------------
-
-
-def test_uncommitted_posts_errors(tmp_path, monkeypatch, capsys):
-    """Uncommitted changes in .selfdoc/posts/ should error."""
-    _setup_project(tmp_path)
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    calls = []
-
-    def fake_run(cmd, **kwargs):
-        calls.append(cmd)
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            # Simulate uncommitted changes
-            result.stdout = " M .selfdoc/posts/2026-06-01-hello.md\n"
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    with pytest.raises(SystemExit):
-        _cmd_post_publish()
-
-    captured = capsys.readouterr()
-    assert "Uncommitted changes" in captured.err
-
-
-# -- Validation: unpushed commits -------------------------------------------
-
-
-def test_unpushed_commits_errors(tmp_path, monkeypatch, capsys):
-    """Local commits not pushed to remote should error."""
-    _setup_project(tmp_path)
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""  # clean
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str and "@{u}" not in cmd_str:
-            result.stdout = "abc1234\n"
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.stdout = "def5678\n"  # different from HEAD
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    with pytest.raises(SystemExit):
-        _cmd_post_publish()
-
-    captured = capsys.readouterr()
-    assert "not pushed to remote" in captured.err
-
-
-# -- Validation: upstream not set errors ------------------------------------
-
-
-def test_upstream_not_set_errors(tmp_path, monkeypatch, capsys):
-    """When upstream tracking is not set, rev-parse @{u} fails."""
-    _setup_project(tmp_path)
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.returncode = 1  # no upstream
-            result.stderr = "fatal: no upstream configured"
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str:
-            result.stdout = "abc1234\n"
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    with pytest.raises(SystemExit):
-        _cmd_post_publish()
-
-    captured = capsys.readouterr()
-    assert "not pushed to remote" in captured.err
-
-
-# -- Validation: committed and pushed passes --------------------------------
-
-
-def test_committed_and_pushed_dispatches(tmp_path, monkeypatch, capsys):
-    """When posts are committed and pushed, dispatch should succeed."""
-    _setup_project(tmp_path)
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    dispatch_calls = []
-    sha = "abc1234def5678"
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""  # clean
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "repo" in cmd_str and "view" in cmd_str:
-            result.stdout = "owner/myproject\n"
-        elif "dispatches" in cmd_str or "api" in cmd_str:
-            dispatch_calls.append(kwargs.get("input", ""))
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_post_publish()
-
-    captured = capsys.readouterr()
-    assert "Published 1 post(s)" in captured.out
-    assert "Assembly will build and deploy" in captured.out
-    assert len(dispatch_calls) == 1
 
 
 # -- No non-draft posts exits 0 with info message --------------------------
@@ -200,148 +78,7 @@ def test_no_posts_at_all_info_message(tmp_path, monkeypatch, capsys):
     assert "No non-draft posts to publish." in captured.out
 
 
-# -- Dispatch payload has scope="posts" and ref is commit SHA ---------------
-
-
-def test_dispatch_payload_has_scope_posts(tmp_path, monkeypatch):
-    """The dispatch payload must include scope='posts' in client_payload."""
-    _setup_project(tmp_path)
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    dispatched_payloads = []
-    sha = "deadbeef12345678"
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "repo" in cmd_str and "view" in cmd_str:
-            result.stdout = "owner/myproject\n"
-        elif "--method" in cmd_str and "POST" in cmd_str:
-            dispatched_payloads.append(kwargs.get("input", ""))
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_post_publish()
-
-    assert len(dispatched_payloads) == 1
-    payload = json.loads(dispatched_payloads[0])
-    cp = payload["client_payload"]
-    assert cp["scope"] == "posts"
-    assert cp["ref"] == sha
-
-
-def test_dispatch_ref_is_commit_sha_not_tag(tmp_path, monkeypatch):
-    """The ref in the dispatch should be the commit SHA, not a tag."""
-    _setup_project(tmp_path)
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    dispatched_payloads = []
-    sha = "1a2b3c4d5e6f7890"
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "repo" in cmd_str and "view" in cmd_str:
-            result.stdout = "owner/myproject\n"
-        elif "--method" in cmd_str and "POST" in cmd_str:
-            dispatched_payloads.append(kwargs.get("input", ""))
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_post_publish()
-
-    payload = json.loads(dispatched_payloads[0])
-    assert payload["client_payload"]["ref"] == sha
-
-
-# -- Assembly repo from config ----------------------------------------------
-
-
-def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
-    """assembly.repo takes precedence for the assembly repo."""
-    _setup_project(tmp_path, {
-        "assembly": {"repo": "org/my-assembly"},
-        "topology": {"slug": "myproject", "assembly": "org/other-assembly"},
-    })
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    dispatched_endpoints = []
-    sha = "aabbccdd"
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "repo" in cmd_str and "view" in cmd_str:
-            result.stdout = "org/myproject\n"
-        elif "--method" in cmd_str and "POST" in cmd_str:
-            dispatched_endpoints.append(cmd)
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_post_publish()
-
-    # The endpoint should use assembly.repo, not topology.assembly
-    endpoint_cmd = " ".join(str(c) for c in dispatched_endpoints[0])
-    assert "org/my-assembly" in endpoint_cmd
-
-
-def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
-    """When assembly.repo is not set, topology.assembly is used."""
-    _setup_project(tmp_path, {
-        "assembly": {},
-        "topology": {"slug": "myproject", "assembly": "org/topo-assembly"},
-    })
-    _create_post(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    dispatched_endpoints = []
-    sha = "aabbccdd"
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "status" in cmd_str and "porcelain" in cmd_str:
-            result.stdout = ""
-        elif "rev-parse" in cmd_str and "@{u}" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "rev-parse" in cmd_str and "HEAD" in cmd_str:
-            result.stdout = sha + "\n"
-        elif "repo" in cmd_str and "view" in cmd_str:
-            result.stdout = "org/myproject\n"
-        elif "--method" in cmd_str and "POST" in cmd_str:
-            dispatched_endpoints.append(cmd)
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_post_publish()
-
-    endpoint_cmd = " ".join(str(c) for c in dispatched_endpoints[0])
-    assert "org/topo-assembly" in endpoint_cmd
+# -- Missing config errors --------------------------------------------------
 
 
 def test_no_assembly_repo_errors(tmp_path, monkeypatch, capsys):
@@ -372,3 +109,311 @@ def test_no_topology_slug_errors(tmp_path, monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "topology.slug" in captured.err
+
+
+# -- Post publish does NOT check git status or push status ------------------
+
+
+def test_no_git_status_check(tmp_path, monkeypatch, capsys):
+    """Post publish does not run git status --porcelain."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    subprocess_calls = []
+
+    def tracking_run(cmd, **kwargs):
+        subprocess_calls.append(cmd)
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    # Mock _build_posts_only and push_files_to_repo to avoid real work
+    monkeypatch.setattr(
+        "selfdoc.build._build_posts_only",
+        lambda *a, **kw: {},
+    )
+    monkeypatch.setattr(
+        "selfdoc.assembly.push_files_to_repo",
+        lambda *a, **kw: "fake_sha",
+    )
+    monkeypatch.setattr(subprocess, "run", tracking_run)
+
+    _cmd_post_publish()
+
+    # Verify no git status or rev-parse calls were made
+    for call in subprocess_calls:
+        cmd_str = " ".join(str(c) for c in call)
+        assert "git status" not in cmd_str, f"Unexpected git status call: {cmd_str}"
+        assert "rev-parse" not in cmd_str, f"Unexpected rev-parse call: {cmd_str}"
+        assert "repo view" not in cmd_str, f"Unexpected gh repo view call: {cmd_str}"
+
+
+def test_no_push_status_check(tmp_path, monkeypatch, capsys):
+    """Post publish does not check if commits are pushed to remote."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    subprocess_calls = []
+
+    def tracking_run(cmd, **kwargs):
+        subprocess_calls.append(cmd)
+        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+        return result
+
+    monkeypatch.setattr(
+        "selfdoc.build._build_posts_only",
+        lambda *a, **kw: {},
+    )
+    monkeypatch.setattr(
+        "selfdoc.assembly.push_files_to_repo",
+        lambda *a, **kw: "fake_sha",
+    )
+    monkeypatch.setattr(subprocess, "run", tracking_run)
+
+    _cmd_post_publish()
+
+    for call in subprocess_calls:
+        cmd_str = " ".join(str(c) for c in call)
+        assert "@{u}" not in cmd_str, f"Unexpected upstream check: {cmd_str}"
+
+
+# -- Post publish calls _build_posts_only locally ----------------------------
+
+
+def test_calls_build_posts_only(tmp_path, monkeypatch, capsys):
+    """Post publish calls _build_posts_only to build posts locally."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    build_calls = []
+
+    def mock_build(dir_path, config, output_dir, docs_dir_name, docs_dir, include_drafts):
+        build_calls.append({
+            "dir_path": dir_path,
+            "output_dir": output_dir,
+            "docs_dir_name": docs_dir_name,
+            "docs_dir": docs_dir,
+            "include_drafts": include_drafts,
+        })
+        return {}
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", mock_build)
+    monkeypatch.setattr(
+        "selfdoc.assembly.push_files_to_repo",
+        lambda *a, **kw: "fake_sha",
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    assert len(build_calls) == 1
+    assert build_calls[0]["dir_path"] == "."
+    assert build_calls[0]["include_drafts"] is False
+
+
+# -- Post publish calls push_files_to_repo with correct file mappings ------
+
+
+def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
+    """Post publish maps built HTML and manifest to assembly paths."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    # Create fake build output
+    output_dir = tmp_path / "docs" / "_build"
+    posts_out = output_dir / "posts" / "hello"
+    posts_out.mkdir(parents=True)
+    (posts_out / "index.html").write_text("<html>post</html>")
+
+    # Create fake post-manifest
+    selfdoc_dir = tmp_path / ".selfdoc"
+    selfdoc_dir.mkdir(exist_ok=True)
+    manifest_data = {"slug": "myproject", "posts": [{"slug": "hello"}]}
+    (selfdoc_dir / "post-manifest.json").write_text(json.dumps(manifest_data))
+
+    def mock_build(dir_path, config, output_dir_arg, docs_dir_name, docs_dir, include_drafts):
+        return {str(posts_out / "index.html"): True}
+
+    push_calls = []
+
+    def mock_push(repo, files, message, branch="main"):
+        push_calls.append({"repo": repo, "files": files, "message": message})
+        return "commit_sha"
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", mock_build)
+    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    assert len(push_calls) == 1
+    push = push_calls[0]
+    assert push["repo"] == "owner/docs-assembly"
+    assert push["message"] == "posts: myproject"
+
+    # Check file mappings
+    assert "site/myproject/posts/hello/index.html" in push["files"]
+    assert push["files"]["site/myproject/posts/hello/index.html"] == "<html>post</html>"
+    assert "manifests/myproject-posts.json" in push["files"]
+    assert json.loads(push["files"]["manifests/myproject-posts.json"]) == manifest_data
+
+
+# -- Post publish dispatches scope="shared-only" after pushing ---------------
+
+
+def test_dispatches_shared_only(tmp_path, monkeypatch, capsys):
+    """Post publish dispatches scope='shared-only' to the assembly repo."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr(
+        "selfdoc.assembly.push_files_to_repo",
+        lambda *a, **kw: "fake_sha",
+    )
+
+    dispatched = []
+
+    def fake_run(cmd, **kwargs):
+        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+        cmd_str = " ".join(str(c) for c in cmd)
+        if "--method" in cmd_str and "POST" in cmd_str:
+            dispatched.append({
+                "cmd": cmd,
+                "input": kwargs.get("input", ""),
+            })
+        return result
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    _cmd_post_publish()
+
+    assert len(dispatched) == 1
+    payload = json.loads(dispatched[0]["input"])
+    assert payload["event_type"] == "project-updated"
+    assert payload["client_payload"]["scope"] == "shared-only"
+
+    # Verify endpoint targets the assembly repo
+    cmd_str = " ".join(str(c) for c in dispatched[0]["cmd"])
+    assert "/repos/owner/docs-assembly/dispatches" in cmd_str
+
+
+def test_dispatch_failure_errors(tmp_path, monkeypatch, capsys):
+    """When the dispatch call fails, print error and exit."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr(
+        "selfdoc.assembly.push_files_to_repo",
+        lambda *a, **kw: "fake_sha",
+    )
+
+    def fake_run(cmd, **kwargs):
+        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+        cmd_str = " ".join(str(c) for c in cmd)
+        if "--method" in cmd_str and "POST" in cmd_str:
+            result.returncode = 1
+            result.stderr = "Dispatch failed"
+        return result
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(SystemExit):
+        _cmd_post_publish()
+
+    captured = capsys.readouterr()
+    assert "Failed to dispatch" in captured.err
+
+
+# -- Success message -------------------------------------------------------
+
+
+def test_success_message(tmp_path, monkeypatch, capsys):
+    """Successful publish prints count and shared regeneration message."""
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr(
+        "selfdoc.assembly.push_files_to_repo",
+        lambda *a, **kw: "fake_sha",
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    captured = capsys.readouterr()
+    assert "Published 1 post(s) to assembly" in captured.out
+    assert "Shared elements will regenerate" in captured.out
+
+
+# -- Assembly repo resolution -----------------------------------------------
+
+
+def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
+    """assembly.repo takes precedence for the assembly repo."""
+    _setup_project(tmp_path, {
+        "assembly": {"repo": "org/my-assembly"},
+        "topology": {"slug": "myproject", "assembly": "org/other-assembly"},
+    })
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    push_calls = []
+
+    def mock_push(repo, files, message, branch="main"):
+        push_calls.append(repo)
+        return "sha"
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    assert push_calls[0] == "org/my-assembly"
+
+
+def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
+    """When assembly.repo is not set, topology.assembly is used."""
+    _setup_project(tmp_path, {
+        "assembly": {},
+        "topology": {"slug": "myproject", "assembly": "org/topo-assembly"},
+    })
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    push_calls = []
+
+    def mock_push(repo, files, message, branch="main"):
+        push_calls.append(repo)
+        return "sha"
+
+    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish()
+
+    assert push_calls[0] == "org/topo-assembly"
