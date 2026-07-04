@@ -9,3 +9,12 @@
 {"commits":["eb0c3cb5ab20f831e98f8582bf66333993f3dea2","eef0d8b913a5ea3a3e1e0c511beaa2099dc913f1","c33e5213a2f3eee79c871ff285f39241bccb626e","7dac4fac5257176b710ed9a25529a50c52b0824a"],"user_facing":true,"description":"**Expanded CLI command help text.** All command help descriptions now meet the 40-60 word target for AI citation quality, and include numeric data points where applicable.","type":"fix"}
 {"commits":["2304cc55b4e08e383c1197b27090e5ae004b069a","a9942f88a58c1ba83478e74810fb81b34db7a7a5","00db0dbbbb57d9474ffec8fbcb0e5906c4ce521f","bc61c2ad92a83d994a6266dd3d7ddd7e8599ac60","9fc3a96c98ad46b122dfafa02dd947d707789b9a"],"user_facing":false}
 {"commits":["1ff3a965e9a5ad305869a43a376dacbe72b11e42"],"user_facing":false}
+{"commits":["3154fb3d7a1da60c3b7e3ba2ea131cbc03aaaea8","fe4222465437a375c70c8be08c117b8abfff392d","1c240b075f436017d2886dc389e797de1f24f609"],"user_facing":true,"description":"**Local post publish.** `selfdoc post publish` now builds posts locally and pushes directly to the assembly repo via Git Data API, eliminating the requirement to push to the project's remote. Posts can be published without software releases.","type":"feature"}
+{"commits":["cf2a23339c61409a79b0f329e91400d667141bc4"],"user_facing":true,"description":"**Portfolio homepage.** `selfdoc assembly generate-shared` gains `--portfolio-file` flag to use a custom HTML file as the site homepage. Project listing moves to /projects/.","type":"feature"}
+{"commits":["ed7633409449e6c721d82e923efeedc2dfef6546"],"user_facing":true,"description":"**Monorepo label.** Projects with version 0.0.0 show 'monorepo' instead of a version badge on the homepage.","type":"feature"}
+{"commits":["d9362c9b97eb85e41dabc19ee66baab091d0ab70"],"user_facing":true,"description":"**Blog index URLs.** Fixed broken blog post URLs where project slugs were treated as hostnames.","type":"fix"}
+{"commits":["e16d7aa317f6e981883c68a5546e82df486bd718","ca04e9df2589ff37b956e79cda6961e0ab1b89af","39cabccc061fa5bd72e9e1587a18742cb4333598","fe0d014d44e0a689c0e82525b56c15d720661138"],"user_facing":false}
+{"commits":["cd04d8fe4afde135a127146025fb47ed1690cf41","999306817810a215d74ca93e1ad42daeb6f3a723","287f724f7d2f8d68e7bf2e1abf20fed55dcaee84"],"user_facing":false}
+{"commits":["1671544d70e099828a3126b72b403b5a9d1e9e9b"],"user_facing":false}
+{"commits":["c075df5c67f18212df6528c26ab3425f484e2f50"],"user_facing":false}
+{"commits":["b03dac8b35be57294f758a002dc88482b1e66ba4","e19a84ab843ff3a75c8e4ba14b03ff5c1aff56d5","d565853d01fd8bc943e1622afb42c0698b5a9da8"],"user_facing":false}
