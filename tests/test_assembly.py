@@ -487,3 +487,60 @@ def test_push_files_tree_payload_has_correct_paths_and_shas():
     for entry in tree_entries:
         assert entry["mode"] == "100644"
         assert entry["type"] == "blob"
+
+
+# -- workflow: shared-only scope -----------------------------------------------
+
+
+def test_workflow_yaml_clone_step_has_shared_only_condition():
+    """Clone source project step has if: condition skipping shared-only scope."""
+    yaml_str = generate_workflow_yaml()
+    # Find the clone step and check it has the if: condition before the uses: line
+    lines = yaml_str.splitlines()
+    for i, line in enumerate(lines):
+        if "Clone source project" in line:
+            # The if: condition should be on the next line (after the step name)
+            remaining = "\n".join(lines[i : i + 3])
+            assert "github.event.client_payload.scope != 'shared-only'" in remaining
+            break
+    else:
+        raise AssertionError("Clone source project step not found")
+
+
+def test_workflow_yaml_build_step_has_shared_only_condition():
+    """Build documentation step has if: condition skipping shared-only scope."""
+    yaml_str = generate_workflow_yaml()
+    lines = yaml_str.splitlines()
+    for i, line in enumerate(lines):
+        if "Build documentation" in line:
+            remaining = "\n".join(lines[i : i + 3])
+            assert "github.event.client_payload.scope != 'shared-only'" in remaining
+            break
+    else:
+        raise AssertionError("Build documentation step not found")
+
+
+def test_workflow_yaml_version_detection_has_shared_only_condition():
+    """Detect latest version step has if: condition skipping shared-only scope."""
+    yaml_str = generate_workflow_yaml()
+    lines = yaml_str.splitlines()
+    for i, line in enumerate(lines):
+        if "Detect latest version" in line:
+            remaining = "\n".join(lines[i : i + 3])
+            assert "github.event.client_payload.scope != 'shared-only'" in remaining
+            break
+    else:
+        raise AssertionError("Detect latest version step not found")
+
+
+def test_workflow_yaml_retry_loop_skips_file_copy_for_shared_only():
+    """The retry loop wraps file copy in a shared-only conditional."""
+    yaml_str = generate_workflow_yaml()
+    # Find the retry loop section (starts with "Commit and push")
+    commit_push_idx = yaml_str.index("Commit and push")
+    retry_section = yaml_str[commit_push_idx:]
+    assert '"$SCOPE" != "shared-only"' in retry_section
+    # Within the retry loop, shared-only guard must come before the posts conditional
+    idx_shared = retry_section.index('"$SCOPE" != "shared-only"')
+    idx_posts = retry_section.index('"$SCOPE" = "posts"')
+    assert idx_shared < idx_posts, "shared-only guard must come before posts conditional"
