@@ -1,0 +1,1 @@
+Title: Optional user accounts for personalization. GitHub OAuth via CF Workers + KV. Anonymous users get localStorage (read tracking, search history). Signed-in users get sync across devices, email digests, 'your unread posts' dashboard. Static site stays static for everyone; personalization is progressive enhancement via /api/* endpoints on a CF Worker.
