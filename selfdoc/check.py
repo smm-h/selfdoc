@@ -173,7 +173,7 @@ def _validate_directives(docs_dict, resolver, valid_names, file_prefix="",
     return directive_results, resolved_directives
 
 
-def check_docs(dir_path=".", config=None, dry_run=False):
+def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
     """Validate all directives in docs templates and report coverage.
 
     Scans docs/ for .md templates, parses directives, attempts to resolve
@@ -183,6 +183,8 @@ def check_docs(dir_path=".", config=None, dry_run=False):
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc.json).
         dry_run: If True, report staleness without writing hashes to disk.
+        version_filter: When set, skip multi-version validation (VER001).
+            Used by ``build --version`` to check only a single version.
 
     Returns:
         CheckResult with per-directive results and optional coverage stats.
@@ -470,8 +472,10 @@ def check_docs(dir_path=".", config=None, dry_run=False):
     # The working-tree check above covers the latest version; here we
     # extract each older version from its git tag and run directive
     # validation and lint on it, prefixing results with the version string.
+    # When version_filter is set, skip this entirely -- the caller is
+    # building a single version and doesn't need cross-version validation.
     versions = config.get("versions") or []
-    if len(versions) > 1:
+    if len(versions) > 1 and version_filter is None:
         latest_version = versions[-1]["version"]
         for ver_entry in versions:
             ver_str = ver_entry["version"]
