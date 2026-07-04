@@ -12,11 +12,11 @@ def test_assembly_group_registered():
 
 
 def test_post_group_help_text():
-    assert app._groups["post"].help == "Manage blog posts and chronological content"
+    assert app._groups["post"].help == "Manage blog posts and chronological content for the documentation site"
 
 
 def test_assembly_group_help_text():
-    assert app._groups["assembly"].help == "Manage the unified documentation assembly"
+    assert app._groups["assembly"].help == "Manage the unified multi-project documentation assembly and deployment"
 
 
 def test_post_group_has_new_command():
