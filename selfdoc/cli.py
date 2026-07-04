@@ -277,12 +277,13 @@ def _cmd_post_generate(
     return 0
 
 
-@post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly without performing a software release. Validates that posts are committed and pushed, detects the source repository and version, then dispatches a GitHub Actions workflow to the assembly repository with scope set to posts only.")
+@post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.")
 def _cmd_post_publish():
     """Publish blog posts to the assembly without a software release."""
     import subprocess
 
-    from selfdoc.assembly import assembly_push
+    from selfdoc.assembly import push_files_to_repo
+    from selfdoc.build import _build_posts_only
     from selfdoc.config import load_config
     from selfdoc.posts import discover_posts
 
@@ -317,65 +318,47 @@ def _cmd_post_publish():
         print("No non-draft posts to publish.")
         return 0
 
-    # Validate posts are committed and staged
+    # Build posts locally
+    output_dir = os.path.join(".", config["output"].rstrip("/"))
+    docs_dir_name = config["docs"].rstrip("/")
+    docs_dir = os.path.join(".", docs_dir_name)
+    written = _build_posts_only(
+        ".", config, output_dir, docs_dir_name, docs_dir, include_drafts=False,
+    )
+
+    # Read built HTML files and map to assembly paths
+    files = {}
+    for abs_path in written:
+        rel_in_output = os.path.relpath(abs_path, output_dir)
+        assembly_path = f"site/{slug}/{rel_in_output}"
+        with open(abs_path, "r", encoding="utf-8") as f:
+            files[assembly_path] = f.read()
+
+    # Read post-manifest and map to assembly path
+    post_manifest_path = os.path.join(".selfdoc", "post-manifest.json")
+    if os.path.isfile(post_manifest_path):
+        with open(post_manifest_path, "r", encoding="utf-8") as f:
+            files[f"manifests/{slug}-posts.json"] = f.read()
+
+    # Push files to assembly repo via Git Data API
+    push_files_to_repo(repo, files, f"posts: {slug}")
+
+    # Dispatch shared-only rebuild to regenerate cross-project elements
+    dispatch_payload = json.dumps({
+        "event_type": "project-updated",
+        "client_payload": {"scope": "shared-only"},
+    })
     result = subprocess.run(
-        ["git", "status", "--porcelain", ".selfdoc/posts/"],
-        check=False, capture_output=True, text=True, timeout=10,
-    )
-    if result.stdout.strip():
-        print("Error: Uncommitted changes in .selfdoc/posts/. Commit before publishing.", file=sys.stderr)
-        sys.exit(1)
-
-    # Validate pushed to remote
-    result_head = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        check=False, capture_output=True, text=True, timeout=10,
-    )
-    result_upstream = subprocess.run(
-        ["git", "rev-parse", "@{u}"],
-        check=False, capture_output=True, text=True, timeout=10,
-    )
-    if result_head.returncode != 0 or result_upstream.returncode != 0:
-        print("Error: Local commits not pushed to remote. Push before publishing.", file=sys.stderr)
-        sys.exit(1)
-    if result_head.stdout.strip() != result_upstream.stdout.strip():
-        print("Error: Local commits not pushed to remote. Push before publishing.", file=sys.stderr)
-        sys.exit(1)
-
-    # Get current commit SHA
-    commit_sha = result_head.stdout.strip()
-
-    # Get source repo
-    result = subprocess.run(
-        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
-        check=False, capture_output=True, text=True, timeout=15,
+        ["gh", "api", "--method", "POST",
+         f"/repos/{repo}/dispatches", "--input", "-"],
+        input=dispatch_payload, check=False, capture_output=True,
+        text=True, timeout=30,
     )
     if result.returncode != 0:
-        print(f"Error: Failed to detect source repository: {result.stderr.strip()}", file=sys.stderr)
-        sys.exit(1)
-    source_repo = result.stdout.strip()
-
-    # Get version
-    version = config.get("version", "")
-    if not version:
-        from selfdoc.utils import detect_project_version
-        version = detect_project_version(".", fallback="0.0.0")
-
-    # Build dispatch with scope="posts"
-    dispatch = assembly_push(repo, source_repo, slug, version, commit_sha)
-    dispatch["payload"]["client_payload"]["scope"] = "posts"
-
-    # Execute the dispatch
-    payload = json.dumps(dispatch["payload"])
-    result = subprocess.run(
-        ["gh", "api", "--method", "POST", dispatch["endpoint"], "--input", "-"],
-        input=payload, check=False, capture_output=True, text=True, timeout=30,
-    )
-    if result.returncode != 0:
-        print(f"Error: Failed to dispatch publish: {result.stderr.strip()}", file=sys.stderr)
+        print(f"Error: Failed to dispatch shared rebuild: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Published {len(non_draft_posts)} post(s). Assembly will build and deploy.")
+    print(f"Published {len(non_draft_posts)} post(s) to assembly. Shared elements will regenerate.")
     return 0
 
 
