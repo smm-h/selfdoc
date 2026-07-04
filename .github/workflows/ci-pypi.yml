@@ -25,5 +25,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - run: uv python install ${{ matrix.python-version }}
       - run: uv sync --locked
+      - run: uv run playwright install chromium
       - run: uv run python -c "import selfdoc"
       - run: uv run pytest
