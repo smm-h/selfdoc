@@ -2,6 +2,14 @@
 
 # Changelog
 
+## 0.26.1
+
+Assembly workflow cleanup and posts.repo configuration.
+
+### Fixes
+
+- **Assembly workflow cleanup.** Removed the 42-line inline Python fallback for selfdoc <= 0.24.0, simplifying the assembly CI workflow.
+
 ## 0.26.0
 
 Posts repo archival, blog redirect via Pages Function, assembly workflow fixes.
