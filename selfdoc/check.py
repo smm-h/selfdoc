@@ -17,6 +17,7 @@ import re
 
 from selfdoc.build import _extract_version_content
 from selfdoc.docs import resolve_all_docs
+from selfdoc.utils import parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
     tokenize, Heading, Paragraph, BlankLine, CodeBlock,
@@ -173,6 +174,41 @@ def _validate_directives(docs_dict, resolver, valid_names, file_prefix="",
     return directive_results, resolved_directives
 
 
+def _resolve_root_templates(config, base_dir="."):
+    """Read root-file templates and return a dict in resolve_all_docs format.
+
+    Each root template listed in ``config["root_files"]`` is read, its
+    frontmatter parsed and stripped, and the raw body is kept for directive
+    validation.  The returned dict maps the template path (e.g.
+    ``"docs/_README.md"``) to the same (frontmatter, resolved, raw, fm_lines)
+    tuple that resolve_all_docs produces -- except ``resolved`` is set to
+    the raw body (no resolution is performed here; _validate_directives
+    does its own resolution).
+
+    Root templates that do not exist on disk are silently skipped (they
+    will be caught by gen's own validation at gen time).
+    """
+    root_files = config.get("root_files", [])
+    if not root_files:
+        return {}
+
+    result = {}
+    for template_path in root_files:
+        full_path = os.path.join(base_dir, template_path)
+        if not os.path.isfile(full_path):
+            continue
+
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        frontmatter, body = parse_frontmatter(content)
+        fm_line_count = len(content.split("\n")) - len(body.split("\n"))
+        # resolved is unused by _validate_directives, pass raw body
+        result[template_path] = (frontmatter, body, body, fm_line_count)
+
+    return result
+
+
 def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
     """Validate all directives in docs templates and report coverage.
 
@@ -220,6 +256,16 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
         all_docs, resolver, valid_names, collect_resolved=True,
     )
     result.directive_results.extend(dir_results)
+
+    # Validate directives in root-file templates (docs/_README.md, etc.).
+    # These are skipped by resolve_all_docs (underscore-prefix exclusion)
+    # but may contain directives that should be checked.
+    root_template_docs = _resolve_root_templates(config, base_dir=dir_path)
+    if root_template_docs:
+        root_results, _root_resolved = _validate_directives(
+            root_template_docs, resolver, valid_names,
+        )
+        result.directive_results.extend(root_results)
 
     # strictcli hard error: if the project uses strictcli and any directive
     # uses code-help, emit a hard error directing users to 'selfdoc gen'.

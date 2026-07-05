@@ -4795,3 +4795,210 @@ def test_coverage_dotted_heading_match(tmp_path):
         f"'Server.Run' should match '### Server.Run' heading. "
         f"Referenced: {result.coverage.referenced_symbols}"
     )
+
+
+# -- Root-file template directive validation --
+
+
+def _make_root_template_project(tmp_path, *, site_docs=None, root_templates=None,
+                                 root_files_config=None):
+    """Helper to create a project with root-file templates.
+
+    Args:
+        tmp_path: pytest tmp_path fixture value.
+        site_docs: Dict of {filename: content} for docs/ (site pages).
+            If None, no site pages are created.
+        root_templates: Dict of {filename: content} for docs/ (underscore-
+            prefixed root templates).
+        root_files_config: List of template paths for the root_files config
+            key.  If None, derived from root_templates keys.
+    """
+    # Source file so directives have something to resolve
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My library."""\n'
+            "\n"
+            "def greet(name):\n"
+            '    """Say hello."""\n'
+            "    return f'Hello, {name}'\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir, exist_ok=True)
+
+    # Site pages (regular docs)
+    if site_docs:
+        for fname, content in site_docs.items():
+            with open(os.path.join(docs_dir, fname), "w", encoding="utf-8") as f:
+                f.write(content)
+
+    # Root templates (underscore-prefixed)
+    if root_templates:
+        for fname, content in root_templates.items():
+            with open(os.path.join(docs_dir, fname), "w", encoding="utf-8") as f:
+                f.write(content)
+
+    # Config
+    template_paths = root_files_config
+    if template_paths is None and root_templates:
+        template_paths = [f"docs/{fname}" for fname in root_templates]
+
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    if template_paths:
+        config["root_files"] = template_paths
+
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    return tmp_path
+
+
+def test_root_template_only_directives_found(tmp_path):
+    """When the only directives are in root templates, check finds them."""
+    project = _make_root_template_project(
+        tmp_path,
+        root_templates={
+            "_README.md": '# My Project\n\n:-: ref path="mylib"\n',
+        },
+    )
+
+    result = check_docs(str(project))
+
+    # Should find the directive from the root template
+    assert len(result.directive_results) >= 1
+    root_results = [
+        dr for dr in result.directive_results
+        if dr.file == "docs/_README.md"
+    ]
+    assert len(root_results) == 1
+    assert root_results[0].status == "OK"
+    assert "ref" in root_results[0].directive
+
+
+def test_root_template_broken_directive_reported(tmp_path):
+    """A broken directive in a root template is reported as FAILED."""
+    project = _make_root_template_project(
+        tmp_path,
+        root_templates={
+            "_README.md": '# My Project\n\n:-: ref path="nonexistent.module"\n',
+        },
+    )
+
+    result = check_docs(str(project))
+
+    root_results = [
+        dr for dr in result.directive_results
+        if dr.file == "docs/_README.md"
+    ]
+    assert len(root_results) == 1
+    assert root_results[0].status == "FAILED"
+    assert root_results[0].error  # non-empty error message
+
+
+def test_root_template_and_site_directives_both_validated(tmp_path):
+    """Both site page and root template directives are validated."""
+    project = _make_root_template_project(
+        tmp_path,
+        site_docs={
+            "api.md": '---\ndescription: "API reference for the mylib module."\n---\n# API\n\n:-: ref path="mylib"\n',
+        },
+        root_templates={
+            "_README.md": '# README\n\n:-: ref path="mylib"\n',
+        },
+    )
+
+    result = check_docs(str(project))
+
+    site_results = [
+        dr for dr in result.directive_results
+        if dr.file == "api.md"
+    ]
+    root_results = [
+        dr for dr in result.directive_results
+        if dr.file == "docs/_README.md"
+    ]
+    assert len(site_results) == 1, f"Expected 1 site directive, got {len(site_results)}"
+    assert len(root_results) == 1, f"Expected 1 root template directive, got {len(root_results)}"
+    assert site_results[0].status == "OK"
+    assert root_results[0].status == "OK"
+
+
+def test_root_template_no_directives_message(tmp_path, capsys):
+    """'No directives found' only prints when both site and root templates have none."""
+    # Project with no directives anywhere
+    project = _make_root_template_project(
+        tmp_path,
+        site_docs={
+            "index.md": '---\ndescription: "Just a page with no directives."\n---\n# Index\n\nNo directives here.\n',
+        },
+        root_templates={
+            "_README.md": "# README\n\nNo directives here either.\n",
+        },
+    )
+
+    result = check_docs(str(project))
+    print_results(result)
+    captured = capsys.readouterr()
+    assert "No directives found" in captured.out
+
+
+def test_root_template_suppresses_no_directives_message(tmp_path, capsys):
+    """When root templates have directives, 'No directives found' does not print."""
+    project = _make_root_template_project(
+        tmp_path,
+        # No site docs (so no site directives)
+        root_templates={
+            "_README.md": '# README\n\n:-: ref path="mylib"\n',
+        },
+    )
+
+    result = check_docs(str(project))
+    print_results(result)
+    captured = capsys.readouterr()
+    assert "No directives found" not in captured.out
+
+
+def test_root_template_missing_file_skipped(tmp_path):
+    """Root template that doesn't exist on disk is silently skipped."""
+    project = _make_root_template_project(
+        tmp_path,
+        root_files_config=["docs/_NONEXISTENT.md"],
+    )
+
+    # Should not raise, just find zero root template directives
+    result = check_docs(str(project))
+    root_results = [
+        dr for dr in result.directive_results
+        if "NONEXISTENT" in dr.file
+    ]
+    assert len(root_results) == 0
+
+
+def test_root_template_with_frontmatter(tmp_path):
+    """Root template with frontmatter: frontmatter is stripped, directives found."""
+    project = _make_root_template_project(
+        tmp_path,
+        root_templates={
+            "_README.md": '---\ntitle: "README"\n---\n# README\n\n:-: ref path="mylib"\n',
+        },
+    )
+
+    result = check_docs(str(project))
+
+    root_results = [
+        dr for dr in result.directive_results
+        if dr.file == "docs/_README.md"
+    ]
+    assert len(root_results) == 1
+    assert root_results[0].status == "OK"
+    # Line number should account for frontmatter offset
+    assert root_results[0].line == 6
