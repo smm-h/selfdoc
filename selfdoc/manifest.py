@@ -4,4 +4,4 @@ Re-export shim: actual implementation in selfdoc_core.manifest.
 """
 
 from selfdoc_core.manifest import *  # noqa: F401,F403
-from selfdoc_core.manifest import _extract_title, _to_kebab  # noqa: F401
+from selfdoc_core.manifest import _extract_title, _to_kebab, manifest_compat  # noqa: F401

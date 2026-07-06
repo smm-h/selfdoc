@@ -161,22 +161,34 @@ def generate_manifest(
     return manifest
 
 
-def load_manifest(path: str) -> Manifest | None:
-    """Read a manifest JSON file and return a Manifest instance.
+def manifest_compat(data: dict, source: str = "") -> Manifest:
+    """Centralized manifest compatibility layer.
 
-    Returns ``None`` if the file does not exist. Raises ``RuntimeError``
-    if ``schema_version`` is greater than 1 (unsupported future format).
+    All manifest read paths (``load_manifest``, ``load_manifest_from_git``,
+    and assembly's raw ``json.load``) go through this function to construct
+    a ``Manifest`` from a parsed JSON dict.
+
+    The function is a tolerant reader: it extracts only the fields it knows
+    about and silently ignores any unknown keys.  This codifies the contract
+    that future manifest fields can be added without breaking older readers.
+
+    Args:
+        data: Parsed manifest JSON dict.
+        source: Human-readable description of where the data came from
+            (used in error messages). Empty string for generic context.
+
+    Returns:
+        A ``Manifest`` instance.
+
+    Raises:
+        RuntimeError: If ``schema_version`` is greater than 1.
     """
-    if not os.path.isfile(path):
-        return None
-
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
     sv = data.get("schema_version", 1)
     if sv > 1:
+        ctx = f" in {source}" if source else ""
         raise RuntimeError(
-            f"Unsupported manifest schema_version {sv} (max supported: 1)"
+            f"Unsupported manifest schema_version {sv}{ctx} "
+            f"(max supported: 1)"
         )
 
     return Manifest(
@@ -191,6 +203,21 @@ def load_manifest(path: str) -> Manifest | None:
         posts=data.get("posts", []),
         last_gen=data.get("last_gen", ""),
     )
+
+
+def load_manifest(path: str) -> Manifest | None:
+    """Read a manifest JSON file and return a Manifest instance.
+
+    Returns ``None`` if the file does not exist. Raises ``RuntimeError``
+    if ``schema_version`` is greater than 1 (unsupported future format).
+    """
+    if not os.path.isfile(path):
+        return None
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    return manifest_compat(data, source=path)
 
 
 def load_manifest_from_git(dir_path: str = ".") -> Manifest | None:
@@ -240,22 +267,4 @@ def load_manifest_from_git(dir_path: str = ".") -> Manifest | None:
 
     data = json.loads(result.stdout)
 
-    sv = data.get("schema_version", 1)
-    if sv > 1:
-        raise RuntimeError(
-            f"Unsupported manifest schema_version {sv} in git HEAD "
-            f"(max supported: 1)"
-        )
-
-    return Manifest(
-        schema_version=sv,
-        name=data.get("name", ""),
-        slug=data.get("slug", ""),
-        version=data.get("version", ""),
-        description=data.get("description", ""),
-        language=data.get("language", ""),
-        base_url=data.get("base_url", ""),
-        pages=data.get("pages", []),
-        posts=data.get("posts", []),
-        last_gen=data.get("last_gen", ""),
-    )
+    return manifest_compat(data, source="git HEAD")
