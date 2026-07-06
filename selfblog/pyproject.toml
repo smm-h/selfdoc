@@ -1,0 +1,20 @@
+# Future monorepo pyproject.toml for the selfblog package.
+# Not active yet -- the root pyproject.toml builds all three packages
+# via hatch. This file documents the target structure for when the
+# repo converts to a monorepo with three rlsbl releasables.
+
+[project]
+name = "selfblog"
+version = "0.26.1"
+description = "Blog system for selfdoc-based documentation sites"
+license = "MIT"
+authors = [{ name = "smm-h" }]
+requires-python = ">=3.12"
+dependencies = ["selfdoc_core", "strictcli"]
+
+[project.scripts]
+selfblog = "selfblog:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

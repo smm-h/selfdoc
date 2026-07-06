@@ -18,6 +18,7 @@ Repository = "https://github.com/smm-h/selfdoc"
 
 [project.scripts]
 selfdoc = "selfdoc:main"
+selfblog = "selfblog:main"
 
 [build-system]
 requires = ["hatchling"]
