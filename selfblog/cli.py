@@ -323,6 +323,18 @@ def _cmd_post_publish():
         print("No non-draft posts to publish.")
         return 0
 
+    # Record revisions for posts whose body content changed
+    from selfdoc_core.revisions import record_revision
+
+    revisions_path = os.path.join(".selfdoc", "revisions.json")
+    revisions_recorded = 0
+    for post in non_draft_posts:
+        body = post.get("content", "")
+        summary = "Initial publish" if not os.path.isfile(revisions_path) else ""
+        changed = record_revision(".", post["slug"], body, summary=summary)
+        if changed:
+            revisions_recorded += 1
+
     # Build posts locally
     output_dir = os.path.join(".", config["output"].rstrip("/"))
     docs_dir_name = config["docs"].rstrip("/")
@@ -344,6 +356,11 @@ def _cmd_post_publish():
     if os.path.isfile(post_manifest_path):
         with open(post_manifest_path, "r", encoding="utf-8") as f:
             files[f"manifests/{slug}-posts.json"] = f.read()
+
+    # Include revisions sidecar if it exists
+    if os.path.isfile(revisions_path):
+        with open(revisions_path, "r", encoding="utf-8") as f:
+            files[f"manifests/{slug}-revisions.json"] = f.read()
 
     # Push files to assembly repo via Git Data API
     push_files_to_repo(repo, files, f"posts: {slug}")
@@ -665,6 +682,7 @@ def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", p
         generate_unified_feed,
         wrap_shared_page,
     )
+    from selfdoc_core.manifest import manifest_compat
     from selfdoc_core.utils import atomic_write
 
     if not site_dir:
@@ -678,15 +696,24 @@ def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", p
     # post overlays.  Post overlays are files matching *-posts.json;
     # they carry updated post lists that replace the base manifest's
     # posts for the same project slug.
+    #
+    # Revisions sidecars (*-revisions.json) are skipped here -- they
+    # are not manifests and are not consumed by generate-shared.
     base_manifests = []
     post_overlays = []
     if os.path.isdir(manifests_dir):
         for fname in sorted(os.listdir(manifests_dir)):
             if not fname.endswith(".json"):
                 continue
+            if fname.endswith("-revisions.json"):
+                continue
             fpath = os.path.join(manifests_dir, fname)
             with open(fpath, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            # Run through manifest_compat to validate and normalize.
+            # Post overlays also have slug/posts structure that
+            # manifest_compat can handle (unknown keys are ignored).
+            manifest_compat(data, source=fpath)
             if fname.endswith("-posts.json"):
                 post_overlays.append(data)
             else:
