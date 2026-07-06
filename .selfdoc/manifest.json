@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.26.0",
+  "version": "0.26.1",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "python",
   "base_url": "https://selfdoc.smmh.dev",
@@ -140,6 +140,11 @@
     {
       "path": "llms-txt.md",
       "title": "llms.txt",
+      "type": "doc"
+    },
+    {
+      "path": "monorepo-conversion.md",
+      "title": "Monorepo Conversion Plan",
       "type": "doc"
     },
     {
@@ -381,5 +386,5 @@
       ]
     }
   ],
-  "last_gen": "2026-07-04T10:24:37.578537+00:00"
+  "last_gen": "2026-07-06T15:29:15.164649+00:00"
 }

@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.kotlin
-description: "Kotlin source extractor for selfdoc -- parses .kt files to extract public declarations, KDoc comments, and data class schemas for documentation pages."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.kotlin."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 16
 ---

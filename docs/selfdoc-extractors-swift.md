@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.swift
-description: "Swift source extractor for selfdoc -- parses .swift files to extract public declarations, doc comments, and struct schemas for documentation pages."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.swift."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 20
 ---

@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.go
-description: "Go source extractor module that uses regex-based parsing to extract exported functions, struct fields, and doc comments from .go files for directives."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.go."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 15
 ---

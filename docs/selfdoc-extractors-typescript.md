@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.typescript
-description: "TypeScript and JavaScript source extractor module that uses regex-based parsing to extract exports, interfaces, type aliases, and JSDoc from .ts/.js files."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.typescript."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 21
 ---

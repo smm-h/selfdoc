@@ -1,7 +1,8 @@
 ---
 title: selfdoc.unified
-description: "Monorepo unified site builder module that orchestrates building a single documentation site from multiple constituent projects with merged navigation."
+description: "Monorepo unified site builder."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 36
 ---

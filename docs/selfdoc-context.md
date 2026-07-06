@@ -1,7 +1,8 @@
 ---
 title: selfdoc.context
-description: "Build context module defining BuildContext, PageContext, and SearchEntry dataclasses that carry configuration and metadata through the rendering pipeline."
+description: "Build, page, and search context dataclasses."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 9
 ---

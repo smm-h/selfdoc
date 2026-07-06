@@ -1,7 +1,8 @@
 ---
 title: selfdoc.directives
-description: "Directive parser module that recognizes the 6 marker types, extracts attributes and body content, and produces parsed directive objects for the resolver."
+description: "Directive parser for selfdoc's structured marker syntax."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 11
 ---

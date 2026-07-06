@@ -1,7 +1,8 @@
 ---
 title: selfdoc.gendata
-description: "Data generation module that runs scripts in bubblewrap sandboxes with read-only mounts, validates JSON/CSV output, and writes results to .selfdoc/data/."
+description: "Generate data files by running sandboxed scripts via bubblewrap (bwrap)."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 24
 ---

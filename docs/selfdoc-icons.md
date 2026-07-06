@@ -1,7 +1,8 @@
 ---
 title: selfdoc.icons
-description: "Language icon module that provides colorful and monochrome SVG icons for code block headers, with mappings for Python, Go, TypeScript, and other languages."
+description: "Language icons for code blocks."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 26
 ---

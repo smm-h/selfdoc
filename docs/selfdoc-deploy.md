@@ -1,7 +1,8 @@
 ---
 title: selfdoc.deploy
-description: "Deploy provider module with Cloudflare Pages and GitHub Pages backends for publishing built documentation sites from the selfdoc output directory."
+description: "Deploy providers for selfdoc documentation sites."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 10
 ---

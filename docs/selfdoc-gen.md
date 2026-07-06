@@ -1,6 +1,6 @@
 ---
 title: selfdoc.gen
-description: "Auto-generation module that creates documentation pages and root files from project structure, source code scanning, and directive-powered templates."
+description: "Auto-generate documentation pages and root files from project structure, scanning source code modules and using directive-powered templates."
 generated: true
 nav_group: "API Reference"
 nav_order: 23

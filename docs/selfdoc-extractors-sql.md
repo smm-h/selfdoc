@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.sql
-description: "SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract table definitions, views, types, functions, and COMMENT ON documentation."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.sql."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 18
 ---

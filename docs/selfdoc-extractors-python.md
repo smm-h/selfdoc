@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.python
-description: "Python source extractor module that uses AST parsing to extract functions, classes, dataclass fields, docstrings, and type annotations from .py files."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.python."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 17
 ---

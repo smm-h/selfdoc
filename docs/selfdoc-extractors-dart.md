@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.dart
-description: "Dart source extractor for selfdoc -- parses .dart files to extract public declarations, doc comments, part files, and exports for documentation pages."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.dart."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 14
 ---

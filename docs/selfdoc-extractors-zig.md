@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors.zig
-description: "Zig source extractor for selfdoc -- parses .zig files to extract public declarations, doc comments, and test blocks for documentation pages."
+description: "Re-export shim: actual implementation in selfdoc_core.extractors.zig."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 22
 ---

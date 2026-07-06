@@ -1,7 +1,8 @@
 ---
 title: selfdoc.urls
-description: "URL builder interface for decoupling URL generation from hardcoded base_url usage, supporting locale-prefixed and versioned paths."
+description: "Re-export shim for URL builder (actual implementation in selfdoc_core.urls). Decouples URL generation from hardcoded base_url usage with locale-prefixed and versioned paths."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 37
 ---

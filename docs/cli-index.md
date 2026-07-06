@@ -1,7 +1,8 @@
 ---
 title: selfdoc CLI Reference
-description: "Complete CLI reference for selfdoc — all available commands, subcommands, flags, arguments, and usage examples with detailed descriptions."
+description: "CLI reference for selfdoc -- all commands (init, build, serve, deploy, check, gen, gen-data) and command groups (post, assembly) with flags and usage."
 generated: true
+seeded: true
 nav_group: "CLI Reference"
 nav_order: 0
 order: 91
@@ -12,7 +13,7 @@ order: 91
 
 Code-aware static site generator with directive-based content extraction
 
-Version: 0.26.0
+Version: 0.26.1
 
 ## Commands
 

@@ -1,7 +1,8 @@
 ---
 title: selfdoc.manifest
-description: "Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info."
+description: "Re-export shim for manifest generation (actual implementation in selfdoc_core.manifest). Produces JSON metadata for pages, posts, slugs, and version info."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 29
 ---

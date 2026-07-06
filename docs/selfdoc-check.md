@@ -1,6 +1,6 @@
 ---
 title: selfdoc.check
-description: "Check command module that validates directive resolution, measures API documentation coverage, runs 15 SEO lint rules, and detects stale descriptions."
+description: "Check command that validates directive resolution, measures API documentation coverage, runs SEO lint rules, and detects stale or drifted descriptions."
 generated: true
 nav_group: "API Reference"
 nav_order: 6

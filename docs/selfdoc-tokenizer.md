@@ -1,7 +1,8 @@
 ---
 title: selfdoc.tokenizer
-description: "Standalone zero-dependency Markdown block tokenizer that splits source into 11 typed token dataclasses with line numbers for rendering and lint analysis."
+description: "Standalone Markdown block tokenizer."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 35
 ---

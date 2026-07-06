@@ -1,7 +1,8 @@
 ---
 title: selfdoc.js.loader
-description: "JavaScript file loader module that reads and assembles JS source files from the selfdoc.js package using importlib.resources for theme and search scripts."
+description: "Loader for selfdoc JS files using importlib.resources."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 28
 ---

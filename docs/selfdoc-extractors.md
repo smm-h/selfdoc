@@ -1,7 +1,8 @@
 ---
 title: selfdoc.extractors
-description: "Language extractor registry module that manages Python, Go, and TypeScript extractors and provides auto-detection of project language from marker files."
+description: "Language extractor registry and auto-detection."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 13
 ---
