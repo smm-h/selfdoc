@@ -1,6 +1,6 @@
 ---
 title: selfdoc.shared
-description: "Re-export shim for shared element generation (actual implementation in selfblog.shared). Produces homepage, blog index, nav JSON, RSS feed, and sitemap for multi-project assembly."
+description: "Generate shared elements for multi-project documentation assembly including homepage, blog index, nav JSON, RSS feed, and sitemap."
 generated: true
 seeded: true
 nav_group: "API Reference"

@@ -219,7 +219,7 @@
   },
   "en/selfdoc-assembly.md": {
     "content": "2351db15b6a8c9c99d6047d80d61408fc7a973f00390938a92370544dd2b15ec",
-    "description": "2f600f532fb40e38ce71814091215c3678f5d788783ab1ba3e79bc001f248261",
+    "description": "3b2e703b3cd3a9aa043aa8a3ed9bfc06a778805025738b4a32aa2ed2ffe8d348",
     "source_docstring": "641077dae38bedfa164f7fc493853b947e958d71e5f184584435828065d2deda"
   },
   "en/selfdoc-build.md": {
@@ -343,12 +343,12 @@
   },
   "en/selfdoc-manifest.md": {
     "content": "1ef7477ae4b89c0454067f056cfb448bc037eb4029e40ee2233f8e670d4305f4",
-    "description": "e5fd9878c1444e2154e09b7f050a32a005d70bf64a06139cde4ccc0af585d123",
+    "description": "29f107c8c6178d7dad4c5837824b982b53b159324bc4da7cf23d15dcf5b60cfe",
     "source_docstring": "feb1a48fee0d22eb4435c21579478cbecdf26d38f9a349eebc8b417e362fa838"
   },
   "en/selfdoc-posts.md": {
     "content": "82634750ad5e24ff0bf12232ecd7ea0bff3171cdb5282973a743f80393736a7a",
-    "description": "f2e65c08e1b05b2d892481e2d4ffb41e47175f8f7d3b21b53003a0f6b8595aff",
+    "description": "a2ba44a754cbda25ec0396543f1d33e022c7edc70fc0e85940d0d7638dc9fee7",
     "source_docstring": "43d20f66371a03649ede2c2fc24a1b1765d5517b89bb85de69fb6bf3a8f6ddc0"
   },
   "en/selfdoc-resolver.md": {
@@ -358,7 +358,7 @@
   },
   "en/selfdoc-shared.md": {
     "content": "970561877c0faa150717a647c44abaf503e7b1127fbda3467500d39efe2fd683",
-    "description": "4d226f060ccfd82253ac8e047a40a89c14ab2a6bbe66444f8e619db9be15d532",
+    "description": "250787c60777fdaada90509f26adb4562b1244287b7b7cdf577ab9c46f82fa62",
     "source_docstring": "6275041f28e1a54bfeb7a1c1a93184342173915a8a2e860adf3c5020f8b44c60"
   },
   "en/selfdoc-strictcli_support.md": {
@@ -383,7 +383,7 @@
   },
   "en/selfdoc-urls.md": {
     "content": "807e9832f99cf0b8e487c21e980309c00c93fdffa6a45164b48742903447460b",
-    "description": "416faae2ef543aeeff8fc10467d5aca0c57a2e947b91c047d48075f705814bf7",
+    "description": "922079b6f5c5f6d0136f3023b9a14770461427e867f145bffad0abe89fc88532",
     "source_docstring": "59906cd6a78d2a1db98ded829b1097ab551d53c8164502ba41ffc5d7e6f975f2"
   },
   "en/selfdoc-utils.md": {

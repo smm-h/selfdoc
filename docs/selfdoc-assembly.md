@@ -1,6 +1,6 @@
 ---
 title: selfdoc.assembly
-description: "Re-export shim for assembly infrastructure (actual implementation in selfblog.assembly). Unified multi-project documentation deployment via GitHub Actions dispatch and Cloudflare Pages."
+description: "Assembly infrastructure for unified multi-project documentation deployment via GitHub Actions dispatch and Cloudflare Pages."
 generated: true
 seeded: true
 nav_group: "API Reference"
