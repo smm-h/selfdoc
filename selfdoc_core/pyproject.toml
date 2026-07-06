@@ -1,0 +1,17 @@
+# Future monorepo pyproject.toml for the selfdoc_core package.
+# Not active yet -- the root pyproject.toml builds all three packages
+# via hatch. This file documents the target structure for when the
+# repo converts to a monorepo with three rlsbl releasables.
+
+[project]
+name = "selfdoc_core"
+version = "0.26.1"
+description = "Shared engine for code-aware documentation generation"
+license = "MIT"
+authors = [{ name = "smm-h" }]
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
