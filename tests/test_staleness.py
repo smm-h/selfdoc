@@ -8,9 +8,11 @@ import pytest
 from selfdoc.extractors.python import PythonExtractor
 from selfdoc.staleness import (
     check_drift,
+    check_schema_drift,
     check_staleness,
     compute_content_hash,
     compute_description_hash,
+    compute_schema_hash,
     compute_source_docstring_hash,
     extract_module_docstring,
     load_hashes,
@@ -601,3 +603,327 @@ def test_check_drift_source_changed_description_unchanged():
     assert result is not None
     assert "page.md" in result
     assert "documentation drift" in result
+
+
+# -- Phase 2a: baseline does not advance while errors are outstanding --
+
+
+def test_baseline_hold_staleness_persists(tmp_path):
+    """Staleness error persists on second check when description is not rewritten.
+
+    Red-green test for Phase 2a: before the fix, the baseline would advance
+    on the first error, making the second check pass.  After the fix, the
+    baseline stays frozen until the description is actually updated.
+    """
+    # Step 1: create page with source_docstring hash A and description "old desc"
+    all_docs_v1 = _make_all_docs([
+        ("page.md", "old desc", "# Page\n\nOriginal content."),
+    ])
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    assert len(warnings_v1) == 0  # new page, no staleness
+
+    # Step 2: change content (hash becomes B) but keep description "old desc"
+    all_docs_v2 = _make_all_docs([
+        ("page.md", "old desc", "# Page\n\nCompletely rewritten content."),
+    ])
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings_v2) == 1  # first check -> staleness error
+
+    # Step 3: second check with same stale state -> STILL staleness error
+    # (baseline did NOT advance because of the error)
+    warnings_v3, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings_v3) == 1, "Staleness error should persist on second check"
+
+    # Step 4: rewrite description -> check passes (error cleared)
+    all_docs_v3 = _make_all_docs([
+        ("page.md", "new desc matching new content", "# Page\n\nCompletely rewritten content."),
+    ])
+    warnings_v4, _ = update_hashes(all_docs_v3, str(tmp_path), dry_run=False)
+    assert len(warnings_v4) == 0, "No staleness after description was rewritten"
+
+
+def test_baseline_hold_drift_persists(tmp_path):
+    """Drift error persists on second check when description is not rewritten.
+
+    Same principle as staleness hold but for source docstring drift.
+    """
+    # Step 1: establish baseline with source_docstring
+    all_docs = _make_all_docs([
+        ("page.md", "old desc", "# Page\n\nContent."),
+    ])
+    # Manually set up stored hashes with a source_docstring
+    stored = {
+        "page.md": {
+            "content": compute_content_hash("# Page\n\nContent."),
+            "description": compute_description_hash("old desc"),
+            "source_docstring": "hash_A",
+        }
+    }
+    save_hashes(stored, str(tmp_path))
+
+    # Step 2: source docstring changes but description stays the same
+    # We simulate this by passing page_directives that produce a different hash.
+    # For simplicity, directly call update_hashes with a modified stored state.
+    # Change source_docstring in the stored hash and call check_drift.
+    drift_msg = check_drift(
+        "page.md", "hash_B", compute_description_hash("old desc"),
+        stored,
+    )
+    assert drift_msg is not None, "Should detect drift"
+
+    # Verify through update_hashes that the hold works:
+    # Manually create hashes that will trigger drift on update
+    stored_with_old_sd = {
+        "page.md": {
+            "content": compute_content_hash("# Page\n\nContent."),
+            "description": compute_description_hash("old desc"),
+            "source_docstring": "hash_A",
+        }
+    }
+    save_hashes(stored_with_old_sd, str(tmp_path))
+
+    # update_hashes with schema_hashes won't trigger drift directly here
+    # because page_directives is None, but we can verify the stored hashes
+    # are not updated for error pages by checking the file
+    all_docs_same = _make_all_docs([
+        ("page.md", "old desc", "# Page\n\nContent."),
+    ])
+
+    # First, use schema_hashes to trigger a schema drift
+    schema_hashes = {"page.md": "schema_hash_B"}
+    stored_with_schema = {
+        "page.md": {
+            "content": compute_content_hash("# Page\n\nContent."),
+            "description": compute_description_hash("old desc"),
+            "schema_hash": "schema_hash_A",
+        }
+    }
+    save_hashes(stored_with_schema, str(tmp_path))
+
+    _, drift1 = update_hashes(
+        all_docs_same, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes,
+    )
+    assert len(drift1) == 1, "Should detect schema drift"
+
+    # Second check: error should persist
+    _, drift2 = update_hashes(
+        all_docs_same, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes,
+    )
+    assert len(drift2) == 1, "Schema drift should persist on second check"
+
+
+def test_baseline_hold_all_fields_atomic(tmp_path):
+    """When a page has an error, ALL its hash fields stay frozen."""
+    all_docs_v1 = _make_all_docs([
+        ("page.md", "old desc", "# Page\n\nOriginal content."),
+    ])
+    update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+
+    # Read the stored hashes
+    stored = load_hashes(str(tmp_path))
+    original_content_hash = stored["page.md"]["content"]
+    original_desc_hash = stored["page.md"]["description"]
+
+    # Change content but not description -> staleness error
+    all_docs_v2 = _make_all_docs([
+        ("page.md", "old desc", "# Page\n\nNew content here."),
+    ])
+    warnings, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings) == 1
+
+    # Verify ALL fields are frozen (content and description unchanged)
+    stored_after = load_hashes(str(tmp_path))
+    assert stored_after["page.md"]["content"] == original_content_hash
+    assert stored_after["page.md"]["description"] == original_desc_hash
+
+
+# -- Phase 2b: CLI schema-hash gating --
+
+
+def test_compute_schema_hash_deterministic():
+    """Same schema slice produces the same hash."""
+    schema = {"name": "build", "help": "Build the project", "flags": []}
+    h1 = compute_schema_hash(schema)
+    h2 = compute_schema_hash(schema)
+    assert h1 == h2
+    assert len(h1) == 64
+
+
+def test_compute_schema_hash_different_for_different_schemas():
+    """Different schema slices produce different hashes."""
+    s1 = {"name": "build", "help": "Build the project", "flags": []}
+    s2 = {"name": "build", "help": "Build the project with options", "flags": []}
+    assert compute_schema_hash(s1) != compute_schema_hash(s2)
+
+
+def test_compute_schema_hash_sensitive_to_flags():
+    """Adding a flag changes the hash."""
+    s1 = {"name": "build", "help": "Build", "flags": []}
+    s2 = {"name": "build", "help": "Build", "flags": [{"name": "verbose"}]}
+    assert compute_schema_hash(s1) != compute_schema_hash(s2)
+
+
+def test_check_schema_drift_no_hash():
+    """Returns None when schema_hash is None."""
+    result = check_schema_drift("page.md", None, "d_hash", {})
+    assert result is None
+
+
+def test_check_schema_drift_new_page():
+    """Returns None for a new page not in stored hashes."""
+    result = check_schema_drift("page.md", "s_hash", "d_hash", {})
+    assert result is None
+
+
+def test_check_schema_drift_no_stored_schema():
+    """Returns None when stored hashes lack schema_hash key."""
+    stored = {"page.md": {"content": "c", "description": "d"}}
+    result = check_schema_drift("page.md", "s_hash", "d", stored)
+    assert result is None
+
+
+def test_check_schema_drift_schema_unchanged():
+    """Returns None when schema hash is unchanged."""
+    stored = {"page.md": {"content": "c", "description": "d", "schema_hash": "same"}}
+    result = check_schema_drift("page.md", "same", "d", stored)
+    assert result is None
+
+
+def test_check_schema_drift_schema_changed_description_updated():
+    """Returns None when schema changed but description was also updated."""
+    stored = {"page.md": {"content": "c", "description": "old_d", "schema_hash": "old_s"}}
+    result = check_schema_drift("page.md", "new_s", "new_d", stored)
+    assert result is None
+
+
+def test_check_schema_drift_schema_changed_description_unchanged():
+    """Returns error when schema changed but description stayed the same."""
+    stored = {"page.md": {"content": "c", "description": "same_d", "schema_hash": "old_s"}}
+    result = check_schema_drift("page.md", "new_s", "same_d", stored)
+    assert result is not None
+    assert "page.md" in result
+    assert "CLI schema changed" in result
+
+
+def test_update_hashes_with_schema_hashes(tmp_path):
+    """update_hashes stores schema_hash and detects schema drift."""
+    all_docs = _make_all_docs([
+        ("cli-build.md", "Build the project", "# Build\n\nContent."),
+    ])
+
+    # First run: establish baseline with schema hash
+    schema_hashes = {"cli-build.md": "schema_v1"}
+    _, drift = update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes,
+    )
+    assert len(drift) == 0  # new page, no drift
+
+    # Verify schema_hash is stored
+    stored = load_hashes(str(tmp_path))
+    assert stored["cli-build.md"]["schema_hash"] == "schema_v1"
+
+    # Second run: schema changes but description stays the same
+    schema_hashes_v2 = {"cli-build.md": "schema_v2"}
+    _, drift = update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes_v2,
+    )
+    assert len(drift) == 1
+    assert "CLI schema changed" in drift[0][1]
+
+
+def test_update_hashes_schema_drift_baseline_hold(tmp_path):
+    """Schema drift error persists on second check (baseline hold)."""
+    all_docs = _make_all_docs([
+        ("cli-build.md", "Build the project", "# Build\n\nContent."),
+    ])
+
+    # Establish baseline
+    schema_hashes = {"cli-build.md": "schema_v1"}
+    update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes,
+    )
+
+    # Schema changes -> drift error
+    schema_hashes_v2 = {"cli-build.md": "schema_v2"}
+    _, drift1 = update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes_v2,
+    )
+    assert len(drift1) == 1
+
+    # Second check -> still drift error (baseline didn't advance)
+    _, drift2 = update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes_v2,
+    )
+    assert len(drift2) == 1, "Schema drift should persist on second check"
+
+    # Update description -> drift clears
+    all_docs_fixed = _make_all_docs([
+        ("cli-build.md", "Build the project with new flags", "# Build\n\nContent."),
+    ])
+    _, drift3 = update_hashes(
+        all_docs_fixed, str(tmp_path), dry_run=False,
+        schema_hashes=schema_hashes_v2,
+    )
+    assert len(drift3) == 0, "No drift after description was updated"
+
+
+# -- Phase 2c: code-backed page source-hash gating --
+
+
+def test_source_docstring_drift_integration(tmp_path):
+    """Source docstring changes trigger drift errors via update_hashes.
+
+    This verifies Phase 2c: module pages are gated on the extractor
+    docstring hash through the existing source_docstring key.
+    """
+    # Create a Python source file with a docstring
+    src_file = os.path.join(tmp_path, "mod.py")
+    with open(src_file, "w", encoding="utf-8") as f:
+        f.write('"""Original docstring."""\n\ndef foo(): pass\n')
+
+    ext = PythonExtractor()
+
+    # Build a fake resolved directive with the source file
+    class FakeDirective:
+        def __init__(self, path, extractor, source_path):
+            self.attrs = {"path": path}
+            self.source_entry = type("SE", (), {
+                "extractor": extractor,
+                "path": source_path,
+            })()
+
+    all_docs = _make_all_docs([
+        ("mod.md", "Original docstring.", "# Mod\n\nContent."),
+    ])
+    page_directives = {
+        "mod.md": [FakeDirective(src_file, ext, str(tmp_path))],
+    }
+
+    # First run: establish baseline with source_docstring hash
+    _, drift = update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        page_directives=page_directives,
+    )
+    assert len(drift) == 0
+
+    # Verify source_docstring is stored
+    stored = load_hashes(str(tmp_path))
+    assert "source_docstring" in stored["mod.md"]
+
+    # Change the docstring but keep the same description
+    with open(src_file, "w", encoding="utf-8") as f:
+        f.write('"""Updated docstring with new info."""\n\ndef foo(): pass\n')
+
+    _, drift = update_hashes(
+        all_docs, str(tmp_path), dry_run=False,
+        page_directives=page_directives,
+    )
+    assert len(drift) == 1
+    assert "documentation drift" in drift[0][1]

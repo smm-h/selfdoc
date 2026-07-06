@@ -50,6 +50,47 @@ def compute_source_docstring_hash(
     return hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
 
+def compute_schema_hash(schema_slice: dict) -> str:
+    """Compute SHA-256 hash of a CLI command's schema slice.
+
+    The schema slice is serialized to JSON with sorted keys for
+    deterministic hashing.  This captures help text, flags, args,
+    and any other schema fields for a single command or group.
+    """
+    serialized = json.dumps(schema_slice, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def check_schema_drift(
+    page_path: str,
+    schema_hash: str | None,
+    description_hash: str,
+    stored_hashes: dict,
+) -> str | None:
+    """Check whether a CLI page's description drifted from its schema slice.
+
+    Returns an error message if the command's schema slice changed but the
+    page description did not.  Returns None otherwise (no schema hash,
+    new page, first run with schema tracking, unchanged schema, or
+    description was updated alongside schema changes).
+    """
+    if schema_hash is None:
+        return None
+    if page_path not in stored_hashes:
+        return None
+    stored = stored_hashes[page_path]
+    if "schema_hash" not in stored:
+        return None
+    if schema_hash == stored["schema_hash"]:
+        return None
+    if description_hash != stored.get("description"):
+        return None
+    return (
+        f"{page_path}: CLI schema changed but page description "
+        f"was not updated (possible stale CLI description)"
+    )
+
+
 def load_hashes(base_dir: str) -> dict[str, dict]:
     """Load hash store from .selfdoc/hashes/hashes.json.
 
@@ -146,7 +187,8 @@ def check_drift(
     )
 
 
-def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None):
+def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
+                  schema_hashes=None):
     """Compute content and description hashes for all docs and save.
 
     Args:
@@ -158,6 +200,8 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None):
             and .source_entry with .language and .extractor attributes).
             When provided, source docstring hashes are computed and drift
             detection is performed.
+        schema_hashes: Optional dict mapping rel_path to a schema hash
+            string (for CLI pages gated on their command's schema slice).
 
     Returns:
         Tuple of (stale_warnings, drift_warnings), each a list of
@@ -214,8 +258,28 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None):
                 if drift_msg is not None:
                     drift_warnings.append((rel_path, drift_msg))
 
-    # Merge current hashes into stored (preserve pages not in this run)
-    stored_hashes.update(current_hashes)
+    # CLI schema-hash gating: for CLI pages, check whether the command's
+    # schema slice changed without a corresponding description update.
+    if schema_hashes is not None:
+        for rel_path, s_hash in schema_hashes.items():
+            if rel_path in current_hashes:
+                current_hashes[rel_path]["schema_hash"] = s_hash
+            d_hash = current_hashes.get(rel_path, {}).get("description")
+            if d_hash is not None:
+                schema_msg = check_schema_drift(
+                    rel_path, s_hash, d_hash, stored_hashes,
+                )
+                if schema_msg is not None:
+                    drift_warnings.append((rel_path, schema_msg))
+
+    # Pages with staleness or drift errors keep their old baseline so the
+    # error persists until the description is actually rewritten.  All hash
+    # fields for a held page stay frozen (per-page-all-fields atomic hold).
+    error_pages = {rp for rp, _ in stale_warnings} | {rp for rp, _ in drift_warnings}
+    for rel_path, hashes in current_hashes.items():
+        if rel_path in error_pages:
+            continue  # do not advance baseline for pages with errors
+        stored_hashes[rel_path] = hashes
     if not dry_run:
         save_hashes(stored_hashes, base_dir)
 
