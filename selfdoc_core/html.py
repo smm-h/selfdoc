@@ -2578,6 +2578,48 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
     )
 
 
+def _generate_post_read_indicator_script(last_updated):
+    """Generate a small inline script for post read-tracking via localStorage.
+
+    Shows an "Updated" badge if the post was modified since the reader's
+    last visit, and displays a "Last updated" line.  On page load, records
+    the current timestamp so future visits know this version was seen.
+
+    Args:
+        last_updated: ISO date or datetime string for the post's last
+            modification (e.g. "2026-07-05" or "2026-07-05T14:30:00Z").
+            Empty string if unknown.
+    """
+    if not last_updated:
+        return ""
+
+    # Escape for safe embedding in a JS string literal
+    escaped = _escape_html(last_updated)
+
+    return (
+        f'<div class="post-meta" id="post-read-indicator">'
+        f'<span class="post-last-updated">Last updated: {escaped}</span>'
+        f'</div>\n'
+        f'<script>\n'
+        f'(function(){{\n'
+        f'  var slug=location.pathname.split("/").filter(Boolean).pop()||"";\n'
+        f'  var key="post-read-"+slug;\n'
+        f'  var updated=new Date("{escaped}").getTime();\n'
+        f'  if(updated){{var lastRead=parseInt(localStorage.getItem(key)||"0",10);\n'
+        f'    if(updated>lastRead){{\n'
+        f'      var badge=document.createElement("span");\n'
+        f'      badge.className="post-updated-badge";\n'
+        f'      badge.textContent="Updated";\n'
+        f'      var el=document.getElementById("post-read-indicator");\n'
+        f'      if(el)el.prepend(badge);\n'
+        f'    }}\n'
+        f'  }}\n'
+        f'  localStorage.setItem(key,Date.now().toString());\n'
+        f'}})();\n'
+        f'</script>'
+    )
+
+
 def _pagefind_init_script():
     """Return inline script that initializes Pagefind UI and wires Cmd+K."""
     return (
@@ -3101,6 +3143,14 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     else:
         pf_attrs = ""
 
+    # Post read-indicator script: localStorage-based "Updated" badge
+    # and "Last updated" display for post pages.
+    post_read_script = ""
+    if page_type == "post":
+        post_read_script = _generate_post_read_indicator_script(
+            date_modified or date_published or "",
+        )
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -3142,6 +3192,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{body_html}\n'
         f'{meta["footer_html"]}\n'
         f'</article>\n'
+        f'{post_read_script}\n'
         f'</main>\n'
         f'{meta["toc_aside"] if page_type != "post" else ""}\n'
         f'</div>\n'
