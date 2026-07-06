@@ -81,27 +81,33 @@
   },
   "en/cli-assembly.md": {
     "content": "173c5588e5caa73cbaecf4c9d6a850cc0e7bbe16ee472709ac8fc83d86b4790f",
-    "description": "0d3a1d65f72e41388a30a1fa89af073c816ed0601b9b9cb430e786a6f8d1328e"
+    "description": "0d3a1d65f72e41388a30a1fa89af073c816ed0601b9b9cb430e786a6f8d1328e",
+    "schema_hash": "1fbe90cc550eb10d2060783cf2cbf6efe6f3728dc5c236550b051aa2d6aa065d"
   },
   "en/cli-build.md": {
     "content": "75e6f1c033544e8c64e40974459054dc4b871099a32721af4babe56a95f6c945",
-    "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8"
+    "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8",
+    "schema_hash": "019ab0d0bd2daf6bfcc7e6008dd470a2f8a524f41e2906fe99f5aac69184fca9"
   },
   "en/cli-check.md": {
     "content": "e9a5466b7bd2a334a9fce95df14e3f71cc7c30190440a8373995b8f60344c634",
-    "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd"
+    "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd",
+    "schema_hash": "7c95fe915f7417037d1fa1b2ca1bf7d0cea3b4987c0e0d2f46f73a9d414d40c2"
   },
   "en/cli-deploy.md": {
     "content": "bf5c6b164a5b1b8c719eba4307d52c8b893a93cb875d6c856ce472afb36587bd",
-    "description": "088395257c4196fcfd1b2d22a4636595ea294293085abc28b88a728287be8f95"
+    "description": "088395257c4196fcfd1b2d22a4636595ea294293085abc28b88a728287be8f95",
+    "schema_hash": "a5d6720f98c8af0fc2ee9f06e99363bd7e8396b18c837b17e69a1e6964ecd006"
   },
   "en/cli-gen-data.md": {
     "content": "022774c91f577bea2510deedf0210344f00a029f408eb4832f65242a01db87c1",
-    "description": "ae2ec87204ace68d67a6aaaccce864bdd6cdf63714801c5f43e0b71f0d188bc6"
+    "description": "ae2ec87204ace68d67a6aaaccce864bdd6cdf63714801c5f43e0b71f0d188bc6",
+    "schema_hash": "67bc0f6efeac51d2a5454ac93aced97fec553228419c7138bd429eb91f53329f"
   },
   "en/cli-gen.md": {
     "content": "b2da5abc4da0d9d936c66c6aac5e5011b14860a059a3ae59e2b925dd0e14c321",
-    "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac"
+    "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac",
+    "schema_hash": "5ee2c3d0e5716c6c462f6a979a9843d9c6a30f78cf8f6bf5a864d20295025252"
   },
   "en/cli-index.md": {
     "content": "90e8f7cdbd1f018a14b198a4f48535eebe667a73f0daef03bcfbea2948cc3264",
@@ -109,15 +115,18 @@
   },
   "en/cli-init.md": {
     "content": "b4c45399a04462a6bc929f388415711204324792e7560319fbdb06c56206defa",
-    "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb"
+    "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb",
+    "schema_hash": "3a17fb3c632030d118b07c4cce6b4984edababc58df55bea7e74ff2efce8a8e9"
   },
   "en/cli-post.md": {
     "content": "2a90efcd877e9ca2958e70c7e4d4b403e768c6a2c771c341fafc581eb8b00f42",
-    "description": "326a3d95e4849ecc34aeec3f6432ac1355f9aaf7b6b01f906ab69d9ffbb12720"
+    "description": "326a3d95e4849ecc34aeec3f6432ac1355f9aaf7b6b01f906ab69d9ffbb12720",
+    "schema_hash": "c5c8e3e3d599335fa405a2115c7f7c6e44b63194724b69fe1fa6be8ec7635e1f"
   },
   "en/cli-serve.md": {
     "content": "5f9d765a95d20f7b14c8934c3836da8c5f2cf3a0a2f7a90472d5fe28e4b991f8",
-    "description": "764bb3e3e5a1599a9fba9de3ab6d0beecdfc58cd56e59c85e6adb4c3df3a5892"
+    "description": "764bb3e3e5a1599a9fba9de3ab6d0beecdfc58cd56e59c85e6adb4c3df3a5892",
+    "schema_hash": "d33402e27794139ad3213b56f825002e2b339bd60dd6ff623f864ab3e4baba5a"
   },
   "en/code-blocks.md": {
     "content": "5c1dbb0ede231fd46a8cffad61b14df8508e401870bb311612fcadcdcc08fc0c",
@@ -178,6 +187,10 @@
   "en/llms-txt.md": {
     "content": "7eb001daeff7aae175a38f90f214120c873dc937047721af3e8ce2260d050dc7",
     "description": "4638a0a53bc8a5833eeeff4112a7f9a5422488e12860b3735a9a16c3d79ba300"
+  },
+  "en/monorepo-conversion.md": {
+    "content": "d186d6423e28a047d182423535a6f507444108403b990503afbe582d66714a6a",
+    "description": "686c7c7ade0b626e09223478778b7d72c35593d97a2e6bce73f7df16dcc9444c"
   },
   "en/multi-language.md": {
     "content": "5cb951690c87cf784b707a3128a812dbc97537fb5037075005390ffb19730453",
