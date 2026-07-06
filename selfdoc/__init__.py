@@ -2,6 +2,10 @@
 
 from selfdoc._version import __version__  # noqa: F401
 
+# Register selfdoc-specific directives (table-commands) in the core registry.
+# This import triggers the registration side effect in selfdoc.content.
+import selfdoc.content  # noqa: F401
+
 
 def main():
     """Entry point for the selfdoc CLI."""

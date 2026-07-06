@@ -1,0 +1,795 @@
+"""Python source extractor -- resolves directives by extracting from .py files.
+
+Uses stdlib ast for parsing, no external dependencies. Handles:
+- :::module  -- extract module docstrings, functions, classes
+- :::test    -- extract test source code
+- :::schema  -- extract dataclass fields or JSON schema
+- :::cli     -- extract CLI help/usage info
+- :::config  -- extract config file contents as tables
+"""
+
+import ast
+import os
+import textwrap
+
+from selfdoc_core.extractors.base import (
+    BaseExtractor,
+    _config_from_json,
+    _format_docstring,
+    format_error,
+    handle_table_config,
+    parse_comma_set,
+    parse_docstring_sections,
+    read_source,
+)
+from selfdoc_core.tables import render_markdown_table
+
+
+class PythonExtractor(BaseExtractor):
+    """Python language extractor implementing LanguageExtractor protocol."""
+
+    @property
+    def name(self) -> str:
+        return "python"
+
+    def detect(self, dir_path: str) -> bool:
+        return os.path.isfile(os.path.join(dir_path, "pyproject.toml")) or os.path.isfile(
+            os.path.join(dir_path, "setup.py")
+        )
+
+    def resolve_path(
+        self, path_arg: str, source_paths: list[str], base_dir: str
+    ) -> str | None:
+        return _resolve_module_path(path_arg, source_paths, base_dir)
+
+    def file_extensions(self) -> list[str]:
+        return [".py"]
+
+    def public_symbols(self, file_path: str) -> list[str]:
+        """Extract public top-level functions and classes from a Python file.
+
+        If the module defines ``__all__`` as a literal list or tuple of
+        strings, those names are returned directly (they ARE the public
+        API, even if some start with ``_``).
+
+        Otherwise falls back to heuristic: top-level functions and classes
+        whose name does not start with underscore.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return []
+
+        try:
+            tree = ast.parse(source, filename=file_path)
+        except SyntaxError:
+            return []
+
+        # Check for __all__ assignment with literal list/tuple of strings
+        for node in ast.iter_child_nodes(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    if isinstance(node.value, (ast.List, ast.Tuple)):
+                        names = []
+                        all_strings = True
+                        for elt in node.value.elts:
+                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                                names.append(elt.value)
+                            else:
+                                all_strings = False
+                                break
+                        if all_strings:
+                            return names
+
+        # Fallback: non-underscore top-level functions and classes
+        symbols = []
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not node.name.startswith("_"):
+                    symbols.append(node.name)
+            elif isinstance(node, ast.ClassDef):
+                if not node.name.startswith("_"):
+                    symbols.append(node.name)
+        return symbols
+
+    def module_docstring(self, path: str) -> str:
+        """Extract the module-level docstring from a Python file."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return ""
+        try:
+            tree = ast.parse(source, filename=path)
+        except SyntaxError:
+            return ""
+        return ast.get_docstring(tree) or ""
+
+    def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
+        """Extract detailed parameter and return info for a symbol.
+
+        Supports dotted names like ``MyClass.my_method`` to target a specific
+        member (method or attribute) within a class.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                source = f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+        try:
+            tree = ast.parse(source, filename=file_path)
+        except SyntaxError:
+            return None
+
+        # Dotted name: resolve as ClassName.member
+        if "." in symbol_name:
+            type_name, member_name = symbol_name.rsplit(".", 1)
+            for node in ast.iter_child_nodes(tree):
+                if isinstance(node, ast.ClassDef) and node.name == type_name:
+                    for item in ast.iter_child_nodes(node):
+                        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            if item.name == member_name:
+                                return _build_symbol_details(item)
+                        elif isinstance(item, ast.ClassDef):
+                            if item.name == member_name:
+                                return _class_symbol_details(item)
+                    return None
+            return None
+
+        # Search top-level nodes
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name == symbol_name:
+                    return _build_symbol_details(node)
+            elif isinstance(node, ast.ClassDef):
+                if node.name == symbol_name:
+                    return _class_symbol_details(node)
+                # Also check methods within classes
+                for item in ast.iter_child_nodes(node):
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        if item.name == symbol_name:
+                            return _build_symbol_details(item)
+
+        return None
+
+# ---------------------------------------------------------------------------
+# symbol_details helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_symbol_details(node):
+    """Build a symbol_details dict from a FunctionDef/AsyncFunctionDef node."""
+    args = node.args
+    skip_names = {"self", "cls"}
+
+    # Collect all parameters
+    all_args = []
+    posonlyargs = getattr(args, "posonlyargs", [])
+    for arg in posonlyargs + args.args:
+        if arg.arg not in skip_names:
+            all_args.append(arg)
+    if args.vararg:
+        all_args.append(args.vararg)
+    for arg in args.kwonlyargs:
+        all_args.append(arg)
+    if args.kwarg:
+        all_args.append(args.kwarg)
+
+    # Parse docstring for documented params
+    docstring = ast.get_docstring(node)
+    doc_sections = parse_docstring_sections(docstring) if docstring else {
+        "description": "",
+        "params": [],
+        "returns": None,
+        "raises": [],
+    }
+    documented_param_names = {p["name"] for p in doc_sections["params"]}
+
+    params = []
+    for arg in all_args:
+        name = arg.arg
+        # Prefix vararg/kwarg with */  **
+        if arg is args.vararg:
+            name = f"*{name}"
+        elif arg is args.kwarg:
+            name = f"**{name}"
+        type_str = _annotation_str(arg.annotation) or None
+        documented = name.lstrip("*") in documented_param_names or name in documented_param_names
+        params.append({
+            "name": name,
+            "type": type_str,
+            "documented": documented,
+        })
+
+    return_type = _annotation_str(node.returns) or None
+    return_documented = doc_sections["returns"] is not None
+
+    return {
+        "params": params,
+        "return_type": return_type,
+        "return_documented": return_documented,
+    }
+
+
+def _class_symbol_details(node):
+    """Build symbol_details for a class by extracting __init__ details."""
+    for item in ast.iter_child_nodes(node):
+        if isinstance(item, ast.FunctionDef) and item.name == "__init__":
+            return _build_symbol_details(item)
+    return {
+        "params": [],
+        "return_type": None,
+        "return_documented": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# :::module
+# ---------------------------------------------------------------------------
+
+
+def _handle_module(path, target, body, source_paths, base_dir, attrs):
+    """Extract module docstring, functions, and classes.
+
+    Resolves dotted.path or file path to a .py file, parses with ast,
+    and formats the result as markdown.
+    """
+    if not path:
+        return format_error(":::module requires a module path argument")
+
+    filepath = _resolve_module_path(path, source_paths, base_dir)
+    if filepath is None:
+        return format_error(f"module '{path}' not found")
+
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{path}': {err}")
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return format_error(f"syntax error in '{path}': {exc}")
+
+    if target:
+        # Find the specific symbol
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.ClassDef) and node.name == target:
+                cls_md = _format_class(node)
+                if cls_md:
+                    return cls_md
+                return format_error(f"symbol '{target}' in '{path}' has no documentation")
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == target:
+                func_md = _format_function(node, heading_level=3)
+                if func_md:
+                    return func_md
+                return format_error(f"symbol '{target}' in '{path}' has no documentation")
+        return format_error(f"symbol '{target}' not found in '{path}'")
+
+    # Determine display name from the dotted path
+    module_name = path.replace("/", ".")
+    if module_name.endswith(".py"):
+        module_name = module_name[:-3]
+    if module_name.endswith(".__init__"):
+        module_name = module_name[: -len(".__init__")]
+
+    parts = []
+    parts.append(f"## {module_name}")
+
+    module_doc = ast.get_docstring(tree)
+    if module_doc:
+        parts.append("")
+        parts.append(_format_docstring(module_doc))
+
+    # Extract top-level functions and classes
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.ClassDef):
+            cls_md = _format_class(node)
+            if cls_md:
+                parts.append("")
+                parts.append(cls_md)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            func_md = _format_function(node, heading_level=3)
+            if func_md:
+                parts.append("")
+                parts.append(func_md)
+
+    return "\n".join(parts)
+
+
+def _resolve_module_path(arg, source_paths, base_dir):
+    """Try to resolve a module argument to an actual .py file path.
+
+    Tries: dotted-to-path conversion within each source path, then direct path.
+    """
+    # Try as dotted path: selfdoc.config -> selfdoc/config.py
+    dotted_as_path = arg.replace(".", "/") + ".py"
+    # Also try as package: selfdoc.config -> selfdoc/config/__init__.py
+    dotted_as_pkg = arg.replace(".", "/") + "/__init__.py"
+
+    candidates = []
+    for sp in source_paths:
+        candidates.append(os.path.join(base_dir, sp, dotted_as_path))
+        candidates.append(os.path.join(base_dir, sp, dotted_as_pkg))
+    # Try relative to base_dir directly
+    candidates.append(os.path.join(base_dir, dotted_as_path))
+    candidates.append(os.path.join(base_dir, dotted_as_pkg))
+
+    # Try as a direct file path
+    if arg.endswith(".py"):
+        candidates.append(os.path.join(base_dir, arg))
+        for sp in source_paths:
+            candidates.append(os.path.join(base_dir, sp, arg))
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+
+    return None
+
+
+def _format_function(node, heading_level=2):
+    """Format a function/method node as markdown.
+
+    Skips private items (leading _) unless they have a docstring.
+    """
+    docstring = ast.get_docstring(node)
+
+    # Skip private without docstrings
+    if node.name.startswith("_") and not docstring:
+        return None
+
+    # Skip undocumented public items
+    if not docstring and not node.name.startswith("_"):
+        # Still show the signature for public items without docstrings
+        pass
+
+    sig = _build_signature(node)
+    prefix = "#" * heading_level
+
+    parts = []
+    parts.append(f"{prefix} {node.name}")
+    parts.append("")
+    keyword = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+    parts.append(f"```python\n{keyword} {node.name}{sig}\n```")
+
+    if docstring:
+        parts.append("")
+        parts.append(_format_docstring(docstring))
+
+    return "\n".join(parts)
+
+
+def _is_dataclass(node):
+    """Check whether a class node has a ``@dataclass`` decorator."""
+    for dec in node.decorator_list:
+        if isinstance(dec, ast.Name) and dec.id == "dataclass":
+            return True
+        if isinstance(dec, ast.Call):
+            func = dec.func
+            if isinstance(func, ast.Name) and func.id == "dataclass":
+                return True
+            # Handle dataclasses.dataclass
+            if (isinstance(func, ast.Attribute)
+                    and func.attr == "dataclass"
+                    and isinstance(func.value, ast.Name)
+                    and func.value.id == "dataclasses"):
+                return True
+    return False
+
+
+def _format_dataclass_fields(node):
+    """Format dataclass fields as a Markdown field table.
+
+    Returns a table string or None if the class has no annotated fields.
+    """
+    rows = []
+    for child in ast.iter_child_nodes(node):
+        if not isinstance(child, ast.AnnAssign):
+            continue
+        if not isinstance(child.target, ast.Name):
+            continue
+        name = child.target.id
+        if name.startswith("_"):
+            continue
+        type_str = ast.unparse(child.annotation) if child.annotation else ""
+        default_str = ast.unparse(child.value) if child.value else ""
+        default_cell = f"`{default_str}`" if default_str else ""
+        rows.append([f"`{name}`", f"`{type_str}`", default_cell])
+
+    if not rows:
+        return None
+
+    return render_markdown_table(["Field", "Type", "Default"], rows)
+
+
+def _format_class(node):
+    """Format a class node as markdown, including its public methods.
+
+    Dataclass classes without docstrings are rendered with a field table
+    so their names appear in coverage and the generated docs are useful.
+    """
+    docstring = ast.get_docstring(node)
+
+    # Skip private classes without docstrings
+    if node.name.startswith("_") and not docstring:
+        return None
+
+    methods = []
+    for item in ast.iter_child_nodes(node):
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            method_md = _format_function(item, heading_level=4)
+            if method_md:
+                methods.append(method_md)
+
+    # For dataclasses without docstrings or methods, render a field table
+    dataclass_fields = None
+    if not docstring and not methods and _is_dataclass(node):
+        dataclass_fields = _format_dataclass_fields(node)
+
+    # Skip undocumented classes with no documented methods and no fields
+    if not docstring and not methods and dataclass_fields is None:
+        return None
+
+    parts = []
+    parts.append(f"### {node.name}")
+
+    if docstring:
+        parts.append("")
+        parts.append(_format_docstring(docstring))
+
+    if dataclass_fields:
+        parts.append("")
+        parts.append(dataclass_fields)
+
+    for method_md in methods:
+        parts.append("")
+        parts.append(method_md)
+
+    return "\n".join(parts)
+
+
+def _build_signature(node):
+    """Build a human-readable function signature string from ast.arguments."""
+    args = node.args
+    parts = []
+
+    # Positional-only args
+    posonlyargs = getattr(args, "posonlyargs", [])
+    all_positional = posonlyargs + args.args
+
+    # Defaults are right-aligned
+    num_defaults = len(args.defaults)
+    num_positional = len(all_positional)
+
+    for i, arg in enumerate(all_positional):
+        name = arg.arg
+        annotation = _annotation_str(arg.annotation)
+        part = f"{name}: {annotation}" if annotation else name
+
+        default_idx = i - (num_positional - num_defaults)
+        if default_idx >= 0:
+            default = ast.unparse(args.defaults[default_idx])
+            part += f"={default}"
+
+        parts.append(part)
+
+    # Insert / for positional-only
+    if posonlyargs:
+        parts.insert(len(posonlyargs), "/")
+
+    # *args
+    if args.vararg:
+        annotation = _annotation_str(args.vararg.annotation)
+        if annotation:
+            parts.append(f"*{args.vararg.arg}: {annotation}")
+        else:
+            parts.append(f"*{args.vararg.arg}")
+    elif args.kwonlyargs:
+        parts.append("*")
+
+    # Keyword-only args
+    for i, arg in enumerate(args.kwonlyargs):
+        name = arg.arg
+        annotation = _annotation_str(arg.annotation)
+        part = f"{name}: {annotation}" if annotation else name
+
+        if i < len(args.kw_defaults) and args.kw_defaults[i] is not None:
+            default = ast.unparse(args.kw_defaults[i])
+            part += f"={default}"
+
+        parts.append(part)
+
+    # **kwargs
+    if args.kwarg:
+        annotation = _annotation_str(args.kwarg.annotation)
+        if annotation:
+            parts.append(f"**{args.kwarg.arg}: {annotation}")
+        else:
+            parts.append(f"**{args.kwarg.arg}")
+
+    # Return annotation
+    ret = _annotation_str(node.returns)
+    sig = f"({', '.join(parts)})"
+    if ret:
+        sig += f" -> {ret}"
+
+    return sig
+
+
+def _annotation_str(node):
+    """Convert an annotation AST node to a string, or empty string if None."""
+    if node is None:
+        return ""
+    return ast.unparse(node)
+
+
+# ---------------------------------------------------------------------------
+# :::test
+# ---------------------------------------------------------------------------
+
+
+def _handle_test(path, target, body, source_paths, base_dir, attrs):
+    """Extract test source code from a test file.
+
+    path: file path to the test file
+    target: optional TestClassName or test_function_name
+    """
+    if not path:
+        return format_error(":::test requires a file path argument")
+
+    full_path = os.path.join(base_dir, path)
+    if not os.path.isfile(full_path):
+        return format_error(f"test file '{path}' not found")
+
+    source, err = read_source(full_path)
+    if err:
+        return format_error(f"cannot read '{path}': {err}")
+
+    if target is None:
+        # Show the whole file as a code block
+        return f"```python\n{source.rstrip()}\n```"
+
+    # Parse and find the target
+    try:
+        tree = ast.parse(source, filename=full_path)
+    except SyntaxError as exc:
+        return format_error(f"syntax error in '{path}': {exc}")
+
+    source_lines = source.split("\n")
+
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name == target:
+                extracted = _extract_node_source(source_lines, node)
+                return f"```python\n{extracted}\n```"
+        elif isinstance(node, ast.ClassDef):
+            if node.name == target:
+                extracted = _extract_node_source(source_lines, node)
+                return f"```python\n{extracted}\n```"
+
+    return format_error(f"'{target}' not found in '{path}'")
+
+
+def _extract_node_source(source_lines, node):
+    """Extract source lines for an AST node, stripping common indent."""
+    # end_lineno is inclusive, 1-based
+    start = node.lineno - 1  # convert to 0-based
+    end = node.end_lineno  # already exclusive when used as slice end
+    lines = source_lines[start:end]
+    return textwrap.dedent("\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
+# :::schema
+# ---------------------------------------------------------------------------
+
+
+def _handle_schema(path, target, body, source_paths, base_dir, attrs):
+    """Extract schema information from JSON or Python dataclass.
+
+    path: file path or dotted module path
+    target: class name (for Python dataclass) or None (for JSON)
+    """
+    if not path:
+        return format_error(":::schema requires an argument")
+
+    if path.endswith(".json"):
+        full_path = os.path.join(base_dir, path)
+        if not os.path.isfile(full_path):
+            return format_error(f"JSON file '{path}' not found")
+        exclude_keys = parse_comma_set(attrs["exclude"]) if attrs.get("exclude") else None
+        return _config_from_json(full_path, path, exclude_keys=exclude_keys)
+
+    # Otherwise, treat as Python module + class name
+    if target is None:
+        return format_error(
+            ":::schema for Python requires 'module_path ClassName' format"
+        )
+
+    return _schema_from_dataclass(path, target, source_paths, base_dir)
+
+
+
+def _schema_from_dataclass(module_path, class_name, source_paths, base_dir):
+    """Extract dataclass/class fields with types and defaults from source."""
+    filepath = _resolve_module_path(module_path, source_paths, base_dir)
+    if filepath is None:
+        return format_error(f"module '{module_path}' not found")
+
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{module_path}': {err}")
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return format_error(f"syntax error in '{module_path}': {exc}")
+
+    # Find the target class
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return _extract_class_fields(node, source)
+
+    return format_error(f"class '{class_name}' not found in '{module_path}'")
+
+
+def _extract_class_fields(class_node, source):
+    """Extract fields from a class (dataclass or regular class with annotations).
+
+    Produces a markdown table with Field, Type, Default, and Description columns.
+    """
+    source_lines = source.split("\n")
+    rows = []
+
+    for node in ast.iter_child_nodes(class_node):
+        # Annotated assignments: field_name: Type = default
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            field_name = node.target.id
+            if field_name.startswith("_"):
+                continue
+
+            type_str = ast.unparse(node.annotation) if node.annotation else ""
+            default_str = ast.unparse(node.value) if node.value else ""
+
+            # Try to get a description from an inline comment
+            description = _get_inline_comment(source_lines, node.lineno)
+
+            rows.append([
+                f"`{field_name}`",
+                f"`{type_str}`",
+                _format_default(default_str),
+                description,
+            ])
+
+    if not rows:
+        return format_error(f"no fields found in class '{class_node.name}'")
+
+    return render_markdown_table(
+        ["Field", "Type", "Default", "Description"], rows
+    )
+
+
+def _get_inline_comment(source_lines, lineno):
+    """Extract an inline # comment from a source line (1-based lineno)."""
+    if lineno < 1 or lineno > len(source_lines):
+        return ""
+    line = source_lines[lineno - 1]
+    # Find a # comment that's not inside a string (simple heuristic)
+    # Split on # that's not inside quotes
+    in_string = False
+    quote_char = None
+    for i, ch in enumerate(line):
+        if ch in ('"', "'") and (i == 0 or line[i - 1] != "\\"):
+            if not in_string:
+                in_string = True
+                quote_char = ch
+            elif ch == quote_char:
+                in_string = False
+        elif ch == "#" and not in_string:
+            return line[i + 1 :].strip()
+    return ""
+
+
+def _format_default(default_str):
+    """Format a default value for table display."""
+    if not default_str:
+        return ""
+    return f"`{default_str}`"
+
+
+# ---------------------------------------------------------------------------
+# :::cli
+# ---------------------------------------------------------------------------
+
+
+def _handle_cli(path, target, body, source_paths, base_dir, attrs):
+    """Extract CLI help/usage information from a module.
+
+    For v1: extracts the module docstring and any string constants named
+    HELP or USAGE, formatted as a code block.
+    """
+    if not path:
+        return format_error(":::cli requires a module path argument")
+
+    filepath = _resolve_module_path(path, source_paths, base_dir)
+    if filepath is None:
+        return format_error(f"module '{path}' not found")
+
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{path}': {err}")
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return format_error(f"syntax error in '{path}': {exc}")
+
+    parts = []
+
+    # Module docstring
+    module_doc = ast.get_docstring(tree)
+    if module_doc:
+        parts.append(module_doc)
+
+    # Look for HELP or USAGE string constants
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for t in node.targets:
+                if isinstance(t, ast.Name) and t.id in ("HELP", "USAGE"):
+                    if isinstance(node.value, ast.Constant) and isinstance(
+                        node.value.value, str
+                    ):
+                        parts.append(f"```\n{node.value.value.strip()}\n```")
+
+    if not parts:
+        return format_error(f"no CLI documentation found in '{path}'")
+
+    return "\n\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# :::prose-desc
+# ---------------------------------------------------------------------------
+
+
+def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
+    """Extract only the module docstring as prose markdown.
+
+    Unlike :::module which also lists functions and classes, this directive
+    returns just the module-level docstring formatted as prose text.
+    """
+    if not path:
+        return format_error(":::prose-desc requires a module path argument")
+
+    filepath = _resolve_module_path(path, source_paths, base_dir)
+    if filepath is None:
+        return format_error(f"module '{path}' not found")
+
+    source, err = read_source(filepath)
+    if err:
+        return format_error(f"cannot read '{path}': {err}")
+
+    try:
+        tree = ast.parse(source, filename=filepath)
+    except SyntaxError as exc:
+        return format_error(f"syntax error in '{path}': {exc}")
+
+    module_doc = ast.get_docstring(tree)
+    if not module_doc:
+        return format_error(f"no docstring found in '{path}'")
+
+    return _format_docstring(module_doc)
+
+
+PythonExtractor._HANDLERS = {
+    "ref": _handle_module,
+    "code-test": _handle_test,
+    "table-schema": _handle_schema,
+    "code-help": _handle_cli,
+    "table-config": handle_table_config,
+    "prose-desc": _handle_prose_desc,
+}
