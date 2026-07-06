@@ -263,12 +263,12 @@ def test_unified_cleanup_on_build_failure(
     assert os.path.normpath(cleanup_dir) == os.path.normpath(ds_docs)
 
 
-@patch("selfdoc.build._build_body")
-@patch("selfdoc.build._cleanup_injected_posts")
-@patch("selfdoc.build._inject_posts_into_docs")
-@patch("selfdoc.build._partition_pages")
-@patch("selfdoc.build._check_unversioned_collisions")
-@patch("selfdoc.build._check_reserved_paths")
+@patch("selfdoc_core.build._build_body")
+@patch("selfdoc_core.build._cleanup_injected_posts")
+@patch("selfdoc_core.build._inject_posts_into_docs")
+@patch("selfdoc_core.build._partition_pages")
+@patch("selfdoc_core.build._check_unversioned_collisions")
+@patch("selfdoc_core.build._check_reserved_paths")
 def test_build_cleanup_on_failure(
     mock_reserved, mock_collisions, mock_partition, mock_inject,
     mock_cleanup, mock_body, tmp_path,
@@ -303,12 +303,12 @@ def test_build_cleanup_on_failure(
     assert cleanup_files == [os.path.join(latest_docs, "posts", "post.md")]
 
 
-@patch("selfdoc.build._build_body")
-@patch("selfdoc.build._cleanup_injected_posts")
-@patch("selfdoc.build._inject_posts_into_docs")
-@patch("selfdoc.build._partition_pages")
-@patch("selfdoc.build._check_unversioned_collisions")
-@patch("selfdoc.build._check_reserved_paths")
+@patch("selfdoc_core.build._build_body")
+@patch("selfdoc_core.build._cleanup_injected_posts")
+@patch("selfdoc_core.build._inject_posts_into_docs")
+@patch("selfdoc_core.build._partition_pages")
+@patch("selfdoc_core.build._check_unversioned_collisions")
+@patch("selfdoc_core.build._check_reserved_paths")
 def test_build_cleanup_on_success(
     mock_reserved, mock_collisions, mock_partition, mock_inject,
     mock_cleanup, mock_body, tmp_path,
