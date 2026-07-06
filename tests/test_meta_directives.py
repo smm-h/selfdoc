@@ -100,11 +100,12 @@ class TestListModules:
             ],
         }
 
-        # list-modules on the Go path should find .go files
+        # list-modules on the Go path should group by package (directory)
         result = resolve_list_modules(
             {"path": "cmd/"}, config, str(tmp_path),
         )
-        assert "main.go" in result
+        assert "**cmd**" in result
+        assert "Package main provides the entry point." in result
         # Should NOT find Python files
         assert ".py" not in result
 
@@ -114,6 +115,176 @@ class TestListModules:
         )
         assert "util.py" in result
         assert ".go" not in result
+
+    def test_go_package_grouping(self, tmp_path):
+        """Go projects group by package directory with package doc summaries."""
+        # Create 7 Go packages
+        packages = {
+            "cmd/server": ("server", "Package server provides the HTTP server."),
+            "cmd/cli": ("cli", "Package cli is the command-line interface."),
+            "internal/config": ("config", "Package config handles configuration loading."),
+            "internal/db": ("db", "Package db provides database access."),
+            "internal/auth": ("auth", "Package auth handles authentication."),
+            "pkg/api": ("api", "Package api defines the public API types."),
+            "pkg/middleware": ("middleware", "Package middleware provides HTTP middleware."),
+        }
+        for pkg_path, (pkg_name, doc) in packages.items():
+            pkg_dir = tmp_path / pkg_path
+            pkg_dir.mkdir(parents=True)
+            (pkg_dir / "main.go").write_text(
+                f"// {doc}\npackage {pkg_name}\n\nfunc init() {{}}\n"
+            )
+            # Add a test file that should be excluded
+            (pkg_dir / "main_test.go").write_text(
+                f"package {pkg_name}\n\nimport \"testing\"\n\n"
+                f"func TestMain(t *testing.T) {{}}\n"
+            )
+
+        config = {
+            "source": [
+                {"path": "cmd/", "language": "go"},
+                {"path": "internal/", "language": "go"},
+                {"path": "pkg/", "language": "go"},
+            ],
+        }
+
+        # Test cmd/ path -- should show 2 packages
+        result = resolve_list_modules(
+            {"path": "cmd/"}, config, str(tmp_path),
+        )
+        lines = [l for l in result.split("\n") if l.startswith("- ")]
+        assert len(lines) == 2
+        assert "**cmd/cli**" in result
+        assert "**cmd/server**" in result
+        assert "HTTP server." in result
+        assert "command-line interface." in result
+
+        # Test internal/ path -- should show 3 packages
+        result = resolve_list_modules(
+            {"path": "internal/"}, config, str(tmp_path),
+        )
+        lines = [l for l in result.split("\n") if l.startswith("- ")]
+        assert len(lines) == 3
+        assert "**internal/auth**" in result
+        assert "**internal/config**" in result
+        assert "**internal/db**" in result
+
+        # Test pkg/ path -- should show 2 packages
+        result = resolve_list_modules(
+            {"path": "pkg/"}, config, str(tmp_path),
+        )
+        lines = [l for l in result.split("\n") if l.startswith("- ")]
+        assert len(lines) == 2
+
+    def test_go_test_files_excluded(self, tmp_path):
+        """Go _test.go files are excluded from package grouping."""
+        pkg_dir = tmp_path / "pkg"
+        pkg_dir.mkdir()
+        (pkg_dir / "handler.go").write_text(
+            "// Package pkg handles things.\npackage pkg\n"
+        )
+        (pkg_dir / "handler_test.go").write_text(
+            "package pkg\n\nimport \"testing\"\n\n"
+            "func TestHandler(t *testing.T) {}\n"
+        )
+
+        config = {"source": [{"path": "pkg/", "language": "go"}]}
+        result = resolve_list_modules(
+            {"path": "pkg/"}, config, str(tmp_path),
+        )
+        assert "_test.go" not in result
+        assert "**pkg**" in result
+
+    def test_python_test_files_excluded(self, tmp_path):
+        """Python test files (test_*.py, *_test.py) are excluded."""
+        pkg_dir = tmp_path / "mylib"
+        pkg_dir.mkdir()
+        (pkg_dir / "__init__.py").write_text('"""My library."""\n')
+        (pkg_dir / "core.py").write_text('"""Core module."""\n')
+        (pkg_dir / "test_core.py").write_text('"""Tests for core."""\n')
+        (pkg_dir / "core_test.py").write_text('"""More tests."""\n')
+
+        config = {"source": [{"path": "mylib/", "language": "python"}]}
+        result = resolve_list_modules(
+            {"path": "mylib/"}, config, str(tmp_path),
+        )
+        assert "core.py" in result
+        assert "test_core" not in result
+        assert "core_test" not in result
+
+    def test_python_per_file_behavior_preserved(self):
+        """Python projects still get per-file listing with docstrings."""
+        result = resolve_list_modules(
+            {"path": "selfdoc/"},
+            _SELFDOC_CONFIG,
+            _PROJECT_DIR,
+        )
+        # Should still have per-file entries with file paths
+        assert "**selfdoc.config**" in result
+        assert "`selfdoc/config.py`" in result
+        assert "Config loader" in result
+
+    def test_unsupported_language_hard_error(self, tmp_path):
+        """Unsupported language raises ValueError mentioning files=true."""
+        pkg_dir = tmp_path / "src"
+        pkg_dir.mkdir()
+        (pkg_dir / "main.rs").write_text("fn main() {}\n")
+
+        config = {"source": [{"path": "src/", "language": "rust"}]}
+        import pytest
+        with pytest.raises(ValueError, match="language 'rust' has no module extractor"):
+            resolve_list_modules(
+                {"path": "src/"}, config, str(tmp_path),
+            )
+
+    def test_unsupported_language_error_mentions_files_true(self, tmp_path):
+        """The hard error message tells users about files=true escape hatch."""
+        pkg_dir = tmp_path / "src"
+        pkg_dir.mkdir()
+        (pkg_dir / "main.rs").write_text("fn main() {}\n")
+
+        config = {"source": [{"path": "src/", "language": "rust"}]}
+        import pytest
+        with pytest.raises(ValueError, match="files=true"):
+            resolve_list_modules(
+                {"path": "src/"}, config, str(tmp_path),
+            )
+
+    def test_files_true_old_behavior(self, tmp_path):
+        """files=true gives per-file listing for any language."""
+        # Go project with files=true should show individual files
+        pkg_dir = tmp_path / "cmd"
+        pkg_dir.mkdir()
+        (pkg_dir / "main.go").write_text(
+            "// Package main provides entry point.\npackage main\n"
+            "\nfunc main() {}\n"
+        )
+        (pkg_dir / "util.go").write_text(
+            "package main\n\nfunc helper() {}\n"
+        )
+
+        config = {"source": [{"path": "cmd/", "language": "go"}]}
+        result = resolve_list_modules(
+            {"path": "cmd/", "files": "true"}, config, str(tmp_path),
+        )
+        # files=true should show individual file paths
+        assert "main.go" in result
+        assert "util.go" in result
+
+    def test_files_true_unsupported_language_no_crash(self, tmp_path):
+        """files=true with unsupported language does not raise (no hard error)."""
+        pkg_dir = tmp_path / "src"
+        pkg_dir.mkdir()
+        (pkg_dir / "main.rs").write_text("fn main() {}\n")
+
+        config = {"source": [{"path": "src/", "language": "rust"}]}
+        # Should NOT raise -- files=true bypasses the hard error
+        # StubExtractor has no file_extensions so no files match,
+        # but it gracefully returns "no modules found" instead of crashing.
+        result = resolve_list_modules(
+            {"path": "src/", "files": "true"}, config, str(tmp_path),
+        )
+        assert "no modules found" in result
 
     def test_without_config_returns_error(self):
         result = resolve_content(

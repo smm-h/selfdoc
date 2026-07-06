@@ -288,9 +288,64 @@ def _extract_module_first_line(file_path: str) -> str:
 
 # -- list-modules directive ----------------------------------------------------
 
+# Test file patterns per language family
+_TEST_PATTERNS: dict[str, list[str]] = {
+    "go": ["_test.go"],
+    "python": ["test_", "_test.py"],
+    "typescript": [".test.ts", ".spec.ts", ".test.tsx", ".spec.tsx",
+                   ".test.js", ".spec.js", ".test.jsx", ".spec.jsx"],
+}
+
+# Languages that group by directory (package) rather than by file
+_PACKAGE_LANGUAGES: set[str] = {"go"}
+
+# Languages that group by directory for readability but show individual files
+_DIR_GROUP_LANGUAGES: set[str] = {"typescript"}
+
+
+def _is_test_file(filename: str, language: str) -> bool:
+    """Check if a filename matches test file patterns for the given language."""
+    patterns = _TEST_PATTERNS.get(language, [])
+    for pattern in patterns:
+        if language == "python" and pattern == "test_":
+            if filename.startswith("test_"):
+                return True
+        elif filename.endswith(pattern):
+            return True
+    return False
+
+
+def _first_line_of(text: str) -> str:
+    """Extract the first sentence or line from a docstring.
+
+    Takes the first line, then truncates at the first sentence-ending
+    period (period followed by whitespace or end-of-string).
+    Truncates to 155 characters.
+    """
+    if not text:
+        return ""
+    first_line = text.split("\n", 1)[0].strip()
+    if not first_line:
+        return ""
+    # Take up to the first sentence-ending period
+    match = re.search(r"\.\s", first_line)
+    if match:
+        first_line = first_line[:match.start() + 1]
+    elif not first_line.endswith("."):
+        first_line = first_line + "."
+    if len(first_line) > 155:
+        first_line = first_line[:152] + "..."
+    return first_line
+
 
 def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
-    """List source modules with file paths and docstring summaries."""
+    """List source modules grouped by the language's natural unit.
+
+    Go: one bullet per package (directory). TypeScript/JS: per file,
+    grouped by directory. Python: per file (existing behavior).
+
+    With ``files=true``, always uses per-file listing regardless of language.
+    """
     path = attrs.get("path", "")
     if not path:
         return "> *[selfdoc: list-modules requires a path attribute]*"
@@ -300,6 +355,7 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
         return f"> *[selfdoc: directory '{path}' not found]*"
 
     from selfdoc.extractors import EXTRACTORS, resolve_source_entries
+    from selfdoc.extractors.base import StubExtractor
 
     src_entries = resolve_source_entries(config)
     if not src_entries:
@@ -308,7 +364,6 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     # Match the directive's path to a source entry
     matched_entry = None
     for entry in src_entries:
-        # Normalize: both should end without trailing slash for prefix check
         entry_path = entry.path.rstrip("/")
         directive_path = path.rstrip("/")
         if directive_path.startswith(entry_path) or entry_path.startswith(directive_path):
@@ -316,17 +371,49 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
             break
 
     if matched_entry is None:
-        # Fallback to first source entry
         matched_entry = src_entries[0]
 
     language = matched_entry.language
     extractor = EXTRACTORS.get(language)
-    if extractor is None:
-        return f"> *[selfdoc: unsupported language '{language}']*"
 
-    extensions = set(extractor.file_extensions())
+    # files=true: old per-file behavior (escape hatch)
+    use_files = attrs.get("files", "").lower() == "true"
 
-    modules: list[tuple[str, str, str | None]] = []  # (module_name, rel_path, docstring)
+    if extractor is None or isinstance(extractor, StubExtractor):
+        if use_files:
+            # Per-file listing with no docstrings for unsupported languages
+            return _list_modules_files(
+                full_path, base_dir, language, matched_entry.extractor,
+            )
+        raise ValueError(
+            f"language '{language}' has no module extractor"
+            " -- use `list-modules files=true` for per-file listing"
+        )
+
+    if use_files:
+        return _list_modules_files(full_path, base_dir, language, extractor)
+
+    # Per-language grouped listing
+    if language in _PACKAGE_LANGUAGES:
+        return _list_modules_by_package(
+            full_path, base_dir, path, language, extractor,
+        )
+    if language in _DIR_GROUP_LANGUAGES:
+        return _list_modules_by_dir_group(
+            full_path, base_dir, language, extractor,
+        )
+    # Default: per-file (Python and others)
+    return _list_modules_per_file(full_path, base_dir, language, extractor)
+
+
+def _list_modules_files(
+    full_path: str, base_dir: str, language: str,
+    extractor: object,
+) -> str:
+    """Old per-file listing behavior (files=true escape hatch)."""
+    extensions = set(extractor.file_extensions())  # type: ignore[union-attr]
+
+    modules: list[tuple[str, str, str | None]] = []
     for dirpath, _dirnames, filenames in os.walk(full_path):
         for fname in sorted(filenames):
             _root, ext = os.path.splitext(fname)
@@ -343,6 +430,7 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     modules.sort(key=lambda t: t[0])
 
     if not modules:
+        path = os.path.relpath(full_path, base_dir)
         return f"> *[selfdoc: no modules found in '{path}']*"
 
     lines = []
@@ -351,6 +439,157 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
             lines.append(f"- **{module_name}** (`{rel_path}`): {docstring}")
         else:
             lines.append(f"- **{module_name}** (`{rel_path}`)")
+
+    return "\n".join(lines)
+
+
+def _list_modules_per_file(
+    full_path: str, base_dir: str, language: str,
+    extractor: object,
+) -> str:
+    """Per-file listing with test file exclusion and extractor docstrings.
+
+    Used for Python and any language not in _PACKAGE_LANGUAGES or
+    _DIR_GROUP_LANGUAGES.
+    """
+    extensions = set(extractor.file_extensions())  # type: ignore[union-attr]
+
+    modules: list[tuple[str, str, str | None]] = []
+    for dirpath, _dirnames, filenames in os.walk(full_path):
+        for fname in sorted(filenames):
+            if _is_test_file(fname, language):
+                continue
+            _root, ext = os.path.splitext(fname)
+            if ext not in extensions:
+                continue
+            file_path = os.path.join(dirpath, fname)
+            rel_path = os.path.relpath(file_path, base_dir)
+            module_name = _file_to_module_name(rel_path, language)
+            if module_name is None:
+                continue
+            raw_doc = extractor.module_docstring(file_path)  # type: ignore[union-attr]
+            docstring = _first_line_of(raw_doc) if raw_doc else None
+            modules.append((module_name, rel_path, docstring))
+
+    modules.sort(key=lambda t: t[0])
+
+    if not modules:
+        path = os.path.relpath(full_path, base_dir)
+        return f"> *[selfdoc: no modules found in '{path}']*"
+
+    lines = []
+    for module_name, rel_path, docstring in modules:
+        if docstring:
+            lines.append(f"- **{module_name}** (`{rel_path}`): {docstring}")
+        else:
+            lines.append(f"- **{module_name}** (`{rel_path}`)")
+
+    return "\n".join(lines)
+
+
+def _list_modules_by_package(
+    full_path: str, base_dir: str, directive_path: str,
+    language: str, extractor: object,
+) -> str:
+    """Group by package directory (Go).
+
+    Each directory containing source files becomes one bullet.
+    The summary comes from the extractor's module_docstring on the directory.
+    """
+    extensions = set(extractor.file_extensions())  # type: ignore[union-attr]
+
+    # Collect directories that contain source files (excluding test files)
+    packages: dict[str, list[str]] = {}  # dir_path -> list of source filenames
+    for dirpath, _dirnames, filenames in os.walk(full_path):
+        source_files = []
+        for fname in sorted(filenames):
+            if _is_test_file(fname, language):
+                continue
+            _root, ext = os.path.splitext(fname)
+            if ext not in extensions:
+                continue
+            source_files.append(fname)
+        if source_files:
+            packages[dirpath] = source_files
+
+    if not packages:
+        return f"> *[selfdoc: no modules found in '{directive_path}']*"
+
+    # Build bullets sorted by relative package path
+    items: list[tuple[str, str | None]] = []  # (package_name, docstring)
+    for pkg_dir in sorted(packages.keys()):
+        rel_path = os.path.relpath(pkg_dir, base_dir)
+        # Normalize path separators
+        pkg_name = rel_path.replace(os.sep, "/")
+        raw_doc = extractor.module_docstring(pkg_dir)  # type: ignore[union-attr]
+        docstring = _first_line_of(raw_doc) if raw_doc else None
+        items.append((pkg_name, docstring))
+
+    lines = []
+    for pkg_name, docstring in items:
+        if docstring:
+            lines.append(f"- **{pkg_name}**: {docstring}")
+        else:
+            lines.append(f"- **{pkg_name}**")
+
+    return "\n".join(lines)
+
+
+def _list_modules_by_dir_group(
+    full_path: str, base_dir: str, language: str,
+    extractor: object,
+) -> str:
+    """Per-file listing grouped by directory (TypeScript/JavaScript).
+
+    Files are listed individually but organized under directory headings
+    for readability.
+    """
+    extensions = set(extractor.file_extensions())  # type: ignore[union-attr]
+
+    # Collect files grouped by directory
+    dir_files: dict[str, list[tuple[str, str, str | None]]] = {}
+    for dirpath, _dirnames, filenames in os.walk(full_path):
+        for fname in sorted(filenames):
+            if _is_test_file(fname, language):
+                continue
+            _root, ext = os.path.splitext(fname)
+            if ext not in extensions:
+                continue
+            file_path = os.path.join(dirpath, fname)
+            rel_path = os.path.relpath(file_path, base_dir)
+            module_name = _file_to_module_name(rel_path, language)
+            if module_name is None:
+                continue
+            raw_doc = extractor.module_docstring(file_path)  # type: ignore[union-attr]
+            docstring = _first_line_of(raw_doc) if raw_doc else None
+            rel_dir = os.path.relpath(dirpath, base_dir).replace(os.sep, "/")
+            if rel_dir not in dir_files:
+                dir_files[rel_dir] = []
+            dir_files[rel_dir].append((module_name, rel_path, docstring))
+
+    if not dir_files:
+        path = os.path.relpath(full_path, base_dir)
+        return f"> *[selfdoc: no modules found in '{path}']*"
+
+    lines = []
+    for dir_name in sorted(dir_files.keys()):
+        entries = dir_files[dir_name]
+        entries.sort(key=lambda t: t[0])
+        # Only show directory heading when there are multiple directories
+        if len(dir_files) > 1:
+            lines.append(f"**{dir_name}/**")
+            lines.append("")
+        for module_name, rel_path, docstring in entries:
+            if docstring:
+                lines.append(f"- **{module_name}** (`{rel_path}`): {docstring}")
+            else:
+                lines.append(f"- **{module_name}** (`{rel_path}`)")
+        if len(dir_files) > 1:
+            lines.append("")
+
+    # Remove trailing empty line
+    while lines and lines[-1] == "":
+        lines.pop()
 
     return "\n".join(lines)
 
