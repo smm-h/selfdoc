@@ -330,6 +330,8 @@ class TestDescriptionPreservation:
         """Replace the ``description:`` line in a page's frontmatter.
 
         Handles the read-only permissions selfdoc sets on generated files.
+        Also removes ``seeded: true`` since a hand-edited description is
+        no longer auto-generated.
         """
         os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR)
         with open(filepath, "r", encoding="utf-8") as f:
@@ -338,6 +340,8 @@ class TestDescriptionPreservation:
         for line in content.split("\n"):
             if line.startswith("description:"):
                 new_lines.append(f'description: "{new_description}"')
+            elif line.strip() == "seeded: true":
+                continue  # remove seeded marker for hand-edited descriptions
             else:
                 new_lines.append(line)
         with open(filepath, "w", encoding="utf-8") as f:

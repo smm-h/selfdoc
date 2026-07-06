@@ -1780,10 +1780,9 @@ def test_skeleton_only_symbols_printed(tmp_path, capsys):
         f.write(
             "---\n"
             "title: mylib.utils\n"
-            "description: API reference for mylib.utils module"
-            " — auto-generated documentation covering public functions,"
-            " classes, and type signatures\n"
+            "description: Utilities.\n"
             "generated: true\n"
+            "seeded: true\n"
             "---\n"
             "\n"
             "# mylib.utils\n"
@@ -2664,41 +2663,23 @@ from selfdoc.check import _is_skeleton_page, CoverageStats
 
 
 class TestIsSkeletonPage:
-    """Tests for _is_skeleton_page classification."""
+    """Tests for _is_skeleton_page classification via seeded marker."""
 
-    def test_skeleton_page_generated_true_default_description(self):
-        """A page with generated=True and default description is skeleton."""
+    def test_skeleton_page_generated_and_seeded(self):
+        """A page with generated=True and seeded=True is skeleton."""
         fm = {
             "generated": True,
-            "description": (
-                "API reference for the mylib.config module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures."
-            ),
-        }
-        assert _is_skeleton_page(fm) is True
-
-    def test_skeleton_page_without_the_article(self):
-        """Default description without 'the' is also skeleton."""
-        fm = {
-            "generated": True,
-            "description": (
-                "API reference for mylib.config — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures."
-            ),
+            "seeded": True,
+            "description": "Some auto-generated description.",
         }
         assert _is_skeleton_page(fm) is True
 
     def test_not_skeleton_when_generated_false(self):
-        """A hand-written page is not skeleton even with default-like description."""
+        """A non-generated page is not skeleton even with seeded=True."""
         fm = {
             "generated": False,
-            "description": (
-                "API reference for the mylib.config module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures."
-            ),
+            "seeded": True,
+            "description": "Some description.",
         }
         assert _is_skeleton_page(fm) is False
 
@@ -2709,11 +2690,20 @@ class TestIsSkeletonPage:
         }
         assert _is_skeleton_page(fm) is False
 
-    def test_not_skeleton_when_description_customized(self):
-        """A generated page with customized description is NOT skeleton."""
+    def test_not_skeleton_when_seeded_missing(self):
+        """A generated page without seeded marker is NOT skeleton."""
         fm = {
             "generated": True,
             "description": "Configuration loader with validation and defaults.",
+        }
+        assert _is_skeleton_page(fm) is False
+
+    def test_not_skeleton_when_seeded_false(self):
+        """A generated page with seeded=False is NOT skeleton."""
+        fm = {
+            "generated": True,
+            "seeded": False,
+            "description": "Some description.",
         }
         assert _is_skeleton_page(fm) is False
 
@@ -2721,18 +2711,15 @@ class TestIsSkeletonPage:
         """generated must be boolean True, not string 'true'."""
         fm = {
             "generated": "true",
-            "description": (
-                "API reference for the mylib module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures."
-            ),
+            "seeded": True,
+            "description": "Some description.",
         }
         assert _is_skeleton_page(fm) is False
 
     def test_not_skeleton_when_description_missing(self):
-        """A generated page with no description is not skeleton (no match)."""
-        fm = {"generated": True}
-        assert _is_skeleton_page(fm) is False
+        """A generated+seeded page with no description is still skeleton."""
+        fm = {"generated": True, "seeded": True}
+        assert _is_skeleton_page(fm) is True
 
 
 class TestTwoTierCoverage:
@@ -2809,15 +2796,14 @@ class TestTwoTierCoverage:
         """Symbols on a skeleton page count as referenced but NOT documented."""
         project_dir, docs_dir = self._make_project(tmp_path)
 
-        # Skeleton page (generated: true + default description)
+        # Skeleton page (generated: true + seeded: true)
         with open(os.path.join(docs_dir, "mylib.md"), "w", encoding="utf-8") as f:
             f.write(
                 "---\n"
                 "title: mylib\n"
-                "description: \"API reference for the mylib module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures.\"\n"
+                "description: \"My library.\"\n"
                 "generated: true\n"
+                "seeded: true\n"
                 "---\n"
                 "# mylib\n"
                 "\n"
@@ -2829,10 +2815,9 @@ class TestTwoTierCoverage:
             f.write(
                 "---\n"
                 "title: mylib.utils\n"
-                "description: \"API reference for the mylib.utils module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures.\"\n"
+                "description: \"Utility functions.\"\n"
                 "generated: true\n"
+                "seeded: true\n"
                 "---\n"
                 "# mylib.utils\n"
                 "\n"
@@ -2868,10 +2853,9 @@ class TestTwoTierCoverage:
             f.write(
                 "---\n"
                 "title: mylib.utils\n"
-                "description: \"API reference for the mylib.utils module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures.\"\n"
+                "description: \"Utility functions.\"\n"
                 "generated: true\n"
+                "seeded: true\n"
                 "---\n"
                 "# mylib.utils\n"
                 "\n"
@@ -2942,10 +2926,9 @@ class TestTwoTierCoverage:
             f.write(
                 "---\n"
                 "title: mylib\n"
-                "description: \"API reference for the mylib module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures.\"\n"
+                "description: \"My library.\"\n"
                 "generated: true\n"
+                "seeded: true\n"
                 "---\n"
                 "# mylib\n"
                 "\n"
@@ -2983,10 +2966,9 @@ class TestTwoTierCoverage:
             f.write(
                 "---\n"
                 "title: mylib.utils\n"
-                "description: \"API reference for the mylib.utils module — "
-                "auto-generated documentation covering public functions, "
-                "classes, and type signatures.\"\n"
+                "description: \"Utility functions.\"\n"
                 "generated: true\n"
+                "seeded: true\n"
                 "---\n"
                 "# mylib.utils\n"
                 "\n"

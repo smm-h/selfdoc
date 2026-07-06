@@ -21,16 +21,6 @@ class GenResult:
     deleted: list[str] = field(default_factory=list)
 
 
-# Matches the default per-module description template so we can detect when a
-# page still has its auto-generated description (and recompute it) versus when
-# a user has hand-edited the description (and we should preserve it).
-_DEFAULT_DESCRIPTION_RE = re.compile(
-    r"^API reference for (the )?[\w.]+( module)? — "
-    r"auto-generated documentation covering public functions, "
-    r"classes, and type signatures\.?$"
-)
-
-
 def _truncate_to_description(docstring: str) -> str:
     """Truncate a full docstring to a short description.
 
@@ -288,8 +278,8 @@ def _read_existing_description(filepath):
     """Return the user-customized ``description`` from a page's frontmatter.
 
     Returns ``None`` if the file does not exist, has no ``description`` key,
-    or still has the default auto-generated description (in which case the
-    caller should recompute it from the current module name).
+    or if the page has ``seeded: true`` (indicating the description was
+    auto-generated and should be recomputed from the current source).
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -298,6 +288,12 @@ def _read_existing_description(filepath):
         return None
 
     metadata, _ = _parse_frontmatter(content)
+
+    # If the page is marked as seeded, the description was auto-generated
+    # and should be recomputed rather than preserved.
+    if metadata.get("seeded") is True:
+        return None
+
     raw = metadata.get("description")
     if raw is None or not isinstance(raw, str):
         return None
@@ -309,9 +305,6 @@ def _read_existing_description(filepath):
         value = value[1:-1].strip()
 
     if not value:
-        return None
-
-    if _DEFAULT_DESCRIPTION_RE.match(value):
         return None
 
     return value
@@ -328,25 +321,34 @@ def _generate_page_content(module_name, module_path, nav_order,
     is provided (extracted from the module's docstring), it is used.  Finally,
     if neither is available, the default auto-generated template is used.
 
+    When the description is auto-generated (not from ``existing_description``),
+    ``seeded: true`` is added to frontmatter to indicate the description was
+    machine-generated and hasn't been hand-edited.
+
     ``language`` is emitted as a ``lang`` attribute on the ref directive to
     disambiguate in multi-language projects.
     """
     if existing_description is not None:
         desc = existing_description
+        seeded = False
     elif docstring_description is not None:
         desc = docstring_description
+        seeded = True
     else:
         desc = (
             f"API reference for the {module_name} module — "
             f"auto-generated documentation covering public functions, "
             f"classes, and type signatures."
         )
+        seeded = True
+    seeded_line = "seeded: true\n" if seeded else ""
     lang_attr = f' lang="{language}"' if language else ""
     return (
         f"---\n"
         f"title: {module_name}\n"
         f"description: \"{desc}\"\n"
         f"generated: true\n"
+        f"{seeded_line}"
         f'nav_group: "API Reference"\n'
         f"nav_order: {nav_order}\n"
         f"---\n"

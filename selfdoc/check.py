@@ -28,8 +28,7 @@ from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, validate_directive_names
 from selfdoc.extractors import SourceEntry
 from selfdoc.resolver import make_resolver, Resolver
-from selfdoc.staleness import update_hashes
-from selfdoc.gen import _DEFAULT_DESCRIPTION_RE
+from selfdoc.staleness import update_hashes, compute_schema_hash
 
 _DIRECTIVE_MARKERS = {":-:", ":<:", ":>:", ":@:", ":=:", ":::"}
 
@@ -477,19 +476,32 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
     for rd in resolved_directives:
         _drift_directives.setdefault(rd.file, []).append(rd)
 
+    # Build per-CLI-page schema hashes from the per-command schema slices.
+    _schema_hashes: dict[str, str] = {}
+    if cli_schema is not None:
+        for cmd in cli_schema.get("commands", []):
+            page_key = f"cli-{cmd['name']}.md"
+            _schema_hashes[page_key] = compute_schema_hash(cmd)
+        for grp in cli_schema.get("groups", []):
+            page_key = f"cli-{grp['name']}.md"
+            _schema_hashes[page_key] = compute_schema_hash(grp)
+
     locales = config.get("locales") or []
     if locales:
         locale_code = locales[0]["code"]
         prefixed_docs = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
         prefixed_directives = {f"{locale_code}/{rp}": v for rp, v in _drift_directives.items()}
+        prefixed_schema = {f"{locale_code}/{rp}": v for rp, v in _schema_hashes.items()}
         stale_warnings, drift_warnings = update_hashes(
             prefixed_docs, dir_path, dry_run=dry_run,
             page_directives=prefixed_directives,
+            schema_hashes=prefixed_schema,
         )
     else:
         stale_warnings, drift_warnings = update_hashes(
             all_docs, dir_path, dry_run=dry_run,
             page_directives=_drift_directives,
+            schema_hashes=_schema_hashes,
         )
     for rel_path, stale_msg in stale_warnings:
         result.lints.append(LintResult(
@@ -1496,17 +1508,14 @@ def _check_pairs(lints, css_vars, pairs, mode_prefix, css_file="theme CSS"):
 def _is_skeleton_page(frontmatter):
     """Return True if the page is a skeleton auto-generated page.
 
-    A page is "skeleton" when it has ``generated: true`` AND its
-    description still matches the default auto-generated pattern.
-    A generated page whose description has been customized counts
-    as documented (someone edited it).
+    A page is "skeleton" when it has ``generated: true`` AND
+    ``seeded: true`` (indicating the description was auto-generated
+    and hasn't been hand-edited).  A generated page whose description
+    has been customized (seeded removed) counts as documented.
     """
     if frontmatter.get("generated") is not True:
         return False
-    description = frontmatter.get("description", "")
-    if not isinstance(description, str):
-        return False
-    return bool(_DEFAULT_DESCRIPTION_RE.match(description))
+    return frontmatter.get("seeded") is True
 
 
 def _compute_coverage(config, base_dir, resolved_directives, source_entries,

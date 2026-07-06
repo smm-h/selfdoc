@@ -282,11 +282,16 @@ def generate_cli_pages(cli_structure, docs_dir):
         if existing_index_desc is not None
         else default_index_desc
     )
+    seeded_index = "seeded: true" if existing_index_desc is None else ""
     index_lines = [
         "---",
         f"title: {app_name} CLI Reference",
         f'description: "{cli_index_desc}"',
         "generated: true",
+    ]
+    if seeded_index:
+        index_lines.append(seeded_index)
+    index_lines.extend([
         'nav_group: "CLI Reference"',
         "nav_order: 0",
         "order: 91",
@@ -295,7 +300,7 @@ def generate_cli_pages(cli_structure, docs_dir):
         "",
         f"# {app_name} CLI Reference",
         "",
-    ]
+    ])
     if app_help:
         index_lines.append(app_help)
         index_lines.append("")
@@ -392,11 +397,16 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
             existing_path, default_pattern,
         )
     cmd_desc = existing_desc if existing_desc is not None else default_desc
+    seeded = existing_desc is None
     lines = [
         "---",
         f"title: {app_name} {name}",
         f'description: "{cmd_desc}"',
         "generated: true",
+    ]
+    if seeded:
+        lines.append("seeded: true")
+    lines.extend([
         'nav_group: "CLI Reference"',
         f"nav_order: {nav_order}",
         "---",
@@ -404,7 +414,7 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
         "",
         f"# {app_name} {name}",
         "",
-    ]
+    ])
     if chelp:
         lines.append(chelp)
         lines.append("")
@@ -473,11 +483,16 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
             existing_path, default_pattern,
         )
     grp_desc = existing_desc if existing_desc is not None else default_desc
+    seeded = existing_desc is None
     lines = [
         "---",
         f"title: {app_name} {gname}",
         f'description: "{grp_desc}"',
         "generated: true",
+    ]
+    if seeded:
+        lines.append("seeded: true")
+    lines.extend([
         'nav_group: "CLI Reference"',
         f"nav_order: {nav_order}",
         "---",
@@ -485,7 +500,7 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
         "",
         f"# {app_name} {gname}",
         "",
-    ]
+    ])
     if ghelp:
         lines.append(ghelp)
         lines.append("")
