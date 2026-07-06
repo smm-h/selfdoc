@@ -59,11 +59,11 @@ def _setup_constituent_project(path, has_posts_dir=False):
 # -- Tests for constituent project post injection in unified builds --
 
 
-@patch("selfdoc.unified._build_unified_body")
-@patch("selfdoc.unified._cleanup_injected_posts")
-@patch("selfdoc.unified._inject_posts_into_docs")
-@patch("selfdoc.unified._partition_pages")
-@patch("selfdoc.unified.load_config")
+@patch("selfblog.unified._build_unified_body")
+@patch("selfblog.unified._cleanup_injected_posts")
+@patch("selfblog.unified._inject_posts_into_docs")
+@patch("selfblog.unified._partition_pages")
+@patch("selfblog.unified.load_config")
 def test_constituent_posts_injected(
     mock_load_config, mock_partition, mock_inject, mock_cleanup,
     mock_body, tmp_path,
@@ -153,11 +153,11 @@ def test_constituent_posts_injected(
     assert len(inject_calls) == 3
 
 
-@patch("selfdoc.unified._build_unified_body")
-@patch("selfdoc.unified._cleanup_injected_posts")
-@patch("selfdoc.unified._inject_posts_into_docs")
-@patch("selfdoc.unified._partition_pages")
-@patch("selfdoc.unified.load_config")
+@patch("selfblog.unified._build_unified_body")
+@patch("selfblog.unified._cleanup_injected_posts")
+@patch("selfblog.unified._inject_posts_into_docs")
+@patch("selfblog.unified._partition_pages")
+@patch("selfblog.unified.load_config")
 def test_constituent_posts_cleaned_up(
     mock_load_config, mock_partition, mock_inject, mock_cleanup,
     mock_body, tmp_path,
@@ -219,11 +219,11 @@ def test_constituent_posts_cleaned_up(
 # -- Tests for try/finally cleanup on build failure --
 
 
-@patch("selfdoc.unified._build_unified_body")
-@patch("selfdoc.unified._cleanup_injected_posts")
-@patch("selfdoc.unified._inject_posts_into_docs")
-@patch("selfdoc.unified._partition_pages")
-@patch("selfdoc.unified.load_config")
+@patch("selfblog.unified._build_unified_body")
+@patch("selfblog.unified._cleanup_injected_posts")
+@patch("selfblog.unified._inject_posts_into_docs")
+@patch("selfblog.unified._partition_pages")
+@patch("selfblog.unified.load_config")
 def test_unified_cleanup_on_build_failure(
     mock_load_config, mock_partition, mock_inject, mock_cleanup,
     mock_body, tmp_path,
@@ -340,11 +340,11 @@ def test_build_cleanup_on_success(
     assert mock_cleanup.call_count == 1
 
 
-@patch("selfdoc.unified._build_unified_body")
-@patch("selfdoc.unified._cleanup_injected_posts")
-@patch("selfdoc.unified._inject_posts_into_docs")
-@patch("selfdoc.unified._partition_pages")
-@patch("selfdoc.unified.load_config")
+@patch("selfblog.unified._build_unified_body")
+@patch("selfblog.unified._cleanup_injected_posts")
+@patch("selfblog.unified._inject_posts_into_docs")
+@patch("selfblog.unified._partition_pages")
+@patch("selfblog.unified.load_config")
 def test_unified_no_cleanup_when_no_injected_files(
     mock_load_config, mock_partition, mock_inject, mock_cleanup,
     mock_body, tmp_path,
