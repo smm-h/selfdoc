@@ -1,0 +1,170 @@
+"""Layering tests for the selfdoc_core / selfdoc / selfblog split.
+
+selfdoc_core is the shared engine and must import neither sibling
+package.  In particular, the build pipeline must not import the posts
+module (which belongs to selfblog) -- posts flow through the post
+provider registered via selfdoc_core.register_post_provider().
+"""
+
+import ast
+import os
+
+import pytest
+
+import selfdoc_core
+
+_CORE_DIR = os.path.dirname(selfdoc_core.__file__)
+
+
+def _imported_modules(py_path):
+    """Return every module name imported anywhere in *py_path*."""
+    with open(py_path, encoding="utf-8") as f:
+        tree = ast.parse(f.read(), filename=py_path)
+
+    modules = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.append(node.module)
+    return modules
+
+
+def _core_py_files():
+    """Yield every .py file under the selfdoc_core package."""
+    for root, dirs, files in os.walk(_CORE_DIR):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for fname in files:
+            if fname.endswith(".py"):
+                yield os.path.join(root, fname)
+
+
+# -- Import layering -------------------------------------------------------
+
+
+def test_build_has_zero_posts_imports():
+    """selfdoc_core.build must not import the posts module at all.
+
+    Post discovery goes through the registered post provider instead.
+    """
+    build_path = os.path.join(_CORE_DIR, "build.py")
+    for mod in _imported_modules(build_path):
+        assert "posts" not in mod.split("."), (
+            f"selfdoc_core/build.py imports {mod!r}; it must use the "
+            f"registered post provider instead of importing posts"
+        )
+
+
+def test_core_imports_neither_sibling():
+    """No module in selfdoc_core may import selfdoc or selfblog."""
+    for py_path in _core_py_files():
+        for mod in _imported_modules(py_path):
+            top = mod.split(".")[0]
+            assert top not in ("selfdoc", "selfblog"), (
+                f"{os.path.relpath(py_path, _CORE_DIR)} imports {mod!r}; "
+                f"selfdoc_core must not import sibling packages"
+            )
+
+
+# -- Post provider registration --------------------------------------------
+
+
+def test_register_same_provider_is_noop(monkeypatch):
+    """Re-registering the identical callable must not raise."""
+    provider = lambda posts_dir, manifest_path=None: []  # noqa: E731
+    monkeypatch.setattr(selfdoc_core, "_post_provider", None)
+    selfdoc_core.register_post_provider(provider)
+    selfdoc_core.register_post_provider(provider)
+    assert selfdoc_core.get_post_provider() is provider
+
+
+def test_register_different_provider_raises(monkeypatch):
+    """Registering a second, different provider is an error."""
+    monkeypatch.setattr(selfdoc_core, "_post_provider", None)
+    selfdoc_core.register_post_provider(lambda d, manifest_path=None: [])
+    with pytest.raises(ValueError, match="already registered"):
+        selfdoc_core.register_post_provider(
+            lambda d, manifest_path=None: [],
+        )
+
+
+def test_require_without_provider_names_selfblog(monkeypatch):
+    """The no-provider hard error must direct the user to selfblog."""
+    monkeypatch.setattr(selfdoc_core, "_post_provider", None)
+    with pytest.raises(RuntimeError, match="selfblog"):
+        selfdoc_core.require_post_provider()
+
+
+def test_selfblog_import_registers_discover_posts():
+    """Importing selfblog registers its discover_posts as the provider."""
+    import selfblog
+
+    assert selfdoc_core.get_post_provider() is selfblog.discover_posts
+
+
+# -- Build pipeline uses the provider ---------------------------------------
+
+
+def _project_with_post(tmp_path):
+    """Create a minimal posts-configured project with one post."""
+    import json
+
+    config = {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
+        json.dump(config, f)
+
+    os.makedirs(os.path.join(tmp_path, "src"), exist_ok=True)
+    with open(os.path.join(tmp_path, "src", "__init__.py"), "w") as f:
+        f.write('"""Example package."""\n')
+
+    os.makedirs(os.path.join(tmp_path, "docs"), exist_ok=True)
+    with open(os.path.join(tmp_path, "docs", "index.md"), "w") as f:
+        f.write("# Test Project\n\nWelcome.\n")
+
+    posts_dir = os.path.join(tmp_path, ".selfdoc", "posts")
+    os.makedirs(posts_dir, exist_ok=True)
+    with open(os.path.join(posts_dir, "hello.md"), "w") as f:
+        f.write(
+            "---\ntitle: Hello\ndate: 2024-01-15\nslug: hello\n"
+            "tags: []\ndraft: false\n---\nBody.\n"
+        )
+    return tmp_path
+
+
+def test_build_with_posts_but_no_provider_hard_errors(tmp_path, monkeypatch):
+    """A posts-carrying build without a registered provider must fail
+    with a hard error naming selfblog."""
+    from selfdoc_core.build import build
+
+    project = _project_with_post(tmp_path)
+    monkeypatch.setattr(selfdoc_core, "_post_provider", None)
+    with pytest.raises(RuntimeError, match="selfblog"):
+        build(str(project))
+
+
+def test_posts_only_build_without_provider_hard_errors(tmp_path, monkeypatch):
+    """target='posts' without a registered provider must hard-error."""
+    from selfdoc_core.build import build
+
+    project = _project_with_post(tmp_path)
+    monkeypatch.setattr(selfdoc_core, "_post_provider", None)
+    with pytest.raises(RuntimeError, match="selfblog"):
+        build(str(project), target="posts")
+
+
+def test_build_with_posts_and_provider_succeeds(tmp_path):
+    """With selfblog's provider registered (via conftest), a
+    posts-carrying build produces the post page."""
+    from selfdoc_core.build import build
+
+    project = _project_with_post(tmp_path)
+    written = build(str(project), target="posts")
+    assert any("hello" in path for path in written)

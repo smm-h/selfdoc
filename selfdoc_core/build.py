@@ -14,6 +14,7 @@ import tempfile
 import zlib
 from datetime import datetime
 
+from selfdoc_core import require_post_provider
 from selfdoc_core.config import load_config, ConfigError
 from selfdoc_core.context import SearchEntry
 from selfdoc_core.docs import resolve_all_docs
@@ -1554,7 +1555,7 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     if not os.path.isdir(posts_dir):
         return []
 
-    from selfdoc_core.posts import discover_posts
+    discover_posts = require_post_provider()
 
     manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
     all_posts = discover_posts(posts_dir, manifest_path=manifest_path)
@@ -1626,8 +1627,8 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
         Dict of {output_path: True} for files written.
     """
     # Discover posts for manifest generation (before injection, which
-    # also calls discover_posts internally)
-    from selfdoc_core.posts import discover_posts
+    # also calls the provider internally)
+    discover_posts = require_post_provider()
     posts_config = config.get("posts") or {}
     posts_dir_rel = posts_config.get("dir", ".selfdoc/posts/")
     posts_dir = os.path.join(dir_path, posts_dir_rel)

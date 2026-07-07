@@ -6,6 +6,11 @@ import subprocess
 
 import pytest
 
+# selfblog registers its post provider (and post-check hook) with
+# selfdoc_core at import time.  Import it here so every test process has
+# the hooks registered, mirroring production wiring.
+import selfblog  # noqa: F401
+
 # Git env vars to avoid reliance on global git config in test environments.
 _GIT_ENV = {
     "GIT_AUTHOR_NAME": "Test Author",

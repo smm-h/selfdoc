@@ -46,37 +46,56 @@ def get_directive_registry() -> dict[str, object]:
     return dict(_directive_registry)
 
 
-# -- Posts-injection hook -----------------------------------------------------
+# -- Post provider ------------------------------------------------------------
 #
-# The posts-injection hook allows selfblog to register its post-injection
-# implementation without core importing selfblog.  Core's build() calls the
-# registered hook to inject blog posts into the docs pipeline.
+# The post provider allows selfblog to supply its post-discovery
+# implementation without core importing selfblog.  The provider is a
+# ``discover_posts`` callable with signature:
 #
-# The hook signature is:
-#   (dir_path: str, config: dict, docs_dir: str, include_drafts: bool)
-#       -> list[str]  (list of absolute paths to injected files)
+#   (posts_dir: str, manifest_path: str | None = None) -> list[dict]
 #
-# If posts are configured in selfdoc.json but no hook is registered,
-# build() raises a hard error (posts-configured-but-no-hook = HARD ERROR).
+# Core's build pipeline calls the registered provider whenever posts are
+# present.  If posts are present but no provider is registered,
+# require_post_provider() raises a hard error naming selfblog.
 
-_posts_injection_hook: object | None = None
+_post_provider: object | None = None
 
 
-def register_posts_hook(hook: object) -> None:
-    """Register the posts-injection hook.
+def register_post_provider(provider: object) -> None:
+    """Register the post provider (selfblog's ``discover_posts``).
+
+    Registering the same callable again is a no-op, so repeated imports
+    of the registering package are safe.
 
     Args:
-        hook: Callable matching the posts-injection hook signature.
+        provider: Callable matching the post provider signature.
 
     Raises:
-        ValueError: If a hook is already registered.
+        ValueError: If a different provider is already registered.
     """
-    global _posts_injection_hook
-    if _posts_injection_hook is not None:
-        raise ValueError("posts-injection hook is already registered")
-    _posts_injection_hook = hook
+    global _post_provider
+    if _post_provider is not None and _post_provider is not provider:
+        raise ValueError("a different post provider is already registered")
+    _post_provider = provider
 
 
-def get_posts_hook() -> object | None:
-    """Return the registered posts-injection hook, or None."""
-    return _posts_injection_hook
+def get_post_provider() -> object | None:
+    """Return the registered post provider, or None."""
+    return _post_provider
+
+
+def require_post_provider() -> object:
+    """Return the registered post provider, or raise a hard error.
+
+    Raises:
+        RuntimeError: If no provider is registered.  Blog posts are
+            handled by selfblog; the error directs the user there.
+    """
+    if _post_provider is None:
+        raise RuntimeError(
+            "Posts are present but no post provider is registered. "
+            "Blog posts are handled by selfblog -- install it "
+            "(pip install selfblog) and run post operations through "
+            "the selfblog CLI."
+        )
+    return _post_provider
