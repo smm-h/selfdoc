@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from selfdoc.cli import _cmd_post_list
+from selfblog.cli import _cmd_post_list
 
 
 def _setup_project(tmp_path, config_overrides=None):

@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from selfdoc.cli import _cmd_assembly_generate_shared
+from selfblog.cli import _cmd_assembly_generate_shared
 
 
 def _write_manifest(manifests_dir, name, slug, version, description="",

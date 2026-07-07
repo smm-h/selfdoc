@@ -7,13 +7,13 @@ import subprocess
 
 import pytest
 
-from selfdoc.cli import (
+from selfblog.cli import (
     _cmd_assembly_init,
     _cmd_assembly_push,
     _cmd_assembly_rebuild,
     _cmd_assembly_status,
-    app,
 )
+from selfdoc.cli import app
 
 
 def _setup_project(tmp_path, config_overrides=None):

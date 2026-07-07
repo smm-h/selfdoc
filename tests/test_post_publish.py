@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 
-from selfdoc.cli import _cmd_post_publish
+from selfblog.cli import _cmd_post_publish
 
 
 def _setup_project(tmp_path, config_overrides=None):
@@ -128,11 +128,11 @@ def test_no_git_status_check(tmp_path, monkeypatch, capsys):
 
     # Mock _build_posts_only and push_files_to_repo to avoid real work
     monkeypatch.setattr(
-        "selfdoc.build._build_posts_only",
+        "selfdoc_core.build._build_posts_only",
         lambda *a, **kw: {},
     )
     monkeypatch.setattr(
-        "selfdoc.assembly.push_files_to_repo",
+        "selfblog.assembly.push_files_to_repo",
         lambda *a, **kw: "fake_sha",
     )
     monkeypatch.setattr(subprocess, "run", tracking_run)
@@ -161,11 +161,11 @@ def test_no_push_status_check(tmp_path, monkeypatch, capsys):
         return result
 
     monkeypatch.setattr(
-        "selfdoc.build._build_posts_only",
+        "selfdoc_core.build._build_posts_only",
         lambda *a, **kw: {},
     )
     monkeypatch.setattr(
-        "selfdoc.assembly.push_files_to_repo",
+        "selfblog.assembly.push_files_to_repo",
         lambda *a, **kw: "fake_sha",
     )
     monkeypatch.setattr(subprocess, "run", tracking_run)
@@ -198,9 +198,9 @@ def test_calls_build_posts_only(tmp_path, monkeypatch, capsys):
         })
         return {}
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", mock_build)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", mock_build)
     monkeypatch.setattr(
-        "selfdoc.assembly.push_files_to_repo",
+        "selfblog.assembly.push_files_to_repo",
         lambda *a, **kw: "fake_sha",
     )
     monkeypatch.setattr(
@@ -245,8 +245,8 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "commit_sha"
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", mock_build)
-    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", mock_build)
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
         subprocess, "run",
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
@@ -275,9 +275,9 @@ def test_dispatches_shared_only(tmp_path, monkeypatch, capsys):
     _create_post(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
     monkeypatch.setattr(
-        "selfdoc.assembly.push_files_to_repo",
+        "selfblog.assembly.push_files_to_repo",
         lambda *a, **kw: "fake_sha",
     )
 
@@ -313,9 +313,9 @@ def test_dispatch_failure_errors(tmp_path, monkeypatch, capsys):
     _create_post(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
     monkeypatch.setattr(
-        "selfdoc.assembly.push_files_to_repo",
+        "selfblog.assembly.push_files_to_repo",
         lambda *a, **kw: "fake_sha",
     )
 
@@ -345,9 +345,9 @@ def test_success_message(tmp_path, monkeypatch, capsys):
     _create_post(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
     monkeypatch.setattr(
-        "selfdoc.assembly.push_files_to_repo",
+        "selfblog.assembly.push_files_to_repo",
         lambda *a, **kw: "fake_sha",
     )
     monkeypatch.setattr(
@@ -380,8 +380,8 @@ def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
         push_calls.append(repo)
         return "sha"
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
-    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
         subprocess, "run",
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
@@ -407,8 +407,8 @@ def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
         push_calls.append(repo)
         return "sha"
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
-    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
         subprocess, "run",
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
@@ -437,14 +437,14 @@ def test_posts_repo_push_when_configured(tmp_path, monkeypatch, capsys):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "sha"
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
-    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
-        "selfdoc.directives.resolve_directives",
+        "selfdoc_core.directives.resolve_directives",
         lambda content, resolver: f"resolved:{content}",
     )
     monkeypatch.setattr(
-        "selfdoc.resolver.make_resolver",
+        "selfdoc_core.resolver.make_resolver",
         lambda config, base_dir: "fake_resolver",
     )
     monkeypatch.setattr(
@@ -473,8 +473,8 @@ def test_no_posts_repo_only_assembly_push(tmp_path, monkeypatch, capsys):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "sha"
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
-    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
         subprocess, "run",
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
@@ -504,13 +504,13 @@ def test_posts_repo_pushes_resolved_markdown(tmp_path, monkeypatch, capsys):
     def mock_resolve(content, resolver):
         return f"RESOLVED[{content}]"
 
-    monkeypatch.setattr("selfdoc.build._build_posts_only", lambda *a, **kw: {})
-    monkeypatch.setattr("selfdoc.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
-        "selfdoc.directives.resolve_directives", mock_resolve,
+        "selfdoc_core.directives.resolve_directives", mock_resolve,
     )
     monkeypatch.setattr(
-        "selfdoc.resolver.make_resolver",
+        "selfdoc_core.resolver.make_resolver",
         lambda config, base_dir: "fake_resolver",
     )
     monkeypatch.setattr(

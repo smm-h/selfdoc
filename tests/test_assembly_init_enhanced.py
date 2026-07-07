@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from selfdoc.cli import _cmd_assembly_init
+from selfblog.cli import _cmd_assembly_init
 
 
 def _setup_project(tmp_path, repo="owner/docs-assembly"):
