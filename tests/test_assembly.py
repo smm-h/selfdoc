@@ -89,7 +89,7 @@ def test_workflow_yaml_has_permissions():
 
 def test_workflow_yaml_has_selfdoc_install():
     yaml_str = generate_workflow_yaml()
-    assert "pip install selfdoc" in yaml_str
+    assert "pip install selfdoc selfblog" in yaml_str
 
 
 def test_workflow_yaml_has_payload_extraction():
@@ -122,7 +122,7 @@ def test_workflow_yaml_has_git_config_and_push():
 
 def test_workflow_yaml_has_generate_shared():
     yaml_str = generate_workflow_yaml()
-    assert "selfdoc assembly generate-shared" in yaml_str
+    assert "selfblog assembly generate-shared" in yaml_str
 
 
 def test_workflow_yaml_has_pagefind():
@@ -315,9 +315,9 @@ def test_workflow_yaml_extracts_scope():
 
 
 def test_workflow_yaml_posts_build():
-    """When SCOPE is posts, workflow runs selfdoc build --target posts."""
+    """When SCOPE is posts, workflow runs selfblog build --target posts."""
     yaml_str = generate_workflow_yaml()
-    assert 'selfdoc build --target posts --no-auto-commit' in yaml_str
+    assert 'selfblog build --target posts --no-auto-commit' in yaml_str
 
 
 def test_workflow_yaml_full_build_with_version():
