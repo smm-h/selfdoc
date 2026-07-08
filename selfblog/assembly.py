@@ -37,7 +37,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tools
-        run: pip install selfdoc 'pagefind[bin]'
+        run: pip install selfdoc selfblog 'pagefind[bin]'
 
       - name: Extract payload
         run: |
@@ -90,7 +90,7 @@ jobs:
         run: |
           cd "source/$SLUG"
           if [ "$SCOPE" = "posts" ]; then
-            selfdoc build --target posts --no-auto-commit
+            selfblog build --target posts --no-auto-commit
           else
             if [ -n "$LATEST_VERSION" ]; then
               selfdoc build --no-auto-commit --version "$LATEST_VERSION"
@@ -164,7 +164,7 @@ jobs:
             if [ -f portfolio/index.html ]; then
               PORTFOLIO_FLAG="--portfolio-file portfolio/index.html"
             fi
-            selfdoc assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' $PORTFOLIO_FLAG
+            selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' $PORTFOLIO_FLAG
 
             # Build search index
             python3 -m pagefind --site site/
