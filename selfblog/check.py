@@ -24,7 +24,13 @@ def check_posts(config, dir_path):
     posts are absent or valid).  Registered with selfdoc_core as the
     post-check hook.
     """
-    from selfdoc.check import LintResult
+    try:
+        from selfdoc.check import LintResult
+    except ImportError as exc:
+        raise RuntimeError(
+            "selfblog post checks require the selfdoc package. "
+            "Install it with: pip install selfdoc"
+        ) from exc
 
     posts_config = config.get("posts") or {}
     posts_dir_rel = posts_config.get("dir", "")
@@ -81,7 +87,13 @@ def check_unified(dir_path=".", config=None, dry_run=False):
     Returns:
         CheckResult with aggregated results from all projects.
     """
-    from selfdoc.check import CheckResult, CoverageStats, LintResult, check_docs
+    try:
+        from selfdoc.check import CheckResult, CoverageStats, LintResult, check_docs
+    except ImportError as exc:
+        raise RuntimeError(
+            "selfblog unified checks require the selfdoc package. "
+            "Install it with: pip install selfdoc"
+        ) from exc
     from selfdoc_core.config import load_config
 
     from selfblog.unified import _project_slug, _resolve_project_path

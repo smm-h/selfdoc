@@ -261,7 +261,15 @@ def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target="")
     # Detect unified config and dispatch accordingly
     if config and config.get("unified"):
         # TEMPORARY delegation until fleet flip -- removed in Phase 7.
-        from selfblog.unified import build_unified
+        try:
+            from selfblog.unified import build_unified
+        except ImportError:
+            print(
+                "Error: building unified sites moved to selfblog. "
+                "Install it with 'pip install selfblog'.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
         try:
             written = build_unified(".", config=config, include_drafts=drafts)
@@ -341,7 +349,15 @@ def _cmd_serve(port=8000, drafts=False):
     if drafts:
         if config.get("unified"):
             # TEMPORARY delegation until fleet flip -- removed in Phase 7.
-            from selfblog.unified import build_unified
+            try:
+                from selfblog.unified import build_unified
+            except ImportError:
+                print(
+                    "Error: building unified sites moved to selfblog. "
+                    "Install it with 'pip install selfblog'.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             try:
                 build_unified(".", config=config, include_drafts=True)
             except RuntimeError as e:

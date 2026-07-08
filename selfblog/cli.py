@@ -867,7 +867,15 @@ def _cmd_check(ignore="", auto_commit=True, dry_run=False):
     if config.get("unified"):
         # The unified check aggregates selfdoc's per-project docs checks;
         # the result/print helpers live in selfdoc.check.
-        from selfdoc.check import filter_lints, print_results
+        try:
+            from selfdoc.check import filter_lints, print_results
+        except ImportError:
+            print(
+                "Error: selfblog unified checks require the selfdoc "
+                "package. Install it with 'pip install selfdoc'.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
         try:
             result = check_unified(".", config=config, dry_run=dry_run)
