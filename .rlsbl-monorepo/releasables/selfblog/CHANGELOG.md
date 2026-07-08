@@ -2,9 +2,22 @@
 
 # Changelog
 
-## 0.1.0
+## 0.1.1
 
-Initial release of the blog and assembly toolchain.
+Fix CI: install playwright browsers before running tests, fix publish gate regex
+
+<details>
+<summary>Context</summary>
+
+v0.1.0 CI failed because playwright browsers were not installed. The publish gate regex also did not match the actual CI job name. Both are fixed.
+
+</details>
+
+### Fixes
+
+- [selfblog] **Fix CI.** Install playwright browsers before running tests so CI passes and the package publishes to PyPI.
+
+## 0.1.0
 
 ### Features
 
