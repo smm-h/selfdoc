@@ -12,8 +12,14 @@ from selfdoc.content import (
     resolve_var,
 )
 
-# Base dir for selfdoc's own project
+# Base dir for selfdoc's own project (repo root; source paths in
+# _SELFDOC_CONFIG are relative to it)
 _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Dir containing a pyproject.toml with a real [project] table. The repo
+# root pyproject is a virtual uv workspace (no [project]), so project.*
+# var resolution must be exercised against the selfdoc package dir.
+_PKG_DIR = os.path.join(_PROJECT_DIR, "selfdoc")
 
 # Minimal config matching selfdoc's own selfdoc.json
 _SELFDOC_CONFIG = {
@@ -452,7 +458,7 @@ class TestVar:
         result = resolve_var(
             {"key": "project.description"},
             config_no_desc,
-            _PROJECT_DIR,
+            _PKG_DIR,
         )
         # Should read from pyproject.toml
         assert "static site generator" in result.lower()
@@ -461,7 +467,7 @@ class TestVar:
         result = resolve_var(
             {"key": "project.name"},
             _SELFDOC_CONFIG,
-            _PROJECT_DIR,
+            _PKG_DIR,
         )
         assert result == "selfdoc"
 
@@ -469,7 +475,7 @@ class TestVar:
         result = resolve_var(
             {"key": "project.version"},
             _SELFDOC_CONFIG,
-            _PROJECT_DIR,
+            _PKG_DIR,
         )
         # Should be a semver-like string
         assert "." in result

@@ -1,31 +1,14 @@
-[project]
-name = "selfdoc"
-version = "0.27.0"
-description = "Code-aware static site generator with directive-based content extraction"
-license = "MIT"
-authors = [{ name = "smm-h" }]
-readme = "README.md"
-requires-python = ">=3.12"
-keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
-dependencies = ["strictcli"]
+# Virtual uv workspace root. The three publishable packages each carry
+# their own pyproject.toml inside their package directory:
+#   selfdoc/       -> selfdoc (CLI + docs frontend, PyPI + npm)
+#   selfdoc_core/  -> selfdoc-core (shared engine, PyPI)
+#   selfblog/      -> selfblog (blog system, PyPI + npm)
+# This file intentionally has no [project] section -- nothing is built
+# from the repo root. Run `uv sync` here to get all three as editable
+# installs, and `uv run pytest` to run the shared test suite in tests/.
 
-[project.optional-dependencies]
-perf = ["brotli>=1.1"]
-og = ["predraw"]
-
-[project.urls]
-Repository = "https://github.com/smm-h/selfdoc"
-
-[project.scripts]
-selfdoc = "selfdoc:main"
-selfblog = "selfblog:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["selfdoc", "selfdoc_core", "selfblog"]
+[tool.uv.workspace]
+members = ["selfdoc", "selfdoc_core", "selfblog"]
 
 [dependency-groups]
 dev = [

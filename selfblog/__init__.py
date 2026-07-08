@@ -6,7 +6,7 @@ It imports from selfdoc_core but never from selfdoc.
 """
 
 from selfdoc_core import register_post_check_hook, register_post_provider
-from selfdoc_core._version import __version__  # noqa: F401
+from selfblog._version import __version__  # noqa: F401
 from selfblog.posts import discover_posts
 
 from selfblog.check import check_posts

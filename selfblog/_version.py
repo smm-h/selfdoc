@@ -1,4 +1,4 @@
-"""Version detection for selfdoc_core."""
+"""Version detection for selfblog."""
 
 import os
 
@@ -25,7 +25,7 @@ def _detect_version():
     # Fall back to installed dist-info metadata
     try:
         from importlib.metadata import version as _get_version
-        return _get_version("selfdoc-core")
+        return _get_version("selfblog")
     except Exception:
         pass
 

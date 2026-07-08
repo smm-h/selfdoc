@@ -2,6 +2,20 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "selfblog",
+    "selfdoc",
+    "selfdoc-core",
+]
+
+[manifest.dependency-groups]
+dev = [
+    { name = "pygments", specifier = ">=2.20.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-playwright", specifier = ">=0.7.2" },
+]
+
 [[package]]
 name = "attrs"
 version = "26.1.0"
@@ -698,12 +712,85 @@ wheels = [
 ]
 
 [[package]]
-name = "selfdoc"
-version = "0.27.0"
-source = { editable = "." }
+name = "selfblog"
+version = "0.1.0"
+source = { editable = "selfblog" }
 dependencies = [
+    { name = "selfdoc-core" },
     { name = "strictcli" },
 ]
+
+[package.optional-dependencies]
+perf = [
+    { name = "brotli" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pygments" },
+    { name = "pytest" },
+    { name = "pytest-playwright" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "brotli", marker = "extra == 'perf'", specifier = ">=1.1" },
+    { name = "selfdoc-core", editable = "selfdoc_core" },
+    { name = "strictcli" },
+]
+provides-extras = ["perf"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pygments", specifier = ">=2.20.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-playwright", specifier = ">=0.7.2" },
+]
+
+[[package]]
+name = "selfdoc"
+version = "0.27.0"
+source = { editable = "selfdoc" }
+dependencies = [
+    { name = "selfdoc-core" },
+    { name = "strictcli" },
+]
+
+[package.optional-dependencies]
+og = [
+    { name = "selfdoc-core", extra = ["og"] },
+]
+perf = [
+    { name = "selfdoc-core", extra = ["perf"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pygments" },
+    { name = "pytest" },
+    { name = "pytest-playwright" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "selfdoc-core", editable = "selfdoc_core" },
+    { name = "selfdoc-core", extras = ["og"], marker = "extra == 'og'", editable = "selfdoc_core" },
+    { name = "selfdoc-core", extras = ["perf"], marker = "extra == 'perf'", editable = "selfdoc_core" },
+    { name = "strictcli" },
+]
+provides-extras = ["perf", "og"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pygments", specifier = ">=2.20.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-playwright", specifier = ">=0.7.2" },
+]
+
+[[package]]
+name = "selfdoc-core"
+version = "0.1.0"
+source = { editable = "selfdoc_core" }
 
 [package.optional-dependencies]
 og = [
@@ -724,7 +811,6 @@ dev = [
 requires-dist = [
     { name = "brotli", marker = "extra == 'perf'", specifier = ">=1.1" },
     { name = "predraw", marker = "extra == 'og'" },
-    { name = "strictcli" },
 ]
 provides-extras = ["perf", "og"]
 

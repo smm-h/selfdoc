@@ -6,14 +6,14 @@ import os
 def _detect_version():
     """Detect package version, preferring pyproject.toml over installed metadata.
 
-    Order: pyproject.toml in the source tree (accurate during editable installs)
-    -> importlib.metadata (works for regular installs) -> "unknown".
+    Order: pyproject.toml inside the package directory (accurate during
+    editable installs) -> importlib.metadata (works for regular installs)
+    -> "unknown".
     """
-    # Try reading version from pyproject.toml next to the package source
+    # Try reading version from the pyproject.toml that lives inside the
+    # package directory (flat monorepo layout).
     try:
-        pyproject_path = os.path.realpath(
-            os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
-        )
+        pyproject_path = os.path.join(os.path.dirname(__file__), "pyproject.toml")
         if os.path.isfile(pyproject_path):
             import tomllib
             with open(pyproject_path, "rb") as f:
