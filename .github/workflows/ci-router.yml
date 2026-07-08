@@ -15,6 +15,7 @@ jobs:
     outputs:
       selfdoc-core: ${{ steps.changes.outputs.selfdoc-core }}
       selfblog: ${{ steps.changes.outputs.selfblog }}
+      selfdoc: ${{ steps.changes.outputs.selfdoc }}
     steps:
     - uses: actions/checkout@v6
     - uses: dorny/paths-filter@v4
@@ -27,6 +28,16 @@ jobs:
           selfblog:
             - 'selfblog/**'
             - 'selfblog/**'
+          selfdoc:
+            - 'selfdoc/**'
+            - 'selfdoc/**'
+            - 'docs/**'
+            - 'scripts/**'
+            - 'tests/**'
+            - 'selfdoc.json'
+            - 'pyproject.toml'
+            - 'uv.lock'
+            - 'LICENSE'
   selfdoc-core-ci-test:
     runs-on: ubuntu-latest
     strategy:
@@ -75,3 +86,27 @@ jobs:
     needs:
     - detect
     if: needs.detect.outputs.selfblog == 'true'
+  selfdoc-ci-pypi-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # requires-python: >= 3.12
+        python-version: ['3.12', '3.13', '3.14']
+    steps:
+    - uses: actions/checkout@v6
+    - uses: astral-sh/setup-uv@v7
+    - run: uv python install ${{ matrix.python-version }}
+    - run: uv sync --locked
+    - run: uv run python -c "import selfdoc"
+    - name: Install gitleaks
+      run: |
+        GITLEAKS_VERSION=8.24.3
+        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
+    - run: uv run pytest
+    defaults:
+      run:
+        working-directory: selfdoc
+    name: selfdoc-ci-pypi / test
+    needs:
+    - detect
+    if: needs.detect.outputs.selfdoc == 'true'
