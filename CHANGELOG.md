@@ -2,9 +2,22 @@
 
 # selfdoc
 
-## 0.28.0
+## 0.28.1
 
-Monorepo conversion with three independent packages (selfdoc, selfdoc-core, selfblog).
+Fix CI: install playwright browsers before running tests, fix publish gate regex
+
+<details>
+<summary>Context</summary>
+
+v0.28.0 CI failed because playwright browsers were not installed. The publish gate regex also did not match the actual CI job name. Both are fixed.
+
+</details>
+
+### Fixes
+
+- [selfdoc] **Fix CI.** Install playwright browsers before running tests so CI passes and the package publishes to PyPI.
+
+## 0.28.0
 
 ### Breaking
 

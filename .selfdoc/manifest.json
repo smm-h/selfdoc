@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.28.0",
+  "version": "0.28.1",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "python",
   "base_url": "https://selfdoc.smmh.dev",
@@ -366,5 +366,5 @@
       ]
     }
   ],
-  "last_gen": "2026-07-08T19:30:32.193533+00:00"
+  "last_gen": "2026-07-08T19:30:54.351819+00:00"
 }
