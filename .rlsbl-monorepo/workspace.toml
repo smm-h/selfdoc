@@ -10,6 +10,7 @@ name = "selfdoc-core"
 name = "selfblog"
 
 
+
 [[projects]]
 path = "selfdoc_core"
 name = "selfdoc-core"
@@ -18,7 +19,13 @@ releasable = "selfdoc-core"
 watch = ["selfdoc_core/**"]
 
 [[projects]]
-path = "selfblog/"
+path = "selfblog"
 name = "selfblog"
 releasable = "selfblog"
 watch = ["selfblog/**"]
+
+[[projects]]
+path = "selfdoc/"
+name = "selfdoc"
+releasable = "selfdoc"
+watch = ["selfdoc/**", "docs/**", "scripts/**", "tests/**", "selfdoc.json", "pyproject.toml", "uv.lock", "LICENSE"]
