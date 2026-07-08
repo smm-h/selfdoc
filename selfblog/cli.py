@@ -937,13 +937,12 @@ def _cmd_check(ignore="", auto_commit=True, dry_run=False):
 # -- build command -----------------------------------------------------------
 
 
-@app.command("build", help="Build blog posts for the documentation site")
-@strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build")
+@app.command("build", help="Build blog posts or unified documentation site")
+@strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
 def _cmd_build(target="posts", drafts=False, auto_commit=True):
-    """Build blog posts."""
-    from selfdoc_core.build import build
+    """Build blog posts or unified site."""
     from selfdoc_core.config import load_config
 
     config = load_config(".")
@@ -951,36 +950,50 @@ def _cmd_build(target="posts", drafts=False, auto_commit=True):
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
 
-    if target != "posts":
-        print(
-            f"Error: selfblog build only supports --target posts. "
-            f"For full builds, use 'selfdoc build'.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    if target == "unified":
+        from selfblog.unified import build_unified
 
-    try:
-        written = build(
-            ".",
-            include_drafts=drafts,
-            target="posts",
-        )
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        try:
+            written = build_unified(dir_path=".", include_drafts=drafts)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    output_dir = config["output"] if config else "docs/_build/"
+        print(f"Built {len(written)} file(s) (unified)")
+        return 0
 
-    if auto_commit:
-        from selfdoc_core.git import auto_commit as _auto_commit
-        _auto_commit(
-            [".selfdoc/hashes/hashes.json"],
-            "selfdoc: update content hashes",
-            ".",
-        )
+    if target == "posts":
+        from selfdoc_core.build import build
 
-    print(f"Built {len(written)} file(s) to {output_dir}")
-    return 0
+        try:
+            written = build(
+                ".",
+                include_drafts=drafts,
+                target="posts",
+            )
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        output_dir = config["output"] if config else "docs/_build/"
+
+        if auto_commit:
+            from selfdoc_core.git import auto_commit as _auto_commit
+            _auto_commit(
+                [".selfdoc/hashes/hashes.json"],
+                "selfdoc: update content hashes",
+                ".",
+            )
+
+        print(f"Built {len(written)} file(s) to {output_dir}")
+        return 0
+
+    print(
+        f"Error: unknown build target '{target}'. "
+        f"Valid targets: 'posts', 'unified'.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def run():
