@@ -9,9 +9,16 @@ name = "selfdoc-core"
 [[releasables]]
 name = "selfblog"
 
+
 [[projects]]
-path = "selfdoc_core/"
+path = "selfdoc_core"
 name = "selfdoc-core"
 library = true
 releasable = "selfdoc-core"
 watch = ["selfdoc_core/**"]
+
+[[projects]]
+path = "selfblog/"
+name = "selfblog"
+releasable = "selfblog"
+watch = ["selfblog/**"]
