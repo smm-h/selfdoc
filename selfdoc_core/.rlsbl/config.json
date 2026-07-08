@@ -8,5 +8,6 @@
       "type": "pypi",
       "local": false
     }
-  }
+  },
+  "coverage_unit": "commit"
 }
