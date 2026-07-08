@@ -27,6 +27,10 @@ with open("selfdoc.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 config["version"] = version
 
+# Also sync the last entry in the versions array (single-version site)
+if "versions" in config and config["versions"]:
+    config["versions"][-1]["version"] = version
+
 fd, tmp = tempfile.mkstemp(dir=".", prefix=".selfdoc.json.", suffix=".tmp")
 with os.fdopen(fd, "w", encoding="utf-8") as f:
     json.dump(config, f, indent=2, ensure_ascii=False)
