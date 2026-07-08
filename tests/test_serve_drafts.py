@@ -14,7 +14,6 @@ import pytest
 # `from selfdoc.config import load_config` binding captures the mock
 # and is never restored. Pre-importing ensures the real bindings are set.
 import selfdoc.build  # noqa: F401
-import selfblog.unified  # noqa: F401
 
 from conftest import default_config
 
@@ -107,9 +106,9 @@ class TestServeDraftsRebuild:
 
             mock_build.assert_called_once_with(".", include_drafts=True)
 
-    def test_serve_drafts_calls_build_unified(self, tmp_path, monkeypatch):
-        """When --drafts is True (unified config): build_unified() is called
-        with include_drafts=True."""
+    def test_serve_drafts_unified_hard_errors(self, tmp_path, monkeypatch, capsys):
+        """When --drafts is True (unified config): hard error directing
+        to the selfblog CLI -- unified builds moved to selfblog."""
         project = _setup_project_with_posts(tmp_path)
         output_dir = os.path.join(project, "docs", "_build")
         os.makedirs(output_dir, exist_ok=True)
@@ -122,24 +121,15 @@ class TestServeDraftsRebuild:
             "unified": {"projects": [{"path": "../core"}]},
         }
 
-        with (
-            patch("selfdoc.config.load_config", return_value=config),
-            patch(
-                "selfblog.unified.build_unified", return_value={},
-            ) as mock_build_unified,
-            patch("http.server.HTTPServer") as mock_server,
-        ):
-            mock_instance = MagicMock()
-            mock_server.return_value = mock_instance
-            mock_instance.serve_forever.side_effect = KeyboardInterrupt
-
+        with patch("selfdoc.config.load_config", return_value=config):
             from selfdoc.cli import _cmd_serve
 
-            _cmd_serve(port=8000, drafts=True)
+            with pytest.raises(SystemExit) as excinfo:
+                _cmd_serve(port=8000, drafts=True)
 
-            mock_build_unified.assert_called_once_with(
-                ".", config=config, include_drafts=True,
-            )
+        assert excinfo.value.code == 1
+        captured = capsys.readouterr()
+        assert "moved to selfblog" in captured.err
 
     def test_serve_no_drafts_skips_build(self, tmp_path, monkeypatch):
         """When --drafts is False: build is NOT called at all."""
@@ -157,9 +147,6 @@ class TestServeDraftsRebuild:
         with (
             patch("selfdoc.config.load_config", return_value=config),
             patch("selfdoc.build.build") as mock_build,
-            patch(
-                "selfblog.unified.build_unified",
-            ) as mock_build_unified,
             patch("http.server.HTTPServer") as mock_server,
         ):
             mock_instance = MagicMock()
@@ -171,7 +158,6 @@ class TestServeDraftsRebuild:
             _cmd_serve(port=8000, drafts=False)
 
             mock_build.assert_not_called()
-            mock_build_unified.assert_not_called()
 
 
 # -- Integration test: drafts appear in output ------------------------------

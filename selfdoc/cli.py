@@ -22,41 +22,32 @@ post_group = app.group("post", help="Manage blog posts and chronological content
 assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
 
 
-def _selfblog_cli():
-    """Import selfblog.cli for post/assembly command delegation.
+def _moved_to_selfblog(command):
+    """Hard error for commands that moved to the selfblog CLI.
 
-    TEMPORARY delegation until fleet flip -- removed in the same
-    session, Phase 7.  The real implementations live in selfblog; the
-    selfdoc post/assembly commands stay callable so fleet hooks
-    ('selfdoc assembly push') and rlsbl ('selfdoc post generate') keep
-    working during the transition.
+    The post/assembly implementations live in selfblog.  The selfdoc
+    command stubs stay registered so old invocations get a clean,
+    directed error instead of an unknown-command failure.
     """
-    try:
-        import selfblog.cli
-    except ImportError:
-        print(
-            "Error: The post and assembly commands moved to selfblog. "
-            "Install it with 'pip install selfblog' and use the "
-            "selfblog CLI.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return selfblog.cli
+    print(
+        f"Error: 'selfdoc {command}' moved to selfblog -- run "
+        f"'selfblog {command}' instead (pip install selfblog).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 @post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.")
 @strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
 def _cmd_post_new(title=""):
     """Create a new blog post file in the posts directory."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_post_new(title=title)
+    _moved_to_selfblog("post new")
 
 
 @post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.")
 def _cmd_post_list():
     """List all discovered blog posts."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_post_list()
+    _moved_to_selfblog("post list")
 
 
 @post_group.command("generate", help="Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.")
@@ -87,28 +78,13 @@ def _cmd_post_generate(
     dry_run=False,
 ):
     """Generate a blog post from release metadata."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_post_generate(
-        from_release=from_release,
-        version=version,
-        prev_version=prev_version,
-        bump_type=bump_type,
-        description=description,
-        context=context,
-        changelog_file=changelog_file,
-        body_file=body_file,
-        project_name=project_name,
-        release_url=release_url,
-        registry_url=registry_url,
-        dry_run=dry_run,
-    )
+    _moved_to_selfblog("post generate")
 
 
 @post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.")
 def _cmd_post_publish():
     """Publish blog posts to the assembly without a software release."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_post_publish()
+    _moved_to_selfblog("post publish")
 
 
 def _detect_source_entries(language):
@@ -251,45 +227,42 @@ def _cmd_init(auto_commit=True):
 @strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output alongside published posts")
-@strictcli.flag("target", type=str, default="", help="Build target: 'posts' for posts-only build, empty for full build")
+@strictcli.flag("target", type=str, default="", help="Build target: empty for full build ('posts' builds moved to selfblog)")
 def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
     from selfdoc.config import load_config
 
     config = load_config(".")
 
-    # Detect unified config and dispatch accordingly
+    # Unified sites and posts-only builds moved to selfblog.
     if config and config.get("unified"):
-        # TEMPORARY delegation until fleet flip -- removed in Phase 7.
-        try:
-            from selfblog.unified import build_unified
-        except ImportError:
-            print(
-                "Error: building unified sites moved to selfblog. "
-                "Install it with 'pip install selfblog'.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        print(
+            "Error: building unified sites moved to selfblog -- "
+            "use the selfblog CLI (pip install selfblog).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if target == "posts":
+        print(
+            "Error: posts-only builds moved to selfblog -- run "
+            "'selfblog build --target posts' instead (pip install selfblog).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-        try:
-            written = build_unified(".", config=config, include_drafts=drafts)
-        except RuntimeError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        from selfdoc.build import build
+    from selfdoc.build import build
 
-        try:
-            written = build(
-                ".",
-                version_filter=version or None,
-                locale_filter=locale or None,
-                include_drafts=drafts,
-                target=target,
-            )
-        except RuntimeError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
+    try:
+        written = build(
+            ".",
+            version_filter=version or None,
+            locale_filter=locale or None,
+            include_drafts=drafts,
+            target=target,
+        )
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     from selfdoc.check import check_docs, filter_lints
 
@@ -348,28 +321,18 @@ def _cmd_serve(port=8000, drafts=False):
 
     if drafts:
         if config.get("unified"):
-            # TEMPORARY delegation until fleet flip -- removed in Phase 7.
-            try:
-                from selfblog.unified import build_unified
-            except ImportError:
-                print(
-                    "Error: building unified sites moved to selfblog. "
-                    "Install it with 'pip install selfblog'.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            try:
-                build_unified(".", config=config, include_drafts=True)
-            except RuntimeError as e:
-                print(f"Error: {e}", file=sys.stderr)
-                sys.exit(1)
-        else:
-            from selfdoc.build import build
-            try:
-                build(".", include_drafts=True)
-            except RuntimeError as e:
-                print(f"Error: {e}", file=sys.stderr)
-                sys.exit(1)
+            print(
+                "Error: building unified sites moved to selfblog -- "
+                "use the selfblog CLI (pip install selfblog).",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        from selfdoc.build import build
+        try:
+            build(".", include_drafts=True)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
     output_dir = config["output"].rstrip("/")
     if not os.path.isdir(output_dir):
@@ -822,29 +785,25 @@ def _cmd_gen_data(auto_commit=True):
 @assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.")
 def _cmd_assembly_init():
     """Create the assembly GitHub repo and push initial files."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_assembly_init()
+    _moved_to_selfblog("assembly init")
 
 
 @assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.")
 def _cmd_assembly_push():
     """Dispatch an assembly rebuild for the current project."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_assembly_push()
+    _moved_to_selfblog("assembly push")
 
 
 @assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.")
 def _cmd_assembly_status():
     """Show recent assembly build status."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_assembly_status()
+    _moved_to_selfblog("assembly status")
 
 
 @assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.")
 def _cmd_assembly_rebuild():
     """Trigger rebuild for all projects in the assembly."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_assembly_rebuild()
+    _moved_to_selfblog("assembly rebuild")
 
 
 @assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
@@ -852,8 +811,7 @@ def _cmd_assembly_rebuild():
 @strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
 def _cmd_assembly_redirects(slug="", docs_base=""):
     """Print the _redirects file content for redirecting to the assembly site."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_assembly_redirects(slug=slug, docs_base=docs_base)
+    _moved_to_selfblog("assembly redirects")
 
 
 @assembly_group.command("generate-shared", help="Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
@@ -863,22 +821,16 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
 @strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
 def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
-    # TEMPORARY delegation until fleet flip -- removed in the same session, Phase 7.
-    return _selfblog_cli()._cmd_assembly_generate_shared(
-        site_dir=site_dir,
-        manifests_dir=manifests_dir,
-        docs_base=docs_base,
-        portfolio_file=portfolio_file,
-    )
+    _moved_to_selfblog("assembly generate-shared")
 
 
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
-    # TEMPORARY until fleet flip -- removed in the same session, Phase 7.
-    # Importing selfblog registers its post provider (and post-check hook)
-    # with selfdoc_core, so posts-configured projects keep working through
-    # the selfdoc CLI (build/gen/check) during the transition.  If selfblog
-    # is missing, posts-carrying operations hard-error naming selfblog.
+    # If selfblog is installed, importing it registers the post provider
+    # (and post-check hook) with selfdoc_core so build/gen/check handle
+    # posts-carrying projects.  Without selfblog, posts-carrying
+    # operations hard-error naming selfblog (selfdoc_core.
+    # require_post_provider) -- installing selfblog IS the mode selection.
     try:
         import selfblog  # noqa: F401
     except ImportError:
