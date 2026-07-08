@@ -69,7 +69,7 @@ def test_constituent_posts_injected(
     mock_body, tmp_path,
 ):
     """_inject_posts_into_docs is called for each constituent project."""
-    from selfdoc.unified import build_unified
+    from selfblog.unified import build_unified
 
     # Set up docs-site
     docs_site = tmp_path / "docs-site"
@@ -163,7 +163,7 @@ def test_constituent_posts_cleaned_up(
     mock_body, tmp_path,
 ):
     """Cleanup is called for all projects with injected files."""
-    from selfdoc.unified import build_unified
+    from selfblog.unified import build_unified
 
     docs_site = tmp_path / "docs-site"
     docs_site.mkdir()
@@ -229,7 +229,7 @@ def test_unified_cleanup_on_build_failure(
     mock_body, tmp_path,
 ):
     """Cleanup happens even when the build body raises an exception."""
-    from selfdoc.unified import build_unified
+    from selfblog.unified import build_unified
 
     docs_site = tmp_path / "docs-site"
     docs_site.mkdir()
@@ -350,7 +350,7 @@ def test_unified_no_cleanup_when_no_injected_files(
     mock_body, tmp_path,
 ):
     """Cleanup is not called when no files were injected."""
-    from selfdoc.unified import build_unified
+    from selfblog.unified import build_unified
 
     docs_site = tmp_path / "docs-site"
     docs_site.mkdir()

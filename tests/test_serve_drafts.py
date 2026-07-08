@@ -14,7 +14,7 @@ import pytest
 # `from selfdoc.config import load_config` binding captures the mock
 # and is never restored. Pre-importing ensures the real bindings are set.
 import selfdoc.build  # noqa: F401
-import selfdoc.unified  # noqa: F401
+import selfblog.unified  # noqa: F401
 
 from conftest import default_config
 
@@ -125,7 +125,7 @@ class TestServeDraftsRebuild:
         with (
             patch("selfdoc.config.load_config", return_value=config),
             patch(
-                "selfdoc.unified.build_unified", return_value={},
+                "selfblog.unified.build_unified", return_value={},
             ) as mock_build_unified,
             patch("http.server.HTTPServer") as mock_server,
         ):
@@ -158,7 +158,7 @@ class TestServeDraftsRebuild:
             patch("selfdoc.config.load_config", return_value=config),
             patch("selfdoc.build.build") as mock_build,
             patch(
-                "selfdoc.unified.build_unified",
+                "selfblog.unified.build_unified",
             ) as mock_build_unified,
             patch("http.server.HTTPServer") as mock_server,
         ):

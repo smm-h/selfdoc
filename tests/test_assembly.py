@@ -1,11 +1,11 @@
-"""Tests for selfdoc.assembly -- assembly infrastructure for multi-project docs."""
+"""Tests for selfblog.assembly -- assembly infrastructure for multi-project docs."""
 
 import json
 from unittest.mock import patch
 
 import pytest
 
-from selfdoc.assembly import (
+from selfblog.assembly import (
     assembly_init,
     assembly_push,
     assembly_rebuild,
@@ -414,7 +414,7 @@ def test_push_files_successful_sequence():
     ]
     effect, call_log = _mock_run_factory(responses)
     files = {"dir/a.txt": "content a", "dir/b.txt": "content b"}
-    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+    with patch("selfblog.assembly.subprocess.run", side_effect=effect):
         sha = push_files_to_repo("owner/repo", files, "test commit")
     assert sha == "newcommit"
     assert len(call_log) == 7
@@ -436,7 +436,7 @@ def test_push_files_blob_error_raises():
         (1, "", "Not Found"),  # blob creation fails
     ]
     effect, _ = _mock_run_factory(responses)
-    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+    with patch("selfblog.assembly.subprocess.run", side_effect=effect):
         with pytest.raises(RuntimeError, match="create blob"):
             push_files_to_repo("owner/repo", {"f.txt": "x"}, "msg")
 
@@ -450,7 +450,7 @@ def test_push_files_tree_error_raises():
         (1, "", "Server Error"),  # tree creation fails
     ]
     effect, _ = _mock_run_factory(responses)
-    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+    with patch("selfblog.assembly.subprocess.run", side_effect=effect):
         with pytest.raises(RuntimeError, match="create tree"):
             push_files_to_repo("owner/repo", {"f.txt": "x"}, "msg")
 
@@ -474,7 +474,7 @@ def test_push_files_tree_payload_has_correct_paths_and_shas():
     ]
     effect, call_log = _mock_run_factory(responses)
     files = {"site/index.html": "<html/>", "site/style.css": "body{}"}
-    with patch("selfdoc.assembly.subprocess.run", side_effect=effect):
+    with patch("selfblog.assembly.subprocess.run", side_effect=effect):
         push_files_to_repo("owner/repo", files, "deploy")
     # call_log[4] is the tree creation call
     tree_input = json.loads(call_log[4]["input"])

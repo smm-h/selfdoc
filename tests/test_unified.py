@@ -8,7 +8,7 @@ import pytest
 
 from selfdoc.build import build
 from selfdoc.config import ConfigError, load_config
-from selfdoc.unified import (
+from selfblog.unified import (
     _build_unified_nav,
     _generate_landing_page,
     _project_nav_title,

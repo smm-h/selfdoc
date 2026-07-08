@@ -1,6 +1,6 @@
-"""Feed-specific tests for selfdoc.shared module."""
+"""Feed-specific tests for selfblog.shared module."""
 
-from selfdoc.shared import generate_unified_feed
+from selfblog.shared import generate_unified_feed
 from selfdoc.build import _make_feed_entry
 
 

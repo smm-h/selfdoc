@@ -1,6 +1,6 @@
-"""Tests for generate_redirects_file in selfdoc.assembly."""
+"""Tests for generate_redirects_file in selfblog.assembly."""
 
-from selfdoc.assembly import generate_redirects_file
+from selfblog.assembly import generate_redirects_file
 
 
 def test_redirects_basic_format():

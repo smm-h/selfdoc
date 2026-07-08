@@ -1,8 +1,8 @@
-"""Tests for selfdoc.shared -- shared elements for multi-project documentation assembly."""
+"""Tests for selfblog.shared -- shared elements for multi-project documentation assembly."""
 
 import json
 
-from selfdoc.shared import (
+from selfblog.shared import (
     _page_path_to_url_segment,
     generate_blog_index,
     generate_homepage,

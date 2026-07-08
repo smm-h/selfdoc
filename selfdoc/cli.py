@@ -260,7 +260,8 @@ def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target="")
 
     # Detect unified config and dispatch accordingly
     if config and config.get("unified"):
-        from selfdoc.unified import build_unified
+        # TEMPORARY delegation until fleet flip -- removed in Phase 7.
+        from selfblog.unified import build_unified
 
         try:
             written = build_unified(".", config=config, include_drafts=drafts)
@@ -339,7 +340,8 @@ def _cmd_serve(port=8000, drafts=False):
 
     if drafts:
         if config.get("unified"):
-            from selfdoc.unified import build_unified
+            # TEMPORARY delegation until fleet flip -- removed in Phase 7.
+            from selfblog.unified import build_unified
             try:
                 build_unified(".", config=config, include_drafts=True)
             except RuntimeError as e:
