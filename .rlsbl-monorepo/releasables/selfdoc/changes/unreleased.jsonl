@@ -5,3 +5,4 @@
 {"id":"18c03dc7a4412c3d2aba808e24fe46f5b49b46848224e536","commits":["dedff027c9c7dbcb838adf9b7fb29cd946be2b85"],"user_facing":false,"packages":["selfdoc"]}
 {"id":"18c03e17445222563539fb992c3044658dc94b5070327a4e","commits":["a60e7b3769162c43de1069a9e272cd7c78d06d31"],"user_facing":false,"packages":["selfdoc"]}
 {"id":"18c03e814aba89ae3006c074dfc040259a18ba13a5153627","commits":["2d1906c17d81d8be1da091e1b5343ac5c6dbe83f"],"user_facing":true,"description":"selfdoc post/assembly commands removed -- use the selfblog CLI (`pip install selfblog`). Unified and posts-only builds through `selfdoc build`/`serve` now hard-error directing to selfblog","type":"breaking","packages":["selfdoc"]}
+{"id":"18c06422a90c1d266e0554f0f0474d0f853ec5729acc8752","commits":["3b5ec1117f455e808319f883fb4fb117715d5d2e"],"user_facing":false,"packages":["selfdoc"]}
