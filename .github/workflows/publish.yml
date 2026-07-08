@@ -38,10 +38,10 @@ jobs:
             regex='^(selfdoc\-core\-ci) / '
             ;;
           "selfblog@v"*)
-            regex='^(selfblog\-ci) / '
+            regex='^(selfblog\-ci\-pypi) / '
             ;;
           "v"*)
-            regex='^(selfdoc\-ci) / '
+            regex='^(selfdoc\-ci\-pypi) / '
             ;;
           *)
             echo "::error::Publish gate: ref '$GITHUB_REF_NAME' matches no project tag prefix (known prefixes: selfdoc-core@v, selfblog@v, v)."
