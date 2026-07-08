@@ -1,0 +1,17 @@
+{
+  "targets": [
+    "npm",
+    "pypi"
+  ],
+  "private": false,
+  "pipelines": {
+    "npm": {
+      "type": "npm",
+      "local": false
+    },
+    "pypi": {
+      "type": "pypi",
+      "local": false
+    }
+  }
+}
