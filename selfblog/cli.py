@@ -87,7 +87,7 @@ def _cmd_post_new(title=""):
 def _cmd_post_list():
     """List all discovered blog posts."""
     from selfdoc_core.config import load_config
-    from selfdoc_core.posts import discover_posts
+    from selfblog.posts import discover_posts
 
     config = load_config(".")
     if config is None:
@@ -290,7 +290,7 @@ def _cmd_post_publish():
     from selfblog.assembly import push_files_to_repo
     from selfdoc_core.build import _build_posts_only
     from selfdoc_core.config import load_config
-    from selfdoc_core.posts import discover_posts
+    from selfblog.posts import discover_posts
 
     config = load_config(".")
     if config is None:

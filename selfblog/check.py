@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 
-from selfdoc_core.posts import discover_posts
+from selfblog.posts import discover_posts
 
 
 def check_posts(config, dir_path):

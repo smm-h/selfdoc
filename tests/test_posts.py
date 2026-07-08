@@ -1,4 +1,4 @@
-"""Tests for selfdoc.posts -- post discovery and validation."""
+"""Tests for selfblog.posts -- post discovery and validation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from selfdoc.posts import discover_posts
+from selfblog.posts import discover_posts
 
 
 def _write_post(posts_dir, filename, frontmatter_lines, body=""):

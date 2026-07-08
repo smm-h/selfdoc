@@ -723,12 +723,18 @@ def _cmd_gen(auto_commit=True):
         update_hashes(all_docs, ".")
     all_commit_files.append(".selfdoc/hashes/hashes.json")
 
-    # Discover posts for manifest
-    from selfdoc.posts import discover_posts
-
+    # Discover posts for manifest -- via the post provider registered by
+    # selfblog (posts moved to selfblog).  Skipped when no posts
+    # directory exists; posts present without a provider is a hard
+    # error naming selfblog.
     posts_config = config.get("posts") or {}
     posts_dir = posts_config.get("dir", ".selfdoc/posts/")
-    posts = discover_posts(posts_dir)
+    if os.path.isdir(posts_dir):
+        from selfdoc_core import require_post_provider
+
+        posts = require_post_provider()(posts_dir)
+    else:
+        posts = []
     posts_data = [
         {
             "path": p["path"],

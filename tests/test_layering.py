@@ -66,6 +66,16 @@ def test_core_imports_neither_sibling():
             )
 
 
+def test_posts_module_lives_only_in_selfblog():
+    """The posts module moved to selfblog; the old locations must not
+    exist (a core->blog shim would invert the dependency)."""
+    import importlib.util
+
+    assert importlib.util.find_spec("selfblog.posts") is not None
+    assert importlib.util.find_spec("selfdoc_core.posts") is None
+    assert importlib.util.find_spec("selfdoc.posts") is None
+
+
 # -- Post provider registration --------------------------------------------
 
 

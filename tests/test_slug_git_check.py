@@ -15,7 +15,7 @@ import subprocess
 import pytest
 
 from selfdoc.manifest import load_manifest_from_git
-from selfdoc.posts import discover_posts
+from selfblog.posts import discover_posts
 
 
 def _git(cwd: str, *args: str) -> subprocess.CompletedProcess:
