@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.26.1",
+  "version": "0.27.0",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "python",
   "base_url": "https://selfdoc.smmh.dev",
@@ -178,11 +178,6 @@
       "type": "doc"
     },
     {
-      "path": "selfdoc-assembly.md",
-      "title": "selfdoc.assembly",
-      "type": "doc"
-    },
-    {
       "path": "selfdoc-build.md",
       "title": "selfdoc.build",
       "type": "doc"
@@ -308,18 +303,8 @@
       "type": "doc"
     },
     {
-      "path": "selfdoc-posts.md",
-      "title": "selfdoc.posts",
-      "type": "doc"
-    },
-    {
       "path": "selfdoc-resolver.md",
       "title": "selfdoc.resolver",
-      "type": "doc"
-    },
-    {
-      "path": "selfdoc-shared.md",
-      "title": "selfdoc.shared",
       "type": "doc"
     },
     {
@@ -335,11 +320,6 @@
     {
       "path": "selfdoc-tokenizer.md",
       "title": "selfdoc.tokenizer",
-      "type": "doc"
-    },
-    {
-      "path": "selfdoc-unified.md",
-      "title": "selfdoc.unified",
       "type": "doc"
     },
     {
@@ -386,5 +366,5 @@
       ]
     }
   ],
-  "last_gen": "2026-07-06T15:32:49.053006+00:00"
+  "last_gen": "2026-07-08T18:34:34.359793+00:00"
 }
