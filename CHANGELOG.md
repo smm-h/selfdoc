@@ -742,3 +742,12 @@ Multi-language project support and Zig extractor
 ### Features
 
 - [selfdoc-core] **Initial release of selfdoc-core.** The shared documentation engine extracted from selfdoc: build pipeline, directive parser and resolver, language extractors (Python, Go, TypeScript, Dart, Kotlin, SQL, Svelte, Swift, Zig), themes, JS assets, manifest and revision tracking, and deploy providers. Consumed by `selfdoc` and `selfblog` as a library.
+
+# selfblog
+
+## Unreleased
+
+### Features
+
+- [selfblog] **Initial release of selfblog.** Blog system for selfdoc-based documentation sites: post discovery and validation (POST001-POST005), assembly infrastructure for unified multi-project deployment, unified site building, and the `selfblog` CLI with `post`, `assembly`, `build`, and `check` commands.
+- [selfblog] **npm wrapper.** `npm install -g selfblog` provides the `selfblog` command via a Node wrapper that delegates to `python3 -m selfblog` and prints a `pip install selfblog` hint when the Python package is missing.
