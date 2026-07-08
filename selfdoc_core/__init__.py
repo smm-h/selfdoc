@@ -99,3 +99,57 @@ def require_post_provider() -> object:
             "the selfblog CLI."
         )
     return _post_provider
+
+
+# -- Post-check hook -----------------------------------------------------------
+#
+# The post-check hook allows selfblog to supply its post validation
+# (POST001-POST005 lints) without selfdoc importing selfblog.  The hook
+# signature is:
+#
+#   (config: dict, dir_path: str) -> list  (list of LintResult objects)
+#
+# selfdoc's check pipeline calls the registered hook when a posts
+# directory is configured and present.  Posts-present-but-no-hook is a
+# hard error naming selfblog.
+
+_post_check_hook: object | None = None
+
+
+def register_post_check_hook(hook: object) -> None:
+    """Register the post-check hook (selfblog's ``check_posts``).
+
+    Registering the same callable again is a no-op, so repeated imports
+    of the registering package are safe.
+
+    Args:
+        hook: Callable matching the post-check hook signature.
+
+    Raises:
+        ValueError: If a different hook is already registered.
+    """
+    global _post_check_hook
+    if _post_check_hook is not None and _post_check_hook is not hook:
+        raise ValueError("a different post-check hook is already registered")
+    _post_check_hook = hook
+
+
+def get_post_check_hook() -> object | None:
+    """Return the registered post-check hook, or None."""
+    return _post_check_hook
+
+
+def require_post_check_hook() -> object:
+    """Return the registered post-check hook, or raise a hard error.
+
+    Raises:
+        RuntimeError: If no hook is registered.  Post checks are handled
+            by selfblog; the error directs the user there.
+    """
+    if _post_check_hook is None:
+        raise RuntimeError(
+            "Posts are present but no post-check hook is registered. "
+            "Post checks are handled by selfblog -- install it "
+            "(pip install selfblog) and run 'selfblog check'."
+        )
+    return _post_check_hook

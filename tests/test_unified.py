@@ -4,6 +4,8 @@ import json
 import os
 import subprocess
 
+import pytest
+
 from selfdoc.build import build
 from selfdoc.config import ConfigError, load_config
 from selfdoc.unified import (
@@ -357,7 +359,7 @@ def test_validate_rlsbl_workspace_excluded(tmp_path):
 
 def test_check_unified(make_unified_project):
     """check_unified runs checks across all constituent projects."""
-    from selfdoc.check import check_unified
+    from selfblog.check import check_unified
 
     projects = [
         {"name": "core", "language": "python"},
@@ -375,6 +377,24 @@ def test_check_unified(make_unified_project):
     has_common = any("[common]" in f for f in combined)
     # At minimum common lints should appear (SEO checks on docs-site docs)
     assert has_common or has_core
+
+
+def test_selfdoc_check_hard_errors_on_unified(
+    make_unified_project, monkeypatch, capsys,
+):
+    """'selfdoc check' on a unified project errors, pointing to
+    'selfblog check' (the unified check moved to selfblog)."""
+    from selfdoc.cli import _cmd_check
+
+    docs_site_dir = make_unified_project([
+        {"name": "core", "language": "python"},
+    ])
+    monkeypatch.chdir(docs_site_dir)
+
+    with pytest.raises(SystemExit):
+        _cmd_check(dry_run=True)
+    captured = capsys.readouterr()
+    assert "selfblog check" in captured.err
 
 
 # -- Version pinning --

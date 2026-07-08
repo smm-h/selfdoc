@@ -1,4 +1,4 @@
-"""Tests for post lint rules (POST001-POST005) in selfdoc.check."""
+"""Tests for post lint rules (POST001-POST005) in selfblog.check."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from selfdoc.check import _check_posts
+from selfblog.check import check_posts
 
 
 def _write_post(posts_dir, filename, frontmatter_lines, body=""):
@@ -39,7 +39,7 @@ def _write_manifest(path, posts):
 def test_post_check_no_posts_dir(tmp_path):
     """No posts dir configured -> empty results."""
     config = {}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert result == []
 
 
@@ -53,7 +53,7 @@ def test_post_check_valid_posts(tmp_path):
         body="Some body text.",
     )
     config = {"posts": {"dir": "blog"}}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert result == []
 
 
@@ -62,7 +62,7 @@ def test_post_check_missing_date(tmp_path):
     posts_dir = tmp_path / "blog"
     _write_post(str(posts_dir), "p.md", ["title: No Date"])
     config = {"posts": {"dir": "blog"}}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert len(result) == 1
     assert result[0].code == "POST001"
     assert result[0].severity == "error"
@@ -74,7 +74,7 @@ def test_post_check_missing_title(tmp_path):
     posts_dir = tmp_path / "blog"
     _write_post(str(posts_dir), "p.md", ["date: 2025-01-01"])
     config = {"posts": {"dir": "blog"}}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert len(result) == 1
     assert result[0].code == "POST002"
     assert result[0].severity == "error"
@@ -90,7 +90,7 @@ def test_post_check_invalid_date(tmp_path):
         ["title: Bad Date", "date: Jan 15 2025"],
     )
     config = {"posts": {"dir": "blog"}}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert len(result) == 1
     assert result[0].code == "POST003"
     assert result[0].severity == "error"
@@ -103,7 +103,7 @@ def test_post_check_duplicate_slug(tmp_path):
     _write_post(str(posts_dir), "a.md", ["title: Same", "date: 2025-01-01"])
     _write_post(str(posts_dir), "b.md", ["title: Same", "date: 2025-02-01"])
     config = {"posts": {"dir": "blog"}}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert len(result) == 1
     assert result[0].code == "POST004"
     assert result[0].severity == "error"
@@ -145,8 +145,133 @@ def test_post_check_slug_immutability(tmp_path):
                    capture_output=True, timeout=10, check=True)
 
     config = {"posts": {"dir": "blog"}}
-    result = _check_posts(config, str(tmp_path))
+    result = check_posts(config, str(tmp_path))
     assert len(result) == 1
     assert result[0].code == "POST005"
     assert result[0].severity == "error"
     assert "Slug immutability violation" in result[0].message
+
+
+# -- Post-check hook wiring (selfdoc check <-> selfblog) --------------------
+
+
+def test_check_docs_runs_post_checks_via_hook(tmp_path):
+    """check_docs surfaces POST lints through the registered hook."""
+    from selfdoc.check import check_docs
+
+    _write_post(
+        str(tmp_path / "blog"),
+        "bad.md",
+        ["title: No Date"],
+    )
+    config = {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "posts": {"dir": "blog"},
+    }
+    with open(tmp_path / "selfdoc.json", "w") as f:
+        json.dump(config, f)
+    os.makedirs(tmp_path / "src", exist_ok=True)
+    (tmp_path / "src" / "__init__.py").write_text('"""Pkg."""\n')
+    os.makedirs(tmp_path / "docs", exist_ok=True)
+    (tmp_path / "docs" / "index.md").write_text("# Home\n\nHi.\n")
+
+    result = check_docs(str(tmp_path), dry_run=True)
+    assert any(lint.code == "POST001" for lint in result.lints)
+
+
+def test_check_docs_posts_present_without_hook_hard_errors(
+    tmp_path, monkeypatch,
+):
+    """Posts present but no registered post-check hook -> hard error
+    naming selfblog."""
+    import selfdoc_core
+    from selfdoc.check import check_docs
+
+    _write_post(
+        str(tmp_path / "blog"),
+        "ok.md",
+        ["title: Fine", "date: 2025-01-15"],
+    )
+    config = {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "posts": {"dir": "blog"},
+    }
+    with open(tmp_path / "selfdoc.json", "w") as f:
+        json.dump(config, f)
+    os.makedirs(tmp_path / "src", exist_ok=True)
+    (tmp_path / "src" / "__init__.py").write_text('"""Pkg."""\n')
+    os.makedirs(tmp_path / "docs", exist_ok=True)
+    (tmp_path / "docs" / "index.md").write_text("# Home\n\nHi.\n")
+
+    monkeypatch.setattr(selfdoc_core, "_post_check_hook", None)
+    with pytest.raises(RuntimeError, match="selfblog"):
+        check_docs(str(tmp_path), dry_run=True)
+
+
+def test_selfblog_check_command_reports_post_errors(
+    tmp_path, monkeypatch, capsys,
+):
+    """'selfblog check' fails on invalid posts and prints the lint."""
+    from selfblog.cli import _cmd_check
+
+    _write_post(
+        str(tmp_path / "blog"),
+        "bad.md",
+        ["title: No Date"],
+    )
+    config = {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+        "posts": {"dir": "blog"},
+    }
+    with open(tmp_path / "selfdoc.json", "w") as f:
+        json.dump(config, f)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(SystemExit):
+        _cmd_check(dry_run=True)
+    captured = capsys.readouterr()
+    assert "POST001" in captured.out
+
+
+def test_selfblog_check_command_passes_on_valid_posts(
+    tmp_path, monkeypatch, capsys,
+):
+    """'selfblog check' succeeds on valid posts."""
+    from selfblog.cli import _cmd_check
+
+    _write_post(
+        str(tmp_path / "blog"),
+        "ok.md",
+        ["title: Fine", "date: 2025-01-15"],
+    )
+    config = {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+        "versions": [{"version": "1.0.0", "indexed": True}],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+        "posts": {"dir": "blog"},
+    }
+    with open(tmp_path / "selfdoc.json", "w") as f:
+        json.dump(config, f)
+    monkeypatch.chdir(tmp_path)
+
+    assert _cmd_check(dry_run=True) == 0
+    captured = capsys.readouterr()
+    assert "Post checks passed." in captured.out

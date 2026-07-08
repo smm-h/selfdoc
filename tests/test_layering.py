@@ -102,6 +102,36 @@ def test_selfblog_import_registers_discover_posts():
     assert selfdoc_core.get_post_provider() is selfblog.discover_posts
 
 
+# -- Post-check hook registration --------------------------------------------
+
+
+def test_register_different_check_hook_raises(monkeypatch):
+    """Registering a second, different post-check hook is an error."""
+    monkeypatch.setattr(selfdoc_core, "_post_check_hook", None)
+    selfdoc_core.register_post_check_hook(lambda config, dir_path: [])
+    with pytest.raises(ValueError, match="already registered"):
+        selfdoc_core.register_post_check_hook(
+            lambda config, dir_path: [],
+        )
+
+
+def test_require_check_hook_without_hook_names_selfblog(monkeypatch):
+    """The no-hook hard error must direct the user to selfblog."""
+    monkeypatch.setattr(selfdoc_core, "_post_check_hook", None)
+    with pytest.raises(RuntimeError, match="selfblog"):
+        selfdoc_core.require_post_check_hook()
+
+
+def test_selfblog_import_registers_check_posts():
+    """Importing selfblog registers check_posts as the post-check hook."""
+    import selfblog.check
+
+    assert (
+        selfdoc_core.get_post_check_hook()
+        is selfblog.check.check_posts
+    )
+
+
 # -- Build pipeline uses the provider ---------------------------------------
 
 

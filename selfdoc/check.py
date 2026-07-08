@@ -520,8 +520,15 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
             severity="error",
         ))
 
-    # Post validation (POST001-POST005)
-    result.lints.extend(_check_posts(config, dir_path))
+    # Post validation (POST001-POST005) -- runs via the post-check hook
+    # registered by selfblog (post checks moved to selfblog).  Skipped
+    # when no posts directory is configured or present; posts present
+    # without a registered hook is a hard error naming selfblog.
+    posts_dir_rel = (config.get("posts") or {}).get("dir", "")
+    if posts_dir_rel and os.path.isdir(os.path.join(dir_path, posts_dir_rel)):
+        from selfdoc_core import require_post_check_hook
+
+        result.lints.extend(require_post_check_hook()(config, dir_path))
 
     # Manifest freshness (STALE002)
     result.lints.extend(_check_manifest_freshness(config, dir_path))
@@ -642,48 +649,6 @@ def _check_version_consistency(config, dir_path):
             ))
 
     return results
-
-
-def _check_posts(config, dir_path):
-    """Check blog posts for validation errors (POST001-POST005)."""
-    from selfdoc.posts import discover_posts
-
-    posts_config = config.get("posts") or {}
-    posts_dir_rel = posts_config.get("dir", "")
-    if not posts_dir_rel:
-        return []
-
-    posts_dir = os.path.join(dir_path, posts_dir_rel)
-    if not os.path.isdir(posts_dir):
-        return []
-
-    manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
-
-    try:
-        discover_posts(posts_dir, manifest_path=manifest_path)
-    except RuntimeError as exc:
-        msg = str(exc)
-        if "'title' is required" in msg:
-            code = "POST002"
-        elif "'date' is required" in msg:
-            code = "POST001"
-        elif "must be YYYY-MM-DD" in msg:
-            code = "POST003"
-        elif "Duplicate slug" in msg:
-            code = "POST004"
-        elif "Slug immutability violation" in msg:
-            code = "POST005"
-        else:
-            code = "POST001"  # fallback
-        return [LintResult(
-            file=posts_dir_rel,
-            line=None,
-            code=code,
-            message=msg,
-            severity="error",
-        )]
-
-    return []
 
 
 def _check_manifest_freshness(config, dir_path):
@@ -1832,111 +1797,3 @@ def print_results(result):
             )
     else:
         print("No lints.")
-
-
-def check_unified(dir_path=".", config=None, dry_run=False):
-    """Check all constituent projects in a unified build.
-
-    Iterates over each project in the ``unified`` config section,
-    loads its own selfdoc.json, and runs check_docs on it. Errors
-    are prefixed with the project slug for clear attribution.
-
-    Also checks the docs-site's own content (the common pages).
-
-    Args:
-        dir_path: The docs-site's project root directory.
-        config: Pre-loaded config dict (if None, loads from selfdoc.json).
-        dry_run: If True, report staleness without writing hashes to disk.
-
-    Returns:
-        CheckResult with aggregated results from all projects.
-    """
-    from selfdoc.unified import _project_slug, _resolve_project_path
-
-    if config is None:
-        config = load_config(dir_path)
-    if config is None:
-        raise RuntimeError(
-            "No selfdoc.json found. Run 'selfdoc init' to initialize."
-        )
-
-    unified_config = config.get("unified")
-    if unified_config is None:
-        raise RuntimeError("No 'unified' section in selfdoc.json")
-
-    aggregate = CheckResult()
-
-    # Check each constituent project
-    for project_entry in unified_config["projects"]:
-        slug = _project_slug(project_entry)
-        project_path = _resolve_project_path(project_entry, dir_path)
-        proj_config = load_config(project_path)
-        if proj_config is None:
-            aggregate.lints.append(LintResult(
-                file=f"[{slug}]",
-                line=None,
-                code="UNIFIED001",
-                message=f"No selfdoc.json in project '{slug}'",
-                severity="error",
-            ))
-            continue
-
-        try:
-            proj_result = check_docs(project_path, config=proj_config, dry_run=dry_run)
-        except RuntimeError as exc:
-            aggregate.lints.append(LintResult(
-                file=f"[{slug}]",
-                line=None,
-                code="UNIFIED002",
-                message=str(exc),
-                severity="error",
-            ))
-            continue
-
-        # Prefix directive results with project slug
-        for dr in proj_result.directive_results:
-            dr.file = f"[{slug}] {dr.file}"
-            aggregate.directive_results.append(dr)
-
-        # Prefix lint results with project slug
-        for lint in proj_result.lints:
-            lint.file = f"[{slug}] {lint.file}"
-            aggregate.lints.append(lint)
-
-        # Merge coverage stats
-        if proj_result.coverage is not None:
-            if aggregate.coverage is None:
-                aggregate.coverage = CoverageStats()
-            aggregate.coverage.total_public += proj_result.coverage.total_public
-            aggregate.coverage.referenced += proj_result.coverage.referenced
-            aggregate.coverage.documented += proj_result.coverage.documented
-            aggregate.coverage.referenced_symbols.extend(
-                f"[{slug}] {s}" for s in proj_result.coverage.referenced_symbols
-            )
-            aggregate.coverage.documented_symbols.extend(
-                f"[{slug}] {s}" for s in proj_result.coverage.documented_symbols
-            )
-            aggregate.coverage.unreferenced_symbols.extend(
-                f"[{slug}] {s}" for s in proj_result.coverage.unreferenced_symbols
-            )
-
-    # Check the docs-site's own content
-    try:
-        common_result = check_docs(dir_path, config=config, dry_run=dry_run)
-    except RuntimeError as exc:
-        aggregate.lints.append(LintResult(
-            file="[common]",
-            line=None,
-            code="UNIFIED002",
-            message=str(exc),
-            severity="error",
-        ))
-    else:
-        for dr in common_result.directive_results:
-            dr.file = f"[common] {dr.file}"
-            aggregate.directive_results.append(dr)
-        for lint in common_result.lints:
-            lint.file = f"[common] {lint.file}"
-            aggregate.lints.append(lint)
-
-    return aggregate

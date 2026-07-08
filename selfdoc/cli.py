@@ -551,16 +551,21 @@ def _cmd_deploy():
 @strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
 def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
     """Check documentation coverage and consistency."""
-    from selfdoc.check import check_docs, check_unified, filter_lints, print_results
+    from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
 
     config = load_config(".")
 
+    if config and config.get("unified"):
+        print(
+            "Error: unified projects are checked by selfblog. "
+            "Run 'selfblog check' instead.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     try:
-        if config and config.get("unified"):
-            result = check_unified(".", config=config, dry_run=dry_run)
-        else:
-            result = check_docs(".", dry_run=dry_run)
+        result = check_docs(".", dry_run=dry_run)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

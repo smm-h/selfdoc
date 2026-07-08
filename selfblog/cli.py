@@ -838,6 +838,94 @@ export default {
     return 0
 
 
+# -- check command -----------------------------------------------------------
+
+
+@app.command("check", help="Check blog posts and unified multi-project documentation. For unified docs-site projects, runs the full documentation check across every constituent project plus the docs-site's own content; otherwise validates blog posts (POST001-POST005).")
+@strictcli.flag("ignore", type=str, default="", help="Comma-separated lint codes to suppress (e.g., SEO007,SEO008)")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
+@strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
+def _cmd_check(ignore="", auto_commit=True, dry_run=False):
+    """Check unified projects and blog posts."""
+    from selfdoc_core.config import load_config
+
+    from selfblog.check import check_posts, check_unified
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    # Build combined ignore set from CLI --ignore and config lint_ignore
+    ignore_codes = set()
+    if ignore:
+        ignore_codes.update(
+            code.strip() for code in ignore.split(",") if code.strip()
+        )
+    ignore_codes.update(config.get("lint_ignore", []))
+
+    if config.get("unified"):
+        # The unified check aggregates selfdoc's per-project docs checks;
+        # the result/print helpers live in selfdoc.check.
+        from selfdoc.check import filter_lints, print_results
+
+        try:
+            result = check_unified(".", config=config, dry_run=dry_run)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        if auto_commit and not dry_run:
+            from selfdoc_core.git import auto_commit as _auto_commit
+            _auto_commit(
+                [".selfdoc/hashes/hashes.json"],
+                "selfdoc: update content hashes",
+                ".",
+            )
+
+        result.lints = filter_lints(result.lints, ignore_codes)
+
+        has_failures = any(
+            dr.status == "FAILED" for dr in result.directive_results
+        )
+        has_errors = any(lint.severity == "error" for lint in result.lints)
+
+        # Coverage threshold check (uses documented count, not referenced)
+        coverage_below_threshold = False
+        if result.coverage is not None and result.coverage.total_public > 0:
+            if result.coverage.documented < result.coverage.total_public:
+                coverage_below_threshold = True
+
+        print_results(result)
+
+        if coverage_below_threshold:
+            cov = result.coverage
+            print(
+                f"Coverage: {cov.documented}/{cov.total_public} symbols"
+                " documented. All public symbols must be documented."
+            )
+
+        if has_failures or has_errors or coverage_below_threshold:
+            sys.exit(1)
+        return 0
+
+    # Non-unified project: run the post checks (POST001-POST005)
+    lints = [
+        lint for lint in check_posts(config, ".")
+        if lint.code not in ignore_codes
+    ]
+    for lint in lints:
+        line_part = f":{lint.line}" if lint.line is not None else ""
+        print(
+            f"{lint.severity}: [{lint.code}] "
+            f"{lint.file}{line_part} - {lint.message}"
+        )
+    if any(lint.severity == "error" for lint in lints):
+        sys.exit(1)
+    print("Post checks passed.")
+    return 0
+
+
 # -- build command -----------------------------------------------------------
 
 
