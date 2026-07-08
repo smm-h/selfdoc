@@ -1,3 +1,4 @@
+
 [[releasables]]
 name = "selfdoc"
 tag_format = "v{version}"
@@ -8,4 +9,9 @@ name = "selfdoc-core"
 [[releasables]]
 name = "selfblog"
 
-projects = []
+[[projects]]
+path = "selfdoc_core/"
+name = "selfdoc-core"
+library = true
+releasable = "selfdoc-core"
+watch = ["selfdoc_core/**"]
