@@ -1,1 +1,11 @@
+[[releasables]]
+name = "selfdoc"
+tag_format = "v{version}"
+
+[[releasables]]
+name = "selfdoc-core"
+
+[[releasables]]
+name = "selfblog"
+
 projects = []
