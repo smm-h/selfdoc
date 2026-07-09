@@ -11,13 +11,15 @@ import os
 import tempfile
 
 
-def compute_content_hash(resolved_content: str) -> str:
-    """Compute SHA-256 hash of resolved page content (frontmatter stripped).
+def compute_content_hash(body: str) -> str:
+    """Compute SHA-256 hash of raw page body (frontmatter stripped).
 
     The frontmatter (if present) is stripped before hashing so that only
-    the actual page body is considered.
+    the actual page body is considered.  Receives the raw (pre-resolution)
+    template content so that directive output changes (e.g. version bumps)
+    do not trigger false-positive staleness.
     """
-    body = _strip_frontmatter(resolved_content)
+    body = _strip_frontmatter(body)
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
@@ -218,7 +220,7 @@ def compute_current_hashes(all_docs, base_dir=".", page_directives=None,
         if description is None:
             continue
         current_hashes[rel_path] = {
-            "content": compute_content_hash(resolved_content),
+            "content": compute_content_hash(_raw),
             "description": compute_description_hash(str(description)),
         }
 
