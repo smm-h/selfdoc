@@ -1,6 +1,6 @@
 ---
 title: Staleness Detection
-description: "How selfdoc detects stale frontmatter descriptions by hashing page content, and how to fix STALE001 errors from selfdoc check."
+description: "How selfdoc detects stale frontmatter descriptions by hashing page content, how to fix STALE001 errors, and how to accept a reviewed dead-end with selfdoc baseline accept."
 nav_group: "Guides"
 nav_order: 18
 ---
@@ -56,6 +56,24 @@ description: "Install selfdoc, initialize a project, and build your first docume
 ```
 
 Then run `selfdoc check` again. The hashes update and the error clears.
+
+## Accepting a Reviewed Dead-End
+
+Sometimes the content legitimately changed but the existing description is still accurate, and rewriting it would be dishonest busywork. The most common trigger is a page that embeds `project.version` (via a var directive): its resolved content changes on every release even though nothing about the page's meaning did. Because the baseline is frozen while a page is in an error state, `selfdoc gen` and `selfdoc check` can never clear STALE001 on their own -- the page is stuck until a human intervenes:
+
+```
+selfdoc baseline accept en/index.md en/cli-index.md
+```
+
+`selfdoc baseline accept <page> [<page>...]` is a deliberate, auditable action that means "reviewed: the content changed, and the existing frontmatter description is still accurate." It advances each named page's baseline to the current content and description hashes -- exactly as if the description had been rewritten -- so the next `selfdoc check` passes without touching the description.
+
+Acceptance is intentionally per-page and unforgiving:
+
+- Name each page explicitly, exactly as it appears in `selfdoc check` output (e.g. `en/cli-index.md`). There is no `--all`, no glob, and no `--force`.
+- Accepting a page that does not exist, has no recorded baseline, or is not currently reporting STALE001 or DRIFT001 is a hard error -- "nothing to accept" never silently succeeds.
+- The same guardrails apply to DRIFT001 (source-docstring and CLI-schema drift); accepting advances every tracked hash for the page.
+
+Like `selfdoc check`, the command commits the updated `.selfdoc/hashes/hashes.json` by default; pass `--no-auto-commit` to stage the change for a larger manual commit.
 
 ## Hash Storage
 
