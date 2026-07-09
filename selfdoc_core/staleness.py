@@ -187,46 +187,40 @@ def check_drift(
     )
 
 
-def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
-                  schema_hashes=None):
-    """Compute content and description hashes for all docs and save.
+def compute_current_hashes(all_docs, base_dir=".", page_directives=None,
+                           schema_hashes=None):
+    """Compute the full current hash dict for every documentation page.
+
+    Returns a dict mapping rel_path to a hash dict with ``content`` and
+    ``description`` keys (always), plus ``source_docstring`` and
+    ``schema_hash`` when the corresponding inputs are provided.  This is
+    the baseline a page WOULD receive if it had no outstanding errors --
+    it does not read or write ``.selfdoc/hashes/hashes.json`` and performs
+    no staleness/drift comparison.
 
     Args:
         all_docs: Dict from resolve_all_docs {rel_path: (fm, resolved, raw, fm_lines)}
-        base_dir: Project root
-        dry_run: If True, compute but don't write to disk
+        base_dir: Project root (used to resolve source file paths).
         page_directives: Optional dict mapping rel_path to a list of
-            resolved directive objects (each has .attrs with "path" key,
-            and .source_entry with .language and .extractor attributes).
-            When provided, source docstring hashes are computed and drift
-            detection is performed.
+            resolved directive objects (see update_hashes).  When provided,
+            source docstring hashes are computed.
         schema_hashes: Optional dict mapping rel_path to a schema hash
             string (for CLI pages gated on their command's schema slice).
 
     Returns:
-        Tuple of (stale_warnings, drift_warnings), each a list of
-        (rel_path, message) tuples.
+        Dict mapping rel_path to its current hash dict.
     """
-    stored_hashes = load_hashes(base_dir)
     current_hashes: dict[str, dict] = {}
-    stale_warnings = []
 
     for rel_path in sorted(all_docs):
         metadata, resolved_content, _raw, _fm_lines = all_docs[rel_path]
         description = metadata.get("description")
         if description is None:
             continue
-        c_hash = compute_content_hash(resolved_content)
-        d_hash = compute_description_hash(str(description))
         current_hashes[rel_path] = {
-            "content": c_hash,
-            "description": d_hash,
+            "content": compute_content_hash(resolved_content),
+            "description": compute_description_hash(str(description)),
         }
-        stale_msg = check_staleness(rel_path, c_hash, d_hash, stored_hashes)
-        if stale_msg is not None:
-            stale_warnings.append((rel_path, stale_msg))
-
-    drift_warnings = []
 
     if page_directives is not None:
         for rel_path in sorted(all_docs):
@@ -251,19 +245,65 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
             sd_hash = compute_source_docstring_hash(source_files)
             if sd_hash is not None and rel_path in current_hashes:
                 current_hashes[rel_path]["source_docstring"] = sd_hash
-            # Get description hash for drift check
-            d_hash = current_hashes.get(rel_path, {}).get("description")
-            if d_hash is not None:
-                drift_msg = check_drift(rel_path, sd_hash, d_hash, stored_hashes)
-                if drift_msg is not None:
-                    drift_warnings.append((rel_path, drift_msg))
+
+    if schema_hashes is not None:
+        for rel_path, s_hash in schema_hashes.items():
+            if rel_path in current_hashes:
+                current_hashes[rel_path]["schema_hash"] = s_hash
+
+    return current_hashes
+
+
+def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
+                  schema_hashes=None):
+    """Compute content and description hashes for all docs and save.
+
+    Args:
+        all_docs: Dict from resolve_all_docs {rel_path: (fm, resolved, raw, fm_lines)}
+        base_dir: Project root
+        dry_run: If True, compute but don't write to disk
+        page_directives: Optional dict mapping rel_path to a list of
+            resolved directive objects (each has .attrs with "path" key,
+            and .source_entry with .language and .extractor attributes).
+            When provided, source docstring hashes are computed and drift
+            detection is performed.
+        schema_hashes: Optional dict mapping rel_path to a schema hash
+            string (for CLI pages gated on their command's schema slice).
+
+    Returns:
+        Tuple of (stale_warnings, drift_warnings), each a list of
+        (rel_path, message) tuples.
+    """
+    stored_hashes = load_hashes(base_dir)
+    current_hashes = compute_current_hashes(
+        all_docs, base_dir, page_directives, schema_hashes,
+    )
+    stale_warnings = []
+
+    for rel_path in sorted(current_hashes):
+        hashes = current_hashes[rel_path]
+        stale_msg = check_staleness(
+            rel_path, hashes["content"], hashes["description"], stored_hashes,
+        )
+        if stale_msg is not None:
+            stale_warnings.append((rel_path, stale_msg))
+
+    drift_warnings = []
+
+    if page_directives is not None:
+        for rel_path in sorted(current_hashes):
+            sd_hash = current_hashes[rel_path].get("source_docstring")
+            if sd_hash is None:
+                continue
+            d_hash = current_hashes[rel_path]["description"]
+            drift_msg = check_drift(rel_path, sd_hash, d_hash, stored_hashes)
+            if drift_msg is not None:
+                drift_warnings.append((rel_path, drift_msg))
 
     # CLI schema-hash gating: for CLI pages, check whether the command's
     # schema slice changed without a corresponding description update.
     if schema_hashes is not None:
         for rel_path, s_hash in schema_hashes.items():
-            if rel_path in current_hashes:
-                current_hashes[rel_path]["schema_hash"] = s_hash
             d_hash = current_hashes.get(rel_path, {}).get("description")
             if d_hash is not None:
                 schema_msg = check_schema_drift(
