@@ -98,13 +98,18 @@ def load_hashes(base_dir: str) -> dict[str, dict]:
 
     Returns a dict mapping page path (relative to docs/) to
     {"content": hash, "description": hash}. Returns empty dict
-    if the file does not exist.
+    if the file does not exist or uses an old hash format
+    (missing ``_hash_version``).
     """
     path = os.path.join(base_dir, ".selfdoc", "hashes", "hashes.json")
     if not os.path.isfile(path):
         return {}
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    if data.get("_hash_version") != 2:
+        # Old format (hashed resolved content); discard to re-baseline
+        return {}
+    return data
 
 
 def save_hashes(hashes: dict, base_dir: str) -> None:
@@ -116,6 +121,7 @@ def save_hashes(hashes: dict, base_dir: str) -> None:
     hashes_dir = os.path.join(base_dir, ".selfdoc", "hashes")
     os.makedirs(hashes_dir, exist_ok=True)
     target = os.path.join(hashes_dir, "hashes.json")
+    hashes["_hash_version"] = 2
     fd, tmp_path = tempfile.mkstemp(dir=hashes_dir, suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
