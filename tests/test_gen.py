@@ -6,7 +6,13 @@ import stat
 
 import pytest
 
-from selfdoc.gen import GenResult, generate_docs, _has_generated_marker
+from selfdoc.gen import (
+    GenResult,
+    generate_docs,
+    _has_generated_marker,
+    _generate_index_content,
+    _read_existing_description,
+)
 
 
 @pytest.fixture()
@@ -1208,3 +1214,104 @@ class TestDirectoryPruning:
         for fname in filenames:
             assert ".venv" not in fname
             assert "flask" not in fname
+
+
+class TestIndexContentAwareDescription:
+    """Test that gen-index.md gets a content-aware, seeded description."""
+
+    def test_index_has_seeded_true(self, python_project):
+        """Index page should have seeded: true when auto-generated."""
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "gen-index.md"), "r") as f:
+            content = f.read()
+
+        assert "seeded: true" in content
+
+    def test_index_description_includes_project_name(self, python_project):
+        """Index description should reference the project name from source."""
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "gen-index.md"), "r") as f:
+            content = f.read()
+
+        # Source path is "mylib/", so project name is "mylib"
+        assert "mylib" in content.split("---")[1]  # in frontmatter
+
+    def test_index_description_includes_module_count(self, python_project):
+        """Index description should mention how many modules are covered."""
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        docs_dir = os.path.join(python_project, "docs")
+        with open(os.path.join(docs_dir, "gen-index.md"), "r") as f:
+            content = f.read()
+
+        # 3 modules: mylib, mylib.core, mylib.utils
+        assert "3 modules" in content
+
+    def test_index_preserves_hand_edited_description(self, python_project):
+        """Hand-edited descriptions on gen-index.md should survive regen."""
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        # Hand-edit the index page description
+        index_path = os.path.join(python_project, "docs", "gen-index.md")
+        os.chmod(index_path, stat.S_IRUSR | stat.S_IWUSR)
+        with open(index_path, "r") as f:
+            content = f.read()
+        # Replace description and remove seeded marker
+        new_lines = []
+        for line in content.split("\n"):
+            if line.startswith("description:"):
+                new_lines.append('description: "My custom index description"')
+            elif line.strip() == "seeded: true":
+                continue
+            else:
+                new_lines.append(line)
+        with open(index_path, "w") as f:
+            f.write("\n".join(new_lines))
+
+        # Regenerate
+        generate_docs(config, base_dir=str(python_project))
+
+        with open(index_path, "r") as f:
+            content = f.read()
+
+        assert "My custom index description" in content
+        assert "seeded: true" not in content
+
+    def test_generate_index_content_unit(self):
+        """Unit test for _generate_index_content."""
+        pages = [
+            ("foo.bar", "foo-bar.md"),
+            ("foo.baz", "foo-baz.md"),
+        ]
+        content = _generate_index_content(pages, "foo")
+
+        assert "seeded: true" in content
+        assert "foo" in content.split("---")[1]
+        assert "2 modules" in content
+
+    def test_generate_index_content_singular_module(self):
+        """Single module should say 'module' not 'modules'."""
+        pages = [("foo", "foo.md")]
+        content = _generate_index_content(pages, "foo")
+
+        assert "1 module" in content
+        # Make sure it doesn't say "1 modules"
+        assert "1 modules" not in content
+
+    def test_generate_index_content_preserves_existing(self):
+        """Existing description should be preserved, no seeded marker."""
+        pages = [("foo.bar", "foo-bar.md")]
+        content = _generate_index_content(
+            pages, "foo", existing_description="Custom desc"
+        )
+
+        assert "Custom desc" in content
+        assert "seeded: true" not in content

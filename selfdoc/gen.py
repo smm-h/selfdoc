@@ -360,17 +360,39 @@ def _generate_page_content(module_name, module_path, nav_order,
     )
 
 
-def _generate_index_content(generated_pages):
+def _generate_index_content(generated_pages, project_name,
+                            existing_description=None):
     """Build the gen-index.md page listing all generated pages with links.
 
     ``generated_pages`` is a list of (module_name, md_filename) tuples,
     already sorted by module name.
+
+    ``project_name`` is used to derive the auto-generated description.
+
+    If ``existing_description`` is provided (from a hand-edited page),
+    it is preserved verbatim.  Otherwise, a content-aware description
+    is generated from the project name and module count, and
+    ``seeded: true`` is added to frontmatter.
     """
+    n = len(generated_pages)
+    if existing_description is not None:
+        desc = existing_description
+        seeded = False
+    else:
+        desc = (
+            f"API reference index for {project_name} "
+            f"covering {n} module{'s' if n != 1 else ''}"
+        )
+        seeded = True
     lines = [
         "---",
         "title: API Reference",
-        'description: "Auto-generated API reference index for the selfdoc package — browse all public modules with their docstrings and source locations."',
+        f'description: "{desc}"',
         "generated: true",
+    ]
+    if seeded:
+        lines.append("seeded: true")
+    lines.extend([
         'nav_group: "API Reference"',
         "nav_order: 0",
         "order: 90",
@@ -379,7 +401,7 @@ def _generate_index_content(generated_pages):
         "",
         "# API Reference",
         "",
-    ]
+    ])
     for module_name, md_filename in generated_pages:
         # Link to the sibling page (same docs/ directory)
         html_name = md_filename.replace(".md", ".html")
@@ -487,6 +509,13 @@ def generate_docs(config, base_dir="."):
         cli_structure = extract_cli_structure(all_source_paths, base_dir)
     cli_page_names = expected_cli_page_filenames(cli_structure)
 
+    # Derive project name from the first source entry's path
+    source_entries = config.get("source", [])
+    if source_entries:
+        project_name = source_entries[0]["path"].strip("/").split("/")[-1]
+    else:
+        project_name = os.path.basename(os.path.abspath(base_dir))
+
     for locale_code, locale_docs_dir in locale_dirs:
         # Collect filenames across all language groups for stale cleanup
         locale_all_filenames: list[str] = []
@@ -506,8 +535,12 @@ def generate_docs(config, base_dir="."):
         locale_index_pages.sort(key=lambda t: t[0])
 
         # Generate combined index page across all language groups
-        index_content = _generate_index_content(locale_index_pages)
         index_path = os.path.join(locale_docs_dir, "gen-index.md")
+        existing_index_desc = _read_existing_description(index_path)
+        index_content = _generate_index_content(
+            locale_index_pages, project_name,
+            existing_description=existing_index_desc,
+        )
         os.makedirs(locale_docs_dir, exist_ok=True)
         if os.path.isfile(index_path):
             try:
