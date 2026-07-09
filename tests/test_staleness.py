@@ -83,14 +83,15 @@ def test_load_hashes_missing_file(tmp_path):
 
 
 def test_load_hashes_existing_file(tmp_path):
-    """Loads hashes from an existing hashes.json file."""
+    """Loads hashes from an existing hashes.json file with _hash_version."""
     hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
     os.makedirs(hashes_dir)
     data = {
+        "_hash_version": 2,
         "index.md": {
             "content": "abc123",
             "description": "def456",
-        }
+        },
     }
     with open(os.path.join(hashes_dir, "hashes.json"), "w") as f:
         json.dump(data, f)
@@ -447,8 +448,10 @@ def test_locale_prefixed_hash_keys(tmp_path):
     with open(hashes_path, "r") as f:
         data = json.load(f)
 
-    # All keys must be prefixed with "en/"
+    # All page keys must be prefixed with "en/" (skip metadata keys)
     for key in data:
+        if key.startswith("_"):
+            continue
         assert key.startswith("en/"), f"Expected locale prefix on key {key!r}"
     assert "en/page.md" in data
 
@@ -462,8 +465,10 @@ def test_no_locales_no_prefix(tmp_path):
     with open(hashes_path, "r") as f:
         data = json.load(f)
 
-    # Keys should be bare paths without any "/" prefix
+    # Page keys should be bare paths without any locale prefix (skip metadata keys)
     for key in data:
+        if key.startswith("_"):
+            continue
         assert not key.startswith("en/"), f"Unexpected locale prefix on key {key!r}"
     assert "page.md" in data
 
@@ -927,3 +932,119 @@ def test_source_docstring_drift_integration(tmp_path):
     )
     assert len(drift) == 1
     assert "documentation drift" in drift[0][1]
+
+
+# -- Phase 1: raw-body hashing (STALE001 ignores directive output changes) --
+
+
+def _make_all_docs_full(pages):
+    """Build all_docs with separate raw and resolved content.
+
+    Each item is (rel_path, description, raw_body, resolved_body).
+    This mirrors the real tuple shape:
+      (frontmatter_dict, resolved_content, raw_content, fm_line_count)
+    """
+    result = {}
+    for rel_path, description, raw_body, resolved_body in pages:
+        fm = {"description": description} if description is not None else {}
+        result[rel_path] = (fm, resolved_body, raw_body, 3 if description else 0)
+    return result
+
+
+def test_stale001_not_fired_when_only_directive_output_changes(tmp_path):
+    """STALE001 does not fire when a var directive's output changes.
+
+    The raw body contains ``:-: var key="project.version"`` which stays
+    constant.  Only the resolved content changes (e.g. "1.0.0" -> "1.1.0").
+    Since hashing is now based on the raw body, the content hash is stable
+    and STALE001 should not fire.
+    """
+    raw_body = '# Page\n\nVersion: :-: var key="project.version"\n'
+
+    # Run 1: version 1.0.0
+    all_docs_v1 = _make_all_docs_full([
+        ("page.md", "A page about the project", raw_body,
+         "# Page\n\nVersion: 1.0.0\n"),
+    ])
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    assert len(warnings_v1) == 0  # new page, no staleness
+
+    # Run 2: version changes to 1.1.0 but raw body is the same
+    all_docs_v2 = _make_all_docs_full([
+        ("page.md", "A page about the project", raw_body,
+         "# Page\n\nVersion: 1.1.0\n"),
+    ])
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings_v2) == 0, (
+        "STALE001 should not fire when only directive output changed"
+    )
+
+
+def test_stale001_fires_when_prose_changes(tmp_path):
+    """STALE001 fires when the actual page prose changes.
+
+    The raw body changes (real content edit), but the description stays
+    the same.  This should trigger STALE001.
+    """
+    # Run 1: original content
+    all_docs_v1 = _make_all_docs_full([
+        ("page.md", "A page about things", "# Page\n\nOriginal prose.\n",
+         "# Page\n\nOriginal prose.\n"),
+    ])
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    assert len(warnings_v1) == 0  # new page
+
+    # Run 2: prose changes, description stays the same
+    all_docs_v2 = _make_all_docs_full([
+        ("page.md", "A page about things", "# Page\n\nRewritten prose.\n",
+         "# Page\n\nRewritten prose.\n"),
+    ])
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    assert len(warnings_v2) == 1, "STALE001 should fire when prose changes"
+    assert "stale description" in warnings_v2[0][1]
+
+
+def test_baseline_migration_discards_old_format(tmp_path):
+    """Old-format hashes.json (no _hash_version) is discarded on load."""
+    hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
+    os.makedirs(hashes_dir)
+    old_data = {
+        "page.md": {
+            "content": "old_hash_of_resolved_content",
+            "description": "desc_hash",
+        }
+    }
+    with open(os.path.join(hashes_dir, "hashes.json"), "w") as f:
+        json.dump(old_data, f)
+
+    result = load_hashes(str(tmp_path))
+    assert result == {}, "Old-format hashes should be discarded (empty dict)"
+
+
+def test_baseline_migration_keeps_new_format(tmp_path):
+    """New-format hashes.json (with _hash_version=2) is loaded normally."""
+    hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
+    os.makedirs(hashes_dir)
+    new_data = {
+        "_hash_version": 2,
+        "page.md": {
+            "content": "hash_of_raw_body",
+            "description": "desc_hash",
+        },
+    }
+    with open(os.path.join(hashes_dir, "hashes.json"), "w") as f:
+        json.dump(new_data, f)
+
+    result = load_hashes(str(tmp_path))
+    assert result == new_data
+
+
+def test_save_hashes_includes_hash_version(tmp_path):
+    """save_hashes always writes _hash_version=2 to the output."""
+    hashes = {"page.md": {"content": "aaa", "description": "bbb"}}
+    save_hashes(hashes, str(tmp_path))
+
+    hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
+    with open(hashes_path, "r") as f:
+        data = json.load(f)
+    assert data["_hash_version"] == 2
