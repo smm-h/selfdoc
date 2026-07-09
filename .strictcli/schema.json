@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.26.1",
+  "version": "0.28.1",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -97,7 +97,7 @@
         {
           "name": "target",
           "type": "str",
-          "help": "Build target: 'posts' for posts-only build, empty for full build",
+          "help": "Build target: empty for full build ('posts' builds moved to selfblog)",
           "default": ""
         }
       ]
@@ -345,6 +345,32 @@
               "name": "portfolio-file",
               "type": "str",
               "help": "Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html."
+            }
+          ]
+        }
+      }
+    },
+    "baseline": {
+      "name": "baseline",
+      "help": "Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check",
+      "commands": {
+        "accept": {
+          "name": "accept",
+          "help": "Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.",
+          "flags": [
+            {
+              "name": "auto-commit",
+              "type": "bool",
+              "help": "Automatically commit the updated content hash tracking file to git after accepting the named pages",
+              "default": true,
+              "negatable": true
+            }
+          ],
+          "args": [
+            {
+              "name": "page",
+              "help": "Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.",
+              "variadic": true
             }
           ]
         }

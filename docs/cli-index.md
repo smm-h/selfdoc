@@ -1,6 +1,6 @@
 ---
 title: selfdoc CLI Reference
-description: "CLI reference for selfdoc -- all commands (init, build, serve, deploy, check, gen, gen-data) and command groups (post, assembly) with flags and usage."
+description: "CLI reference for selfdoc -- all commands (init, build, serve, deploy, check, gen, gen-data) and command groups (post, assembly, baseline) with flags and usage."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 0
@@ -12,7 +12,7 @@ order: 91
 
 Code-aware static site generator with directive-based content extraction
 
-Version: 0.26.1
+Version: 0.28.1
 
 ## Commands
 
@@ -28,3 +28,4 @@ Version: 0.26.1
 
 - [post](cli-post.html) -- Manage blog posts and chronological content for the documentation site
 - [assembly](cli-assembly.html) -- Manage the unified multi-project documentation assembly and deployment
+- [baseline](cli-baseline.html) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check

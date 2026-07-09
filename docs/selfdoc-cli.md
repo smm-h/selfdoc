@@ -1,6 +1,6 @@
 ---
 title: selfdoc.cli
-description: "CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for build, check, gen, serve, deploy, post, and assembly."
+description: "CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for build, check, gen, serve, deploy, post, assembly, and baseline."
 generated: true
 nav_group: "API Reference"
 nav_order: 6

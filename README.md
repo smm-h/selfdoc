@@ -245,6 +245,8 @@ Custom directives take priority over built-in names.
 | `assembly rebuild` | Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild. |
 | `assembly redirects` | Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout. |
 | `assembly generate-shared` | Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory. |
+| **baseline** | Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check |
+| `baseline accept` | Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description. |
 
 ## Deploy
 
