@@ -28,7 +28,13 @@ from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, validate_directive_names
 from selfdoc.extractors import SourceEntry
 from selfdoc.resolver import make_resolver, Resolver
-from selfdoc.staleness import update_hashes, compute_schema_hash
+from selfdoc.staleness import (
+    compute_current_hashes,
+    compute_schema_hash,
+    load_hashes,
+    save_hashes,
+    update_hashes,
+)
 
 _DIRECTIVE_MARKERS = {":-:", ":<:", ":>:", ":@:", ":=:", ":::"}
 
@@ -584,6 +590,169 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
                     result.lints.append(lint)
 
     return result
+
+
+class AcceptError(RuntimeError):
+    """Raised when 'selfdoc baseline accept' cannot accept a named page."""
+
+
+def compute_staleness_state(dir_path=".", config=None):
+    """Compute current page hashes and the pages frozen in an error state.
+
+    Runs the same content/description/source-docstring/schema hashing that
+    ``check_docs`` uses for STALE001/DRIFT001 detection, but never writes
+    ``.selfdoc/hashes/hashes.json``.
+
+    Returns:
+        Tuple ``(current_hashes, stored_hashes, error_pages)`` where:
+          - ``current_hashes`` maps each page identifier (locale-prefixed
+            when locales are configured, matching hashes.json keys) to its
+            full current hash dict.
+          - ``stored_hashes`` is the loaded baseline (hashes.json contents).
+          - ``error_pages`` maps a page identifier to the lint code of its
+            outstanding error: ``"STALE001"`` or ``"DRIFT001"``.
+    """
+    if config is None:
+        config = load_config(dir_path)
+    if config is None:
+        raise RuntimeError(
+            "No selfdoc.json found. Run 'selfdoc init' to initialize."
+        )
+
+    docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
+    if not os.path.isdir(docs_dir):
+        raise RuntimeError(f"Docs directory '{config['docs']}' not found.")
+
+    from selfdoc.strictcli_support import read_schema_json
+
+    resolver = make_resolver(config, dir_path)
+    custom_names = set(config.get("directives", {}).keys())
+    validate_directive_names(custom_names)
+    valid_names = ALL_BUILTIN_DIRECTIVES | custom_names
+
+    all_docs = resolve_all_docs(config, base_dir=dir_path)
+    _dir_results, resolved_directives = _validate_directives(
+        all_docs, resolver, valid_names, collect_resolved=True,
+    )
+
+    # Per-page directive lookup for source-docstring drift detection.
+    drift_directives: dict[str, list] = {}
+    for rd in resolved_directives:
+        drift_directives.setdefault(rd.file, []).append(rd)
+
+    # Per-CLI-page schema hashes (mirrors check_docs).
+    schema_hashes: dict[str, str] = {}
+    cli_schema = read_schema_json(dir_path)
+    if cli_schema is not None:
+        for cmd in cli_schema.get("commands", []):
+            schema_hashes[f"cli-{cmd['name']}.md"] = compute_schema_hash(cmd)
+        for grp in cli_schema.get("groups", []):
+            schema_hashes[f"cli-{grp['name']}.md"] = compute_schema_hash(grp)
+
+    locales = config.get("locales") or []
+    if locales:
+        locale_code = locales[0]["code"]
+        prefixed_docs = {
+            f"{locale_code}/{rp}": v for rp, v in all_docs.items()
+        }
+        prefixed_directives = {
+            f"{locale_code}/{rp}": v for rp, v in drift_directives.items()
+        }
+        prefixed_schema = {
+            f"{locale_code}/{rp}": v for rp, v in schema_hashes.items()
+        }
+    else:
+        prefixed_docs = all_docs
+        prefixed_directives = drift_directives
+        prefixed_schema = schema_hashes
+
+    current_hashes = compute_current_hashes(
+        prefixed_docs, dir_path,
+        page_directives=prefixed_directives,
+        schema_hashes=prefixed_schema,
+    )
+    stale_warnings, drift_warnings = update_hashes(
+        prefixed_docs, dir_path, dry_run=True,
+        page_directives=prefixed_directives,
+        schema_hashes=prefixed_schema,
+    )
+
+    error_pages: dict[str, str] = {}
+    for rel_path, _msg in stale_warnings:
+        error_pages[rel_path] = "STALE001"
+    for rel_path, _msg in drift_warnings:
+        error_pages.setdefault(rel_path, "DRIFT001")
+
+    stored_hashes = load_hashes(dir_path)
+    return current_hashes, stored_hashes, error_pages
+
+
+def accept_baselines(pages, dir_path=".", config=None):
+    """Advance the stored baseline for each named page to its current hashes.
+
+    A deliberate, auditable human action meaning "reviewed: the page content
+    changed but the existing frontmatter description is still accurate."
+    Each named page must currently be frozen in a STALE001/DRIFT001 error
+    state; accepting advances its baseline exactly as if the description had
+    been rewritten, so the next ``selfdoc check`` passes for that page.
+
+    Args:
+        pages: List of page identifiers exactly as shown in ``selfdoc check``
+            output (e.g. ``"en/cli-index.md"``).
+        dir_path: Project root directory.
+        config: Pre-loaded config dict (loaded from selfdoc.json if None).
+
+    Returns:
+        List of ``(page, code)`` tuples for the accepted pages, where code
+        is the error that was cleared.
+
+    Raises:
+        AcceptError: if any named page does not exist, has no baseline, or
+            is not currently stale/drifted. Nothing is written when any
+            named page is invalid (all-or-nothing).
+    """
+    # De-duplicate while preserving order.
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for page in pages:
+        if page not in seen:
+            seen.add(page)
+            ordered.append(page)
+    if not ordered:
+        raise AcceptError("No page named. Name at least one page to accept.")
+
+    current_hashes, stored_hashes, error_pages = compute_staleness_state(
+        dir_path, config,
+    )
+
+    errors = []
+    for page in ordered:
+        if page not in current_hashes:
+            errors.append(
+                f"'{page}': not a documentation page in this project "
+                f"(name it exactly as shown in 'selfdoc check' output, "
+                f"e.g. 'en/index.md')"
+            )
+        elif page not in stored_hashes:
+            errors.append(
+                f"'{page}': has no baseline yet -- run 'selfdoc gen' or "
+                f"'selfdoc check' to record one before accepting"
+            )
+        elif page not in error_pages:
+            errors.append(
+                f"'{page}': is not stale or drifted -- nothing to accept"
+            )
+    if errors:
+        raise AcceptError(
+            "Cannot accept baseline:\n  " + "\n  ".join(errors)
+        )
+
+    accepted = []
+    for page in ordered:
+        stored_hashes[page] = current_hashes[page]
+        accepted.append((page, error_pages[page]))
+    save_hashes(stored_hashes, dir_path)
+    return accepted
 
 
 def _token_text_lines(tok):

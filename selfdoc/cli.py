@@ -20,6 +20,7 @@ app = strictcli.App(
 
 post_group = app.group("post", help="Manage blog posts and chronological content for the documentation site")
 assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
+baseline_group = app.group("baseline", help="Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check")
 
 
 def _moved_to_selfblog(command):
@@ -635,6 +636,47 @@ def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
 
     if exit_code != 0:
         sys.exit(1)
+    return 0
+
+
+@baseline_group.command("accept", help="Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.")
+@strictcli.arg("page", variadic=True, required=True, help="Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.")
+@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the updated content hash tracking file to git after accepting the named pages")
+def _cmd_baseline_accept(page, auto_commit=True):
+    """Accept reviewed staleness/drift for the named pages."""
+    from selfdoc.check import AcceptError, accept_baselines
+    from selfdoc.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    if config.get("unified"):
+        print(
+            "Error: unified projects are checked by selfblog. "
+            "Run 'selfblog check' instead.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        accepted = accept_baselines(page, dir_path=".", config=config)
+    except (AcceptError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Accepted new baseline for {len(accepted)} page(s):")
+    for page_id, code in accepted:
+        print(f"  {page_id} (cleared {code})")
+
+    if auto_commit:
+        from selfdoc.git import auto_commit as _auto_commit
+        _auto_commit(
+            [".selfdoc/hashes/hashes.json"],
+            "selfdoc baseline accept: " + ", ".join(p for p, _ in accepted),
+            ".",
+        )
     return 0
 
 
