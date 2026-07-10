@@ -128,6 +128,17 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         description="BCP 47 language tag for the site content (e.g. 'en', 'pt-BR').",
     ),
     FieldSpec(
+        name="name",
+        type=_S,
+        default=None,
+        description=(
+            "Explicit project name. Used as the single source of truth for "
+            "the manifest name and the auto-generated API reference index "
+            "description. When absent, the name is derived heuristically "
+            "(single-source basename or project directory basename)."
+        ),
+    ),
+    FieldSpec(
         name="description",
         type=_S,
         default=None,
