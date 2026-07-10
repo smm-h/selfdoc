@@ -2,16 +2,16 @@
 
 # Changelog
 
+## 0.30.0
+
+gen-index descriptions: correct project naming, legacy wrong descriptions self-heal; no more phantom STALE/DRIFT on generated pages.
+
+### Fixes
+
+- [selfdoc] **Correct API reference index description.** `selfdoc gen` no longer bakes an arbitrary source folder's name into the API reference index for multi-source projects (it uses the configured `name` or a generic phrasing), and it now refreshes index pages that still carry the old hardcoded description instead of preserving it forever.
+- [selfdoc] **No more phantom staleness errors on auto-generated pages.** `selfdoc check` no longer reports STALE001/DRIFT001 on skeleton (generated + seeded) pages whose source changed -- those pages advance automatically instead of being stuck in an unfixable error.
+
 ## 0.29.0
-
-baseline accept command and gen-index staleness fix
-
-<details>
-<summary>Context</summary>
-
-Adds `selfdoc baseline accept` for clearing staleness dead-ends on pages with dynamic content. Fixes gen-index to use content-aware seeded descriptions, preventing STALE001 deadlocks on generated index pages.
-
-</details>
 
 ### Features
 
