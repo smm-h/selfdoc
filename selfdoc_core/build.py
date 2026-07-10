@@ -1159,14 +1159,17 @@ def build_single(dir_path=".", config=None, output_subdir=None,
     # Prefix hash keys with locale code to avoid collisions between locales
     # (each locale may have the same relative paths like "index.md").
     from selfdoc_core.staleness import update_hashes
+    # build always writes fresh baselines and never enforces staleness, so no
+    # skeleton exemption is needed. Pass an empty set explicitly (update_hashes
+    # requires the keyword).
     if locale_override:
         prefixed_docs = {
             f"{locale_override}/{rp}": val
             for rp, val in all_docs.items()
         }
-        update_hashes(prefixed_docs, dir_path)
+        update_hashes(prefixed_docs, dir_path, skeleton_pages=set())
     else:
-        update_hashes(all_docs, dir_path)
+        update_hashes(all_docs, dir_path, skeleton_pages=set())
 
     # Apply page filter if provided (used by build() to partition
     # versioned and unversioned pages into separate build_single calls)

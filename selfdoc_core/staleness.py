@@ -263,7 +263,7 @@ def compute_current_hashes(all_docs, base_dir=".", page_directives=None,
 
 
 def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
-                  schema_hashes=None):
+                  schema_hashes=None, *, skeleton_pages):
     """Compute content and description hashes for all docs and save.
 
     Args:
@@ -277,10 +277,21 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
             detection is performed.
         schema_hashes: Optional dict mapping rel_path to a schema hash
             string (for CLI pages gated on their command's schema slice).
+        skeleton_pages: Required set of rel_path keys (already locale-prefixed
+            by the caller to match ``all_docs`` keys) identifying skeleton
+            pages -- pages that are both generated and machine-seeded.  These
+            pages cannot be hand-fixed, so a persistent staleness/drift lint
+            would deadlock: the baseline is held in error forever and never
+            advances.  Skeleton pages are therefore exempt: their baselines
+            always advance and no STALE001/DRIFT001 warning is emitted for
+            them.  Pass an empty set when no exemption applies (e.g. build
+            and gen paths that regenerate content and description together).
+            This is a required keyword argument -- callers must choose
+            explicitly rather than relying on a compatibility default.
 
     Returns:
         Tuple of (stale_warnings, drift_warnings), each a list of
-        (rel_path, message) tuples.
+        (rel_path, message) tuples.  Skeleton pages never appear in either.
     """
     stored_hashes = load_hashes(base_dir)
     current_hashes = compute_current_hashes(
@@ -319,6 +330,15 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
                 )
                 if schema_msg is not None:
                     drift_warnings.append((rel_path, schema_msg))
+
+    # Skeleton pages (generated + machine-seeded) are exempt from the
+    # staleness/drift hold: they cannot be hand-edited to clear the error,
+    # so holding their baseline would deadlock them in a perpetual re-error.
+    # Drop their warnings so no lint is emitted and their baseline advances
+    # normally below.
+    if skeleton_pages:
+        stale_warnings = [w for w in stale_warnings if w[0] not in skeleton_pages]
+        drift_warnings = [w for w in drift_warnings if w[0] not in skeleton_pages]
 
     # Pages with staleness or drift errors keep their old baseline so the
     # error persists until the description is actually rewritten.  All hash
