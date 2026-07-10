@@ -2,16 +2,22 @@
 
 # Changelog
 
-## 0.1.1
+## 0.1.2
 
-Fix CI: point test paths at selfdoc-core's own test directory, fix publish gate regex
+hash raw template body for STALE001 instead of resolved content
 
 <details>
 <summary>Context</summary>
 
-v0.1.0 CI failed because testpaths pointed at shared tests that depend on strictcli (not a selfdoc-core dependency). Created selfdoc-core-specific smoke tests.
+STALE001 previously hashed resolved content, which included dynamic directive values like project.version. This caused false staleness on every version bump. Now hashes the raw template body, so only actual template edits trigger staleness.
 
 </details>
+
+### Fixes
+
+- [selfdoc-core] **Fix.** STALE001 now hashes the raw template body instead of resolved content, preventing false staleness on version bumps and other dynamic directive values.
+
+## 0.1.1
 
 ### Fixes
 
