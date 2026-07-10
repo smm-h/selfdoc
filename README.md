@@ -190,6 +190,7 @@ Custom directives take priority over built-in names.
 | `theme` | no | Visual theme for the generated site. |
 | `repo` | no | GitHub repository URL shown in the site header. |
 | `lang` | no | BCP 47 language tag for the site content (e.g. 'en', 'pt-BR'). |
+| `name` | no | Explicit project name. Used as the single source of truth for the manifest name and the auto-generated API reference index description. When absent, the name is derived heuristically (single-source basename or project directory basename). |
 | `description` | no | Short description of the project, used in meta tags and SEO. |
 | `branch` | no | Git branch used for source links in the generated site. |
 | `search` | no | Search UI mode: icon button, full bar, or hidden. |
