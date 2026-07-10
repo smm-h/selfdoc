@@ -2,16 +2,19 @@
 
 # Changelog
 
+## 0.2.0
+
+Multi-source project name config key; skeleton pages exempt from staleness holds (update_hashes now requires skeleton_pages).
+
+### Breaking
+
+- [selfdoc-core] **Skeleton pages no longer deadlock staleness.** `update_hashes` exempts generated + machine-seeded pages from the staleness/drift baseline hold so they stop re-erroring forever; it now requires an explicit `skeleton_pages` keyword argument (breaking for direct callers).
+
+### Features
+
+- [selfdoc-core] **Configurable project name.** New optional top-level `name` key in selfdoc.json sets the project name used in the manifest and API reference index, overriding heuristic derivation.
+
 ## 0.1.2
-
-hash raw template body for STALE001 instead of resolved content
-
-<details>
-<summary>Context</summary>
-
-STALE001 previously hashed resolved content, which included dynamic directive values like project.version. This caused false staleness on every version bump. Now hashes the raw template body, so only actual template edits trigger staleness.
-
-</details>
 
 ### Fixes
 
