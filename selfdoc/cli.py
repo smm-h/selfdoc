@@ -738,12 +738,15 @@ def _cmd_gen(auto_commit=True):
 
     all_docs = resolve_all_docs(config, base_dir=".")
     locales = config.get("locales") or []
+    # gen regenerates content and description together, so no page is left
+    # stale here -- the skeleton exemption is unnecessary. Pass an empty set
+    # explicitly (update_hashes requires the keyword).
     if locales:
         locale_code = locales[0]["code"]
         prefixed = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
-        update_hashes(prefixed, ".")
+        update_hashes(prefixed, ".", skeleton_pages=set())
     else:
-        update_hashes(all_docs, ".")
+        update_hashes(all_docs, ".", skeleton_pages=set())
     all_commit_files.append(".selfdoc/hashes/hashes.json")
 
     # Discover posts for manifest -- via the post provider registered by

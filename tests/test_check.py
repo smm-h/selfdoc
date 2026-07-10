@@ -4258,6 +4258,73 @@ def test_drift001_source_changed_description_unchanged(tmp_path):
     assert drift2[0].severity == "error"
 
 
+def _make_dual_drift_project(tmp_path, doc1, doc2):
+    """Two-module project: one hand-written doc page and one skeleton
+    (generated+seeded) doc page, each with a ref directive to its module."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir, exist_ok=True)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(f'"""{doc1}"""\n')
+    with open(os.path.join(lib_dir, "other.py"), "w", encoding="utf-8") as f:
+        f.write(f'"""{doc2}"""\n')
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir, exist_ok=True)
+    # Hand-written page (no seeded marker).
+    with open(os.path.join(docs_dir, "mylib.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: Hand-written index\n---\n"
+            "# My Library\n\n"
+            ':-: ref path="mylib"\n'
+        )
+    # Skeleton page: generated + seeded.
+    with open(os.path.join(docs_dir, "mylib-other.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\n"
+            "description: Seeded other description\n"
+            "generated: true\n"
+            "seeded: true\n"
+            "---\n"
+            "# mylib.other\n\n"
+            ':-: ref path="mylib.other"\n'
+        )
+    return config
+
+
+def test_drift001_skeleton_page_exempt_scoped(tmp_path):
+    """A skeleton (generated+seeded) page whose source docstring changed does
+    NOT emit DRIFT001 and its baseline advances, while a hand-written page
+    with the identical mismatch still errors (exemption is scoped).
+
+    Fails before Fix A: the skeleton page reports DRIFT001 forever.
+    """
+    _make_dual_drift_project(tmp_path, doc1="Orig one.", doc2="Orig two.")
+    check_docs(str(tmp_path))  # establish baseline
+
+    # Change BOTH source docstrings, keep BOTH page descriptions.
+    _make_dual_drift_project(tmp_path, doc1="Rewritten one.", doc2="Rewritten two.")
+    result = check_docs(str(tmp_path))
+    drift_files = {l.file for l in result.lints if l.code == "DRIFT001"}
+
+    assert "mylib.md" in drift_files          # hand-written still errors
+    assert "mylib-other.md" not in drift_files  # skeleton exempt
+
+    # Skeleton baseline advanced: a re-check keeps it clean.
+    result2 = check_docs(str(tmp_path))
+    drift_files2 = {l.file for l in result2.lints if l.code == "DRIFT001"}
+    assert "mylib-other.md" not in drift_files2
+
+
 def test_drift001_source_and_description_both_changed(tmp_path):
     """DRIFT001: no lint when both source docstring and description are updated."""
     # First run: establish baseline

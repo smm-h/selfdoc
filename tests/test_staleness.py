@@ -285,7 +285,7 @@ def test_update_hashes_writes_file(tmp_path):
     all_docs = _make_all_docs([
         ("page.md", "A page about things", "# Page\n\nSome content."),
     ])
-    update_hashes(all_docs, str(tmp_path), dry_run=False)
+    update_hashes(all_docs, str(tmp_path), dry_run=False, skeleton_pages=set())
 
     hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
     assert os.path.isfile(hashes_path)
@@ -302,7 +302,7 @@ def test_update_hashes_dry_run_no_write(tmp_path):
     all_docs = _make_all_docs([
         ("page.md", "A page about things", "# Page\n\nSome content."),
     ])
-    update_hashes(all_docs, str(tmp_path), dry_run=True)
+    update_hashes(all_docs, str(tmp_path), dry_run=True, skeleton_pages=set())
 
     hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
     assert not os.path.exists(hashes_path)
@@ -314,14 +314,14 @@ def test_update_hashes_detects_stale(tmp_path):
     all_docs_v1 = _make_all_docs([
         ("page.md", "Original description", "# Page\n\nOriginal content."),
     ])
-    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v1) == 0  # new page, no staleness
 
     # Second pass: change content but keep same description
     all_docs_v2 = _make_all_docs([
         ("page.md", "Original description", "# Page\n\nCompletely new content."),
     ])
-    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v2) == 1
     rel_path, stale_msg = warnings_v2[0]
     assert rel_path == "page.md"
@@ -333,13 +333,65 @@ def test_update_hashes_no_stale_when_both_change(tmp_path):
     all_docs_v1 = _make_all_docs([
         ("page.md", "Desc v1", "# Page\n\nContent v1."),
     ])
-    update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    update_hashes(all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set())
 
     all_docs_v2 = _make_all_docs([
         ("page.md", "Desc v2", "# Page\n\nContent v2."),
     ])
-    warnings, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings) == 0
+
+
+def test_update_hashes_skeleton_page_exempt_from_stale(tmp_path):
+    """A skeleton (generated+seeded) page whose content changed but whose
+    description did not must NOT emit a stale warning, and its baseline must
+    ADVANCE so it does not deadlock in a perpetual re-error.
+
+    Fails before Fix A: the page would be reported stale and its baseline
+    held frozen forever.
+    """
+    all_docs_v1 = _make_all_docs([
+        ("page.md", "Seeded description", "# Page\n\nOriginal content."),
+    ])
+    update_hashes(
+        all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set(),
+    )
+
+    all_docs_v2 = _make_all_docs([
+        ("page.md", "Seeded description", "# Page\n\nDifferent content."),
+    ])
+    warnings, _ = update_hashes(
+        all_docs_v2, str(tmp_path), dry_run=False,
+        skeleton_pages={"page.md"},
+    )
+    assert warnings == []  # skeleton exempt: no STALE001
+
+    # Baseline advanced (not merely silenced): a third pass with the same v2
+    # content is clean even without the exemption -- the hold was released.
+    warnings3, _ = update_hashes(
+        all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set(),
+    )
+    assert warnings3 == []
+
+
+def test_update_hashes_non_skeleton_still_stale(tmp_path):
+    """Control: the SAME mismatch on a non-skeleton page still errors --
+    the exemption is scoped to skeleton pages only."""
+    all_docs_v1 = _make_all_docs([
+        ("page.md", "Hand description", "# Page\n\nOriginal content."),
+    ])
+    update_hashes(
+        all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set(),
+    )
+
+    all_docs_v2 = _make_all_docs([
+        ("page.md", "Hand description", "# Page\n\nDifferent content."),
+    ])
+    warnings, _ = update_hashes(
+        all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set(),
+    )
+    assert len(warnings) == 1
+    assert warnings[0][0] == "page.md"
 
 
 def test_update_hashes_skips_pages_without_description(tmp_path):
@@ -347,7 +399,7 @@ def test_update_hashes_skips_pages_without_description(tmp_path):
     all_docs = _make_all_docs([
         ("no-desc.md", None, "# No Description\n\nJust content."),
     ])
-    warnings, _ = update_hashes(all_docs, str(tmp_path), dry_run=False)
+    warnings, _ = update_hashes(all_docs, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings) == 0
 
     hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
@@ -408,9 +460,9 @@ def _run_gen_hashes(config, base_dir):
     if locales:
         locale_code = locales[0]["code"]
         prefixed = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
-        update_hashes(prefixed, base_dir)
+        update_hashes(prefixed, base_dir, skeleton_pages=set())
     else:
-        update_hashes(all_docs, base_dir)
+        update_hashes(all_docs, base_dir, skeleton_pages=set())
 
 
 def test_gen_updates_hashes(tmp_path):
@@ -624,26 +676,26 @@ def test_baseline_hold_staleness_persists(tmp_path):
     all_docs_v1 = _make_all_docs([
         ("page.md", "old desc", "# Page\n\nOriginal content."),
     ])
-    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v1) == 0  # new page, no staleness
 
     # Step 2: change content (hash becomes B) but keep description "old desc"
     all_docs_v2 = _make_all_docs([
         ("page.md", "old desc", "# Page\n\nCompletely rewritten content."),
     ])
-    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v2) == 1  # first check -> staleness error
 
     # Step 3: second check with same stale state -> STILL staleness error
     # (baseline did NOT advance because of the error)
-    warnings_v3, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings_v3, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v3) == 1, "Staleness error should persist on second check"
 
     # Step 4: rewrite description -> check passes (error cleared)
     all_docs_v3 = _make_all_docs([
         ("page.md", "new desc matching new content", "# Page\n\nCompletely rewritten content."),
     ])
-    warnings_v4, _ = update_hashes(all_docs_v3, str(tmp_path), dry_run=False)
+    warnings_v4, _ = update_hashes(all_docs_v3, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v4) == 0, "No staleness after description was rewritten"
 
 
@@ -707,15 +759,13 @@ def test_baseline_hold_drift_persists(tmp_path):
 
     _, drift1 = update_hashes(
         all_docs_same, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes,
-    )
+        schema_hashes=schema_hashes, skeleton_pages=set())
     assert len(drift1) == 1, "Should detect schema drift"
 
     # Second check: error should persist
     _, drift2 = update_hashes(
         all_docs_same, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes,
-    )
+        schema_hashes=schema_hashes, skeleton_pages=set())
     assert len(drift2) == 1, "Schema drift should persist on second check"
 
 
@@ -724,7 +774,7 @@ def test_baseline_hold_all_fields_atomic(tmp_path):
     all_docs_v1 = _make_all_docs([
         ("page.md", "old desc", "# Page\n\nOriginal content."),
     ])
-    update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    update_hashes(all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set())
 
     # Read the stored hashes
     stored = load_hashes(str(tmp_path))
@@ -735,7 +785,7 @@ def test_baseline_hold_all_fields_atomic(tmp_path):
     all_docs_v2 = _make_all_docs([
         ("page.md", "old desc", "# Page\n\nNew content here."),
     ])
-    warnings, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings) == 1
 
     # Verify ALL fields are frozen (content and description unchanged)
@@ -822,8 +872,7 @@ def test_update_hashes_with_schema_hashes(tmp_path):
     schema_hashes = {"cli-build.md": "schema_v1"}
     _, drift = update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes,
-    )
+        schema_hashes=schema_hashes, skeleton_pages=set())
     assert len(drift) == 0  # new page, no drift
 
     # Verify schema_hash is stored
@@ -834,8 +883,7 @@ def test_update_hashes_with_schema_hashes(tmp_path):
     schema_hashes_v2 = {"cli-build.md": "schema_v2"}
     _, drift = update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes_v2,
-    )
+        schema_hashes=schema_hashes_v2, skeleton_pages=set())
     assert len(drift) == 1
     assert "CLI schema changed" in drift[0][1]
 
@@ -850,22 +898,19 @@ def test_update_hashes_schema_drift_baseline_hold(tmp_path):
     schema_hashes = {"cli-build.md": "schema_v1"}
     update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes,
-    )
+        schema_hashes=schema_hashes, skeleton_pages=set())
 
     # Schema changes -> drift error
     schema_hashes_v2 = {"cli-build.md": "schema_v2"}
     _, drift1 = update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes_v2,
-    )
+        schema_hashes=schema_hashes_v2, skeleton_pages=set())
     assert len(drift1) == 1
 
     # Second check -> still drift error (baseline didn't advance)
     _, drift2 = update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes_v2,
-    )
+        schema_hashes=schema_hashes_v2, skeleton_pages=set())
     assert len(drift2) == 1, "Schema drift should persist on second check"
 
     # Update description -> drift clears
@@ -874,8 +919,7 @@ def test_update_hashes_schema_drift_baseline_hold(tmp_path):
     ])
     _, drift3 = update_hashes(
         all_docs_fixed, str(tmp_path), dry_run=False,
-        schema_hashes=schema_hashes_v2,
-    )
+        schema_hashes=schema_hashes_v2, skeleton_pages=set())
     assert len(drift3) == 0, "No drift after description was updated"
 
 
@@ -914,8 +958,7 @@ def test_source_docstring_drift_integration(tmp_path):
     # First run: establish baseline with source_docstring hash
     _, drift = update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        page_directives=page_directives,
-    )
+        page_directives=page_directives, skeleton_pages=set())
     assert len(drift) == 0
 
     # Verify source_docstring is stored
@@ -928,8 +971,7 @@ def test_source_docstring_drift_integration(tmp_path):
 
     _, drift = update_hashes(
         all_docs, str(tmp_path), dry_run=False,
-        page_directives=page_directives,
-    )
+        page_directives=page_directives, skeleton_pages=set())
     assert len(drift) == 1
     assert "documentation drift" in drift[0][1]
 
@@ -966,7 +1008,7 @@ def test_stale001_not_fired_when_only_directive_output_changes(tmp_path):
         ("page.md", "A page about the project", raw_body,
          "# Page\n\nVersion: 1.0.0\n"),
     ])
-    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v1) == 0  # new page, no staleness
 
     # Run 2: version changes to 1.1.0 but raw body is the same
@@ -974,7 +1016,7 @@ def test_stale001_not_fired_when_only_directive_output_changes(tmp_path):
         ("page.md", "A page about the project", raw_body,
          "# Page\n\nVersion: 1.1.0\n"),
     ])
-    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v2) == 0, (
         "STALE001 should not fire when only directive output changed"
     )
@@ -991,7 +1033,7 @@ def test_stale001_fires_when_prose_changes(tmp_path):
         ("page.md", "A page about things", "# Page\n\nOriginal prose.\n",
          "# Page\n\nOriginal prose.\n"),
     ])
-    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False)
+    warnings_v1, _ = update_hashes(all_docs_v1, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v1) == 0  # new page
 
     # Run 2: prose changes, description stays the same
@@ -999,7 +1041,7 @@ def test_stale001_fires_when_prose_changes(tmp_path):
         ("page.md", "A page about things", "# Page\n\nRewritten prose.\n",
          "# Page\n\nRewritten prose.\n"),
     ])
-    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False)
+    warnings_v2, _ = update_hashes(all_docs_v2, str(tmp_path), dry_run=False, skeleton_pages=set())
     assert len(warnings_v2) == 1, "STALE001 should fire when prose changes"
     assert "stale description" in warnings_v2[0][1]
 

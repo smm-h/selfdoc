@@ -492,22 +492,34 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
             page_key = f"cli-{grp['name']}.md"
             _schema_hashes[page_key] = compute_schema_hash(grp)
 
+    # Skeleton pages (generated + machine-seeded) are exempt from the
+    # staleness/drift hold -- they cannot be hand-fixed, so a held baseline
+    # would deadlock. Computed here in the app layer (no upward import into
+    # selfdoc_core) and passed down to update_hashes.
+    _skeleton_keys = {
+        rp for rp, (fm, _r, _raw, _lc) in all_docs.items()
+        if _is_skeleton_page(fm)
+    }
+
     locales = config.get("locales") or []
     if locales:
         locale_code = locales[0]["code"]
         prefixed_docs = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
         prefixed_directives = {f"{locale_code}/{rp}": v for rp, v in _drift_directives.items()}
         prefixed_schema = {f"{locale_code}/{rp}": v for rp, v in _schema_hashes.items()}
+        prefixed_skeletons = {f"{locale_code}/{rp}" for rp in _skeleton_keys}
         stale_warnings, drift_warnings = update_hashes(
             prefixed_docs, dir_path, dry_run=dry_run,
             page_directives=prefixed_directives,
             schema_hashes=prefixed_schema,
+            skeleton_pages=prefixed_skeletons,
         )
     else:
         stale_warnings, drift_warnings = update_hashes(
             all_docs, dir_path, dry_run=dry_run,
             page_directives=_drift_directives,
             schema_hashes=_schema_hashes,
+            skeleton_pages=_skeleton_keys,
         )
     for rel_path, stale_msg in stale_warnings:
         result.lints.append(LintResult(
@@ -666,6 +678,17 @@ def compute_staleness_state(dir_path=".", config=None):
         prefixed_directives = drift_directives
         prefixed_schema = schema_hashes
 
+    # Skeleton pages are exempt from the staleness/drift hold (see check_docs);
+    # keep the same prefixing so keys line up with prefixed_docs.
+    _skeleton_keys = {
+        rp for rp, (fm, _r, _raw, _lc) in all_docs.items()
+        if _is_skeleton_page(fm)
+    }
+    if locales:
+        skeleton_pages = {f"{locale_code}/{rp}" for rp in _skeleton_keys}
+    else:
+        skeleton_pages = _skeleton_keys
+
     current_hashes = compute_current_hashes(
         prefixed_docs, dir_path,
         page_directives=prefixed_directives,
@@ -675,6 +698,7 @@ def compute_staleness_state(dir_path=".", config=None):
         prefixed_docs, dir_path, dry_run=True,
         page_directives=prefixed_directives,
         schema_hashes=prefixed_schema,
+        skeleton_pages=skeleton_pages,
     )
 
     error_pages: dict[str, str] = {}
