@@ -2,16 +2,26 @@
 
 # selfdoc
 
-## 0.28.1
+## 0.29.0
 
-Fix CI: install playwright browsers before running tests, fix publish gate regex
+baseline accept command and gen-index staleness fix
 
 <details>
 <summary>Context</summary>
 
-v0.28.0 CI failed because playwright browsers were not installed. The publish gate regex also did not match the actual CI job name. Both are fixed.
+Adds `selfdoc baseline accept` for clearing staleness dead-ends on pages with dynamic content. Fixes gen-index to use content-aware seeded descriptions, preventing STALE001 deadlocks on generated index pages.
 
 </details>
+
+### Features
+
+- [selfdoc] **`selfdoc baseline accept <page>...`**. New command to clear a STALE001/DRIFT001 dead-end when a page's content changed but its existing frontmatter description was reviewed and is still accurate (e.g. pages embedding `project.version` that change every release). It advances the named pages' hash baselines exactly as if the description had been rewritten. Pages are named explicitly (no `--all`/glob/`--force`); accepting a page that does not exist, has no baseline, or is not currently stale/drifted is a hard error.
+
+### Fixes
+
+- [selfdoc] **Fix.** gen-index description is now content-aware with a seeded marker, preventing STALE001 deadlocks on generated index pages.
+
+## 0.28.1
 
 ### Fixes
 
