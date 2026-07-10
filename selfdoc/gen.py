@@ -360,6 +360,92 @@ def _generate_page_content(module_name, module_path, nav_order,
     )
 
 
+# Known machine-seeded gen-index descriptions produced by PRE-seeded-marker
+# versions of selfdoc. These pages carry a hardcoded phrase but NO
+# ``seeded: true`` frontmatter marker, so the preservation logic would keep
+# the (now-wrong) description forever. Descriptions matching one of these
+# EXACT strings are treated as machine-seeded and reseeded on the next gen.
+# The wording literally hardcodes "selfdoc", so it is wrong for every
+# consuming project. Do NOT add hand-editable-looking phrases here -- this
+# set is the explicit discriminator between machine residue and hand edits.
+_LEGACY_INDEX_DESCRIPTIONS = frozenset({
+    "Auto-generated API reference index",
+    "Auto-generated API reference index for the selfdoc package — "
+    "browse all public modules with their docstrings and source locations.",
+})
+
+
+def _resolve_project_name(config, base_dir):
+    """Resolve the project name for the API reference index description.
+
+    Resolution order (single source of truth: the config ``name`` key):
+
+    1. Explicit top-level ``name`` in selfdoc.json wins.
+    2. Otherwise, when there is exactly one source entry, derive the name
+       from it (an unambiguous single-source project): a root source path
+       (``.`` / ``/`` / empty) resolves to the project directory basename;
+       any other single path resolves to its basename.
+    3. Otherwise (zero or multiple source entries), return ``None`` -- the
+       name is ambiguous, and a generic count-only description is used
+       instead. Generic beats wrong.
+    """
+    name = config.get("name")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+
+    source_entries = config.get("source", [])
+    if len(source_entries) == 1:
+        raw_path = source_entries[0].get("path", "")
+        stripped = raw_path.strip("/")
+        if stripped in ("", "."):
+            return os.path.basename(os.path.abspath(base_dir))
+        return stripped.split("/")[-1]
+
+    return None
+
+
+def _read_existing_index_description(filepath):
+    """Return the hand-edited gen-index description, or ``None`` to reseed.
+
+    Extends :func:`_read_existing_description` with a legacy discriminator.
+    Returns ``None`` (meaning: recompute + add ``seeded: true``) when the
+    page is either:
+
+    - marked ``seeded: true`` (normal machine-seeded flow), or
+    - carrying a KNOWN legacy machine-seed phrase without the seeded marker
+      (residue from a PRE-seeded-marker selfdoc version).
+
+    Any other description is treated as a genuine hand edit and preserved.
+    """
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return None
+
+    metadata, _ = _parse_frontmatter(content)
+
+    if metadata.get("seeded") is True:
+        return None
+
+    raw = metadata.get("description")
+    if raw is None or not isinstance(raw, str):
+        return None
+
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1].strip()
+
+    if not value:
+        return None
+
+    # Legacy machine-seed residue -> reseed rather than preserve.
+    if value in _LEGACY_INDEX_DESCRIPTIONS:
+        return None
+
+    return value
+
+
 def _generate_index_content(generated_pages, project_name,
                             existing_description=None):
     """Build the gen-index.md page listing all generated pages with links.
@@ -367,7 +453,10 @@ def _generate_index_content(generated_pages, project_name,
     ``generated_pages`` is a list of (module_name, md_filename) tuples,
     already sorted by module name.
 
-    ``project_name`` is used to derive the auto-generated description.
+    ``project_name`` is used to derive the auto-generated description. When
+    it is ``None`` (an ambiguous multi-source project with no configured
+    ``name``), a generic count-only description with no project name is used
+    instead -- generic beats wrong.
 
     If ``existing_description`` is provided (from a hand-edited page),
     it is preserved verbatim.  Otherwise, a content-aware description
@@ -379,10 +468,11 @@ def _generate_index_content(generated_pages, project_name,
         desc = existing_description
         seeded = False
     else:
-        desc = (
-            f"API reference index for {project_name} "
-            f"covering {n} module{'s' if n != 1 else ''}"
-        )
+        module_phrase = f"covering {n} module{'s' if n != 1 else ''}"
+        if project_name:
+            desc = f"API reference index for {project_name} {module_phrase}"
+        else:
+            desc = f"API reference index {module_phrase}"
         seeded = True
     lines = [
         "---",
@@ -509,12 +599,8 @@ def generate_docs(config, base_dir="."):
         cli_structure = extract_cli_structure(all_source_paths, base_dir)
     cli_page_names = expected_cli_page_filenames(cli_structure)
 
-    # Derive project name from the first source entry's path
-    source_entries = config.get("source", [])
-    if source_entries:
-        project_name = source_entries[0]["path"].strip("/").split("/")[-1]
-    else:
-        project_name = os.path.basename(os.path.abspath(base_dir))
+    # Resolve the project name for the index description (see helper docs).
+    project_name = _resolve_project_name(config, base_dir)
 
     for locale_code, locale_docs_dir in locale_dirs:
         # Collect filenames across all language groups for stale cleanup
@@ -536,7 +622,7 @@ def generate_docs(config, base_dir="."):
 
         # Generate combined index page across all language groups
         index_path = os.path.join(locale_docs_dir, "gen-index.md")
-        existing_index_desc = _read_existing_description(index_path)
+        existing_index_desc = _read_existing_index_description(index_path)
         index_content = _generate_index_content(
             locale_index_pages, project_name,
             existing_description=existing_index_desc,
