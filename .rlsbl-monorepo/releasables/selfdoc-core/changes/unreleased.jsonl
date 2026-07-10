@@ -1,0 +1,1 @@
+{"id":"18c102fef027b121f0fd6cbfedba4cd5885119f303e9271a","commits":["bbd6fc6653d6ac723a844be77512e1b39809fa75"],"user_facing":true,"description":"**Configurable project name.** New optional top-level `name` key in selfdoc.json sets the project name used in the manifest and API reference index, overriding heuristic derivation.","type":"feature","packages":["selfdoc-core"]}
