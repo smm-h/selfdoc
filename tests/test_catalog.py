@@ -158,6 +158,75 @@ def test_filesystem_content_directives_require_path():
         )
 
 
+# -- Catalog-vs-resolver attribute consistency --------------------------------
+
+# Hand-verified map of every core directive to its (required, optional) attr
+# sets, derived by reading each directive's resolver:
+#   - code directives dispatch through selfdoc_core.extractors.base.extract
+#     (reads `path`, `target`) and the multi-language resolver (reads `lang`);
+#     `exclude` is read by handle_table_config / _handle_schema.
+#   - content directives are resolved in selfdoc_core.content (list-tree reads
+#     `depth`, list-modules reads `files`, table-endpoint reads
+#     `endpoint`/`method`, var reads `key`), and table-commands is resolved in
+#     selfdoc.content (discovers the schema; optional `schema-dir` override).
+# Any drift between a resolver's attrs.get()/attrs[] usage and the catalog must
+# fail this test so the catalog stays truthful.
+EXPECTED_ATTRS: dict[str, tuple[set[str], set[str]]] = {
+    "ref": ({"path"}, {"target", "lang"}),
+    "table-schema": ({"path"}, {"target", "exclude", "lang"}),
+    "code-test": ({"path"}, {"target", "lang"}),
+    "code-help": ({"path"}, {"lang"}),
+    "table-config": ({"path"}, {"exclude", "lang"}),
+    "prose-desc": ({"path"}, {"lang"}),
+    "callout-note": (set(), set()),
+    "callout-warning": (set(), set()),
+    "callout-tip": (set(), set()),
+    "callout-danger": (set(), set()),
+    "callout-important": (set(), set()),
+    "list-glossary": (set(), set()),
+    "list-tree": ({"path"}, {"depth"}),
+    "table-dep": ({"path"}, set()),
+    "list-modules": ({"path"}, {"files"}),
+    "table-commands": ({"path"}, set()),
+    "table-directives": (set(), set()),
+    "table-config-schema": (set(), set()),
+    "table-endpoint": ({"path"}, {"endpoint", "method"}),
+    "var": ({"key"}, set()),
+}
+
+
+def test_expected_attrs_covers_all_core_directives():
+    assert set(EXPECTED_ATTRS) == set(CORE_DIRECTIVES)
+
+
+def test_catalog_attrs_match_expected():
+    for name, (req, opt) in EXPECTED_ATTRS.items():
+        spec = CORE_DIRECTIVES[name]
+        assert set(spec.required_attrs) == req, (
+            f"{name}: required_attrs {spec.required_attrs} != expected {sorted(req)}"
+        )
+        assert set(spec.optional_attrs) == opt, (
+            f"{name}: optional_attrs {spec.optional_attrs} != expected {sorted(opt)}"
+        )
+
+
+def test_required_and_optional_attrs_disjoint():
+    for name, spec in CORE_DIRECTIVES.items():
+        overlap = set(spec.required_attrs) & set(spec.optional_attrs)
+        assert overlap == set(), f"{name}: attr in both required and optional: {overlap}"
+
+
+def test_shared_code_attrs_on_every_code_directive():
+    from selfdoc.catalog import SHARED_CODE_ATTRS
+
+    for name, spec in CORE_DIRECTIVES.items():
+        if spec.category == "code":
+            for attr in SHARED_CODE_ATTRS:
+                assert attr in spec.optional_attrs, (
+                    f"{name}: code directive missing shared attr {attr!r}"
+                )
+
+
 def test_is_valid_directive_with_dict_core():
     """is_valid_directive still works after CORE_DIRECTIVES became a dict."""
     for name in CORE_DIRECTIVES:
