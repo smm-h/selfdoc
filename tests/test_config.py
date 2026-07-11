@@ -1033,6 +1033,32 @@ def test_gen_data_invalid_key(config_dir):
         load_config(str(config_dir))
 
 
+# -- top-level name key --
+
+
+def test_top_level_name_accepted(config_dir):
+    """An explicit top-level ``name`` key loads and round-trips."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+        "name": "MyProject",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["name"] == "MyProject"
+
+
+def test_name_optional_defaults_none(config_dir):
+    """``name`` is optional; when omitted it is absent/None, not required."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "version": "1.0.0",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg.get("name") is None
+
+
 # -- unknown top-level keys --
 
 
@@ -1044,6 +1070,18 @@ def test_unknown_top_level_key(config_dir):
         "foo": "bar",
     })
     with pytest.raises(ConfigError, match="foo"):
+        load_config(str(config_dir))
+
+
+def test_name_does_not_disable_unknown_key_rejection(config_dir):
+    """Adding ``name`` does not weaken unknown-key rejection."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "name": "MyProject",
+        "bogus": 1,
+    })
+    with pytest.raises(ConfigError, match="bogus"):
         load_config(str(config_dir))
 
 
