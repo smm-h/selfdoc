@@ -2,18 +2,26 @@
 
 # Changelog
 
-## 0.3.0
+## 0.4.0
 
-Summary truncation abolished: complete first sentences and paragraphs everywhere, soft-wrap normalization across all extractors, and feed summaries carry the full first paragraph.
+Staleness v3: content hashes canonicalize directive attributes; per-page seed hashes; baseline re-established
 
 <details>
 <summary>Context</summary>
 
-Truncation produced mid-sentence garbage in llms.txt, Atom feeds, and SEO meta descriptions.
-Extracted summaries now use a first-sentence / first-paragraph unit picker with soft-wrapped
-lines joined, so no output is cut mid-sentence or capped at 155 characters.
+The staleness hash store advances to v3. Content hashes canonicalize directive marker attributes so mechanical path renames render identically and no longer flag stale descriptions, and per-page seed hashes are recorded to support description ownership. Older (v2) stores hold none of the data v3 needs, so they are discarded and re-baselined from current content on first load.
 
 </details>
+
+### Features
+
+- [selfdoc-core] **Staleness hash store re-baselines on upgrade (v3).** The store now records per-page seed hashes and canonicalizes directive markers; older (v2) stores are discarded and re-established from current content, so the first `selfdoc check` after upgrading re-baselines every page instead of reporting migration-induced staleness.
+
+### Fixes
+
+- [selfdoc-core] **Directive path renames no longer flag stale descriptions.** Renaming a directive's `path` attribute (e.g. `path="old"` to `path="new"`) is a mechanical change with identical rendered output, so it no longer triggers a false stale-description error.
+
+## 0.3.0
 
 ### Breaking
 
