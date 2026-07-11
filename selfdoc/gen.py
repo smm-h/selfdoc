@@ -12,6 +12,14 @@ from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.directives import resolve_directives, validate_directive_names
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import atomic_write as _atomic_write
+from selfdoc.ownership import (
+    MODULE_DESC_TEMPLATE,
+    LEGACY_INDEX_DESCRIPTIONS as _LEGACY_INDEX_DESCRIPTIONS,
+    description_seed_hash,
+    is_machine_owned_index_description,
+    is_machine_owned_module_description,
+)
+from selfdoc_core.staleness import load_hashes, save_hashes
 
 
 @dataclass
@@ -117,6 +125,23 @@ def _module_to_filename(module_path, language):
     if language == "python":
         return module_path.replace(".", "-") + ".md"
     return module_path.replace("/", "-") + ".md"
+
+
+def _staleness_store_key(config, locale_dir_code, filename):
+    """Compute the hashes.json key for a generated page.
+
+    Mirrors the locale-prefixing that build.py and check.py apply so that gen
+    writes ``seed_hash`` under the same key those layers read/write.  When
+    locales are configured, keys are prefixed with the first locale's code
+    (matching check_docs); ``locale_dir_code`` is the subdirectory a page was
+    written under ("" for single-locale projects without a locale subdir).
+    """
+    rp_top = os.path.join(locale_dir_code, filename) if locale_dir_code else filename
+    rp_top = rp_top.replace(os.sep, "/")
+    locales = config.get("locales") or []
+    if locales:
+        return f"{locales[0]['code']}/{rp_top}"
+    return rp_top
 
 
 def _read_go_module_name(base_dir):
@@ -253,12 +278,16 @@ def _is_excluded(rel_path, exclude_patterns):
     return False
 
 
-def _read_existing_description(filepath):
-    """Return the user-customized ``description`` from a page's frontmatter.
+def _read_existing_description(filepath, module_name=None, seed_hash=None):
+    """Return the hand-edited module-page ``description``, or ``None`` to reseed.
 
-    Returns ``None`` if the file does not exist, has no ``description`` key,
-    or if the page has ``seeded: true`` (indicating the description was
-    auto-generated and should be recomputed from the current source).
+    Consults the ownership predicate rather than trusting the ``seeded: true``
+    frontmatter flag: a description is recomputed (returns ``None``) only when
+    it is machine-owned -- i.e. it matches the current/historical module
+    template for *module_name*, or the recorded *seed_hash*.  Any other text is
+    a genuine hand edit and is preserved verbatim, EVEN IF a stale
+    ``seeded: true`` flag is still present (the "human rewrote but forgot to
+    remove seeded:true" trap is dead).
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -267,11 +296,6 @@ def _read_existing_description(filepath):
         return None
 
     metadata, _ = _parse_frontmatter(content)
-
-    # If the page is marked as seeded, the description was auto-generated
-    # and should be recomputed rather than preserved.
-    if metadata.get("seeded") is True:
-        return None
 
     raw = metadata.get("description")
     if raw is None or not isinstance(raw, str):
@@ -284,6 +308,9 @@ def _read_existing_description(filepath):
         value = value[1:-1].strip()
 
     if not value:
+        return None
+
+    if is_machine_owned_module_description(value, module_name, seed_hash):
         return None
 
     return value
@@ -314,11 +341,7 @@ def _generate_page_content(module_name, module_path, nav_order,
         desc = docstring_description
         seeded = True
     else:
-        desc = (
-            f"API reference for the {module_name} module — "
-            f"auto-generated documentation covering public functions, "
-            f"classes, and type signatures."
-        )
+        desc = MODULE_DESC_TEMPLATE.format(module=module_name)
         seeded = True
     seeded_line = "seeded: true\n" if seeded else ""
     lang_attr = f' lang="{language}"' if language else ""
@@ -337,21 +360,6 @@ def _generate_page_content(module_name, module_path, nav_order,
         f"\n"
         f':-: ref path="{module_path}"{lang_attr}\n'
     )
-
-
-# Known machine-seeded gen-index descriptions produced by PRE-seeded-marker
-# versions of selfdoc. These pages carry a hardcoded phrase but NO
-# ``seeded: true`` frontmatter marker, so the preservation logic would keep
-# the (now-wrong) description forever. Descriptions matching one of these
-# EXACT strings are treated as machine-seeded and reseeded on the next gen.
-# The wording literally hardcodes "selfdoc", so it is wrong for every
-# consuming project. Do NOT add hand-editable-looking phrases here -- this
-# set is the explicit discriminator between machine residue and hand edits.
-_LEGACY_INDEX_DESCRIPTIONS = frozenset({
-    "Auto-generated API reference index",
-    "Auto-generated API reference index for the selfdoc package — "
-    "browse all public modules with their docstrings and source locations.",
-})
 
 
 def _resolve_project_name(config, base_dir):
@@ -383,18 +391,14 @@ def _resolve_project_name(config, base_dir):
     return None
 
 
-def _read_existing_index_description(filepath):
+def _read_existing_index_description(filepath, seed_hash=None):
     """Return the hand-edited gen-index description, or ``None`` to reseed.
 
-    Extends :func:`_read_existing_description` with a legacy discriminator.
-    Returns ``None`` (meaning: recompute + add ``seeded: true``) when the
-    page is either:
-
-    - marked ``seeded: true`` (normal machine-seeded flow), or
-    - carrying a KNOWN legacy machine-seed phrase without the seeded marker
-      (residue from a PRE-seeded-marker selfdoc version).
-
-    Any other description is treated as a genuine hand edit and preserved.
+    Consults the ownership predicate: returns ``None`` (recompute + add
+    ``seeded: true``) when the description is machine-owned -- i.e. it matches
+    the current index format, a KNOWN legacy machine-seed phrase, or the
+    recorded *seed_hash*.  Any other description is a genuine hand edit and is
+    preserved verbatim, regardless of a stale ``seeded: true`` flag.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -403,9 +407,6 @@ def _read_existing_index_description(filepath):
         return None
 
     metadata, _ = _parse_frontmatter(content)
-
-    if metadata.get("seeded") is True:
-        return None
 
     raw = metadata.get("description")
     if raw is None or not isinstance(raw, str):
@@ -418,8 +419,7 @@ def _read_existing_index_description(filepath):
     if not value:
         return None
 
-    # Legacy machine-seed residue -> reseed rather than preserve.
-    if value in _LEGACY_INDEX_DESCRIPTIONS:
+    if is_machine_owned_index_description(value, seed_hash):
         return None
 
     return value
@@ -581,7 +581,16 @@ def generate_docs(config, base_dir="."):
     # Resolve the project name for the index description (see helper docs).
     project_name = _resolve_project_name(config, base_dir)
 
+    # Load the staleness store once.  gen is a second writer of this store
+    # (alongside build/check): it reads the per-page ``seed_hash`` to decide
+    # preserve-vs-reseed and records fresh seed hashes for the pages it seeds.
+    stored_hashes = load_hashes(base_dir)
+
     for locale_code, locale_docs_dir in locale_dirs:
+        def _seed_hash_of(filename, _lc=locale_code):
+            key = _staleness_store_key(config, _lc, filename)
+            return stored_hashes.get(key, {}).get("seed_hash")
+
         # Collect filenames across all language groups for stale cleanup
         locale_all_filenames: list[str] = []
         locale_written: list[str] = []
@@ -590,7 +599,7 @@ def generate_docs(config, base_dir="."):
         for language, extractor, group_paths in groups.values():
             result, index_pages = _generate_docs_for_dir(
                 config, base_dir, language, extractor,
-                locale_docs_dir, group_paths,
+                locale_docs_dir, group_paths, _seed_hash_of,
             )
             locale_written.extend(result.written)
             locale_all_filenames.extend(result.written)
@@ -601,7 +610,9 @@ def generate_docs(config, base_dir="."):
 
         # Generate combined index page across all language groups
         index_path = os.path.join(locale_docs_dir, "gen-index.md")
-        existing_index_desc = _read_existing_index_description(index_path)
+        existing_index_desc = _read_existing_index_description(
+            index_path, seed_hash=_seed_hash_of("gen-index.md"),
+        )
         index_content = _generate_index_content(
             locale_index_pages, project_name,
             existing_description=existing_index_desc,
@@ -627,6 +638,15 @@ def generate_docs(config, base_dir="."):
         # Stale cleanup: run ONCE after all language groups have generated
         deleted = _remove_stale_generated(locale_docs_dir, locale_all_filenames)
 
+        # Record per-page seed_hash for the pages gen just seeded.  A page
+        # written with ``seeded: true`` carries machine text this run; hash it.
+        # A page written WITHOUT the marker was preserved as handwritten, so
+        # drop any stale seed_hash so it re-enters staleness protection.
+        _record_seed_hashes(
+            config, locale_code, locale_docs_dir,
+            dict.fromkeys(locale_written), stored_hashes,
+        )
+
         if locale_code:
             all_written.extend(
                 os.path.join(locale_code, f) for f in locale_written
@@ -638,15 +658,48 @@ def generate_docs(config, base_dir="."):
             all_written.extend(locale_written)
             all_deleted.extend(deleted)
 
+    save_hashes(stored_hashes, base_dir)
+
     return GenResult(written=all_written, deleted=all_deleted)
 
 
+def _record_seed_hashes(config, locale_code, locale_docs_dir, filenames,
+                        stored_hashes):
+    """Record/clear per-page ``seed_hash`` for the pages gen wrote this run.
+
+    ``filenames`` is an iterable of basenames (relative to *locale_docs_dir*).
+    Merges into *stored_hashes* in place, preserving all build/check-owned
+    fields.
+    """
+    for filename in filenames:
+        page_path = os.path.join(locale_docs_dir, filename)
+        try:
+            with open(page_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except OSError:
+            continue
+        metadata, _ = _parse_frontmatter(content)
+        key = _staleness_store_key(config, locale_code, filename)
+        description = metadata.get("description")
+        if metadata.get("seeded") is True and isinstance(description, str):
+            entry = stored_hashes.get(key, {})
+            entry["seed_hash"] = description_seed_hash(description)
+            stored_hashes[key] = entry
+        else:
+            if key in stored_hashes:
+                stored_hashes[key].pop("seed_hash", None)
+
+
 def _generate_docs_for_dir(config, base_dir, language, extractor,
-                           docs_dir, source_paths):
+                           docs_dir, source_paths, seed_hash_of=None):
     """Generate docs for a single language group in one directory.
 
     ``source_paths`` is the list of source path strings for this
     language group (already extracted from config by the caller).
+
+    ``seed_hash_of`` is an optional callable mapping a page filename to its
+    recorded ``seed_hash`` (from the staleness store), used to decide whether
+    an existing machine-seeded description should be reseeded or preserved.
 
     Stale cleanup and index generation are NOT done here -- the caller
     (``generate_docs``) handles them after all language groups have
@@ -755,7 +808,10 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
 
     for nav_order, (mod_path, mod_name, md_fname, src_path) in enumerate(modules, start=1):
         out_path = os.path.join(docs_dir, md_fname)
-        existing_description = _read_existing_description(out_path)
+        page_seed_hash = seed_hash_of(md_fname) if seed_hash_of else None
+        existing_description = _read_existing_description(
+            out_path, module_name=mod_name, seed_hash=page_seed_hash,
+        )
         # Try module/package docstring when no custom description exists
         docstring_description = None
         if existing_description is None:

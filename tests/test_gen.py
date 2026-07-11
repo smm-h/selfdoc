@@ -1485,20 +1485,158 @@ class TestLegacyIndexReseed:
         assert "seeded: true" not in content
 
     def test_reader_discriminator_unit(self, tmp_path):
-        """Unit-level: reader returns None for legacy/seeded, str for edits."""
+        """Unit-level: reader reseeds machine-owned text, preserves hand edits.
+
+        Ownership is decided by TEXT (the ownership predicate), not the
+        ``seeded: true`` frontmatter flag: legacy phrases and the current
+        format are machine-owned; anything else is a hand edit and is
+        preserved -- EVEN with a stale ``seeded: true`` marker (the trap is
+        dead).  A description matching the recorded ``seed_hash`` is reseeded.
+        """
+        from selfdoc.ownership import description_seed_hash
+
+        # Legacy machine phrases -> reseed.
         for legacy in _LEGACY_INDEX_DESCRIPTIONS:
             p = os.path.join(tmp_path, "legacy.md")
             TestLegacyIndexReseed()._write_index(p, legacy, seeded=False)
             assert _read_existing_index_description(p) is None
 
+        # Current index format -> reseed (recognized regardless of count).
+        fmt_p = os.path.join(tmp_path, "fmt.md")
+        TestLegacyIndexReseed()._write_index(
+            fmt_p, "API reference index for mylib covering 3 modules",
+            seeded=False,
+        )
+        assert _read_existing_index_description(fmt_p) is None
+
+        # Arbitrary text with a stale ``seeded: true`` and NO matching
+        # seed_hash is a hand edit -> PRESERVED (the trap is dead).
         seeded_p = os.path.join(tmp_path, "seeded.md")
         TestLegacyIndexReseed()._write_index(
             seeded_p, "anything at all", seeded=True
         )
-        assert _read_existing_index_description(seeded_p) is None
+        assert _read_existing_index_description(seeded_p) == "anything at all"
 
+        # Same arbitrary text, but WITH a matching recorded seed_hash -> the
+        # text is machine-owned, so it is reseeded.
+        assert _read_existing_index_description(
+            seeded_p, seed_hash=description_seed_hash("anything at all"),
+        ) is None
+
+        # A genuine hand edit -> preserved.
         edit_p = os.path.join(tmp_path, "edit.md")
         TestLegacyIndexReseed()._write_index(
             edit_p, "A bespoke description.", seeded=False
         )
         assert _read_existing_index_description(edit_p) == "A bespoke description."
+
+
+# -- Hash-based ownership: seed_hash recording + trap fix (Phase 8.2) --------
+
+
+def _page_description(page_path):
+    """Return the frontmatter description of a Markdown page."""
+    from selfdoc.utils import parse_frontmatter
+    with open(page_path, "r", encoding="utf-8") as f:
+        metadata, _ = parse_frontmatter(f.read())
+    return metadata.get("description")
+
+
+def _rewrite_description(page_path, new_desc, keep_seeded):
+    """Rewrite a generated page's description, optionally keeping seeded:true."""
+    os.chmod(page_path, stat.S_IRUSR | stat.S_IWUSR)
+    with open(page_path, "r", encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    out = []
+    for line in lines:
+        if line.startswith("description:"):
+            out.append(f'description: "{new_desc}"')
+        elif line.strip() == "seeded: true" and not keep_seeded:
+            continue
+        else:
+            out.append(line)
+    with open(page_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(out))
+
+
+def _load_store(project_dir):
+    from selfdoc.staleness import load_hashes
+    return load_hashes(str(project_dir))
+
+
+class TestSeedHashOwnership:
+    """gen records seed_hash and preserves handwritten text (Phase 8.2 c/d)."""
+
+    def test_gen_records_seed_hash_for_seeded_module(self, python_project):
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        store = _load_store(python_project)
+        assert store.get("_hash_version") == 3
+        # mylib.core is docstring-seeded ("Core module.") -> seed_hash present.
+        from selfdoc.ownership import description_seed_hash
+        entry = store.get("mylib-core.md", {})
+        assert "seed_hash" in entry
+        assert entry["seed_hash"] == description_seed_hash("Core module.")
+
+    def test_seeded_true_handwritten_module_survives_gen(self, python_project):
+        """A generated page with a STALE seeded:true but hand-rewritten text
+        must survive gen unchanged -- the "forgot to remove seeded:true" trap
+        is dead.  (Fails before Phase 8.2: the seeded flag forced a reseed.)
+        """
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+
+        core = os.path.join(python_project, "docs", "mylib-core.md")
+        hand = "A hand-authored deep dive into the core module internals."
+        # Keep the stale seeded:true marker to exercise the trap.
+        _rewrite_description(core, hand, keep_seeded=True)
+
+        generate_docs(config, base_dir=str(python_project))
+
+        assert _page_description(core) == hand
+
+    def test_legacy_template_module_reseeded(self, python_project):
+        """A module page carrying the HISTORICAL template is reseeded."""
+        config = _load_config(python_project)
+        docs_dir = os.path.join(python_project, "docs")
+        core = os.path.join(docs_dir, "mylib-core.md")
+        os.makedirs(docs_dir, exist_ok=True)
+        with open(core, "w", encoding="utf-8") as f:
+            f.write(
+                "---\n"
+                "title: mylib.core\n"
+                'description: "Documentation for mylib.core"\n'
+                "generated: true\n"
+                'nav_group: "API Reference"\n'
+                "nav_order: 1\n"
+                "---\n"
+                "<!-- generated by selfdoc gen, do not edit -->\n"
+                "\n"
+                "# mylib.core\n"
+                '\n:-: ref path="mylib.core" lang="python"\n'
+            )
+
+        generate_docs(config, base_dir=str(python_project))
+
+        desc = _page_description(core)
+        assert desc != "Documentation for mylib.core"
+
+    def test_seeded_to_handedited_removes_seed_hash(self, python_project):
+        """After a seeded page is hand-edited and re-genned, its seed_hash is
+        dropped so it re-enters full staleness protection.
+        """
+        config = _load_config(python_project)
+        generate_docs(config, base_dir=str(python_project))
+        assert "seed_hash" in _load_store(python_project).get("mylib-core.md", {})
+
+        core = os.path.join(python_project, "docs", "mylib-core.md")
+        _rewrite_description(
+            core, "Genuinely hand-written prose about the core module.",
+            keep_seeded=False,
+        )
+
+        generate_docs(config, base_dir=str(python_project))
+
+        entry = _load_store(python_project).get("mylib-core.md", {})
+        assert "seed_hash" not in entry
