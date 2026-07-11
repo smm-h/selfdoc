@@ -1,2 +1,3 @@
 {"id":"18c13c61b6fac4ac66f26e135f2b4f51858577472352869b","commits":["63337fff727e6d6125ad3884be7ab67bd8c9e37c"],"user_facing":false,"packages":["selfdoc"]}
 {"id":"18c13c8ba7210594b2ccc9acad5946f8836da234099a85c2","commits":["15687d08d7f4f29f60275aac730faf931895b25e"],"user_facing":false,"packages":["selfdoc"]}
+{"id":"18c13d1880c911f88878444fe07941a7a06d7ac599da3bf3","commits":["0a2b773fe60ab8d8176c6894d3389a4d415b2473"],"user_facing":true,"description":"**Hand-written descriptions on generated pages are never overwritten.** `selfdoc gen` now decides whether to reseed a description by classifying the text itself, so a description you rewrote by hand survives regeneration even if a stale `seeded: true` marker was left behind.","type":"fix","packages":["selfdoc"]}
