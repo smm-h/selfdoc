@@ -49,6 +49,103 @@ _DEFAULT_CLI_INDEX_DESC_RE = re.compile(
 
 
 # ---------------------------------------------------------------------------
+# Default description ownership (public: consumed by selfdoc.ownership)
+# ---------------------------------------------------------------------------
+
+
+def _normalize_cli_description(value):
+    """Strip surrounding whitespace and one layer of matching quotes."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1].strip()
+    return value
+
+
+def compute_default_cli_description(kind, name, app_name, help_text):
+    """Return the machine-default ``description`` for a CLI page.
+
+    ``kind`` is ``"index"``, ``"command"``, or ``"group"``.  When the page's
+    help text is long enough (>= 50 chars) the default is the first sentence
+    of the help; otherwise a long-form template naming the app and command is
+    used.  The index default is always the fixed long-form template.
+    """
+    if kind == "index":
+        return (
+            f"Complete CLI reference for {app_name} — "
+            f"all available commands, subcommands, flags, arguments, "
+            f"and usage examples with detailed descriptions."
+        )
+    if help_text and len(help_text) >= 50:
+        return first_sentence(help_text)
+    if kind == "command":
+        return (
+            f"Reference for the {app_name} {name} command — "
+            f"usage, flags, arguments, and examples for the {name} subcommand "
+            f"of the {app_name} CLI."
+        )
+    if kind == "group":
+        return (
+            f"Reference for the {app_name} {name} command group — "
+            f"subcommands, flags, arguments, and usage details "
+            f"for the {name} group in the {app_name} CLI."
+        )
+    raise ValueError(f"unknown CLI page kind: {kind!r}")
+
+
+def is_default_cli_description(value, *, kind, name=None, app_name="",
+                              help_text=None):
+    """Return True if *value* is a machine-generated default CLI description.
+
+    Recognizes every historical machine form so machine residue is reseeded
+    rather than frozen as handwritten:
+
+    - the current first-sentence form (help >= 50 chars), or
+    - the long-form default template (help < 50 chars, or the index), or
+    - the historical ``help[:155]`` truncation (with/without a trailing
+      ellipsis), or
+    - a >= 100-char prefix of the raw help (a truncated default from any
+      prior cut point).
+
+    An empty value counts as a machine default (a blank machine placeholder
+    the caller should reseed).  CLI machine text is derivable from the schema,
+    so this is a live recompute -- no static set can cover the truncated
+    prefix family.
+    """
+    value = _normalize_cli_description(value)
+    if not value:
+        return True
+
+    # Determine the "default_pattern" exactly as the renderers do so the
+    # recognition matches what compute_default_cli_description emits.
+    if kind == "index":
+        default_pattern = _DEFAULT_CLI_INDEX_DESC_RE
+    elif help_text and len(help_text) >= 50:
+        default_pattern = first_sentence(help_text)
+    elif kind == "command":
+        default_pattern = _DEFAULT_CLI_COMMAND_DESC_RE
+    elif kind == "group":
+        default_pattern = _DEFAULT_CLI_GROUP_DESC_RE
+    else:
+        raise ValueError(f"unknown CLI page kind: {kind!r}")
+
+    if hasattr(default_pattern, "match"):
+        if default_pattern.match(value):
+            return True
+    elif value == default_pattern:
+        return True
+
+    if help_text and kind in ("command", "group"):
+        core = value[:-3] if value.endswith("...") else value
+        first_line = help_text.split("\n", 1)[0]
+        if core == first_line[:155]:
+            return True
+        if len(core) >= 100 and help_text.startswith(core):
+            return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Detection
 # ---------------------------------------------------------------------------
 
@@ -199,26 +296,15 @@ def expected_cli_page_filenames(cli_structure):
     return names
 
 
-def _read_existing_cli_description(filepath, default_pattern, raw_help=None):
-    """Return the user-customized ``description`` from a CLI page.
+def _read_existing_cli_description(filepath, *, kind, name, app_name,
+                                  help_text=None):
+    """Return the hand-edited ``description`` from a CLI page, else ``None``.
 
-    Returns ``None`` if the file does not exist, has no ``description`` key,
-    has an empty description, or still holds a machine-generated default (in
-    which case the caller should recompute it).
-
-    Both the CURRENT default form and the HISTORICAL truncated form are
-    recognized as machine-owned, so already-shipped pages that carry an old
-    ``help[:155]`` truncated description are re-seeded rather than frozen as
-    handwritten. A value is machine-owned when:
-
-    - it equals the freshly computed default (*default_pattern* as a plain
-      string -- the complete first sentence of the help), OR
-    - it matches the long-form default template (*default_pattern* as a
-      compiled regex), OR
-    - *raw_help* is given and the value equals the old ``help``-first-line
-      cut at exactly 155 chars (with or without a trailing ellipsis), OR
-    - *raw_help* is given and the value is a >= 100-char prefix of the raw
-      help text (a truncated default from any prior cut point).
+    Returns ``None`` (meaning: reseed with the machine default) if the file
+    does not exist, has no ``description`` key, has an empty description, or
+    still holds a machine-generated default (recognized by
+    :func:`is_default_cli_description`).  Any other value is a genuine hand
+    edit and is returned verbatim.
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -231,29 +317,14 @@ def _read_existing_cli_description(filepath, default_pattern, raw_help=None):
     if raw is None or not isinstance(raw, str):
         return None
 
-    # Strip wrapping quotes (single or double) that may survive the simple
-    # parser in build.py.
-    value = raw.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-        value = value[1:-1].strip()
-
+    value = _normalize_cli_description(raw)
     if not value:
         return None
 
-    if hasattr(default_pattern, "match"):
-        if default_pattern.match(value):
-            return None
-    elif value == default_pattern:
+    if is_default_cli_description(
+        value, kind=kind, name=name, app_name=app_name, help_text=help_text,
+    ):
         return None
-
-    if raw_help:
-        # Tolerate a historical trailing ellipsis on the stored value.
-        core = value[:-3] if value.endswith("...") else value
-        first_line = raw_help.split("\n", 1)[0]
-        if core == first_line[:155]:
-            return None
-        if len(core) >= 100 and raw_help.startswith(core):
-            return None
 
     return value
 
@@ -277,14 +348,12 @@ def generate_cli_pages(cli_structure, docs_dir):
     groups = cli_structure.get("groups", [])
 
     # -- Index page --
-    default_index_desc = (
-        f"Complete CLI reference for {app_name} — "
-        f"all available commands, subcommands, flags, arguments, "
-        f"and usage examples with detailed descriptions."
+    default_index_desc = compute_default_cli_description(
+        "index", None, app_name, None,
     )
     index_path = os.path.join(docs_dir, "cli-index.md")
     existing_index_desc = _read_existing_cli_description(
-        index_path, _DEFAULT_CLI_INDEX_DESC_RE,
+        index_path, kind="index", name=None, app_name=app_name,
     )
     cli_index_desc = (
         existing_index_desc
@@ -390,21 +459,15 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
     flags = cmd.get("flags", [])
     args = cmd.get("args", [])
 
-    if chelp and len(chelp) >= 50:
-        default_desc = first_sentence(chelp)
-        default_pattern = default_desc
-    else:
-        default_desc = (
-            f"Reference for the {app_name} {name} command — "
-            f"usage, flags, arguments, and examples for the {name} subcommand "
-            f"of the {app_name} CLI."
-        )
-        default_pattern = _DEFAULT_CLI_COMMAND_DESC_RE
+    default_desc = compute_default_cli_description(
+        "command", name, app_name, chelp,
+    )
 
     existing_desc = None
     if existing_path is not None:
         existing_desc = _read_existing_cli_description(
-            existing_path, default_pattern, raw_help=chelp,
+            existing_path, kind="command", name=name, app_name=app_name,
+            help_text=chelp,
         )
     cmd_desc = existing_desc if existing_desc is not None else default_desc
     seeded = existing_desc is None
@@ -477,21 +540,15 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
     ghelp = grp.get("help", "")
     subcmds = grp.get("commands", [])
 
-    if ghelp and len(ghelp) >= 50:
-        default_desc = first_sentence(ghelp)
-        default_pattern = default_desc
-    else:
-        default_desc = (
-            f"Reference for the {app_name} {gname} command group — "
-            f"subcommands, flags, arguments, and usage details "
-            f"for the {gname} group in the {app_name} CLI."
-        )
-        default_pattern = _DEFAULT_CLI_GROUP_DESC_RE
+    default_desc = compute_default_cli_description(
+        "group", gname, app_name, ghelp,
+    )
 
     existing_desc = None
     if existing_path is not None:
         existing_desc = _read_existing_cli_description(
-            existing_path, default_pattern, raw_help=ghelp,
+            existing_path, kind="group", name=gname, app_name=app_name,
+            help_text=ghelp,
         )
     grp_desc = existing_desc if existing_desc is not None else default_desc
     seeded = existing_desc is None
