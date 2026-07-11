@@ -5,7 +5,7 @@
 
 [project]
 name = "selfdoc-core"
-version = "0.4.0"
+version = "0.5.0"
 description = "Shared engine for code-aware documentation generation"
 license = "MIT"
 authors = [{ name = "smm-h" }]

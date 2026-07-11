@@ -789,7 +789,7 @@ dev = [
 
 [[package]]
 name = "selfdoc-core"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "selfdoc_core" }
 
 [package.optional-dependencies]

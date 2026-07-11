@@ -2,16 +2,28 @@
 
 # Changelog
 
-## 0.4.0
+## 0.5.0
 
-Staleness v3: content hashes canonicalize directive attributes; per-page seed hashes; baseline re-established
+Directive attribute enforcement: unknown or missing attributes are hard errors; attribute keys may contain hyphens
 
 <details>
 <summary>Context</summary>
 
-The staleness hash store advances to v3. Content hashes canonicalize directive marker attributes so mechanical path renames render identically and no longer flag stale descriptions, and per-page seed hashes are recorded to support description ownership. Older (v2) stores hold none of the data v3 needs, so they are discarded and re-baselined from current content on first load.
+Phase 9.5 coordinated breaking release. selfdoc-core gains validate_directive_attrs, which enforces that a directive only uses attributes its catalog spec declares (an unknown or missing attribute is a hard error), and the attribute-key character class now permits hyphens (e.g. schema-dir). This is the mechanism the selfdoc CLI surfaces as strict gen/check behavior, and it underpins the table-commands schema-dir attribute.
+
+The eight external consumer repositories using table-commands were migrated to the new directive syntax in lockstep with this release.
 
 </details>
+
+### Features
+
+- [selfdoc-core] **Directive attribute validation.** New `validate_directive_attrs` enforces that directives only use attributes their catalog spec declares.
+
+### Fixes
+
+- [selfdoc-core] **Hyphenated attribute keys.** Directive attributes may now use hyphens in their names (e.g. `schema-dir`), matching the directive-name character class.
+
+## 0.4.0
 
 ### Features
 
