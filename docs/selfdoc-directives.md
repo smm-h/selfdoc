@@ -2,7 +2,6 @@
 title: selfdoc.directives
 description: "Directive parser for selfdoc's structured marker syntax."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 10
 ---

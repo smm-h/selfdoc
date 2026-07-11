@@ -2,7 +2,6 @@
 title: selfdoc.icons
 description: "Language icons for code blocks."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 25
 ---

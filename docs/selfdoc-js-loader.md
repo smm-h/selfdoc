@@ -2,7 +2,6 @@
 title: selfdoc.js.loader
 description: "Loader for selfdoc JS files using importlib.resources."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 27
 ---

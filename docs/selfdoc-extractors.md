@@ -2,7 +2,6 @@
 title: selfdoc.extractors
 description: "Language extractor registry and auto-detection."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 12
 ---

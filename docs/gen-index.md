@@ -1,6 +1,6 @@
 ---
 title: API Reference
-description: "API reference index for selfdoc covering 34 modules"
+description: "API reference index for selfdoc covering 35 modules"
 generated: true
 seeded: true
 nav_group: "API Reference"
@@ -39,6 +39,7 @@ order: 90
 - [selfdoc.js](selfdoc-js.html)
 - [selfdoc.js.loader](selfdoc-js-loader.html)
 - [selfdoc.manifest](selfdoc-manifest.html)
+- [selfdoc.ownership](selfdoc-ownership.html)
 - [selfdoc.resolver](selfdoc-resolver.html)
 - [selfdoc.strictcli_support](selfdoc-strictcli_support.html)
 - [selfdoc.tables](selfdoc-tables.html)

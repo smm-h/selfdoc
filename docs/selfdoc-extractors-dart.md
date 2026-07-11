@@ -2,7 +2,6 @@
 title: selfdoc.extractors.dart
 description: "Re-export shim: actual implementation in selfdoc_core.extractors.dart."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 13
 ---

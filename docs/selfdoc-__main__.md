@@ -2,6 +2,7 @@
 title: selfdoc.__main__
 description: "API reference for the selfdoc.__main__ module — auto-generated documentation covering public functions, classes, and type signatures."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 2
 ---

@@ -2,7 +2,6 @@
 title: selfdoc.extractors.typescript
 description: "Re-export shim: actual implementation in selfdoc_core.extractors.typescript."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 20
 ---

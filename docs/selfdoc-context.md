@@ -2,7 +2,6 @@
 title: selfdoc.context
 description: "Build, page, and search context dataclasses."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 8
 ---

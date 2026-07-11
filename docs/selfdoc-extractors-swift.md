@@ -2,7 +2,6 @@
 title: selfdoc.extractors.swift
 description: "Re-export shim: actual implementation in selfdoc_core.extractors.swift."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 19
 ---

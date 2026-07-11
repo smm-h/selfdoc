@@ -2,7 +2,6 @@
 title: selfdoc.manifest
 description: "Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 28
 ---

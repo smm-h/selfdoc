@@ -16,7 +16,8 @@
   "en/cli-baseline.md": {
     "content": "a41dfd38ad4ea2d30167d2b85185db80554b2212853c193164a1b2353c706a17",
     "description": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a",
-    "schema_hash": "388a938552ce62464db377ac6466f93831ea02f02554048785db624c07028191"
+    "schema_hash": "388a938552ce62464db377ac6466f93831ea02f02554048785db624c07028191",
+    "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
   },
   "en/cli-build.md": {
     "content": "c404e38be15be86c2aef95ce92fe4459c2dfa96f74e895ca05dad863e3c7bcec",
@@ -95,8 +96,9 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "2fe5f4e2c8757be0b773a0c3b526c1c1b0bd2013a970081691226b86a1e99640",
-    "description": "05a5c4645f0b587440ecbe6f3ccf329d7e48a55a8c717866a1dd4eed2d9814ec"
+    "content": "ffffa53c1f35aad843dde670c8b00c7c746b21b8327e3ee31a99e7af1f5a7cea",
+    "description": "20edf499a8127386fbb330f45d33fb09798ea1cf2c8c88954c76a5ae1424a2ef",
+    "seed_hash": "20edf499a8127386fbb330f45d33fb09798ea1cf2c8c88954c76a5ae1424a2ef"
   },
   "en/getting-started.md": {
     "content": "466caffa4da94377ab95381c98c20546e224b396f1dec4a9ed75aed6afd3f691",
@@ -144,7 +146,8 @@
   },
   "en/selfdoc-__main__.md": {
     "content": "c9cb39fec8b1d1cd9124b942a427a9e00a28ed5cbee7b87f81f3ef570efe650a",
-    "description": "be4881babd1a98706a694be1393b205768d475c98a6f715d7ec504c1382e25de"
+    "description": "be4881babd1a98706a694be1393b205768d475c98a6f715d7ec504c1382e25de",
+    "seed_hash": "be4881babd1a98706a694be1393b205768d475c98a6f715d7ec504c1382e25de"
   },
   "en/selfdoc-_version.md": {
     "content": "911e5136f41207d3b1709c12ec563dfc96ce56766ebc1f2e99b69d3bc2034060",
@@ -268,12 +271,18 @@
   },
   "en/selfdoc-js.md": {
     "content": "b7617e5189f46ad78e94259414b1a1ff4042f2401b21e6437c74494c5cc192d2",
-    "description": "673fb8266e59c66a4f6e891987c669bd80ac7fd8c41c07d5a445ca04ad7fe743"
+    "description": "673fb8266e59c66a4f6e891987c669bd80ac7fd8c41c07d5a445ca04ad7fe743",
+    "seed_hash": "673fb8266e59c66a4f6e891987c669bd80ac7fd8c41c07d5a445ca04ad7fe743"
   },
   "en/selfdoc-manifest.md": {
     "content": "f29e4ba65c13a2ed60416d31b4fc1299981f541dda8e6fb995f6f69392bd101f",
     "description": "29f107c8c6178d7dad4c5837824b982b53b159324bc4da7cf23d15dcf5b60cfe",
     "source_docstring": "feb1a48fee0d22eb4435c21579478cbecdf26d38f9a349eebc8b417e362fa838"
+  },
+  "en/selfdoc-ownership.md": {
+    "content": "a5b4d1d8dde078845c7cdbea03faa96c86e4d3a6f980761954fc8e5b4c955188",
+    "description": "fc938729b8bbc3cd164e0ef9d51116b218f66554477b1cfb8c811bc81cba4367",
+    "seed_hash": "fc938729b8bbc3cd164e0ef9d51116b218f66554477b1cfb8c811bc81cba4367"
   },
   "en/selfdoc-resolver.md": {
     "content": "1905aa30e259346fed00c61729d680b008e9b4ce87948f998580a6351c98a669",

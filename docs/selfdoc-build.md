@@ -2,7 +2,6 @@
 title: selfdoc.build
 description: "Build pipeline for selfdoc: template scanning, directive resolution, HTML output."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 4
 ---

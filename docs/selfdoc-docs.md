@@ -2,7 +2,6 @@
 title: selfdoc.docs
 description: "Shared resolution pipeline for docs/ templates."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 11
 ---

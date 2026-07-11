@@ -308,6 +308,11 @@
       "type": "doc"
     },
     {
+      "path": "selfdoc-ownership.md",
+      "title": "selfdoc.ownership",
+      "type": "doc"
+    },
+    {
       "path": "selfdoc-resolver.md",
       "title": "selfdoc.resolver",
       "type": "doc"
@@ -371,5 +376,5 @@
       ]
     }
   ],
-  "last_gen": "2026-07-11T12:08:51.858259+00:00"
+  "last_gen": "2026-07-11T13:36:58.357239+00:00"
 }

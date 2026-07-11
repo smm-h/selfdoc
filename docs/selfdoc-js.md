@@ -2,6 +2,7 @@
 title: selfdoc.js
 description: "API reference for the selfdoc.js module — auto-generated documentation covering public functions, classes, and type signatures."
 generated: true
+seeded: true
 nav_group: "API Reference"
 nav_order: 26
 ---

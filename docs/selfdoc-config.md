@@ -2,7 +2,6 @@
 title: selfdoc.config
 description: "Config loader for selfdoc.json."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 7
 ---
