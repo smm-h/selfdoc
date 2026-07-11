@@ -253,6 +253,63 @@ def is_valid_directive(
     return False
 
 
+class DirectiveAttrError(RuntimeError):
+    """Raised when a directive uses an unknown attribute or omits a required one.
+
+    This is a hard error (exit 1), distinct from resolution failures which are
+    warning-level. It subclasses ``RuntimeError`` so the CLI's existing
+    ``RuntimeError`` handlers surface it with a clean message and a non-zero
+    exit code.
+    """
+
+
+def validate_directive_attrs(
+    name: str, attrs: dict[str, str], *, file: str, line: int
+) -> None:
+    """Enforce a directive's attribute contract against its catalog spec.
+
+    Raises :class:`DirectiveAttrError` if *attrs* contains an attribute the
+    directive does not accept, or omits one it requires. Only core directives
+    with a known spec are enforced; custom and future directives are skipped
+    because they define their own attribute schemas.
+
+    Args:
+        name: Directive name (e.g. ``"ref"``).
+        attrs: Parsed attribute dict for this directive occurrence.
+        file: Source file path, for the error message.
+        line: 1-based line number within *file*, for the error message.
+    """
+    spec = CORE_DIRECTIVES.get(name)
+    if spec is None:
+        return
+
+    allowed = set(spec.required_attrs) | set(spec.optional_attrs)
+
+    for attr in attrs:
+        if attr in allowed:
+            continue
+        # Actionable migration hint for the removed table-commands path attr.
+        if name == "table-commands" and attr == "path":
+            raise DirectiveAttrError(
+                f"{file}:{line}: directive 'table-commands' no longer takes "
+                "'path'; the schema is discovered automatically. Use "
+                'schema-dir="<dir>" only if discovery reports ambiguity.'
+            )
+        allowed_display = ", ".join(sorted(allowed)) if allowed else "(none)"
+        raise DirectiveAttrError(
+            f"{file}:{line}: directive '{name}' has unknown attribute "
+            f"'{attr}'. Allowed attributes: {allowed_display}."
+        )
+
+    for req in spec.required_attrs:
+        if req not in attrs:
+            required_display = ", ".join(spec.required_attrs)
+            raise DirectiveAttrError(
+                f"{file}:{line}: directive '{name}' is missing required "
+                f"attribute '{req}'. Required attributes: {required_display}."
+            )
+
+
 def directive_status(name: str) -> str:
     """Return ``"core"``, ``"future"``, or ``"unknown"`` for a directive name.
 
