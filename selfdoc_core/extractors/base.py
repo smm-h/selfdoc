@@ -13,6 +13,7 @@ import os
 
 from selfdoc_core.prose import join_wrapped_lines
 from selfdoc_core.tables import render_markdown_table
+from selfdoc_core.utils import resolve_directive_path
 
 
 def format_error(message):
@@ -241,7 +242,7 @@ def handle_table_config(path, target, body, source_paths, base_dir, attrs):
     if not path:
         return format_error("table-config requires a file path argument")
 
-    full_path = os.path.join(base_dir, path)
+    full_path = resolve_directive_path(base_dir, path)
     if not os.path.isfile(full_path):
         return format_error(f"config file '{path}' not found")
 

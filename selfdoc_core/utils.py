@@ -7,6 +7,18 @@ import tempfile
 import tomllib
 
 
+def resolve_directive_path(base_dir, path):
+    """Resolve a directive's ``path`` attribute against the project base_dir.
+
+    Single source of truth for filesystem directive path resolution. Every
+    directive that reads a ``path`` attribute (list-tree, table-dep,
+    list-modules, table-endpoint, table-config) resolves it through here so the
+    behavior stays identical and any future normalization or sandboxing lives
+    in one place.
+    """
+    return os.path.join(base_dir, path)
+
+
 def parse_frontmatter(content):
     """Parse YAML-like frontmatter from markdown content (Feature 34).
 

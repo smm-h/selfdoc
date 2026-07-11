@@ -14,7 +14,7 @@ import re
 
 from selfdoc_core.prose import first_sentence
 from selfdoc_core.tables import render_markdown_table
-from selfdoc_core.utils import _read_project_field
+from selfdoc_core.utils import _read_project_field, resolve_directive_path
 
 # -- Callout directives -------------------------------------------------------
 
@@ -110,7 +110,7 @@ def resolve_list_tree(attrs: dict, base_dir: str) -> str:
     depth_str = attrs.get("depth", "")
     max_depth = int(depth_str) if depth_str.isdigit() else None
 
-    full_path = os.path.join(base_dir, path)
+    full_path = resolve_directive_path(base_dir, path)
     if not os.path.isdir(full_path):
         return f"> *[selfdoc: directory '{path}' not found]*"
 
@@ -164,7 +164,7 @@ def resolve_table_dep(attrs: dict, base_dir: str) -> str:
     if not path:
         return "> *[selfdoc: table-dep requires a path attribute]*"
 
-    full_path = os.path.join(base_dir, path)
+    full_path = resolve_directive_path(base_dir, path)
     if not os.path.isfile(full_path):
         return f"> *[selfdoc: file '{path}' not found]*"
 
@@ -260,7 +260,7 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     if not path:
         return "> *[selfdoc: list-modules requires a path attribute]*"
 
-    full_path = os.path.join(base_dir, path)
+    full_path = resolve_directive_path(base_dir, path)
     if not os.path.isdir(full_path):
         return f"> *[selfdoc: directory '{path}' not found]*"
 
@@ -648,7 +648,7 @@ def resolve_table_endpoint(attrs: dict, base_dir: str) -> str:
     if not path:
         return "> *[selfdoc: table-endpoint requires a path attribute]*"
 
-    full_path = os.path.join(base_dir, path)
+    full_path = resolve_directive_path(base_dir, path)
     if not os.path.isfile(full_path):
         return f"> *[selfdoc: file '{path}' not found]*"
 
