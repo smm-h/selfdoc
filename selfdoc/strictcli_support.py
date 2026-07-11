@@ -12,6 +12,7 @@ import re
 from selfdoc.utils import _read_project_field, parse_frontmatter as _parse_frontmatter
 from selfdoc.tables import render_markdown_table
 from selfdoc.utils import atomic_write as _atomic_write
+from selfdoc_core.prose import first_sentence
 
 
 # Matches the default per-command/per-group description templates so we can
@@ -198,22 +199,26 @@ def expected_cli_page_filenames(cli_structure):
     return names
 
 
-def _read_existing_cli_description(filepath, default_pattern):
+def _read_existing_cli_description(filepath, default_pattern, raw_help=None):
     """Return the user-customized ``description`` from a CLI page.
 
     Returns ``None`` if the file does not exist, has no ``description`` key,
-    has an empty description, or still has the default auto-generated
-    description matching *default_pattern* (in which case the caller should
-    recompute it).
+    has an empty description, or still holds a machine-generated default (in
+    which case the caller should recompute it).
 
-    Truncated default descriptions (e.g. ``chelp[:155]`` cut mid-sentence)
-    are also treated as default-and-overwritable: they are detected by
-    checking whether the existing description is a prefix of the freshly
-    computed default. The caller passes the freshly computed default via
-    *default_pattern* when it is a plain string, or a compiled regex for the
-    fallback template form. To support both, this helper accepts either a
-    compiled regex (matched against the value) or a plain string (compared
-    as a prefix match against the value).
+    Both the CURRENT default form and the HISTORICAL truncated form are
+    recognized as machine-owned, so already-shipped pages that carry an old
+    ``help[:155]`` truncated description are re-seeded rather than frozen as
+    handwritten. A value is machine-owned when:
+
+    - it equals the freshly computed default (*default_pattern* as a plain
+      string -- the complete first sentence of the help), OR
+    - it matches the long-form default template (*default_pattern* as a
+      compiled regex), OR
+    - *raw_help* is given and the value equals the old ``help``-first-line
+      cut at exactly 155 chars (with or without a trailing ellipsis), OR
+    - *raw_help* is given and the value is a >= 100-char prefix of the raw
+      help text (a truncated default from any prior cut point).
     """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -238,12 +243,16 @@ def _read_existing_cli_description(filepath, default_pattern):
     if hasattr(default_pattern, "match"):
         if default_pattern.match(value):
             return None
-    else:
-        # Plain string: treat as default when the existing value is the
-        # current default (exact) OR is a prefix of it (truncated default
-        # from a prior ``chelp[:155]`` run). This prevents stale truncated
-        # defaults from being treated as handwritten.
-        if value == default_pattern or default_pattern.startswith(value):
+    elif value == default_pattern:
+        return None
+
+    if raw_help:
+        # Tolerate a historical trailing ellipsis on the stored value.
+        core = value[:-3] if value.endswith("...") else value
+        first_line = raw_help.split("\n", 1)[0]
+        if core == first_line[:155]:
+            return None
+        if len(core) >= 100 and raw_help.startswith(core):
             return None
 
     return value
@@ -371,8 +380,9 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
     """Render a Markdown page for a single command.
 
     If *existing_path* points to an existing page whose ``description``
-    frontmatter has been hand-edited (i.e. is neither the default
-    ``chelp[:155]`` truncation nor the long-form default template), that
+    frontmatter has been hand-edited (i.e. is neither the current default
+    -- the complete first sentence of the help -- nor a historical
+    ``help[:155]`` truncation nor the long-form default template), that
     description is preserved instead of recomputing it.
     """
     name = cmd["name"]
@@ -381,7 +391,7 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
     args = cmd.get("args", [])
 
     if chelp and len(chelp) >= 50:
-        default_desc = chelp[:155]
+        default_desc = first_sentence(chelp)
         default_pattern = default_desc
     else:
         default_desc = (
@@ -394,7 +404,7 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
     existing_desc = None
     if existing_path is not None:
         existing_desc = _read_existing_cli_description(
-            existing_path, default_pattern,
+            existing_path, default_pattern, raw_help=chelp,
         )
     cmd_desc = existing_desc if existing_desc is not None else default_desc
     seeded = existing_desc is None
@@ -458,8 +468,9 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
     """Render a Markdown page for a command group and its subcommands.
 
     If *existing_path* points to an existing page whose ``description``
-    frontmatter has been hand-edited (i.e. is neither the default
-    ``ghelp[:155]`` truncation nor the long-form default template), that
+    frontmatter has been hand-edited (i.e. is neither the current default
+    -- the complete first sentence of the help -- nor a historical
+    ``help[:155]`` truncation nor the long-form default template), that
     description is preserved instead of recomputing it.
     """
     gname = grp["name"]
@@ -467,7 +478,7 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
     subcmds = grp.get("commands", [])
 
     if ghelp and len(ghelp) >= 50:
-        default_desc = ghelp[:155]
+        default_desc = first_sentence(ghelp)
         default_pattern = default_desc
     else:
         default_desc = (
@@ -480,7 +491,7 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
     existing_desc = None
     if existing_path is not None:
         existing_desc = _read_existing_cli_description(
-            existing_path, default_pattern,
+            existing_path, default_pattern, raw_help=ghelp,
         )
     grp_desc = existing_desc if existing_desc is not None else default_desc
     seeded = existing_desc is None

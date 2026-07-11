@@ -13,6 +13,7 @@ from selfdoc.strictcli_support import (
     read_schema_json,
     generate_cli_pages,
 )
+from selfdoc_core.prose import first_sentence
 
 
 # ---------------------------------------------------------------------------
@@ -912,16 +913,18 @@ class TestDescriptionPreservation:
 
         assert "Updated deploy help text" in content
 
-    def test_regenerates_truncated_default_when_help_grows(
+    def test_regenerates_default_when_help_grows_uses_first_sentence(
         self, tmp_path, cli_structure,
     ):
-        """A stale chelp[:155] truncation must not be mistaken for handwritten."""
+        """A stale machine default must not be mistaken for handwritten.
+
+        When the help gains a second sentence, the first sentence is
+        unchanged, so the reseeded description is that complete first
+        sentence -- no ``[:155]`` truncation, no trailing ellipsis.
+        """
         docs_dir = os.path.join(tmp_path, "docs")
         generate_cli_pages(cli_structure, docs_dir)
 
-        # Help text grows: the previous default truncation is now a prefix
-        # of the new default. Preservation must treat the old value as default
-        # (prefix match) and recompute, not preserve the stale prefix.
         cli_structure["commands"][0]["help"] = (
             cli_structure["commands"][0]["help"] + " Now with extra detail "
             "about the deploy lifecycle and rollback behavior on failure."
@@ -932,9 +935,44 @@ class TestDescriptionPreservation:
         with open(deploy_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # The new chelp[:155] (which extends the old prefix) should appear.
-        expected_prefix = cli_structure["commands"][0]["help"][:155]
-        assert f'description: "{expected_prefix}"' in content
+        expected = first_sentence(cli_structure["commands"][0]["help"])
+        assert f'description: "{expected}"' in content
+        desc_line = [
+            ln for ln in content.split("\n") if ln.startswith("description:")
+        ][0]
+        assert "..." not in desc_line
+        assert "Now with extra detail" not in desc_line
+
+    def test_old_format_155_truncation_reseeds(self, tmp_path, cli_structure):
+        """CRITICAL: a shipped ``help[:155]`` mid-sentence truncation is
+        recognized as machine-owned and reseeded to the full first sentence,
+        not frozen as if it were handwritten.
+        """
+        docs_dir = os.path.join(tmp_path, "docs")
+        # Single sentence over 155 chars so the historical [:155] cut lands
+        # mid-sentence -- a value distinct from the new first-sentence default.
+        long_help = (
+            "Deploy the application to every one of the configured remote "
+            "environments, running health checks and automatic rollback on "
+            "failure, then emit a detailed report describing the whole run."
+        )
+        assert len(long_help) > 155
+        cli_structure["commands"][0]["help"] = long_help
+        generate_cli_pages(cli_structure, docs_dir)
+
+        deploy_path = os.path.join(docs_dir, "cli-deploy.md")
+        # Simulate an already-shipped page carrying the OLD help[:155] value.
+        self._rewrite_description(deploy_path, long_help[:155])
+
+        # Regenerate under the new gen: the stale truncation must be replaced.
+        generate_cli_pages(cli_structure, docs_dir)
+
+        with open(deploy_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        expected = first_sentence(long_help)
+        assert f'description: "{expected}"' in content
+        assert f'description: "{long_help[:155]}"' not in content
 
     def test_preserves_description_across_multiple_regenerations(
         self, tmp_path, cli_structure,
