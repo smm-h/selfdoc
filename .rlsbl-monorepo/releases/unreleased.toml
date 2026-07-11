@@ -1,10 +1,10 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, hotfix, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Description ownership by content: handwritten text is never overwritten; machine placeholders identified by hash/template/live-recompute"
 # Optional context explaining why these changes were made
-context = ""
+context = "gen now classifies a page's description text itself -- via current/historical module templates, the per-page seed hash, or a live recompute of CLI defaults -- instead of trusting the seeded flag. Hand-rewritten descriptions survive regeneration even with a stale seeded:true marker, and the STALE001/DRIFT001 exemption keys on the ownership predicate so hand-described generated pages get full staleness protection."
 # Pre-release identifier: alpha, beta, rc, or stable
 # preid = ""
 include = ["npm", "pypi"]
@@ -12,11 +12,11 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, hotfix, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Staleness v3: content hashes canonicalize directive attributes; per-page seed hashes; baseline re-established"
 # Optional context explaining why these changes were made
-context = ""
+context = "The staleness hash store advances to v3. Content hashes canonicalize directive marker attributes so mechanical path renames render identically and no longer flag stale descriptions, and per-page seed hashes are recorded to support description ownership. Older (v2) stores hold none of the data v3 needs, so they are discarded and re-baselined from current content on first load."
 # Pre-release identifier: alpha, beta, rc, or stable
 # preid = ""
 include = ["pypi"]
