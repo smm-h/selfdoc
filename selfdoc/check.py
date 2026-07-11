@@ -25,6 +25,7 @@ from selfdoc.tokenizer import (
     UnorderedList, OrderedList, Blockquote, DefinitionList,
     Directive,
 )
+from selfdoc.catalog import validate_directive_attrs
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, validate_directive_names
 from selfdoc.extractors import SourceEntry
@@ -153,6 +154,12 @@ def _validate_directives(docs_dict, resolver, valid_names, file_prefix="",
                 f'{k}="{v}"' for k, v in directive.attrs.items()
             )
             directive_str = f"{directive.name} {attrs_str}".strip()
+            # Hard-error (exit 1) on unknown or missing required attributes.
+            # Distinct from resolution failures below, which are warning-level.
+            validate_directive_attrs(
+                directive.name, directive.attrs,
+                file=display_file, line=file_line,
+            )
             try:
                 resolved = resolver(
                     directive.name, directive.attrs, directive.body,

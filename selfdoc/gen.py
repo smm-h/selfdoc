@@ -8,8 +8,12 @@ from dataclasses import dataclass, field
 
 from selfdoc.utils import parse_frontmatter as _parse_frontmatter
 from selfdoc_core.prose import first_sentence
-from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
-from selfdoc.directives import resolve_directives, validate_directive_names
+from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES, validate_directive_attrs
+from selfdoc.directives import (
+    parse_directives,
+    resolve_directives,
+    validate_directive_names,
+)
 from selfdoc.resolver import make_resolver
 from selfdoc.utils import atomic_write as _atomic_write
 from selfdoc.ownership import (
@@ -892,8 +896,20 @@ def generate_root_files(config, base_dir="."):
         with open(full_template, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Strip frontmatter (not used in output)
-        _metadata, content = _parse_frontmatter(content)
+        # Strip frontmatter (not used in output). The frontmatter line count
+        # is needed so attribute-enforcement errors report the true file line.
+        _metadata, stripped = _parse_frontmatter(content)
+        fm_line_count = len(content.split("\n")) - len(stripped.split("\n"))
+        content = stripped
+
+        # Hard-error (exit 1) on unknown or missing required attributes before
+        # resolving, mirroring `selfdoc check`.
+        for directive in parse_directives(content, valid_names=valid_names):
+            validate_directive_attrs(
+                directive.name, directive.attrs,
+                file=template_path,
+                line=directive.line_number + fm_line_count,
+            )
 
         # Resolve directives to Markdown
         resolved = resolve_directives(
