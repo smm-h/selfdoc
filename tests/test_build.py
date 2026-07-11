@@ -3397,8 +3397,13 @@ def test_google_fonts_deferred_loading():
     )
 
 
-def test_long_frontmatter_description_truncated_in_meta():
-    """A 300-char frontmatter description is truncated in <meta> to <= 158 chars."""
+def test_long_frontmatter_description_emitted_verbatim_in_meta():
+    """A long frontmatter description is emitted verbatim -- no cap, no ellipsis.
+
+    Truncation is abolished: a handwritten description is a complete unit and
+    the meta tag carries it unchanged. (The advisory SEO length lint still
+    nudges authors, but the HTML no longer silently mutates the text.)
+    """
     long_desc = "A" * 50 + " " + "B" * 50 + " " + "C" * 50 + " " + "D" * 50 + " " + "E" * 50 + " " + "F" * 50
     assert len(long_desc) == 305  # 6*50 + 5 spaces
 
@@ -3413,9 +3418,8 @@ def test_long_frontmatter_description_truncated_in_meta():
     match = re.search(r'<meta name="description" content="([^"]*)"', content)
     assert match, "meta description tag must be present"
     meta_desc = match.group(1)
-    # Must be at most 158 chars (155 + "...")
-    assert len(meta_desc) <= 158, f"meta description is {len(meta_desc)} chars, expected <= 158"
-    assert meta_desc.endswith("..."), "truncated description must end with '...'"
+    assert meta_desc == long_desc, "description must be emitted verbatim"
+    assert not meta_desc.endswith("..."), "no synthesized ellipsis"
 
 
 def test_short_frontmatter_description_unchanged_in_meta():
@@ -5755,19 +5759,22 @@ def test_frontmatter_description_in_meta_tag(project_dir):
     assert '<meta name="description" content="Explicit frontmatter description">' in content
 
 
-def test_auto_meta_description_truncated_to_155_chars(project_dir):
-    """Auto-generated descriptions from first paragraph are truncated to 155 chars."""
+def test_auto_meta_description_is_first_sentence_uncapped(project_dir):
+    """Auto-extracted meta description is the first sentence -- uncapped.
+
+    Truncation is abolished. When the first paragraph is a single sentence
+    (no interior terminator), the whole sentence is emitted with no character
+    cap and no ellipsis. A trailing second sentence is dropped.
+    """
     docs_dir = os.path.join(project_dir, "docs")
-    # Build a paragraph longer than 155 characters
-    long_text = (
-        "This is a very long first paragraph that exceeds the one hundred "
-        "and fifty five character limit for meta descriptions and should be "
-        "truncated at a word boundary with an ellipsis appended to the end "
-        "of the resulting string"
+    first = (
+        "This is a very long first sentence that comfortably exceeds the one "
+        "hundred and fifty five character limit that used to bound meta "
+        "descriptions but is now emitted in full as a complete unit."
     )
-    assert len(long_text) > 155  # sanity check
+    assert len(first) > 155  # sanity check
     with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write(f"# Test\n\n{long_text}\n")
+        f.write(f"# Test\n\n{first} And a second sentence is dropped.\n")
 
     build(str(project_dir))
 
@@ -5775,13 +5782,14 @@ def test_auto_meta_description_truncated_to_155_chars(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Extract the meta description content
     import re
     match = re.search(r'<meta name="description" content="([^"]*)">', content)
     assert match is not None, "meta description tag should be present"
     meta_desc = match.group(1)
-    assert len(meta_desc) <= 158  # 155 + "..."
-    assert meta_desc.endswith("...")
+    assert meta_desc == first
+    assert len(meta_desc) > 155
+    assert not meta_desc.endswith("...")
+    assert "second sentence" not in meta_desc
 
 
 def test_auto_meta_description_matches_og_description(project_dir):

@@ -11,6 +11,7 @@ import unicodedata
 from datetime import datetime
 
 from selfdoc_core.icons import get_icon
+from selfdoc_core.prose import first_sentence
 from selfdoc_core.themes import get_theme, get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder
 from selfdoc_core.tokenizer import (
@@ -443,9 +444,10 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Track frontmatter description for visible summary block (Phase 2.6)
         frontmatter_description = description or None
 
-        # Truncate description for meta tag (SEO best practice: <= 155 chars)
-        # The summary block can still show the full text via `summary`.
-        description = _truncate_description(description)
+        # Truncation is abolished: a handwritten frontmatter description is a
+        # complete linguistic unit and is emitted verbatim in the meta tag.
+        # (The advisory SEO length lint in check.py still pressures authors to
+        # keep descriptions concise -- only silent mutation was removed.)
 
         css_href = prefix + "style.css"
         custom_css_href = (prefix + "custom.css") if has_custom_css else None
@@ -1936,22 +1938,6 @@ def _extract_title(md_content, fallback):
     return fallback
 
 
-def _truncate_description(description):
-    """Truncate a description string for use in meta tags.
-
-    If the description exceeds 155 characters, truncates at the last
-    word boundary before 155 chars and appends "...".  Returns the
-    original string unchanged if it fits within 155 characters.
-    """
-    if not description or len(description) <= 155:
-        return description
-    truncated = description[:155]
-    last_space = truncated.rfind(" ")
-    if last_space > 0:
-        truncated = truncated[:last_space]
-    return truncated + "..."
-
-
 def _extract_first_paragraph(body_html):
     """Extract the text of the first ``<p>`` element from rendered HTML.
 
@@ -2340,8 +2326,11 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
 
     # OG tags -- emitted when page_path exists
     if page_path:
-        # Fall back to auto-extracted first paragraph when description is empty
-        og_description = description or _extract_first_paragraph(body_html)
+        # Fall back to the auto-extracted first sentence when description is
+        # empty (a complete, naturally bounded unit -- matches the meta tag).
+        og_description = description or first_sentence(
+            _extract_first_paragraph(body_html)
+        )
         escaped_desc = _escape_html(og_description)
         og_desc_tag = (
             f'\n<meta property="og:description" content="{escaped_desc}">'
@@ -2730,9 +2719,9 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
             f'title="{_escape_html(project_name)} Feed" href="{feed_url}">'
         )
     # Meta description tag (Feature 34)
-    # Fall back to auto-extracted first paragraph when frontmatter description
-    # is absent, matching the og:description behaviour.
-    meta_description = description or _truncate_description(
+    # Fall back to the auto-extracted first sentence when frontmatter
+    # description is absent (a complete unit), matching og:description.
+    meta_description = description or first_sentence(
         _extract_first_paragraph(body_html)
     )
     description_tag = ""
