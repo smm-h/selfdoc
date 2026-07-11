@@ -90,6 +90,33 @@ Hashes are stored in `.selfdoc/hashes/hashes.json`, a JSON file mapping each pag
 
 This file is written atomically (temp file + `os.replace`) and should be committed to your repo. It is the baseline for future comparisons -- without it, every page looks new and no staleness is detected.
 
+### Store schema version
+
+The store carries a `_hash_version` field. When the meaning of the stored hashes changes, the version is bumped and any older store is discarded wholesale and re-baselined on the next `selfdoc check` (nothing is silently reused). Two bumps so far:
+
+- **v1 -> v2** switched the content hash from resolved output to the raw template body, so directive output changes (like a version bump) no longer trip staleness.
+- **v2 -> v3** added a per-page `seed_hash` and canonicalizes directive marker lines before hashing, so a pure `path="x"` -> `path="y"` rename no longer changes the content hash.
+
+Because a bump discards the old store, run `selfdoc check` once after upgrading to re-record the baseline. (Releases run `selfdoc gen` then `selfdoc check`, so this happens automatically.)
+
+### Description ownership (`seed_hash`)
+
+Descriptions are handwritten; machine-emitted text is only ever a placeholder. The store records a per-page `seed_hash` -- the SHA-256 of the description text `selfdoc gen` last emitted for that page -- so selfdoc can tell a machine placeholder apart from a hand edit:
+
+```json
+{
+  "gen-index.md": {
+    "content": "a1b2c3d4...",
+    "description": "e5f6g7h8...",
+    "seed_hash": "9a8b7c6d..."
+  }
+}
+```
+
+Ownership of the store fields is split by writer: `selfdoc gen` owns `seed_hash`, while `selfdoc build`/`selfdoc check` own `content`, `description`, and the drift hashes. Each writer merges rather than overwriting, so they never clobber the other's fields.
+
+This is what lets `selfdoc gen` safely regenerate: a description is reseeded only when it is machine-owned (it matches the recorded `seed_hash` or a known machine template), and a description you rewrote by hand is preserved -- even if a stale `seeded: true` marker was left in the frontmatter. The same predicate drives the STALE001/DRIFT001 exemption: only genuinely machine-generated descriptions are exempt from the staleness hold, so a generated page you describe by hand is checked like any other page.
+
 ## Dry Run Mode
 
 To preview staleness results without updating the hash file on disk, use the `--dry-run` flag. This computes all hashes, compares them against the stored baselines, and reports any stale pages but does not write changes to `.selfdoc/hashes/hashes.json`. Useful for previewing what would be flagged:
