@@ -1,10 +1,16 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, hotfix, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "New `name` config key, gen-index naming fix, legacy description reseed, CLI defaults are now complete sentences, and the list-features directive is removed (migrated to list-modules)."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+Descriptions are handwritten-first with machine placeholders: auto-seeded page and CLI
+descriptions are recognizable so they can be reseeded, while hand-authored frontmatter is
+left verbatim. The old 155-character truncation produced mid-sentence cuts, so machine
+placeholders are now complete first sentences. list-features is superseded by list-modules,
+which yields richer module summaries.
+"""
 # Pre-release identifier: alpha, beta, rc, or stable
 # preid = ""
 include = ["npm", "pypi"]
@@ -12,11 +18,15 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, hotfix, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Summary truncation abolished: complete first sentences and paragraphs everywhere, soft-wrap normalization across all extractors, and feed summaries carry the full first paragraph."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+Truncation produced mid-sentence garbage in llms.txt, Atom feeds, and SEO meta descriptions.
+Extracted summaries now use a first-sentence / first-paragraph unit picker with soft-wrapped
+lines joined, so no output is cut mid-sentence or capped at 155 characters.
+"""
 # Pre-release identifier: alpha, beta, rc, or stable
 # preid = ""
 include = ["pypi"]
