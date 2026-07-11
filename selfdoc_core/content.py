@@ -13,6 +13,7 @@ import json
 import os
 import re
 
+from selfdoc_core.prose import first_sentence
 from selfdoc_core.tables import render_markdown_table
 from selfdoc_core.utils import _read_project_field
 
@@ -315,29 +316,6 @@ def _is_test_file(filename: str, language: str) -> bool:
     return False
 
 
-def _first_line_of(text: str) -> str:
-    """Extract the first sentence or line from a docstring.
-
-    Takes the first line, then truncates at the first sentence-ending
-    period (period followed by whitespace or end-of-string).
-    Truncates to 155 characters.
-    """
-    if not text:
-        return ""
-    first_line = text.split("\n", 1)[0].strip()
-    if not first_line:
-        return ""
-    # Take up to the first sentence-ending period
-    match = re.search(r"\.\s", first_line)
-    if match:
-        first_line = first_line[:match.start() + 1]
-    elif not first_line.endswith("."):
-        first_line = first_line + "."
-    if len(first_line) > 155:
-        first_line = first_line[:152] + "..."
-    return first_line
-
-
 def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     """List source modules grouped by the language's natural unit.
 
@@ -424,7 +402,8 @@ def _list_modules_files(
             module_name = _file_to_module_name(rel_path, language)
             if module_name is None:
                 continue
-            docstring = _extract_first_line_any(file_path, language)
+            raw_doc = extractor.module_docstring(file_path)  # type: ignore[union-attr]
+            docstring = first_sentence(raw_doc) if raw_doc else None
             modules.append((module_name, rel_path, docstring))
 
     modules.sort(key=lambda t: t[0])
@@ -468,7 +447,7 @@ def _list_modules_per_file(
             if module_name is None:
                 continue
             raw_doc = extractor.module_docstring(file_path)  # type: ignore[union-attr]
-            docstring = _first_line_of(raw_doc) if raw_doc else None
+            docstring = first_sentence(raw_doc) if raw_doc else None
             modules.append((module_name, rel_path, docstring))
 
     modules.sort(key=lambda t: t[0])
@@ -522,7 +501,7 @@ def _list_modules_by_package(
         # Normalize path separators
         pkg_name = rel_path.replace(os.sep, "/")
         raw_doc = extractor.module_docstring(pkg_dir)  # type: ignore[union-attr]
-        docstring = _first_line_of(raw_doc) if raw_doc else None
+        docstring = first_sentence(raw_doc) if raw_doc else None
         items.append((pkg_name, docstring))
 
     lines = []
@@ -561,7 +540,7 @@ def _list_modules_by_dir_group(
             if module_name is None:
                 continue
             raw_doc = extractor.module_docstring(file_path)  # type: ignore[union-attr]
-            docstring = _first_line_of(raw_doc) if raw_doc else None
+            docstring = first_sentence(raw_doc) if raw_doc else None
             rel_dir = os.path.relpath(dirpath, base_dir).replace(os.sep, "/")
             if rel_dir not in dir_files:
                 dir_files[rel_dir] = []
@@ -608,18 +587,6 @@ def _file_to_module_name(rel_path: str, language: str) -> str | None:
             return None
         return root.replace(os.sep, ".").replace("/", ".")
     return root.replace(os.sep, "/")
-
-
-def _extract_first_line_any(file_path: str, language: str) -> str | None:
-    """Extract the first line of a module docstring, language-aware.
-
-    For Python, uses AST. For other languages, returns None (no docstring
-    convention that can be reliably extracted without parsing).
-    """
-    if language == "python":
-        from selfdoc_core.utils import extract_module_docstring
-        return extract_module_docstring(file_path)
-    return None
 
 
 # -- table-directives directive ------------------------------------------------
