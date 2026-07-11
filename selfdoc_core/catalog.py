@@ -16,6 +16,17 @@ class DirectiveSpec:
     example: str = ""
 
 
+# -- Shared cross-cutting attributes ------------------------------------------
+
+# Attributes accepted by every code-category directive regardless of name.
+# The multi-language resolver (selfdoc_core.resolver.Resolver) reads ``lang``
+# to disambiguate which language extractor handles a path-dispatched directive,
+# so it is valid on any code directive. gen emits it on every generated ``ref``
+# page. Declared once here and spread into each code spec's optional_attrs so
+# the set stays DRY.
+SHARED_CODE_ATTRS: list[str] = ["lang"]
+
+
 # -- Core directives (shipped and functional at launch) -----------------------
 
 CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
@@ -23,34 +34,35 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         description="Extract module docstring, exported functions, and classes",
         category="code",
         required_attrs=["path"],
-        optional_attrs=["target"],
+        optional_attrs=["target", *SHARED_CODE_ATTRS],
         example=':::ref path="mymodule"',
     ),
     "table-schema": DirectiveSpec(
         description="Extract dataclass/struct fields as a markdown table",
         category="code",
         required_attrs=["path"],
-        optional_attrs=["target", "exclude"],
+        optional_attrs=["target", "exclude", *SHARED_CODE_ATTRS],
         example=':::table-schema path="models.py" target="User"',
     ),
     "code-test": DirectiveSpec(
         description="Embed test source code (whole file or specific function)",
         category="code",
         required_attrs=["path"],
-        optional_attrs=["target"],
+        optional_attrs=["target", *SHARED_CODE_ATTRS],
         example=':::code-test path="tests/test_auth.py" target="test_login"',
     ),
     "code-help": DirectiveSpec(
         description="Extract CLI help/usage text and flag definitions",
         category="code",
         required_attrs=["path"],
+        optional_attrs=[*SHARED_CODE_ATTRS],
         example=':::code-help path="cli.py"',
     ),
     "table-config": DirectiveSpec(
         description="Render a config file (JSON/TOML) as a key-value table",
         category="code",
         required_attrs=["path"],
-        optional_attrs=["exclude"],
+        optional_attrs=["exclude", *SHARED_CODE_ATTRS],
         example=':::table-config path="config.json"',
     ),
     "callout-note": DirectiveSpec(
@@ -87,6 +99,7 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         description="Extract module/package docstring as prose text",
         category="code",
         required_attrs=["path"],
+        optional_attrs=[*SHARED_CODE_ATTRS],
         example=':::prose-desc path="mymodule"',
     ),
     "list-tree": DirectiveSpec(
@@ -106,6 +119,7 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         description="List source modules with file paths and docstring summaries",
         category="content",
         required_attrs=["path"],
+        optional_attrs=["files"],
         example=':-: list-modules path="selfdoc/"',
     ),
     "table-commands": DirectiveSpec(
