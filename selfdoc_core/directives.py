@@ -42,14 +42,15 @@ _BLOCK_CLOSE_RE = re.compile(r"^:>:$")
 # Fenced code block delimiter (``` or ~~~, optionally with info string)
 _FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 
-# Attribute key="value" pair extractor
-_ATTR_KV_RE = re.compile(r'(\w+)="([^"]*)"')
+# Attribute key="value" pair extractor. Keys may contain hyphens (e.g.
+# ``schema-dir``), matching the directive-name character class.
+_ATTR_KV_RE = re.compile(r'([\w-]+)="([^"]*)"')
 
 # Directive name: starts with a letter, followed by word chars or hyphens
 _DIRECTIVE_NAME = r'[a-zA-Z][\w-]*'
 
 # Inline one-liner: :-: name [attrs] (non-anchored, for pass 2)
-_INLINE_RE = re.compile(rf':-:\s+({_DIRECTIVE_NAME})((?:\s+\w+="[^"]*")*)')
+_INLINE_RE = re.compile(rf':-:\s+({_DIRECTIVE_NAME})((?:\s+[\w-]+="[^"]*")*)')
 
 
 class DirectiveError(Exception):

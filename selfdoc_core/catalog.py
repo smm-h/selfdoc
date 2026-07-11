@@ -125,8 +125,8 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
     "table-commands": DirectiveSpec(
         description="CLI command summary table from strictcli structure",
         category="content",
-        required_attrs=["path"],
-        example=':-: table-commands path="selfdoc/"',
+        optional_attrs=["schema-dir"],
+        example=":-: table-commands",
     ),
     "table-endpoint": DirectiveSpec(
         description="REST API endpoint table from OpenAPI spec",

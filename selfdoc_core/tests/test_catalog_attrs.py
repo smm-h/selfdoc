@@ -68,3 +68,24 @@ def test_custom_and_future_directives_are_skipped():
     validate_directive_attrs(
         "code-source", {"whatever": "x"}, file="a.md", line=1
     )
+
+
+def test_table_commands_path_gives_migration_hint():
+    # `path` was removed from table-commands (schema is auto-discovered), so a
+    # leftover path= is an unknown attr with an actionable migration message.
+    with pytest.raises(DirectiveAttrError) as exc:
+        validate_directive_attrs(
+            "table-commands", {"path": "."}, file="docs/_README.md", line=9
+        )
+    msg = str(exc.value)
+    assert "docs/_README.md:9" in msg
+    assert "no longer takes" in msg
+    assert "schema-dir" in msg
+
+
+def test_table_commands_accepts_schema_dir():
+    validate_directive_attrs(
+        "table-commands", {"schema-dir": "."}, file="a.md", line=1
+    )
+    # Bare table-commands (auto-discovery) is valid.
+    validate_directive_attrs("table-commands", {}, file="a.md", line=1)
