@@ -10,6 +10,44 @@ import json
 import os
 import tempfile
 
+from selfdoc_core.directives import _ATTR_KV_RE
+
+# Prefixes identifying directive marker lines whose attribute VALUES are
+# canonicalized before content hashing: one-liner (:-:), block open (:<:),
+# and attribute (:@:) markers.  Body-separator/content/close markers carry no
+# attributes and are left untouched.
+_DIRECTIVE_MARKER_PREFIXES = (":-: ", ":<: ", ":@: ")
+
+# Version of the on-disk hash store schema.  Bump when the meaning of stored
+# hashes changes so older stores are discarded and re-baselined on load.
+#   v1 -> v2: content hash switched from resolved output to raw template body.
+#   v2 -> v3: added per-page ``seed_hash`` (written by gen) and canonicalized
+#             directive-marker attribute values before content hashing.
+# gen owns the per-page ``seed_hash`` field; build/check own ``content``,
+# ``description``, ``source_docstring``, and ``schema_hash``.  update_hashes
+# MERGES per-page entries so each writer preserves the other's fields.
+_HASH_VERSION = 3
+
+
+def _canonicalize_directive_markers(body: str) -> str:
+    """Blank the attribute VALUES on directive marker lines.
+
+    A directive marker line such as ``:-: ref path="mylib.old"`` is rewritten
+    to ``:-: ref path=""`` so that a pure ``path="x" -> path="y"`` rename does
+    not change the content hash (the resolved output for the reader is
+    unchanged), while any prose change or directive NAME change still does.
+    Only ``:-:``/``:<:``/``:@:`` marker lines are affected; ``key="value"``
+    pairs in ordinary prose are left intact.
+    """
+    lines = body.split("\n")
+    out = []
+    for line in lines:
+        if line.lstrip().startswith(_DIRECTIVE_MARKER_PREFIXES):
+            out.append(_ATTR_KV_RE.sub(r'\1=""', line))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
 
 def compute_content_hash(body: str) -> str:
     """Compute SHA-256 hash of raw page body (frontmatter stripped).
@@ -18,8 +56,13 @@ def compute_content_hash(body: str) -> str:
     the actual page body is considered.  Receives the raw (pre-resolution)
     template content so that directive output changes (e.g. version bumps)
     do not trigger false-positive staleness.
+
+    Directive marker lines are canonicalized (attribute values blanked)
+    before hashing so that a pure ``path="x" -> path="y"`` rename does not
+    change the hash, while prose changes still do.
     """
     body = _strip_frontmatter(body)
+    body = _canonicalize_directive_markers(body)
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
@@ -106,8 +149,11 @@ def load_hashes(base_dir: str) -> dict[str, dict]:
         return {}
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    if data.get("_hash_version") != 2:
-        # Old format (hashed resolved content); discard to re-baseline
+    if data.get("_hash_version") != _HASH_VERSION:
+        # Older format. v1->v2 changed content hashing (resolved -> raw); v2->v3
+        # added per-page seed_hash and directive-marker canonicalization.
+        # Nothing in an older store holds data v3 needs (seed_hash does not
+        # exist in v2 files), so discard wholesale to re-baseline.
         return {}
     return data
 
@@ -121,7 +167,7 @@ def save_hashes(hashes: dict, base_dir: str) -> None:
     hashes_dir = os.path.join(base_dir, ".selfdoc", "hashes")
     os.makedirs(hashes_dir, exist_ok=True)
     target = os.path.join(hashes_dir, "hashes.json")
-    hashes["_hash_version"] = 2
+    hashes["_hash_version"] = _HASH_VERSION
     fd, tmp_path = tempfile.mkstemp(dir=hashes_dir, suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -343,11 +389,20 @@ def update_hashes(all_docs, base_dir=".", dry_run=False, page_directives=None,
     # Pages with staleness or drift errors keep their old baseline so the
     # error persists until the description is actually rewritten.  All hash
     # fields for a held page stay frozen (per-page-all-fields atomic hold).
+    #
+    # For advancing pages, MERGE the freshly computed fields into any existing
+    # entry rather than overwriting it wholesale.  compute_current_hashes only
+    # produces the build/check-owned fields (content/description/
+    # source_docstring/schema_hash); a merge preserves the gen-owned
+    # ``seed_hash`` field so gen and check can each write the store without
+    # clobbering the other's data.
     error_pages = {rp for rp, _ in stale_warnings} | {rp for rp, _ in drift_warnings}
     for rel_path, hashes in current_hashes.items():
         if rel_path in error_pages:
             continue  # do not advance baseline for pages with errors
-        stored_hashes[rel_path] = hashes
+        entry = stored_hashes.get(rel_path, {})
+        entry.update(hashes)
+        stored_hashes[rel_path] = entry
     if not dry_run:
         save_hashes(stored_hashes, base_dir)
 
