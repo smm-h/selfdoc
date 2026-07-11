@@ -102,12 +102,6 @@ CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
         required_attrs=["path"],
         example=':::table-dep path="pyproject.toml"',
     ),
-    "list-features": DirectiveSpec(
-        description="Module summaries from docstring first lines",
-        category="content",
-        required_attrs=["path"],
-        example=':::list-features path="src/"',
-    ),
     "list-modules": DirectiveSpec(
         description="List source modules with file paths and docstring summaries",
         category="content",

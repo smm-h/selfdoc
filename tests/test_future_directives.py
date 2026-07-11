@@ -1,4 +1,4 @@
-"""Tests for the four new directives: prose-desc, list-tree, table-dep, list-features."""
+"""Tests for the directives: prose-desc, list-tree, table-dep (and list-features removal)."""
 
 import os
 
@@ -6,7 +6,6 @@ import pytest
 
 from selfdoc.content import (
     resolve_content,
-    resolve_list_features,
     resolve_list_tree,
     resolve_table_dep,
 )
@@ -302,52 +301,27 @@ class TestTableDep:
         assert "`requests`" in result
 
 
-# -- list-features tests ------------------------------------------------------
+# -- list-features removal (Phase 7.3) ----------------------------------------
 
 
-class TestListFeatures:
-    """Tests for the list-features directive."""
+class TestListFeaturesRemoved:
+    """list-features was removed and superseded by list-modules."""
 
-    def test_extracts_module_summaries(self, modules_dir):
-        result = resolve_list_features(
-            {"path": "mylib"}, str(modules_dir)
-        )
-        assert "**build**:" in result
-        assert "Build system" in result
-        assert "**check**:" in result
-        assert "Validates directive resolution" in result
-        assert "**cli**:" in result
-        assert "Command-line interface" in result
-        assert "**config**:" in result
-        assert "Loads and validates" in result
-
-    def test_skips_init_and_test_files(self, modules_dir):
-        result = resolve_list_features(
-            {"path": "mylib"}, str(modules_dir)
-        )
-        assert "__init__" not in result
-        assert "test_build" not in result
-
-    def test_skips_files_without_docstrings(self, modules_dir):
-        result = resolve_list_features(
-            {"path": "mylib"}, str(modules_dir)
-        )
-        assert "empty" not in result
-
-    def test_nonexistent_directory(self, modules_dir):
-        result = resolve_list_features(
-            {"path": "nonexistent"}, str(modules_dir)
-        )
-        assert "not found" in result
-
-    def test_missing_path_attr(self, modules_dir):
-        result = resolve_list_features({}, str(modules_dir))
-        assert "requires a path" in result
-
-    def test_via_resolve_content(self, modules_dir):
-        """list-features should be dispatched by resolve_content."""
+    def test_resolve_content_returns_none_for_removed_directive(self, modules_dir):
+        """resolve_content no longer recognizes list-features."""
         result = resolve_content(
             "list-features", {"path": "mylib"}, [], str(modules_dir)
         )
-        assert result is not None
-        assert "**build**:" in result
+        assert result is None
+
+    def test_removed_directive_raises_unknown_directive_error(self):
+        """Using list-features produces the standard unknown-directive error."""
+        from selfdoc.directives import parse_directives, DirectiveError
+        from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
+
+        assert "list-features" not in ALL_BUILTIN_DIRECTIVES
+        with pytest.raises(DirectiveError, match="list-features"):
+            parse_directives(
+                ':-: list-features path="src/"\n',
+                valid_names=set(ALL_BUILTIN_DIRECTIVES),
+            )

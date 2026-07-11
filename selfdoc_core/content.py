@@ -2,13 +2,12 @@
 
 These directives do not need language extractors. They handle callouts
 (note, warning, tip, danger, important), the glossary list, and
-filesystem/project-metadata directives (list-tree, table-dep, list-features,
+filesystem/project-metadata directives (list-tree, table-dep,
 list-modules, table-commands, table-directives, table-config-schema, var).
 """
 
 from __future__ import annotations
 
-import ast
 import json
 import os
 import re
@@ -218,73 +217,6 @@ def _parse_dep_specifier(spec: str) -> tuple[str, str]:
             constraint = constraint.split(";")[0].strip()
         return pkg, constraint if constraint else "*"
     return spec.strip(), "*"
-
-
-# -- list-features directive ---------------------------------------------------
-
-
-def resolve_list_features(attrs: dict, base_dir: str) -> str:
-    """Scan Python files in a directory and list module docstring first lines."""
-    path = attrs.get("path", "")
-    if not path:
-        return "> *[selfdoc: list-features requires a path attribute]*"
-
-    full_path = os.path.join(base_dir, path)
-    if not os.path.isdir(full_path):
-        return f"> *[selfdoc: directory '{path}' not found]*"
-
-    items = []
-    try:
-        entries = sorted(os.listdir(full_path))
-    except OSError:
-        return f"> *[selfdoc: cannot read directory '{path}']*"
-
-    for entry in entries:
-        # Skip non-Python files, __init__.py, test files, __pycache__
-        if not entry.endswith(".py"):
-            continue
-        if entry == "__init__.py":
-            continue
-        if entry.startswith("test_") or entry.endswith("_test.py"):
-            continue
-        if entry == "__pycache__":
-            continue
-
-        file_path = os.path.join(full_path, entry)
-        first_line = _extract_module_first_line(file_path)
-        if first_line:
-            display_name = entry[:-3]  # strip .py
-            items.append(f"- **{display_name}**: {first_line}")
-
-    if not items:
-        return f"> *[selfdoc: no documented modules found in '{path}']*"
-
-    return "\n".join(items)
-
-
-def _extract_module_first_line(file_path: str) -> str:
-    """Extract the first line of a Python module's docstring."""
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except (OSError, UnicodeDecodeError):
-        return ""
-
-    try:
-        tree = ast.parse(source, filename=file_path)
-    except SyntaxError:
-        return ""
-
-    docstring = ast.get_docstring(tree)
-    if not docstring:
-        return ""
-
-    # Get first line or first sentence
-    first_line = docstring.split("\n")[0].strip()
-    # If it ends with a period, return as-is; otherwise take first sentence
-    if "." in first_line:
-        return first_line.split(".")[0].strip() + "."
-    return first_line
 
 
 # -- list-modules directive ----------------------------------------------------
@@ -974,7 +906,7 @@ def _render_endpoint(ep_path: str, method: str, op: dict, spec: dict) -> str:
 CONTENT_DIRECTIVES: set[str] = {
     "callout-note", "callout-warning", "callout-tip",
     "callout-danger", "callout-important", "list-glossary",
-    "list-tree", "table-dep", "list-features",
+    "list-tree", "table-dep",
     "list-modules", "table-directives",
     "table-config-schema", "table-endpoint", "var",
 }
@@ -997,8 +929,6 @@ def resolve_content(
         return resolve_list_tree(attrs, base_dir)
     if name == "table-dep":
         return resolve_table_dep(attrs, base_dir)
-    if name == "list-features":
-        return resolve_list_features(attrs, base_dir)
     if name == "list-modules":
         if config is None:
             return "> *[selfdoc: list-modules requires project config]*"
