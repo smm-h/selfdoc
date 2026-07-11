@@ -7,6 +7,7 @@ import stat
 from dataclasses import dataclass, field
 
 from selfdoc.utils import parse_frontmatter as _parse_frontmatter
+from selfdoc_core.prose import first_sentence
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.directives import resolve_directives, validate_directive_names
 from selfdoc.resolver import make_resolver
@@ -19,28 +20,6 @@ class GenResult:
 
     written: list[str] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
-
-
-def _truncate_to_description(docstring: str) -> str:
-    """Truncate a full docstring to a short description.
-
-    Takes the first line, extracts the first sentence (up to the first
-    period followed by whitespace or end-of-string), and truncates to
-    155 characters.  Returns empty string if input is empty.
-    """
-    if not docstring:
-        return ""
-    first_line = docstring.split("\n", 1)[0].strip()
-    if not first_line:
-        return ""
-    match = re.search(r"\.\s", first_line)
-    if match:
-        first_line = first_line[: match.start() + 1]
-    elif first_line.endswith("."):
-        pass  # already ends with period
-    if len(first_line) > 155:
-        first_line = first_line[:152] + "..."
-    return first_line
 
 
 # Default exclusion patterns (always applied in addition to user-configured ones).
@@ -781,7 +760,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
         docstring_description = None
         if existing_description is None:
             raw = extractor.module_docstring(src_path)
-            docstring_description = _truncate_to_description(raw) or None
+            docstring_description = first_sentence(raw) or None
         content = _generate_page_content(
             mod_name, mod_path, nav_order,
             existing_description=existing_description,

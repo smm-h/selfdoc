@@ -460,10 +460,20 @@ class TestDescriptionPreservation:
         assert 'description: "Core module."' in content
         assert "auto-generated documentation" not in content
 
-    def test_docstring_truncated_to_155_chars(self, python_project):
-        """A module with a very long docstring is truncated to 155 chars."""
+    def test_long_first_sentence_not_truncated(self, python_project):
+        """A long first sentence is preserved whole -- no cap, no ellipsis.
+
+        Truncation is abolished: the seeded description is the complete
+        first sentence, however long, with no synthesized ellipsis.
+        """
         lib_dir = os.path.join(python_project, "mylib")
-        long_doc = "A" * 200
+        # A single sentence well over 155 chars, ending with a real period.
+        long_doc = (
+            "This module orchestrates the entire configuration lifecycle, "
+            "loading settings from disk, validating each field against the "
+            "schema, and reporting any problems back to the caller clearly."
+        )
+        assert len(long_doc) > 155
         with open(os.path.join(lib_dir, "longdoc.py"), "w") as f:
             f.write(f'"""{long_doc}"""\ndef func(): pass\n')
 
@@ -475,14 +485,17 @@ class TestDescriptionPreservation:
         with open(longdoc_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Description should be truncated (152 chars + "...")
         assert "auto-generated documentation" not in content
-        assert "..." in content
-        # Extract the description value
+        assert "..." not in content
+        # Extract the description value: the full sentence, uncapped.
+        found = False
         for line in content.split("\n"):
             if line.startswith("description:"):
                 desc = line.split(":", 1)[1].strip().strip('"')
-                assert len(desc) <= 155
+                assert desc == long_doc
+                assert len(desc) > 155
+                found = True
+        assert found
 
     def test_no_docstring_uses_template(self, python_project):
         """A module with no docstring falls back to the API reference template."""
