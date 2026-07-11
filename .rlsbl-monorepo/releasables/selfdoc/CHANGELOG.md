@@ -2,20 +2,24 @@
 
 # Changelog
 
-## 0.31.0
+## 0.32.0
 
-New `name` config key, gen-index naming fix, legacy description reseed, CLI defaults are now complete sentences, and the list-features directive is removed (migrated to list-modules).
+Description ownership by content: handwritten text is never overwritten; machine placeholders identified by hash/template/live-recompute
 
 <details>
 <summary>Context</summary>
 
-Descriptions are handwritten-first with machine placeholders: auto-seeded page and CLI
-descriptions are recognizable so they can be reseeded, while hand-authored frontmatter is
-left verbatim. The old 155-character truncation produced mid-sentence cuts, so machine
-placeholders are now complete first sentences. list-features is superseded by list-modules,
-which yields richer module summaries.
+gen now classifies a page's description text itself -- via current/historical module templates, the per-page seed hash, or a live recompute of CLI defaults -- instead of trusting the seeded flag. Hand-rewritten descriptions survive regeneration even with a stale seeded:true marker, and the STALE001/DRIFT001 exemption keys on the ownership predicate so hand-described generated pages get full staleness protection.
 
 </details>
+
+### Fixes
+
+- [selfdoc] **Hand-written descriptions on generated pages are never overwritten.** `selfdoc gen` now decides whether to reseed a description by classifying the text itself, so a description you rewrote by hand survives regeneration even if a stale `seeded: true` marker was left behind.
+- [selfdoc] **Hand-described generated pages get full stale-description protection.** The STALE001/DRIFT001 exemption now applies only to pages whose description is genuinely machine-generated, so a generated page you have described by hand is checked for staleness like any other page.
+- [selfdoc] **A legacy auto-generated API reference index description is refreshed on `selfdoc gen`.** Projects still carrying the old "Complete auto-generated API reference index …" placeholder now have it reseeded with a project-specific description instead of being frozen as if hand-written.
+
+## 0.31.0
 
 ### Features
 
