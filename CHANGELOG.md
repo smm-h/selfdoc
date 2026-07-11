@@ -2,16 +2,25 @@
 
 # selfdoc
 
-## 0.32.0
+## 0.33.0
 
-Description ownership by content: handwritten text is never overwritten; machine placeholders identified by hash/template/live-recompute
+table-commands discovers the strictcli schema automatically (path attribute removed; schema-dir disambiguates multi-schema repos)
 
 <details>
 <summary>Context</summary>
 
-gen now classifies a page's description text itself -- via current/historical module templates, the per-page seed hash, or a live recompute of CLI defaults -- instead of trusting the seeded flag. Hand-rewritten descriptions survive regeneration even with a stale seeded:true marker, and the STALE001/DRIFT001 exemption keys on the ownership predicate so hand-described generated pages get full staleness protection.
+Phase 9.5 coordinated breaking release. table-commands no longer accepts a path attribute; it auto-discovers the unique .strictcli/schema.json by walking the project root, with an optional schema-dir attribute to disambiguate repos that carry more than one schema. Directive attribute handling is now strict across gen and check: an unknown or missing attribute is a hard error (exit 1) reporting the file, line, directive, and allowed attributes.
+
+Because table-commands path removal is a breaking directive change, all in-tree docs and the eight external consumer repositories that use table-commands were migrated to the new bare-directive syntax in lockstep before this release, so no consumer is left on a directive that would now hard-error.
 
 </details>
+
+### Breaking
+
+- [selfdoc] **Strict directive attributes.** `selfdoc check` and `selfdoc gen` now hard-error (exit 1) when a directive uses an unknown attribute or omits a required one, reporting the file, line, directive, and allowed attributes.
+- [selfdoc] **table-commands auto-discovers the CLI schema.** `table-commands` no longer takes `path`; it finds `.strictcli/schema.json` by walking the project root. Migration: drop `path`, and if discovery is ambiguous add `schema-dir="<dir>"`.
+
+## 0.32.0
 
 ### Fixes
 
