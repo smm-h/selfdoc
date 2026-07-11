@@ -11,6 +11,7 @@ LanguageExtractor methods.
 import json
 import os
 
+from selfdoc_core.prose import join_wrapped_lines
 from selfdoc_core.tables import render_markdown_table
 
 
@@ -451,7 +452,14 @@ def _format_docstring(docstring):
     followed by indented ``name: description`` lines and converts them
     to bold headers with bullet lists so the markdown converter renders
     them as structured HTML instead of collapsing whitespace.
+
+    Source-wrapped prose (Go/JSDoc/KDoc doc comments wrap at ~75 cols) is
+    first normalized via :func:`join_wrapped_lines` so a soft-wrapped
+    sentence becomes one line; blank-line paragraph breaks, indented
+    preformatted blocks, fenced code, list items, and doctest lines are
+    left verbatim.
     """
+    docstring = join_wrapped_lines(docstring)
     lines = docstring.split("\n")
     out = []
     i = 0

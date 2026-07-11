@@ -11,6 +11,7 @@ Uses regex-based parsing (no Go toolchain required). Handles:
 import os
 import re
 
+from selfdoc_core.prose import join_wrapped_lines
 from selfdoc_core.tables import render_markdown_table
 from selfdoc_core.extractors.base import (
     BaseExtractor,
@@ -74,7 +75,7 @@ class GoExtractor(BaseExtractor):
         if not file_contents:
             return ""
         _pkg_name, doc = _extract_package_doc(file_contents)
-        return doc
+        return join_wrapped_lines(doc)
 
     def public_symbols(self, file_path: str) -> list[str]:
         """Extract exported (capitalized) symbols from a Go source file.

@@ -12,6 +12,7 @@ import ast
 import os
 import textwrap
 
+from selfdoc_core.prose import join_wrapped_lines
 from selfdoc_core.extractors.base import (
     BaseExtractor,
     _config_from_json,
@@ -106,7 +107,7 @@ class PythonExtractor(BaseExtractor):
             tree = ast.parse(source, filename=path)
         except SyntaxError:
             return ""
-        return ast.get_docstring(tree) or ""
+        return join_wrapped_lines(ast.get_docstring(tree) or "")
 
     def symbol_details(self, file_path: str, symbol_name: str) -> dict | None:
         """Extract detailed parameter and return info for a symbol.
