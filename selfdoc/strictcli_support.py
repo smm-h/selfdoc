@@ -161,6 +161,55 @@ def uses_strictcli(source_paths, base_dir):
 
 
 # ---------------------------------------------------------------------------
+# Schema discovery
+# ---------------------------------------------------------------------------
+
+
+class SchemaDiscoveryError(RuntimeError):
+    """Raised when ``.strictcli/schema.json`` discovery fails or is ambiguous.
+
+    A hard error (exit 1). Subclasses ``RuntimeError`` so the CLI's existing
+    ``RuntimeError`` handlers surface it with a clean message and non-zero exit.
+    """
+
+
+# Directory names never traversed when discovering schemas. Hidden directories
+# (leading ``.``) are pruned separately -- ``.strictcli`` is not traversed into
+# but is still detected as a schema *location* under each visited directory.
+_SCHEMA_DISCOVERY_EXCLUDES: set[str] = {
+    "node_modules", "dist", "build", "_build", "target",
+    "vendor", "venv", "__pycache__",
+}
+
+
+def discover_schema_dirs(base_dir):
+    """Discover directories containing a ``.strictcli/schema.json`` file.
+
+    Walks *base_dir*, pruning vendored/build directories and hidden
+    directories (leading ``.``). For every visited directory, checks whether it
+    holds a ``.strictcli/schema.json`` and records its path relative to
+    *base_dir* (the project root uses ``"."``).
+
+    Returns a sorted list of relative directory paths (each is the directory
+    that *contains* the ``.strictcli`` folder, i.e. the value a ``schema-dir``
+    attribute would take).
+    """
+    base_dir = os.path.abspath(base_dir)
+    found = []
+    for dirpath, dirnames, _filenames in os.walk(base_dir):
+        # Prune traversal into vendored/build and hidden directories.
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in _SCHEMA_DISCOVERY_EXCLUDES and not d.startswith(".")
+        ]
+        schema_path = os.path.join(dirpath, ".strictcli", "schema.json")
+        if os.path.isfile(schema_path):
+            rel = os.path.relpath(dirpath, base_dir)
+            found.append("." if rel == os.curdir else rel)
+    return sorted(found)
+
+
+# ---------------------------------------------------------------------------
 # Schema reader
 # ---------------------------------------------------------------------------
 

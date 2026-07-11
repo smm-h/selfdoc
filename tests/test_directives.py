@@ -40,6 +40,24 @@ def test_oneliner_single_attr():
     assert result[0].attrs == {"cmd": "selfdoc --help"}
 
 
+def test_oneliner_hyphenated_attr_key():
+    # Attribute keys may contain hyphens (e.g. schema-dir), not just word chars.
+    content = ':-: table-commands schema-dir="."'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].name == "table-commands"
+    assert result[0].attrs == {"schema-dir": "."}
+
+
+def test_inline_hyphenated_attr_key():
+    content = 'See :-: table-commands schema-dir="sub" inline.'
+    result = parse_directives(content)
+    assert len(result) == 1
+    assert result[0].name == "table-commands"
+    assert result[0].attrs == {"schema-dir": "sub"}
+    assert result[0].inline is True
+
+
 # -- Block (:<: ... :>:) — attrs only ----------------------------------------
 
 

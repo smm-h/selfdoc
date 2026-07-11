@@ -12,7 +12,43 @@ from selfdoc.strictcli_support import (
     extract_cli_structure,
     read_schema_json,
     generate_cli_pages,
+    discover_schema_dirs,
 )
+
+
+def _mk_schema(base, subdir):
+    """Create a .strictcli/schema.json under base/subdir (subdir='' for root)."""
+    d = os.path.join(base, subdir) if subdir else base
+    sc = os.path.join(d, ".strictcli")
+    os.makedirs(sc, exist_ok=True)
+    with open(os.path.join(sc, "schema.json"), "w") as f:
+        json.dump({"project_id": "x", "name": "x", "commands": {}, "groups": {}}, f)
+
+
+class TestDiscoverSchemaDirs:
+    def test_none_found(self, tmp_path):
+        assert discover_schema_dirs(str(tmp_path)) == []
+
+    def test_root_schema(self, tmp_path):
+        _mk_schema(str(tmp_path), "")
+        assert discover_schema_dirs(str(tmp_path)) == ["."]
+
+    def test_subdir_schema(self, tmp_path):
+        _mk_schema(str(tmp_path), "app")
+        assert discover_schema_dirs(str(tmp_path)) == ["app"]
+
+    def test_multiple_schemas_sorted(self, tmp_path):
+        _mk_schema(str(tmp_path), "")
+        _mk_schema(str(tmp_path), "beta")
+        _mk_schema(str(tmp_path), "alpha")
+        assert discover_schema_dirs(str(tmp_path)) == [".", "alpha", "beta"]
+
+    def test_excludes_vendored_and_hidden_dirs(self, tmp_path):
+        _mk_schema(str(tmp_path), "node_modules/pkg")
+        _mk_schema(str(tmp_path), "dist")
+        _mk_schema(str(tmp_path), ".venv/lib")
+        _mk_schema(str(tmp_path), "real")
+        assert discover_schema_dirs(str(tmp_path)) == ["real"]
 from selfdoc_core.prose import first_sentence
 
 

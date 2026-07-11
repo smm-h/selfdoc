@@ -187,7 +187,7 @@ EXPECTED_ATTRS: dict[str, tuple[set[str], set[str]]] = {
     "list-tree": ({"path"}, {"depth"}),
     "table-dep": ({"path"}, set()),
     "list-modules": ({"path"}, {"files"}),
-    "table-commands": ({"path"}, set()),
+    "table-commands": (set(), {"schema-dir"}),
     "table-directives": (set(), set()),
     "table-config-schema": (set(), set()),
     "table-endpoint": ({"path"}, {"endpoint", "method"}),

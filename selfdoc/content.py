@@ -22,16 +22,52 @@ from selfdoc_core.tables import render_markdown_table
 
 
 def resolve_table_commands(attrs: dict, config: dict, base_dir: str) -> str:
-    """Produce a Markdown table of CLI commands from strictcli structure."""
-    path = attrs.get("path", "")
-    if not path:
-        return "> *[selfdoc: table-commands requires a path attribute]*"
+    """Produce a Markdown table of CLI commands from strictcli structure.
 
-    from selfdoc.strictcli_support import read_schema_json
+    The ``.strictcli/schema.json`` is discovered automatically by walking the
+    project root. When exactly one schema is found it is used. Zero or multiple
+    matches are hard errors (:class:`SchemaDiscoveryError`); pass
+    ``schema-dir="<dir>"`` to select one explicitly when discovery is ambiguous.
+    """
+    from selfdoc.strictcli_support import (
+        SchemaDiscoveryError,
+        discover_schema_dirs,
+        read_schema_json,
+    )
 
-    cli = read_schema_json(os.path.join(base_dir, path))
-    if cli is None:
-        return f"> *[selfdoc: no strictcli app found in '{path}']*"
+    schema_dir = attrs.get("schema-dir")
+    if schema_dir:
+        target_dir = schema_dir
+        cli = read_schema_json(os.path.join(base_dir, target_dir))
+        if cli is None:
+            raise SchemaDiscoveryError(
+                f"table-commands: no .strictcli/schema.json found in "
+                f'schema-dir="{target_dir}" (relative to project root).'
+            )
+    else:
+        candidates = discover_schema_dirs(base_dir)
+        if not candidates:
+            raise SchemaDiscoveryError(
+                "table-commands: no .strictcli/schema.json found under the "
+                "project root. Generate one with '<app> --dump-schema', or "
+                'select it with schema-dir="<dir>".'
+            )
+        if len(candidates) > 1:
+            listed = ", ".join(candidates)
+            raise SchemaDiscoveryError(
+                "table-commands: multiple .strictcli/schema.json found "
+                f"({listed}). Disambiguate with "
+                'schema-dir="<dir>" naming the directory that contains the '
+                ".strictcli/ folder."
+            )
+        target_dir = candidates[0]
+        cli = read_schema_json(os.path.join(base_dir, target_dir))
+        if cli is None:
+            # discover_schema_dirs already confirmed the file exists.
+            raise SchemaDiscoveryError(
+                f"table-commands: failed to read .strictcli/schema.json in "
+                f"'{target_dir}'."
+            )
 
     headers = ["Command", "Description"]
     rows = []
@@ -47,7 +83,7 @@ def resolve_table_commands(attrs: dict, config: dict, base_dir: str) -> str:
             rows.append([f"`{gname} {cmd['name']}`", cmd.get("help", "")])
 
     if not rows:
-        return f"> *[selfdoc: no commands found in '{path}']*"
+        return f"> *[selfdoc: no commands found in '{target_dir}']*"
 
     return render_markdown_table(headers, rows)
 

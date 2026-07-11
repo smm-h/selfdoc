@@ -30,6 +30,7 @@ from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, validate_directive_names
 from selfdoc.extractors import SourceEntry
 from selfdoc.resolver import make_resolver, Resolver
+from selfdoc.strictcli_support import SchemaDiscoveryError
 from selfdoc.staleness import (
     compute_current_hashes,
     compute_schema_hash,
@@ -196,6 +197,10 @@ def _validate_directives(docs_dict, resolver, valid_names, file_prefix="",
                                 source_entry=src_entry,
                             )
                         )
+            except SchemaDiscoveryError:
+                # Schema discovery ambiguity/absence is a hard error (exit 1),
+                # not a warning-level resolution failure -- let it propagate.
+                raise
             except Exception as exc:
                 directive_results.append(DirectiveResult(
                     file=display_file,

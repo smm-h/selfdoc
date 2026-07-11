@@ -303,10 +303,29 @@ class TestListModules:
 # -- table-commands ------------------------------------------------------------
 
 
+def _write_schema(dir_path, *, name="testcli", project_id="test-app"):
+    """Write a minimal .strictcli/schema.json under *dir_path*."""
+    import json
+
+    schema_dir = dir_path / ".strictcli"
+    schema_dir.mkdir(parents=True, exist_ok=True)
+    schema = {
+        "project_id": project_id,
+        "name": name,
+        "version": "1.0.0",
+        "help": "A test CLI",
+        "commands": {"hello": {"help": "Say hello", "arguments": [], "options": []}},
+        "groups": {},
+    }
+    (schema_dir / "schema.json").write_text(json.dumps(schema))
+
+
 class TestTableCommands:
-    def test_lists_selfdoc_commands(self):
+    def test_lists_selfdoc_commands_via_schema_dir(self):
+        # The repo root has three schemas (root, selfdoc/, selfblog/); the
+        # root schema is the selfdoc CLI, selected explicitly with schema-dir.
         result = resolve_table_commands(
-            {"path": "."},
+            {"schema-dir": "."},
             _SELFDOC_CONFIG,
             _PROJECT_DIR,
         )
@@ -315,45 +334,64 @@ class TestTableCommands:
         assert "`build`" in result
         assert "`serve`" in result
 
-    def test_missing_path_attribute(self):
-        result = resolve_table_commands({}, _SELFDOC_CONFIG, _PROJECT_DIR)
-        assert "requires a path attribute" in result
+    def test_ambiguous_discovery_is_hard_error_listing_candidates(self):
+        import pytest
 
-    def test_no_strictcli_app(self, tmp_path):
-        result = resolve_table_commands(
-            {"path": "src/"},
-            _SELFDOC_CONFIG,
-            str(tmp_path),
-        )
-        assert "no strictcli app found" in result
+        from selfdoc.strictcli_support import SchemaDiscoveryError
 
-    def test_path_attribute_joins_with_base_dir(self, tmp_path):
-        """path attribute is joined with base_dir for schema lookup."""
-        import json
+        with pytest.raises(SchemaDiscoveryError) as exc:
+            resolve_table_commands({}, _SELFDOC_CONFIG, _PROJECT_DIR)
+        msg = str(exc.value)
+        assert "multiple" in msg
+        assert "schema-dir" in msg
+        # Candidate directories are listed.
+        assert "selfdoc" in msg
+        assert "selfblog" in msg
 
-        schema_dir = tmp_path / "myapp" / ".strictcli"
-        schema_dir.mkdir(parents=True)
-        schema = {
-            "project_id": "test-app",
-            "name": "testcli",
-            "version": "1.0.0",
-            "help": "A test CLI",
-            "commands": {"hello": {"help": "Say hello", "arguments": [], "options": []}},
-            "groups": {},
-        }
-        (schema_dir / "schema.json").write_text(json.dumps(schema))
+    def test_absent_schema_is_hard_error(self, tmp_path):
+        import pytest
 
-        result = resolve_table_commands(
-            {"path": "myapp"},
-            _SELFDOC_CONFIG,
-            str(tmp_path),
-        )
+        from selfdoc.strictcli_support import SchemaDiscoveryError
+
+        with pytest.raises(SchemaDiscoveryError) as exc:
+            resolve_table_commands({}, _SELFDOC_CONFIG, str(tmp_path))
+        assert "no .strictcli/schema.json" in str(exc.value)
+
+    def test_root_unique_discovery(self, tmp_path):
+        _write_schema(tmp_path)
+        result = resolve_table_commands({}, _SELFDOC_CONFIG, str(tmp_path))
         assert "`hello`" in result
         assert "Say hello" in result
 
+    def test_subdir_unique_discovery(self, tmp_path):
+        _write_schema(tmp_path / "myapp")
+        result = resolve_table_commands({}, _SELFDOC_CONFIG, str(tmp_path))
+        assert "`hello`" in result
+
+    def test_schema_dir_override(self, tmp_path):
+        _write_schema(tmp_path / "myapp")
+        # A second schema elsewhere would make discovery ambiguous, but the
+        # explicit override pins the choice regardless.
+        _write_schema(tmp_path / "other")
+        result = resolve_table_commands(
+            {"schema-dir": "myapp"}, _SELFDOC_CONFIG, str(tmp_path),
+        )
+        assert "`hello`" in result
+
+    def test_schema_dir_override_missing_is_hard_error(self, tmp_path):
+        import pytest
+
+        from selfdoc.strictcli_support import SchemaDiscoveryError
+
+        with pytest.raises(SchemaDiscoveryError) as exc:
+            resolve_table_commands(
+                {"schema-dir": "nope"}, _SELFDOC_CONFIG, str(tmp_path),
+            )
+        assert "schema-dir" in str(exc.value)
+
     def test_via_resolve_content(self):
         result = resolve_content(
-            "table-commands", {"path": "."}, [],
+            "table-commands", {"schema-dir": "."}, [],
             _PROJECT_DIR, config=_SELFDOC_CONFIG,
         )
         assert result is not None
