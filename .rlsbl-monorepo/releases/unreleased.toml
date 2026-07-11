@@ -1,10 +1,14 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, hotfix, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "table-commands discovers the strictcli schema automatically (path attribute removed; schema-dir disambiguates multi-schema repos)"
 # Optional context explaining why these changes were made
-context = ""
+context = """
+Phase 9.5 coordinated breaking release. table-commands no longer accepts a path attribute; it auto-discovers the unique .strictcli/schema.json by walking the project root, with an optional schema-dir attribute to disambiguate repos that carry more than one schema. Directive attribute handling is now strict across gen and check: an unknown or missing attribute is a hard error (exit 1) reporting the file, line, directive, and allowed attributes.
+
+Because table-commands path removal is a breaking directive change, all in-tree docs and the eight external consumer repositories that use table-commands were migrated to the new bare-directive syntax in lockstep before this release, so no consumer is left on a directive that would now hard-error.
+"""
 # Pre-release identifier: alpha, beta, rc, or stable
 # preid = ""
 include = ["npm", "pypi"]
@@ -12,11 +16,15 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, hotfix, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Directive attribute enforcement: unknown or missing attributes are hard errors; attribute keys may contain hyphens"
 # Optional context explaining why these changes were made
-context = ""
+context = """
+Phase 9.5 coordinated breaking release. selfdoc-core gains validate_directive_attrs, which enforces that a directive only uses attributes its catalog spec declares (an unknown or missing attribute is a hard error), and the attribute-key character class now permits hyphens (e.g. schema-dir). This is the mechanism the selfdoc CLI surfaces as strict gen/check behavior, and it underpins the table-commands schema-dir attribute.
+
+The eight external consumer repositories using table-commands were migrated to the new directive syntax in lockstep with this release.
+"""
 # Pre-release identifier: alpha, beta, rc, or stable
 # preid = ""
 include = ["pypi"]
