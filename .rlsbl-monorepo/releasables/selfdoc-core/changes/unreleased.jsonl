@@ -1,1 +1,2 @@
 {"id":"18c140e6422aef1c371bc4daefe641a88c218c34f28c2a2b","commits":["624153f3665ecefc858401840d3b7d55dca05b2e"],"user_facing":false,"packages":["selfdoc-core"]}
+{"id":"18c14102e1a5a4077999c34f17c64227bca0eee8bd8bb6f8","commits":["fd1e9cc73dda47db2a61896d2d4bd44b95ed1842"],"user_facing":true,"description":"**Directive attribute validation.** New `validate_directive_attrs` enforces that directives only use attributes their catalog spec declares.","type":"feature","packages":["selfdoc-core"]}
