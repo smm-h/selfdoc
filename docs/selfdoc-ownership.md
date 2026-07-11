@@ -1,8 +1,7 @@
 ---
 title: selfdoc.ownership
-description: "Description ownership predicate: machine-owned vs handwritten."
+description: "Classifies a generated page's frontmatter description as machine-owned placeholder text that selfdoc may overwrite, or handwritten text gen must preserve."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 29
 ---
