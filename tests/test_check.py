@@ -2820,6 +2820,22 @@ class TestOwnershipPredicate:
         }
         assert is_machine_owned("gen-index.md", fm) is True
 
+    def test_gen_index_legacy_complete_phrase_is_machine_owned(self):
+        """The 'Complete auto-generated API reference index ...' legacy phrase
+        (machine residue from older selfdoc versions) is recognized as owned so
+        the next gen reseeds it.
+        """
+        fm = {
+            "generated": True,
+            "title": "API Reference",
+            "description": (
+                "Complete auto-generated API reference index — browse all "
+                "modules, classes, and functions with their signatures and "
+                "docstrings."
+            ),
+        }
+        assert is_machine_owned("gen-index.md", fm) is True
+
 
 class TestTwoTierCoverage:
     """Tests for two-tier coverage reporting (referenced vs documented)."""

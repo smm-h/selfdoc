@@ -52,6 +52,8 @@ LEGACY_INDEX_DESCRIPTIONS = frozenset({
     "Auto-generated API reference index",
     "Auto-generated API reference index for the selfdoc package — "
     "browse all public modules with their docstrings and source locations.",
+    "Complete auto-generated API reference index — browse all modules, "
+    "classes, and functions with their signatures and docstrings.",
 })
 
 # Current gen-index description formats:
