@@ -159,7 +159,7 @@
   "en/selfdoc-check.md": {
     "content": "2f9f3d8f593a7463bfe8d08fb466db4f5012c75ff2ad70887c8e4167054a49ab",
     "description": "c6e7f7ba5da2dace327f8b2d9fda8cbb926162269e167911d3e0b5ae8bd7ccd5",
-    "source_docstring": "baeb64a8b787d1f4aff0ff7dd0ef56fe9034dd1b23d43e39eeb2f403dddf104d"
+    "source_docstring": "6fe634e1ed7941ff6b699f11ac1bad0df8c6184143bb9cda85bf67cad7b1c374"
   },
   "en/selfdoc-cli.md": {
     "content": "b2bdb2fb67d33fcb4fceac93aa36b3b053091b3ccaef4a13532cb1c22cd6e166",
@@ -239,7 +239,7 @@
   "en/selfdoc-extractors.md": {
     "content": "9ff1b1fa3204acbedaa139cc16a672e05d0412586685e2ba3b433a83b980e6aa",
     "description": "f5f7ee5341943072e3d458ed7f3e03bf6ea9479ef2410ee2dc07deadd32bfadb",
-    "source_docstring": "769058dfbe2b95a642526adc69a0a39e8690ebb88703a1ab9cfd0ddd6148a967"
+    "source_docstring": "7db0e2a8dc0772b28a2f249f2a2a7eacdf8ee0c834305a194443d4ced9835d62"
   },
   "en/selfdoc-gen.md": {
     "content": "64f600d86b631a16b1f2d9a8a04a9ac3fe976bc5d15afcc1a1696311797d4c5b",
@@ -264,7 +264,7 @@
   "en/selfdoc-js-loader.md": {
     "content": "b8a4209d9ef4c0f48272292abdd63cfe473eb34089df58eb92601eebfec1a880",
     "description": "c785bfbb504b627eaa2290a109993edfb6c5d2979222e59ede88751b64fef12d",
-    "source_docstring": "e2299d282c03b14fb1f4ceb9f2381bb248b93d17c81e023e879400bf8c7dcc92"
+    "source_docstring": "979236f08d7407107bbc42bcb9c9a4ca9494bd9bc09b3dda9dcffd381ce41bbf"
   },
   "en/selfdoc-js.md": {
     "content": "d103f235577a9715b4e38eb10235a0b3a6898cb7d6b57b5d2dc49c76617fe831",
@@ -283,7 +283,7 @@
   "en/selfdoc-strictcli_support.md": {
     "content": "5a1b1cc742a215874b39b2b8d4cdf325ba22df68bbac6052922ae5e261ca089a",
     "description": "ba21e34d05da48eae381df63dd5034745cbc1d5ce2d3cccf0b7a509cc89d4196",
-    "source_docstring": "215ed12d02d8937585cd8992228c496d3292ba2333ff33e558abe86d2160c726"
+    "source_docstring": "8770a782870ee4fbf47077e3c2ead4f0b93cf21c3270d4d1153e297da2e926d1"
   },
   "en/selfdoc-tables.md": {
     "content": "5ef415d1103a953a66dd10aed1ff9f0af2cd9848829718a98e1fd5e10c311bac",

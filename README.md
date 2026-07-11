@@ -96,7 +96,6 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 | `callout-warning` | Styled warning callout block |
 | `code-help` | Extract CLI help/usage text and flag definitions |
 | `code-test` | Embed test source code (whole file or specific function) |
-| `list-features` | Module summaries from docstring first lines |
 | `list-glossary` | Definition list from **Term**: Definition lines |
 | `list-modules` | List source modules with file paths and docstring summaries |
 | `list-tree` | File/directory tree listing |
