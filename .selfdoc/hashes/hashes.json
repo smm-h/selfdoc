@@ -282,7 +282,8 @@
   "en/selfdoc-ownership.md": {
     "content": "a5b4d1d8dde078845c7cdbea03faa96c86e4d3a6f980761954fc8e5b4c955188",
     "description": "fc938729b8bbc3cd164e0ef9d51116b218f66554477b1cfb8c811bc81cba4367",
-    "seed_hash": "fc938729b8bbc3cd164e0ef9d51116b218f66554477b1cfb8c811bc81cba4367"
+    "seed_hash": "fc938729b8bbc3cd164e0ef9d51116b218f66554477b1cfb8c811bc81cba4367",
+    "source_docstring": "139f1b85e93eea3325543dab919675ccb74e314ad37bd8e4b3ae7b71cd405363"
   },
   "en/selfdoc-resolver.md": {
     "content": "1905aa30e259346fed00c61729d680b008e9b4ce87948f998580a6351c98a669",
