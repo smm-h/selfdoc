@@ -36,6 +36,27 @@ from selfdoc.staleness import (
     save_hashes,
     update_hashes,
 )
+from selfdoc.ownership import is_machine_owned
+
+
+def _machine_owned_keys(all_docs, dir_path, cli_structure, locale_prefix):
+    """Return the locale-prefixed page keys whose description is machine-owned.
+
+    These pages are exempt from the STALE001/DRIFT001 baseline hold: their
+    description is a machine placeholder (recognized by the ownership predicate
+    via template match or the recorded ``seed_hash``), so holding the baseline
+    would deadlock -- they cannot be hand-fixed.  Hand-described generated
+    pages (text NOT machine-classified) are absent from this set and therefore
+    receive full staleness protection.
+    """
+    stored = load_hashes(dir_path)
+    keys = set()
+    for rp, (fm, _r, _raw, _lc) in all_docs.items():
+        key = f"{locale_prefix}/{rp}" if locale_prefix else rp
+        seed = stored.get(key, {}).get("seed_hash")
+        if is_machine_owned(rp, fm, seed_hash=seed, cli_structure=cli_structure):
+            keys.add(key)
+    return keys
 
 _DIRECTIVE_MARKERS = {":-:", ":<:", ":>:", ":@:", ":=:", ":::"}
 
@@ -493,34 +514,35 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
             page_key = f"cli-{grp['name']}.md"
             _schema_hashes[page_key] = compute_schema_hash(grp)
 
-    # Skeleton pages (generated + machine-seeded) are exempt from the
-    # staleness/drift hold -- they cannot be hand-fixed, so a held baseline
-    # would deadlock. Computed here in the app layer (no upward import into
+    # STALE001/DRIFT001 exemption keys on the ownership predicate (machine-owned
+    # state), not the generated+seeded frontmatter flag.  Machine-owned pages
+    # cannot be hand-fixed, so a held baseline would deadlock -- they are exempt
+    # and their baselines advance.  Hand-described generated pages get full
+    # staleness protection.  Computed in the app layer (no upward import into
     # selfdoc_core) and passed down to update_hashes.
-    _skeleton_keys = {
-        rp for rp, (fm, _r, _raw, _lc) in all_docs.items()
-        if _is_skeleton_page(fm)
-    }
-
     locales = config.get("locales") or []
+    locale_prefix = locales[0]["code"] if locales else ""
+    exempt_keys = _machine_owned_keys(
+        all_docs, dir_path, cli_schema, locale_prefix,
+    )
+
     if locales:
-        locale_code = locales[0]["code"]
+        locale_code = locale_prefix
         prefixed_docs = {f"{locale_code}/{rp}": val for rp, val in all_docs.items()}
         prefixed_directives = {f"{locale_code}/{rp}": v for rp, v in _drift_directives.items()}
         prefixed_schema = {f"{locale_code}/{rp}": v for rp, v in _schema_hashes.items()}
-        prefixed_skeletons = {f"{locale_code}/{rp}" for rp in _skeleton_keys}
         stale_warnings, drift_warnings = update_hashes(
             prefixed_docs, dir_path, dry_run=dry_run,
             page_directives=prefixed_directives,
             schema_hashes=prefixed_schema,
-            skeleton_pages=prefixed_skeletons,
+            skeleton_pages=exempt_keys,
         )
     else:
         stale_warnings, drift_warnings = update_hashes(
             all_docs, dir_path, dry_run=dry_run,
             page_directives=_drift_directives,
             schema_hashes=_schema_hashes,
-            skeleton_pages=_skeleton_keys,
+            skeleton_pages=exempt_keys,
         )
     for rel_path, stale_msg in stale_warnings:
         result.lints.append(LintResult(
@@ -679,16 +701,13 @@ def compute_staleness_state(dir_path=".", config=None):
         prefixed_directives = drift_directives
         prefixed_schema = schema_hashes
 
-    # Skeleton pages are exempt from the staleness/drift hold (see check_docs);
-    # keep the same prefixing so keys line up with prefixed_docs.
-    _skeleton_keys = {
-        rp for rp, (fm, _r, _raw, _lc) in all_docs.items()
-        if _is_skeleton_page(fm)
-    }
-    if locales:
-        skeleton_pages = {f"{locale_code}/{rp}" for rp in _skeleton_keys}
-    else:
-        skeleton_pages = _skeleton_keys
+    # Machine-owned pages are exempt from the staleness/drift hold (see
+    # check_docs); build the exempt set from the ownership predicate, prefixed
+    # to line up with prefixed_docs.
+    locale_prefix = locale_code if locales else ""
+    skeleton_pages = _machine_owned_keys(
+        all_docs, dir_path, cli_schema, locale_prefix,
+    )
 
     current_hashes = compute_current_hashes(
         prefixed_docs, dir_path,

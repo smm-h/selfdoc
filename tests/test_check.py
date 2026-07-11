@@ -2711,67 +2711,114 @@ class TestVersionConsistencyLints:
 # -- Two-tier coverage (skeleton vs documented pages) --
 
 
-from selfdoc.check import _is_skeleton_page, CoverageStats
+from selfdoc.check import CoverageStats
+from selfdoc.ownership import is_machine_owned, description_seed_hash
+
+_MODULE_TEMPLATE = (
+    "API reference for the mylib.config module — "
+    "auto-generated documentation covering public functions, "
+    "classes, and type signatures."
+)
 
 
-class TestIsSkeletonPage:
-    """Tests for _is_skeleton_page classification via seeded marker."""
+class TestOwnershipPredicate:
+    """The STALE001/DRIFT001 exemption anchor: is_machine_owned.
 
-    def test_skeleton_page_generated_and_seeded(self):
-        """A page with generated=True and seeded=True is skeleton."""
+    Rewritten from the old frontmatter-only _is_skeleton_page tests: ownership
+    is now decided by the description TEXT (template match or recorded
+    seed_hash), not the generated+seeded frontmatter flag.  The critical
+    property is the INVERSE -- handwritten text is NEVER machine-owned.
+    """
+
+    def test_module_template_is_machine_owned(self):
+        """A generated module page carrying the current template is owned."""
         fm = {
             "generated": True,
             "seeded": True,
-            "description": "Some auto-generated description.",
+            "title": "mylib.config",
+            "description": _MODULE_TEMPLATE,
         }
-        assert _is_skeleton_page(fm) is True
+        assert is_machine_owned("mylib-config.md", fm) is True
 
-    def test_not_skeleton_when_generated_false(self):
-        """A non-generated page is not skeleton even with seeded=True."""
+    def test_historical_module_template_is_machine_owned(self):
+        """The historical module template is still recognized as machine text."""
+        fm = {
+            "generated": True,
+            "title": "mylib.config",
+            "description": "Documentation for mylib.config",
+        }
+        assert is_machine_owned("mylib-config.md", fm) is True
+
+    def test_not_owned_when_generated_false(self):
+        """A non-generated page is never machine-owned, template text or not."""
         fm = {
             "generated": False,
             "seeded": True,
-            "description": "Some description.",
+            "title": "mylib.config",
+            "description": _MODULE_TEMPLATE,
         }
-        assert _is_skeleton_page(fm) is False
+        assert is_machine_owned("mylib-config.md", fm) is False
 
-    def test_not_skeleton_when_generated_missing(self):
-        """A page without generated key is not skeleton."""
+    def test_not_owned_when_generated_missing(self):
+        """A page without the generated key is never machine-owned."""
         fm = {
+            "title": "mylib.config",
             "description": "Some custom description that is quite detailed.",
         }
-        assert _is_skeleton_page(fm) is False
+        assert is_machine_owned("mylib-config.md", fm) is False
 
-    def test_not_skeleton_when_seeded_missing(self):
-        """A generated page without seeded marker is NOT skeleton."""
+    def test_handwritten_text_never_owned_even_when_seeded_true(self):
+        """The critical inverse: handwritten text on a generated+seeded page
+        with NO matching seed_hash is NOT machine-owned (the trap is dead).
+        """
         fm = {
             "generated": True,
-            "description": "Configuration loader with validation and defaults.",
+            "seeded": True,
+            "title": "mylib.config",
+            "description": "A carefully hand-authored account of the module.",
         }
-        assert _is_skeleton_page(fm) is False
+        assert is_machine_owned("mylib-config.md", fm) is False
 
-    def test_not_skeleton_when_seeded_false(self):
-        """A generated page with seeded=False is NOT skeleton."""
+    def test_seed_hash_match_is_machine_owned(self):
+        """Text matching the recorded seed_hash is machine-owned (covers
+        docstring-seeded pages whose text is not a static template).
+        """
+        desc = "A one-line docstring summary that was machine-seeded."
         fm = {
             "generated": True,
-            "seeded": False,
-            "description": "Some description.",
+            "seeded": True,
+            "title": "mylib.config",
+            "description": desc,
         }
-        assert _is_skeleton_page(fm) is False
+        assert is_machine_owned(
+            "mylib-config.md", fm, seed_hash=description_seed_hash(desc),
+        ) is True
 
-    def test_not_skeleton_when_generated_is_string_true(self):
+    def test_not_owned_when_generated_is_string_true(self):
         """generated must be boolean True, not string 'true'."""
         fm = {
             "generated": "true",
             "seeded": True,
-            "description": "Some description.",
+            "title": "mylib.config",
+            "description": _MODULE_TEMPLATE,
         }
-        assert _is_skeleton_page(fm) is False
+        assert is_machine_owned("mylib-config.md", fm) is False
 
-    def test_not_skeleton_when_description_missing(self):
-        """A generated+seeded page with no description is still skeleton."""
+    def test_generated_seeded_no_description_is_owned(self):
+        """A generated+seeded page with no description text is owned (there is
+        nothing to classify -- fall back to the frontmatter skeleton signal).
+        """
         fm = {"generated": True, "seeded": True}
-        assert _is_skeleton_page(fm) is True
+        assert is_machine_owned("mylib-config.md", fm) is True
+
+    def test_gen_index_format_is_machine_owned(self):
+        """A gen-index page carrying the current index format is owned."""
+        fm = {
+            "generated": True,
+            "title": "API Reference",
+            "description": "API reference index for mylib covering 4 modules",
+        }
+        assert is_machine_owned("gen-index.md", fm) is True
 
 
 class TestTwoTierCoverage:
@@ -4339,11 +4386,15 @@ def _make_dual_drift_project(tmp_path, doc1, doc2):
             "# My Library\n\n"
             ':-: ref path="mylib"\n'
         )
-    # Skeleton page: generated + seeded.
+    # Machine-owned page: generated, description is the current module template
+    # (recognized by the ownership predicate without a recorded seed_hash).
     with open(os.path.join(docs_dir, "mylib-other.md"), "w", encoding="utf-8") as f:
         f.write(
             "---\n"
-            "description: Seeded other description\n"
+            "title: mylib.other\n"
+            'description: "API reference for the mylib.other module — '
+            "auto-generated documentation covering public functions, "
+            'classes, and type signatures."\n'
             "generated: true\n"
             "seeded: true\n"
             "---\n"
