@@ -16,6 +16,7 @@ from datetime import datetime
 
 from selfdoc_core import require_post_provider
 from selfdoc_core.config import load_config, ConfigError
+from selfdoc_core.prose import first_paragraph
 from selfdoc_core.context import SearchEntry
 from selfdoc_core.docs import resolve_all_docs
 from selfdoc_core.utils import detect_project_version
@@ -804,15 +805,31 @@ def _strip_html(text):
     return re.sub(r"<[^>]+>", "", text)
 
 
-def _first_sentence(text):
-    """Extract the first sentence from text."""
-    text = text.strip()
-    # Find the first sentence-ending punctuation
-    match = re.search(r"[.!?]", text)
-    if match:
-        return text[:match.end()]
-    # No punctuation found -- return first 100 chars
-    return text[:100]
+def _first_content_paragraph(content):
+    """Return the first prose paragraph of markdown *content* as one line.
+
+    Skips leading headings, blank lines, and fenced code blocks, then
+    returns the whole first paragraph via :func:`first_paragraph` (soft-
+    wrapped physical lines joined). llms.txt and Atom-feed summaries carry
+    the complete first paragraph -- no character cap, no ellipsis.
+    """
+    prose_lines = []
+    in_fence = False
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if stripped.startswith("#"):
+            continue
+        if not stripped:
+            if prose_lines:
+                break
+            continue
+        prose_lines.append(stripped)
+    return first_paragraph("\n".join(prose_lines))
 
 
 def _generate_llms_txt(project_name, markdown_files, url_builder):
@@ -842,13 +859,8 @@ def _generate_llms_txt(project_name, markdown_files, url_builder):
         title = _extract_title(content, md_path.replace(".md", ""))
         url_path = _html_path_to_url(_md_to_html_path(md_path))
 
-        # Get first non-heading, non-empty line as summary
-        first = ""
-        for line in content.split("\n"):
-            line = line.strip()
-            if line and not line.startswith("#") and not line.startswith("```"):
-                first = _first_sentence(line)
-                break
+        # Summary is the complete first paragraph of the page.
+        first = _first_content_paragraph(content)
 
         url = url_builder.page_url(url_path)
         lines.append(f"- [{title}]({url}): {first}")
@@ -936,13 +948,8 @@ def _generate_atom_feed(
         if not title:
             title = _extract_title(content, md_path.replace(".md", ""))
 
-        # Get first sentence for summary
-        summary = ""
-        for line in content.split("\n"):
-            line = line.strip()
-            if line and not line.startswith("#") and not line.startswith("```"):
-                summary = _first_sentence(line)
-                break
+        # Summary is the complete first paragraph of the page.
+        summary = _first_content_paragraph(content)
 
         # Posts use their publication date (frontmatter date field);
         # docs use the modification date from page_dates.
