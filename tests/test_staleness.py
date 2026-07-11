@@ -54,6 +54,55 @@ def test_content_hash_no_frontmatter():
     assert len(h) == 64
 
 
+def test_content_hash_ignores_directive_attr_rename():
+    """A pure directive attribute rename does not change the content hash.
+
+    Renaming ``path="old"`` to ``path="new"`` on a directive marker line is a
+    mechanical change that produces identical resolved output for the reader,
+    so it must not trip staleness.  Attribute VALUES on ``:-:``/``:<:``/``:@:``
+    marker lines are canonicalized (blanked) before hashing.
+    """
+    before = '# Page\n\nSome prose.\n\n:-: ref path="mylib.old" lang="python"\n'
+    after = '# Page\n\nSome prose.\n\n:-: ref path="mylib.new" lang="python"\n'
+    assert compute_content_hash(before) == compute_content_hash(after)
+
+
+def test_content_hash_ignores_block_attr_line_rename():
+    """Attribute renames on :<: / :@: marker lines are also canonicalized."""
+    before = (
+        "# Page\n\n:<: table\n:@: path=\"data/old.json\"\n:>:\n"
+    )
+    after = (
+        "# Page\n\n:<: table\n:@: path=\"data/new.json\"\n:>:\n"
+    )
+    assert compute_content_hash(before) == compute_content_hash(after)
+
+
+def test_content_hash_prose_change_still_detected():
+    """A prose change still changes the hash even alongside a directive line."""
+    before = '# Page\n\nOriginal prose.\n\n:-: ref path="mylib.mod"\n'
+    after = '# Page\n\nRewritten prose.\n\n:-: ref path="mylib.mod"\n'
+    assert compute_content_hash(before) != compute_content_hash(after)
+
+
+def test_content_hash_directive_name_change_detected():
+    """Changing the directive NAME (not just an attr value) changes the hash."""
+    before = '# Page\n\n:-: ref path="mylib.mod"\n'
+    after = '# Page\n\n:-: include path="mylib.mod"\n'
+    assert compute_content_hash(before) != compute_content_hash(after)
+
+
+def test_content_hash_prose_key_value_not_canonicalized():
+    """A ``key="value"`` pair in PROSE (not a marker line) is still hashed.
+
+    Canonicalization only applies to directive marker lines, so editing a
+    quoted value in ordinary prose is a real content change.
+    """
+    before = '# Page\n\nSet config foo="bar" in your file.\n'
+    after = '# Page\n\nSet config foo="baz" in your file.\n'
+    assert compute_content_hash(before) != compute_content_hash(after)
+
+
 # -- compute_description_hash --
 
 
@@ -87,7 +136,7 @@ def test_load_hashes_existing_file(tmp_path):
     hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
     os.makedirs(hashes_dir)
     data = {
-        "_hash_version": 2,
+        "_hash_version": 3,
         "index.md": {
             "content": "abc123",
             "description": "def456",
@@ -1063,11 +1112,16 @@ def test_baseline_migration_discards_old_format(tmp_path):
     assert result == {}, "Old-format hashes should be discarded (empty dict)"
 
 
-def test_baseline_migration_keeps_new_format(tmp_path):
-    """New-format hashes.json (with _hash_version=2) is loaded normally."""
+def test_baseline_migration_discards_v2_format(tmp_path):
+    """A v2 store is discarded on load (v2->v3 migration).
+
+    v2 files predate the per-page ``seed_hash`` field and the canonicalized
+    content hash, so nothing in them is reusable -- they are wholesale
+    discarded to re-baseline, exactly as v1 stores were at the v1->v2 bump.
+    """
     hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
     os.makedirs(hashes_dir)
-    new_data = {
+    v2_data = {
         "_hash_version": 2,
         "page.md": {
             "content": "hash_of_raw_body",
@@ -1075,18 +1129,64 @@ def test_baseline_migration_keeps_new_format(tmp_path):
         },
     }
     with open(os.path.join(hashes_dir, "hashes.json"), "w") as f:
-        json.dump(new_data, f)
+        json.dump(v2_data, f)
 
     result = load_hashes(str(tmp_path))
-    assert result == new_data
+    assert result == {}, "v2 store should be discarded (empty dict)"
+
+
+def test_baseline_migration_keeps_v3_format(tmp_path):
+    """A current-format store (_hash_version=3) is loaded normally."""
+    hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
+    os.makedirs(hashes_dir)
+    v3_data = {
+        "_hash_version": 3,
+        "page.md": {
+            "content": "hash_of_raw_body",
+            "description": "desc_hash",
+            "seed_hash": "seed_digest",
+        },
+    }
+    with open(os.path.join(hashes_dir, "hashes.json"), "w") as f:
+        json.dump(v3_data, f)
+
+    result = load_hashes(str(tmp_path))
+    assert result == v3_data
 
 
 def test_save_hashes_includes_hash_version(tmp_path):
-    """save_hashes always writes _hash_version=2 to the output."""
+    """save_hashes always writes the current _hash_version to the output."""
     hashes = {"page.md": {"content": "aaa", "description": "bbb"}}
     save_hashes(hashes, str(tmp_path))
 
     hashes_path = os.path.join(tmp_path, ".selfdoc", "hashes", "hashes.json")
     with open(hashes_path, "r") as f:
         data = json.load(f)
-    assert data["_hash_version"] == 2
+    assert data["_hash_version"] == 3
+
+
+def test_update_hashes_preserves_seed_hash(tmp_path):
+    """update_hashes merges advancing pages, preserving the gen-owned seed_hash.
+
+    gen writes a per-page ``seed_hash``; a later check/build pass that advances
+    the baseline must keep it rather than overwriting the whole page entry.
+    """
+    hashes_dir = os.path.join(tmp_path, ".selfdoc", "hashes")
+    os.makedirs(hashes_dir)
+    seeded = {
+        "_hash_version": 3,
+        "page.md": {"seed_hash": "the_seed_digest"},
+    }
+    with open(os.path.join(hashes_dir, "hashes.json"), "w") as f:
+        json.dump(seeded, f)
+
+    all_docs = _make_all_docs_full([
+        ("page.md", "A page about things", "# Page\n\nProse.\n",
+         "# Page\n\nProse.\n"),
+    ])
+    update_hashes(all_docs, str(tmp_path), dry_run=False, skeleton_pages=set())
+
+    result = load_hashes(str(tmp_path))
+    entry = result["page.md"]
+    assert entry["seed_hash"] == "the_seed_digest", "seed_hash must survive"
+    assert "content" in entry and "description" in entry
