@@ -1162,6 +1162,58 @@ def test_seo010_normal_length_no_trigger(lint_project):
     assert len(seo010) == 0
 
 
+# -- SEO009 auto-extract granularity shift (Phase 7.2) --
+#
+# When there is no frontmatter description, the effective description used
+# by SEO009 is now the complete first SENTENCE of the whole paragraph
+# (soft-wrapped lines joined) -- not just the first physical line.
+
+
+def test_seo009_auto_uses_full_first_sentence_not_first_line(lint_project):
+    """SEO009: a wrapped first sentence over 120 chars does NOT trigger.
+
+    The first physical line is short, but the complete first sentence spans
+    two wrapped lines and exceeds 120 chars, so no SEO009 fires. Under the
+    old first-physical-line granularity this would have fired.
+    """
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    body = (
+        "This opening sentence has been deliberately wrapped across two\n"
+        "separate physical lines so its complete length exceeds the limit."
+    )
+    first_line = body.split("\n")[0]
+    assert len(first_line) < 120  # first physical line is short
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(f"# Title\n\n{body}\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo009 = [r for r in results if r.code == "SEO009"]
+
+    assert len(seo009) == 0
+
+
+def test_seo009_auto_short_first_sentence_fires(lint_project):
+    """SEO009: a short auto-extracted first sentence still triggers."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # First sentence is short; the rest of the paragraph is dropped by the
+    # unit-picker, so the effective description stays under 120 chars.
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Title\n\nThis is short. "
+            "Then a lot more text follows to pad out the paragraph nicely.\n"
+        )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo009 = [r for r in results if r.code == "SEO009"]
+
+    assert len(seo009) == 1
+    assert seo009[0].severity == "warning"
+
+
 # -- SEO011: Empty heading section --
 
 

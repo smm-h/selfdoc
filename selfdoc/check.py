@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import re
 
 from selfdoc.build import _extract_version_content
+from selfdoc_core.prose import first_sentence
 from selfdoc.docs import resolve_all_docs
 from selfdoc.utils import parse_frontmatter
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
@@ -1117,19 +1118,17 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
             effective_desc = str(fm_description)
         else:
             # Auto-extract from first Paragraph token (skipping
-            # initial Heading, BlankLine, CodeBlock tokens)
+            # initial Heading, BlankLine, CodeBlock tokens). The effective
+            # description is the complete first sentence of the whole
+            # paragraph (soft-wrapped lines joined) -- the same unit the
+            # build emits into the meta tag -- not just the first physical
+            # line. No character cap here; SEO009/010 remain advisory.
             effective_desc = ""
             for tok in tokens:
                 if isinstance(tok, (Heading, BlankLine, CodeBlock)):
                     continue
                 if isinstance(tok, Paragraph):
-                    first_line = tok.lines[0].strip() if tok.lines else ""
-                    if first_line:
-                        match = re.search(r"[.!?]", first_line)
-                        if match:
-                            effective_desc = first_line[:match.end()]
-                        else:
-                            effective_desc = first_line[:155]
+                    effective_desc = first_sentence("\n".join(tok.lines))
                     break
                 # Stop at any other content block type
                 break
