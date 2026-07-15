@@ -156,6 +156,21 @@ def generate_manifest(
         "posts": manifest.posts,
         "last_gen": manifest.last_gen,
     }
+
+    # Skip write when only last_gen changed (idempotency: avoids dirtying
+    # the working tree on every selfdoc gen when content is unchanged).
+    if os.path.isfile(manifest_path):
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            # Compare everything except last_gen
+            new_content = {k: v for k, v in data.items() if k != "last_gen"}
+            old_content = {k: v for k, v in existing.items() if k != "last_gen"}
+            if new_content == old_content:
+                return manifest
+        except (OSError, json.JSONDecodeError, ValueError):
+            pass  # Unreadable or corrupt -- rewrite
+
     atomic_write(manifest_path, json.dumps(data, indent=2) + "\n")
 
     return manifest

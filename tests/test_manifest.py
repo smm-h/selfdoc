@@ -142,6 +142,35 @@ class TestGenerateManifest:
         assert isinstance(data["pages"], list)
         assert isinstance(data["posts"], list)
 
+    def test_generate_manifest_idempotent_skips_rewrite(self, tmp_path, base_config, base_pages_data):
+        """Second call with same content does not rewrite the file (last_gen unchanged)."""
+        generate_manifest(base_config, base_pages_data, dir_path=str(tmp_path))
+        manifest_path = tmp_path / ".selfdoc" / "manifest.json"
+        first_content = manifest_path.read_text()
+
+        # Second call with identical config/pages should NOT rewrite
+        generate_manifest(base_config, base_pages_data, dir_path=str(tmp_path))
+        second_content = manifest_path.read_text()
+
+        # File content is identical (last_gen did not change because the
+        # write was skipped)
+        assert first_content == second_content
+
+    def test_generate_manifest_rewrites_on_content_change(self, tmp_path, base_config, base_pages_data):
+        """File is rewritten when content (not just last_gen) changes."""
+        generate_manifest(base_config, base_pages_data, dir_path=str(tmp_path))
+        manifest_path = tmp_path / ".selfdoc" / "manifest.json"
+        first_data = json.loads(manifest_path.read_text())
+
+        # Add a new page
+        base_pages_data["new.md"] = ({"title": "New"}, "resolved", "# New\nBody", 3)
+        generate_manifest(base_config, base_pages_data, dir_path=str(tmp_path))
+        second_data = json.loads(manifest_path.read_text())
+
+        assert len(second_data["pages"]) == len(first_data["pages"]) + 1
+        # last_gen should be updated since content changed
+        assert second_data["last_gen"] != first_data["last_gen"]
+
 
 class TestLoadManifest:
     """Tests for load_manifest()."""
