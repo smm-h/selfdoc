@@ -579,7 +579,9 @@ def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
     # Coverage threshold check (uses documented count, not referenced)
     coverage_below_threshold = False
     if result.coverage is not None and result.coverage.total_public > 0:
-        if result.coverage.documented < result.coverage.total_public:
+        threshold = config.get("coverage_threshold", 1.0) if config else 1.0
+        ratio = result.coverage.documented / result.coverage.total_public
+        if ratio < threshold:
             coverage_below_threshold = True
 
     exit_code = 1 if (
@@ -629,9 +631,12 @@ def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
 
     if coverage_below_threshold:
         cov = result.coverage
+        threshold = config.get("coverage_threshold", 1.0) if config else 1.0
+        pct = cov.documented * 100 / cov.total_public
+        threshold_pct = threshold * 100
         print(
-            f"Coverage: {cov.documented}/{cov.total_public} symbols documented."
-            " All public symbols must be documented."
+            f"Coverage: {cov.documented}/{cov.total_public} symbols documented"
+            f" ({pct:.0f}%). Threshold is {threshold_pct:.0f}%."
         )
 
     if exit_code != 0:

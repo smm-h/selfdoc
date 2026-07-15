@@ -2230,6 +2230,109 @@ def test_coverage_zero_symbols_passes(tmp_path):
     # (no division by zero, check passes)
 
 
+# -- Configurable coverage_threshold --
+
+
+def test_coverage_threshold_met_passes(tmp_path):
+    """75% documented passes when threshold is 0.7."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "coverage_threshold": 0.7,
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""My lib."""\n'
+            "def greet(): pass\n"
+            "def farewell(): pass\n"
+            "def wave(): pass\n"
+        )
+    with open(os.path.join(lib_dir, "extra.py"), "w", encoding="utf-8") as f:
+        f.write("def bonus(): pass\n")
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="mylib"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    assert result.coverage.documented == 3
+    assert result.coverage.total_public == 4
+
+    # 3/4 = 0.75 >= 0.7 threshold -> passes
+    ratio = result.coverage.documented / result.coverage.total_public
+    assert ratio >= config["coverage_threshold"]
+
+
+def test_coverage_threshold_not_met_fails(tmp_path):
+    """33% documented fails when threshold is 0.5."""
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "coverage_threshold": 0.5,
+        "lint_ignore": ["SEO006", "SEO009", "SEO013"],
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    lib_dir = os.path.join(tmp_path, "mylib")
+    os.makedirs(lib_dir)
+    with open(os.path.join(lib_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(
+            '"""Lib."""\n'
+            "def alpha(): pass\n"
+        )
+    with open(os.path.join(lib_dir, "other.py"), "w", encoding="utf-8") as f:
+        f.write(
+            "def beta(): pass\n"
+            "def gamma(): pass\n"
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write('# API\n\n:-: ref path="mylib"\n')
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    assert result.coverage.documented == 1
+    assert result.coverage.total_public == 3
+
+    # 1/3 = 0.33 < 0.5 threshold -> fails
+    ratio = result.coverage.documented / result.coverage.total_public
+    assert ratio < config["coverage_threshold"]
+
+
+def test_coverage_threshold_default_requires_100(tmp_path):
+    """Default threshold (1.0) requires 100% -- backward compatibility."""
+    from selfdoc.config import load_config
+
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "mylib/", "language": "python"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+    }
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    loaded = load_config(str(tmp_path))
+    assert loaded["coverage_threshold"] == 1.0
+
+
 # -- Exit code severity --
 
 

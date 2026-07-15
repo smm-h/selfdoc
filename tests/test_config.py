@@ -1195,3 +1195,93 @@ def test_version_non_string(config_dir):
         load_config(str(config_dir))
 
 
+# -- coverage_threshold --
+
+
+def test_coverage_threshold_default(config_dir):
+    """coverage_threshold defaults to 1.0 when omitted."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["coverage_threshold"] == 1.0
+
+
+def test_coverage_threshold_valid_float(config_dir):
+    """coverage_threshold accepts a float between 0.0 and 1.0."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": 0.7,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["coverage_threshold"] == 0.7
+
+
+def test_coverage_threshold_accepts_int_zero(config_dir):
+    """coverage_threshold accepts integer 0 (coerced to 0.0)."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": 0,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["coverage_threshold"] == 0.0
+
+
+def test_coverage_threshold_accepts_int_one(config_dir):
+    """coverage_threshold accepts integer 1 (coerced to 1.0)."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": 1,
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["coverage_threshold"] == 1.0
+
+
+def test_coverage_threshold_too_high(config_dir):
+    """coverage_threshold > 1.0 raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": 1.5,
+    })
+    with pytest.raises(ConfigError, match="must be a number between"):
+        load_config(str(config_dir))
+
+
+def test_coverage_threshold_negative(config_dir):
+    """coverage_threshold < 0.0 raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": -0.1,
+    })
+    with pytest.raises(ConfigError, match="must be a number between"):
+        load_config(str(config_dir))
+
+
+def test_coverage_threshold_not_a_number(config_dir):
+    """coverage_threshold as string raises ConfigError."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": "high",
+    })
+    with pytest.raises(ConfigError, match="must be a number"):
+        load_config(str(config_dir))
+
+
+def test_coverage_threshold_bool_rejected(config_dir):
+    """coverage_threshold as bool raises ConfigError (bool is not a number)."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "coverage_threshold": True,
+    })
+    with pytest.raises(ConfigError, match="must be a number"):
+        load_config(str(config_dir))
+
+

@@ -15,6 +15,7 @@ class FieldType(Enum):
     STR = "str"
     BOOL = "bool"
     INT = "int"
+    FLOAT = "float"
     DICT = "dict"
     LIST = "list"
 
@@ -47,6 +48,7 @@ VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch", "pagefind")
 _S = FieldType.STR
 _B = FieldType.BOOL
 _I = FieldType.INT
+_F = FieldType.FLOAT
 _D = FieldType.DICT
 _L = FieldType.LIST
 
@@ -201,6 +203,19 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         type=_B,
         default=True,
         description="Auto-generate a glossary page from dfn terms.",
+    ),
+    # --- optional float field ---
+    FieldSpec(
+        name="coverage_threshold",
+        type=_F,
+        default=1.0,
+        min_val=0.0,
+        max_val=1.0,
+        description=(
+            "Minimum fraction of public symbols that must be documented "
+            "for selfdoc check to pass (0.0-1.0). Default 1.0 requires "
+            "100% coverage."
+        ),
     ),
     # --- optional int field ---
     FieldSpec(
@@ -769,6 +784,25 @@ def _validate_field(spec: FieldSpec, value, path: str) -> Any:
         if spec.max_val is not None and value > spec.max_val:
             raise ConfigError(
                 f"'{path}' must be an integer between {spec.min_val} and {spec.max_val}"
+            )
+        return value
+
+    if spec.type == FieldType.FLOAT:
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            raise ConfigError(
+                f"'{path}' must be a number"
+                + (f" between {spec.min_val} and {spec.max_val}"
+                   if spec.min_val is not None and spec.max_val is not None
+                   else "")
+            )
+        value = float(value)
+        if spec.min_val is not None and value < spec.min_val:
+            raise ConfigError(
+                f"'{path}' must be a number between {spec.min_val} and {spec.max_val}"
+            )
+        if spec.max_val is not None and value > spec.max_val:
+            raise ConfigError(
+                f"'{path}' must be a number between {spec.min_val} and {spec.max_val}"
             )
         return value
 
