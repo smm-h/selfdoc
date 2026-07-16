@@ -3,7 +3,7 @@
     "npm",
     "pypi"
   ],
-  "private": false,
+  "publish_mode": "ci",
   "pipelines": {
     "npm": {
       "type": "npm",
