@@ -200,6 +200,7 @@ Custom directives take priority over built-in names.
 | `page_nav` | no | Show previous/next navigation links between pages. |
 | `page_progress` | no | Show a reading progress bar at the top of each page. |
 | `glossary` | no | Auto-generate a glossary page from dfn terms. |
+| `coverage_threshold` | no | Minimum fraction of public symbols that must be documented for selfdoc check to pass (0.0-1.0). Default 1.0 requires 100% coverage. |
 | `feed_max_entries` | no | Maximum number of entries in the Atom feed, sorted by most recent. |
 | `lint_ignore` | no | List of lint rule IDs to suppress (e.g. 'SEO007', 'STALE001'). |
 | `root_files` | no | List of underscore-prefixed template paths in docs/ for root file generation. |
@@ -233,20 +234,12 @@ Custom directives take priority over built-in names.
 | `check` | Check documentation coverage, directive resolution, and lint rules |
 | `gen` | Auto-generate documentation pages from project structure |
 | `gen-data` | Generate data files by running sandboxed scripts via bwrap |
-| **post** | Manage blog posts and chronological content for the documentation site |
-| `post new` | Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists. |
-| `post list` | List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft. |
-| `post generate` | Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry. |
-| `post publish` | Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements. |
-| **assembly** | Manage the unified multi-project documentation assembly and deployment |
-| `assembly init` | Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication. |
-| `assembly push` | Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA. |
-| `assembly status` | Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress. |
-| `assembly rebuild` | Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild. |
-| `assembly redirects` | Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout. |
-| `assembly generate-shared` | Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory. |
 | **baseline** | Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check |
-| `baseline accept` | Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description. |
+| `baseline accept` | Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. |
+
+## Blog and multi-project assembly
+
+Blog posts and the unified multi-project documentation assembly live in **selfblog**, a sibling package built on `selfdoc-core`. Install it with `pip install selfblog`, then use `selfblog post ...` to manage posts and `selfblog assembly ...` to manage the assembly.
 
 ## Deploy
 
