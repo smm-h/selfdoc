@@ -38,25 +38,25 @@ def _setup_project(tmp_path, config_overrides=None):
 def test_init_no_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_init()
+        _cmd_assembly_init(None)
 
 
 def test_push_no_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_push()
+        _cmd_assembly_push(None)
 
 
 def test_status_no_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_status()
+        _cmd_assembly_status(None)
 
 
 def test_rebuild_no_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_rebuild()
+        _cmd_assembly_rebuild(None)
 
 
 # -- Config present but no assembly.repo -------------------------------------
@@ -66,7 +66,7 @@ def test_init_no_assembly_repo(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_init()
+        _cmd_assembly_init(None)
 
 
 def test_push_no_assembly_repo(tmp_path, monkeypatch):
@@ -74,21 +74,21 @@ def test_push_no_assembly_repo(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_push()
+        _cmd_assembly_push(None)
 
 
 def test_status_no_assembly_repo(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_status()
+        _cmd_assembly_status(None)
 
 
 def test_rebuild_no_assembly_repo(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
-        _cmd_assembly_rebuild()
+        _cmd_assembly_rebuild(None)
 
 
 # -- Push uses topology.assembly fallback ------------------------------------
@@ -116,7 +116,7 @@ def test_push_uses_topology_assembly_fallback(tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    _cmd_assembly_push()
+    _cmd_assembly_push(None)
     assert len(calls) >= 3
 
 
@@ -132,7 +132,7 @@ def test_status_no_runs(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    _cmd_assembly_status()
+    _cmd_assembly_status(None)
     captured = capsys.readouterr()
     assert "No recent assembly builds found." in captured.out
 
@@ -155,7 +155,7 @@ def test_rebuild_empty_projects(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    _cmd_assembly_rebuild()
+    _cmd_assembly_rebuild(None)
     captured = capsys.readouterr()
     assert "No projects configured" in captured.out
 

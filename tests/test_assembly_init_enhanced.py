@@ -44,7 +44,7 @@ def test_cf_pages_created_when_env_vars_set(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     # Find the wrangler call
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]
@@ -72,7 +72,7 @@ def test_cf_pages_uses_alternative_env_vars(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]
     assert len(wrangler_calls) == 1
@@ -100,7 +100,7 @@ def test_cf_pages_failure_prints_warning(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     captured = capsys.readouterr()
     assert "CF Pages project creation failed" in captured.err
@@ -120,7 +120,7 @@ def test_cf_pages_skipped_when_env_vars_missing(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]
     assert len(wrangler_calls) == 0
@@ -142,7 +142,7 @@ def test_pages_project_derived_from_repo_name(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]
     assert len(wrangler_calls) == 1
@@ -163,7 +163,7 @@ def test_secrets_set_when_env_vars_present(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     secret_calls = [c for c in calls if "secret" in str(c) and "set" in str(c)]
     assert len(secret_calls) == 2
@@ -198,7 +198,7 @@ def test_secrets_not_set_when_env_vars_missing(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     secret_calls = [c for c in calls if "secret" in str(c)]
     assert len(secret_calls) == 0
@@ -223,7 +223,7 @@ def test_secret_failure_prints_warning(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     captured = capsys.readouterr()
     assert "Failed to set CF_ACCOUNT_ID secret" in captured.err
@@ -243,7 +243,7 @@ def test_only_account_id_set(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     # No wrangler call (both env vars needed for CF Pages)
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]
@@ -268,7 +268,7 @@ def test_only_token_set(tmp_path, monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(subprocess, "run", _make_fake_run(calls))
 
-    _cmd_assembly_init()
+    _cmd_assembly_init(None)
 
     # No wrangler call
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]

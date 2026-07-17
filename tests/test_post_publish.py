@@ -61,7 +61,7 @@ def test_no_non_draft_posts_info_message(tmp_path, monkeypatch, capsys):
     _create_post(tmp_path, draft=True)
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     captured = capsys.readouterr()
     assert "No non-draft posts to publish." in captured.out
@@ -72,7 +72,7 @@ def test_no_posts_at_all_info_message(tmp_path, monkeypatch, capsys):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     captured = capsys.readouterr()
     assert "No non-draft posts to publish." in captured.out
@@ -90,7 +90,7 @@ def test_no_assembly_repo_errors(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_publish()
+        _cmd_post_publish(None)
 
     captured = capsys.readouterr()
     assert "assembly.repo" in captured.err
@@ -105,7 +105,7 @@ def test_no_topology_slug_errors(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_publish()
+        _cmd_post_publish(None)
 
     captured = capsys.readouterr()
     assert "topology.slug" in captured.err
@@ -137,7 +137,7 @@ def test_no_git_status_check(tmp_path, monkeypatch, capsys):
     )
     monkeypatch.setattr(subprocess, "run", tracking_run)
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     # Verify no git status or rev-parse calls were made
     for call in subprocess_calls:
@@ -170,7 +170,7 @@ def test_no_push_status_check(tmp_path, monkeypatch, capsys):
     )
     monkeypatch.setattr(subprocess, "run", tracking_run)
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     for call in subprocess_calls:
         cmd_str = " ".join(str(c) for c in call)
@@ -208,7 +208,7 @@ def test_calls_build_posts_only(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     assert len(build_calls) == 1
     assert build_calls[0]["dir_path"] == "."
@@ -252,7 +252,7 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     assert len(push_calls) == 1
     push = push_calls[0]
@@ -295,7 +295,7 @@ def test_dispatches_shared_only(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     assert len(dispatched) == 1
     payload = json.loads(dispatched[0]["input"])
@@ -330,7 +330,7 @@ def test_dispatch_failure_errors(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     with pytest.raises(SystemExit):
-        _cmd_post_publish()
+        _cmd_post_publish(None)
 
     captured = capsys.readouterr()
     assert "Failed to dispatch" in captured.err
@@ -355,7 +355,7 @@ def test_success_message(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     captured = capsys.readouterr()
     assert "Published 1 post(s) to assembly" in captured.out
@@ -387,7 +387,7 @@ def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     assert push_calls[0] == "org/my-assembly"
 
@@ -414,7 +414,7 @@ def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     assert push_calls[0] == "org/topo-assembly"
 
@@ -452,7 +452,7 @@ def test_posts_repo_push_when_configured(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     # Two push calls: one for assembly, one for posts repo
     assert len(push_calls) == 2
@@ -480,7 +480,7 @@ def test_no_posts_repo_only_assembly_push(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     # Only one push call: for the assembly repo
     assert len(push_calls) == 1
@@ -518,7 +518,7 @@ def test_posts_repo_pushes_resolved_markdown(tmp_path, monkeypatch, capsys):
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
     )
 
-    _cmd_post_publish()
+    _cmd_post_publish(None)
 
     # Find the posts repo push
     posts_push = [c for c in push_calls if c["repo"] == "owner/posts-archive"]

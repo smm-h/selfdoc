@@ -40,13 +40,13 @@ def _moved_to_selfblog(command):
 
 @post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.")
 @strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
-def _cmd_post_new(title=""):
+def _cmd_post_new(ctx, title=""):
     """Create a new blog post file in the posts directory."""
     _moved_to_selfblog("post new")
 
 
 @post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.")
-def _cmd_post_list():
+def _cmd_post_list(ctx):
     """List all discovered blog posts."""
     _moved_to_selfblog("post list")
 
@@ -65,6 +65,7 @@ def _cmd_post_list():
 @strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL such as PyPI or npm page, can be specified multiple times")
 @strictcli.flag("dry-run", type=bool, default=False, help="Print the generated post content to stdout without writing any files to disk")
 def _cmd_post_generate(
+    ctx,
     from_release=False,
     version="",
     prev_version="",
@@ -83,7 +84,7 @@ def _cmd_post_generate(
 
 
 @post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.")
-def _cmd_post_publish():
+def _cmd_post_publish(ctx):
     """Publish blog posts to the assembly without a software release."""
     _moved_to_selfblog("post publish")
 
@@ -140,7 +141,7 @@ def _detect_main_module():
 
 @app.command("init", help="Initialize selfdoc configuration and starter docs template")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated selfdoc.json and docs/index.md template files to git")
-def _cmd_init(auto_commit=True):
+def _cmd_init(ctx, auto_commit=True):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
 
@@ -229,7 +230,7 @@ def _cmd_init(auto_commit=True):
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output alongside published posts")
 @strictcli.flag("target", type=str, default="", help="Build target: empty for full build ('posts' builds moved to selfblog)")
-def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target=""):
+def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
     from selfdoc.config import load_config
 
@@ -311,7 +312,7 @@ def _cmd_build(auto_commit=True, locale="", version="", drafts=False, target="")
 @app.command("serve", help="Serve the documentation site locally with live reload")
 @strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
 @strictcli.flag("drafts", type=bool, default=False, help="Rebuild the site with draft posts included before starting the local server")
-def _cmd_serve(port=8000, drafts=False):
+def _cmd_serve(ctx, port=8000, drafts=False):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
 
@@ -471,7 +472,7 @@ def _cmd_serve(port=8000, drafts=False):
 
 
 @app.command("deploy", help="Deploy the built documentation site to the configured provider")
-def _cmd_deploy():
+def _cmd_deploy(ctx):
     """Deploy the documentation site."""
     from selfdoc.config import load_config
     from selfdoc.deploy import (
@@ -531,7 +532,7 @@ def _cmd_deploy():
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
 @strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
-def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
+def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
@@ -647,7 +648,7 @@ def _cmd_check(ignore="", format="text", auto_commit=True, dry_run=False):
 @baseline_group.command("accept", help="Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.")
 @strictcli.arg("page", variadic=True, required=True, help="Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the updated content hash tracking file to git after accepting the named pages")
-def _cmd_baseline_accept(page, auto_commit=True):
+def _cmd_baseline_accept(ctx, page, auto_commit=True):
     """Accept reviewed staleness/drift for the named pages."""
     from selfdoc.check import AcceptError, accept_baselines
     from selfdoc.config import load_config
@@ -687,7 +688,7 @@ def _cmd_baseline_accept(page, auto_commit=True):
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit generated documentation pages and root files to git")
-def _cmd_gen(auto_commit=True):
+def _cmd_gen(ctx, auto_commit=True):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
     from selfdoc.gen import generate_docs, generate_root_files
@@ -797,7 +798,7 @@ def _cmd_gen(auto_commit=True):
 
 @app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated data output files to git after script execution")
-def _cmd_gen_data(auto_commit=True):
+def _cmd_gen_data(ctx, auto_commit=True):
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config
     from selfdoc.gendata import GenDataError, generate_data
@@ -833,25 +834,25 @@ def _cmd_gen_data(auto_commit=True):
 
 
 @assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.")
-def _cmd_assembly_init():
+def _cmd_assembly_init(ctx):
     """Create the assembly GitHub repo and push initial files."""
     _moved_to_selfblog("assembly init")
 
 
 @assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.")
-def _cmd_assembly_push():
+def _cmd_assembly_push(ctx):
     """Dispatch an assembly rebuild for the current project."""
     _moved_to_selfblog("assembly push")
 
 
 @assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.")
-def _cmd_assembly_status():
+def _cmd_assembly_status(ctx):
     """Show recent assembly build status."""
     _moved_to_selfblog("assembly status")
 
 
 @assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.")
-def _cmd_assembly_rebuild():
+def _cmd_assembly_rebuild(ctx):
     """Trigger rebuild for all projects in the assembly."""
     _moved_to_selfblog("assembly rebuild")
 
@@ -859,7 +860,7 @@ def _cmd_assembly_rebuild():
 @assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
 @strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
 @strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
-def _cmd_assembly_redirects(slug="", docs_base=""):
+def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
     """Print the _redirects file content for redirecting to the assembly site."""
     _moved_to_selfblog("assembly redirects")
 
@@ -869,7 +870,7 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
 @strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
-def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
+def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     _moved_to_selfblog("assembly generate-shared")
 

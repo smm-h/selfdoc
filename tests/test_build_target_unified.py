@@ -29,7 +29,7 @@ def test_build_target_unified_calls_build_unified(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with patch("selfblog.unified.build_unified", return_value={"a.html": True}) as mock_fn:
-        _cmd_build(target="unified", drafts=False, auto_commit=False)
+        _cmd_build(None, target="unified", drafts=False, auto_commit=False)
         mock_fn.assert_called_once_with(dir_path=".", include_drafts=False)
 
 
@@ -39,7 +39,7 @@ def test_build_target_posts_still_works(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with patch("selfdoc_core.build.build", return_value={}) as mock_build:
-        _cmd_build(target="posts", drafts=False, auto_commit=False)
+        _cmd_build(None, target="posts", drafts=False, auto_commit=False)
         mock_build.assert_called_once_with(".", include_drafts=False, target="posts")
 
 
@@ -49,7 +49,7 @@ def test_build_target_invalid_exits_with_error(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit) as exc_info:
-        _cmd_build(target="invalid", drafts=False, auto_commit=False)
+        _cmd_build(None, target="invalid", drafts=False, auto_commit=False)
     assert exc_info.value.code == 1
 
 
@@ -59,7 +59,7 @@ def test_build_target_invalid_prints_error_message(tmp_path, monkeypatch, capsys
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_build(target="invalid", drafts=False, auto_commit=False)
+        _cmd_build(None, target="invalid", drafts=False, auto_commit=False)
 
     captured = capsys.readouterr()
     assert "unknown build target 'invalid'" in captured.err
@@ -73,7 +73,7 @@ def test_build_target_unified_passes_include_drafts(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with patch("selfblog.unified.build_unified", return_value={}) as mock_fn:
-        _cmd_build(target="unified", drafts=True, auto_commit=False)
+        _cmd_build(None, target="unified", drafts=True, auto_commit=False)
         mock_fn.assert_called_once_with(dir_path=".", include_drafts=True)
 
 
@@ -84,7 +84,7 @@ def test_build_target_unified_runtime_error(tmp_path, monkeypatch, capsys):
 
     with patch("selfblog.unified.build_unified", side_effect=RuntimeError("broken")):
         with pytest.raises(SystemExit) as exc_info:
-            _cmd_build(target="unified", drafts=False, auto_commit=False)
+            _cmd_build(None, target="unified", drafts=False, auto_commit=False)
         assert exc_info.value.code == 1
 
     captured = capsys.readouterr()

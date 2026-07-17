@@ -39,7 +39,7 @@ def test_post_new_basic(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     today = datetime.date.today().isoformat()
-    _cmd_post_new(title="My First Post")
+    _cmd_post_new(None, title="My First Post")
 
     expected = os.path.join(".selfdoc", "posts", f"{today}-my-first-post.md")
     assert os.path.isfile(expected)
@@ -50,7 +50,7 @@ def test_post_new_default_posts_dir(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_new(title="Default Dir Test")
+    _cmd_post_new(None, title="Default Dir Test")
 
     today = datetime.date.today().isoformat()
     expected = tmp_path / ".selfdoc" / "posts" / f"{today}-default-dir-test.md"
@@ -64,7 +64,7 @@ def test_post_new_custom_posts_dir(tmp_path, monkeypatch):
     })
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_new(title="Custom Dir")
+    _cmd_post_new(None, title="Custom Dir")
 
     today = datetime.date.today().isoformat()
     expected = tmp_path / "blog" / "articles" / f"{today}-custom-dir.md"
@@ -76,7 +76,7 @@ def test_post_new_slug_generation(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_new(title="Hello World")
+    _cmd_post_new(None, title="Hello World")
 
     today = datetime.date.today().isoformat()
     expected = tmp_path / ".selfdoc" / "posts" / f"{today}-hello-world.md"
@@ -88,7 +88,7 @@ def test_post_new_frontmatter_content(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_new(title="Frontmatter Check")
+    _cmd_post_new(None, title="Frontmatter Check")
 
     today = datetime.date.today().isoformat()
     filepath = tmp_path / ".selfdoc" / "posts" / f"{today}-frontmatter-check.md"
@@ -112,7 +112,7 @@ def test_post_new_project_from_topology(tmp_path, monkeypatch):
     })
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_new(title="Topology Test")
+    _cmd_post_new(None, title="Topology Test")
 
     today = datetime.date.today().isoformat()
     filepath = tmp_path / ".selfdoc" / "posts" / f"{today}-topology-test.md"
@@ -128,7 +128,7 @@ def test_post_new_project_from_dirname(tmp_path, monkeypatch):
     _setup_project(project_dir)
     monkeypatch.chdir(project_dir)
 
-    _cmd_post_new(title="Name Fallback")
+    _cmd_post_new(None, title="Name Fallback")
 
     today = datetime.date.today().isoformat()
     filepath = project_dir / ".selfdoc" / "posts" / f"{today}-name-fallback.md"
@@ -152,7 +152,7 @@ def test_post_new_file_already_exists(tmp_path, monkeypatch):
     (posts_dir / f"{today}-duplicate.md").write_text("existing")
 
     with pytest.raises(SystemExit):
-        _cmd_post_new(title="Duplicate")
+        _cmd_post_new(None, title="Duplicate")
 
 
 def test_post_new_no_title(tmp_path, monkeypatch):
@@ -161,7 +161,7 @@ def test_post_new_no_title(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_new(title="")
+        _cmd_post_new(None, title="")
 
 
 def test_post_new_no_title_default(tmp_path, monkeypatch):
@@ -170,7 +170,7 @@ def test_post_new_no_title_default(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_new()
+        _cmd_post_new(None)
 
 
 def test_post_new_no_config(tmp_path, monkeypatch):
@@ -178,7 +178,7 @@ def test_post_new_no_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_new(title="Orphan Post")
+        _cmd_post_new(None, title="Orphan Post")
 
 
 # ------------------------------------------------------------------
@@ -194,7 +194,7 @@ def test_post_new_creates_dir(tmp_path, monkeypatch):
     posts_dir = tmp_path / ".selfdoc" / "posts"
     assert not posts_dir.exists()
 
-    _cmd_post_new(title="Dir Creation Test")
+    _cmd_post_new(None, title="Dir Creation Test")
 
     assert posts_dir.is_dir()
     today = datetime.date.today().isoformat()

@@ -30,7 +30,7 @@ def test_init_creates_config_and_docs(project_dir):
     """selfdoc init creates selfdoc.json and docs/index.md."""
     from selfdoc.cli import _cmd_init
 
-    _cmd_init()
+    _cmd_init(None)
 
     # selfdoc.json was created
     config_path = project_dir / "selfdoc.json"
@@ -58,7 +58,7 @@ def test_init_index_has_frontmatter(project_dir):
     import datetime
     from selfdoc.cli import _cmd_init
 
-    _cmd_init()
+    _cmd_init(None)
 
     index_path = project_dir / "docs" / "index.md"
     content = index_path.read_text()
@@ -87,7 +87,7 @@ def test_init_aborts_if_config_exists(project_dir):
     from selfdoc.cli import _cmd_init
 
     with pytest.raises(SystemExit):
-        _cmd_init()
+        _cmd_init(None)
 
 
 def test_init_detects_multiple_languages(tmp_path, monkeypatch):
@@ -111,7 +111,7 @@ def test_init_detects_multiple_languages(tmp_path, monkeypatch):
 
     from selfdoc.cli import _cmd_init
 
-    _cmd_init()
+    _cmd_init(None)
 
     config_path = tmp_path / "selfdoc.json"
     assert config_path.exists()
@@ -150,13 +150,13 @@ def test_build_produces_output(project_dir):
     from selfdoc.cli import _cmd_init, _cmd_build
 
     # First init
-    _cmd_init()
+    _cmd_init(None)
     _add_base_url(project_dir)
 
     # Build exits non-zero due to SEO lints on the starter template,
     # but the output files are still written before the lint check.
     try:
-        _cmd_build()
+        _cmd_build(None)
     except SystemExit:
         pass
 
@@ -172,13 +172,13 @@ def test_check_finds_directives(project_dir, capsys):
     """selfdoc check reports directive validation results."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init()
+    _cmd_init(None)
     _add_base_url(project_dir)
 
     # The starter template has a :::module directive that resolves OK,
     # but check exits 1 due to SEO warnings on the starter template.
     try:
-        _cmd_check()
+        _cmd_check(None)
     except SystemExit:
         pass
 
@@ -192,12 +192,12 @@ def test_build_shows_seo_warnings(project_dir, capsys):
     """selfdoc build shows warnings but exits 0 when only warnings exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
-    _cmd_init()
+    _cmd_init(None)
     _add_base_url(project_dir)
 
     # The starter template triggers SEO warnings (e.g. SEO009 short
     # description) but no errors, so build exits 0.
-    _cmd_build()
+    _cmd_build(None)
 
     captured = capsys.readouterr()
     # Build output is still written
@@ -212,7 +212,7 @@ def test_build_exits_1_on_errors(project_dir, capsys):
     """selfdoc build exits 1 when lint errors (not just warnings) exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
-    _cmd_init()
+    _cmd_init(None)
     _add_base_url(project_dir)
 
     # Remove the description from frontmatter to trigger SEO006 (error)
@@ -220,7 +220,7 @@ def test_build_exits_1_on_errors(project_dir, capsys):
     index_path.write_text("# Test\n\nContent.\n")
 
     with pytest.raises(SystemExit) as exc_info:
-        _cmd_build()
+        _cmd_build(None)
 
     assert exc_info.value.code == 1
 
@@ -233,12 +233,12 @@ def test_check_always_runs_seo_lints(project_dir, capsys):
     """selfdoc check always runs SEO lints (no --no-seo flag)."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init()
+    _cmd_init(None)
     _add_base_url(project_dir)
 
     # SEO warnings appear (e.g. SEO009 short description) but only
     # warnings, so check exits 0.
-    _cmd_check()
+    _cmd_check(None)
 
     captured = capsys.readouterr()
     assert "SEO" in captured.out
@@ -248,7 +248,7 @@ def test_check_exits_1_on_errors(project_dir, capsys):
     """selfdoc check exits 1 when lint errors exist."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init()
+    _cmd_init(None)
     _add_base_url(project_dir)
 
     # Remove the description to trigger SEO006 (error severity)
@@ -256,7 +256,7 @@ def test_check_exits_1_on_errors(project_dir, capsys):
     index_path.write_text("# Test\n\nContent.\n")
 
     with pytest.raises(SystemExit) as exc_info:
-        _cmd_check()
+        _cmd_check(None)
 
     assert exc_info.value.code == 1
 
@@ -269,4 +269,4 @@ def test_build_without_init_fails(project_dir):
     from selfdoc.cli import _cmd_build
 
     with pytest.raises(SystemExit):
-        _cmd_build()
+        _cmd_build(None)

@@ -78,6 +78,7 @@ def test_all_flags_provided(tmp_path, monkeypatch):
     body_path.write_text("This is a great release!\n")
 
     _cmd_post_generate(
+        None,
         from_release=True,
         version="2.0.0",
         prev_version="1.0.0",
@@ -126,7 +127,7 @@ def test_minimal_version_only(tmp_path, monkeypatch):
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_generate(from_release=True, version="1.2.3")
+    _cmd_post_generate(None, from_release=True, version="1.2.3")
 
     today = datetime.date.today().isoformat()
     filename = f"{today}-release-v1.2.3.md"
@@ -154,6 +155,7 @@ def test_body_file_no_changelog(tmp_path, monkeypatch):
     body_path.write_text("Custom release notes here.\n")
 
     _cmd_post_generate(
+        None,
         from_release=True,
         version="0.5.0",
         body_file=str(body_path),
@@ -176,6 +178,7 @@ def test_changelog_no_body(tmp_path, monkeypatch):
     changelog_path.write_text("- Bug fix #42\n- Performance improvement\n")
 
     _cmd_post_generate(
+        None,
         from_release=True,
         version="3.1.0",
         changelog_file=str(changelog_path),
@@ -197,6 +200,7 @@ def test_dry_run(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
 
     _cmd_post_generate(
+        None,
         from_release=True,
         version="1.1.0",
         project_name="DryTest",
@@ -235,7 +239,7 @@ def test_manifest_update(tmp_path, monkeypatch):
     _setup_manifest(tmp_path, version="1.0.0", posts=[existing_post])
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_generate(from_release=True, version="1.1.0")
+    _cmd_post_generate(None, from_release=True, version="1.1.0")
 
     today = datetime.date.today().isoformat()
     manifest_data = json.loads((tmp_path / ".selfdoc" / "manifest.json").read_text())
@@ -266,7 +270,7 @@ def test_slug_generation(tmp_path, monkeypatch):
         ("1.2.3", "release-v1.2.3"),
         ("0.10.0", "release-v0.10.0"),
     ]:
-        _cmd_post_generate(from_release=True, version=version)
+        _cmd_post_generate(None, from_release=True, version=version)
         filename = f"{today}-{expected_slug}.md"
         filepath = tmp_path / ".selfdoc" / "posts" / filename
         assert filepath.is_file(), f"Expected {filename} for version {version}"
@@ -286,7 +290,7 @@ def test_no_from_release_flag(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_generate(from_release=False, version="1.0.0")
+        _cmd_post_generate(None, from_release=False, version="1.0.0")
 
 
 def test_no_version(tmp_path, monkeypatch):
@@ -295,7 +299,7 @@ def test_no_version(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_generate(from_release=True, version="")
+        _cmd_post_generate(None, from_release=True, version="")
 
 
 def test_no_config(tmp_path, monkeypatch):
@@ -303,7 +307,7 @@ def test_no_config(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_post_generate(from_release=True, version="1.0.0")
+        _cmd_post_generate(None, from_release=True, version="1.0.0")
 
 
 # ------------------------------------------------------------------
@@ -318,7 +322,7 @@ def test_project_from_topology(tmp_path, monkeypatch):
     })
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_generate(from_release=True, version="1.0.0")
+    _cmd_post_generate(None, from_release=True, version="1.0.0")
 
     today = datetime.date.today().isoformat()
     content = _read_post(tmp_path, f"{today}-release-v1.0.0.md")
@@ -331,6 +335,7 @@ def test_project_from_flag(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     _cmd_post_generate(
+        None,
         from_release=True,
         version="2.0.0",
         project_name="My Awesome Project",

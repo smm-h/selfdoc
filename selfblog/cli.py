@@ -29,7 +29,7 @@ assembly_group = app.group("assembly", help="Manage the unified multi-project do
 
 @post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.")
 @strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
-def _cmd_post_new(title=""):
+def _cmd_post_new(ctx, title=""):
     """Create a new blog post file in the posts directory."""
     from selfdoc_core.config import load_config
     from selfdoc_core.manifest import _to_kebab
@@ -84,7 +84,7 @@ def _cmd_post_new(title=""):
 
 
 @post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.")
-def _cmd_post_list():
+def _cmd_post_list(ctx):
     """List all discovered blog posts."""
     from selfdoc_core.config import load_config
     from selfblog.posts import discover_posts
@@ -126,6 +126,7 @@ def _cmd_post_list():
 @strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL such as PyPI or npm page, can be specified multiple times")
 @strictcli.flag("dry-run", type=bool, default=False, help="Print the generated post content to stdout without writing any files to disk")
 def _cmd_post_generate(
+    ctx,
     from_release=False,
     version="",
     prev_version="",
@@ -283,7 +284,7 @@ def _cmd_post_generate(
 
 
 @post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.")
-def _cmd_post_publish():
+def _cmd_post_publish(ctx):
     """Publish blog posts to the assembly without a software release."""
     import subprocess
 
@@ -402,7 +403,7 @@ def _cmd_post_publish():
 
 
 @assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.")
-def _cmd_assembly_init():
+def _cmd_assembly_init(ctx):
     """Create the assembly GitHub repo and push initial files."""
     import base64
     import subprocess
@@ -493,7 +494,7 @@ def _cmd_assembly_init():
 
 
 @assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.")
-def _cmd_assembly_push():
+def _cmd_assembly_push(ctx):
     """Dispatch an assembly rebuild for the current project."""
     import subprocess
 
@@ -572,7 +573,7 @@ def _cmd_assembly_push():
 
 
 @assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.")
-def _cmd_assembly_status():
+def _cmd_assembly_status(ctx):
     """Show recent assembly build status."""
     import subprocess
 
@@ -608,7 +609,7 @@ def _cmd_assembly_status():
 
 
 @assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.")
-def _cmd_assembly_rebuild():
+def _cmd_assembly_rebuild(ctx):
     """Trigger rebuild for all projects in the assembly."""
     import base64
     import subprocess
@@ -670,7 +671,7 @@ def _cmd_assembly_rebuild():
 @assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
 @strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
 @strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
-def _cmd_assembly_redirects(slug="", docs_base=""):
+def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
     """Print the _redirects file content for redirecting to the assembly site."""
     from selfblog.assembly import generate_redirects_file
 
@@ -691,7 +692,7 @@ def _cmd_assembly_redirects(slug="", docs_base=""):
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
 @strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
-def _cmd_assembly_generate_shared(site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
+def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfblog.shared import (
         generate_blog_index,
@@ -845,7 +846,7 @@ export default {
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated lint codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
 @strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
-def _cmd_check(ignore="", auto_commit=True, dry_run=False):
+def _cmd_check(ctx, ignore="", auto_commit=True, dry_run=False):
     """Check unified projects and blog posts."""
     from selfdoc_core.config import load_config
 
@@ -941,7 +942,7 @@ def _cmd_check(ignore="", auto_commit=True, dry_run=False):
 @strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
-def _cmd_build(target="posts", drafts=False, auto_commit=True):
+def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True):
     """Build blog posts or unified site."""
     from selfdoc_core.config import load_config
 

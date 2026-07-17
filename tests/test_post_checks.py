@@ -244,7 +244,7 @@ def test_selfblog_check_command_reports_post_errors(
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(SystemExit):
-        _cmd_check(dry_run=True)
+        _cmd_check(None, dry_run=True)
     captured = capsys.readouterr()
     assert "POST001" in captured.out
 
@@ -272,6 +272,6 @@ def test_selfblog_check_command_passes_on_valid_posts(
         json.dump(config, f)
     monkeypatch.chdir(tmp_path)
 
-    assert _cmd_check(dry_run=True) == 0
+    assert _cmd_check(None, dry_run=True) == 0
     captured = capsys.readouterr()
     assert "Post checks passed." in captured.out

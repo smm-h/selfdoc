@@ -45,7 +45,7 @@ def test_post_list_no_config(tmp_path, monkeypatch, capsys):
     """SystemExit when no selfdoc.json exists."""
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit) as exc_info:
-        _cmd_post_list()
+        _cmd_post_list(None)
     assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "No selfdoc.json" in captured.err
@@ -60,7 +60,7 @@ def test_post_list_no_posts(tmp_path, monkeypatch, capsys):
     """Prints 'No posts found.' when posts dir is empty or missing."""
     _setup_project(tmp_path, {"posts": {"dir": ".selfdoc/posts/"}})
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     assert "No posts found" in captured.out
 
@@ -77,7 +77,7 @@ def test_post_list_with_posts(tmp_path, monkeypatch, capsys):
     _write_post(posts_dir, "a.md", ["title: First Post", "date: 2025-01-15"])
     _write_post(posts_dir, "b.md", ["title: Second Post", "date: 2025-03-20"])
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     assert "First Post" in captured.out
     assert "Second Post" in captured.out
@@ -90,7 +90,7 @@ def test_post_list_drafts_marked(tmp_path, monkeypatch, capsys):
     posts_dir = str(tmp_path / ".selfdoc" / "posts")
     _write_post(posts_dir, "a.md", ["title: Draft Post", "date: 2025-01-15", "draft: true"])
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     assert "[DRAFT]" in captured.out
 
@@ -101,7 +101,7 @@ def test_post_list_non_draft_no_marker(tmp_path, monkeypatch, capsys):
     posts_dir = str(tmp_path / ".selfdoc" / "posts")
     _write_post(posts_dir, "a.md", ["title: Published Post", "date: 2025-01-15"])
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     assert "[DRAFT]" not in captured.out
     assert "Published Post" in captured.out
@@ -115,7 +115,7 @@ def test_post_list_sorted_newest_first(tmp_path, monkeypatch, capsys):
     _write_post(posts_dir, "new.md", ["title: New", "date: 2025-07-01"])
     _write_post(posts_dir, "mid.md", ["title: Mid", "date: 2025-01-01"])
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     lines = [l for l in captured.out.strip().split("\n") if l and "post(s)" not in l]
     # New should be first, Old last
@@ -129,7 +129,7 @@ def test_post_list_shows_slug(tmp_path, monkeypatch, capsys):
     posts_dir = str(tmp_path / ".selfdoc" / "posts")
     _write_post(posts_dir, "a.md", ["title: My Great Post", "date: 2025-01-15", "slug: custom-slug"])
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     assert "(custom-slug)" in captured.out
 
@@ -140,7 +140,7 @@ def test_post_list_default_posts_dir(tmp_path, monkeypatch, capsys):
     posts_dir = str(tmp_path / ".selfdoc" / "posts")
     _write_post(posts_dir, "a.md", ["title: Default Dir", "date: 2025-02-01"])
     monkeypatch.chdir(tmp_path)
-    _cmd_post_list()
+    _cmd_post_list(None)
     captured = capsys.readouterr()
     assert "Default Dir" in captured.out
     assert "1 post(s) found" in captured.out

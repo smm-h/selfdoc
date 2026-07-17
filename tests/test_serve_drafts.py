@@ -102,7 +102,7 @@ class TestServeDraftsRebuild:
 
             from selfdoc.cli import _cmd_serve
 
-            _cmd_serve(port=8000, drafts=True)
+            _cmd_serve(None, port=8000, drafts=True)
 
             mock_build.assert_called_once_with(".", include_drafts=True)
 
@@ -125,7 +125,7 @@ class TestServeDraftsRebuild:
             from selfdoc.cli import _cmd_serve
 
             with pytest.raises(SystemExit) as excinfo:
-                _cmd_serve(port=8000, drafts=True)
+                _cmd_serve(None, port=8000, drafts=True)
 
         assert excinfo.value.code == 1
         captured = capsys.readouterr()
@@ -155,7 +155,7 @@ class TestServeDraftsRebuild:
 
             from selfdoc.cli import _cmd_serve
 
-            _cmd_serve(port=8000, drafts=False)
+            _cmd_serve(None, port=8000, drafts=False)
 
             mock_build.assert_not_called()
 

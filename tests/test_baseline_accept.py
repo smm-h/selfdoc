@@ -235,7 +235,7 @@ def test_cli_baseline_accept_command(tmp_path, monkeypatch, capsys):
     _write_page(tmp_path, "Original description", "Rewritten content.")
     check_docs(str(tmp_path))
 
-    rc = _cmd_baseline_accept(["page.md"], auto_commit=False)
+    rc = _cmd_baseline_accept(None, ["page.md"], auto_commit=False)
     assert rc == 0
     out = capsys.readouterr().out
     assert "page.md" in out
@@ -254,5 +254,5 @@ def test_cli_baseline_accept_unknown_page_exits(tmp_path, monkeypatch):
     check_docs(str(tmp_path))
 
     with pytest.raises(SystemExit) as exc:
-        _cmd_baseline_accept(["nope.md"], auto_commit=False)
+        _cmd_baseline_accept(None, ["nope.md"], auto_commit=False)
     assert exc.value.code == 1
