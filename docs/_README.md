@@ -165,7 +165,21 @@ Custom directives take priority over built-in names.
 
 ## Commands
 
-:-: table-commands schema-dir="."
+| Command | Description |
+| --- | --- |
+| `init` | Initialize selfdoc configuration and starter docs template |
+| `build` | Build the documentation site from templates and source code |
+| `serve` | Serve the documentation site locally with live reload |
+| `deploy` | Deploy the built documentation site to the configured provider |
+| `check` | Check documentation coverage, directive resolution, and lint rules |
+| `gen` | Auto-generate documentation pages from project structure |
+| `gen-data` | Generate data files by running sandboxed scripts via bwrap |
+| **baseline** | Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check |
+| `baseline accept` | Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. |
+
+## Blog and multi-project assembly
+
+Blog posts and the unified multi-project documentation assembly live in **selfblog**, a sibling package built on `selfdoc-core`. Install it with `pip install selfblog`, then use `selfblog post ...` to manage posts and `selfblog assembly ...` to manage the assembly.
 
 ## Deploy
 
