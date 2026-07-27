@@ -1,0 +1,16 @@
+# strictspec manifest -- selfdoc_core boundary validators.
+#
+# Declares the directive-catalogue schema and its Python generation target.
+# Regenerate with: strictspec gen  (run from the selfdoc_core/ directory)
+# `strictspec check` verifies schema authoring validity and generated-code
+# freshness. The generated validator is committed and read-only (chmod 444);
+# never edit it by hand -- edit the schema under .strictspec/ and rerun gen.
+format_version = 1
+
+[[schemas]]
+path = ".strictspec/directive-descriptor.schema.toml"
+
+  [[schemas.targets]]
+  lang    = "python"
+  output  = "directive_descriptor_validator.py"
+  package = "selfdoc_core"

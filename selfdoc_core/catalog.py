@@ -1,8 +1,22 @@
-"""Directive catalog: defines all built-in directive names and their status."""
+"""Directive catalog: defines all built-in directive names and their status.
+
+The ``CORE_DIRECTIVES`` catalogue is no longer a hand-maintained dict literal.
+It is BUILT at import time from ``selfdoc_core/directives.toml`` -- a declarative
+descriptor document governed by ``.strictspec/directive-descriptor.schema.toml``
+and validated by the strictspec-generated ``directive_descriptor_validator``.
+The document is the single source of truth; this module is a thin loader.
+
+A malformed catalogue document (bad name grammar, unknown key, missing required
+field, duplicate name, absent format_version gate, ...) is a hard error at import
+-- selfdoc fails to load before any directive is dispatched.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from importlib.resources import files
+
+from selfdoc_core import directive_descriptor_validator as _validator
 
 
 @dataclass(slots=True)
@@ -22,136 +36,57 @@ class DirectiveSpec:
 # The multi-language resolver (selfdoc_core.resolver.Resolver) reads ``lang``
 # to disambiguate which language extractor handles a path-dispatched directive,
 # so it is valid on any code directive. gen emits it on every generated ``ref``
-# page. Declared once here and spread into each code spec's optional_attrs so
-# the set stays DRY.
+# page. Each code directive's ``optional_attrs`` in ``directives.toml`` lists it
+# explicitly; this constant names the invariant a test enforces.
 SHARED_CODE_ATTRS: list[str] = ["lang"]
 
 
-# -- Core directives (shipped and functional at launch) -----------------------
+# -- Core directives (built from the validated descriptor document) -----------
 
-CORE_DIRECTIVES: dict[str, DirectiveSpec] = {
-    "ref": DirectiveSpec(
-        description="Extract module docstring, exported functions, and classes",
-        category="code",
-        required_attrs=["path"],
-        optional_attrs=["target", *SHARED_CODE_ATTRS],
-        example=':::ref path="mymodule"',
-    ),
-    "table-schema": DirectiveSpec(
-        description="Extract dataclass/struct fields as a markdown table",
-        category="code",
-        required_attrs=["path"],
-        optional_attrs=["target", "exclude", *SHARED_CODE_ATTRS],
-        example=':::table-schema path="models.py" target="User"',
-    ),
-    "code-test": DirectiveSpec(
-        description="Embed test source code (whole file or specific function)",
-        category="code",
-        required_attrs=["path"],
-        optional_attrs=["target", *SHARED_CODE_ATTRS],
-        example=':::code-test path="tests/test_auth.py" target="test_login"',
-    ),
-    "code-help": DirectiveSpec(
-        description="Extract CLI help/usage text and flag definitions",
-        category="code",
-        required_attrs=["path"],
-        optional_attrs=[*SHARED_CODE_ATTRS],
-        example=':::code-help path="cli.py"',
-    ),
-    "table-config": DirectiveSpec(
-        description="Render a config file (JSON/TOML) as a key-value table",
-        category="code",
-        required_attrs=["path"],
-        optional_attrs=["exclude", *SHARED_CODE_ATTRS],
-        example=':::table-config path="config.json"',
-    ),
-    "callout-note": DirectiveSpec(
-        description="Styled note callout block",
-        category="content",
-        example=":::callout-note\nThis is a note.\n:::",
-    ),
-    "callout-warning": DirectiveSpec(
-        description="Styled warning callout block",
-        category="content",
-        example=":::callout-warning\nProceed with caution.\n:::",
-    ),
-    "callout-tip": DirectiveSpec(
-        description="Styled tip callout block",
-        category="content",
-        example=":::callout-tip\nHelpful hint here.\n:::",
-    ),
-    "callout-danger": DirectiveSpec(
-        description="Styled danger callout block",
-        category="content",
-        example=":::callout-danger\nDangerous operation.\n:::",
-    ),
-    "callout-important": DirectiveSpec(
-        description="Styled important callout block",
-        category="content",
-        example=":::callout-important\nDo not skip this step.\n:::",
-    ),
-    "list-glossary": DirectiveSpec(
-        description="Definition list from **Term**: Definition lines",
-        category="content",
-        example=":::list-glossary\n**API**: Application Programming Interface\n:::",
-    ),
-    "prose-desc": DirectiveSpec(
-        description="Extract module/package docstring as prose text",
-        category="code",
-        required_attrs=["path"],
-        optional_attrs=[*SHARED_CODE_ATTRS],
-        example=':::prose-desc path="mymodule"',
-    ),
-    "list-tree": DirectiveSpec(
-        description="File/directory tree listing",
-        category="content",
-        required_attrs=["path"],
-        optional_attrs=["depth"],
-        example=':::list-tree path="src/"',
-    ),
-    "table-dep": DirectiveSpec(
-        description="Dependencies table from pyproject.toml",
-        category="content",
-        required_attrs=["path"],
-        example=':::table-dep path="pyproject.toml"',
-    ),
-    "list-modules": DirectiveSpec(
-        description="List source modules with file paths and docstring summaries",
-        category="content",
-        required_attrs=["path"],
-        optional_attrs=["files"],
-        example=':-: list-modules path="selfdoc/"',
-    ),
-    "table-commands": DirectiveSpec(
-        description="CLI command summary table from strictcli structure",
-        category="content",
-        optional_attrs=["schema-dir"],
-        example=":-: table-commands",
-    ),
-    "table-endpoint": DirectiveSpec(
-        description="REST API endpoint table from OpenAPI spec",
-        category="content",
-        required_attrs=["path"],
-        optional_attrs=["endpoint", "method"],
-        example=':-: table-endpoint path="openapi.json"',
-    ),
-    "table-directives": DirectiveSpec(
-        description="Table of all core built-in directives",
-        category="content",
-        example=':-: table-directives',
-    ),
-    "table-config-schema": DirectiveSpec(
-        description="Configuration field reference table from schema",
-        category="content",
-        example=':-: table-config-schema',
-    ),
-    "var": DirectiveSpec(
-        description="Interpolate project metadata value",
-        category="content",
-        required_attrs=["key"],
-        example=':-: var key="project.name"',
-    ),
-}
+_CATALOGUE_DOCUMENT = "directives.toml"
+
+
+class CatalogDocumentError(RuntimeError):
+    """Raised when ``directives.toml`` fails strictspec validation at load.
+
+    A hard error at import time: the built-in directive catalogue is malformed,
+    so selfdoc cannot know what its own directives are. Subclasses
+    ``RuntimeError`` so the CLI's existing handlers surface it cleanly.
+    """
+
+
+def _build_catalogue(raw: bytes) -> dict[str, DirectiveSpec]:
+    """Validate raw catalogue-document bytes and bind them into DirectiveSpecs.
+
+    strictspec is the boundary validator: the document is validated against its
+    schema by the generated validator, and only a fully-valid document is bound.
+    Any diagnostic is a hard error (:class:`CatalogDocumentError`).
+    """
+    catalogue, diags = _validator.validate_bytes(raw, "toml")
+    if diags:
+        detail = "\n".join(f"  {d.path}: {d.message} [{d.code}]" for d in diags)
+        raise CatalogDocumentError(
+            f"{_CATALOGUE_DOCUMENT} is not a valid directive catalogue:\n{detail}"
+        )
+    return {
+        d.name: DirectiveSpec(
+            description=d.description,
+            category=d.category,
+            required_attrs=list(d.required_attrs),
+            optional_attrs=list(d.optional_attrs),
+            example=d.example,
+        )
+        for d in catalogue.directives
+    }
+
+
+def _load_core_directives() -> dict[str, DirectiveSpec]:
+    """Read, validate, and bind ``directives.toml`` into the runtime catalogue."""
+    raw = files("selfdoc_core").joinpath(_CATALOGUE_DOCUMENT).read_bytes()
+    return _build_catalogue(raw)
+
+
+CORE_DIRECTIVES: dict[str, DirectiveSpec] = _load_core_directives()
 
 # -- Future directives (declared, not yet implemented) ------------------------
 

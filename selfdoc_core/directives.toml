@@ -1,0 +1,173 @@
+# selfdoc built-in directive catalogue -- the single source of truth for the
+# shipped ("core") directives. Governed by
+# .strictspec/directive-descriptor.schema.toml and validated at load time by the
+# generated directive_descriptor_validator.py (see selfdoc_core/catalog.py).
+#
+# This document replaces the former CORE_DIRECTIVES dict literal in catalog.py.
+# Edit directives here; catalog.py builds the runtime catalogue from this file.
+#
+# Every code-category directive lists "lang" among its optional attributes: the
+# multi-language resolver reads it to disambiguate which extractor handles a
+# path-dispatched directive, and gen emits it on every generated ref page.
+
+format_version = 1
+
+[[directives]]
+name = "ref"
+description = "Extract module docstring, exported functions, and classes"
+category = "code"
+required_attrs = ["path"]
+optional_attrs = ["target", "lang"]
+example = ':::ref path="mymodule"'
+
+[[directives]]
+name = "table-schema"
+description = "Extract dataclass/struct fields as a markdown table"
+category = "code"
+required_attrs = ["path"]
+optional_attrs = ["target", "exclude", "lang"]
+example = ':::table-schema path="models.py" target="User"'
+
+[[directives]]
+name = "code-test"
+description = "Embed test source code (whole file or specific function)"
+category = "code"
+required_attrs = ["path"]
+optional_attrs = ["target", "lang"]
+example = ':::code-test path="tests/test_auth.py" target="test_login"'
+
+[[directives]]
+name = "code-help"
+description = "Extract CLI help/usage text and flag definitions"
+category = "code"
+required_attrs = ["path"]
+optional_attrs = ["lang"]
+example = ':::code-help path="cli.py"'
+
+[[directives]]
+name = "table-config"
+description = "Render a config file (JSON/TOML) as a key-value table"
+category = "code"
+required_attrs = ["path"]
+optional_attrs = ["exclude", "lang"]
+example = ':::table-config path="config.json"'
+
+[[directives]]
+name = "callout-note"
+description = "Styled note callout block"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ":::callout-note\nThis is a note.\n:::"
+
+[[directives]]
+name = "callout-warning"
+description = "Styled warning callout block"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ":::callout-warning\nProceed with caution.\n:::"
+
+[[directives]]
+name = "callout-tip"
+description = "Styled tip callout block"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ":::callout-tip\nHelpful hint here.\n:::"
+
+[[directives]]
+name = "callout-danger"
+description = "Styled danger callout block"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ":::callout-danger\nDangerous operation.\n:::"
+
+[[directives]]
+name = "callout-important"
+description = "Styled important callout block"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ":::callout-important\nDo not skip this step.\n:::"
+
+[[directives]]
+name = "list-glossary"
+description = "Definition list from **Term**: Definition lines"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ":::list-glossary\n**API**: Application Programming Interface\n:::"
+
+[[directives]]
+name = "prose-desc"
+description = "Extract module/package docstring as prose text"
+category = "code"
+required_attrs = ["path"]
+optional_attrs = ["lang"]
+example = ':::prose-desc path="mymodule"'
+
+[[directives]]
+name = "list-tree"
+description = "File/directory tree listing"
+category = "content"
+required_attrs = ["path"]
+optional_attrs = ["depth"]
+example = ':::list-tree path="src/"'
+
+[[directives]]
+name = "table-dep"
+description = "Dependencies table from pyproject.toml"
+category = "content"
+required_attrs = ["path"]
+optional_attrs = []
+example = ':::table-dep path="pyproject.toml"'
+
+[[directives]]
+name = "list-modules"
+description = "List source modules with file paths and docstring summaries"
+category = "content"
+required_attrs = ["path"]
+optional_attrs = ["files"]
+example = ':-: list-modules path="selfdoc/"'
+
+[[directives]]
+name = "table-commands"
+description = "CLI command summary table from strictcli structure"
+category = "content"
+required_attrs = []
+optional_attrs = ["schema-dir"]
+example = ":-: table-commands"
+
+[[directives]]
+name = "table-endpoint"
+description = "REST API endpoint table from OpenAPI spec"
+category = "content"
+required_attrs = ["path"]
+optional_attrs = ["endpoint", "method"]
+example = ':-: table-endpoint path="openapi.json"'
+
+[[directives]]
+name = "table-directives"
+description = "Table of all core built-in directives"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ':-: table-directives'
+
+[[directives]]
+name = "table-config-schema"
+description = "Configuration field reference table from schema"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ':-: table-config-schema'
+
+[[directives]]
+name = "var"
+description = "Interpolate project metadata value"
+category = "content"
+required_attrs = ["key"]
+optional_attrs = []
+example = ':-: var key="project.name"'

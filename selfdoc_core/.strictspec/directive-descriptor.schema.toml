@@ -1,0 +1,92 @@
+# strictspec schema -- selfdoc built-in directive catalogue.
+#
+# Governs selfdoc_core/directives.toml: the declarative descriptor document that
+# is the single source of truth for the ~20 shipped ("core") built-in directives.
+# The generated validator (directive_descriptor_validator.py) gates the document
+# at load time in selfdoc_core.catalog; a malformed catalogue is a hard error at
+# import, before any directive is dispatched.
+#
+# SCOPE (honest subset): this schema owns the raw DOCUMENT SHAPE of the catalogue
+# -- the name grammar, the code/content category enum, required/optional attr
+# lists, per-descriptor required fields, unknown-key rejection, and unique names.
+# It does NOT model the RUNTIME couplings selfdoc keeps native: which resolver
+# runs for which name (the resolve_content dispatch + extractor path), custom and
+# future directive names (which carry no descriptor and skip attr enforcement by
+# design), and the catalog-vs-resolver attribute-consistency oracle (a curated
+# test). Those remain selfdoc-native by declaration.
+
+name = "selfdoc-directive-catalogue"
+meta_version = 1
+format_version = 1
+document_syntax = "toml"
+role = "schema"
+root = "DirectiveCatalogue"
+description = "The selfdoc built-in directive catalogue: one descriptor per shipped directive (name, description, category, required/optional attributes, example)."
+
+[types.DirectiveCatalogue]
+type = "record"
+
+[types.DirectiveCatalogue.fields.format_version]
+type = "integer"
+required = true
+description = "Document format-version gate. v1 documents carry 1."
+
+[types.DirectiveCatalogue.fields.directives]
+type = "array"
+required = true
+min_len = 1
+description = "The shipped built-in directives, in catalogue order."
+[types.DirectiveCatalogue.fields.directives.item]
+type = "DirectiveDescriptor"
+
+# Directive names are unique across the catalogue (the loader keys a dict by them).
+[[types.DirectiveCatalogue.constraints]]
+form = "unique-by"
+collection = "directives"
+field = "name"
+normalization = "none"
+
+# --- named types ---
+
+[types.DirectiveDescriptor]
+type = "record"
+description = "Metadata for a single built-in directive."
+
+[types.DirectiveDescriptor.fields.name]
+type = "string"
+required = true
+non_empty = true
+regex = '^[a-zA-Z][\w-]*$'
+description = "Directive name. Grammar: starts with a letter, then word chars or hyphens (the directive-name PATTERN)."
+
+[types.DirectiveDescriptor.fields.description]
+type = "string"
+required = true
+non_empty = true
+description = "One-line human description shown in the directive reference table."
+
+[types.DirectiveDescriptor.fields.category]
+type = "enum"
+required = true
+values = ["code", "content"]
+description = "\"code\" directives dispatch to a language extractor (path-based); \"content\" directives resolve language-agnostically."
+
+[types.DirectiveDescriptor.fields.required_attrs]
+type = "array"
+required = true
+description = "Attribute names the directive requires (may be empty)."
+[types.DirectiveDescriptor.fields.required_attrs.item]
+type = "string"
+
+[types.DirectiveDescriptor.fields.optional_attrs]
+type = "array"
+required = true
+description = "Attribute names the directive optionally accepts (may be empty)."
+[types.DirectiveDescriptor.fields.optional_attrs.item]
+type = "string"
+
+[types.DirectiveDescriptor.fields.example]
+type = "string"
+required = true
+non_empty = true
+description = "A representative usage example."
