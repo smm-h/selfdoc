@@ -1,2 +1,2 @@
-{"id":"18c32eed5bbed44ad047299db9234bd1b0058dce215d7868","commits":["d71d9b04d7a9c4dccd864b0f2df08e1481d52847"],"user_facing":false,"packages":["selfdoc"]}
-{"id":"18c33042d70a28798e22dd73ce304c92b1bd9c483bfc04c6","commits":["42b2ddfe5f774fe536479b1bcf28293abd2a9353"],"user_facing":true,"description":"**Docs.** README now documents `post`/`assembly` as selfblog commands.","type":"fix","packages":["selfdoc"]}
+{"format_version":1,"id":"18c32eed5bbed44ad047299db9234bd1b0058dce215d7868","commits":["d71d9b04d7a9c4dccd864b0f2df08e1481d52847"],"user_facing":false,"packages":["selfdoc"]}
+{"format_version":1,"id":"18c33042d70a28798e22dd73ce304c92b1bd9c483bfc04c6","commits":["42b2ddfe5f774fe536479b1bcf28293abd2a9353"],"user_facing":true,"description":"**Docs.** README now documents `post`/`assembly` as selfblog commands.","type":"fix","packages":["selfdoc"]}
