@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Gen-data script: extract directive catalog as structured JSON.
 
-Reads CORE_DIRECTIVES and FUTURE_DIRECTIVES from selfdoc/catalog.py via AST
-parsing (no imports, since bwrap runs with --clearenv and no PYTHONPATH).
-Outputs a JSON file with directive names, categories, status, and summary
-counts to .selfdoc/data/directive-stats.json.
+Reads the core directives from ``selfdoc_core/directives.toml`` (the declarative
+catalogue document, parsed with the stdlib ``tomllib``) and FUTURE_DIRECTIVES
+from ``selfdoc_core/catalog.py`` via AST parsing. No selfdoc imports are needed
+(bwrap runs with --clearenv and no PYTHONPATH). Outputs a JSON file with
+directive names, categories, status, and summary counts to
+.selfdoc/data/directive-stats.json.
 """
 
 import ast
 import json
 import os
 import sys
+import tomllib
 
 
 def _find_assignment(tree, name):
@@ -34,56 +37,23 @@ def _find_assignment(tree, name):
     return None
 
 
-def _extract_core_directives(tree):
-    """Extract CORE_DIRECTIVES dict from the AST.
+def _extract_core_directives(document):
+    """Extract the core directives from the parsed directives.toml document.
 
     Returns a list of dicts with name, description, category, required_attrs,
-    optional_attrs for each directive.
+    optional_attrs for each directive, in catalogue (document) order.
     """
     directives = []
-
-    value = _find_assignment(tree, "CORE_DIRECTIVES")
-    if value is None or not isinstance(value, ast.Dict):
-        return directives
-
-    for key, call in zip(value.keys, value.values):
-        if not isinstance(key, ast.Constant):
-            continue
-        name = key.value
-        # value is a DirectiveSpec(...) call
-        if not isinstance(call, ast.Call):
-            continue
-        entry = {"name": name}
-        for kw in call.keywords:
-            if kw.arg == "description" and isinstance(
-                kw.value, ast.Constant
-            ):
-                entry["description"] = kw.value.value
-            elif kw.arg == "category" and isinstance(
-                kw.value, ast.Constant
-            ):
-                entry["category"] = kw.value.value
-            elif kw.arg == "required_attrs" and isinstance(
-                kw.value, ast.List
-            ):
-                entry["required_attrs"] = [
-                    elt.value
-                    for elt in kw.value.elts
-                    if isinstance(elt, ast.Constant)
-                ]
-            elif kw.arg == "optional_attrs" and isinstance(
-                kw.value, ast.List
-            ):
-                entry["optional_attrs"] = [
-                    elt.value
-                    for elt in kw.value.elts
-                    if isinstance(elt, ast.Constant)
-                ]
-        # Defaults for missing fields
-        entry.setdefault("required_attrs", [])
-        entry.setdefault("optional_attrs", [])
-        directives.append(entry)
-
+    for entry in document.get("directives", []):
+        directives.append(
+            {
+                "name": entry["name"],
+                "description": entry.get("description", ""),
+                "category": entry.get("category", "unknown"),
+                "required_attrs": list(entry.get("required_attrs", [])),
+                "optional_attrs": list(entry.get("optional_attrs", [])),
+            }
+        )
     return directives
 
 
@@ -101,17 +71,20 @@ def _extract_future_directives(tree):
 
 
 def main():
-    catalog_path = os.path.join("selfdoc", "catalog.py")
-    if not os.path.isfile(catalog_path):
-        print(f"Error: {catalog_path} not found", file=sys.stderr)
-        sys.exit(1)
+    document_path = os.path.join("selfdoc_core", "directives.toml")
+    catalog_path = os.path.join("selfdoc_core", "catalog.py")
+    for required in (document_path, catalog_path):
+        if not os.path.isfile(required):
+            print(f"Error: {required} not found", file=sys.stderr)
+            sys.exit(1)
+
+    with open(document_path, "rb") as f:
+        document = tomllib.load(f)
 
     with open(catalog_path, "r", encoding="utf-8") as f:
-        source = f.read()
+        tree = ast.parse(f.read(), filename=catalog_path)
 
-    tree = ast.parse(source, filename=catalog_path)
-
-    core = _extract_core_directives(tree)
+    core = _extract_core_directives(document)
     future = _extract_future_directives(tree)
 
     # Group core directives by category

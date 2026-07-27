@@ -44,7 +44,7 @@
         "command": "python3 scripts/gen-directive-stats.py",
         "output": "directive-stats.json",
         "mounts": [
-          "selfdoc/",
+          "selfdoc_core/",
           "scripts/"
         ]
       }

@@ -8,7 +8,8 @@
         "path"
       ],
       "optional_attrs": [
-        "target"
+        "target",
+        "lang"
       ]
     },
     {
@@ -19,7 +20,9 @@
         "path"
       ],
       "optional_attrs": [
-        "target"
+        "target",
+        "exclude",
+        "lang"
       ]
     },
     {
@@ -30,7 +33,8 @@
         "path"
       ],
       "optional_attrs": [
-        "target"
+        "target",
+        "lang"
       ]
     },
     {
@@ -40,7 +44,9 @@
       "required_attrs": [
         "path"
       ],
-      "optional_attrs": []
+      "optional_attrs": [
+        "lang"
+      ]
     },
     {
       "name": "table-config",
@@ -49,7 +55,10 @@
       "required_attrs": [
         "path"
       ],
-      "optional_attrs": []
+      "optional_attrs": [
+        "exclude",
+        "lang"
+      ]
     },
     {
       "name": "callout-note",
@@ -100,7 +109,9 @@
       "required_attrs": [
         "path"
       ],
-      "optional_attrs": []
+      "optional_attrs": [
+        "lang"
+      ]
     },
     {
       "name": "list-tree",
@@ -123,31 +134,36 @@
       "optional_attrs": []
     },
     {
-      "name": "list-features",
-      "description": "Module summaries from docstring first lines",
-      "category": "content",
-      "required_attrs": [
-        "path"
-      ],
-      "optional_attrs": []
-    },
-    {
       "name": "list-modules",
       "description": "List source modules with file paths and docstring summaries",
       "category": "content",
       "required_attrs": [
         "path"
       ],
-      "optional_attrs": []
+      "optional_attrs": [
+        "files"
+      ]
     },
     {
       "name": "table-commands",
       "description": "CLI command summary table from strictcli structure",
       "category": "content",
+      "required_attrs": [],
+      "optional_attrs": [
+        "schema-dir"
+      ]
+    },
+    {
+      "name": "table-endpoint",
+      "description": "REST API endpoint table from OpenAPI spec",
+      "category": "content",
       "required_attrs": [
         "path"
       ],
-      "optional_attrs": []
+      "optional_attrs": [
+        "endpoint",
+        "method"
+      ]
     },
     {
       "name": "table-directives",
@@ -224,7 +240,6 @@
     "prose-release",
     "prose-summary",
     "table-compare",
-    "table-endpoint",
     "table-env",
     "table-error",
     "table-migration",
@@ -238,8 +253,8 @@
   ],
   "summary": {
     "core_count": 20,
-    "future_count": 61,
-    "total": 81,
+    "future_count": 60,
+    "total": 80,
     "core_by_category": {
       "code": 6,
       "content": 14
@@ -249,7 +264,7 @@
       "code": 13,
       "list": 12,
       "prose": 14,
-      "table": 12
+      "table": 11
     }
   }
 }

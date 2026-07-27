@@ -95,7 +95,7 @@ If `bwrap` is not found, `selfdoc gen-data` exits with a clear error message and
 
 ## Example: selfdoc's Own Directive Stats
 
-selfdoc dogfoods this feature to generate a JSON inventory of its directive catalog. The script `scripts/gen-directive-stats.py` uses AST parsing to read `selfdoc/catalog.py` and extract every core and future directive into structured data at `.selfdoc/data/directive-stats.json`.
+selfdoc dogfoods this feature to generate a JSON inventory of its directive catalog. The script `scripts/gen-directive-stats.py` reads the declarative catalogue document `selfdoc_core/directives.toml` (with the stdlib `tomllib`) for the core directives and AST-parses `selfdoc_core/catalog.py` for the planned future directives, emitting structured data at `.selfdoc/data/directive-stats.json`.
 
 The selfdoc.json config for this:
 
@@ -106,13 +106,13 @@ The selfdoc.json config for this:
       {
         "command": "python3 scripts/gen-directive-stats.py",
         "output": "directive-stats.json",
-        "mounts": ["selfdoc/", "scripts/"]
+        "mounts": ["selfdoc_core/", "scripts/"]
       }
     ]
   }
 }
 ```
 
-The script uses only `ast` and `json` from the standard library, reads the catalog source via AST parsing (no imports needed inside the sandbox), and writes the output to `.selfdoc/data/directive-stats.json`. The generated JSON contains every core directive with its description, category, and attribute requirements, plus all planned future directives grouped by prefix.
+The script uses only `tomllib`, `ast`, and `json` from the standard library (no imports needed inside the sandbox), and writes the output to `.selfdoc/data/directive-stats.json`. The generated JSON contains every core directive with its description, category, and attribute requirements, plus all planned future directives grouped by prefix.
 
 Next: [Staleness Detection](staleness/) -->
