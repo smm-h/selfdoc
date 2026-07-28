@@ -875,6 +875,14 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
     _moved_to_selfblog("assembly generate-shared")
 
 
+@app.command("score", help="Measure documentation quality and selfdoc adoption across projects")
+@strictcli.flag("scan", type=str, default="", help="Directory to scan for rlsbl-managed projects (default: score current project only)")
+@strictcli.flag("format", type=str, default="text", help="Output format: text or json")
+def _cmd_score(ctx, scan="", format="text"):
+    from selfdoc.score import run_score
+    return run_score(scan=scan or None, format=format)
+
+
 def run():
     """Parse arguments and dispatch to the appropriate subcommand."""
     # If selfblog is installed, importing it registers the post provider
