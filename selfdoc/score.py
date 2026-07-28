@@ -44,15 +44,6 @@ NEXT_STEPS = {
     4: "Define custom directives or configure blog posts",
 }
 
-TABLE_NEXT_STEPS = {
-    0: "create README.md",
-    1: "selfdoc init",
-    2: "add root_files templates",
-    3: "add :-: directives",
-    4: "custom directives / blog",
-    5: "--",
-}
-
 
 def check_dirstat():
     try:
@@ -249,17 +240,6 @@ def score_project(project_path):
     }
 
 
-def discover_projects(scan_dir):
-    projects = []
-    scan_path = Path(scan_dir)
-    for entry in sorted(scan_path.iterdir()):
-        if not entry.is_dir():
-            continue
-        if (entry / ".rlsbl").is_dir() or (entry / ".rlsbl-monorepo").is_dir():
-            projects.append(entry)
-    return projects
-
-
 def format_single_text(result):
     lines = []
     tier = result["tier"]
@@ -327,77 +307,17 @@ def format_single_text(result):
     return "\n".join(lines)
 
 
-def format_multi_text(results):
-    lines = []
-    lines.append(f"{len(results)} projects scanned")
-    lines.append("")
-
-    name_width = max(len(r["project"]) for r in results) if results else 7
-
-    header = (
-        f"{'Project':<{name_width}}  {'Tier':>5}  {'Code LOC':>10}  "
-        f"{'Doc LOC':>9}  {'Ratio':>7}  Next Step"
-    )
-    lines.append(header)
-    lines.append("-" * len(header))
-
-    sorted_results = sorted(
-        results,
-        key=lambda r: (r["tier"], r["doc_ratio"] if r["doc_ratio"] is not None else -1),
-    )
-
-    for r in sorted_results:
-        tier_str = f"{r['tier']}/5"
-        code_str = f"{r['code_loc']:,}"
-        doc_str = f"{r['doc_loc']:,}"
-        if r["doc_ratio"] is not None:
-            ratio_str = f"{r['doc_ratio'] * 100:.1f}%"
-        else:
-            ratio_str = "n/a"
-        next_step = TABLE_NEXT_STEPS.get(r["tier"], "--")
-        lines.append(
-            f"{r['project']:<{name_width}}  {tier_str:>5}  {code_str:>10}  "
-            f"{doc_str:>9}  {ratio_str:>7}  {next_step}"
-        )
-
-    return "\n".join(lines)
-
-
 def format_json(data):
     return json.dumps(data, indent=2)
 
 
-def run_score(scan=None, format="text"):
+def run_quality(format="text"):
     check_dirstat()
 
-    if scan is not None:
-        projects = discover_projects(scan)
-        if not projects:
-            print(f"No rlsbl-managed projects found in {scan}", file=sys.stderr)
-            return 1
-
-        results = [score_project(p) for p in projects]
-        results.sort(
-            key=lambda r: (
-                r["tier"],
-                r["doc_ratio"] if r["doc_ratio"] is not None else -1,
-            ),
-        )
-
-        if format == "json":
-            output = {
-                "scan_dir": str(scan),
-                "count": len(results),
-                "projects": results,
-            }
-            print(format_json(output))
-        else:
-            print(format_multi_text(results))
+    result = score_project(Path.cwd())
+    if format == "json":
+        print(format_json(result))
     else:
-        result = score_project(Path.cwd())
-        if format == "json":
-            print(format_json(result))
-        else:
-            print(format_single_text(result))
+        print(format_single_text(result))
 
     return 0
