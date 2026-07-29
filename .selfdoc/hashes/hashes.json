@@ -96,9 +96,9 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "ffffa53c1f35aad843dde670c8b00c7c746b21b8327e3ee31a99e7af1f5a7cea",
-    "description": "20edf499a8127386fbb330f45d33fb09798ea1cf2c8c88954c76a5ae1424a2ef",
-    "seed_hash": "20edf499a8127386fbb330f45d33fb09798ea1cf2c8c88954c76a5ae1424a2ef"
+    "content": "8d6f0b721884ea3b5f8826018dfa487afcd1f2b33a2dec84f449dd2f59c764c5",
+    "description": "9ab56972db04f885357c4f4c0ab69e9bacc6da15028c41c53988853077a04e15",
+    "seed_hash": "9ab56972db04f885357c4f4c0ab69e9bacc6da15028c41c53988853077a04e15"
   },
   "en/getting-started.md": {
     "content": "466caffa4da94377ab95381c98c20546e224b396f1dec4a9ed75aed6afd3f691",
@@ -288,6 +288,12 @@
     "content": "1905aa30e259346fed00c61729d680b008e9b4ce87948f998580a6351c98a669",
     "description": "273c26abce985442107be1fb321e5d51068124691b7631754cf0267af4c03adf",
     "source_docstring": "5faa956efc2896352d52e5c077577aff09ec1c35ff1456fb288e1cc8093a10bc"
+  },
+  "en/selfdoc-score.md": {
+    "content": "91635523120955ce527527e5b8c20f20fb7c6bddffeac20ca5da2267f1f50e60",
+    "description": "393b347da1593110151798a5d00e797a356c926d3de7e1f6968ca5d3e05f32de",
+    "seed_hash": "393b347da1593110151798a5d00e797a356c926d3de7e1f6968ca5d3e05f32de",
+    "source_docstring": "393b347da1593110151798a5d00e797a356c926d3de7e1f6968ca5d3e05f32de"
   },
   "en/selfdoc-strictcli_support.md": {
     "content": "83ac2ad5b42f5ba15a7e26505568edc2992fcec3291573ecf683dc1a9e55093a",
