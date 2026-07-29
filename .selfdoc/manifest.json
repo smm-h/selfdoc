@@ -318,6 +318,11 @@
       "type": "doc"
     },
     {
+      "path": "selfdoc-score.md",
+      "title": "selfdoc.score",
+      "type": "doc"
+    },
+    {
       "path": "selfdoc-strictcli_support.md",
       "title": "selfdoc.strictcli_support",
       "type": "doc"
@@ -376,5 +381,5 @@
       ]
     }
   ],
-  "last_gen": "2026-07-11T14:37:47.395845+00:00"
+  "last_gen": "2026-07-29T15:14:47.288933+00:00"
 }

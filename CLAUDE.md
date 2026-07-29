@@ -126,6 +126,7 @@ uv run pytest
 - **selfdoc.manifest** (`selfdoc/manifest.py`): Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info.
 - **selfdoc.ownership** (`selfdoc/ownership.py`): Description ownership predicate: machine-owned vs handwritten.
 - **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors.
+- **selfdoc.score** (`selfdoc/score.py`): Documentation quality scoring.
 - **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
 - **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
 - **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with alignment, pretty-printing, and pipe escaping.
