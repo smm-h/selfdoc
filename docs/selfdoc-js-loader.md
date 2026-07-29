@@ -1,6 +1,6 @@
 ---
 title: selfdoc.js.loader
-description: "Loader for selfdoc JS files using importlib.resources."
+description: "Loader for selfdoc JS files using importlib.resources -- provides runtime access to bundled JavaScript for search, theming, and navigation."
 generated: true
 nav_group: "API Reference"
 nav_order: 27

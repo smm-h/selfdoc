@@ -1,4 +1,4 @@
-"""Convert Markdown files to static HTML with a built-in minimal converter.
+"""Convert Markdown files to static HTML with a built-in minimal converter -- handles headings, code blocks, tables, and inline formatting.
 
 Re-export shim: actual implementation in selfdoc_core.html.
 """

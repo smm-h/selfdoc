@@ -1,6 +1,6 @@
 ---
 title: selfdoc.score
-description: "Documentation quality scoring."
+description: "Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio."
 generated: true
 seeded: true
 nav_group: "API Reference"

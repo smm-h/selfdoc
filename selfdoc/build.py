@@ -1,4 +1,4 @@
-"""Build pipeline for selfdoc: template scanning, directive resolution, HTML output.
+"""Build pipeline for selfdoc -- scans docs/ templates, resolves directives against source code, and generates static HTML output.
 
 Re-export shim: actual implementation in selfdoc_core.build.
 """

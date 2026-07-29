@@ -1,6 +1,6 @@
 ---
 title: Directives Guide
-description: "Comprehensive guide to selfdoc directives: the 6 marker types, all 20 built-in directives with usage examples, and how to create and register custom directives."
+description: "Guide to selfdoc directives: the 6 marker types, all 20 built-in directives with usage examples, and creating custom directives."
 order: 31
 nav_group: "Guides"
 nav_order: 3

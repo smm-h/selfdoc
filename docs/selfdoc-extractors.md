@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors
-description: "Language extractor registry and auto-detection."
+description: "Language extractor registry and auto-detection -- discovers and loads extractors for Python, Go, TypeScript, and other supported languages."
 generated: true
 nav_group: "API Reference"
 nav_order: 12

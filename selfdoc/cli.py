@@ -1,4 +1,4 @@
-"""CLI interface for selfdoc."""
+"""CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for all commands."""
 
 import datetime
 import http.server

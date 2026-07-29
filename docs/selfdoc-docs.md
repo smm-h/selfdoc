@@ -1,6 +1,6 @@
 ---
 title: selfdoc.docs
-description: "Shared resolution pipeline for docs/ templates."
+description: "Shared resolution pipeline for docs/ templates -- walks the docs directory, parses frontmatter, and resolves all directives."
 generated: true
 nav_group: "API Reference"
 nav_order: 11

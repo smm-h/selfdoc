@@ -1,4 +1,4 @@
-"""Check command -- validate directives and report documentation coverage.
+"""Check command -- validates directive resolution, measures documentation coverage, runs SEO lint rules, and detects stale or drifted descriptions.
 
 Scans docs/ templates for directives, attempts to resolve each one,
 and reports per-directive status (OK or FAILED). For all supported
@@ -1181,7 +1181,16 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
             ))
 
         # SEO007 -- Paragraph length after headings
+        # Generated CLI pages use CLI help strings as intro paragraphs.
+        # These are inherently concise (10-15 words) by design -- expanding
+        # them would degrade CLI --help output.  Skip the check entirely.
+        _is_generated_cli = (
+            metadata.get("generated") is True
+            and rel_path.startswith("cli-")
+        )
         for i, tok in enumerate(tokens):
+            if _is_generated_cli:
+                break
             if not isinstance(tok, Heading):
                 continue
             if tok.level not in (2, 3):

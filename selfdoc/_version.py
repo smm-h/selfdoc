@@ -1,4 +1,4 @@
-"""Version detection for selfdoc."""
+"""Version detection for the selfdoc package -- resolves the current version string from pyproject.toml or installed metadata at import time."""
 
 import os
 

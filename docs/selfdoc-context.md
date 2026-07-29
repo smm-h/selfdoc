@@ -1,6 +1,6 @@
 ---
 title: selfdoc.context
-description: "Build, page, and search context dataclasses."
+description: "Build, page, and search context dataclasses that carry configuration, metadata, and state through the documentation pipeline."
 generated: true
 nav_group: "API Reference"
 nav_order: 8

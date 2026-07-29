@@ -1,6 +1,6 @@
 ---
 title: selfdoc.config
-description: "Config loader for selfdoc.json."
+description: "Config loader for selfdoc.json -- reads project settings, validates required fields, and resolves paths for the build pipeline."
 generated: true
 nav_group: "API Reference"
 nav_order: 7

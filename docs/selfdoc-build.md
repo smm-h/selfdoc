@@ -1,6 +1,6 @@
 ---
 title: selfdoc.build
-description: "Build pipeline for selfdoc: template scanning, directive resolution, HTML output."
+description: "Build pipeline for selfdoc -- scans docs/ templates, resolves directives against source code, and generates static HTML output."
 generated: true
 nav_group: "API Reference"
 nav_order: 4

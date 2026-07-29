@@ -1,4 +1,4 @@
-"""Documentation quality scoring."""
+"""Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio."""
 
 import json
 import os

@@ -1,6 +1,6 @@
 ---
 title: selfdoc.directives
-description: "Directive parser for selfdoc's structured marker syntax."
+description: "Directive parser for selfdoc's structured marker syntax -- tokenizes the 6 marker types into typed directive objects for resolution."
 generated: true
 nav_group: "API Reference"
 nav_order: 10

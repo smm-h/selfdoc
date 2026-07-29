@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.go
-description: "Re-export shim: actual implementation in selfdoc_core.extractors.go."
+description: "Go source extractor for selfdoc -- parses .go files to extract public declarations, doc comments, and struct schemas for documentation pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 14

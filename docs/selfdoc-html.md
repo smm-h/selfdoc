@@ -1,6 +1,6 @@
 ---
 title: selfdoc.html
-description: "Convert Markdown files to static HTML with a built-in minimal converter."
+description: "Convert Markdown files to static HTML with a built-in minimal converter -- handles headings, code blocks, tables, and inline formatting."
 generated: true
 nav_group: "API Reference"
 nav_order: 24

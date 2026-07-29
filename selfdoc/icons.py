@@ -1,4 +1,4 @@
-"""Language icons for code blocks.
+"""Language icons for code blocks -- provides small inline SVG icons for Python, Go, TypeScript, and other supported languages.
 
 Re-export shim: actual implementation in selfdoc_core.icons.
 """

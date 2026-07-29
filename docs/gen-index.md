@@ -1,6 +1,6 @@
 ---
 title: API Reference
-description: "API reference index for selfdoc covering 36 modules"
+description: "API reference index for selfdoc -- auto-generated documentation for all 36 public modules covering CLI, build pipeline, extractors, and utilities."
 generated: true
 seeded: true
 nav_group: "API Reference"

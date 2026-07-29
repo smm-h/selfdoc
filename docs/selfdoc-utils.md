@@ -1,6 +1,6 @@
 ---
 title: selfdoc.utils
-description: "Shared utility functions for selfdoc."
+description: "Shared utility functions for selfdoc -- file I/O helpers, path normalization, atomic writes, and common string operations."
 generated: true
 nav_group: "API Reference"
 nav_order: 36

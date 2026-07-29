@@ -1,4 +1,4 @@
-"""Language extractor registry and auto-detection.
+"""Language extractor registry and auto-detection -- discovers and loads extractors for Python, Go, TypeScript, and other supported languages.
 #
 # Re-export shim: actual implementation lives in selfdoc_core.extractors.
 # This file exists for backward compatibility during the Phase 4 migration.

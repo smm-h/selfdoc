@@ -1,4 +1,4 @@
-"""Generate data files by running sandboxed scripts via bubblewrap (bwrap).
+"""Generate data files by running sandboxed scripts via bubblewrap (bwrap), producing JSON or CSV outputs consumed by directives.
 
 Re-export shim: actual implementation in selfdoc_core.gendata.
 """

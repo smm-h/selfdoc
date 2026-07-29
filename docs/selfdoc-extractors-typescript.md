@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.typescript
-description: "Re-export shim: actual implementation in selfdoc_core.extractors.typescript."
+description: "TypeScript and JavaScript source extractor for selfdoc -- parses .ts and .js files to extract functions, classes, and JSDoc comments."
 generated: true
 nav_group: "API Reference"
 nav_order: 20

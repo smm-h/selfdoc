@@ -1,6 +1,6 @@
 ---
 title: Monorepo Conversion Plan
-description: Plan for converting selfdoc from a standalone repo to a monorepo with three rlsbl releasables
+description: "Plan for converting selfdoc from a standalone repo to a monorepo with three releasables, covering workspace setup, changelog migration, and CI scaffolding."
 date: 2026-07-06
 ---
 
@@ -74,7 +74,7 @@ targets = ["pypi"]
 
 ### 3. Migrate changelog history
 
-The existing `.rlsbl/changes/*.jsonl` files contain history for the unified package. These need to be attributed to the appropriate releasable:
+The existing `.rlsbl/changes/*.jsonl` files contain the full changelog history for the unified package, covering all three components in a single stream. During conversion, each entry needs to be attributed to the appropriate releasable based on which source files the entry's commits touched, so that each releasable carries only its own history forward:
 
 - Most entries are about selfdoc CLI or core functionality
 - Blog/assembly entries belong to selfblog
@@ -82,7 +82,7 @@ The existing `.rlsbl/changes/*.jsonl` files contain history for the unified pack
 
 ### 4. Per-package pyproject.toml activation
 
-Currently the per-package `pyproject.toml` files (in `selfblog/` and `selfdoc_core/`) are inert documentation. To activate them:
+Currently the per-package `pyproject.toml` files in `selfblog/` and `selfdoc_core/` are inert documentation that describe the intended package metadata but are not used by the build system. Activating them means switching from a single root-level build to independent per-package builds, each producing its own versioned wheel:
 
 - Remove `[tool.hatch.build.targets.wheel] packages` from root `pyproject.toml`
 - Each package gets its own build, its own version, its own wheel
@@ -90,7 +90,7 @@ Currently the per-package `pyproject.toml` files (in `selfblog/` and `selfdoc_co
 
 ### 5. CI/CD scaffolding
 
-Each releasable needs its own publish workflow. `rlsbl scaffold` in monorepo mode generates per-releasable workflows.
+Each releasable needs its own CI publish workflow so that releases are independent. Running `rlsbl scaffold` in monorepo mode generates per-releasable GitHub Actions workflows, each configured with the correct build target, registry credentials, and test commands for that specific package.
 
 ## Open Questions
 
@@ -100,7 +100,7 @@ Each releasable needs its own publish workflow. `rlsbl scaffold` in monorepo mod
 
 ## rlsbl Call-Site Flip
 
-When the monorepo conversion is complete, external consumers (rlsbl post-release hooks, CI workflows) need to switch from `selfdoc` to `selfblog` for blog-related operations:
+When the monorepo conversion is complete, external consumers such as rlsbl post-release hooks and CI workflows need to update their command invocations. Blog-related operations that currently use the `selfdoc` CLI must switch to the `selfblog` CLI, since the blog functionality moves to its own independently versioned package:
 
 | Current call site | Current command | Target command |
 |---|---|---|
@@ -119,7 +119,7 @@ For unified configs that have both docs and blog content, `selfdoc check` should
 
 ## Assembly Workflow Update
 
-The per-line assembly workflow (`.github/workflows/deploy.yml` in the assembly repo) needs these changes:
+The assembly workflow at `.github/workflows/deploy.yml` in the assembly repo needs to install both packages and route build commands to the correct CLI. Full documentation builds remain with `selfdoc`, while posts-only builds and shared element generation move to `selfblog`. The specific changes are listed below:
 
 ### Install step
 

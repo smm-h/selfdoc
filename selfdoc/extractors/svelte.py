@@ -1,4 +1,4 @@
-"""Re-export shim: actual implementation in selfdoc_core.extractors.svelte."""
+"""Svelte source extractor for selfdoc -- parses .svelte files to extract component props, exports, and documentation for reference pages."""
 
 from selfdoc_core.extractors.svelte import *  # noqa: F401,F403
 from selfdoc_core.extractors.svelte import (  # noqa: F401

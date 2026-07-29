@@ -1,4 +1,4 @@
-"""Resolver factory -- dispatches directives to language-specific extractors.
+"""Resolver factory -- dispatches directives to language-specific extractors based on file extension and configured source paths.
 
 Re-export shim: actual implementation in selfdoc_core.resolver.
 """

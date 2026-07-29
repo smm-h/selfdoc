@@ -1,6 +1,6 @@
 ---
 title: selfdoc.tokenizer
-description: "Standalone Markdown block tokenizer."
+description: "Standalone Markdown block tokenizer -- splits Markdown source into typed block tokens for headings, code, paragraphs, and lists."
 generated: true
 nav_group: "API Reference"
 nav_order: 34

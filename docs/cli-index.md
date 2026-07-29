@@ -1,6 +1,6 @@
 ---
 title: selfdoc CLI Reference
-description: "CLI reference for selfdoc -- all commands (init, build, serve, deploy, check, gen, gen-data) and command groups (post, assembly, baseline) with flags and usage."
+description: "CLI reference for selfdoc -- all commands (init, build, serve, deploy, check, gen, gen-data) and command groups (post, assembly, baseline)."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 0

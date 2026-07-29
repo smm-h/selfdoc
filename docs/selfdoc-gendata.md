@@ -1,6 +1,6 @@
 ---
 title: selfdoc.gendata
-description: "Generate data files by running sandboxed scripts via bubblewrap (bwrap)."
+description: "Generate data files by running sandboxed scripts via bubblewrap (bwrap), producing JSON or CSV outputs consumed by directives."
 generated: true
 nav_group: "API Reference"
 nav_order: 23

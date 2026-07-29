@@ -1,4 +1,4 @@
-"""Build, page, and search context dataclasses.
+"""Build, page, and search context dataclasses that carry configuration, metadata, and state through the documentation pipeline.
 
 Re-export shim: actual implementation in selfdoc_core.context.
 """

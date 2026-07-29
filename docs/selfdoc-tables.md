@@ -1,6 +1,6 @@
 ---
 title: selfdoc.tables
-description: "Render data as Markdown tables with alignment, pretty-printing, and pipe escaping."
+description: "Render data as Markdown tables with column alignment, pretty-printing, and pipe escaping for use in generated documentation pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 33

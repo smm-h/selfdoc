@@ -1,6 +1,6 @@
 ---
 title: selfdoc.resolver
-description: "Resolver factory -- dispatches directives to language-specific extractors."
+description: "Resolver factory -- dispatches directives to language-specific extractors based on file extension and configured source paths."
 generated: true
 nav_group: "API Reference"
 nav_order: 30

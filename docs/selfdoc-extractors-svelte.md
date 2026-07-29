@@ -1,6 +1,6 @@
 ---
 title: selfdoc.extractors.svelte
-description: "Re-export shim: actual implementation in selfdoc_core.extractors.svelte."
+description: "Svelte source extractor for selfdoc -- parses .svelte files to extract component props, exports, and documentation for reference pages."
 generated: true
 nav_group: "API Reference"
 nav_order: 18

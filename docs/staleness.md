@@ -1,6 +1,6 @@
 ---
 title: Staleness Detection
-description: "How selfdoc detects stale frontmatter descriptions by hashing page content, how to fix STALE001 errors, and how to accept a reviewed dead-end with selfdoc baseline accept."
+description: "How selfdoc detects stale frontmatter descriptions by hashing page content, how to fix STALE001 errors, and how to accept reviewed dead-ends."
 nav_group: "Guides"
 nav_order: 18
 ---
@@ -59,7 +59,7 @@ Then run `selfdoc check` again. The hashes update and the error clears.
 
 ## Accepting a Reviewed Dead-End
 
-Sometimes the content legitimately changed but the existing description is still accurate, and rewriting it would be dishonest busywork. The most common trigger is a page that embeds `project.version` (via a var directive): its resolved content changes on every release even though nothing about the page's meaning did. Because the baseline is frozen while a page is in an error state, `selfdoc gen` and `selfdoc check` can never clear STALE001 on their own -- the page is stuck until a human intervenes:
+Sometimes the content changed but the existing description is still accurate. The most common trigger is a page that embeds `project.version` via a var directive -- its content hash changes on every release even though the page's meaning did not. Use `selfdoc baseline accept` to advance the baseline:
 
 ```
 selfdoc baseline accept en/index.md en/cli-index.md

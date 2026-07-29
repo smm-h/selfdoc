@@ -1,6 +1,6 @@
 ---
 title: selfdoc.deploy
-description: "Deploy providers for selfdoc documentation sites."
+description: "Deploy providers for selfdoc documentation sites -- supports Cloudflare Pages and GitHub Pages with atomic uploads and cache invalidation."
 generated: true
 nav_group: "API Reference"
 nav_order: 9

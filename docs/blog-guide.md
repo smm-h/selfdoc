@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, including frontmatter format, release-generated posts, revision tracking, and integration with the unified documentation assembly."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, and assembly integration."
 nav_group: "Guides"
 nav_order: 19
 ---
