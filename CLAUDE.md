@@ -93,44 +93,44 @@ uv run pytest
 
 - **selfdoc** (`selfdoc/__init__.py`): selfdoc: Code-aware static site generator with directive-based content extraction.
 - **selfdoc.__main__** (`selfdoc/__main__.py`)
-- **selfdoc._version** (`selfdoc/_version.py`): Version detection for selfdoc.
-- **selfdoc.build** (`selfdoc/build.py`): Build pipeline for selfdoc: template scanning, directive resolution, HTML output.
+- **selfdoc._version** (`selfdoc/_version.py`): Version detection for the selfdoc package -- resolves the current version string from pyproject.toml or installed metadata at import time.
+- **selfdoc.build** (`selfdoc/build.py`): Build pipeline for selfdoc -- scans docs/ templates, resolves directives against source code, and generates static HTML output.
 - **selfdoc.catalog** (`selfdoc/catalog.py`): Directive catalog: defines all built-in directive names and their status.
-- **selfdoc.check** (`selfdoc/check.py`): Check command -- validate directives and report documentation coverage.
-- **selfdoc.cli** (`selfdoc/cli.py`): CLI interface for selfdoc.
-- **selfdoc.config** (`selfdoc/config.py`): Config loader for selfdoc.json.
+- **selfdoc.check** (`selfdoc/check.py`): Check command -- validates directive resolution, measures documentation coverage, runs SEO lint rules, and detects stale or drifted descriptions.
+- **selfdoc.cli** (`selfdoc/cli.py`): CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for all commands.
+- **selfdoc.config** (`selfdoc/config.py`): Config loader for selfdoc.json -- reads project settings, validates required fields, and resolves paths for the build pipeline.
 - **selfdoc.content** (`selfdoc/content.py`): Content directives -- re-export shim + table-commands registration.
-- **selfdoc.context** (`selfdoc/context.py`): Build, page, and search context dataclasses.
-- **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites.
-- **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax.
-- **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates.
-- **selfdoc.extractors** (`selfdoc/extractors/__init__.py`): Language extractor registry and auto-detection.
+- **selfdoc.context** (`selfdoc/context.py`): Build, page, and search context dataclasses that carry configuration, metadata, and state through the documentation pipeline.
+- **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites -- supports Cloudflare Pages and GitHub Pages with atomic uploads and cache invalidation.
+- **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax -- tokenizes the 6 marker types into typed directive objects for resolution.
+- **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates -- walks the docs directory, parses frontmatter, and resolves all directives.
+- **selfdoc.extractors** (`selfdoc/extractors/__init__.py`): Language extractor registry and auto-detection -- discovers and loads extractors for Python, Go, TypeScript, and other supported languages.
 - **selfdoc.extractors.base** (`selfdoc/extractors/base.py`): Re-export shim: actual implementation in selfdoc_core.extractors.base.
-- **selfdoc.extractors.dart** (`selfdoc/extractors/dart.py`): Re-export shim: actual implementation in selfdoc_core.extractors.dart.
-- **selfdoc.extractors.go** (`selfdoc/extractors/go.py`): Re-export shim: actual implementation in selfdoc_core.extractors.go.
-- **selfdoc.extractors.kotlin** (`selfdoc/extractors/kotlin.py`): Re-export shim: actual implementation in selfdoc_core.extractors.kotlin.
+- **selfdoc.extractors.dart** (`selfdoc/extractors/dart.py`): Dart source extractor for selfdoc -- parses .dart files to extract public declarations, doc comments, and exports for documentation pages.
+- **selfdoc.extractors.go** (`selfdoc/extractors/go.py`): Go source extractor for selfdoc -- parses .go files to extract public declarations, doc comments, and struct schemas for documentation pages.
+- **selfdoc.extractors.kotlin** (`selfdoc/extractors/kotlin.py`): Kotlin source extractor for selfdoc -- parses .kt files to extract public declarations, KDoc comments, and data class schemas for documentation.
 - **selfdoc.extractors.protocol** (`selfdoc/extractors/protocol.py`): Re-export shim: actual implementation in selfdoc_core.extractors.protocol.
-- **selfdoc.extractors.python** (`selfdoc/extractors/python.py`): Re-export shim: actual implementation in selfdoc_core.extractors.python.
-- **selfdoc.extractors.sql** (`selfdoc/extractors/sql.py`): Re-export shim: actual implementation in selfdoc_core.extractors.sql.
-- **selfdoc.extractors.svelte** (`selfdoc/extractors/svelte.py`): Re-export shim: actual implementation in selfdoc_core.extractors.svelte.
-- **selfdoc.extractors.swift** (`selfdoc/extractors/swift.py`): Re-export shim: actual implementation in selfdoc_core.extractors.swift.
-- **selfdoc.extractors.typescript** (`selfdoc/extractors/typescript.py`): Re-export shim: actual implementation in selfdoc_core.extractors.typescript.
-- **selfdoc.extractors.zig** (`selfdoc/extractors/zig.py`): Re-export shim: actual implementation in selfdoc_core.extractors.zig.
+- **selfdoc.extractors.python** (`selfdoc/extractors/python.py`): Python source extractor for selfdoc -- parses .py files using stdlib ast to extract functions, classes, docstrings, and type annotations.
+- **selfdoc.extractors.sql** (`selfdoc/extractors/sql.py`): SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract table definitions, views, types, and COMMENT ON documentation.
+- **selfdoc.extractors.svelte** (`selfdoc/extractors/svelte.py`): Svelte source extractor for selfdoc -- parses .svelte files to extract component props, exports, and documentation for reference pages.
+- **selfdoc.extractors.swift** (`selfdoc/extractors/swift.py`): Swift source extractor for selfdoc -- parses .swift files to extract public declarations, doc comments, and struct schemas for documentation.
+- **selfdoc.extractors.typescript** (`selfdoc/extractors/typescript.py`): TypeScript and JavaScript source extractor for selfdoc -- parses .ts and .js files to extract functions, classes, and JSDoc comments.
+- **selfdoc.extractors.zig** (`selfdoc/extractors/zig.py`): Zig source extractor for selfdoc -- parses .zig files to extract public declarations, doc comments, and test blocks for documentation pages.
 - **selfdoc.gen** (`selfdoc/gen.py`): Auto-generate documentation pages from project structure.
-- **selfdoc.gendata** (`selfdoc/gendata.py`): Generate data files by running sandboxed scripts via bubblewrap (bwrap).
+- **selfdoc.gendata** (`selfdoc/gendata.py`): Generate data files by running sandboxed scripts via bubblewrap (bwrap), producing JSON or CSV outputs consumed by directives.
 - **selfdoc.git** (`selfdoc/git.py`): Auto-commit helper for selfdoc commands.
-- **selfdoc.html** (`selfdoc/html.py`): Convert Markdown files to static HTML with a built-in minimal converter.
-- **selfdoc.icons** (`selfdoc/icons.py`): Language icons for code blocks.
+- **selfdoc.html** (`selfdoc/html.py`): Convert Markdown files to static HTML with a built-in minimal converter -- handles headings, code blocks, tables, and inline formatting.
+- **selfdoc.icons** (`selfdoc/icons.py`): Language icons for code blocks -- provides small inline SVG icons for Python, Go, TypeScript, and other supported languages.
 - **selfdoc.js** (`selfdoc/js/__init__.py`)
-- **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources.
+- **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources -- provides runtime access to bundled JavaScript for search, theming, and navigation.
 - **selfdoc.manifest** (`selfdoc/manifest.py`): Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info.
 - **selfdoc.ownership** (`selfdoc/ownership.py`): Description ownership predicate: machine-owned vs handwritten.
-- **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors.
-- **selfdoc.score** (`selfdoc/score.py`): Documentation quality scoring.
+- **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors based on file extension and configured source paths.
+- **selfdoc.score** (`selfdoc/score.py`): Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio.
 - **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
 - **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
-- **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with alignment, pretty-printing, and pipe escaping.
+- **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with column alignment, pretty-printing, and pipe escaping for use in generated documentation pages.
 - **selfdoc.themes** (`selfdoc/themes/__init__.py`): Theme registry for selfdoc.
-- **selfdoc.tokenizer** (`selfdoc/tokenizer.py`): Standalone Markdown block tokenizer.
+- **selfdoc.tokenizer** (`selfdoc/tokenizer.py`): Standalone Markdown block tokenizer -- splits Markdown source into typed block tokens for headings, code, paragraphs, and lists.
 - **selfdoc.urls** (`selfdoc/urls.py`): URL builder interface for decoupling URL generation from hardcoded base_url usage, supporting locale-prefixed and versioned paths.
-- **selfdoc.utils** (`selfdoc/utils.py`): Shared utility functions for selfdoc.
+- **selfdoc.utils** (`selfdoc/utils.py`): Shared utility functions for selfdoc -- file I/O helpers, path normalization, atomic writes, and common string operations.

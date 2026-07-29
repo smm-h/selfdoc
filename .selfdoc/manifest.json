@@ -13,6 +13,11 @@
       "type": "doc"
     },
     {
+      "path": "blog-guide.md",
+      "title": "Blog Posts",
+      "type": "doc"
+    },
+    {
       "path": "check-guide.md",
       "title": "Check Guide",
       "type": "doc"
@@ -98,6 +103,11 @@
       "type": "doc"
     },
     {
+      "path": "directives-guide.md",
+      "title": "Directives Guide",
+      "type": "doc"
+    },
+    {
       "path": "directives.md",
       "title": "Directives Reference",
       "type": "doc"
@@ -155,6 +165,11 @@
     {
       "path": "multi-language.md",
       "title": "Multi-Language Support",
+      "type": "doc"
+    },
+    {
+      "path": "quality-guide.md",
+      "title": "Quality Guide",
       "type": "doc"
     },
     {
@@ -381,5 +396,5 @@
       ]
     }
   ],
-  "last_gen": "2026-07-29T15:14:47.288933+00:00"
+  "last_gen": "2026-07-29T17:14:37.619501+00:00"
 }

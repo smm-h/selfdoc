@@ -2,7 +2,6 @@
 title: API Reference
 description: "API reference index for selfdoc -- auto-generated documentation for all 36 public modules covering CLI, build pipeline, extractors, and utilities."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 0
 order: 90
@@ -14,13 +13,8 @@ order: 90
 - [selfdoc](selfdoc.html)
 - [selfdoc.__main__](selfdoc-__main__.html)
 - [selfdoc._version](selfdoc-_version.html)
-- [selfdoc.build](selfdoc-build.html)
-- [selfdoc.check](selfdoc-check.html)
-- [selfdoc.cli](selfdoc-cli.html)
-- [selfdoc.config](selfdoc-config.html)
 - [selfdoc.context](selfdoc-context.html)
 - [selfdoc.deploy](selfdoc-deploy.html)
-- [selfdoc.directives](selfdoc-directives.html)
 - [selfdoc.docs](selfdoc-docs.html)
 - [selfdoc.extractors](selfdoc-extractors.html)
 - [selfdoc.extractors.dart](selfdoc-extractors-dart.html)
@@ -34,7 +28,6 @@ order: 90
 - [selfdoc.extractors.zig](selfdoc-extractors-zig.html)
 - [selfdoc.gen](selfdoc-gen.html)
 - [selfdoc.gendata](selfdoc-gendata.html)
-- [selfdoc.html](selfdoc-html.html)
 - [selfdoc.icons](selfdoc-icons.html)
 - [selfdoc.js](selfdoc-js.html)
 - [selfdoc.js.loader](selfdoc-js-loader.html)
