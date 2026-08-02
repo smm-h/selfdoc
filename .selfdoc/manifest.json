@@ -23,11 +23,6 @@
       "type": "doc"
     },
     {
-      "path": "cli-assembly.md",
-      "title": "selfdoc assembly",
-      "type": "doc"
-    },
-    {
       "path": "cli-baseline.md",
       "title": "selfdoc baseline",
       "type": "doc"
@@ -68,8 +63,8 @@
       "type": "doc"
     },
     {
-      "path": "cli-post.md",
-      "title": "selfdoc post",
+      "path": "cli-quality.md",
+      "title": "selfdoc quality",
       "type": "doc"
     },
     {
@@ -396,5 +391,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-02T14:57:42.918367+00:00"
+  "last_gen": "2026-08-02T16:04:44.776979+00:00"
 }

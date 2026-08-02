@@ -6,7 +6,7 @@ Code-aware static site generator. Builds full documentation sites from Markdown 
 
 ## Conventions
 
-- Pure Python, one runtime dependency (`strictcli>=0.7.0`)
+- Pure Python. The `selfdoc` package depends on `strictcli` and `selfdoc-core`; `selfdoc-core` in turn depends on `strictspec`. Nothing else is required at runtime.
 - Build system: hatchling
 - Development: `uv` for all Python tooling (`uv sync`, `uv run`, `uv add`)
 - Local development install: `uv pip install -e .`

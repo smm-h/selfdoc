@@ -23,9 +23,8 @@ Version: :-: var key="project.version"
 - [check](cli-check.html) -- Check documentation coverage, directive resolution, and lint rules
 - [gen](cli-gen.html) -- Auto-generate documentation pages from project structure
 - [gen-data](cli-gen-data.html) -- Generate data files by running sandboxed scripts via bwrap
+- [quality](cli-quality.html) -- Show documentation quality tier and metrics for the current project
 
 ## Command Groups
 
-- [post](cli-post.html) -- Manage blog posts and chronological content for the documentation site
-- [assembly](cli-assembly.html) -- Manage the unified multi-project documentation assembly and deployment
 - [baseline](cli-baseline.html) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check
