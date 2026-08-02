@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, and assembly integration."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, assembly integration, and the canonical blog URL."
 nav_group: "Guides"
 nav_order: 19
 ---
@@ -32,8 +32,10 @@ You also need `topology.slug` configured so that posts are attributed to your pr
 ```json
 {
   "topology": {
-    "slug": "myproject",
-    "assembly": "owner/assembly-repo"
+    "slug": "myproject"
+  },
+  "assembly": {
+    "repo": "owner/assembly-repo"
   }
 }
 ```
