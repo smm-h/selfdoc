@@ -681,7 +681,7 @@ def _cmd_assembly_rebuild(ctx):
 
 @assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
 @strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
-@strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
+@strictcli.flag("docs-base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
 def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
     """Print the _redirects file content for redirecting to the assembly site."""
     from selfblog.assembly import generate_redirects_file

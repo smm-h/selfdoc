@@ -1,6 +1,7 @@
 """Tests for generate_redirects_file in selfblog.assembly."""
 
 from selfblog.assembly import generate_redirects_file
+from selfblog.cli import app
 
 
 def test_redirects_basic_format():
@@ -52,3 +53,31 @@ def test_redirects_has_301():
 def test_redirects_wildcard_pattern():
     result = generate_redirects_file("proj", "https://docs.smmh.dev")
     assert result.startswith("/*")
+
+
+# -- CLI surface -------------------------------------------------------------
+
+
+def test_cli_redirects_accepts_kebab_docs_base(capsys):
+    """The flag is spelled --docs-base, like every sibling assembly flag."""
+    result = app.test(
+        ["assembly", "redirects", "--slug", "proj",
+         "--docs-base", "https://docs.smmh.dev"],
+    )
+    assert result.exit_code == 0
+    assert "/* https://docs.smmh.dev/proj/:splat 301" in result.stdout
+
+
+def test_cli_redirects_rejects_underscore_docs_base():
+    """--docs_base is not a flag: strictcli flags are kebab-case."""
+    result = app.test(
+        ["assembly", "redirects", "--slug", "proj",
+         "--docs_base", "https://docs.smmh.dev"],
+    )
+    assert result.exit_code != 0
+
+
+def test_cli_redirects_missing_docs_base_names_the_real_flag():
+    result = app.test(["assembly", "redirects", "--slug", "proj"])
+    assert result.exit_code != 0
+    assert "--docs-base" in result.stderr

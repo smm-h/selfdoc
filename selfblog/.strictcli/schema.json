@@ -231,7 +231,7 @@
               "help": "Project slug used as the URL path segment in the assembly site structure"
             },
             {
-              "name": "docs_base",
+              "name": "docs-base",
               "type": "str",
               "help": "Base URL of the assembly documentation site used for generating redirect targets"
             }
