@@ -295,6 +295,11 @@
     "description": "c57bbd4dde2fb8d530b7b8f19eea1a5cddee292fd285f79b8ef693b03f82bd9c",
     "source_docstring": "139f1b85e93eea3325543dab919675ccb74e314ad37bd8e4b3ae7b71cd405363"
   },
+  "en/selfdoc-quality.md": {
+    "content": "78bc53da300ebbc28d66d0915528c4c7dfa89c8e773d56f5701ad5fff3409cae",
+    "description": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a",
+    "seed_hash": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a"
+  },
   "en/selfdoc-resolver.md": {
     "content": "1905aa30e259346fed00c61729d680b008e9b4ce87948f998580a6351c98a669",
     "description": "f74118b25eb9a0ebad19f0e06f105884bb80cb5efb377e658d024ce3897beb62",

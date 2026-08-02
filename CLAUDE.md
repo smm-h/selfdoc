@@ -125,8 +125,8 @@ uv run pytest
 - **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources -- provides runtime access to bundled JavaScript for search, theming, and navigation.
 - **selfdoc.manifest** (`selfdoc/manifest.py`): Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info.
 - **selfdoc.ownership** (`selfdoc/ownership.py`): Description ownership predicate: machine-owned vs handwritten.
+- **selfdoc.quality** (`selfdoc/quality.py`): Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio.
 - **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors based on file extension and configured source paths.
-- **selfdoc.score** (`selfdoc/score.py`): Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio.
 - **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
 - **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
 - **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with column alignment, pretty-printing, and pipe escaping for use in generated documentation pages.
