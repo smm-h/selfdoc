@@ -5,7 +5,7 @@ title: README.md
 
 Code-aware documentation site generator. Builds full static sites from Markdown templates and source code. Your code is the documentation -- directives in Markdown pull live content from your codebase at build time.
 
-Supports Python, Go, and TypeScript/JavaScript. One runtime dependency (strictcli). Pure Python.
+Supports Python, Go, and TypeScript/JavaScript. Pure Python: two direct runtime dependencies, `strictcli` and `selfdoc-core` (which brings `strictspec`). Nothing to compile.
 
 ## Install
 

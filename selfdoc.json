@@ -72,8 +72,8 @@
         "description": "Python (AST-based), Go, and TypeScript extractors handle all five built-in directive types out of the box."
       },
       {
-        "title": "Zero Dependencies",
-        "description": "Pure Python stdlib with one lightweight dependency. No JavaScript frameworks, no build tools, no configuration overhead."
+        "title": "Pure Python",
+        "description": "Two direct runtime dependencies, both pure Python, nothing to compile. No JavaScript frameworks, no build tools, no configuration overhead."
       },
       {
         "title": "SEO & AI Optimized",

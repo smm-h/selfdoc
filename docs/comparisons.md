@@ -7,7 +7,7 @@ nav_order: 2
 
 # Comparisons
 
-selfdoc takes a different angle from most documentation generators: it extracts content directly from source code via 20 built-in directive types, supports 3 languages in a single tool, and produces a complete static site with search, SEO, and theming -- all from pure Python with 1 runtime dependency.
+selfdoc takes a different angle from most documentation generators: it extracts content directly from source code via 20 built-in directive types, supports 3 languages in a single tool, and produces a complete static site with search, SEO, and theming -- all from pure Python with 2 direct runtime dependencies and nothing to compile.
 
 Here is how it stacks up against the popular alternatives.
 

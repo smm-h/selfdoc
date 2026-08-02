@@ -12,7 +12,7 @@ This guide walks you through installing selfdoc, setting up a project, writing y
 
 ## Installation
 
-selfdoc requires **Python 3.11 or later** and has just 1 runtime dependency (strictcli). It works on Linux, macOS, and Windows with no platform-specific setup. You can install it via pip from PyPI for direct use, or via npm as a thin Node wrapper that delegates to the Python package under the hood.
+selfdoc requires **Python 3.11 or later** and has two direct runtime dependencies: `strictcli` (its CLI framework) and `selfdoc-core` (the extraction and rendering engine), which between them add `strictspec` and `tomlkit`. All four are pure Python, so there is nothing to compile -- it works on Linux, macOS, and Windows with no platform-specific setup. You can install it via pip from PyPI for direct use, or via npm as a thin Node wrapper that delegates to the Python package under the hood.
 
 Install via pip:
 
