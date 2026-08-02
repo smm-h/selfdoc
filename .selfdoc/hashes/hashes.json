@@ -29,9 +29,9 @@
     "schema_hash": "12917e9dfadebeab9df5c2cd426372bf756095ea0def15e2259462acd364fb0b"
   },
   "en/cli-check.md": {
-    "content": "e9a5466b7bd2a334a9fce95df14e3f71cc7c30190440a8373995b8f60344c634",
+    "content": "97f32057959cdd4a3a45a03dfbbd37c24a76f47798aab9807a6137394e987a3d",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd",
-    "schema_hash": "7c95fe915f7417037d1fa1b2ca1bf7d0cea3b4987c0e0d2f46f73a9d414d40c2"
+    "schema_hash": "fd2d867836563c806d7d0a712b68d80c1fc3c7802149ca0b104920ff542f6e3d"
   },
   "en/cli-deploy.md": {
     "content": "bf5c6b164a5b1b8c719eba4307d52c8b893a93cb875d6c856ce472afb36587bd",
@@ -44,9 +44,9 @@
     "schema_hash": "67bc0f6efeac51d2a5454ac93aced97fec553228419c7138bd429eb91f53329f"
   },
   "en/cli-gen.md": {
-    "content": "b2da5abc4da0d9d936c66c6aac5e5011b14860a059a3ae59e2b925dd0e14c321",
+    "content": "25d7cb51ab5493eb82f99591d01b25fce64277562773f028b9662f0174d6aa55",
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac",
-    "schema_hash": "5ee2c3d0e5716c6c462f6a979a9843d9c6a30f78cf8f6bf5a864d20295025252"
+    "schema_hash": "616a1276962816bc9ba0ed14056a7d6a24b17f4cb6479eae6adef9a67fe6f157"
   },
   "en/cli-index.md": {
     "content": "3a7bddd5d7697edd6f6cd4c966f1ef5e5a161f932409fb5a9917f315b17a5854",
@@ -94,7 +94,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "en/directives-guide.md": {
-    "content": "66faa83cb745e7f0163766a30fdfca91f44fb7e2e23abd3962d60254c337d15f",
+    "content": "6ba7dc7f4b4f42279be52bd8bd0ce8286f3762a25569feb008998d2354e2188a",
     "description": "829e28ebed530fef6f8f0fe68d2dfd04f90b9076d0fe1b2ea8796244197d04d8"
   },
   "en/directives.md": {
@@ -126,7 +126,7 @@
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
-    "content": "70a156e397c79c35f99e522e892c0d6e5fe0d088ee9e167c51b0766b417a7984",
+    "content": "c7867bb5d36826d06b951d4f3908c0cfef431337d3d6ae05b3246262beca0afe",
     "description": "fde99a135ff41825e1968e68c673c9dd3fda338d7fdf0152dda32aa517203df2"
   },
   "en/internals.md": {
