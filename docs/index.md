@@ -73,7 +73,7 @@ The rendered output: a styled HTML page with your welcome text, followed by a co
 
 ## Features
 
-selfdoc ships with everything you need to build, check, and deploy a documentation site from a single tool with one runtime dependency. Here are the core capabilities that work out of the box.
+selfdoc ships with everything you need to build, check, and deploy a documentation site from a single tool with a handful of pure-Python dependencies. Here are the core capabilities that work out of the box.
 
 :<: callout-note
 :=:
