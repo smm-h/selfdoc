@@ -87,7 +87,7 @@ def deploy_cloudflare_pages(output_dir, project_name, version):
     print(f"Deployed docs v{version} to Cloudflare Pages project '{project_name}'")
 
 
-def deploy_github_pages(output_dir, version):
+def deploy_github_pages(output_dir, version, *, target):
     """Deploy to GitHub Pages by force-pushing output to gh-pages branch.
 
     Uses a temporary directory to build a fresh commit without touching
@@ -97,23 +97,47 @@ def deploy_github_pages(output_dir, version):
     Args:
         output_dir: Path to the built HTML output directory.
         version: Version string for the commit message.
+        target: REQUIRED push target. Either a git remote URL (used
+            verbatim) or the path to a repository whose ``origin`` remote
+            is resolved. This is deliberately not derived from the process's
+            current working directory: this function FORCE-pushes a
+            gh-pages branch, and a cwd-derived target silently aims that
+            force-push at whatever repository the process happens to be
+            sitting in.
 
     Raises:
-        DeployError: If git operations fail or remote is unreachable.
+        DeployError: If *target* is empty, git operations fail, or the
+            remote is unreachable.
     """
-    # Get remote URL from the current repo
-    try:
-        remote = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except subprocess.CalledProcessError:
+    if not target:
         raise DeployError(
-            "Could not determine git remote URL. "
-            "Ensure 'origin' remote is configured."
+            "deploy_github_pages requires an explicit push target: pass "
+            "either a git remote URL or the path to the repository whose "
+            "'origin' remote should be used. This deploy force-pushes the "
+            "gh-pages branch, so the target is never inferred."
         )
+
+    if _looks_like_remote_url(target):
+        remote = target
+    else:
+        if not os.path.isdir(target):
+            raise DeployError(
+                f"deploy_github_pages target '{target}' is neither a git "
+                f"remote URL nor an existing directory."
+            )
+        try:
+            remote = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                cwd=target,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        except subprocess.CalledProcessError:
+            raise DeployError(
+                f"Could not determine the git remote URL for '{target}'. "
+                "Ensure 'origin' remote is configured there."
+            )
 
     with tempfile.TemporaryDirectory() as tmp:
         # Init a fresh repo and create gh-pages branch
@@ -158,6 +182,19 @@ def deploy_github_pages(output_dir, version):
             )
 
     print(f"Deployed docs v{version} to GitHub Pages (gh-pages branch)")
+
+
+_REMOTE_URL_PREFIXES = ("http://", "https://", "ssh://", "git://", "file://")
+
+
+def _looks_like_remote_url(target):
+    """True when *target* is a git remote URL rather than a local repo path."""
+    if target.startswith(_REMOTE_URL_PREFIXES):
+        return True
+    # scp-style syntax: user@host:path (no such thing as a ':' in a plain
+    # local repo path we would accept here).
+    head = target.split("/", 1)[0]
+    return "@" in head and ":" in head
 
 
 def _run_git(args, cwd):

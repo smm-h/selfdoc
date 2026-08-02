@@ -515,7 +515,10 @@ def _cmd_deploy(ctx):
             project_name = deploy_config["project"]
             deploy_cloudflare_pages(output_dir, project_name, version)
         elif provider == "github-pages":
-            deploy_github_pages(output_dir, version)
+            # The project root is the deploy target: this command already
+            # operates on "." (config, output dir), so the repository whose
+            # origin receives the force-push is stated, not inferred.
+            deploy_github_pages(output_dir, version, target=".")
         else:
             print(f"Error: Unknown deploy provider '{provider}'", file=sys.stderr)
             sys.exit(1)
