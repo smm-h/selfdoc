@@ -532,7 +532,9 @@ def _cmd_deploy(ctx):
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
 @strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
-def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False):
+@strictcli.flag("version-override", type=str, default="", help="Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump")
+def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False,
+               version_override=""):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
     from selfdoc.config import load_config
@@ -548,7 +550,9 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False):
         sys.exit(1)
 
     try:
-        result = check_docs(".", dry_run=dry_run)
+        result = check_docs(
+            ".", dry_run=dry_run, version_override=version_override or None,
+        )
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -688,15 +692,20 @@ def _cmd_baseline_accept(ctx, page, auto_commit=True):
 
 @app.command("gen", help="Auto-generate documentation pages from project structure")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit generated documentation pages and root files to git")
-def _cmd_gen(ctx, auto_commit=True):
+@strictcli.flag("version-override", type=str, default="", help="Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump lands)")
+def _cmd_gen(ctx, auto_commit=True, version_override=""):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
     from selfdoc.gen import generate_docs, generate_root_files
+    from selfdoc_core.content import VERSION_OVERRIDE_KEY
 
     config = load_config(".")
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
+
+    if version_override:
+        config[VERSION_OVERRIDE_KEY] = version_override
 
     try:
         gen_result = generate_docs(config, base_dir=".")

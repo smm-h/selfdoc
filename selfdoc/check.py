@@ -248,7 +248,8 @@ def _resolve_root_templates(config, base_dir="."):
     return result
 
 
-def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
+def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
+               version_override=None):
     """Validate all directives in docs templates and report coverage.
 
     Scans docs/ for .md templates, parses directives, attempts to resolve
@@ -260,6 +261,11 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
         dry_run: If True, report staleness without writing hashes to disk.
         version_filter: When set, skip multi-version validation (VER001).
             Used by ``build --version`` to check only a single version.
+        version_override: Version that version-bearing generated content is
+            expected to embed (VER004), overriding the version detected from
+            the project manifest.  Release orchestrators pass the
+            about-to-be-released version here, matching the value they pass
+            to ``selfdoc gen --version-override``.
 
     Returns:
         CheckResult with per-directive results and optional coverage stats.
@@ -504,6 +510,9 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None):
 
     # Project-level version consistency checks
     result.lints.extend(_check_version_consistency(config, dir_path))
+    result.lints.extend(
+        _check_version_match(config, dir_path, version_override=version_override)
+    )
 
     # Description staleness and source docstring drift detection.
     # Uses frontmatter and resolved content from resolve_all_docs instead
@@ -874,6 +883,76 @@ def _check_version_consistency(config, dir_path):
             ))
 
     return results
+
+
+def _check_version_match(config, dir_path, version_override=None):
+    """Check that version-bearing generated content is not stale (VER004).
+
+    Root files generated from a template that interpolates
+    ``var key="project.version"`` carry a RESOLVED version literal on disk.
+    Generation runs before the version bump in a release, so without
+    ``selfdoc gen --version-override`` those committed files end up one
+    release behind -- silently.  This check turns that lag into a hard
+    failure by requiring the generated file to embed the expected version.
+
+    The expected version is *version_override* when given (the
+    about-to-be-released version, matching what the orchestrator passes to
+    ``gen``), otherwise the version detected from the project manifest.
+    """
+    from selfdoc.utils import detect_project_version
+
+    expected = version_override or detect_project_version(dir_path)
+    if not expected:
+        return []
+
+    results = []
+
+    for template_path in config.get("root_files", []) or []:
+        full_template = os.path.join(dir_path, template_path)
+        if not os.path.isfile(full_template):
+            # Missing templates are reported by gen, not here.
+            continue
+        with open(full_template, "r", encoding="utf-8") as f:
+            template = f.read()
+        if not _has_version_var_directive(template):
+            continue
+
+        basename = os.path.basename(template_path)
+        if not basename.startswith("_"):
+            continue
+        output_name = basename[1:]
+        output_path = os.path.join(dir_path, output_name)
+        if not os.path.isfile(output_path):
+            # Not generated yet -- gen's concern, not a version mismatch.
+            continue
+
+        with open(output_path, "r", encoding="utf-8") as f:
+            generated = f.read()
+
+        if expected not in generated:
+            results.append(LintResult(
+                file=output_name,
+                line=None,
+                code="VER004",
+                message=(
+                    f"Generated root file '{output_name}' embeds the project"
+                    f" version from '{template_path}' but does not contain the"
+                    f" expected version '{expected}'. Regenerate with"
+                    f" 'selfdoc gen --version-override {expected}' so the"
+                    f" committed file is not one release behind."
+                ),
+                severity="error",
+            ))
+
+    return results
+
+
+def _has_version_var_directive(template):
+    """True when *template* interpolates the project version via a var directive."""
+    for directive in parse_directives(template):
+        if directive.name == "var" and directive.attrs.get("key") == "project.version":
+            return True
+    return False
 
 
 def _check_manifest_freshness(config, dir_path):

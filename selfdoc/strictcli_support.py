@@ -432,7 +432,12 @@ def generate_cli_pages(cli_structure, docs_dir):
         index_lines.append(app_help)
         index_lines.append("")
     if app_version:
-        index_lines.append(f"Version: {app_version}")
+        # A var DIRECTIVE, not the literal version: the raw page body is what
+        # staleness hashes, so baking the version in here moved the content
+        # hash on every release and tripped STALE001 with zero signal.  The
+        # directive resolves at build time, so the site still shows the
+        # current version.
+        index_lines.append('Version: :-: var key="project.version"')
         index_lines.append("")
 
     if commands:
