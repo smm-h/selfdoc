@@ -559,6 +559,14 @@ def resolve_table_config_schema() -> str:
 
 # -- var directive -------------------------------------------------------------
 
+# Runtime-only config key carrying an explicit project version.  It is never
+# read from or written to selfdoc.json: callers (``selfdoc gen
+# --version-override`` / ``selfdoc check --version-override``) inject it into
+# the already-loaded config dict, which is the object that reaches every
+# directive resolver.  That single injection point covers root-file
+# generation at gen time and site pages at build time.
+VERSION_OVERRIDE_KEY = "_version_override"
+
 
 def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
     """Interpolate a project metadata value."""
@@ -591,6 +599,9 @@ def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
         return _read_project_field(base_dir, "name")
 
     if key == "project.version":
+        override = config.get(VERSION_OVERRIDE_KEY)
+        if override:
+            return str(override)
         return _read_project_field(base_dir, "version")
 
     if key == "topology.docs_url":
