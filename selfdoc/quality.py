@@ -1,4 +1,23 @@
-"""Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio."""
+"""Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio.
+
+Two independent axes describe a project's documentation:
+
+* the **tier** (0-5, see :data:`TIERS`) is a ladder of selfdoc feature
+  adoption -- markdown exists, selfdoc.json exists, root files are generated
+  from templates, directives connect docs to source, custom directives or
+  blog posts are in use.  Each rung requires every rung below it, so the tier
+  is the first unmet requirement minus one, and :data:`NEXT_STEPS` names the
+  action that reaches the next rung.
+* the **content grade** (A-F, see :func:`content_grade`) measures volume:
+  documentation lines divided by non-test source lines.
+
+Source lines come from the external ``dirstat`` binary (a hard requirement,
+see :func:`check_dirstat`); documentation lines, test lines, and directive
+usage are counted by walking the tree here.  Git submodules are excluded from
+every count, so a project is scored on the code it actually owns.
+
+:func:`run_quality` is the entry point behind ``selfdoc quality``.
+"""
 
 import json
 import os
@@ -46,6 +65,15 @@ NEXT_STEPS = {
 
 
 def check_dirstat():
+    """Exit with an install hint unless the ``dirstat`` binary is runnable.
+
+    Source-line counting has no in-tree fallback, so a missing ``dirstat``
+    would silently report every project as 0 source LOC.  This probes it once
+    up front (``dirstat scan --help``) and, when the binary is absent, prints
+    the ``go install`` command to stderr and terminates the process with exit
+    status 1.  Only absence is fatal: a non-zero exit from the probe itself is
+    ignored, since it still proves the binary exists.
+    """
     try:
         subprocess.run(
             ["dirstat", "scan", "--help"],
@@ -61,6 +89,13 @@ def check_dirstat():
 
 
 def get_submodule_paths(project_path):
+    """Return the ``path`` entries declared in the project's ``.gitmodules``.
+
+    The paths are returned exactly as written (repository-relative, e.g.
+    ``vendor/theme``) and are used by every counter in this module to keep
+    submodule content out of a project's own totals.  Returns an empty list
+    when there is no ``.gitmodules`` file or it cannot be read.
+    """
     try:
         gitmodules = Path(project_path) / ".gitmodules"
         if not gitmodules.is_file():
@@ -72,6 +107,19 @@ def get_submodule_paths(project_path):
 
 
 def get_code_loc(project_path, submodule_paths=None):
+    """Return ``(code_loc, code_files)`` for the project, submodules excluded.
+
+    Runs ``dirstat scan`` over *project_path* and keeps only the file-format
+    groups whose extension appears in :data:`CODE_EXTENSIONS` -- markup, data,
+    and lockfiles are therefore not code.  Because ``dirstat`` scans the whole
+    tree, each path in *submodule_paths* is scanned separately and subtracted;
+    overlapping entries (a submodule nested inside another submodule) are
+    subtracted once each, so the totals can go negative.
+
+    Returns ``(0, 0)`` when the scan fails, times out (60s per scan), or emits
+    output that is not parseable JSON; a failing submodule subtraction is
+    skipped while the outer total is kept.
+    """
     try:
         result = subprocess.run(
             [
@@ -127,6 +175,22 @@ def get_code_loc(project_path, submodule_paths=None):
 
 
 def count_markdown(project_path, submodule_paths=None, root_file_templates=None):
+    """Return ``(doc_loc, doc_files)`` for the project's Markdown.
+
+    Walks *project_path* counting lines in every ``.md`` file, skipping:
+
+    * the directories in :data:`SKIP_DIRS` plus ``todo/`` (planning notes are
+      not documentation) and every directory in *submodule_paths*;
+    * the filenames in :data:`SKIP_MD_FILES` (generated changelogs);
+    * every path in *root_file_templates* -- the ``docs/_README.md`` style
+      templates named by ``root_files`` in selfdoc.json.  Their generated
+      output (``README.md``, ``CLAUDE.md``) sits at the project root and is
+      counted instead, so skipping the template avoids counting the same
+      prose twice.  Paths are matched relative to *project_path*, exactly as
+      selfdoc.json spells them.
+
+    Files that cannot be read are skipped rather than counted as empty.
+    """
     doc_loc = 0
     doc_files = 0
     submodule_abs = set()
@@ -165,6 +229,22 @@ def count_markdown(project_path, submodule_paths=None, root_file_templates=None)
 
 
 def get_selfdoc_info(project_path):
+    """Describe the project's selfdoc adoption, as read from selfdoc.json.
+
+    Returns ``{"has_selfdoc": False}`` when selfdoc.json is missing or does
+    not parse.  Otherwise the dict also carries:
+
+    * ``auto_readme`` / ``auto_claude`` -- whether ``root_files`` names a
+      ``_README.md`` / ``_CLAUDE.md`` template;
+    * ``custom_directives`` -- number of entries in the ``directives`` map;
+    * ``has_posts`` -- whether a non-empty ``posts`` section exists;
+    * ``directive_count`` -- number of lines across the configured ``docs``
+      directory (``_build`` excluded) that carry a ``:-:``, ``:<:`` or ``:>:``
+      marker.  It counts marker LINES, not directives: a line holding two
+      markers counts once, and an open/close block counts twice.
+
+    These flags are what :func:`compute_tier` climbs its ladder on.
+    """
     selfdoc_json = Path(project_path) / "selfdoc.json"
     if not selfdoc_json.is_file():
         return {"has_selfdoc": False}
@@ -211,6 +291,16 @@ def get_selfdoc_info(project_path):
 
 
 def compute_tier(doc_loc, selfdoc_info):
+    """Return the maturity tier 0-5 for a project (see :data:`TIERS`).
+
+    The rungs are cumulative and evaluated in order, so the tier is the last
+    satisfied requirement: any Markdown at all (1), selfdoc.json present (2),
+    a generated README template in ``root_files`` (3), at least one directive
+    used in the docs (4), and custom directives or blog posts configured (5).
+
+    *doc_loc* is the Markdown line count from :func:`count_markdown` and
+    *selfdoc_info* the dict from :func:`get_selfdoc_info`.
+    """
     if doc_loc == 0:
         return 0
     if not selfdoc_info.get("has_selfdoc"):
@@ -225,6 +315,13 @@ def compute_tier(doc_loc, selfdoc_info):
 
 
 def content_grade(ratio):
+    """Grade a documentation-to-source line ratio as A-F.
+
+    Cut-offs, applied to *ratio* (doc LOC / non-test source LOC): 0.30 or more
+    is an A, 0.15 a B, 0.05 a C, 0.01 a D, and anything below that an F.
+    ``None`` -- meaning there was no source to compare against -- grades as
+    ``"-"`` rather than F, so an empty project is not marked as failing.
+    """
     if ratio is None:
         return "-"
     if ratio >= 0.30:
@@ -239,6 +336,19 @@ def content_grade(ratio):
 
 
 def count_test_loc(project_path, submodule_paths=None):
+    """Return the total line count of the project's test code.
+
+    Walks *project_path* (skipping :data:`SKIP_DIRS`, ``todo/`` and every
+    directory in *submodule_paths*) and counts lines in files that have a
+    :data:`CODE_EXTENSIONS` extension AND look like tests -- meaning they sit
+    under a ``tests``/``test``/``__tests__``/``testing`` directory at any
+    depth, or are named ``conftest.py``, ``test_*.py``, ``*_test.py``,
+    ``*_test.go``, or ``*.test.``/``*.spec.`` for js/ts/jsx/tsx.
+
+    :func:`score_project` subtracts this from the ``dirstat`` code total so
+    the doc ratio is measured against production source only, and a large
+    test suite neither inflates nor deflates a project's grade.
+    """
     test_dirs = {"tests", "test", "__tests__", "testing"}
 
     submodule_abs = set()
@@ -288,6 +398,19 @@ def count_test_loc(project_path, submodule_paths=None):
 
 
 def score_project(project_path):
+    """Score one project directory and return its full result dict.
+
+    Runs every counter in this module against *project_path* and combines
+    them.  ``source_loc`` is the ``dirstat`` code total minus test LOC,
+    floored at 0; ``doc_ratio`` is doc LOC over ``source_loc`` rounded to four
+    decimals, or ``None`` when there is no source to divide by.
+
+    The returned dict is the shape both formatters and ``selfdoc quality
+    --format json`` consume: ``project``, ``path``, ``tier``, ``tier_name``,
+    ``code_loc``, ``test_loc``, ``source_loc``, ``doc_loc``, ``doc_files``,
+    ``doc_ratio``, ``content_grade``, the nested ``selfdoc`` adoption dict,
+    and ``next_step`` (``None`` at tier 5, where nothing is left to do).
+    """
     project_path = Path(project_path)
     submodule_paths = get_submodule_paths(project_path)
     code_loc, code_files = get_code_loc(project_path, submodule_paths)
@@ -328,6 +451,17 @@ def score_project(project_path):
 
 
 def format_single_text(result):
+    """Render a :func:`score_project` result as the human-readable report.
+
+    The report is a headline (project, tier, tier name), a one-line metrics
+    summary (source LOC, test LOC when non-zero, doc LOC with the ratio as a
+    percentage, file count, grade), the selfdoc adoption block or a "not
+    configured" line, the tiers already completed, and the tiers still to do
+    -- where the immediate next tier is stated as the concrete action from
+    :data:`NEXT_STEPS` rather than as a requirement.
+
+    Returns the report as a single string with no trailing newline.
+    """
     lines = []
     tier = result["tier"]
     lines.append(
@@ -400,10 +534,20 @@ def format_single_text(result):
 
 
 def format_json(data):
+    """Serialize a score result as indented JSON (2 spaces), for ``--format json``."""
     return json.dumps(data, indent=2)
 
 
 def run_quality(format="text"):
+    """Run ``selfdoc quality``: score the current directory and print the report.
+
+    Verifies ``dirstat`` is installed first (:func:`check_dirstat` exits the
+    process when it is not), scores the current working directory, then prints
+    either the JSON document (``format="json"``) or the text report.
+
+    Always returns 0 -- quality is a report, not a gate, so a low tier or a
+    failing grade never fails the command.
+    """
     check_dirstat()
 
     result = score_project(Path.cwd())
