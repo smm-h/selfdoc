@@ -70,7 +70,7 @@ Modules listed in `gen.exclude` are excluded from both coverage calculations and
 
 ## Lint Rules
 
-selfdoc runs 15 SEO lint rules plus a staleness check during every `selfdoc check` invocation. Each rule has a unique code, a severity level (error or warning), and an actionable message explaining what is wrong and how to fix it. Errors cause non-zero exit; warnings are informational.
+selfdoc runs 14 SEO lint rules during every `selfdoc check` invocation, plus staleness, source-drift, CLI reference, and version-consistency rules. Each rule has a unique code, a severity level (error or warning), and an actionable message explaining what is wrong and how to fix it. Errors cause non-zero exit; warnings are informational.
 
 | Code | Severity | What it checks |
 | ---- | -------- | -------------- |
@@ -89,6 +89,14 @@ selfdoc runs 15 SEO lint rules plus a staleness check during every `selfdoc chec
 | SEO014 | warning | Meaningless image alt text (e.g., "image", "screenshot", or a bare filename). Write something descriptive. |
 | SEO015 | warning | Generic anchor text like "click here" or "read more". Use descriptive link text. |
 | STALE001 | error | Page content changed but frontmatter description was not updated. Review and update the description. |
+| STALE002 | warning | Manifest and disk disagree: a page or post exists on disk but is missing from `.selfdoc/manifest.json`, or the manifest lists one that is gone. Run `selfdoc gen`. |
+| DRIFT001 | error | The source docstrings (or CLI schema) a page documents changed while its description did not. Update the description, or run `selfdoc baseline accept <page>` if it is still accurate. |
+| CLI001 | warning | strictcli project: a CLI reference page is missing for a command, or a flag in the schema is not documented on its page. |
+| CLI002 | warning | strictcli project: a command, group, or flag help text is shorter than 50 characters. |
+| VER001 | error | A version listed in `versions` could not be extracted from its git tag, so it could not be validated. |
+| VER002 | error | `version` in selfdoc.json does not match the version detected from the project manifest (pyproject.toml, package.json, or a `VERSION` file). |
+| VER003 | error | The last entry of the `versions` array does not match `version` in selfdoc.json. |
+| VER004 | error | A generated root file that embeds `project.version` does not contain the expected version. Regenerate with `selfdoc gen --version-override <v>`. |
 
 ### Suppressing rules
 
