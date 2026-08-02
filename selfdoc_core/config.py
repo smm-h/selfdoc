@@ -690,7 +690,7 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
                       transform=lambda s: s.rstrip("/"),
                       description="Canonical base URL under which blog posts and the unified blog index are served. This is a path on the docs site, not a separate host (e.g., 'https://docs.smmh.dev/blog')."),
             FieldSpec(name="legacy_blog_host", type=_S, required=False,
-                      description="Hostname of a retired blog subdomain (e.g., 'blog.smmh.dev'). When set, the generated assembly worker 301s it onto posts_base. Omit when no such subdomain exists."),
+                      description="Hostname of a retired blog subdomain (e.g., 'blog.smmh.dev'). When set, every request arriving on that host is 301'd by the generated assembly worker onto '<docs_base>/blog' -- the canonical blog URL the worker derives from topology.docs_base, not from posts_base. Omit when no such subdomain exists."),
             FieldSpec(name="projects", type=_D, required=False, strict_keys=False,
                       description="Maps other project slugs to their base URLs for cross-linking."),
         ),
