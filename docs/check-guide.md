@@ -1,6 +1,6 @@
 ---
 title: Check Guide
-description: "Use selfdoc check to validate directives, measure documentation coverage, run SEO lints, detect stale descriptions, and integrate checks into CI pipelines."
+description: "Use selfdoc check to validate directives, measure documentation coverage, and run the SEO, staleness, drift, CLI, and version lint rules locally or in CI."
 nav_group: "Guides"
 nav_order: 10
 ---
