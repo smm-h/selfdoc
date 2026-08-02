@@ -1,8 +1,7 @@
 ---
 title: selfdoc.quality
-description: "Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio."
+description: "Reference for selfdoc.quality: the 0-5 maturity tier ladder, the A-F content grade, and the source, test, and Markdown line counters behind them."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 24
 ---
