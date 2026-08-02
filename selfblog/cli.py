@@ -302,10 +302,7 @@ def _cmd_post_publish(ctx):
     assembly_config = config.get("assembly") or {}
     repo = assembly_config.get("repo")
     if not repo:
-        topology = config.get("topology") or {}
-        repo = topology.get("assembly")
-    if not repo:
-        print("Error: assembly.repo (or topology.assembly) not configured in selfdoc.json.", file=sys.stderr)
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
         sys.exit(1)
 
     topology = config.get("topology") or {}
@@ -422,7 +419,25 @@ def _cmd_assembly_init(ctx):
         print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
         sys.exit(1)
 
-    files = assembly_init(repo)
+    pages_project = assembly_config.get("pages_project")
+    if not pages_project:
+        print(
+            "Error: assembly.pages_project not configured in selfdoc.json.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    topology = config.get("topology") or {}
+    canonical_base = topology.get("docs_base")
+    if not canonical_base:
+        print(
+            "Error: topology.docs_base not configured in selfdoc.json.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    legacy_blog_host = topology.get("legacy_blog_host") or ""
+
+    files = assembly_init(repo, pages_project, canonical_base, legacy_blog_host)
 
     # Create the private GitHub repo
     print(f"Creating repository {repo}...")
@@ -453,7 +468,6 @@ def _cmd_assembly_init(ctx):
     cf_account = os.environ.get("CF_ACCOUNT_ID") or os.environ.get("CLOUDFLARE_ACCOUNT_ID")
     cf_token = os.environ.get("CF_PAGES_API_TOKEN") or os.environ.get("CLOUDFLARE_API_TOKEN")
     if cf_account and cf_token:
-        pages_project = repo.split("/")[-1]  # derive from repo name
         env = os.environ.copy()
         env["CLOUDFLARE_ACCOUNT_ID"] = cf_account
         env["CLOUDFLARE_API_TOKEN"] = cf_token
@@ -510,10 +524,7 @@ def _cmd_assembly_push(ctx):
     assembly_config = config.get("assembly") or {}
     repo = assembly_config.get("repo")
     if not repo:
-        topology = config.get("topology") or {}
-        repo = topology.get("assembly")
-    if not repo:
-        print("Error: assembly.repo (or topology.assembly) not configured in selfdoc.json.", file=sys.stderr)
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
         sys.exit(1)
 
     topology = config.get("topology") or {}
@@ -691,9 +702,12 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
+@strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the target of the generated redirect worker and of the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
+@strictcli.flag("legacy-blog-host", type=str, help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
 @strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
-def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
+def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", portfolio_file=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
+    from selfblog.assembly import generate_worker_js
     from selfblog.shared import (
         generate_blog_index,
         generate_homepage,
@@ -711,6 +725,14 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
     if not manifests_dir:
         print("Error: --manifests-dir is required.", file=sys.stderr)
         sys.exit(1)
+    if not canonical_base:
+        print(
+            "Error: --canonical-base is required (set topology.docs_base in "
+            "selfdoc.json and regenerate the assembly workflow).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    canonical_base = canonical_base.rstrip("/")
 
     # Load all manifest JSON files, separating base manifests from
     # post overlays.  Post overlays are files matching *-posts.json;
@@ -759,8 +781,9 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
     feed_xml = generate_unified_feed(manifests, docs_base)
     sitemap_xml = generate_sitemap(manifests, docs_base)
 
-    homepage_html = wrap_shared_page("Projects", homepage_fragment)
-    blog_html = wrap_shared_page("Blog", blog_fragment)
+    blog_html = wrap_shared_page(
+        "Blog", blog_fragment, canonical_url=f"{canonical_base}/blog/",
+    )
 
     headers_content = (
         "/*\n"
@@ -785,12 +808,18 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
         projects_dir = os.path.join(site_dir, "projects")
         os.makedirs(projects_dir, exist_ok=True)
         projects_path = os.path.join(projects_dir, "index.html")
-        atomic_write(projects_path, homepage_html)
+        atomic_write(projects_path, wrap_shared_page(
+            "Projects", homepage_fragment,
+            canonical_url=f"{canonical_base}/projects/",
+        ))
         written.append(projects_path)
     else:
         index_path = os.path.join(site_dir, "index.html")
         os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
-        atomic_write(index_path, homepage_html)
+        atomic_write(index_path, wrap_shared_page(
+            "Projects", homepage_fragment,
+            canonical_url=f"{canonical_base}/",
+        ))
         written.append(index_path)
 
     blog_dir = os.path.join(site_dir, "blog")
@@ -815,19 +844,7 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
     atomic_write(headers_path, headers_content)
     written.append(headers_path)
 
-    worker_js_content = """\
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.hostname === "blog.smmh.dev") {
-      const target = new URL("/blog" + url.pathname, "https://smmh.dev");
-      target.search = url.search;
-      return Response.redirect(target.toString(), 301);
-    }
-    return env.ASSETS.fetch(request);
-  }
-}
-"""
+    worker_js_content = generate_worker_js(canonical_base, legacy_blog_host)
     worker_js_path = os.path.join(site_dir, "_worker.js")
     atomic_write(worker_js_path, worker_js_content)
     written.append(worker_js_path)

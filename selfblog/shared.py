@@ -9,13 +9,22 @@ from datetime import datetime
 from selfdoc_core.build import _make_feed_entry
 
 
-def wrap_shared_page(title: str, body_html: str, css_url: str = "") -> str:
+def wrap_shared_page(
+    title: str,
+    body_html: str,
+    css_url: str = "",
+    canonical_url: str = "",
+) -> str:
     """Wrap an HTML fragment in a complete HTML page.
 
     Args:
         title: Page title for the <title> tag.
         body_html: HTML fragment to place inside <body>.
         css_url: Optional URL for an external CSS stylesheet.
+        canonical_url: Absolute URL for the page's rel=canonical link.
+            The assembly site is reachable on more than one host, so the
+            shared pages declare which one is canonical.  Empty means no
+            canonical link is emitted.
 
     Returns:
         Complete HTML document string.
@@ -23,13 +32,18 @@ def wrap_shared_page(title: str, body_html: str, css_url: str = "") -> str:
     css_link = ""
     if css_url:
         css_link = f'\n    <link rel="stylesheet" href="{html.escape(css_url)}">'
+    canonical_link = ""
+    if canonical_url:
+        canonical_link = (
+            f'\n    <link rel="canonical" href="{html.escape(canonical_url)}">'
+        )
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
         "<head>\n"
         '    <meta charset="utf-8">\n'
         '    <meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"    <title>{html.escape(title)}</title>{css_link}\n"
+        f"    <title>{html.escape(title)}</title>{canonical_link}{css_link}\n"
         "    <style>\n"
         "        body { max-width: 48rem; margin: 0 auto; padding: 1rem 1.5rem;"
         " font-family: system-ui, -apple-system, sans-serif;"

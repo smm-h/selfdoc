@@ -94,12 +94,33 @@ class TestTopologyPostsBase:
 
 
 class TestTopologyAssembly:
-    """topology.assembly string validation."""
+    """topology.assembly is retired in favour of assembly.repo."""
 
-    def test_valid_assembly(self, config_dir):
+    def test_assembly_key_rejected(self, config_dir):
         _write_config(config_dir, _cfg(topology={"assembly": "smm-h/docs-assembly"}))
+        with pytest.raises(ConfigError) as excinfo:
+            load_config(str(config_dir))
+        assert "topology.assembly" in str(excinfo.value)
+
+    def test_rejection_names_the_replacement(self, config_dir):
+        _write_config(config_dir, _cfg(topology={"assembly": "smm-h/docs-assembly"}))
+        with pytest.raises(ConfigError) as excinfo:
+            load_config(str(config_dir))
+        assert '"repo"' in str(excinfo.value)
+
+
+class TestTopologyLegacyBlogHost:
+    """topology.legacy_blog_host feeds the generated redirect worker."""
+
+    def test_valid_legacy_blog_host(self, config_dir):
+        _write_config(config_dir, _cfg(topology={"legacy_blog_host": "blog.smmh.dev"}))
         cfg = load_config(str(config_dir))
-        assert cfg["topology"]["assembly"] == "smm-h/docs-assembly"
+        assert cfg["topology"]["legacy_blog_host"] == "blog.smmh.dev"
+
+    def test_legacy_blog_host_optional(self, config_dir):
+        _write_config(config_dir, _cfg(topology={"slug": "selfdoc"}))
+        cfg = load_config(str(config_dir))
+        assert "legacy_blog_host" not in cfg["topology"]
 
 
 class TestTopologyProjects:
@@ -132,15 +153,15 @@ class TestTopologyFull:
 
     def test_all_fields_present(self, config_dir):
         _write_config(config_dir, _cfg(topology={
-            "assembly": "smm-h/docs-assembly",
             "slug": "selfdoc",
             "docs_base": "https://docs.smmh.dev",
             "posts_base": "https://docs.smmh.dev/blog",
+            "legacy_blog_host": "blog.smmh.dev",
             "projects": {"rlsbl": "https://docs.smmh.dev/rlsbl"},
         }))
         cfg = load_config(str(config_dir))
         topo = cfg["topology"]
-        assert topo["assembly"] == "smm-h/docs-assembly"
+        assert topo["legacy_blog_host"] == "blog.smmh.dev"
         assert topo["slug"] == "selfdoc"
         assert topo["docs_base"] == "https://docs.smmh.dev"
         assert topo["posts_base"] == "https://docs.smmh.dev/blog"

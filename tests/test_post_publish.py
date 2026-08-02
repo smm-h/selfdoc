@@ -20,7 +20,7 @@ def _setup_project(tmp_path, config_overrides=None):
         "output": "docs/_build/",
         "docs": "docs/",
         "assembly": {"repo": "owner/docs-assembly"},
-        "topology": {"slug": "myproject", "assembly": "owner/docs-assembly"},
+        "topology": {"slug": "myproject"},
     }
     if config_overrides:
         config.update(config_overrides)
@@ -82,7 +82,7 @@ def test_no_posts_at_all_info_message(tmp_path, monkeypatch, capsys):
 
 
 def test_no_assembly_repo_errors(tmp_path, monkeypatch, capsys):
-    """When neither assembly.repo nor topology.assembly is set, error."""
+    """When assembly.repo is not set, error."""
     _setup_project(tmp_path, {
         "assembly": {},
         "topology": {"slug": "myproject"},
@@ -366,10 +366,10 @@ def test_success_message(tmp_path, monkeypatch, capsys):
 
 
 def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
-    """assembly.repo takes precedence for the assembly repo."""
+    """assembly.repo is the one home for the assembly repo."""
     _setup_project(tmp_path, {
         "assembly": {"repo": "org/my-assembly"},
-        "topology": {"slug": "myproject", "assembly": "org/other-assembly"},
+        "topology": {"slug": "myproject"},
     })
     _create_post(tmp_path)
     monkeypatch.chdir(tmp_path)
@@ -392,8 +392,10 @@ def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
     assert push_calls[0] == "org/my-assembly"
 
 
-def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
-    """When assembly.repo is not set, topology.assembly is used."""
+def test_topology_assembly_key_is_rejected(tmp_path, monkeypatch):
+    """The retired fallback key is a hard config error, not a silent path."""
+    from selfdoc_core.config import ConfigError
+
     _setup_project(tmp_path, {
         "assembly": {},
         "topology": {"slug": "myproject", "assembly": "org/topo-assembly"},
@@ -401,22 +403,10 @@ def test_assembly_repo_falls_back_to_topology(tmp_path, monkeypatch, capsys):
     _create_post(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    push_calls = []
+    with pytest.raises(ConfigError) as excinfo:
+        _cmd_post_publish(None)
+    assert "topology.assembly" in str(excinfo.value)
 
-    def mock_push(repo, files, message, branch="main"):
-        push_calls.append(repo)
-        return "sha"
-
-    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
-    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
-    monkeypatch.setattr(
-        subprocess, "run",
-        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
-    )
-
-    _cmd_post_publish(None)
-
-    assert push_calls[0] == "org/topo-assembly"
 
 
 # -- Posts repo archiving -----------------------------------------------------

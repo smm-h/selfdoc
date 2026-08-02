@@ -681,8 +681,6 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         type=_D,
         description="Deployment topology for multi-project unified sites.",
         children=(
-            FieldSpec(name="assembly", type=_S, required=False,
-                      description="Assembly repo identifier (e.g., 'smm-h/docs-assembly')."),
             FieldSpec(name="slug", type=_S, required=False,
                       description="This project's URL path segment."),
             FieldSpec(name="docs_base", type=_S, required=False,
@@ -690,7 +688,9 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
                       description="Base URL for docs (e.g., 'https://docs.smmh.dev')."),
             FieldSpec(name="posts_base", type=_S, required=False,
                       transform=lambda s: s.rstrip("/"),
-                      description="Base URL for posts (e.g., 'https://docs.smmh.dev/blog')."),
+                      description="Canonical base URL under which blog posts and the unified blog index are served. This is a path on the docs site, not a separate host (e.g., 'https://docs.smmh.dev/blog')."),
+            FieldSpec(name="legacy_blog_host", type=_S, required=False,
+                      description="Hostname of a retired blog subdomain (e.g., 'blog.smmh.dev'). When set, the generated assembly worker 301s it onto posts_base. Omit when no such subdomain exists."),
             FieldSpec(name="projects", type=_D, required=False, strict_keys=False,
                       description="Maps other project slugs to their base URLs for cross-linking."),
         ),
@@ -702,6 +702,8 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         children=(
             FieldSpec(name="repo", type=_S,
                       description="GitHub repository for the assembly (e.g., owner/repo)."),
+            FieldSpec(name="pages_project", type=_S,
+                      description="Cloudflare Pages project the assembled site deploys to. Used by both 'assembly init' (project creation) and the generated deploy workflow, so the two can never diverge. No default."),
         ),
     ),
 )
@@ -961,6 +963,14 @@ def load_config(dir_path="."):
             "Top-level 'language' field is no longer supported. "
             'Move language into each source entry: '
             '"source": [{"path": "src/", "language": "python"}]'
+        )
+
+    # Migration error: topology.assembly duplicated assembly.repo
+    raw_topology = raw.get("topology")
+    if isinstance(raw_topology, dict) and "assembly" in raw_topology:
+        raise ConfigError(
+            "'topology.assembly' is no longer supported. The assembly repo "
+            'has one home: "assembly": {"repo": "owner/repo"}'
         )
 
     # Check for unknown root-level keys

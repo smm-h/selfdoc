@@ -50,7 +50,7 @@ def update_config(
     topo["docs_base"] = docs_base
     if posts_base is not None:
         topo["posts_base"] = posts_base
-    topo["assembly"] = assembly_repo
+    topo.pop("assembly", None)
     config["topology"] = topo
 
     asm = config.get("assembly", {})

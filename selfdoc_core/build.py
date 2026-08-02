@@ -52,7 +52,6 @@ def _make_url_builder(config):
         return TopologyURLBuilder(
             docs_base=docs_base,
             slug=slug,
-            posts_base=topology.get("posts_base"),
             projects=topology.get("projects"),
         )
     base_url = config.get("base_url")

@@ -99,7 +99,7 @@ class TestUpdateConfig:
         assert result["topology"]["slug"] == "my-proj"
         assert result["topology"]["docs_base"] == "https://docs.example.com"
         assert "posts_base" not in result["topology"]
-        assert result["topology"]["assembly"] == "org/assembly"
+        assert "assembly" not in result["topology"]
         assert result["assembly"]["repo"] == "org/assembly"
 
     def test_adds_posts_base(self):
@@ -252,7 +252,7 @@ class TestIntegration:
         assert cfg_a["topology"]["slug"] == "project-alpha"
         assert cfg_a["topology"]["docs_base"] == "https://docs.test.com"
         assert "posts_base" not in cfg_a["topology"]
-        assert cfg_a["topology"]["assembly"] == "org/docs"
+        assert "assembly" not in cfg_a["topology"]
         assert cfg_a["assembly"]["repo"] == "org/docs"
         assert "project-alpha" not in cfg_a["topology"]["projects"]
         assert cfg_a["topology"]["projects"]["project-beta"] == "https://docs.test.com/project-beta"

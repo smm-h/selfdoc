@@ -427,7 +427,7 @@ Supported keys:
 | `project.description` | Project description (from config or project file) |
 | `project.language` | Source language(s) from selfdoc.json config |
 | `topology.docs_url` | Constructed docs URL from topology config |
-| `topology.posts_url` | Posts URL from topology config |
+| `topology.posts_url` | Canonical blog base URL (`topology.posts_base`) |
 | `topology.slug` | Project slug from topology config |
 
 | Attribute | Required | Description |

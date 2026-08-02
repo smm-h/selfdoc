@@ -78,12 +78,10 @@ class TopologyURLBuilder:
         self,
         docs_base: str,
         slug: str,
-        posts_base: str | None = None,
         projects: dict[str, str] | None = None,
     ) -> None:
         self._docs_base = docs_base.rstrip("/")
         self._slug = slug
-        self._posts_base = posts_base.rstrip("/") if posts_base else None
         self._projects = projects or {}
 
     def page_url(self, path: str) -> str:

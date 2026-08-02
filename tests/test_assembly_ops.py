@@ -13,7 +13,7 @@ from selfblog.cli import (
     _cmd_assembly_rebuild,
     _cmd_assembly_status,
 )
-from selfdoc.cli import app
+from selfblog.cli import app
 
 
 def _setup_project(tmp_path, config_overrides=None):
@@ -70,7 +70,7 @@ def test_init_no_assembly_repo(tmp_path, monkeypatch):
 
 
 def test_push_no_assembly_repo(tmp_path, monkeypatch):
-    # No assembly.repo AND no topology.assembly -> exits
+    # No assembly.repo -> exits
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
@@ -91,12 +91,29 @@ def test_rebuild_no_assembly_repo(tmp_path, monkeypatch):
         _cmd_assembly_rebuild(None)
 
 
-# -- Push uses topology.assembly fallback ------------------------------------
+# -- topology.assembly is rejected outright ----------------------------------
 
 
-def test_push_uses_topology_assembly_fallback(tmp_path, monkeypatch):
+def test_topology_assembly_key_is_rejected(tmp_path, monkeypatch):
+    """The retired dual key is a hard config error, not a silent fallback."""
+    from selfdoc_core.config import ConfigError, load_config
+
     _setup_project(tmp_path, {
         "topology": {"assembly": "owner/assembly", "slug": "myproject"},
+    })
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(".")
+    assert "topology.assembly" in str(excinfo.value)
+    assert "assembly" in str(excinfo.value)
+
+
+def test_push_reads_assembly_repo(tmp_path, monkeypatch):
+    """assembly.repo is the one canonical home for the assembly repo."""
+    _setup_project(tmp_path, {
+        "assembly": {"repo": "owner/assembly", "pages_project": "site"},
+        "topology": {"slug": "myproject", "docs_base": "https://docs.example.com"},
     })
     monkeypatch.chdir(tmp_path)
 
@@ -110,54 +127,37 @@ def test_push_uses_topology_assembly_fallback(tmp_path, monkeypatch):
             result.stdout = "owner/source-repo\n"
         elif "describe" in cmd_str:
             result.stdout = "v1.0.0\n"
-        elif "dispatches" in cmd_str:
-            pass
         return result
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-
     _cmd_assembly_push(None)
-    assert len(calls) >= 3
+
+    dispatches = [c for c in calls if any("dispatches" in str(x) for x in c)]
+    assert dispatches
+    assert any("/repos/owner/assembly/dispatches" in str(x)
+               for x in dispatches[0])
 
 
-# -- Status with no runs ----------------------------------------------------
-
-
-def test_status_no_runs(tmp_path, monkeypatch, capsys):
-    _setup_project(tmp_path, {"assembly": {"repo": "owner/docs-assembly"}})
+def test_init_requires_pages_project(tmp_path, monkeypatch):
+    """assembly init refuses to run without an explicit Pages project."""
+    _setup_project(tmp_path, {
+        "assembly": {"repo": "owner/assembly"},
+        "topology": {"slug": "myproject", "docs_base": "https://docs.example.com"},
+    })
     monkeypatch.chdir(tmp_path)
-
-    def fake_run(cmd, **kwargs):
-        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_assembly_status(None)
-    captured = capsys.readouterr()
-    assert "No recent assembly builds found." in captured.out
+    with pytest.raises(SystemExit):
+        _cmd_assembly_init(None)
 
 
-# -- Rebuild with empty projects.json ---------------------------------------
-
-
-def test_rebuild_empty_projects(tmp_path, monkeypatch, capsys):
-    _setup_project(tmp_path, {"assembly": {"repo": "owner/docs-assembly"}})
+def test_init_requires_docs_base(tmp_path, monkeypatch):
+    """assembly init refuses to run without a canonical docs base."""
+    _setup_project(tmp_path, {
+        "assembly": {"repo": "owner/assembly", "pages_project": "site"},
+        "topology": {"slug": "myproject"},
+    })
     monkeypatch.chdir(tmp_path)
-
-    empty_b64 = base64.b64encode(b"{}").decode()
-
-    def fake_run(cmd, **kwargs):
-        result = type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        cmd_str = " ".join(str(c) for c in cmd)
-        if "contents/projects.json" in cmd_str:
-            result.stdout = empty_b64 + "\n"
-        return result
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    _cmd_assembly_rebuild(None)
-    captured = capsys.readouterr()
-    assert "No projects configured" in captured.out
+    with pytest.raises(SystemExit):
+        _cmd_assembly_init(None)
 
 
 # -- Help output -------------------------------------------------------------

@@ -241,6 +241,31 @@ Blog posts integrate into the unified multi-project documentation site through t
 
 Posts are served at `/{project-slug}/posts/{post-slug}/` in the assembled site. For example, a post with slug `widget-support` in a project with slug `myproject` is available at `/myproject/posts/widget-support/`.
 
+### The canonical blog URL
+
+A Cloudflare Pages project can carry several custom domains, and all of them serve the same site. Left alone that means the blog index is reachable at more than one address, which splits ranking signals between duplicates. The assembly resolves this to one address.
+
+The canonical blog URL is `<topology.docs_base>/blog/`. Everything else redirects to it:
+
+| Request | Result |
+| --- | --- |
+| `<docs_base>/blog/` | served (canonical) |
+| `<topology.legacy_blog_host>/<path>` | `301` to `<docs_base>/blog/<path>` |
+| any other host bound to the project, path under `/blog` | `301` to `<docs_base>/blog...` |
+
+Both redirects are single-hop and are implemented in the `_worker.js` that `selfblog assembly generate-shared` writes into the site output. The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base`) and its retired-subdomain rule from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
+
+The shared homepage and blog index also carry a `rel="canonical"` link pointing at the canonical host, so a crawler that reaches them through a non-canonical domain still records the canonical address.
+
+Set `topology.posts_base` to the same canonical blog URL. It is a path on the docs site, not a separate host.
+
+#### Operator steps (outside selfblog)
+
+Two pieces of this topology live on platform dashboards and are not automated:
+
+1. **Custom domains.** Every hostname the worker redirects *from* must be attached to the assembly's Cloudflare Pages project, otherwise the worker never runs for it and the request does not reach the redirect. Add them under the Pages project's *Custom domains* tab.
+2. **Search Console.** Register a **Domain property** for the root domain rather than one URL-prefix property per subdomain. A Domain property covers the canonical host, the retired blog subdomain, and the apex in a single property, so the consolidation is visible as redirects instead of appearing as unrelated sites competing with each other.
+
 ### Posts-only vs full builds
 
 The assembly workflow distinguishes between posts-only and full documentation dispatches:

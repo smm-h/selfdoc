@@ -7,6 +7,10 @@ import pytest
 
 from selfblog.cli import _cmd_assembly_generate_shared
 
+# Absolute canonical origin of the assembly site.  Required by
+# generate-shared: it targets the redirect worker and rel=canonical.
+CANONICAL_BASE = "https://docs.example.com"
+
 
 def _write_manifest(manifests_dir, name, slug, version, description="",
                     pages=None, posts=None):
@@ -43,7 +47,10 @@ def test_generate_shared_creates_all_files(tmp_path):
     _write_manifest(manifests_dir, "Beta", "beta", "2.0.0", "Second project",
                     posts=[{"title": "Hello", "slug": "hello", "date": "2024-06-01"}])
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     assert os.path.isfile(os.path.join(site_dir, "index.html"))
     assert os.path.isfile(os.path.join(site_dir, "blog", "index.html"))
@@ -66,7 +73,10 @@ def test_index_html_is_complete_page(tmp_path):
 
     _write_manifest(manifests_dir, "Proj", "proj", "1.0.0")
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
@@ -90,7 +100,10 @@ def test_blog_index_html_is_complete_page(tmp_path):
     _write_manifest(manifests_dir, "Proj", "proj", "1.0.0",
                     posts=[{"title": "Post", "slug": "post", "date": "2024-01-01"}])
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "blog", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
@@ -113,7 +126,10 @@ def test_headers_file_contains_security_headers(tmp_path):
 
     _write_manifest(manifests_dir, "Proj", "proj", "1.0.0")
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "_headers"), "r", encoding="utf-8") as f:
         content = f.read()
@@ -133,7 +149,10 @@ def test_empty_manifests_dir_produces_valid_outputs(tmp_path):
     os.makedirs(site_dir)
     os.makedirs(manifests_dir)
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     # All files exist
     assert os.path.isfile(os.path.join(site_dir, "index.html"))
@@ -161,7 +180,10 @@ def test_nav_json_is_valid_json(tmp_path):
 
     _write_manifest(manifests_dir, "Alpha", "alpha", "1.0.0")
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "nav.json"), "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -183,7 +205,10 @@ def test_feed_xml_contains_atom_namespace(tmp_path):
     _write_manifest(manifests_dir, "Proj", "proj", "1.0.0",
                     posts=[{"title": "Test", "slug": "test", "date": "2024-01-01"}])
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "feed.xml"), "r", encoding="utf-8") as f:
         content = f.read()
@@ -204,7 +229,10 @@ def test_sitemap_xml_contains_urlset_namespace(tmp_path):
     _write_manifest(manifests_dir, "Proj", "proj", "1.0.0",
                     pages=[{"path": "guide.md", "title": "Guide"}])
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "sitemap.xml"), "r", encoding="utf-8") as f:
         content = f.read()
@@ -254,7 +282,10 @@ def test_overlay_replaces_base_posts(tmp_path):
     ]
     _write_post_overlay(manifests_dir, "alpha", overlay_posts)
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     # Blog page should contain the overlay posts, not the old ones
     with open(os.path.join(site_dir, "blog", "index.html"), "r",
@@ -285,7 +316,10 @@ def test_overlay_deleted_post_disappears(tmp_path):
     ]
     _write_post_overlay(manifests_dir, "beta", overlay_posts)
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "blog", "index.html"), "r",
               encoding="utf-8") as f:
@@ -308,7 +342,10 @@ def test_no_overlay_uses_base_posts(tmp_path):
     _write_manifest(manifests_dir, "Gamma", "gamma", "1.0.0",
                     posts=base_posts)
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "blog", "index.html"), "r",
               encoding="utf-8") as f:
@@ -333,7 +370,10 @@ def test_overlay_unknown_slug_ignored(tmp_path):
                         [{"title": "Ghost", "slug": "ghost",
                           "date": "2024-05-01"}])
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "blog", "index.html"), "r",
               encoding="utf-8") as f:
@@ -379,7 +419,10 @@ def test_blog_urls_not_broken_without_docs_base(tmp_path):
     with open(fpath, "w", encoding="utf-8") as f:
         json.dump(manifest, f)
 
-    _cmd_assembly_generate_shared(None, site_dir=site_dir, manifests_dir=manifests_dir)
+    _cmd_assembly_generate_shared(
+        None, site_dir=site_dir, manifests_dir=manifests_dir,
+        canonical_base=CANONICAL_BASE,
+    )
 
     with open(os.path.join(site_dir, "blog", "index.html"), "r",
               encoding="utf-8") as f:
@@ -420,6 +463,7 @@ def test_blog_urls_correct_with_docs_base(tmp_path):
         site_dir=site_dir,
         manifests_dir=manifests_dir,
         docs_base="https://docs.smmh.dev",
+        canonical_base=CANONICAL_BASE,
     )
 
     with open(os.path.join(site_dir, "blog", "index.html"), "r",

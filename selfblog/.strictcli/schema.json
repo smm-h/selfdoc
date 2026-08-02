@@ -48,7 +48,7 @@
   },
   "project_id": "selfblog",
   "name": "selfblog",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "help": "Blog system for selfdoc-based documentation sites",
   "commands": {
     "check": {
@@ -255,6 +255,16 @@
               "name": "docs-base",
               "type": "str",
               "help": "Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs."
+            },
+            {
+              "name": "canonical-base",
+              "type": "str",
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the target of the generated redirect worker and of the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base."
+            },
+            {
+              "name": "legacy-blog-host",
+              "type": "str",
+              "help": "Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists."
             },
             {
               "name": "portfolio-file",

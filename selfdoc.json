@@ -88,8 +88,8 @@
   "topology": {
     "slug": "selfdoc",
     "docs_base": "https://docs.smmh.dev",
-    "posts_base": "https://blog.smmh.dev",
-    "assembly": "smm-h/selfdoc-cache",
+    "posts_base": "https://docs.smmh.dev/blog",
+    "legacy_blog_host": "blog.smmh.dev",
     "projects": {
       "pixelweaver": "https://docs.smmh.dev/pixelweaver",
       "claudestream": "https://docs.smmh.dev/claudestream",
@@ -111,6 +111,7 @@
     "repo": "smm-h/posts"
   },
   "assembly": {
-    "repo": "smm-h/selfdoc-cache"
+    "repo": "smm-h/selfdoc-cache",
+    "pages_project": "smmh"
   }
 }

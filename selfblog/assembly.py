@@ -7,8 +7,35 @@ import json
 import subprocess
 
 
-def generate_workflow_yaml() -> str:
-    """Return a GitHub Actions workflow YAML for assembly deployment."""
+def generate_workflow_yaml(
+    pages_project: str,
+    canonical_base: str,
+    legacy_blog_host: str,
+) -> str:
+    """Return a GitHub Actions workflow YAML for assembly deployment.
+
+    Every deploy-target value is templated from the project's
+    ``selfdoc.json`` -- nothing about the destination is baked into
+    selfblog itself.
+
+    pages_project: Cloudflare Pages project to deploy the assembled site
+        to, from ``assembly.pages_project``.  Required.
+    canonical_base: absolute canonical base URL of the assembly site,
+        from ``topology.docs_base``.  Required.
+    legacy_blog_host: hostname of a retired blog subdomain, from
+        ``topology.legacy_blog_host``.  Empty when none exists.
+    """
+    if not pages_project:
+        raise ValueError(
+            "generate_workflow_yaml requires a Cloudflare Pages project "
+            "(assembly.pages_project); there is no default."
+        )
+    if not canonical_base:
+        raise ValueError(
+            "generate_workflow_yaml requires a canonical base URL "
+            "(topology.docs_base); there is no default."
+        )
+    canonical_base = canonical_base.rstrip("/")
     return """\
 name: Assembly Deploy
 
@@ -164,7 +191,7 @@ jobs:
             if [ -f portfolio/index.html ]; then
               PORTFOLIO_FLAG="--portfolio-file portfolio/index.html"
             fi
-            selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' $PORTFOLIO_FLAG
+            selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' --canonical-base '@@CANONICAL_BASE@@' --legacy-blog-host '@@LEGACY_BLOG_HOST@@' $PORTFOLIO_FLAG
 
             # Build search index
             python3 -m pagefind --site site/
@@ -183,20 +210,36 @@ jobs:
           exit 1
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy site/ --project-name smmh
+        run: npx wrangler pages deploy site/ --project-name '@@PAGES_PROJECT@@'
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_PAGES_API_TOKEN }}
-"""
+""".replace(
+        "@@PAGES_PROJECT@@", pages_project,
+    ).replace(
+        "@@CANONICAL_BASE@@", canonical_base,
+    ).replace(
+        "@@LEGACY_BLOG_HOST@@", legacy_blog_host,
+    )
 
 
-def assembly_init(repo_name: str) -> dict[str, str]:
+def assembly_init(
+    repo_name: str,
+    pages_project: str,
+    canonical_base: str,
+    legacy_blog_host: str,
+) -> dict[str, str]:
     """Return a dict mapping filename to file content for a new assembly repo.
 
     repo_name: e.g. "smm-h/docs-assembly"
+    pages_project: Cloudflare Pages project the workflow deploys to.
+    canonical_base: absolute canonical base URL of the assembly site.
+    legacy_blog_host: retired blog subdomain, or "" when none exists.
     """
     return {
-        ".github/workflows/deploy.yml": generate_workflow_yaml(),
+        ".github/workflows/deploy.yml": generate_workflow_yaml(
+            pages_project, canonical_base, legacy_blog_host,
+        ),
         ".gitignore": _gitignore_content(),
         "projects.json": json.dumps({}, indent=2) + "\n",
     }
@@ -290,6 +333,60 @@ def generate_redirects_file(slug: str, docs_base: str) -> str:
     """
     docs_base = docs_base.rstrip("/")
     return f"/* {docs_base}/{slug}/:splat 301\n"
+
+
+def generate_worker_js(canonical_base: str, legacy_blog_host: str) -> str:
+    """Return the Cloudflare Pages ``_worker.js`` for the assembly site.
+
+    The worker consolidates every non-canonical way of reaching the blog
+    onto a single canonical origin with one 301 hop:
+
+    * requests to the legacy blog subdomain become
+      ``<canonical_base>/blog<path>``;
+    * requests for ``/blog`` (or anything below it) that arrive on a host
+      other than the canonical host become ``<canonical_base><path>``.
+
+    canonical_base: absolute base URL of the assembly site, taken from
+        ``topology.docs_base`` (e.g. "https://docs.smmh.dev").  Required --
+        there is no default deploy target.
+    legacy_blog_host: hostname of the retired blog subdomain, taken from
+        ``topology.legacy_blog_host`` (e.g. "blog.smmh.dev").  An empty
+        string means no legacy subdomain exists and the rule is omitted.
+    """
+    if not canonical_base:
+        raise ValueError(
+            "generate_worker_js requires a canonical base URL "
+            "(topology.docs_base); there is no default."
+        )
+    canonical_base = canonical_base.rstrip("/")
+
+    legacy_rule = ""
+    if legacy_blog_host:
+        legacy_rule = (
+            "    // Retired blog subdomain: one hop onto the canonical blog URL.\n"
+            f"    if (url.hostname === {json.dumps(legacy_blog_host)}) {{\n"
+            "      return Response.redirect(\n"
+            "        CANONICAL_BASE + \"/blog\" + url.pathname + url.search, 301);\n"
+            "    }\n"
+        )
+
+    return (
+        f"const CANONICAL_BASE = {json.dumps(canonical_base)};\n"
+        "const CANONICAL_HOST = new URL(CANONICAL_BASE).hostname;\n"
+        "\n"
+        "export default {\n"
+        "  async fetch(request, env) {\n"
+        "    const url = new URL(request.url);\n"
+        f"{legacy_rule}"
+        "    // Any other host serving /blog consolidates onto the canonical host.\n"
+        "    if (url.hostname !== CANONICAL_HOST &&\n"
+        "        (url.pathname === \"/blog\" || url.pathname.startsWith(\"/blog/\"))) {\n"
+        "      return Response.redirect(CANONICAL_BASE + url.pathname + url.search, 301);\n"
+        "    }\n"
+        "    return env.ASSETS.fetch(request);\n"
+        "  }\n"
+        "}\n"
+    )
 
 
 def _gh_api(args: list[str], input_data: str | None = None, step: str = "") -> str:

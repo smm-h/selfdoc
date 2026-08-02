@@ -8,14 +8,16 @@ import pytest
 from selfblog.cli import _cmd_assembly_init
 
 
-def _setup_project(tmp_path, repo="owner/docs-assembly"):
+def _setup_project(tmp_path, repo="owner/docs-assembly",
+                   pages_project="docs-assembly"):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0", "indexed": True}],
         "locales": [{"code": "en", "label": "English", "default": True}],
-        "assembly": {"repo": repo},
+        "assembly": {"repo": repo, "pages_project": pages_project},
+        "topology": {"slug": "myproject", "docs_base": "https://docs.example.com"},
     }
     (tmp_path / "selfdoc.json").write_text(json.dumps(config))
     (tmp_path / "src").mkdir(exist_ok=True)
@@ -132,9 +134,10 @@ def test_cf_pages_skipped_when_env_vars_missing(tmp_path, monkeypatch, capsys):
 # -- Pages project name derivation -------------------------------------------
 
 
-def test_pages_project_derived_from_repo_name(tmp_path, monkeypatch, capsys):
-    """The CF Pages project name is derived from the repo name (after the slash)."""
-    _setup_project(tmp_path, repo="my-org/my-docs-assembly")
+def test_pages_project_comes_from_config(tmp_path, monkeypatch, capsys):
+    """The CF Pages project name is the configured one, not the repo basename."""
+    _setup_project(tmp_path, repo="my-org/my-docs-assembly",
+                   pages_project="unified-site")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CF_ACCOUNT_ID", "acct-123")
     monkeypatch.setenv("CF_PAGES_API_TOKEN", "tok-456")
@@ -146,8 +149,8 @@ def test_pages_project_derived_from_repo_name(tmp_path, monkeypatch, capsys):
 
     wrangler_calls = [c for c in calls if "wrangler" in str(c)]
     assert len(wrangler_calls) == 1
-    # The project name should be "my-docs-assembly" (after the slash)
-    assert "my-docs-assembly" in wrangler_calls[0]
+    assert "unified-site" in wrangler_calls[0]
+    assert "my-docs-assembly" not in wrangler_calls[0]
 
 
 # -- GitHub secrets -----------------------------------------------------------
