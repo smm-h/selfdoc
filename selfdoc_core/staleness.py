@@ -18,6 +18,27 @@ from selfdoc_core.directives import _ATTR_KV_RE
 # attributes and are left untouched.
 _DIRECTIVE_MARKER_PREFIXES = (":-: ", ":<: ", ":@: ")
 
+# Remediation hint appended to every DRIFT001 message.  A drift error means
+# the source moved while the description did not -- which is sometimes
+# correct: the description can still be accurate.  Without this hint the
+# operator is told a problem exists but not how to close it honestly, and the
+# only discoverable way out is to make up a description edit.
+BASELINE_ACCEPT_HINT = (
+    "after reviewing the page against the changed {source}, run "
+    "`selfdoc baseline accept {page}` to accept the current content and "
+    "description as the new baseline"
+)
+
+
+def baseline_accept_hint(page_path: str, source: str) -> str:
+    """Render the DRIFT001 remediation hint for *page_path*.
+
+    *source* names what changed ("docstrings", "CLI schema") so the operator
+    knows what to review the description against.
+    """
+    return BASELINE_ACCEPT_HINT.format(source=source, page=page_path)
+
+
 # Version of the on-disk hash store schema.  Bump when the meaning of stored
 # hashes changes so older stores are discarded and re-baselined on load.
 #   v1 -> v2: content hash switched from resolved output to raw template body.
@@ -132,7 +153,8 @@ def check_schema_drift(
         return None
     return (
         f"{page_path}: CLI schema changed but page description "
-        f"was not updated (possible stale CLI description)"
+        f"was not updated (possible stale CLI description) -- "
+        + baseline_accept_hint(page_path, "CLI schema")
     )
 
 
@@ -237,7 +259,8 @@ def check_drift(
         return None
     return (
         f"{page_path}: source docstrings changed but page description "
-        f"was not updated (possible documentation drift)"
+        f"was not updated (possible documentation drift) -- "
+        + baseline_accept_hint(page_path, "docstrings")
     )
 
 
