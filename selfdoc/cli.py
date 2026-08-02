@@ -18,75 +18,7 @@ app = strictcli.App(
     help="Code-aware static site generator with directive-based content extraction",
 )
 
-post_group = app.group("post", help="Manage blog posts and chronological content for the documentation site")
-assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
 baseline_group = app.group("baseline", help="Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check")
-
-
-def _moved_to_selfblog(command):
-    """Hard error for commands that moved to the selfblog CLI.
-
-    The post/assembly implementations live in selfblog.  The selfdoc
-    command stubs stay registered so old invocations get a clean,
-    directed error instead of an unknown-command failure.
-    """
-    print(
-        f"Error: 'selfdoc {command}' moved to selfblog -- run "
-        f"'selfblog {command}' instead (pip install selfblog).",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-
-@post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.")
-@strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
-def _cmd_post_new(ctx, title=""):
-    """Create a new blog post file in the posts directory."""
-    _moved_to_selfblog("post new")
-
-
-@post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.")
-def _cmd_post_list(ctx):
-    """List all discovered blog posts."""
-    _moved_to_selfblog("post list")
-
-
-@post_group.command("generate", help="Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.")
-@strictcli.flag("from-release", type=bool, help="Generate the post from structured release metadata rather than freeform content")
-@strictcli.flag("version", type=str, help="The released version number to feature in the generated blog post title and metadata")
-@strictcli.flag("prev-version", type=str, help="Previous version number, used to show what version this release upgrades from")
-@strictcli.flag("bump-type", type=str, help="Semver bump type (patch, minor, or major) included in the post frontmatter")
-@strictcli.flag("description", type=str, help="Short release description text included as the post summary paragraph")
-@strictcli.flag("context", type=str, help="Additional context explaining the rationale for this release, included in generated blog posts")
-@strictcli.flag("changelog-file", type=str, help="Path to a markdown file whose contents are embedded as the changelog section of the post")
-@strictcli.flag("body-file", type=str, help="Path to a file containing user-written prose to include as the main post body content")
-@strictcli.flag("project-name", type=str, help="Human-readable project name used in the blog post title and frontmatter metadata")
-@strictcli.flag("release-url", type=str, help="Full URL to the GitHub release page, linked from the generated blog post")
-@strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL such as PyPI or npm page, can be specified multiple times")
-@strictcli.flag("dry-run", type=bool, default=False, help="Print the generated post content to stdout without writing any files to disk")
-def _cmd_post_generate(
-    ctx,
-    from_release=False,
-    version="",
-    prev_version="",
-    bump_type="",
-    description="",
-    context="",
-    changelog_file="",
-    body_file="",
-    project_name="",
-    release_url="",
-    registry_url=None,
-    dry_run=False,
-):
-    """Generate a blog post from release metadata."""
-    _moved_to_selfblog("post generate")
-
-
-@post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.")
-def _cmd_post_publish(ctx):
-    """Publish blog posts to the assembly without a software release."""
-    _moved_to_selfblog("post publish")
 
 
 def _detect_source_entries(language):
@@ -843,48 +775,6 @@ def _cmd_gen_data(ctx, auto_commit=True):
     else:
         print("No gen-data scripts configured.")
     return 0
-
-
-@assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.")
-def _cmd_assembly_init(ctx):
-    """Create the assembly GitHub repo and push initial files."""
-    _moved_to_selfblog("assembly init")
-
-
-@assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.")
-def _cmd_assembly_push(ctx):
-    """Dispatch an assembly rebuild for the current project."""
-    _moved_to_selfblog("assembly push")
-
-
-@assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.")
-def _cmd_assembly_status(ctx):
-    """Show recent assembly build status."""
-    _moved_to_selfblog("assembly status")
-
-
-@assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.")
-def _cmd_assembly_rebuild(ctx):
-    """Trigger rebuild for all projects in the assembly."""
-    _moved_to_selfblog("assembly rebuild")
-
-
-@assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
-@strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
-@strictcli.flag("docs_base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
-def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
-    """Print the _redirects file content for redirecting to the assembly site."""
-    _moved_to_selfblog("assembly redirects")
-
-
-@assembly_group.command("generate-shared", help="Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
-@strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
-@strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
-@strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
-@strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
-def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", portfolio_file=""):
-    """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
-    _moved_to_selfblog("assembly generate-shared")
 
 
 @app.command("quality", help="Show documentation quality tier and metrics for the current project")
