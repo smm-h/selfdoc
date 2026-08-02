@@ -65,6 +65,7 @@
   "en/cli-quality.md": {
     "content": "3c4190b821adacf392abb20102f8fef7f3713d35aa1190eeeb55288d910dd55f",
     "description": "cedb351399c5b2dae0fca76f35010f96817d8ce3062e7e8f3b0d27ac7afbbee2",
+    "schema_hash": "3ab50ae55b2b210cfae85383a205ba559d5349d5b32daeb7b21819725c221e18",
     "seed_hash": "cedb351399c5b2dae0fca76f35010f96817d8ce3062e7e8f3b0d27ac7afbbee2"
   },
   "en/cli-serve.md": {
@@ -303,7 +304,8 @@
   "en/selfdoc-quality.md": {
     "content": "78bc53da300ebbc28d66d0915528c4c7dfa89c8e773d56f5701ad5fff3409cae",
     "description": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a",
-    "seed_hash": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a"
+    "seed_hash": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a",
+    "source_docstring": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a"
   },
   "en/selfdoc-resolver.md": {
     "content": "1905aa30e259346fed00c61729d680b008e9b4ce87948f998580a6351c98a669",
