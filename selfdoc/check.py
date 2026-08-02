@@ -1808,6 +1808,17 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                         )
                         if mod_path and _is_excluded(mod_path, gen_excludes):
                             continue
+                        # Also check the containing package path, mirroring
+                        # gen: package-level patterns (e.g. "internal/vendored")
+                        # never match the per-file module path, which for Go
+                        # carries the file stem.
+                        pkg_path = os.path.dirname(rel_to_base).replace(
+                            os.sep, "/",
+                        )
+                        if pkg_path and pkg_path != "." and _is_excluded(
+                            pkg_path, gen_excludes,
+                        ):
+                            continue
                     symbols = extractor.public_symbols(full_path)
                     if symbols:
                         all_symbols[rel_to_base] = symbols

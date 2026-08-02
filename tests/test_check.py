@@ -5273,3 +5273,66 @@ def test_root_template_with_frontmatter(tmp_path):
     assert root_results[0].status == "OK"
     # Line number should account for frontmatter offset
     assert root_results[0].line == 6
+
+
+def test_go_coverage_respects_package_level_gen_exclude(tmp_path):
+    """A gen.exclude package path must exclude its files from coverage.
+
+    gen excludes packages by checking the package path itself, but the
+    coverage walk only checked the per-file module path (which for Go
+    includes the file stem and never matches a package-level pattern), so
+    excluded packages leaked into coverage as unreferenced symbols.
+    """
+    config = {
+        "version": "1.0.0",
+        "source": [{"path": "pkg/", "language": "go"}],
+        "docs": "docs/",
+        "output": "docs/_build/",
+        "base_url": "https://example.com",
+        "gen": {"exclude": ["pkg/vendored"]},
+    }
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    # Source: pkg/server/server.go, referenced by docs
+    pkg_dir = os.path.join(tmp_path, "pkg", "server")
+    os.makedirs(pkg_dir)
+    with open(os.path.join(pkg_dir, "server.go"), "w", encoding="utf-8") as f:
+        f.write(
+            'package server\n'
+            '\n'
+            '// Start starts the server.\n'
+            'func Start() {}\n'
+        )
+
+    # Source: pkg/vendored/lib.go — excluded package with public symbols
+    vend_dir = os.path.join(tmp_path, "pkg", "vendored")
+    os.makedirs(vend_dir)
+    with open(os.path.join(vend_dir, "lib.go"), "w", encoding="utf-8") as f:
+        f.write(
+            'package vendored\n'
+            '\n'
+            '// Lib does vendored things.\n'
+            'func Lib() {}\n'
+            '\n'
+            '// More does more vendored things.\n'
+            'func More() {}\n'
+        )
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# API\n"
+            "\n"
+            ':-: ref path="pkg/server"\n'
+        )
+
+    result = check_docs(str(tmp_path))
+    assert result.coverage is not None
+    # Only pkg/server's Start counts; pkg/vendored is gen-excluded and must
+    # not appear in coverage at all.
+    assert result.coverage.total_public == 1
+    assert result.coverage.referenced == 1
+    assert len(result.coverage.unreferenced_symbols) == 0
