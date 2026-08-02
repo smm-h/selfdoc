@@ -29,6 +29,21 @@ When selfdoc builds a site, it looks for `CHANGELOG.md` in the project root. If 
 
 selfdoc reads the project version from the language-specific manifest file (`pyproject.toml` for Python, `package.json` for npm, `go.mod` for Go). In rlsbl-managed projects, this version is bumped by `rlsbl release`, so the docs site automatically shows the current version in navigation and search metadata.
 
+### Overriding the version during a release
+
+Documentation is generated *before* the version bump lands, so anything that resolves `project.version` at generation time -- most importantly a root file such as `CLAUDE.md` or `README.md` produced from a template -- would otherwise be committed showing the previous version, on every single release. Pass the about-to-be-released version explicitly:
+
+```
+selfdoc gen --version-override 1.4.0
+selfdoc check --version-override 1.4.0
+```
+
+`gen --version-override` stamps that version into version-bearing generated content instead of reading the (not yet bumped) manifest. `check --version-override` states the version that content is expected to embed, so the check is correct in the window between generation and the bump.
+
+The `VER004` check enforces the pairing: a generated root file whose template interpolates `project.version` must contain the expected version. Generating without the override during a release is a hard failure rather than a silent one-release lag.
+
+Documentation *pages* need no override -- they keep the `var` directive in their committed Markdown and resolve it at build time, which happens after the bump.
+
 ## rlsbl Side
 
 ### Docs checks during release

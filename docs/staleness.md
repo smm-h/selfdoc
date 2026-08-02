@@ -59,7 +59,7 @@ Then run `selfdoc check` again. The hashes update and the error clears.
 
 ## Accepting a Reviewed Dead-End
 
-Sometimes the content changed but the existing description is still accurate. The most common trigger is a page that embeds `project.version` via a var directive -- its content hash changes on every release even though the page's meaning did not. Use `selfdoc baseline accept` to advance the baseline:
+Sometimes the content changed but the existing description is still accurate -- a generated page whose listing order shifted, or a prose correction that does not change what the page is about. Use `selfdoc baseline accept` to advance the baseline:
 
 ```
 selfdoc baseline accept en/index.md en/cli-index.md
