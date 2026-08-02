@@ -18,6 +18,5 @@
       "local": false,
       "target": "pypi"
     }
-  },
-  "coverage_unit": "commit"
+  }
 }
