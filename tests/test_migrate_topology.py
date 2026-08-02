@@ -11,6 +11,8 @@ from migrate_topology import (
     add_cross_links,
     build_projects_map,
     discover_projects,
+    main,
+    missing_pages_project,
     to_kebab,
     update_config,
 )
@@ -144,6 +146,82 @@ class TestUpdateConfig:
 
         assert result["assembly"]["repo"] == "new/repo"
         assert result["assembly"]["extra"] == "kept"
+
+
+class TestMissingPagesProject:
+    def test_repo_only_is_missing(self):
+        assert missing_pages_project({"assembly": {"repo": "org/asm"}}) is True
+
+    def test_configured_is_not_missing(self):
+        config = {"assembly": {"repo": "org/asm", "pages_project": "site"}}
+        assert missing_pages_project(config) is False
+
+    def test_empty_value_is_missing(self):
+        config = {"assembly": {"repo": "org/asm", "pages_project": ""}}
+        assert missing_pages_project(config) is True
+
+    def test_no_assembly_block_is_not_missing(self):
+        assert missing_pages_project({}) is False
+
+    def test_non_dict_assembly_is_not_missing(self):
+        assert missing_pages_project({"assembly": "org/asm"}) is False
+
+    def test_migrated_config_is_missing(self):
+        """update_config alone never produces a complete assembly block."""
+        config = update_config({}, "proj", "https://d.com", None, "org/asm")
+        assert missing_pages_project(config) is True
+
+
+class TestMainWarnsAboutPagesProject:
+    def test_warns_naming_the_key_and_its_consumers(self, tmp_path, capsys):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "selfdoc.json").write_text(json.dumps({"source": "python"}))
+
+        main([
+            "--docs-base", "https://docs.example.com",
+            "--assembly-repo", "org/asm",
+            "--projects-dir", str(tmp_path),
+        ])
+
+        err = capsys.readouterr().err
+        assert "assembly.pages_project" in err
+        assert "proj" in err
+        # Names where the key is consumed, so the reader knows what breaks.
+        assert "assembly init" in err
+        assert "deploy workflow" in err
+
+    def test_silent_when_pages_project_already_set(self, tmp_path, capsys):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "selfdoc.json").write_text(
+            json.dumps({"assembly": {"pages_project": "site"}})
+        )
+
+        main([
+            "--docs-base", "https://docs.example.com",
+            "--assembly-repo", "org/asm",
+            "--projects-dir", str(tmp_path),
+        ])
+
+        err = capsys.readouterr().err
+        assert "pages_project" not in err
+
+    def test_migration_preserves_existing_pages_project(self, tmp_path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "selfdoc.json").write_text(
+            json.dumps({"assembly": {"repo": "old/repo", "pages_project": "site"}})
+        )
+
+        main([
+            "--docs-base", "https://docs.example.com",
+            "--assembly-repo", "org/asm",
+            "--projects-dir", str(tmp_path),
+        ])
+
+        config = json.loads((proj / "selfdoc.json").read_text())
+        assert config["assembly"] == {"repo": "org/asm", "pages_project": "site"}
 
 
 class TestBuildProjectsMap:

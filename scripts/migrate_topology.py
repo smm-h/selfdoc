@@ -13,6 +13,20 @@ import re
 import sys
 
 
+# assembly.pages_project has no default and cannot be derived from anything
+# this script knows: it is the name of a Cloudflare Pages project, chosen by
+# whoever owns the account.  Migration therefore leaves the assembly block
+# incomplete on purpose, and says so as loudly as a stdout/stderr script can.
+PAGES_PROJECT_HINT = (
+    'add "pages_project": "<cloudflare-pages-project>" to the "assembly" '
+    "block of selfdoc.json"
+)
+PAGES_PROJECT_CONSUMERS = (
+    "'selfblog assembly init' (it creates that Pages project) and the deploy "
+    "workflow that 'selfblog assembly generate-shared' writes (it deploys to it)"
+)
+
+
 def to_kebab(name: str) -> str:
     """Convert a name to kebab-case slug."""
     s = name.lower()
@@ -60,6 +74,20 @@ def update_config(
     return config
 
 
+def missing_pages_project(config: dict) -> bool:
+    """True when *config* carries an assembly block with no ``pages_project``.
+
+    ``assembly.pages_project`` is a required key of the assembly block, so a
+    config in this state fails to load.  Migration always writes
+    ``assembly.repo`` and can never supply ``pages_project``, which makes this
+    the expected post-migration state for every assembly-host project.
+    """
+    asm = config.get("assembly")
+    if not isinstance(asm, dict):
+        return False
+    return not asm.get("pages_project")
+
+
 def build_projects_map(
     projects: list[tuple[str, str]], docs_base: str
 ) -> dict[str, str]:
@@ -104,6 +132,7 @@ def main(argv: list[str] | None = None) -> None:
     # First pass: update each project's config and collect slugs
     project_info: list[tuple[str, str]] = []  # (slug, dir_path)
     updated_paths: list[str] = []
+    incomplete_assemblies: list[tuple[str, str]] = []  # (slug, dir_path)
 
     for proj_dir in project_dirs:
         config_path = os.path.join(proj_dir, "selfdoc.json")
@@ -129,6 +158,15 @@ def main(argv: list[str] | None = None) -> None:
 
         updated_paths.append(proj_dir)
 
+        if missing_pages_project(config):
+            incomplete_assemblies.append((slug, proj_dir))
+            print(
+                f"WARNING: {slug}: assembly.pages_project is MISSING and this "
+                f"script cannot supply it -- {config_path} will not load until "
+                f"you {PAGES_PROJECT_HINT}.",
+                file=sys.stderr,
+            )
+
     # Second pass: add cross-project links
     projects_map = build_projects_map(project_info, args.docs_base)
 
@@ -148,6 +186,24 @@ def main(argv: list[str] | None = None) -> None:
     for slug, proj_dir in project_info:
         print(f"  {slug} ({proj_dir})")
     print(f"Cross-project map has {len(projects_map)} entries.")
+
+    if incomplete_assemblies:
+        bar = "!" * 72
+        print(f"\n{bar}", file=sys.stderr)
+        print(
+            f"ACTION REQUIRED: {len(incomplete_assemblies)} project(s) have an "
+            f"assembly block with no assembly.pages_project.",
+            file=sys.stderr,
+        )
+        print(
+            "selfdoc.json does not load without it, and it is consumed by "
+            f"{PAGES_PROJECT_CONSUMERS}.",
+            file=sys.stderr,
+        )
+        print(f"For each project below, {PAGES_PROJECT_HINT}:", file=sys.stderr)
+        for slug, proj_dir in incomplete_assemblies:
+            print(f"  {slug} ({proj_dir}/selfdoc.json)", file=sys.stderr)
+        print(f"{bar}", file=sys.stderr)
 
 
 if __name__ == "__main__":
