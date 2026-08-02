@@ -78,7 +78,7 @@
     "description": "9d0b3dabf6c357c571bbc014210912188376884e7aff08eeb75c73d4ff684224"
   },
   "en/comparisons.md": {
-    "content": "d79772af9fd15f15da42f23841153c268ef65d354afd8f0ba5edf4574eba9694",
+    "content": "4b1bc48650cc7c1154f3151fac61154d825ba33420c25160d8b5b4f905d45653",
     "description": "b54f7343fd127542f1a22fd1fbf5d9ddf2a00c7f244026f00a0b32f74fa47567"
   },
   "en/configuration.md": {
@@ -114,7 +114,7 @@
     "description": "62d110073d6baf71fc8b116980d397441d42546e119cb8595bfeeab5f5f77253"
   },
   "en/getting-started.md": {
-    "content": "466caffa4da94377ab95381c98c20546e224b396f1dec4a9ed75aed6afd3f691",
+    "content": "cdbe38480a49cc44ccb1178dce0fc3122052ce1a3eb0b1456d80600f8a4adc8f",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -126,7 +126,7 @@
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
-    "content": "c7867bb5d36826d06b951d4f3908c0cfef431337d3d6ae05b3246262beca0afe",
+    "content": "e2e4fb176bc0494c9e2dae437f93be04e5cb8d2d8d9299b0f028715453b74880",
     "description": "fde99a135ff41825e1968e68c673c9dd3fda338d7fdf0152dda32aa517203df2"
   },
   "en/internals.md": {
@@ -304,7 +304,7 @@
   "en/selfdoc-quality.md": {
     "content": "78bc53da300ebbc28d66d0915528c4c7dfa89c8e773d56f5701ad5fff3409cae",
     "description": "f3bc336ec7dcd8aeec9cff29c5f1fe71cd773a81dc8b765abf20cfe09e0f98e0",
-    "source_docstring": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a"
+    "source_docstring": "7abc058ee062bfbe4f09586026523d726d2cb1c530a059f09b3dee701fb73f69"
   },
   "en/selfdoc-resolver.md": {
     "content": "1905aa30e259346fed00c61729d680b008e9b4ce87948f998580a6351c98a669",
