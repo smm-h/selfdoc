@@ -1,10 +1,16 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Extractor coverage fixes (re-exports, module constants, docstring-less/pydantic classes), new `selfdoc quality` command, configurable coverage_threshold, three new guides, plus breaking removal of `post`/`assembly` subcommands and new explicit deploy-target and assembly config keys"
 # Optional context explaining why these changes were made
-context = ""
+context = """
+Coordinated minor batch release; the previous batch shipped 2026-07-11. This ships roughly three weeks of accumulated backlog for the selfdoc CLI.
+
+Breaking changes in this batch: the `selfdoc post` and `selfdoc assembly` subcommand stubs are gone (that surface lives in selfblog now); `deploy_github_pages` requires an explicit target instead of inferring it from the current directory's origin; and the assembly config keys changed (`topology.assembly` is rejected in favour of `assembly.repo`, and `assembly.pages_project` is now required).
+
+Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier scale, a configurable `coverage_threshold` in selfdoc.json, the `gen --version-override` release handshake, and new directives/quality/blog guides. Fixes tighten `ref` coverage accounting (re-exports and module constants are now counted, docstring-less and pydantic classes are no longer dropped), make manifest generation idempotent so `--no-allow-dirty` releases stop looping, honour package-level excludes, and add remediation hints to DRIFT001/STALE001.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
@@ -15,11 +21,17 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Python extractor coverage fixes (re-exports and module constants counted, docstring-less/pydantic classes no longer dropped), configurable coverage_threshold, idempotent manifest generation, plus breaking deploy-target and assembly config changes"
 # Optional context explaining why these changes were made
-context = ""
+context = """
+Coordinated minor batch release; the previous batch shipped 2026-07-11. This ships roughly three weeks of accumulated backlog for the selfdoc-core library.
+
+Breaking changes in this batch: `deploy_github_pages` now takes a required `target` keyword instead of reading `git remote get-url origin` from the working directory, and the config schema drops `topology.assembly` (replaced by `assembly.repo`) while `assembly.pages_project` becomes required.
+
+Fixes make the Python extractor's `ref` output count `__all__` re-exports and module-level constants (previously structurally uncountable in coverage) and stop dropping docstring-less public classes and pydantic models; manifest generation is now idempotent when content is unchanged. The new `coverage_threshold` field lets `selfdoc check` accept partial coverage.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
@@ -28,17 +40,11 @@ context = ""
 include = ["pypi"]
 exclude = []
 
-[releasables.selfblog]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
-include = ["npm", "pypi"]
-exclude = []
+# selfblog: idle this batch -- its queued entries stay unreleased until it
+# accumulates enough to warrant its own bump (same pattern as prior batches).
+# [releasables.selfblog]
+# bump = ""
+# description = ""
+# context = ""
+# include = ["npm", "pypi"]
+# exclude = []
