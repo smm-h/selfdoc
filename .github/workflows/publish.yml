@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       checks: read
+      contents: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GATE_TIMEOUT_MINUTES: '20'
