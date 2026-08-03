@@ -68,22 +68,9 @@ class PythonExtractor(BaseExtractor):
             return []
 
         # Check for __all__ assignment with literal list/tuple of strings
-        for node in ast.iter_child_nodes(tree):
-            if not isinstance(node, ast.Assign):
-                continue
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    if isinstance(node.value, (ast.List, ast.Tuple)):
-                        names = []
-                        all_strings = True
-                        for elt in node.value.elts:
-                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
-                                names.append(elt.value)
-                            else:
-                                all_strings = False
-                                break
-                        if all_strings:
-                            return names
+        all_names = _all_literal_names(tree)
+        if all_names is not None:
+            return all_names
 
         # Fallback: non-underscore top-level functions and classes
         symbols = []
@@ -233,6 +220,112 @@ def _class_symbol_details(node):
 # ---------------------------------------------------------------------------
 
 
+def _all_literal_names(tree):
+    """Return the module's ``__all__`` contents if it's a literal list/tuple
+    of string constants, else ``None``.
+
+    ``None`` covers both "no ``__all__``" and "``__all__`` defined but not a
+    literal list of strings" -- callers fall back to a heuristic in that case,
+    same as before this was factored out of ``public_symbols``.
+    """
+    for node in ast.iter_child_nodes(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == "__all__":
+                if isinstance(node.value, (ast.List, ast.Tuple)):
+                    names = []
+                    for elt in node.value.elts:
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            names.append(elt.value)
+                        else:
+                            return None
+                    return names
+    return None
+
+
+def _iter_reexport_candidates(tree):
+    """Yield module-level ``ImportFrom``/``Assign``/``AnnAssign`` statements.
+
+    Includes statements nested one level inside top-level ``Try``/``If``
+    bodies -- covers the common ``try: from ._impl import X except
+    ImportError: ...`` fallback pattern and ``if TYPE_CHECKING:`` guards.
+    Deeper nesting is intentionally not descended into.
+    """
+    for stmt in tree.body:
+        if isinstance(stmt, (ast.ImportFrom, ast.Assign, ast.AnnAssign)):
+            yield stmt
+        elif isinstance(stmt, ast.Try):
+            nested = list(stmt.body)
+            for handler in stmt.handlers:
+                nested.extend(handler.body)
+            nested.extend(stmt.orelse)
+            nested.extend(stmt.finalbody)
+            for sub in nested:
+                if isinstance(sub, (ast.ImportFrom, ast.Assign, ast.AnnAssign)):
+                    yield sub
+        elif isinstance(stmt, ast.If):
+            for sub in (*stmt.body, *stmt.orelse):
+                if isinstance(sub, (ast.ImportFrom, ast.Assign, ast.AnnAssign)):
+                    yield sub
+
+
+def _importfrom_stub(node, alias):
+    """Reconstruct the ``from X import Y [as Z]`` source line for one alias
+    of an ``ast.ImportFrom`` node."""
+    dots = "." * node.level
+    module = node.module or ""
+    imported = alias.name if not alias.asname else f"{alias.name} as {alias.asname}"
+    return f"from {dots}{module} import {imported}"
+
+
+def _iter_reexport_stubs(tree):
+    """Yield ``(name, stub_line)`` for module-level re-exports and constants.
+
+    Covers ``from .pkg import X`` (optionally aliased) and module-level
+    constants like ``__version__ = "..."``, via ``_iter_reexport_candidates``.
+    Star imports are skipped -- unresolvable, and incidental (their names
+    won't appear in a literal ``__all__`` extraction anyway).
+    """
+    for stmt in _iter_reexport_candidates(tree):
+        if isinstance(stmt, ast.ImportFrom):
+            for alias in stmt.names:
+                if alias.name == "*":
+                    continue
+                name = alias.asname or alias.name
+                yield name, _importfrom_stub(stmt, alias)
+        elif isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+            targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+            for t in targets:
+                if isinstance(t, ast.Name):
+                    yield t.id, ast.unparse(stmt)
+
+
+def _format_reexports(tree, all_names, emitted_names):
+    """Emit ``### Name`` + stub for ``__all__`` names not already covered by
+    a rendered class/function definition.
+
+    Gated on literal ``__all__`` membership (stricter than the TypeScript
+    extractor's re-export handling -- deliberate: incidental imports like
+    ``import os`` must not pollute output). If the module has no literal
+    ``__all__``, nothing is emitted here.
+    """
+    if not all_names:
+        return []
+    wanted = set(all_names) - emitted_names
+    if not wanted:
+        return []
+
+    entries = []
+    seen = set()
+    for name, stub in _iter_reexport_stubs(tree):
+        if name not in wanted or name in seen:
+            continue
+        seen.add(name)
+        entries.append(f"### {name}\n\n```python\n{stub}\n```")
+    return entries
+
+
 def _handle_module(path, target, body, source_paths, base_dir, attrs):
     """Extract module docstring, functions, and classes.
 
@@ -268,6 +361,11 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
                 if func_md:
                     return func_md
                 return format_error(f"symbol '{target}' in '{path}' has no documentation")
+        # Not a locally defined class/function -- check re-exports
+        # (`from ._impl import X`) and module-level constants (`__version__`).
+        for name, stub in _iter_reexport_stubs(tree):
+            if name == target:
+                return f"### {target}\n\n```python\n{stub}\n```"
         return format_error(f"symbol '{target}' not found in '{path}'")
 
     # Determine display name from the dotted path
@@ -286,17 +384,28 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
         parts.append(_format_docstring(module_doc))
 
     # Extract top-level functions and classes
+    emitted_names = set()
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.ClassDef):
             cls_md = _format_class(node)
             if cls_md:
                 parts.append("")
                 parts.append(cls_md)
+                emitted_names.add(node.name)
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             func_md = _format_function(node, heading_level=3)
             if func_md:
                 parts.append("")
                 parts.append(func_md)
+                emitted_names.add(node.name)
+
+    # __init__.py re-exports (`from ._impl import X`) and module-level
+    # constants (`__version__`) that are listed in __all__ but aren't a
+    # locally defined class/function -- see _format_reexports.
+    all_names = _all_literal_names(tree)
+    for entry in _format_reexports(tree, all_names, emitted_names):
+        parts.append("")
+        parts.append(entry)
 
     return "\n".join(parts)
 

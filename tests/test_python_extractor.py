@@ -830,3 +830,133 @@ class TestEdgeCases:
             "ref", {"path": "bad"}, [], source_paths, str(sample_project)
         )
         assert "syntax error" in result
+
+
+# ---------------------------------------------------------------------------
+# Re-export handling in ref output (Bug 1)
+# ---------------------------------------------------------------------------
+
+
+class TestReexportInRefOutput:
+    def test_reexport_appears_in_ref_output(self, tmp_path):
+        """A plain `from ._impl import X` re-export in __all__ gets a heading."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "_impl.py").write_text(
+            '"""Impl module."""\n\n\nclass Foo:\n    """The real Foo."""\n    pass\n',
+            encoding="utf-8",
+        )
+        (pkg / "__init__.py").write_text(
+            '"""Package pkg."""\n\n'
+            "from ._impl import Foo\n\n"
+            '__all__ = ["Foo"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg"}, [], [], str(tmp_path)
+        )
+        assert "### Foo" in result
+        assert "from ._impl import Foo" in result
+
+    def test_reexport_with_alias(self, tmp_path):
+        """`from ._impl import Foo as Bar` produces a ### Bar heading."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "_impl.py").write_text('class Foo:\n    pass\n', encoding="utf-8")
+        (pkg / "__init__.py").write_text(
+            "from ._impl import Foo as Bar\n\n"
+            '__all__ = ["Bar"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg"}, [], [], str(tmp_path)
+        )
+        assert "### Bar" in result
+        assert "Foo as Bar" in result
+
+    def test_reexport_nested_in_try_block(self, tmp_path):
+        """A re-export inside a top-level try/except is still emitted."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "_impl.py").write_text('class Fast:\n    pass\n', encoding="utf-8")
+        (pkg / "__init__.py").write_text(
+            "try:\n"
+            "    from ._impl import Fast\n"
+            "except ImportError:\n"
+            "    from ._fallback import Fast\n\n"
+            '__all__ = ["Fast"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg"}, [], [], str(tmp_path)
+        )
+        assert "### Fast" in result
+
+    def test_reexport_nested_in_type_checking_block(self, tmp_path):
+        """A re-export inside `if TYPE_CHECKING:` is still emitted."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "_types.py").write_text('class Spec:\n    pass\n', encoding="utf-8")
+        (pkg / "__init__.py").write_text(
+            "from typing import TYPE_CHECKING\n\n"
+            "if TYPE_CHECKING:\n"
+            "    from ._types import Spec\n\n"
+            '__all__ = ["Spec"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg"}, [], [], str(tmp_path)
+        )
+        assert "### Spec" in result
+
+    def test_version_constant_appears_in_ref_output(self, tmp_path):
+        """A module-level `__version__ = "..."` constant listed in __all__ appears."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text(
+            '__version__ = "1.2.3"\n\n'
+            '__all__ = ["__version__"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg"}, [], [], str(tmp_path)
+        )
+        assert "### __version__" in result
+        assert "__version__ = " in result
+        assert "1.2.3" in result
+
+    def test_incidental_import_not_in_all_is_not_emitted(self, tmp_path):
+        """An import not listed in __all__ must not pollute ref output."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "_impl.py").write_text('class Foo:\n    pass\n', encoding="utf-8")
+        (pkg / "__init__.py").write_text(
+            "import os\n"
+            "from ._impl import Foo\n\n"
+            '__all__ = ["Foo"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg"}, [], [], str(tmp_path)
+        )
+        assert "### os" not in result
+        assert "import os" not in result
+
+    def test_target_resolves_reexport(self, tmp_path):
+        """ref with target=X resolves X even when it's only a re-export."""
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "_impl.py").write_text('class Foo:\n    pass\n', encoding="utf-8")
+        (pkg / "__init__.py").write_text(
+            "from ._impl import Foo\n\n"
+            '__all__ = ["Foo"]\n',
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "pkg", "target": "Foo"}, [], [], str(tmp_path)
+        )
+        assert "### Foo" in result
+        assert "from ._impl import Foo" in result
+        assert "not found" not in result
+
+
