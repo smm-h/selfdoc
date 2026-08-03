@@ -25,9 +25,11 @@ jobs:
           selfdoc-core:
             - 'selfdoc_core/**'
             - 'selfdoc_core/**'
+            - '.rlsbl-monorepo/releasables/selfdoc-core/CHANGELOG.md'
           selfblog:
             - 'selfblog/**'
             - 'selfblog/**'
+            - '.rlsbl-monorepo/releasables/selfblog/CHANGELOG.md'
           selfdoc:
             - 'selfdoc/**'
             - 'selfdoc/**'
@@ -38,6 +40,7 @@ jobs:
             - 'pyproject.toml'
             - 'uv.lock'
             - 'LICENSE'
+            - '.rlsbl-monorepo/releasables/selfdoc/CHANGELOG.md'
   selfdoc-core-ci-test:
     runs-on: ubuntu-latest
     strategy:
