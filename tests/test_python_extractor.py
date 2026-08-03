@@ -960,3 +960,80 @@ class TestReexportInRefOutput:
         assert "not found" not in result
 
 
+# ---------------------------------------------------------------------------
+# Docstring-less pydantic models / public classes (Bug 2)
+# ---------------------------------------------------------------------------
+
+
+class TestDocstringlessPublicClasses:
+    def test_pydantic_model_without_docstring_gets_field_table(self, tmp_path):
+        """A docstring-less pydantic BaseModel subclass renders a field table."""
+        mod = tmp_path / "models.py"
+        mod.write_text(
+            "from pydantic import BaseModel\n\n\n"
+            "class Params(BaseModel):\n"
+            "    name: str\n"
+            "    count: int = 0\n",
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "models.py"}, [], [], str(tmp_path)
+        )
+        assert "### Params" in result
+        assert "| Field | Type | Default |" in result
+        assert "`name`" in result
+        assert "`count`" in result
+
+    def test_empty_class_still_gets_heading(self, tmp_path):
+        """A docstring-less, method-less, non-dataclass class still gets a heading."""
+        mod = tmp_path / "plain.py"
+        mod.write_text(
+            "class Plain:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "plain.py"}, [], [], str(tmp_path)
+        )
+        assert "### Plain" in result
+        assert "class Plain" in result
+
+    def test_existing_dataclass_rendering_unchanged(self, tmp_path):
+        """Dataclass field-table rendering is unaffected by the pydantic fix."""
+        mod = tmp_path / "dc.py"
+        mod.write_text(
+            "from dataclasses import dataclass\n\n\n"
+            "@dataclass\n"
+            "class Point:\n"
+            "    x: int = 0\n"
+            "    y: int = 0\n",
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "dc.py"}, [], [], str(tmp_path)
+        )
+        assert "### Point" in result
+        assert "| Field | Type | Default |" in result
+        assert "`x`" in result
+        assert "`y`" in result
+
+    def test_docstring_class_rendering_unchanged(self, tmp_path):
+        """Docstring + methods classes are unaffected by the fallback signature."""
+        mod = tmp_path / "doc.py"
+        mod.write_text(
+            "class Documented:\n"
+            '    """A documented class."""\n\n'
+            "    def run(self):\n"
+            '        """Run it."""\n'
+            "        pass\n",
+            encoding="utf-8",
+        )
+        result = PythonExtractor().extract(
+            "ref", {"path": "doc.py"}, [], [], str(tmp_path)
+        )
+        assert "### Documented" in result
+        assert "A documented class." in result
+        assert "#### run" in result
+        # No spurious raw class-signature fallback block should be added
+        # when a docstring is already present.
+        assert result.count("### Documented") == 1

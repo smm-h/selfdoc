@@ -491,6 +491,48 @@ def _is_dataclass(node):
     return False
 
 
+def _is_pydantic_model(node):
+    """Heuristically detect a pydantic ``BaseModel`` subclass.
+
+    Base-class name check (covers ``pydantic.BaseModel``, aliased imports,
+    and plain ``BaseModel``) plus a secondary signal: a nested ``class
+    Config:`` or a ``model_config = ...`` assignment, which config-bearing
+    pydantic models carry even when the base class itself is a project's own
+    intermediate base (e.g. ``class FrozenModel(BaseModel): ...`` subclassed
+    further). This is a single-hop syntactic check, not a resolved MRO.
+    """
+    for base in node.bases:
+        base_name = None
+        if isinstance(base, ast.Name):
+            base_name = base.id
+        elif isinstance(base, ast.Attribute):
+            base_name = base.attr
+        if base_name == "BaseModel":
+            return True
+
+    for item in ast.iter_child_nodes(node):
+        if isinstance(item, ast.ClassDef) and item.name == "Config":
+            return True
+        if isinstance(item, ast.Assign):
+            for assign_target in item.targets:
+                if isinstance(assign_target, ast.Name) and assign_target.id == "model_config":
+                    return True
+    return False
+
+
+def _class_signature(node):
+    """Build a ``class Name(Base1, Base2):`` signature line."""
+    bases = [ast.unparse(b) for b in node.bases]
+    keywords = []
+    for kw in node.keywords:
+        value = ast.unparse(kw.value)
+        keywords.append(f"{kw.arg}={value}" if kw.arg else f"**{value}")
+    bases_str = ", ".join(bases + keywords)
+    if bases_str:
+        return f"class {node.name}({bases_str}):"
+    return f"class {node.name}:"
+
+
 def _format_dataclass_fields(node):
     """Format dataclass fields as a Markdown field table.
 
@@ -519,8 +561,14 @@ def _format_dataclass_fields(node):
 def _format_class(node):
     """Format a class node as markdown, including its public methods.
 
-    Dataclass classes without docstrings are rendered with a field table
-    so their names appear in coverage and the generated docs are useful.
+    Dataclasses and pydantic models without docstrings are rendered with a
+    field table so their names appear in coverage and the generated docs
+    are useful. A class named in ``__all__`` (or otherwise public -- this
+    function is only skipped for private, undocumented classes, see below)
+    is public API by declaration: it never returns ``None`` for a public
+    class. Even with no docstring, no methods, and no recognized field
+    shape, at minimum a heading + class signature line is emitted so the
+    class isn't silently dropped from ref output.
     """
     docstring = ast.get_docstring(node)
 
@@ -535,14 +583,11 @@ def _format_class(node):
             if method_md:
                 methods.append(method_md)
 
-    # For dataclasses without docstrings or methods, render a field table
+    # For dataclasses/pydantic models without docstrings or methods, render
+    # a field table.
     dataclass_fields = None
-    if not docstring and not methods and _is_dataclass(node):
+    if not docstring and not methods and (_is_dataclass(node) or _is_pydantic_model(node)):
         dataclass_fields = _format_dataclass_fields(node)
-
-    # Skip undocumented classes with no documented methods and no fields
-    if not docstring and not methods and dataclass_fields is None:
-        return None
 
     parts = []
     parts.append(f"### {node.name}")
@@ -554,6 +599,12 @@ def _format_class(node):
     if dataclass_fields:
         parts.append("")
         parts.append(dataclass_fields)
+    elif not docstring and not methods:
+        # No docstring, no methods, and no field table (empty class, or a
+        # dataclass/pydantic model with zero annotated fields) -- still emit
+        # a minimal signature line rather than dropping the class entirely.
+        parts.append("")
+        parts.append(f"```python\n{_class_signature(node)}\n```")
 
     for method_md in methods:
         parts.append("")
