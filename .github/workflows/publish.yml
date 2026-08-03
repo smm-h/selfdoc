@@ -27,6 +27,7 @@ jobs:
       contents: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
       GATE_TIMEOUT_MINUTES: '20'
       GATE_GRACE_MINUTES: '5'
       GATE_POLL_SECONDS: '15'
