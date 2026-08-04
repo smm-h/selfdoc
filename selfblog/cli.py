@@ -283,6 +283,12 @@ def _cmd_post_generate(
 
 
 @post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.", effect="mutating",
+    # Consequential: this is the moment locally-authored, previously-private
+    # post content becomes publicly readable. Unlike `assembly push` and
+    # `assembly rebuild`, which re-derive already-public docs from an
+    # already-public tag, this one publishes something new, and a post
+    # published by mistake cannot be unpublished from the reader's side.
+    consequential=True,
     grants=[
         strictcli.Grant(
             "assembly-dispatch",
@@ -410,6 +416,12 @@ def _cmd_post_publish(ctx):
 
 
 @assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.", effect="mutating",
+    # Consequential: every one of its three effects creates a NAMED external
+    # resource that rerunning cannot un-create -- a GitHub repository under the
+    # configured owner, a Cloudflare Pages project that claims its *.pages.dev
+    # subdomain, and deployment credentials written into that repo's Actions
+    # secrets. This is the highest-stakes command in either CLI.
+    consequential=True,
     grants=[
         strictcli.Grant(
             "create-repo",
@@ -554,6 +566,14 @@ def _cmd_assembly_init(ctx):
 
 
 @assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.", effect="mutating",
+    # Deliberately NOT consequential, though its grant escapes the process:
+    # the dispatch re-derives already-public documentation from an
+    # already-public git tag. Nothing new becomes public, nothing published is
+    # destroyed, and rerunning converges on the same site. It is also the
+    # routine post-release refresh, so a prompt here would be the reflex the
+    # confirm protocol exists to avoid. strictcli's
+    # `consequential-grant-agreement` check warns about this pairing by design;
+    # the warning is expected and this comment is the answer to it.
     grants=[
         strictcli.Grant(
             "assembly-dispatch",
@@ -681,6 +701,11 @@ def _cmd_assembly_status(ctx):
 
 
 @assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.", effect="mutating",
+    # Deliberately NOT consequential, for the same reason as `assembly push`
+    # and despite the wider blast radius: it re-derives every registered
+    # project's already-public docs from their already-public tags. The scale
+    # is larger; the character of the change is not. See the note on
+    # `assembly push` regarding the `consequential-grant-agreement` warning.
     grants=[
         strictcli.Grant(
             "assembly-dispatch",
