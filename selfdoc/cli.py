@@ -407,6 +407,13 @@ def _cmd_serve(ctx, port=8000, drafts=False):
     "deploy",
     help="Deploy the built documentation site to the configured provider",
     effect="mutating",
+    # Consequential: this is the one selfdoc command whose effects leave the
+    # machine and land on a live, publicly-visible site. The Cloudflare Pages
+    # provider makes the uploaded tree live the moment it lands; the GitHub
+    # Pages provider force-pushes gh-pages, so the previously published tree is
+    # gone from the remote and is not recoverable there. Neither can be undone
+    # by rerunning the command.
+    consequential=True,
     grants=[
         strictcli.Grant(
             "deploy",
