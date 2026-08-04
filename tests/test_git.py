@@ -656,17 +656,19 @@ def test_auto_commit_mixed_files_rlsbl_path(tmp_path):
         assert "build.cache" not in cmd
 
 
-def test_commit_tool_invocation_passes_yes(tmp_path, monkeypatch):
-    """The internal commit-tool invocation carries ``--yes``.
+def test_commit_tool_invocation_passes_no_confirmation_flag(tmp_path, monkeypatch):
+    """The internal commit-tool invocation carries no confirmation flag.
 
-    Both `rlsbl commit` and `safegit commit` are mutating strictcli commands,
-    and strictcli's confirm protocol hard-errors ("stdin is not interactive;
-    pass --yes to confirm") when stdin is not a TTY -- which is every context
-    selfdoc auto-commits from: CI, a release pipeline, an agent session. Without
-    the flag, `selfdoc gen`'s documented default of auto-committing its output
-    silently cannot complete. This asserts the flag on the argv rather than only
-    the outcome, so the fix cannot regress on a machine where the tool happens
-    to be absent and the plain-git fallback runs instead.
+    strictcli prompts only for commands that declare themselves
+    ``consequential``. Neither `rlsbl commit` nor `safegit commit` does -- a
+    commit is ordinary, undoable work -- so both run bare from a non-interactive
+    caller. ``--yes`` is worse than unnecessary: it is a banned flag name in
+    strictcli, so passing it is a hard `unknown flag` error that leaves
+    `selfdoc gen`'s regenerated files uncommitted while the command still exits
+    0. ``--approve-consequential`` would be accepted but states a decision
+    nobody asked for. This asserts the argv rather than only the outcome, so the
+    fix cannot regress on a machine where the tool happens to be absent and the
+    plain-git fallback runs instead.
     """
     _init_git_repo(tmp_path)
     (tmp_path / "hello.txt").write_text("hello")
@@ -696,4 +698,6 @@ def test_commit_tool_invocation_passes_yes(tmp_path, monkeypatch):
 
     commit_argv = [a for a in seen if a[:2] == ["rlsbl", "commit"]]
     assert len(commit_argv) == 1, seen
-    assert "--yes" in commit_argv[0]
+    assert "--yes" not in commit_argv[0]
+    assert "--approve-consequential" not in commit_argv[0]
+    assert commit_argv[0][:4] == ["rlsbl", "commit", "-m", "add hello"]
