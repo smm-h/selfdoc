@@ -1,5 +1,7 @@
 """Playwright-based tests for the demo page's design settings panel."""
 
+import os
+import pwd
 import socket
 import subprocess
 import sys
@@ -7,7 +9,30 @@ import time
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import sync_playwright
+
+# Playwright resolves its downloaded browsers from ``XDG_CACHE_HOME`` (or
+# ``~/.cache``), and stricttest's isolation floor repoints both at a throwaway
+# directory before any test module is imported -- so without this pin, every
+# browser launch below fails with "Executable doesn't exist".
+#
+# ``PLAYWRIGHT_BROWSERS_PATH`` is the variable Playwright itself provides for
+# relocating that cache. It is pointed at the invoking user's REAL cache,
+# resolved from the password database rather than from ``HOME`` (which the
+# floor has already replaced). The directory holds downloaded browser binaries
+# and nothing else -- no credential, no identity, no config -- so reaching it
+# is the same carve-out stricttest already makes for the Go, Rust, npm, uv and
+# pip toolchain caches through ``stricttest_preserve``. That enum is closed and
+# has no Playwright entry yet, which is why the pin lives here; a todo is filed
+# in stricttest to add one, after which this block collapses into one
+# ``stricttest_preserve`` line in pyproject.toml.
+#
+# Set before ``playwright`` is imported so the launcher reads the final value.
+os.environ.setdefault(
+    "PLAYWRIGHT_BROWSERS_PATH",
+    os.path.join(pwd.getpwuid(os.getuid()).pw_dir, ".cache", "ms-playwright"),
+)
+
+from playwright.sync_api import sync_playwright  # noqa: E402
 
 DEMO_DIR = Path(__file__).resolve().parent.parent / "demo"
 

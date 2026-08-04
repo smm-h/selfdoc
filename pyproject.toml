@@ -15,7 +15,33 @@ dev = [
     "pygments>=2.20.0",
     "pytest>=9.0.3",
     "pytest-playwright>=0.7.2",
+    "stricttest",
 ]
+
+[tool.pytest.ini_options]
+# stricttest's isolation floor. Installing the plugin IS adoption; these five
+# keys are required and have no defaults, on purpose.
+#
+# The floor is what keeps this suite from reaching the real world: selfdoc's
+# deploy path force-pushes a gh-pages branch, selfblog's assembly commands
+# create GitHub repositories, set repository secrets, commit through the Git
+# Data API and deploy to Cloudflare Pages, and the auto-commit chain shells
+# out to the real commit tools. Before the floor, safety rested on each test
+# remembering to mock subprocess. The throwaway HOME removes the ambient `gh`
+# credential outright, so a forgotten mock fails instead of publishing.
+#
+# loopback = "allow" is the one deliberate opening: tests/test_demo_panel.py
+# serves the demo page from a 127.0.0.1 http.server and drives it with
+# headless chromium. Nothing in the suite legitimately reaches off-machine, so
+# sockets stays "deny" with both allowlists empty.
+#
+# sandbox_required = "false" because this repo has no sandbox runner yet; the
+# always-on env/push/chdir/socket guards apply regardless.
+stricttest_sockets = "deny"
+stricttest_socket_allowlist = []
+stricttest_unix_socket_allowlist = []
+stricttest_loopback = "allow"
+stricttest_sandbox_required = "false"
 
 [tool.ruff]
 target-version = "py312"

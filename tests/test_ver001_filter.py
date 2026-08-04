@@ -11,16 +11,11 @@ from selfdoc.check import check_docs
 
 # -- Helpers ---------------------------------------------------------------
 
-_GIT_ENV = {
-    "GIT_AUTHOR_NAME": "Test Author",
-    "GIT_AUTHOR_EMAIL": "test@example.com",
-    "GIT_COMMITTER_NAME": "Test Author",
-    "GIT_COMMITTER_EMAIL": "test@example.com",
-}
-
-
 def _git(args, cwd):
-    env = {**os.environ, **_GIT_ENV}
+    # No identity injection here: stricttest's isolation floor owns the git
+    # identity and the throwaway GIT_CONFIG_GLOBAL for the whole session, so a
+    # second source would only be able to drift from it.
+    env = dict(os.environ)
     subprocess.run(
         ["git"] + args, cwd=str(cwd), env=env,
         check=True, capture_output=True,
