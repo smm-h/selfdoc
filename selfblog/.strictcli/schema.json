@@ -190,6 +190,7 @@
           "name": "publish",
           "help": "Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.",
           "effect": "mutating",
+          "consequential": true,
           "grants": [
             {
               "name": "assembly-dispatch",
@@ -208,6 +209,7 @@
           "name": "init",
           "help": "Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.",
           "effect": "mutating",
+          "consequential": true,
           "grants": [
             {
               "name": "create-repo",

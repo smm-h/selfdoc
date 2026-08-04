@@ -129,6 +129,7 @@
       "name": "deploy",
       "help": "Deploy the built documentation site to the configured provider",
       "effect": "mutating",
+      "consequential": true,
       "grants": [
         {
           "name": "deploy",
