@@ -38,8 +38,11 @@ with os.fdopen(fd, "w", encoding="utf-8") as f:
 os.replace(tmp, "selfdoc.json")
 PY
 
+# --yes: gen and check are mutating commands under strictcli's effects
+# regime, and a release hook has no TTY -- without it the framework's confirm
+# protocol hard-errors with "stdin is not interactive; pass --yes to confirm".
 echo "pre-checks: regenerating docs (selfdoc gen)"
-uv run selfdoc gen --no-auto-commit
+uv run selfdoc gen --yes --no-auto-commit
 
 echo "pre-checks: validating docs (selfdoc check)"
-uv run selfdoc check
+uv run selfdoc check --yes

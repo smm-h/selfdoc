@@ -392,7 +392,7 @@ def test_selfdoc_check_hard_errors_on_unified(
     monkeypatch.chdir(docs_site_dir)
 
     with pytest.raises(SystemExit):
-        _cmd_check(None, dry_run=True)
+        _cmd_check(None)
     captured = capsys.readouterr()
     assert "selfblog check" in captured.err
 

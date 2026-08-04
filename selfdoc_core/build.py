@@ -3,10 +3,10 @@
 import dataclasses
 from dataclasses import dataclass
 import gzip
+import io
 import json
 import os
 import re
-import shutil
 import struct
 import subprocess
 import sys
@@ -28,6 +28,8 @@ from selfdoc_core.html import (
 )
 from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
+
+from selfdoc_core import effects
 
 try:
     from predraw.model import Scene, Element, Font
@@ -355,19 +357,19 @@ def _extract_version_content(version, config, base_dir):
     hash_file = os.path.join(cache_dir, ".hash")
 
     # Ensure .gitignore in cache root
-    os.makedirs(cache_root, exist_ok=True)
+    effects.makedirs(cache_root, exist_ok=True)
     gitignore_path = os.path.join(cache_root, ".gitignore")
     if not os.path.isfile(gitignore_path):
-        with open(gitignore_path, "w", encoding="utf-8") as f:
+        with effects.open_write(gitignore_path, "w", encoding="utf-8") as f:
             f.write("*\n")
 
     # Determine tag name
     tag_name = None
     for candidate in (f"v{version}", version):
-        result = subprocess.run(
+        result = effects.run(
             ["git", "rev-parse", f"refs/tags/{candidate}"],
             capture_output=True, text=True, timeout=10,
-            cwd=base_dir,
+            cwd=base_dir, read=True,
         )
         if result.returncode == 0:
             tag_name = candidate
@@ -380,10 +382,10 @@ def _extract_version_content(version, config, base_dir):
         )
 
     # Get commit hash for the tag (dereference annotated tags)
-    result = subprocess.run(
+    result = effects.run(
         ["git", "rev-parse", f"{tag_name}^{{commit}}"],
         capture_output=True, text=True, timeout=10,
-        cwd=base_dir,
+        cwd=base_dir, read=True,
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -401,8 +403,8 @@ def _extract_version_content(version, config, base_dir):
 
     # Clear stale cache and re-extract
     if os.path.isdir(cache_dir):
-        shutil.rmtree(cache_dir)
-    os.makedirs(cache_dir, exist_ok=True)
+        effects.rmtree(cache_dir)
+    effects.makedirs(cache_dir, exist_ok=True)
 
     # Determine paths to extract: docs dir + source dirs
     docs_path = config["docs"].rstrip("/")
@@ -415,33 +417,21 @@ def _extract_version_content(version, config, base_dir):
     git_cmd = ["git", "archive", tag_name] + archive_paths
     tar_cmd = ["tar", "-x", "-C", cache_dir]
 
-    git_proc = subprocess.Popen(
-        git_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        cwd=base_dir,
-    )
-    tar_proc = subprocess.Popen(
-        tar_cmd, stdin=git_proc.stdout, stderr=subprocess.PIPE,
-        cwd=base_dir,
-    )
-    git_proc.stdout.close()
-
-    _, tar_err = tar_proc.communicate(timeout=30)
-    git_proc.wait(timeout=30)
-
-    if git_proc.returncode != 0:
+    outcome = effects.pipeline(git_cmd, tar_cmd, cwd=base_dir, timeout=30)
+    if effects.unsettled(outcome):
+        # Recorded, not extracted. The sentinel is recorded too so the
+        # preview names every path this cache fill would create.
+        effects.write_text(hash_file, commit_hash + "\n")
+        return cache_dir
+    returncode, tar_err = outcome
+    if returncode != 0:
         raise RuntimeError(
-            f"git archive failed for tag '{tag_name}': "
-            f"{git_proc.stderr.read().decode().strip()}"
-        )
-    if tar_proc.returncode != 0:
-        raise RuntimeError(
-            f"tar extraction failed for tag '{tag_name}': "
+            f"tag archive extraction failed for tag '{tag_name}': "
             f"{tar_err.decode().strip()}"
         )
 
     # Write hash sentinel
-    with open(hash_file, "w", encoding="utf-8") as f:
-        f.write(commit_hash + "\n")
+    effects.write_text(hash_file, commit_hash + "\n")
 
     return cache_dir
 
@@ -458,9 +448,12 @@ def _run_pagefind(output_dir):
         ["pagefind", "--site", output_dir],
     ):
         try:
-            result = subprocess.run(
+            result = effects.run(
                 cmd, capture_output=True, text=True, timeout=120,
+                resource=f"pagefind:{output_dir}",
             )
+            if effects.unsettled(result):
+                return
             if result.returncode == 0:
                 return
             # Command found but failed -- report the error
@@ -740,7 +733,7 @@ def _generate_og_png(project_name, title, accent_color="#0969da"):
     """
     if _HAS_PREDRAW:
         # Rich path: render to a temp file, read bytes back
-        fd, tmp_path = tempfile.mkstemp(suffix=".png")
+        fd, tmp_path = tempfile.mkstemp(suffix=".png")  # effects: exempt -- self-owned scratch file, created, read back and deleted inside this call
         os.close(fd)
         try:
             _generate_og_png_rich(project_name, title, accent_color, tmp_path)
@@ -748,7 +741,7 @@ def _generate_og_png(project_name, title, accent_color="#0969da"):
                 return f.read()
         finally:
             try:
-                os.unlink(tmp_path)
+                os.unlink(tmp_path)  # effects: exempt -- removes this call's own scratch file
             except OSError:
                 pass
     else:
@@ -1002,7 +995,7 @@ def _generate_atom_feed(
     )
 
     feed_path = os.path.join(output_dir, "feed.xml")
-    with open(feed_path, "w", encoding="utf-8") as f:
+    with effects.open_write(feed_path, "w", encoding="utf-8") as f:
         f.write(feed_xml)
     return feed_path
 
@@ -1038,36 +1031,17 @@ def _compress_output(output_dir):
 
             # gzip companion
             gz_path = filepath + ".gz"
-            fd, tmp_path = tempfile.mkstemp(dir=root)
-            try:
-                with os.fdopen(fd, "wb") as tmp_f:
-                    with gzip.GzipFile(
-                        fileobj=tmp_f, mode="wb", compresslevel=9,
-                    ) as gz_f:
-                        gz_f.write(data)
-                os.replace(tmp_path, gz_path)
-            except Exception:
-                # Clean up temp file on failure
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
-                raise
+            gz_buf = io.BytesIO()
+            with gzip.GzipFile(
+                fileobj=gz_buf, mode="wb", compresslevel=9,
+            ) as gz_f:
+                gz_f.write(data)
+            effects.write_bytes(gz_path, gz_buf.getvalue())
 
             # brotli companion (optional)
             if has_brotli:
                 br_path = filepath + ".br"
-                fd, tmp_path = tempfile.mkstemp(dir=root)
-                try:
-                    with os.fdopen(fd, "wb") as tmp_f:
-                        tmp_f.write(brotli.compress(data))
-                    os.replace(tmp_path, br_path)
-                except Exception:
-                    try:
-                        os.unlink(tmp_path)
-                    except OSError:
-                        pass
-                    raise
+                effects.write_bytes(br_path, brotli.compress(data))
 
             count += 1
 
@@ -1272,10 +1246,10 @@ def build_single(dir_path=".", config=None, output_subdir=None,
     branch = config.get("branch")
     if not branch:
         try:
-            result = subprocess.run(
+            result = effects.run(
                 ["git", "symbolic-ref", "--short", "HEAD"],
                 capture_output=True, text=True, timeout=5,
-                cwd=dir_path,
+                cwd=dir_path, read=True,
             )
             if result.returncode == 0 and result.stdout.strip():
                 branch = result.stdout.strip()
@@ -1577,7 +1551,7 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
 
         published_posts.append(post)
         post_docs_path = os.path.join(docs_dir, "posts", f"{post['slug']}.md")
-        os.makedirs(os.path.dirname(post_docs_path), exist_ok=True)
+        effects.makedirs(os.path.dirname(post_docs_path), exist_ok=True)
 
         # Reconstruct markdown with frontmatter
         fm = post["frontmatter"]
@@ -1593,7 +1567,7 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
                 fm_lines.append(f"{key}: {val}")
         full_content = "---\n" + "\n".join(fm_lines) + "\n---\n" + post["content"]
 
-        with open(post_docs_path, "w", encoding="utf-8") as f:
+        with effects.open_write(post_docs_path, "w", encoding="utf-8") as f:
             f.write(full_content)
         injected.append(post_docs_path)
 
@@ -1601,8 +1575,8 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     if published_posts:
         listing_content = _render_post_listing(published_posts)
         listing_path = os.path.join(docs_dir, "posts", "index.md")
-        os.makedirs(os.path.dirname(listing_path), exist_ok=True)
-        with open(listing_path, "w", encoding="utf-8") as f:
+        effects.makedirs(os.path.dirname(listing_path), exist_ok=True)
+        with effects.open_write(listing_path, "w", encoding="utf-8") as f:
             f.write(listing_content)
         injected.append(listing_path)
 
@@ -1617,10 +1591,10 @@ def _cleanup_injected_posts(injected_files, docs_dir):
     """
     for fpath in injected_files:
         if os.path.isfile(fpath):
-            os.unlink(fpath)
+            effects.remove(fpath)
     posts_subdir = os.path.join(docs_dir, "posts")
     if os.path.isdir(posts_subdir) and not os.listdir(posts_subdir):
-        os.rmdir(posts_subdir)
+        effects.rmdir(posts_subdir)
 
 
 def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
@@ -1679,8 +1653,8 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
         written = {}
         for rel_path, html_content in result.html_files.items():
             out_path = os.path.join(output_dir, rel_path)
-            os.makedirs(os.path.dirname(out_path), exist_ok=True)
-            with open(out_path, "w", encoding="utf-8") as f:
+            effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with effects.open_write(out_path, "w", encoding="utf-8") as f:
                 f.write(_minify_html(html_content))
             written[out_path] = True
 
@@ -1786,8 +1760,8 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
 
     # Clean output directory
     if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+        effects.rmtree(output_dir)
+    effects.makedirs(output_dir, exist_ok=True)
 
     # Resolve docs from the latest (working tree)
     latest_docs_dir = os.path.join(dir_path, docs_dir_name)
@@ -1910,16 +1884,16 @@ def _build_body(
 
             for rel_path, html_content in html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
-                os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                with open(out_path, "w", encoding="utf-8") as f:
+                effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with effects.open_write(out_path, "w", encoding="utf-8") as f:
                     f.write(_minify_html(html_content))
                 written[out_path] = True
 
             for rel_path in other_files:
                 src = os.path.join(docs_dir, rel_path)
                 dst = os.path.join(output_dir, output_subdir, rel_path)
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
+                effects.makedirs(os.path.dirname(dst), exist_ok=True)
+                effects.copy_file(src, dst)
                 written[dst] = True
 
             # Collect indexed HTML paths for per-locale sitemaps
@@ -2007,16 +1981,16 @@ def _build_body(
 
             for rel_path, html_content in uv_result.html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
-                os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                with open(out_path, "w", encoding="utf-8") as f:
+                effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with effects.open_write(out_path, "w", encoding="utf-8") as f:
                     f.write(_minify_html(html_content))
                 written[out_path] = True
 
             for rel_path in uv_result.other_files:
                 src = os.path.join(uv_result.docs_dir, rel_path)
                 dst = os.path.join(output_dir, uv_output_subdir, rel_path)
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
+                effects.makedirs(os.path.dirname(dst), exist_ok=True)
+                effects.copy_file(src, dst)
                 written[dst] = True
 
             # Add to per-locale indexed HTML
@@ -2062,13 +2036,13 @@ def _build_body(
     if pygments_css:
         theme_css = theme_css + "\n\n/* Pygments syntax highlighting */\n" + pygments_css
     theme_css = _minify_css(theme_css)
-    with open(css_path, "w", encoding="utf-8") as f:
+    with effects.open_write(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
 
     # Combined search index from ALL versions and locales
     search_index_path = os.path.join(output_dir, "search-index.json")
-    with open(search_index_path, "w", encoding="utf-8") as f:
+    with effects.open_write(search_index_path, "w", encoding="utf-8") as f:
         json.dump(
             [dataclasses.asdict(entry) for entry in all_search_entries],
             f, ensure_ascii=False,
@@ -2079,7 +2053,7 @@ def _build_body(
     search_engine = config.get("search_engine") or "builtin"
     if search_engine != "pagefind":
         search_js_path = os.path.join(output_dir, "search.js")
-        with open(search_js_path, "w", encoding="utf-8") as f:
+        with effects.open_write(search_js_path, "w", encoding="utf-8") as f:
             f.write(_minify_js(_generate_search_js(engine=search_engine)))
         written[search_js_path] = True
 
@@ -2091,7 +2065,7 @@ def _build_body(
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
     if lb["has_custom_css"]:
         custom_css_dst = os.path.join(output_dir, "custom.css")
-        shutil.copy2(custom_css_src, custom_css_dst)
+        effects.copy_file(custom_css_src, custom_css_dst)
         written[custom_css_dst] = True
 
     # Auxiliary files using latest version data only
@@ -2161,13 +2135,13 @@ def _build_body(
         "</html>\n"
     )
     root_index_path = os.path.join(output_dir, "index.html")
-    with open(root_index_path, "w", encoding="utf-8") as f:
+    with effects.open_write(root_index_path, "w", encoding="utf-8") as f:
         f.write(root_index_html)
     written[root_index_path] = True
 
     redirects_content = f"/ {redirect_url} 302\n"
     redirects_path = os.path.join(output_dir, "_redirects")
-    with open(redirects_path, "w", encoding="utf-8") as f:
+    with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)
     written[redirects_path] = True
 
@@ -2205,12 +2179,12 @@ def _build_body(
                         "</body>\n"
                         "</html>\n"
                     )
-                    os.makedirs(os.path.dirname(old_path), exist_ok=True)
-                    with open(old_path, "w", encoding="utf-8") as f:
+                    effects.makedirs(os.path.dirname(old_path), exist_ok=True)
+                    with effects.open_write(old_path, "w", encoding="utf-8") as f:
                         f.write(meta_html)
                     written[old_path] = True
                     # Append Cloudflare _redirects rule
-                    with open(redirects_path, "a", encoding="utf-8") as f:
+                    with effects.open_write(redirects_path, "a", encoding="utf-8") as f:
                         f.write(
                             f"/{locale_code}/{ver_str}/{from_slug}/ "
                             f"{target_url} 301\n"
@@ -2257,8 +2231,8 @@ def _generate_auxiliary_files(
         page_title = _extract_title(content, slug)
         png_bytes = _generate_og_png(project_name, page_title, accent_color)
         png_path = os.path.join(output_dir, f"og-{slug}.png")
-        os.makedirs(os.path.dirname(png_path), exist_ok=True)
-        with open(png_path, "wb") as f:
+        effects.makedirs(os.path.dirname(png_path), exist_ok=True)
+        with effects.open_write(png_path, "wb") as f:
             f.write(png_bytes)
         written[png_path] = True
 
@@ -2266,20 +2240,20 @@ def _generate_auxiliary_files(
     sitemap_content = _generate_sitemap(html_paths, url_builder,
                                         page_dates=page_dates)
     sitemap_path = os.path.join(output_dir, "sitemap.xml")
-    with open(sitemap_path, "w", encoding="utf-8") as f:
+    with effects.open_write(sitemap_path, "w", encoding="utf-8") as f:
         f.write(sitemap_content)
     written[sitemap_path] = True
 
     # Generate llms.txt and llms-full.txt (Feature 24)
     llms_txt = _generate_llms_txt(project_name, markdown_files, url_builder)
     llms_path = os.path.join(output_dir, "llms.txt")
-    with open(llms_path, "w", encoding="utf-8") as f:
+    with effects.open_write(llms_path, "w", encoding="utf-8") as f:
         f.write(llms_txt)
     written[llms_path] = True
 
     llms_full = _generate_llms_full_txt(project_name, markdown_files)
     llms_full_path = os.path.join(output_dir, "llms-full.txt")
-    with open(llms_full_path, "w", encoding="utf-8") as f:
+    with effects.open_write(llms_full_path, "w", encoding="utf-8") as f:
         f.write(llms_full)
     written[llms_full_path] = True
 
@@ -2313,14 +2287,14 @@ def _generate_auxiliary_files(
         theme_meta=theme_meta,
     )
     not_found_path = os.path.join(output_dir, "404.html")
-    with open(not_found_path, "w", encoding="utf-8") as f:
+    with effects.open_write(not_found_path, "w", encoding="utf-8") as f:
         f.write(not_found_html)
     written[not_found_path] = True
 
     # Generate favicon.svg from project initials (Feature 40)
     favicon_svg = _generate_favicon_svg(project_name, accent_color)
     favicon_path = os.path.join(output_dir, "favicon.svg")
-    with open(favicon_path, "w", encoding="utf-8") as f:
+    with effects.open_write(favicon_path, "w", encoding="utf-8") as f:
         f.write(favicon_svg)
     written[favicon_path] = True
 
@@ -2377,7 +2351,7 @@ def _generate_robots_txt(output_dir, base_url, url_builder, has_sitemap_index=Fa
     ]
     content = "\n".join(lines) + "\n"
     path = os.path.join(output_dir, "robots.txt")
-    with open(path, "w", encoding="utf-8") as f:
+    with effects.open_write(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path
 
@@ -2393,9 +2367,9 @@ def _generate_per_locale_sitemaps(output_dir, per_locale_indexed_html,
         sitemap_content = _generate_sitemap(html_paths, url_builder,
                                             page_dates=page_dates)
         locale_dir = os.path.join(output_dir, locale_code)
-        os.makedirs(locale_dir, exist_ok=True)
+        effects.makedirs(locale_dir, exist_ok=True)
         sitemap_path = os.path.join(locale_dir, "sitemap.xml")
-        with open(sitemap_path, "w", encoding="utf-8") as f:
+        with effects.open_write(sitemap_path, "w", encoding="utf-8") as f:
             f.write(sitemap_content)
         written.append(sitemap_path)
     return written
@@ -2419,7 +2393,7 @@ def _generate_sitemap_index(output_dir, locale_codes, url_builder):
         + "\n</sitemapindex>\n"
     )
     path = os.path.join(output_dir, "sitemap-index.xml")
-    with open(path, "w", encoding="utf-8") as f:
+    with effects.open_write(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path
 
@@ -2442,7 +2416,7 @@ def _generate_headers(output_dir):
         "  Cache-Control: public, max-age=31536000, immutable\n"
     )
     path = os.path.join(output_dir, "_headers")
-    with open(path, "w", encoding="utf-8") as f:
+    with effects.open_write(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path
 

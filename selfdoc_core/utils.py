@@ -3,8 +3,9 @@
 import json
 import os
 import re
-import tempfile
 import tomllib
+
+from selfdoc_core import effects
 
 
 def resolve_directive_path(base_dir, path):
@@ -89,21 +90,11 @@ def atomic_write(filepath, content, permissions=None):
 
     Writes to a temporary file in the same directory, then replaces the
     target.  Optionally sets file permissions after writing.
+
+    Re-export of the effects chokepoint's primitive: under a command's
+    ``--dry-run`` the write is recorded instead of performed.
     """
-    dir_name = os.path.dirname(filepath)
-    fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        if permissions is not None:
-            os.chmod(tmp_path, permissions)
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    effects.atomic_write(filepath, content, permissions=permissions)
 
 
 def detect_project_version(base_dir: str, fallback: str = "") -> str:

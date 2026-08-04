@@ -90,7 +90,7 @@ def test_all_flags_provided(tmp_path, monkeypatch):
         project_name="MyProject",
         release_url="https://github.com/org/repo/releases/tag/v2.0.0",
         registry_url=["https://pypi.org/project/myproject/2.0.0/", "https://npmjs.com/package/myproject"],
-        dry_run=False,
+
     )
 
     today = datetime.date.today().isoformat()
@@ -193,19 +193,31 @@ def test_changelog_no_body(tmp_path, monkeypatch):
     assert "- Performance improvement" in body
 
 
-def test_dry_run(tmp_path, monkeypatch, capsys):
-    """Dry run prints the post content without writing files or updating manifest."""
+def test_dry_run_records_the_writes_instead_of_performing_them(
+    tmp_path, monkeypatch,
+):
+    """--dry-run previews the post and manifest writes without performing them.
+
+    The command's own ``--dry-run`` flag is gone: the name is reserved by
+    strictcli, and the framework flag is what puts the run in dry mode. The
+    preview is the framework's would-do log, which names every path the real
+    run would write.
+    """
+    from selfblog.cli import app
+
     _setup_project(tmp_path)
     _setup_manifest(tmp_path, version="1.0.0")
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_generate(
-        None,
-        from_release=True,
-        version="1.1.0",
-        project_name="DryTest",
-        dry_run=True,
-    )
+    result = app.test([
+        "post", "generate", "--from-release",
+        "--version", "1.1.0", "--prev-version", "1.0.0",
+        "--bump-type", "minor", "--description", "",
+        "--context", "", "--changelog-file", "", "--body-file", "",
+        "--project-name", "DryTest", "--release-url", "",
+        "--dry-run",
+    ])
+    assert result.exit_code == 0
 
     today = datetime.date.today().isoformat()
     filename = f"{today}-release-v1.1.0.md"
@@ -219,11 +231,10 @@ def test_dry_run(tmp_path, monkeypatch, capsys):
     assert manifest_data["version"] == "1.0.0"
     assert manifest_data["posts"] == []
 
-    # Content printed to stdout
-    captured = capsys.readouterr()
-    assert "DryTest v1.1.0" in captured.out
-    assert "release-v1.1.0" in captured.out
-    assert "draft: false" in captured.out
+    # The would-do log names both writes.
+    assert "DRY RUN" in result.stdout
+    assert filename in result.stdout
+    assert "manifest.json" in result.stdout
 
 
 def test_manifest_update(tmp_path, monkeypatch):

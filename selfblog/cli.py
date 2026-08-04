@@ -12,6 +12,7 @@ import sys
 import strictcli
 
 from selfblog import __version__
+from selfdoc_core import effects
 
 
 app = strictcli.App(
@@ -27,8 +28,9 @@ assembly_group = app.group("assembly", help="Manage the unified multi-project do
 # -- post commands -----------------------------------------------------------
 
 
-@post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.")
+@post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.", effect="mutating")
 @strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
+@effects.handler
 def _cmd_post_new(ctx, title=""):
     """Create a new blog post file in the posts directory."""
     from selfdoc_core.config import load_config
@@ -62,7 +64,7 @@ def _cmd_post_new(ctx, title=""):
         print(f"Error: Post file already exists: {filepath}", file=sys.stderr)
         sys.exit(1)
 
-    os.makedirs(posts_dir, exist_ok=True)
+    effects.makedirs(posts_dir, exist_ok=True)
 
     content = (
         f"---\n"
@@ -76,14 +78,14 @@ def _cmd_post_new(ctx, title=""):
         f"\n"
     )
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
+    effects.write_text(filepath, content)
 
     print(f"Created post: {filepath}")
     return 0
 
 
-@post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.")
+@post_group.command("list", help="List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.", effect="read_only")
+@effects.handler
 def _cmd_post_list(ctx):
     """List all discovered blog posts."""
     from selfdoc_core.config import load_config
@@ -112,7 +114,7 @@ def _cmd_post_list(ctx):
     return 0
 
 
-@post_group.command("generate", help="Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.")
+@post_group.command("generate", help="Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.", effect="mutating")
 @strictcli.flag("from-release", type=bool, help="Generate the post from structured release metadata rather than freeform content")
 @strictcli.flag("version", type=str, help="The released version number to feature in the generated blog post title and metadata")
 @strictcli.flag("prev-version", type=str, help="Previous version number, used to show what version this release upgrades from")
@@ -124,7 +126,7 @@ def _cmd_post_list(ctx):
 @strictcli.flag("project-name", type=str, help="Human-readable project name used in the blog post title and frontmatter metadata")
 @strictcli.flag("release-url", type=str, help="Full URL to the GitHub release page, linked from the generated blog post")
 @strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL such as PyPI or npm page, can be specified multiple times")
-@strictcli.flag("dry-run", type=bool, default=False, help="Print the generated post content to stdout without writing any files to disk")
+@effects.handler
 def _cmd_post_generate(
     ctx,
     from_release=False,
@@ -138,7 +140,6 @@ def _cmd_post_generate(
     project_name="",
     release_url="",
     registry_url=None,
-    dry_run=False,
 ):
     """Generate a blog post from release metadata."""
     from selfdoc_core.config import load_config
@@ -230,12 +231,10 @@ def _cmd_post_generate(
     post_body = "\n\n".join(body_parts)
     full_content = "\n".join(fm_lines) + "\n\n" + post_body + "\n"
 
-    if dry_run:
-        print(full_content)
-        return 0
-
-    # Write the post file
-    os.makedirs(posts_dir, exist_ok=True)
+    # Write the post file.  Under --dry-run the writes below are recorded by
+    # the effects chokepoint and rendered in the would-do log, which replaces
+    # the command's old local --dry-run (a reserved framework name now).
+    effects.makedirs(posts_dir, exist_ok=True)
     filepath = os.path.join(posts_dir, filename)
     atomic_write(filepath, full_content)
     print(f"Created post: {filepath}")
@@ -283,10 +282,19 @@ def _cmd_post_generate(
     return 0
 
 
-@post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.")
+@post_group.command("publish", help="Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.", effect="mutating",
+    grants=[
+        strictcli.Grant(
+            "assembly-dispatch",
+            "triggers a GitHub Actions workflow on the assembly repository, "
+            "which rebuilds and republishes the live documentation site",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@effects.handler
 def _cmd_post_publish(ctx):
     """Publish blog posts to the assembly without a software release."""
-    import subprocess
 
     from selfblog.assembly import push_files_to_repo
     from selfdoc_core.build import _build_posts_only
@@ -368,13 +376,15 @@ def _cmd_post_publish(ctx):
         "event_type": "project-updated",
         "client_payload": {"scope": "shared-only"},
     })
-    result = subprocess.run(
+    result = effects.run(
         ["gh", "api", "--method", "POST",
          f"/repos/{repo}/dispatches", "--input", "-"],
         input=dispatch_payload, check=False, capture_output=True,
         text=True, timeout=30,
+        resource=f"dispatch:{repo}",
+        grant="assembly-dispatch",
     )
-    if result.returncode != 0:
+    if not effects.unsettled(result) and result.returncode != 0:
         print(f"Error: Failed to dispatch shared rebuild: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
@@ -399,11 +409,32 @@ def _cmd_post_publish(ctx):
 # -- assembly commands -------------------------------------------------------
 
 
-@assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.")
+@assembly_group.command("init", help="Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.", effect="mutating",
+    grants=[
+        strictcli.Grant(
+            "create-repo",
+            "creates a new private GitHub repository under the configured "
+            "owner; repository creation is not undone by rerunning the command",
+            strictcli.PROC_MUTATE,
+        ),
+        strictcli.Grant(
+            "create-pages-project",
+            "creates a Cloudflare Pages project on the configured account, "
+            "claiming its *.pages.dev subdomain",
+            strictcli.PROC_MUTATE,
+        ),
+        strictcli.Grant(
+            "set-secret",
+            "writes Cloudflare deployment credentials into the assembly "
+            "repository's GitHub Actions secrets",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@effects.handler
 def _cmd_assembly_init(ctx):
     """Create the assembly GitHub repo and push initial files."""
     import base64
-    import subprocess
 
     from selfblog.assembly import assembly_init
     from selfdoc_core.config import load_config
@@ -441,11 +472,13 @@ def _cmd_assembly_init(ctx):
 
     # Create the private GitHub repo
     print(f"Creating repository {repo}...")
-    result = subprocess.run(
+    result = effects.run(
         ["gh", "repo", "create", repo, "--private"],
         check=False, capture_output=True, text=True, timeout=30,
+        resource=f"gh-repo:{repo}",
+        grant="create-repo",
     )
-    if result.returncode != 0:
+    if not effects.unsettled(result) and result.returncode != 0:
         print(f"Error: Failed to create repository: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
@@ -454,13 +487,14 @@ def _cmd_assembly_init(ctx):
         print(f"  Creating {filepath}...")
         encoded = base64.b64encode(content.encode()).decode()
         payload = json.dumps({"message": f"Initial: {filepath}", "content": encoded})
-        result = subprocess.run(
+        result = effects.run(
             ["gh", "api", "--method", "PUT",
              f"/repos/{repo}/contents/{filepath}",
              "--input", "-"],
             input=payload, check=False, capture_output=True, text=True, timeout=30,
+            resource=f"gh-contents:{repo}/{filepath}",
         )
-        if result.returncode != 0:
+        if not effects.unsettled(result) and result.returncode != 0:
             print(f"Error: Failed to create {filepath}: {result.stderr.strip()}", file=sys.stderr)
             sys.exit(1)
 
@@ -471,11 +505,15 @@ def _cmd_assembly_init(ctx):
         env = os.environ.copy()
         env["CLOUDFLARE_ACCOUNT_ID"] = cf_account
         env["CLOUDFLARE_API_TOKEN"] = cf_token
-        result = subprocess.run(
+        result = effects.run(
             ["npx", "wrangler", "pages", "project", "create", pages_project, "--production-branch", "main"],
             env=env, check=False, capture_output=True, text=True, timeout=60,
+            resource=f"cf-pages-project:{pages_project}",
+            grant="create-pages-project",
         )
-        if result.returncode == 0:
+        if effects.unsettled(result):
+            pass
+        elif result.returncode == 0:
             print(f"Created CF Pages project: {pages_project}")
         else:
             print(f"Warning: CF Pages project creation failed: {result.stderr.strip()}", file=sys.stderr)
@@ -484,21 +522,29 @@ def _cmd_assembly_init(ctx):
 
     # Set GitHub secrets for CF credentials
     if cf_account:
-        result = subprocess.run(
+        result = effects.run(
             ["gh", "secret", "set", "CF_ACCOUNT_ID", "--repo", repo, "--body", cf_account],
             check=False, capture_output=True, text=True, timeout=30,
+            resource=f"gh-secret:{repo}/CF_ACCOUNT_ID",
+            grant="set-secret",
         )
-        if result.returncode == 0:
+        if effects.unsettled(result):
+            pass
+        elif result.returncode == 0:
             print("Set GitHub secret: CF_ACCOUNT_ID")
         else:
             print(f"Warning: Failed to set CF_ACCOUNT_ID secret: {result.stderr.strip()}", file=sys.stderr)
 
     if cf_token:
-        result = subprocess.run(
+        result = effects.run(
             ["gh", "secret", "set", "CF_PAGES_API_TOKEN", "--repo", repo, "--body", cf_token],
             check=False, capture_output=True, text=True, timeout=30,
+            resource=f"gh-secret:{repo}/CF_PAGES_API_TOKEN",
+            grant="set-secret",
         )
-        if result.returncode == 0:
+        if effects.unsettled(result):
+            pass
+        elif result.returncode == 0:
             print("Set GitHub secret: CF_PAGES_API_TOKEN")
         else:
             print(f"Warning: Failed to set CF_PAGES_API_TOKEN secret: {result.stderr.strip()}", file=sys.stderr)
@@ -507,10 +553,19 @@ def _cmd_assembly_init(ctx):
     return 0
 
 
-@assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.")
+@assembly_group.command("push", help="Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.", effect="mutating",
+    grants=[
+        strictcli.Grant(
+            "assembly-dispatch",
+            "triggers a GitHub Actions workflow on the assembly repository, "
+            "which rebuilds and republishes the live documentation site",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@effects.handler
 def _cmd_assembly_push(ctx):
     """Dispatch an assembly rebuild for the current project."""
-    import subprocess
 
     from selfblog.assembly import assembly_push
     from selfdoc_core.config import load_config
@@ -534,9 +589,10 @@ def _cmd_assembly_push(ctx):
         sys.exit(1)
 
     # Detect source repo
-    result = subprocess.run(
+    result = effects.run(
         ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
         check=False, capture_output=True, text=True, timeout=15,
+        read=True,
     )
     if result.returncode != 0:
         print(f"Error: Failed to detect source repository: {result.stderr.strip()}", file=sys.stderr)
@@ -544,16 +600,18 @@ def _cmd_assembly_push(ctx):
     source_repo = result.stdout.strip()
 
     # Detect ref (prefer exact tag on HEAD, fall back to latest tag)
-    result = subprocess.run(
+    result = effects.run(
         ["git", "describe", "--tags", "--exact-match", "HEAD"],
         check=False, capture_output=True, text=True, timeout=10,
+        read=True,
     )
     if result.returncode == 0:
         ref = result.stdout.strip()
     else:
-        result = subprocess.run(
+        result = effects.run(
             ["git", "describe", "--tags", "--abbrev=0"],
             check=False, capture_output=True, text=True, timeout=10,
+            read=True,
         )
         if result.returncode == 0:
             ref = result.stdout.strip()
@@ -571,11 +629,13 @@ def _cmd_assembly_push(ctx):
 
     # Execute the dispatch
     payload = json.dumps(dispatch["payload"])
-    result = subprocess.run(
+    result = effects.run(
         ["gh", "api", "--method", "POST", dispatch["endpoint"], "--input", "-"],
         input=payload, check=False, capture_output=True, text=True, timeout=30,
+        resource=f"dispatch:{repo}",
+        grant="assembly-dispatch",
     )
-    if result.returncode != 0:
+    if not effects.unsettled(result) and result.returncode != 0:
         print(f"Error: Failed to dispatch rebuild: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
@@ -583,10 +643,10 @@ def _cmd_assembly_push(ctx):
     return 0
 
 
-@assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.")
+@assembly_group.command("status", help="Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.", effect="read_only")
+@effects.handler
 def _cmd_assembly_status(ctx):
     """Show recent assembly build status."""
-    import subprocess
 
     from selfblog.assembly import assembly_status
     from selfdoc_core.config import load_config
@@ -606,8 +666,9 @@ def _cmd_assembly_status(ctx):
 
     found_runs = False
     for cmd in commands:
-        result = subprocess.run(
+        result = effects.run(
             cmd, check=False, capture_output=True, text=True, timeout=30,
+            read=True,
         )
         if result.returncode == 0 and result.stdout.strip():
             print(result.stdout.strip())
@@ -619,11 +680,20 @@ def _cmd_assembly_status(ctx):
     return 0
 
 
-@assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.")
+@assembly_group.command("rebuild", help="Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.", effect="mutating",
+    grants=[
+        strictcli.Grant(
+            "assembly-dispatch",
+            "triggers a GitHub Actions workflow on the assembly repository, "
+            "which rebuilds and republishes the live documentation site",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@effects.handler
 def _cmd_assembly_rebuild(ctx):
     """Trigger rebuild for all projects in the assembly."""
     import base64
-    import subprocess
 
     from selfblog.assembly import assembly_rebuild
     from selfdoc_core.config import load_config
@@ -640,10 +710,11 @@ def _cmd_assembly_rebuild(ctx):
         sys.exit(1)
 
     # Fetch projects.json from the assembly repo
-    result = subprocess.run(
+    result = effects.run(
         ["gh", "api", f"/repos/{repo}/contents/projects.json",
          "--jq", ".content"],
         check=False, capture_output=True, text=True, timeout=30,
+        read=True,
     )
     if result.returncode != 0:
         print(f"Error: Failed to fetch projects.json from {repo}: {result.stderr.strip()}", file=sys.stderr)
@@ -666,11 +737,15 @@ def _cmd_assembly_rebuild(ctx):
         slug = dispatch["payload"]["client_payload"]["slug"]
         print(f"Dispatching rebuild for {slug}...")
         payload = json.dumps(dispatch["payload"])
-        result = subprocess.run(
+        result = effects.run(
             ["gh", "api", "--method", "POST", dispatch["endpoint"], "--input", "-"],
             input=payload, check=False, capture_output=True, text=True, timeout=30,
+            resource=f"dispatch:{repo}/{slug}",
+            grant="assembly-dispatch",
         )
-        if result.returncode != 0:
+        if effects.unsettled(result):
+            pass
+        elif result.returncode != 0:
             print(f"  Warning: Failed to dispatch for {slug}: {result.stderr.strip()}", file=sys.stderr)
         else:
             print(f"  Dispatched rebuild for {slug}.")
@@ -679,9 +754,10 @@ def _cmd_assembly_rebuild(ctx):
     return 0
 
 
-@assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.")
+@assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.", effect="read_only")
 @strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
+@effects.handler
 def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
     """Print the _redirects file content for redirecting to the assembly site."""
     from selfblog.assembly import generate_redirects_file
@@ -698,13 +774,14 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
     return 0
 
 
-@assembly_group.command("generate-shared", help="Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.")
+@assembly_group.command("generate-shared", help="Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.", effect="mutating")
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
 @strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the target of the generated redirect worker and of the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
 @strictcli.flag("legacy-blog-host", type=str, help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
 @strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
+@effects.handler
 def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", portfolio_file=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfblog.assembly import generate_worker_js
@@ -801,12 +878,12 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
         with open(portfolio_file, "r", encoding="utf-8") as f:
             portfolio_html = f.read()
         index_path = os.path.join(site_dir, "index.html")
-        os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
+        effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
         atomic_write(index_path, portfolio_html)
         written.append(index_path)
 
         projects_dir = os.path.join(site_dir, "projects")
-        os.makedirs(projects_dir, exist_ok=True)
+        effects.makedirs(projects_dir, exist_ok=True)
         projects_path = os.path.join(projects_dir, "index.html")
         atomic_write(projects_path, wrap_shared_page(
             "Projects", homepage_fragment,
@@ -815,7 +892,7 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
         written.append(projects_path)
     else:
         index_path = os.path.join(site_dir, "index.html")
-        os.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
+        effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
         atomic_write(index_path, wrap_shared_page(
             "Projects", homepage_fragment,
             canonical_url=f"{canonical_base}/",
@@ -823,7 +900,7 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
         written.append(index_path)
 
     blog_dir = os.path.join(site_dir, "blog")
-    os.makedirs(blog_dir, exist_ok=True)
+    effects.makedirs(blog_dir, exist_ok=True)
     blog_path = os.path.join(blog_dir, "index.html")
     atomic_write(blog_path, blog_html)
     written.append(blog_path)
@@ -859,11 +936,11 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
 # -- check command -----------------------------------------------------------
 
 
-@app.command("check", help="Check blog posts and unified multi-project documentation. For unified docs-site projects, runs the full documentation check across every constituent project plus the docs-site's own content; otherwise validates blog posts (POST001-POST005).")
+@app.command("check", help="Check blog posts and unified multi-project documentation. For unified docs-site projects, runs the full documentation check across every constituent project plus the docs-site's own content; otherwise validates blog posts (POST001-POST005).", effect="mutating")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated lint codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
-@strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
-def _cmd_check(ctx, ignore="", auto_commit=True, dry_run=False):
+@effects.handler
+def _cmd_check(ctx, ignore="", auto_commit=True):
     """Check unified projects and blog posts."""
     from selfdoc_core.config import load_config
 
@@ -896,12 +973,16 @@ def _cmd_check(ctx, ignore="", auto_commit=True, dry_run=False):
             sys.exit(1)
 
         try:
-            result = check_unified(".", config=config, dry_run=dry_run)
+            # No dry_run= is threaded through: under --dry-run the hash
+            # write is RECORDED by the effects chokepoint rather than
+            # performed, which preserves the old behavior and makes the
+            # preview honest about the write a real run would do.
+            result = check_unified(".", config=config)
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
-        if auto_commit and not dry_run:
+        if auto_commit:
             from selfdoc_core.git import auto_commit as _auto_commit
             _auto_commit(
                 [".selfdoc/hashes/hashes.json"],
@@ -955,10 +1036,11 @@ def _cmd_check(ctx, ignore="", auto_commit=True, dry_run=False):
 # -- build command -----------------------------------------------------------
 
 
-@app.command("build", help="Build blog posts or unified documentation site")
+@app.command("build", help="Build blog posts or unified documentation site", effect="mutating")
 @strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
+@effects.handler
 def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True):
     """Build blog posts or unified site."""
     from selfdoc_core.config import load_config

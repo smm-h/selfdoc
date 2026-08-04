@@ -6,6 +6,8 @@ import base64
 import json
 import subprocess
 
+from selfdoc_core import effects
+
 
 def generate_workflow_yaml(
     pages_project: str,
@@ -389,16 +391,29 @@ def generate_worker_js(canonical_base: str, legacy_blog_host: str) -> str:
     )
 
 
-def _gh_api(args: list[str], input_data: str | None = None, step: str = "") -> str:
-    """Run a gh api command and return stdout. Raise RuntimeError on failure."""
+def _gh_api(args: list[str], input_data: str | None = None, step: str = "",
+            *, read: bool = False, resource: str | None = None,
+            grant: str | None = None) -> str:
+    """Run a gh api command and return stdout. Raise RuntimeError on failure.
+
+    *read* declares a GET-shaped call, which changes nothing and therefore
+    executes in every mode.  A non-read call is a network mutation: under a
+    command's ``--dry-run`` it is recorded and the returned carrier has no
+    stdout to read, so the framework truncates the preview at that point --
+    the honest outcome for an API whose next step needs a SHA that was never
+    minted.
+    """
     cmd = ["gh", "api", *args]
     try:
-        result = subprocess.run(
+        result = effects.run(
             cmd,
             input=input_data,
             capture_output=True,
             text=True,
             timeout=30,
+            read=read,
+            resource=resource,
+            grant=grant,
         )
     except subprocess.TimeoutExpired:
         raise RuntimeError(f"{step}: gh api timed out after 30s")
@@ -438,12 +453,14 @@ def push_files_to_repo(
     head_sha = _gh_api(
         [f"/repos/{repo}/git/ref/heads/{branch}", "--jq", ".object.sha"],
         step="get HEAD ref",
+        read=True,
     )
 
     # 2. Get the current tree SHA
     tree_sha = _gh_api(
         [f"/repos/{repo}/git/commits/{head_sha}", "--jq", ".tree.sha"],
         step="get tree SHA",
+        read=True,
     )
 
     # 3. Create a blob for each file
@@ -455,6 +472,7 @@ def push_files_to_repo(
             ["--method", "POST", f"/repos/{repo}/git/blobs", "--jq", ".sha", "--input", "-"],
             input_data=payload,
             step=f"create blob for {path}",
+            resource=f"gh-blob:{repo}/{path}",
         )
         blob_shas[path] = blob_sha
 
@@ -468,6 +486,7 @@ def push_files_to_repo(
         ["--method", "POST", f"/repos/{repo}/git/trees", "--jq", ".sha", "--input", "-"],
         input_data=tree_payload,
         step="create tree",
+        resource=f"gh-tree:{repo}",
     )
 
     # 5. Create a commit
@@ -480,6 +499,7 @@ def push_files_to_repo(
         ["--method", "POST", f"/repos/{repo}/git/commits", "--jq", ".sha", "--input", "-"],
         input_data=commit_payload,
         step="create commit",
+        resource=f"gh-commit:{repo}",
     )
 
     # 6. Update the ref
@@ -488,6 +508,7 @@ def push_files_to_repo(
         ["--method", "PATCH", f"/repos/{repo}/git/refs/heads/{branch}", "--jq", ".object.sha", "--input", "-"],
         input_data=ref_payload,
         step="update ref",
+        resource=f"gh-ref:{repo}/{branch}",
     )
 
     return new_commit_sha

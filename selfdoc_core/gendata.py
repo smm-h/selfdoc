@@ -7,6 +7,8 @@ import os
 import shutil
 import subprocess
 
+from selfdoc_core import effects
+
 
 class GenDataError(Exception):
     """Raised when gen-data encounters an error."""
@@ -126,7 +128,7 @@ def generate_data(config, base_dir="."):
         return []
 
     output_dir = os.path.join(base_dir, ".selfdoc", "data")
-    os.makedirs(output_dir, exist_ok=True)
+    effects.makedirs(output_dir, exist_ok=True)
 
     _check_bwrap()
 
@@ -138,11 +140,12 @@ def generate_data(config, base_dir="."):
         bwrap_cmd = _build_bwrap_command(script, base_dir, output_dir)
 
         try:
-            result = subprocess.run(
+            result = effects.run(
                 bwrap_cmd,
                 capture_output=True,
                 text=True,
                 timeout=60,
+                resource=f"gendata:{script['output']}",
             )
         except subprocess.TimeoutExpired as e:
             raise GenDataError(

@@ -8,9 +8,10 @@ the description is considered "stale" and check will report an error.
 import hashlib
 import json
 import os
-import tempfile
 
 from selfdoc_core.directives import _ATTR_KV_RE
+
+from selfdoc_core import effects
 
 # Prefixes identifying directive marker lines whose attribute VALUES are
 # canonicalized before content hashing: one-liner (:-:), block open (:<:),
@@ -187,21 +188,12 @@ def save_hashes(hashes: dict, base_dir: str) -> None:
     Uses atomic write (temp file + os.replace) for safety.
     """
     hashes_dir = os.path.join(base_dir, ".selfdoc", "hashes")
-    os.makedirs(hashes_dir, exist_ok=True)
+    effects.makedirs(hashes_dir, exist_ok=True)
     target = os.path.join(hashes_dir, "hashes.json")
     hashes["_hash_version"] = _HASH_VERSION
-    fd, tmp_path = tempfile.mkstemp(dir=hashes_dir, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(hashes, f, indent=2, sort_keys=True)
-            f.write("\n")
-        os.replace(tmp_path, target)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    effects.atomic_write(
+        target, json.dumps(hashes, indent=2, sort_keys=True) + "\n",
+    )
 
 
 def check_staleness(

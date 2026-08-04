@@ -25,6 +25,8 @@ from selfdoc.ownership import (
 )
 from selfdoc_core.staleness import load_hashes, save_hashes
 
+from selfdoc_core import effects
+
 
 @dataclass
 class GenResult:
@@ -499,7 +501,7 @@ def _remove_stale_generated(docs_dir, new_filenames):
             continue
         full = os.path.join(docs_dir, entry)
         if os.path.isfile(full) and _has_generated_marker(full):
-            os.unlink(full)
+            effects.remove(full)
             deleted.append(entry)
     return deleted
 
@@ -621,10 +623,10 @@ def generate_docs(config, base_dir="."):
             locale_index_pages, project_name,
             existing_description=existing_index_desc,
         )
-        os.makedirs(locale_docs_dir, exist_ok=True)
+        effects.makedirs(locale_docs_dir, exist_ok=True)
         if os.path.isfile(index_path):
             try:
-                os.chmod(index_path, stat.S_IRUSR | stat.S_IWUSR)
+                effects.chmod(index_path, stat.S_IRUSR | stat.S_IWUSR)
             except OSError:
                 pass
         _atomic_write(index_path, index_content, permissions=0o444)
@@ -713,7 +715,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
     ``index_pages`` is a list of ``(module_name, md_filename)`` for
     the combined index page.
     """
-    os.makedirs(docs_dir, exist_ok=True)
+    effects.makedirs(docs_dir, exist_ok=True)
 
     extensions = set(extractor.file_extensions())
 
@@ -830,7 +832,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
         # Make writable if it already exists with 0o444
         if os.path.isfile(out_path):
             try:
-                os.chmod(out_path, stat.S_IRUSR | stat.S_IWUSR)
+                effects.chmod(out_path, stat.S_IRUSR | stat.S_IWUSR)
             except OSError:
                 pass
         _atomic_write(out_path, content, permissions=0o444)

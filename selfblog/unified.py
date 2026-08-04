@@ -11,7 +11,6 @@ import dataclasses
 import json
 import os
 import re
-import shutil
 
 from selfdoc_core.build import (
     _check_reserved_paths,
@@ -37,6 +36,8 @@ from selfdoc_core.html import (
 )
 from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder
+
+from selfdoc_core import effects
 
 
 def _resolve_project_path(project_entry, docs_site_dir):
@@ -359,8 +360,8 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
 
     # Clean output directory
     if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+        effects.rmtree(output_dir)
+    effects.makedirs(output_dir, exist_ok=True)
 
     # Get theme info from docs-site config
     theme_name = config.get("theme", "minimal")
@@ -526,8 +527,8 @@ def _build_unified_body(
                 # Write HTML files
                 for rel_path, html_content in html_files.items():
                     out_path = os.path.join(output_dir, rel_path)
-                    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                    with open(out_path, "w", encoding="utf-8") as f:
+                    effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+                    with effects.open_write(out_path, "w", encoding="utf-8") as f:
                         f.write(_minify_html(html_content))
                     written[out_path] = True
 
@@ -535,8 +536,8 @@ def _build_unified_body(
                 for rel_path in other_files:
                     src = os.path.join(proj_docs_dir, rel_path)
                     dst = os.path.join(output_dir, output_subdir, rel_path)
-                    os.makedirs(os.path.dirname(dst), exist_ok=True)
-                    shutil.copy2(src, dst)
+                    effects.makedirs(os.path.dirname(dst), exist_ok=True)
+                    effects.copy_file(src, dst)
                     written[dst] = True
 
                 # Collect nav data (only for latest version + default locale)
@@ -591,16 +592,16 @@ def _build_unified_body(
 
             for rel_path, html_content in uv_result.html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
-                os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                with open(out_path, "w", encoding="utf-8") as f:
+                effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with effects.open_write(out_path, "w", encoding="utf-8") as f:
                     f.write(_minify_html(html_content))
                 written[out_path] = True
 
             for rel_path in uv_result.other_files:
                 src = os.path.join(uv_result.docs_dir, rel_path)
                 dst = os.path.join(output_dir, output_subdir, rel_path)
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
+                effects.makedirs(os.path.dirname(dst), exist_ok=True)
+                effects.copy_file(src, dst)
                 written[dst] = True
 
     # --- Build the docs-site's own content (common pages) ---
@@ -642,8 +643,8 @@ def _build_unified_body(
         # Write HTML files
         for rel_path, html_content in html_files.items():
             out_path = os.path.join(output_dir, rel_path)
-            os.makedirs(os.path.dirname(out_path), exist_ok=True)
-            with open(out_path, "w", encoding="utf-8") as f:
+            effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with effects.open_write(out_path, "w", encoding="utf-8") as f:
                 f.write(_minify_html(html_content))
             written[out_path] = True
 
@@ -651,8 +652,8 @@ def _build_unified_body(
         for rel_path in other_files:
             src = os.path.join(common_docs_dir, rel_path)
             dst = os.path.join(output_dir, common_subdir, rel_path)
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            shutil.copy2(src, dst)
+            effects.makedirs(os.path.dirname(dst), exist_ok=True)
+            effects.copy_file(src, dst)
             written[dst] = True
 
         if locale_code == default_locale_code:
@@ -702,16 +703,16 @@ def _build_unified_body(
 
             for rel_path, html_content in uv_result.html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
-                os.makedirs(os.path.dirname(out_path), exist_ok=True)
-                with open(out_path, "w", encoding="utf-8") as f:
+                effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+                with effects.open_write(out_path, "w", encoding="utf-8") as f:
                     f.write(_minify_html(html_content))
                 written[out_path] = True
 
             for rel_path in uv_result.other_files:
                 src = os.path.join(uv_result.docs_dir, rel_path)
                 dst = os.path.join(output_dir, uv_subdir, rel_path)
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
+                effects.makedirs(os.path.dirname(dst), exist_ok=True)
+                effects.copy_file(src, dst)
                 written[dst] = True
 
             # Merge unversioned data into common_latest_build for auxiliary files
@@ -748,8 +749,8 @@ def _build_unified_body(
         f'{landing_body}'
         '</body></html>'
     )
-    os.makedirs(os.path.dirname(landing_html_path), exist_ok=True)
-    with open(landing_html_path, "w", encoding="utf-8") as f:
+    effects.makedirs(os.path.dirname(landing_html_path), exist_ok=True)
+    with effects.open_write(landing_html_path, "w", encoding="utf-8") as f:
         f.write(landing_full)
     written[landing_html_path] = True
 
@@ -768,13 +769,13 @@ def _build_unified_body(
     theme_css += "\n\n" + _PROJECT_GRID_CSS
 
     theme_css = _minify_css(theme_css)
-    with open(css_path, "w", encoding="utf-8") as f:
+    with effects.open_write(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
 
     # --- Search index ---
     search_index_path = os.path.join(output_dir, "search-index.json")
-    with open(search_index_path, "w", encoding="utf-8") as f:
+    with effects.open_write(search_index_path, "w", encoding="utf-8") as f:
         json.dump(
             [dataclasses.asdict(entry) for entry in all_search_entries],
             f, ensure_ascii=False,
@@ -785,7 +786,7 @@ def _build_unified_body(
     from selfdoc_core.html import _generate_search_js, _minify_js
     search_engine = config.get("search_engine") or "builtin"
     search_js_path = os.path.join(output_dir, "search.js")
-    with open(search_js_path, "w", encoding="utf-8") as f:
+    with effects.open_write(search_js_path, "w", encoding="utf-8") as f:
         f.write(_minify_js(_generate_search_js(engine=search_engine)))
     written[search_js_path] = True
 
@@ -793,7 +794,7 @@ def _build_unified_body(
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
     if lb["has_custom_css"]:
         custom_css_dst = os.path.join(output_dir, "custom.css")
-        shutil.copy2(custom_css_src, custom_css_dst)
+        effects.copy_file(custom_css_src, custom_css_dst)
         written[custom_css_dst] = True
 
     # --- Auxiliary files (OG cards, sitemap, llms.txt, 404, etc.) ---
@@ -843,13 +844,13 @@ def _build_unified_body(
         "</html>\n"
     )
     root_index_path = os.path.join(output_dir, "index.html")
-    with open(root_index_path, "w", encoding="utf-8") as f:
+    with effects.open_write(root_index_path, "w", encoding="utf-8") as f:
         f.write(root_index_html)
     written[root_index_path] = True
 
     redirects_content = f"/ {redirect_url} 302\n"
     redirects_path = os.path.join(output_dir, "_redirects")
-    with open(redirects_path, "w", encoding="utf-8") as f:
+    with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)
     written[redirects_path] = True
 

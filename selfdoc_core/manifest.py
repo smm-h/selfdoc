@@ -6,10 +6,11 @@ import datetime
 import json
 import os
 import re
-import subprocess
 from dataclasses import dataclass
 
 from selfdoc_core.utils import atomic_write, detect_project_version
+
+from selfdoc_core import effects
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,7 +142,7 @@ def generate_manifest(
 
     # Write to .selfdoc/<output_name>
     selfdoc_dir = os.path.join(dir_path, ".selfdoc")
-    os.makedirs(selfdoc_dir, exist_ok=True)
+    effects.makedirs(selfdoc_dir, exist_ok=True)
     manifest_path = os.path.join(selfdoc_dir, output_name)
 
     data = {
@@ -249,11 +250,12 @@ def load_manifest_from_git(dir_path: str = ".") -> Manifest | None:
     failures.
     """
     # Check if the file exists in HEAD.
-    result = subprocess.run(
+    result = effects.run(
         ["git", "cat-file", "-e", "HEAD:.selfdoc/manifest.json"],
         cwd=dir_path,
         capture_output=True,
         timeout=10,
+        read=True,
     )
     if result.returncode == 128:
         # Not a git repo, or no commits yet (HEAD doesn't resolve).
@@ -268,11 +270,12 @@ def load_manifest_from_git(dir_path: str = ".") -> Manifest | None:
         )
 
     # Read the file contents from HEAD.
-    result = subprocess.run(
+    result = effects.run(
         ["git", "show", "HEAD:.selfdoc/manifest.json"],
         cwd=dir_path,
         capture_output=True,
         timeout=10,
+        read=True,
     )
     if result.returncode != 0:
         raise RuntimeError(

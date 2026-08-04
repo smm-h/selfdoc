@@ -31,6 +31,6 @@ fi
 if [ -f selfdoc.json ]; then
   if python3 -c "import json; c=json.load(open('selfdoc.json')); exit(0 if (c.get('assembly') or {}).get('repo') else 1)" 2>/dev/null; then
     echo "Pushing to documentation assembly..."
-    uv run selfblog assembly push || echo "Warning: assembly push failed (non-fatal)"
+    uv run selfblog assembly push --yes || echo "Warning: assembly push failed (non-fatal)"
   fi
 fi

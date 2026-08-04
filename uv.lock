@@ -792,6 +792,7 @@ name = "selfdoc-core"
 version = "0.6.0"
 source = { editable = "selfdoc_core" }
 dependencies = [
+    { name = "strictcli" },
     { name = "strictspec" },
 ]
 
@@ -814,6 +815,7 @@ dev = [
 requires-dist = [
     { name = "brotli", marker = "extra == 'perf'", specifier = ">=1.1" },
     { name = "predraw", marker = "extra == 'og'" },
+    { name = "strictcli" },
     { name = "strictspec", specifier = ">=0.1.0" },
 ]
 provides-extras = ["perf", "og"]
@@ -827,14 +829,14 @@ dev = [
 
 [[package]]
 name = "strictcli"
-version = "0.29.0"
+version = "0.35.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tomlkit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/47/c8337cb628c669f336708eb777fef486cf33892cfd9a36cb73ba123acc3d/strictcli-0.29.0.tar.gz", hash = "sha256:970b1754c8c897f52c7c288e222493e8efcb289e08a9fc53f05790694f5256ad", size = 198819, upload-time = "2026-07-17T20:27:26.282Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/86/1629cf32048cfad248327d7cb8fc5c5d5aac36f2dc9fa5ed730d57418a4d/strictcli-0.35.3.tar.gz", hash = "sha256:e3b0e6e8c0886fcbc708951ff6c30c4c2cfe14cfe1aa9e4bb6ffecd2114f956d", size = 255012, upload-time = "2026-08-04T12:35:51.451Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/fe/f5b75894e4231bd61f496e255122d5fd25e5201643f0ef2c8f82b6b7ab64/strictcli-0.29.0-py3-none-any.whl", hash = "sha256:ed1664dd70a035dc3080d70c7b3a0e0cdc8ebccc86da1050b8a808e48f454737", size = 73023, upload-time = "2026-07-17T20:27:24.207Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/3e/ab877a15aa967148e46f2ece218abf7417b2152cd966d154c3993484de3b/strictcli-0.35.3-py3-none-any.whl", hash = "sha256:700c3e7ea19cd01b0f7bbc3b428a0a5487167215f70a427103a3a12bd1b4de91", size = 99336, upload-time = "2026-08-04T12:35:49.911Z" },
 ]
 
 [[package]]

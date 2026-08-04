@@ -9,12 +9,16 @@ import shutil
 import subprocess
 import sys
 
+from selfdoc_core import effects
+
 
 def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     """Commit *files* in the git repo at *cwd* with *message*.
 
     Returns True if a commit was made, False otherwise. Silent on
-    success; logs to stderr only on unexpected errors.
+    success; logs to stderr only on unexpected errors.  Under a command's
+    ``--dry-run`` the commit is RECORDED rather than performed, and the
+    return value is the ``Unsettled`` carrier standing in for it.
 
     Guards:
     - Returns False if SELFDOC_AUTO_COMMIT is set (prevents loops).
@@ -28,11 +32,12 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
 
     # Check if cwd is inside a git repo
     try:
-        result = subprocess.run(
+        result = effects.run(
             ["git", "rev-parse", "--git-dir"],
             cwd=cwd,
             capture_output=True,
             timeout=10,
+            read=True,
         )
         if result.returncode != 0:
             return False
@@ -48,12 +53,13 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
 
         # Check if the file is tracked
         try:
-            ls_result = subprocess.run(
+            ls_result = effects.run(
                 ["git", "ls-files", "--", f],
                 cwd=cwd,
                 capture_output=True,
                 text=True,
                 timeout=10,
+                read=True,
             )
         except (OSError, subprocess.TimeoutExpired):
             continue
@@ -66,11 +72,12 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
             else:
                 # Tracked and exists -- check if it has changes
                 try:
-                    diff_result = subprocess.run(
+                    diff_result = effects.run(
                         ["git", "diff", "--quiet", "--", f],
                         cwd=cwd,
                         capture_output=True,
                         timeout=10,
+                        read=True,
                     )
                     if diff_result.returncode != 0:
                         # Has changes
@@ -85,13 +92,14 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     # Filter gitignored files from untracked candidates only
     if untracked_new:
         try:
-            ci_result = subprocess.run(
+            ci_result = effects.run(
                 ["git", "check-ignore", "--stdin"],
                 cwd=cwd,
                 text=True,
                 input="\n".join(untracked_new),
                 capture_output=True,
                 timeout=10,
+                read=True,
             )
             if ci_result.returncode == 0:
                 # Some files are ignored -- remove them
@@ -110,78 +118,96 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
     env = os.environ.copy()
     env["SELFDOC_AUTO_COMMIT"] = "1"
 
-    # Try rlsbl first, then safegit, fall back to plain git
+    # Try rlsbl first, then safegit, fall back to plain git.
+    #
+    # ``--yes`` is passed unconditionally to the commit tools.  Both are
+    # strictcli apps whose ``commit`` is a mutating command, so without it the
+    # child hard-errors with "stdin is not interactive; pass --yes to confirm"
+    # for every non-interactive caller -- which is every caller selfdoc has in
+    # practice (CI, release pipelines, agent sessions).  selfdoc's own
+    # mutating command already took the user's confirmation before this helper
+    # ran, and the commit is fully determined by the tool: the file list and
+    # the message are computed above, so there is no second decision for the
+    # child to confirm.
     if shutil.which("rlsbl"):
-        cmd = ["rlsbl", "commit", "-m", message, "--"] + committable
-        try:
-            result = subprocess.run(
-                cmd,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=30,
-            )
-            if result.returncode != 0:
-                print(result.stderr, file=sys.stderr, end="")
-                return False
-            return True
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            print(
-                f"selfdoc: auto-commit failed (rlsbl): {exc}",
-                file=sys.stderr,
-            )
-            return False
+        cmd = ["rlsbl", "commit", "--yes", "-m", message, "--"] + committable
+        label = "rlsbl"
     elif shutil.which("safegit"):
-        cmd = ["safegit", "commit", "-m", message, "--"] + committable
-        try:
-            result = subprocess.run(
-                cmd,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=30,
-            )
-            if result.returncode != 0:
-                print(result.stderr, file=sys.stderr, end="")
-                return False
-            return True
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            print(
-                f"selfdoc: auto-commit failed (safegit): {exc}",
-                file=sys.stderr,
-            )
-            return False
+        cmd = ["safegit", "commit", "--yes", "-m", message, "--"] + committable
+        label = "safegit"
     else:
-        # Fallback: git add + git commit
-        try:
-            add_result = subprocess.run(
-                ["git", "add", "--"] + committable,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=30,
-            )
-            if add_result.returncode != 0:
-                print(add_result.stderr, file=sys.stderr, end="")
-                return False
-            commit_result = subprocess.run(
-                ["git", "commit", "-m", message, "--"] + committable,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=30,
-            )
-            if commit_result.returncode != 0:
-                print(commit_result.stderr, file=sys.stderr, end="")
-                return False
-            return True
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            print(
-                f"selfdoc: auto-commit failed (git): {exc}",
-                file=sys.stderr,
-            )
+        return _plain_git_commit(committable, message, cwd, env)
+
+    try:
+        result = effects.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=30,
+            resource=f"commit:{cwd}",
+        )
+        if effects.unsettled(result):
+            # Recorded, not performed: nothing ran, so there is no exit
+            # status to test.  The carrier is the honest answer.
+            return result
+        if result.returncode != 0:
+            print(result.stderr, file=sys.stderr, end="")
             return False
+        return True
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(
+            f"selfdoc: auto-commit failed ({label}): {exc}",
+            file=sys.stderr,
+        )
+        return False
+
+
+def _plain_git_commit(committable, message, cwd, env):
+    """Commit through plain git when neither rlsbl nor safegit is installed."""
+    try:
+        add_result = effects.run(
+            ["git", "add", "--"] + committable,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=30,
+        )
+        commit_argv = ["git", "commit", "-m", message, "--"] + committable
+        if effects.unsettled(add_result):
+            # Recorded: the commit that would follow is recorded too, so the
+            # preview stays complete without reading a status that does not
+            # exist.
+            return effects.run(
+                commit_argv,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=30,
+                resource=f"commit:{cwd}",
+            )
+        if add_result.returncode != 0:
+            print(add_result.stderr, file=sys.stderr, end="")
+            return False
+        commit_result = effects.run(
+            commit_argv,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=30,
+            resource=f"commit:{cwd}",
+        )
+        if commit_result.returncode != 0:
+            print(commit_result.stderr, file=sys.stderr, end="")
+            return False
+        return True
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(
+            f"selfdoc: auto-commit failed (git): {exc}",
+            file=sys.stderr,
+        )
+        return False

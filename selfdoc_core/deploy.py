@@ -10,6 +10,8 @@ import shutil
 import subprocess
 import tempfile
 
+from selfdoc_core import effects
+
 
 class DeployError(RuntimeError):
     """Raised when a deploy operation fails."""
@@ -67,16 +69,23 @@ def deploy_cloudflare_pages(output_dir, project_name, version):
     ]
 
     try:
-        result = subprocess.run(
+        result = effects.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=120,
+            resource=f"cf-pages:{project_name}",
+            grant="deploy",
         )
     except subprocess.TimeoutExpired:
         raise DeployError(
             f"Cloudflare Pages deploy timed out after 120s for project '{project_name}'"
         )
+
+    if effects.unsettled(result):
+        # Recorded, not deployed: nothing ran, so there is no exit status to
+        # test and nothing to report as deployed.
+        return
 
     if result.returncode != 0:
         raise DeployError(
@@ -126,12 +135,13 @@ def deploy_github_pages(output_dir, version, *, target):
                 f"remote URL nor an existing directory."
             )
         try:
-            remote = subprocess.run(
+            remote = effects.run(
                 ["git", "remote", "get-url", "origin"],
                 cwd=target,
                 capture_output=True,
                 text=True,
                 check=True,
+                read=True,
             ).stdout.strip()
         except subprocess.CalledProcessError:
             raise DeployError(
@@ -149,14 +159,13 @@ def deploy_github_pages(output_dir, version, *, target):
             src = os.path.join(output_dir, item)
             dst = os.path.join(tmp, item)
             if os.path.isdir(src):
-                shutil.copytree(src, dst)
+                effects.copytree(src, dst)
             else:
-                shutil.copy2(src, dst)
+                effects.copy_file(src, dst)
 
         # Prevent Jekyll processing on GitHub
         nojekyll_path = os.path.join(tmp, ".nojekyll")
-        with open(nojekyll_path, "w"):
-            pass
+        effects.write_text(nojekyll_path, "")
 
         # Commit all files
         _run_git(["add", "."], cwd=tmp)
@@ -164,14 +173,19 @@ def deploy_github_pages(output_dir, version, *, target):
 
         # Force-push to gh-pages on the remote
         try:
-            subprocess.run(
+            pushed = effects.run(
                 ["git", "push", "--force", remote, "gh-pages"],
                 cwd=tmp,
                 capture_output=True,
                 text=True,
                 check=True,
                 timeout=120,
+                resource=f"gh-pages:{remote}",
+                grant="force-push",
             )
+            if effects.unsettled(pushed):
+                # Recorded, not pushed. Nothing was deployed, so say nothing.
+                return
         except subprocess.TimeoutExpired:
             raise DeployError(
                 "GitHub Pages deploy timed out after 120s while pushing to gh-pages"
@@ -199,12 +213,17 @@ def _looks_like_remote_url(target):
 
 def _run_git(args, cwd):
     """Run a git command in the given directory, raising DeployError on failure."""
-    result = subprocess.run(
+    result = effects.run(
         ["git"] + args,
         cwd=cwd,
         capture_output=True,
         text=True,
     )
+    if effects.unsettled(result):
+        # Recorded, not run: forwarding the carrier onward keeps the preview
+        # going; reading an exit code off it would truncate at step 1 and
+        # hide the force-push this whole staging sequence exists to perform.
+        return result
     if result.returncode != 0:
         raise DeployError(
             f"git {' '.join(args)} failed (exit {result.returncode}):\n"

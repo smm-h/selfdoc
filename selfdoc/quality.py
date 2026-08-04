@@ -22,9 +22,10 @@ every count, so a project is scored on the code it actually owns.
 import json
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
+
+from selfdoc_core import effects
 
 
 CODE_EXTENSIONS = {
@@ -75,9 +76,10 @@ def check_dirstat():
     ignored, since it still proves the binary exists.
     """
     try:
-        subprocess.run(
+        effects.run(
             ["dirstat", "scan", "--help"],
             capture_output=True,
+            read=True,
         )
     except FileNotFoundError:
         print("error: dirstat is not installed", file=sys.stderr)
@@ -121,7 +123,7 @@ def get_code_loc(project_path, submodule_paths=None):
     skipped while the outer total is kept.
     """
     try:
-        result = subprocess.run(
+        result = effects.run(
             [
                 "dirstat", "scan", str(project_path),
                 "--output", "json",
@@ -132,6 +134,7 @@ def get_code_loc(project_path, submodule_paths=None):
             capture_output=True,
             text=True,
             timeout=60,
+            read=True,
         )
         data = json.loads(result.stdout)
         code_loc = 0
@@ -148,7 +151,7 @@ def get_code_loc(project_path, submodule_paths=None):
                 if not sub_dir.is_dir():
                     continue
                 try:
-                    sub_result = subprocess.run(
+                    sub_result = effects.run(
                         [
                             "dirstat", "scan", str(sub_dir),
                             "--output", "json",
@@ -159,6 +162,7 @@ def get_code_loc(project_path, submodule_paths=None):
                         capture_output=True,
                         text=True,
                         timeout=60,
+                        read=True,
                     )
                     sub_data = json.loads(sub_result.stdout)
                     for group in sub_data.get("groups", []):

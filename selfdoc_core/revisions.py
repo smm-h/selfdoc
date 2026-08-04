@@ -17,6 +17,8 @@ import os
 
 from selfdoc_core.utils import atomic_write
 
+from selfdoc_core import effects
+
 
 _REVISIONS_FILENAME = "revisions.json"
 
@@ -77,7 +79,7 @@ def save_revisions(data: dict, dir_path: str) -> str:
     Returns the absolute path of the written file.
     """
     selfdoc_dir = os.path.join(dir_path, ".selfdoc")
-    os.makedirs(selfdoc_dir, exist_ok=True)
+    effects.makedirs(selfdoc_dir, exist_ok=True)
     path = os.path.join(selfdoc_dir, _REVISIONS_FILENAME)
     atomic_write(path, json.dumps(data, indent=2) + "\n")
     return path

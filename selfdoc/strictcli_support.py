@@ -14,6 +14,8 @@ from selfdoc.tables import render_markdown_table
 from selfdoc.utils import atomic_write as _atomic_write
 from selfdoc_core.prose import first_sentence
 
+from selfdoc_core import effects
+
 
 # Matches the default per-command/per-group description templates so we can
 # detect when a CLI page still has its auto-generated description (and should
@@ -387,7 +389,7 @@ def generate_cli_pages(cli_structure, docs_dir):
 
     Returns a list of generated filenames (relative to *docs_dir*).
     """
-    os.makedirs(docs_dir, exist_ok=True)
+    effects.makedirs(docs_dir, exist_ok=True)
     generated = []
 
     app_name = cli_structure.get("app_name", "")

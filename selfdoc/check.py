@@ -40,6 +40,8 @@ from selfdoc.staleness import (
 )
 from selfdoc.ownership import is_machine_owned
 
+from selfdoc_core import effects
+
 
 def _machine_owned_keys(all_docs, dir_path, cli_structure, locale_prefix):
     """Return the locale-prefixed page keys whose description is machine-owned.
@@ -346,8 +348,9 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
             ["pagefind", "--version"],
         ):
             try:
-                _proc = subprocess.run(
+                _proc = effects.run(
                     _cmd, capture_output=True, text=True, timeout=10,
+                    read=True,
                 )
                 if _proc.returncode == 0:
                     _pagefind_available = True

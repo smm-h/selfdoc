@@ -10,6 +10,7 @@ import threading
 import strictcli
 
 from selfdoc._version import __version__
+from selfdoc_core import effects
 
 
 app = strictcli.App(
@@ -71,8 +72,9 @@ def _detect_main_module():
     return os.path.basename(os.path.abspath("."))
 
 
-@app.command("init", help="Initialize selfdoc configuration and starter docs template")
+@app.command("init", help="Initialize selfdoc configuration and starter docs template", effect="mutating")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated selfdoc.json and docs/index.md template files to git")
+@effects.handler
 def _cmd_init(ctx, auto_commit=True):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
@@ -109,13 +111,10 @@ def _cmd_init(ctx, auto_commit=True):
 
     # Write selfdoc.json atomically
     config_json = json.dumps(config, indent=2) + "\n"
-    tmp_path = "selfdoc.json.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        f.write(config_json)
-    os.replace(tmp_path, "selfdoc.json")
+    effects.atomic_write("selfdoc.json", config_json)
 
     # Create docs/ directory
-    os.makedirs("docs", exist_ok=True)
+    effects.makedirs("docs", exist_ok=True)
 
     # Create starter index.md
     index_path = os.path.join("docs", "index.md")
@@ -136,8 +135,7 @@ def _cmd_init(ctx, auto_commit=True):
             f"\n"
             f':-: ref path="{main_module}" lang="{primary_language}"\n'
         )
-        with open(index_path, "w", encoding="utf-8") as f:
-            f.write(starter)
+        effects.write_text(index_path, starter)
 
     source_path_strs = [e["path"] for e in source_entries]
     langs_str = ", ".join(detected_languages)
@@ -156,12 +154,13 @@ def _cmd_init(ctx, auto_commit=True):
     return 0
 
 
-@app.command("build", help="Build the documentation site from templates and source code")
+@app.command("build", help="Build the documentation site from templates and source code", effect="mutating")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
 @strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output alongside published posts")
 @strictcli.flag("target", type=str, default="", help="Build target: empty for full build ('posts' builds moved to selfblog)")
+@effects.handler
 def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
     from selfdoc.config import load_config
@@ -241,9 +240,10 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
     return 0
 
 
-@app.command("serve", help="Serve the documentation site locally with live reload")
+@app.command("serve", help="Serve the documentation site locally with live reload", effect="mutating")
 @strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
 @strictcli.flag("drafts", type=bool, default=False, help="Rebuild the site with draft posts included before starting the local server")
+@effects.handler
 def _cmd_serve(ctx, port=8000, drafts=False):
     """Serve the documentation site locally with SSE-based live reload."""
     from selfdoc.config import load_config
@@ -403,7 +403,26 @@ def _cmd_serve(ctx, port=8000, drafts=False):
     return 0
 
 
-@app.command("deploy", help="Deploy the built documentation site to the configured provider")
+@app.command(
+    "deploy",
+    help="Deploy the built documentation site to the configured provider",
+    effect="mutating",
+    grants=[
+        strictcli.Grant(
+            "deploy",
+            "publishes the built site to the configured Cloudflare Pages "
+            "project; the deployment is live the moment it lands",
+            strictcli.PROC_MUTATE,
+        ),
+        strictcli.Grant(
+            "force-push",
+            "replaces the remote gh-pages branch wholesale; the previous "
+            "published tree is not recoverable from the remote afterwards",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@effects.handler
 def _cmd_deploy(ctx):
     """Deploy the documentation site."""
     from selfdoc.config import load_config
@@ -462,13 +481,13 @@ def _cmd_deploy(ctx):
 
 
 
-@app.command("check", help="Check documentation coverage, directive resolution, and lint rules")
+@app.command("check", help="Check documentation coverage, directive resolution, and lint rules", effect="mutating")
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
 @strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
-@strictcli.flag("dry-run", type=bool, default=False, help="Report staleness without writing hash files to disk")
 @strictcli.flag("version-override", type=str, default="", help="Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump")
-def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False,
+@effects.handler
+def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
                version_override=""):
     """Check documentation coverage and consistency."""
     from selfdoc.check import check_docs, filter_lints, print_results
@@ -484,15 +503,19 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False,
         )
         sys.exit(1)
 
+    # No ``dry_run=`` is threaded into check_docs: under --dry-run the hash
+    # write is RECORDED by the effects chokepoint rather than executed, which
+    # both preserves the old "report staleness without writing" behavior and
+    # makes the preview honest about the write a real run would perform.
     try:
         result = check_docs(
-            ".", dry_run=dry_run, version_override=version_override or None,
+            ".", version_override=version_override or None,
         )
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if auto_commit and not dry_run:
+    if auto_commit:
         from selfdoc.git import auto_commit as _auto_commit
         _auto_commit(
             [".selfdoc/hashes/hashes.json"],
@@ -584,9 +607,10 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True, dry_run=False,
     return 0
 
 
-@baseline_group.command("accept", help="Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.")
+@baseline_group.command("accept", help="Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.", effect="mutating")
 @strictcli.arg("page", variadic=True, required=True, help="Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the updated content hash tracking file to git after accepting the named pages")
+@effects.handler
 def _cmd_baseline_accept(ctx, page, auto_commit=True):
     """Accept reviewed staleness/drift for the named pages."""
     from selfdoc.check import AcceptError, accept_baselines
@@ -625,9 +649,10 @@ def _cmd_baseline_accept(ctx, page, auto_commit=True):
     return 0
 
 
-@app.command("gen", help="Auto-generate documentation pages from project structure")
+@app.command("gen", help="Auto-generate documentation pages from project structure", effect="mutating")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit generated documentation pages and root files to git")
 @strictcli.flag("version-override", type=str, default="", help="Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump lands)")
+@effects.handler
 def _cmd_gen(ctx, auto_commit=True, version_override=""):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
@@ -740,8 +765,9 @@ def _cmd_gen(ctx, auto_commit=True, version_override=""):
     return 0
 
 
-@app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap")
+@app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap", effect="mutating")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated data output files to git after script execution")
+@effects.handler
 def _cmd_gen_data(ctx, auto_commit=True):
     """Generate data files by running sandboxed scripts."""
     from selfdoc.config import load_config
@@ -777,8 +803,9 @@ def _cmd_gen_data(ctx, auto_commit=True):
     return 0
 
 
-@app.command("quality", help="Show documentation quality tier and metrics for the current project")
+@app.command("quality", help="Show documentation quality tier and metrics for the current project", effect="read_only")
 @strictcli.flag("format", type=str, default="text", help="Output format: text or json")
+@effects.handler
 def _cmd_quality(ctx, format="text"):
     from selfdoc.quality import run_quality
     return run_quality(format=format)
