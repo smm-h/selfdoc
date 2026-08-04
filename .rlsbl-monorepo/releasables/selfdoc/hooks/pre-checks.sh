@@ -38,11 +38,12 @@ with os.fdopen(fd, "w", encoding="utf-8") as f:
 os.replace(tmp, "selfdoc.json")
 PY
 
-# --yes: gen and check are mutating commands under strictcli's effects
-# regime, and a release hook has no TTY -- without it the framework's confirm
-# protocol hard-errors with "stdin is not interactive; pass --yes to confirm".
+# Both run bare. strictcli prompts only for commands that declare themselves
+# `consequential`, and neither gen nor check does -- regenerating and
+# validating docs in the working tree is ordinary, git-recoverable work. This
+# hook has no TTY, so a gate on either would abort every release.
 echo "pre-checks: regenerating docs (selfdoc gen)"
-uv run selfdoc gen --yes --no-auto-commit
+uv run selfdoc gen --no-auto-commit
 
 echo "pre-checks: validating docs (selfdoc check)"
-uv run selfdoc check --yes
+uv run selfdoc check
