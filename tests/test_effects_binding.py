@@ -1,6 +1,6 @@
 """Command classification and effects binding, pinned.
 
-Two guarantees this file holds:
+Three guarantees this file holds:
 
 1. **Every command carries the classification it was deliberately given.**
    strictcli makes ``effect=`` mandatory, so a missing one is a registration
@@ -15,7 +15,16 @@ Two guarantees this file holds:
    ``--dry-run`` -- silently, since nothing else would fail. The test walks
    the registered commands rather than the source, so a handler added later
    without the decorator fails here.
+
+3. **Exactly three commands are ``consequential``.** The framework prompts for
+   those and no others; ``mutating`` no longer implies a prompt. The set below
+   is pinned in both directions, so adding a fourth is a deliberate edit to
+   this file rather than a passing thought at a registration site.
 """
+
+import os
+import subprocess
+import sys
 
 import selfblog.cli
 import selfdoc.cli
@@ -72,6 +81,31 @@ SELFBLOG_EFFECTS = {
     "check": "mutating",
     # writes the built output tree and auto-commits the hash store
     "build": "mutating",
+}
+
+
+# The reviewed consequential set. A command belongs here when its effects are
+# worth interrupting someone for -- not merely because they mutate. The line
+# drawn across these two CLIs: an effect qualifies when it is destructive on a
+# remote, creates a named external resource that rerunning cannot un-create, or
+# makes something public that was not public before. Re-deriving already-public
+# content from an already-public source does not qualify, which is why
+# `assembly push` and `assembly rebuild` are absent despite carrying escaping
+# PROC_MUTATE grants.
+SELFDOC_CONSEQUENTIAL = {
+    # Cloudflare Pages goes live on landing; the GitHub Pages provider
+    # force-pushes gh-pages, so the previous published tree is gone from the
+    # remote. Neither is undone by rerunning.
+    "deploy",
+}
+
+SELFBLOG_CONSEQUENTIAL = {
+    # Locally-authored, previously-private posts become publicly readable.
+    "post.publish",
+    # Creates a GitHub repository, claims a *.pages.dev subdomain, and writes
+    # deployment credentials into repo secrets -- three named external
+    # resources, none of them un-created by a rerun.
+    "assembly.init",
 }
 
 
@@ -152,11 +186,14 @@ def test_every_handler_is_bound_to_the_chokepoint():
 def test_reserved_quartet_is_not_redeclared():
     """No command redeclares a framework-reserved flag name.
 
-    strictcli bans dry-run/yes/quiet/verbose at every level, so a collision is
-    a registration error -- this pins that selfdoc's three former ``--dry-run``
-    flags stay gone rather than reappearing under a near-miss spelling.
+    The quartet is dry-run/approve-consequential/quiet/verbose, and ``yes``
+    stays separately banned even though it no longer owns a framework flag --
+    a private ``--yes`` would restate ``--approve-consequential`` in the very
+    spelling the rename removed. All five are registration errors at every
+    level; this pins that selfdoc's three former ``--dry-run`` flags stay gone
+    rather than reappearing under a near-miss spelling.
     """
-    reserved = {"dry-run", "yes", "quiet", "verbose"}
+    reserved = {"dry-run", "approve-consequential", "yes", "quiet", "verbose"}
     for app, label in ((selfdoc.cli.app, "selfdoc"), (selfblog.cli.app, "selfblog")):
         for path, cmd in _walk(app).items():
             names = {f.name for f in cmd.flags}
@@ -164,3 +201,92 @@ def test_reserved_quartet_is_not_redeclared():
                 f"{label} '{path}' declares reserved flag(s) "
                 f"{sorted(names & reserved)}"
             )
+
+
+def test_consequential_set_is_exactly_the_reviewed_one():
+    """Exactly the reviewed commands declare ``consequential``.
+
+    Pinned in both directions. A command that gains the declaration without
+    being added here fails, and so does one that quietly loses it -- the second
+    direction matters more, because losing it removes a gate silently while the
+    command keeps working.
+    """
+    for app, label, expected in (
+        (selfdoc.cli.app, "selfdoc", SELFDOC_CONSEQUENTIAL),
+        (selfblog.cli.app, "selfblog", SELFBLOG_CONSEQUENTIAL),
+    ):
+        actual = {
+            path
+            for path, cmd in _walk(app).items()
+            if getattr(cmd, "consequential", False)
+        }
+        assert actual == expected, (
+            f"{label} consequential set is {sorted(actual)}, the reviewed set "
+            f"is {sorted(expected)} -- justify the change in this file's "
+            "docstring before editing the set"
+        )
+
+
+def test_mutating_but_not_consequential_commands_do_not_prompt():
+    """The routine mutating commands carry no confirm gate.
+
+    This is the whole point of the redesign: 63% of the fleet classified
+    ``mutating``, and prompting for all of them made the gate noise. ``gen``,
+    ``check`` and ``build`` are invoked bare by release pipelines with no TTY,
+    so a gate on any of them is a hard breakage, not an inconvenience.
+    """
+    for app, label, names in (
+        (selfdoc.cli.app, "selfdoc", ["gen", "check", "build", "baseline.accept"]),
+        (selfblog.cli.app, "selfblog", ["post.new", "assembly.push", "check", "build"]),
+    ):
+        commands = _walk(app)
+        for name in names:
+            assert not getattr(commands[name], "consequential", False), (
+                f"{label} '{name}' became consequential; release pipelines "
+                "invoke it with no TTY and would hard-error"
+            )
+
+
+def _run_cli(module, argv, cwd):
+    """Run a CLI module as a real subprocess with a non-TTY stdin."""
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
+    with open(os.devnull, "rb") as devnull:
+        return subprocess.run(
+            [sys.executable, "-m", module, *argv],
+            cwd=str(cwd),
+            stdin=devnull,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+
+
+def test_consequential_command_refuses_on_non_interactive_stdin(tmp_path):
+    """``selfdoc deploy`` hard-errors before its handler when stdin is not a TTY.
+
+    Pins the framework's message verbatim: a rename there is exactly the class
+    of upstream change that broke auto-commit, and the failure would otherwise
+    surface only in a release. The command is safe to run here because the gate
+    fires *before* dispatch -- no deploy is attempted.
+    """
+    result = _run_cli("selfdoc", ["deploy"], tmp_path)
+
+    assert result.returncode == 1
+    assert (
+        "error: stdin is not interactive; pass --approve-consequential to confirm"
+        in result.stderr
+    )
+
+
+def test_non_consequential_command_runs_without_a_confirmation_flag(tmp_path):
+    """``selfdoc check`` reaches its handler with no TTY and no flag.
+
+    The counterpart to the test above: it fails on its own terms (no
+    selfdoc.json in an empty directory) rather than at a confirm gate, which is
+    what proves no gate is there.
+    """
+    result = _run_cli("selfdoc", ["check"], tmp_path)
+
+    assert "stdin is not interactive" not in result.stderr
+    assert "--approve-consequential" not in result.stderr

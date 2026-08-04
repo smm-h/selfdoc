@@ -5010,7 +5010,7 @@ def test_build_exits_zero_with_only_warnings(project_dir):
         )
 
     result = subprocess.run(
-        ["python", "-m", "selfdoc", "build", "--yes"],
+        ["python", "-m", "selfdoc", "build"],
         cwd=str(project_dir),
         capture_output=True,
         text=True,
@@ -5026,7 +5026,7 @@ def test_build_exits_one_with_errors(project_dir):
 
     # index.md from fixture has no frontmatter -> SEO006 error
     result = subprocess.run(
-        ["python", "-m", "selfdoc", "build", "--yes"],
+        ["python", "-m", "selfdoc", "build"],
         cwd=str(project_dir),
         capture_output=True,
         text=True,
