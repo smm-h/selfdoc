@@ -48,12 +48,13 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
       "name": "init",
       "help": "Initialize selfdoc configuration and starter docs template",
+      "effect": "mutating",
       "flags": [
         {
           "name": "auto-commit",
@@ -67,6 +68,7 @@
     "build": {
       "name": "build",
       "help": "Build the documentation site from templates and source code",
+      "effect": "mutating",
       "flags": [
         {
           "name": "auto-commit",
@@ -105,6 +107,7 @@
     "serve": {
       "name": "serve",
       "help": "Serve the documentation site locally with live reload",
+      "effect": "mutating",
       "flags": [
         {
           "name": "port",
@@ -124,11 +127,25 @@
     },
     "deploy": {
       "name": "deploy",
-      "help": "Deploy the built documentation site to the configured provider"
+      "help": "Deploy the built documentation site to the configured provider",
+      "effect": "mutating",
+      "grants": [
+        {
+          "name": "deploy",
+          "reason": "publishes the built site to the configured Cloudflare Pages project; the deployment is live the moment it lands",
+          "kind": "proc_mutate"
+        },
+        {
+          "name": "force-push",
+          "reason": "replaces the remote gh-pages branch wholesale; the previous published tree is not recoverable from the remote afterwards",
+          "kind": "proc_mutate"
+        }
+      ]
     },
     "check": {
       "name": "check",
       "help": "Check documentation coverage, directive resolution, and lint rules",
+      "effect": "mutating",
       "flags": [
         {
           "name": "ignore",
@@ -154,13 +171,6 @@
           "negatable": true
         },
         {
-          "name": "dry-run",
-          "type": "bool",
-          "help": "Report staleness without writing hash files to disk",
-          "default": false,
-          "negatable": true
-        },
-        {
           "name": "version-override",
           "type": "str",
           "help": "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump",
@@ -171,6 +181,7 @@
     "gen": {
       "name": "gen",
       "help": "Auto-generate documentation pages from project structure",
+      "effect": "mutating",
       "flags": [
         {
           "name": "auto-commit",
@@ -190,6 +201,7 @@
     "gen-data": {
       "name": "gen-data",
       "help": "Generate data files by running sandboxed scripts via bwrap",
+      "effect": "mutating",
       "flags": [
         {
           "name": "auto-commit",
@@ -203,6 +215,7 @@
     "quality": {
       "name": "quality",
       "help": "Show documentation quality tier and metrics for the current project",
+      "effect": "read_only",
       "flags": [
         {
           "name": "format",
@@ -221,6 +234,7 @@
         "accept": {
           "name": "accept",
           "help": "Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.",
+          "effect": "mutating",
           "flags": [
             {
               "name": "auto-commit",
