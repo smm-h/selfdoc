@@ -120,20 +120,17 @@ def auto_commit(files: list[str], message: str, cwd: str) -> bool:
 
     # Try rlsbl first, then safegit, fall back to plain git.
     #
-    # ``--yes`` is passed unconditionally to the commit tools.  Both are
-    # strictcli apps whose ``commit`` is a mutating command, so without it the
-    # child hard-errors with "stdin is not interactive; pass --yes to confirm"
-    # for every non-interactive caller -- which is every caller selfdoc has in
-    # practice (CI, release pipelines, agent sessions).  selfdoc's own
-    # mutating command already took the user's confirmation before this helper
-    # ran, and the commit is fully determined by the tool: the file list and
-    # the message are computed above, so there is no second decision for the
-    # child to confirm.
+    # No confirmation flag is passed.  Both tools are strictcli apps, and
+    # strictcli prompts only for commands that declare themselves
+    # ``consequential``; neither ``rlsbl commit`` nor ``safegit commit`` does,
+    # because a commit is ordinary, undoable work.  Passing
+    # ``--approve-consequential`` here would be accepted (it is framework-global)
+    # but would state a decision nobody asked for, so the bare argv is correct.
     if shutil.which("rlsbl"):
-        cmd = ["rlsbl", "commit", "--yes", "-m", message, "--"] + committable
+        cmd = ["rlsbl", "commit", "-m", message, "--"] + committable
         label = "rlsbl"
     elif shutil.which("safegit"):
-        cmd = ["safegit", "commit", "--yes", "-m", message, "--"] + committable
+        cmd = ["safegit", "commit", "-m", message, "--"] + committable
         label = "safegit"
     else:
         return _plain_git_commit(committable, message, cwd, env)
