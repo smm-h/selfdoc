@@ -54,6 +54,7 @@
     "check": {
       "name": "check",
       "help": "Check blog posts and unified multi-project documentation. For unified docs-site projects, runs the full documentation check across every constituent project plus the docs-site's own content; otherwise validates blog posts (POST001-POST005).",
+      "effect": "mutating",
       "flags": [
         {
           "name": "ignore",
@@ -67,19 +68,13 @@
           "help": "Automatically commit updated content hash tracking files to git after checking",
           "default": true,
           "negatable": true
-        },
-        {
-          "name": "dry-run",
-          "type": "bool",
-          "help": "Report staleness without writing hash files to disk",
-          "default": false,
-          "negatable": true
         }
       ]
     },
     "build": {
       "name": "build",
       "help": "Build blog posts or unified documentation site",
+      "effect": "mutating",
       "flags": [
         {
           "name": "target",
@@ -112,6 +107,7 @@
         "new": {
           "name": "new",
           "help": "Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.",
+          "effect": "mutating",
           "flags": [
             {
               "name": "title",
@@ -122,11 +118,13 @@
         },
         "list": {
           "name": "list",
-          "help": "List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft."
+          "help": "List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft.",
+          "effect": "read_only"
         },
         "generate": {
           "name": "generate",
           "help": "Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.",
+          "effect": "mutating",
           "flags": [
             {
               "name": "from-release",
@@ -185,19 +183,20 @@
               "help": "Package registry URL such as PyPI or npm page, can be specified multiple times",
               "default": [],
               "repeatable": true
-            },
-            {
-              "name": "dry-run",
-              "type": "bool",
-              "help": "Print the generated post content to stdout without writing any files to disk",
-              "default": false,
-              "negatable": true
             }
           ]
         },
         "publish": {
           "name": "publish",
-          "help": "Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements."
+          "help": "Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements.",
+          "effect": "mutating",
+          "grants": [
+            {
+              "name": "assembly-dispatch",
+              "reason": "triggers a GitHub Actions workflow on the assembly repository, which rebuilds and republishes the live documentation site",
+              "kind": "proc_mutate"
+            }
+          ]
         }
       }
     },
@@ -207,23 +206,59 @@
       "commands": {
         "init": {
           "name": "init",
-          "help": "Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication."
+          "help": "Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication.",
+          "effect": "mutating",
+          "grants": [
+            {
+              "name": "create-repo",
+              "reason": "creates a new private GitHub repository under the configured owner; repository creation is not undone by rerunning the command",
+              "kind": "proc_mutate"
+            },
+            {
+              "name": "create-pages-project",
+              "reason": "creates a Cloudflare Pages project on the configured account, claiming its *.pages.dev subdomain",
+              "kind": "proc_mutate"
+            },
+            {
+              "name": "set-secret",
+              "reason": "writes Cloudflare deployment credentials into the assembly repository's GitHub Actions secrets",
+              "kind": "proc_mutate"
+            }
+          ]
         },
         "push": {
           "name": "push",
-          "help": "Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA."
+          "help": "Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA.",
+          "effect": "mutating",
+          "grants": [
+            {
+              "name": "assembly-dispatch",
+              "reason": "triggers a GitHub Actions workflow on the assembly repository, which rebuilds and republishes the live documentation site",
+              "kind": "proc_mutate"
+            }
+          ]
         },
         "status": {
           "name": "status",
-          "help": "Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress."
+          "help": "Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress.",
+          "effect": "read_only"
         },
         "rebuild": {
           "name": "rebuild",
-          "help": "Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild."
+          "help": "Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild.",
+          "effect": "mutating",
+          "grants": [
+            {
+              "name": "assembly-dispatch",
+              "reason": "triggers a GitHub Actions workflow on the assembly repository, which rebuilds and republishes the live documentation site",
+              "kind": "proc_mutate"
+            }
+          ]
         },
         "redirects": {
           "name": "redirects",
           "help": "Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.",
+          "effect": "read_only",
           "flags": [
             {
               "name": "slug",
@@ -240,6 +275,7 @@
         "generate-shared": {
           "name": "generate-shared",
           "help": "Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.",
+          "effect": "mutating",
           "flags": [
             {
               "name": "site-dir",
