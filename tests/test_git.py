@@ -654,3 +654,46 @@ def test_auto_commit_mixed_files_rlsbl_path(tmp_path):
         assert cmd[0] == "rlsbl"
         assert "doc.md" in cmd
         assert "build.cache" not in cmd
+
+
+def test_commit_tool_invocation_passes_yes(tmp_path, monkeypatch):
+    """The internal commit-tool invocation carries ``--yes``.
+
+    Both `rlsbl commit` and `safegit commit` are mutating strictcli commands,
+    and strictcli's confirm protocol hard-errors ("stdin is not interactive;
+    pass --yes to confirm") when stdin is not a TTY -- which is every context
+    selfdoc auto-commits from: CI, a release pipeline, an agent session. Without
+    the flag, `selfdoc gen`'s documented default of auto-committing its output
+    silently cannot complete. This asserts the flag on the argv rather than only
+    the outcome, so the fix cannot regress on a machine where the tool happens
+    to be absent and the plain-git fallback runs instead.
+    """
+    _init_git_repo(tmp_path)
+    (tmp_path / "hello.txt").write_text("hello")
+
+    seen = []
+
+    def fake_which(name):
+        return "/usr/bin/rlsbl" if name == "rlsbl" else None
+
+    def fake_run(argv, **kwargs):
+        seen.append(list(argv))
+        if kwargs.get("read"):
+            return subprocess.run(
+                list(argv),
+                cwd=kwargs.get("cwd"),
+                capture_output=kwargs.get("capture_output", False),
+                text=kwargs.get("text", False),
+                input=kwargs.get("input"),
+                timeout=kwargs.get("timeout"),
+            )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr("selfdoc_core.git.shutil.which", fake_which)
+    monkeypatch.setattr("selfdoc_core.git.effects.run", fake_run)
+
+    assert auto_commit(["hello.txt"], "add hello", str(tmp_path)) is True
+
+    commit_argv = [a for a in seen if a[:2] == ["rlsbl", "commit"]]
+    assert len(commit_argv) == 1, seen
+    assert "--yes" in commit_argv[0]
