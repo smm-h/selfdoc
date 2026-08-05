@@ -1,0 +1,5 @@
+bump = "patch"
+description = "Fix CI: install playwright browsers before running tests, fix publish gate regex"
+context = """
+v0.1.0 CI failed because playwright browsers were not installed. The publish gate regex also did not match the actual CI job name. Both are fixed.
+"""
