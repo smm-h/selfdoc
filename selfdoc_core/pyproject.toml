@@ -44,6 +44,10 @@ dev = [
     "pygments>=2.20.0",
     "pytest>=9.0.3",
     "pytest-playwright>=0.7.2",
+    # The isolation floor. CI syncs from this directory, so the plugin has to
+    # be declared here -- inheriting it from the workspace root's dev group
+    # only works for root-rooted runs.
+    "stricttest",
 ]
 
 [tool.pytest.ini_options]
