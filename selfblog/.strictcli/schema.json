@@ -48,7 +48,7 @@
   },
   "project_id": "selfblog",
   "name": "selfblog",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "help": "Blog system for selfdoc-based documentation sites",
   "commands": {
     "check": {
