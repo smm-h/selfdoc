@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "base_version": "0.34.0",
+      "bump": "minor",
+      "name": "selfdoc",
+      "registry": "npm",
+      "tag": "v0.35.0",
+      "target_version": "0.35.0"
+    },
+    {
+      "base_version": "0.6.0",
+      "bump": "minor",
+      "name": "selfdoc-core",
+      "registry": "pypi",
+      "tag": "selfdoc-core@v0.7.0",
+      "target_version": "0.7.0"
+    },
+    {
+      "base_version": "0.1.1",
+      "bump": "minor",
+      "name": "selfblog",
+      "registry": "npm",
+      "tag": "selfblog@v0.2.0",
+      "target_version": "0.2.0"
+    }
+  ],
+  "section_type": "releasables"
+}
