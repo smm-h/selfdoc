@@ -2,20 +2,7 @@
 
 # Changelog
 
-## 0.35.0
-
-selfdoc adopts strictcli's effects regime: every command is classified, `--dry-run` previews instead of executing, `deploy` asks before it runs, and `--yes` is replaced by `--approve-consequential`
-
-<details>
-<summary>Context</summary>
-
-selfdoc's dry-run used to be a per-command courtesy: some commands honoured it, some quietly ignored it, and nothing in the code stopped a handler from shelling out anyway. This release moves that guarantee into the framework. Every command now declares whether it is read-only or mutating, and every subprocess launch and filesystem write goes through a single chokepoint, so `--dry-run` records a numbered would-do log instead of performing the work -- a dry `deploy` names the Cloudflare project it would push to rather than pushing to it.
-
-The confirmation story changed with it, and it is worth explaining why the flag is new. strictcli originally inferred "prompt the user" from "this command mutates something", which turned out to catch about two thirds of every CLI in the fleet -- including commands nobody wants to confirm. A prompt that fires on two thirds of invocations trains people to dismiss it, which is exactly the reflex a confirmation is supposed to prevent. So consequence is now declared per command rather than inferred, and only the commands that earn it prompt. In selfdoc that is exactly one: `deploy`, the only command whose effects leave the machine and land on a live public site.
-
-`--yes` is gone rather than deprecated. `yes` is now a banned flag name framework-wide, so `selfdoc <cmd> --yes` is a hard "unknown flag" error instead of a silent no-op. The replacement is `--approve-consequential`, deliberately unwieldy so it cannot decay into muscle memory the way `-y` did, and self-documenting wherever it appears in a script. The practical migration is smaller than it sounds: the mutating commands that used to demand `--yes` from every non-interactive caller now need no flag at all.
-
-</details>
+## Unreleased
 
 ### Breaking
 
@@ -24,6 +11,19 @@ The confirmation story changed with it, and it is worth explaining why the flag 
 - [selfdoc] **`--yes` is gone; the confirmation-skip flag is `--approve-consequential`.** strictcli 0.36.0 replaced the inferred "mutating command means prompt" rule -- which caught two thirds of every CLI in the fleet -- with a per-command `consequential` declaration, and the framework now prompts only for commands that make it. `yes` is a banned flag name, so `selfdoc <cmd> --yes` is a hard `unknown flag` error rather than a no-op. In practice this means the mutating commands that used to demand `--yes` from every non-interactive caller now need nothing at all.
 
 ## 0.34.0
+
+Extractor coverage fixes (re-exports, module constants, docstring-less/pydantic classes), new `selfdoc quality` command, configurable coverage_threshold, three new guides, plus breaking removal of `post`/`assembly` subcommands and new explicit deploy-target and assembly config keys
+
+<details>
+<summary>Context</summary>
+
+Coordinated minor batch release; the previous batch shipped 2026-07-11. This ships roughly three weeks of accumulated backlog for the selfdoc CLI.
+
+Breaking changes in this batch: the `selfdoc post` and `selfdoc assembly` subcommand stubs are gone (that surface lives in selfblog now); `deploy_github_pages` requires an explicit target instead of inferring it from the current directory's origin; and the assembly config keys changed (`topology.assembly` is rejected in favour of `assembly.repo`, and `assembly.pages_project` is now required).
+
+Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier scale, a configurable `coverage_threshold` in selfdoc.json, the `gen --version-override` release handshake, and new directives/quality/blog guides. Fixes tighten `ref` coverage accounting (re-exports and module constants are now counted, docstring-less and pydantic classes are no longer dropped), make manifest generation idempotent so `--no-allow-dirty` releases stop looping, honour package-level excludes, and add remediation hints to DRIFT001/STALE001.
+
+</details>
 
 ### Breaking
 
