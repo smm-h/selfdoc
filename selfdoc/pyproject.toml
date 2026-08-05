@@ -53,3 +53,12 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["../tests"]
+# stricttest's isolation floor. A member-rooted pytest run reads THIS file as
+# its inifile, and testpaths points at the root suite -- so the stance must
+# match the root pyproject's, including loopback = "allow" for the demo-panel
+# test that drives a 127.0.0.1 http.server with headless chromium.
+stricttest_sockets = "deny"
+stricttest_socket_allowlist = []
+stricttest_unix_socket_allowlist = []
+stricttest_loopback = "allow"
+stricttest_sandbox_required = "false"
