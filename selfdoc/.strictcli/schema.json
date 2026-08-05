@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
