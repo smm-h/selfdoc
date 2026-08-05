@@ -2,7 +2,20 @@
 
 # Changelog
 
-## Unreleased
+## 0.35.0
+
+selfdoc adopts strictcli's effects regime: every command is classified, `--dry-run` previews instead of executing, `deploy` asks before it runs, and `--yes` is replaced by `--approve-consequential`
+
+<details>
+<summary>Context</summary>
+
+selfdoc's dry-run used to be a per-command courtesy: some commands honoured it, some quietly ignored it, and nothing in the code stopped a handler from shelling out anyway. This release moves that guarantee into the framework. Every command now declares whether it is read-only or mutating, and every subprocess launch and filesystem write goes through a single chokepoint, so `--dry-run` records a numbered would-do log instead of performing the work -- a dry `deploy` names the Cloudflare project it would push to rather than pushing to it.
+
+The confirmation story changed with it, and it is worth explaining why the flag is new. strictcli originally inferred "prompt the user" from "this command mutates something", which turned out to catch about two thirds of every CLI in the fleet -- including commands nobody wants to confirm. A prompt that fires on two thirds of invocations trains people to dismiss it, which is exactly the reflex a confirmation is supposed to prevent. So consequence is now declared per command rather than inferred, and only the commands that earn it prompt. In selfdoc that is exactly one: `deploy`, the only command whose effects leave the machine and land on a live public site.
+
+`--yes` is gone rather than deprecated. `yes` is now a banned flag name framework-wide, so `selfdoc <cmd> --yes` is a hard "unknown flag" error instead of a silent no-op. The replacement is `--approve-consequential`, deliberately unwieldy so it cannot decay into muscle memory the way `-y` did, and self-documenting wherever it appears in a script. The practical migration is smaller than it sounds: the mutating commands that used to demand `--yes` from every non-interactive caller now need no flag at all.
+
+</details>
 
 ### Breaking
 
