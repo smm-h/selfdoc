@@ -2,7 +2,6 @@
 
 import fnmatch
 import os
-import re
 import stat
 from dataclasses import dataclass, field
 
@@ -18,7 +17,6 @@ from selfdoc.resolver import make_resolver
 from selfdoc.utils import atomic_write as _atomic_write
 from selfdoc.ownership import (
     MODULE_DESC_TEMPLATE,
-    LEGACY_INDEX_DESCRIPTIONS as _LEGACY_INDEX_DESCRIPTIONS,
     description_seed_hash,
     is_machine_owned_index_description,
     is_machine_owned_module_description,

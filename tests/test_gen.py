@@ -14,8 +14,8 @@ from selfdoc.gen import (
     _read_existing_description,
     _read_existing_index_description,
     _resolve_project_name,
-    _LEGACY_INDEX_DESCRIPTIONS,
 )
+from selfdoc.ownership import LEGACY_INDEX_DESCRIPTIONS
 
 
 @pytest.fixture()
@@ -1496,7 +1496,7 @@ class TestLegacyIndexReseed:
         from selfdoc.ownership import description_seed_hash
 
         # Legacy machine phrases -> reseed.
-        for legacy in _LEGACY_INDEX_DESCRIPTIONS:
+        for legacy in LEGACY_INDEX_DESCRIPTIONS:
             p = os.path.join(tmp_path, "legacy.md")
             TestLegacyIndexReseed()._write_index(p, legacy, seeded=False)
             assert _read_existing_index_description(p) is None
