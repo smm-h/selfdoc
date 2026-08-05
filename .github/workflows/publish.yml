@@ -210,7 +210,7 @@ jobs:
     permissions: {}
     steps:
     - run: echo 'No publish target for this release tag'
-  selfdoc-core-publish:
+  selfdoc-core-pypi:
     needs: gate
     runs-on: ubuntu-latest
     steps:
@@ -255,6 +255,8 @@ jobs:
     - name: Scan source for secrets
       run: |
         gitleaks dir .
+    - name: Install dependencies
+      run: npm ci
     - name: Check if already published
       id: check-npm
       run: |
@@ -331,6 +333,8 @@ jobs:
     - name: Scan source for secrets
       run: |
         gitleaks dir .
+    - name: Install dependencies
+      run: npm ci
     - name: Check if already published
       id: check-npm
       run: |

@@ -1,9 +1,9 @@
 {
   "version": 1,
   "files": {
-    ".github/workflows/ci-pypi.yml": "5e833c3f78d5b9cd949583813fe35c520272cce1839037b344f416949f0ff9cf",
+    ".github/workflows/ci-pypi.yml": "9ad87eec466a7073b80c695f8b3502fae6955704b0232c81e687a0d0a2ab8f09",
     ".npmignore": "7c0eea9785c0318aeb39bf8b670ce8384f4a5b812fde69ce23d7d018057325a3",
-    ".github/workflows/publish.yml": "efba20364e340aeff4be5dbc64a931568253ca15913728f11542de0f62f81257",
+    ".github/workflows/publish.yml": "84a902c63583e07b50c3f43573ea2264f1288d5157fc8206d2bd5a61475db891",
     ".gitignore": "c32366f560dbf628eb04a94d25e8d8acf719605b2ea27d31047df16e13580c04",
     ".rlsbl/lint/python.toml": "9cfbcef2e010d5fad243437bf2fd8df54a1fae70ee0762f9d11da70fe207501c",
     ".rlsbl/lint/npm.toml": "baa36014e65923d8cc5c8b83c77fa651da79351627570476402da66840027645"
