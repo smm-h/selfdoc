@@ -1,30 +1,15 @@
-[releasables.selfdoc]
+[releasables.selfblog]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "infra"
 # Short description of this release (required)
-description = ""
+description = "Republishes 0.2.0's contents, which were tagged but never reached npm or PyPI"
 # Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+context = """
+0.2.0 is a phantom. Its tag and GitHub Release exist, but the publish gate refused it and was right to: the tag landed on a commit whose diff touched nothing under `selfblog/`, so the CI router's paths filter skipped selfblog's own test job, and a skipped check proves nothing about the commit it is attached to. The gate would refuse that commit on every re-run, so 0.2.0 can never reach a registry -- there is nothing to retry.
+
+This release ships the identical code under a number that can publish. Nothing in selfblog changed between the two, which is why the bump type is `infra` and this version's changelog section reads "no user-facing changes": everything users care about is written up under 0.2.0, and anyone reading the changelog should read that entry. 0.2.0 is marked deprecated on GitHub and points here.
+
+Fixing forward rather than retagging is the deliberate choice. Moving a tag onto a different commit would leave the published artifact and the Release notes describing histories that never matched, and the version number is the cheap thing here.
+"""
 include = ["npm", "pypi"]
 exclude = []
-
-# selfdoc-core: no unreleased commits since selfdoc-core@v0.7.0
-# [releasables.selfdoc-core]
-# bump = ""
-# description = ""
-# context = ""
-# include = ["pypi"]
-# exclude = []
-
-# selfblog: no unreleased commits since selfblog@v0.2.0
-# [releasables.selfblog]
-# bump = ""
-# description = ""
-# context = ""
-# include = ["npm", "pypi"]
-# exclude = []
