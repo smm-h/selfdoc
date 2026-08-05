@@ -731,6 +731,7 @@ dev = [
     { name = "pygments" },
     { name = "pytest" },
     { name = "pytest-playwright" },
+    { name = "stricttest" },
 ]
 
 [package.metadata]
@@ -746,6 +747,7 @@ dev = [
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
+    { name = "stricttest" },
 ]
 
 [[package]]
@@ -770,6 +772,7 @@ dev = [
     { name = "pygments" },
     { name = "pytest" },
     { name = "pytest-playwright" },
+    { name = "stricttest" },
 ]
 
 [package.metadata]
@@ -786,6 +789,7 @@ dev = [
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
+    { name = "stricttest" },
 ]
 
 [[package]]
@@ -810,6 +814,7 @@ dev = [
     { name = "pygments" },
     { name = "pytest" },
     { name = "pytest-playwright" },
+    { name = "stricttest" },
 ]
 
 [package.metadata]
@@ -826,6 +831,7 @@ dev = [
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
+    { name = "stricttest" },
 ]
 
 [[package]]
