@@ -2,14 +2,14 @@
 # Version bump type: patch, minor, major, infra, or prerelease
 bump = "minor"
 # Short description of this release (required)
-description = "Extractor coverage fixes (re-exports, module constants, docstring-less/pydantic classes), new `selfdoc quality` command, configurable coverage_threshold, three new guides, plus breaking removal of `post`/`assembly` subcommands and new explicit deploy-target and assembly config keys"
+description = "selfdoc adopts strictcli's effects regime: every command is classified, `--dry-run` previews instead of executing, `deploy` asks before it runs, and `--yes` is replaced by `--approve-consequential`"
 # Optional context explaining why these changes were made
 context = """
-Coordinated minor batch release; the previous batch shipped 2026-07-11. This ships roughly three weeks of accumulated backlog for the selfdoc CLI.
+selfdoc's dry-run used to be a per-command courtesy: some commands honoured it, some quietly ignored it, and nothing in the code stopped a handler from shelling out anyway. This release moves that guarantee into the framework. Every command now declares whether it is read-only or mutating, and every subprocess launch and filesystem write goes through a single chokepoint, so `--dry-run` records a numbered would-do log instead of performing the work -- a dry `deploy` names the Cloudflare project it would push to rather than pushing to it.
 
-Breaking changes in this batch: the `selfdoc post` and `selfdoc assembly` subcommand stubs are gone (that surface lives in selfblog now); `deploy_github_pages` requires an explicit target instead of inferring it from the current directory's origin; and the assembly config keys changed (`topology.assembly` is rejected in favour of `assembly.repo`, and `assembly.pages_project` is now required).
+The confirmation story changed with it, and it is worth explaining why the flag is new. strictcli originally inferred "prompt the user" from "this command mutates something", which turned out to catch about two thirds of every CLI in the fleet -- including commands nobody wants to confirm. A prompt that fires on two thirds of invocations trains people to dismiss it, which is exactly the reflex a confirmation is supposed to prevent. So consequence is now declared per command rather than inferred, and only the commands that earn it prompt. In selfdoc that is exactly one: `deploy`, the only command whose effects leave the machine and land on a live public site.
 
-Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier scale, a configurable `coverage_threshold` in selfdoc.json, the `gen --version-override` release handshake, and new directives/quality/blog guides. Fixes tighten `ref` coverage accounting (re-exports and module constants are now counted, docstring-less and pydantic classes are no longer dropped), make manifest generation idempotent so `--no-allow-dirty` releases stop looping, honour package-level excludes, and add remediation hints to DRIFT001/STALE001.
+`--yes` is gone rather than deprecated. `yes` is now a banned flag name framework-wide, so `selfdoc <cmd> --yes` is a hard "unknown flag" error instead of a silent no-op. The replacement is `--approve-consequential`, deliberately unwieldy so it cannot decay into muscle memory the way `-y` did, and self-documenting wherever it appears in a script. The practical migration is smaller than it sounds: the mutating commands that used to demand `--yes` from every non-interactive caller now need no flag at all.
 """
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
@@ -23,14 +23,14 @@ exclude = []
 # Version bump type: patch, minor, major, infra, or prerelease
 bump = "minor"
 # Short description of this release (required)
-description = "Python extractor coverage fixes (re-exports and module constants counted, docstring-less/pydantic classes no longer dropped), configurable coverage_threshold, idempotent manifest generation, plus breaking deploy-target and assembly config changes"
+description = "selfdoc-core gains `selfdoc_core.effects`, the single authorized surface for subprocess and filesystem effects across selfdoc, selfblog and core itself, and takes a new runtime dependency on strictcli"
 # Optional context explaining why these changes were made
 context = """
-Coordinated minor batch release; the previous batch shipped 2026-07-11. This ships roughly three weeks of accumulated backlog for the selfdoc-core library.
+This is the library half of the effects regime the two CLIs adopt in the same batch. The new `selfdoc_core.effects` module is the one place in the three packages where a subprocess is launched or a file is mutated. When a strictcli command handler is running under `--dry-run`, calls through it are recorded and previewed rather than performed; outside a command dispatch they behave exactly as before. Centralizing it is what makes the guarantee checkable at all -- a promise that dry-run is honest is only as good as the number of places that can break it, and that number is now one.
 
-Breaking changes in this batch: `deploy_github_pages` now takes a required `target` keyword instead of reading `git remote get-url origin` from the working directory, and the config schema drops `topology.assembly` (replaced by `assembly.repo`) while `assembly.pages_project` becomes required.
+The cost is a new direct runtime dependency on `strictcli`, which is part of why this is a minor bump. It is pure Python and already present transitively for anyone installing selfdoc.
 
-Fixes make the Python extractor's `ref` output count `__all__` re-exports and module-level constants (previously structurally uncountable in coverage) and stop dropping docstring-less public classes and pydantic models; manifest generation is now idempotent when content is unchanged. The new `coverage_threshold` field lets `selfdoc check` accept partial coverage.
+Also in this batch: `selfdoc gen` and `selfdoc check` commit their output again. The auto-commit helper had been passing `--yes` to the commit tools; those tools adopted the same redesigned confirmation protocol and now reject the flag outright, so every auto-commit failed while the command itself still exited 0. Regenerated pages and the content-hash baseline were left uncommitted in the consumer's tree, where they would trip that repo's clean-tree gate at release time instead -- far from the actual cause.
 """
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
@@ -40,11 +40,23 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 include = ["pypi"]
 exclude = []
 
-# selfblog: idle this batch -- its queued entries stay unreleased until it
-# accumulates enough to warrant its own bump (same pattern as prior batches).
-# [releasables.selfblog]
-# bump = ""
-# description = ""
-# context = ""
-# include = ["npm", "pypi"]
-# exclude = []
+[releasables.selfblog]
+# Version bump type: patch, minor, major, infra, or prerelease
+bump = "minor"
+# Short description of this release (required)
+description = "One canonical blog URL with single-hop redirects, config-driven assembly artifacts requiring three config changes, and the strictcli effects regime with `post publish` and `assembly init` declared consequential"
+# Optional context explaining why these changes were made
+context = """
+The blog was reachable at more than one URL, and search engines were being asked to guess which one counted. This release settles it: the retired blog subdomain now 301s straight to the canonical `<docs_base>/blog` in a single hop instead of bouncing through the apex, requests for `/blog` arriving on any other host bound to the same Pages project are redirected too, and the shared homepage and blog index declare `rel=canonical` so a crawler that reaches them by some other route still learns the one address that counts.
+
+The generated assembly artifacts stopped being hardcoded in the same pass. `assembly generate-shared` now requires `--canonical-base`, and the deploy workflow it generates reads its Cloudflare Pages project from the new required `assembly.pages_project` key -- the same key `assembly init` uses, which is the point: the two disagreed before, so the project init created one name and the generated workflow deployed to another. Three config changes are required; the changelog entry enumerates them.
+
+selfblog also adopts strictcli's effects regime alongside selfdoc, and it is the package where dry-run matters most. A dry `assembly init` now names the GitHub repository it would create, the Pages project it would claim and each secret it would set, and performs none of it. Two commands are declared consequential and prompt before dispatch: `post publish`, the moment locally-authored private content becomes publicly readable, and `assembly init`, which creates three named external resources that a rerun cannot un-create. `assembly push` and `assembly rebuild` are deliberately not consequential -- they re-derive already-public documentation from an already-public tag -- and keep running bare.
+"""
+# Pre-release channel: alpha, beta, rc, or stable (ordered;
+# demotion is an error). Per package, so one workspace release
+# can ship some packages stable and others as alphas. See
+# docs/release-workflow.md#the-pre-release-channel.
+# preid = ""
+include = ["npm", "pypi"]
+exclude = []
