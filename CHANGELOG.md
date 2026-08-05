@@ -945,20 +945,7 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 
 # selfblog
 
-## 0.2.0
-
-One canonical blog URL with single-hop redirects, config-driven assembly artifacts requiring three config changes, and the strictcli effects regime with `post publish` and `assembly init` declared consequential
-
-<details>
-<summary>Context</summary>
-
-The blog was reachable at more than one URL, and search engines were being asked to guess which one counted. This release settles it: the retired blog subdomain now 301s straight to the canonical `<docs_base>/blog` in a single hop instead of bouncing through the apex, requests for `/blog` arriving on any other host bound to the same Pages project are redirected too, and the shared homepage and blog index declare `rel=canonical` so a crawler that reaches them by some other route still learns the one address that counts.
-
-The generated assembly artifacts stopped being hardcoded in the same pass. `assembly generate-shared` now requires `--canonical-base`, and the deploy workflow it generates reads its Cloudflare Pages project from the new required `assembly.pages_project` key -- the same key `assembly init` uses, which is the point: the two disagreed before, so the project init created one name and the generated workflow deployed to another. Three config changes are required; the changelog entry enumerates them.
-
-selfblog also adopts strictcli's effects regime alongside selfdoc, and it is the package where dry-run matters most. A dry `assembly init` now names the GitHub repository it would create, the Pages project it would claim and each secret it would set, and performs none of it. Two commands are declared consequential and prompt before dispatch: `post publish`, the moment locally-authored private content becomes publicly readable, and `assembly init`, which creates three named external resources that a rerun cannot un-create. `assembly push` and `assembly rebuild` are deliberately not consequential -- they re-derive already-public documentation from an already-public tag -- and keep running bare.
-
-</details>
+## Unreleased
 
 ### Breaking
 
@@ -975,6 +962,15 @@ selfblog also adopts strictcli's effects regime alongside selfdoc, and it is the
 - [selfblog] **`selfblog assembly redirects --docs-base` works.** The flag was declared as `docs_base`, so the only spelling the CLI accepted was `--docs_base` -- while its own error message, its sibling flags, and every documented example said `--docs-base`. It is now `--docs-base`, like every other flag.
 
 ## 0.1.1
+
+Fix CI: install playwright browsers before running tests, fix publish gate regex
+
+<details>
+<summary>Context</summary>
+
+v0.1.0 CI failed because playwright browsers were not installed. The publish gate regex also did not match the actual CI job name. Both are fixed.
+
+</details>
 
 ### Fixes
 
