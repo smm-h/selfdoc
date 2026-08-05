@@ -2,7 +2,20 @@
 
 # Changelog
 
-## Unreleased
+## 0.7.0
+
+selfdoc-core gains `selfdoc_core.effects`, the single authorized surface for subprocess and filesystem effects across selfdoc, selfblog and core itself, and takes a new runtime dependency on strictcli
+
+<details>
+<summary>Context</summary>
+
+This is the library half of the effects regime the two CLIs adopt in the same batch. The new `selfdoc_core.effects` module is the one place in the three packages where a subprocess is launched or a file is mutated. When a strictcli command handler is running under `--dry-run`, calls through it are recorded and previewed rather than performed; outside a command dispatch they behave exactly as before. Centralizing it is what makes the guarantee checkable at all -- a promise that dry-run is honest is only as good as the number of places that can break it, and that number is now one.
+
+The cost is a new direct runtime dependency on `strictcli`, which is part of why this is a minor bump. It is pure Python and already present transitively for anyone installing selfdoc.
+
+Also in this batch: `selfdoc gen` and `selfdoc check` commit their output again. The auto-commit helper had been passing `--yes` to the commit tools; those tools adopted the same redesigned confirmation protocol and now reject the flag outright, so every auto-commit failed while the command itself still exited 0. Regenerated pages and the content-hash baseline were left uncommitted in the consumer's tree, where they would trip that repo's clean-tree gate at release time instead -- far from the actual cause.
+
+</details>
 
 ### Breaking
 
