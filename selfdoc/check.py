@@ -2191,6 +2191,77 @@ def filter_lints(lints, ignore_codes):
     return [lint for lint in lints if lint.code not in ignore_codes]
 
 
+def check_exit_code(result, coverage_below_threshold):
+    """Compute the process exit code for a check run.
+
+    Args:
+        result: CheckResult to inspect (lints already filtered).
+        coverage_below_threshold: True when documented coverage is under
+            the configured coverage_threshold. Passed in because the
+            threshold lives in config, not in the CheckResult.
+
+    Returns:
+        1 if any directive failed, any lint is an error, or coverage is
+        below threshold; 0 otherwise.
+    """
+    has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
+    has_errors = any(lint.severity == "error" for lint in result.lints)
+    return 1 if (has_failures or has_errors or coverage_below_threshold) else 0
+
+
+def serialize_check_result(result, exit_code):
+    """Build the JSON payload emitted by ``selfdoc check --format json``.
+
+    This is the single definition of the machine-readable check contract:
+    the CLI and its tests both call it, so the schema in
+    ``schemas/check-output.schema.json`` has exactly one producer to stay
+    in sync with.
+
+    Args:
+        result: CheckResult to serialize (lints already filtered).
+        exit_code: Exit code the run will terminate with, from
+            check_exit_code().
+
+    Returns:
+        JSON-serializable dict conforming to check-output.schema.json.
+    """
+    output = {
+        "directives": [
+            {
+                "file": dr.file,
+                "line": dr.line,
+                "directive": dr.directive,
+                "status": dr.status,
+                "error": dr.error,
+            }
+            for dr in result.directive_results
+        ],
+        "coverage": None,
+        "lints": [
+            {
+                "file": lint.file,
+                "line": lint.line,
+                "code": lint.code,
+                "message": lint.message,
+                "severity": lint.severity,
+            }
+            for lint in result.lints
+        ],
+        "exit_code": exit_code,
+    }
+    if result.coverage is not None:
+        cov = result.coverage
+        output["coverage"] = {
+            "total_public": cov.total_public,
+            "referenced": cov.referenced,
+            "documented": cov.documented,
+            "referenced_symbols": cov.referenced_symbols,
+            "documented_symbols": cov.documented_symbols,
+            "unreferenced_symbols": cov.unreferenced_symbols,
+        }
+    return output
+
+
 def print_results(result):
     """Print check results to stdout in a human-readable format.
 

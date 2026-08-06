@@ -6,7 +6,16 @@ from unittest import mock
 
 import pytest
 
-from selfdoc.check import CheckResult, DirectiveResult, LintResult, check_docs, filter_lints, print_results
+from selfdoc.check import (
+    CheckResult,
+    DirectiveResult,
+    LintResult,
+    check_docs,
+    check_exit_code,
+    filter_lints,
+    print_results,
+    serialize_check_result,
+)
 
 
 @pytest.fixture()
@@ -1875,39 +1884,10 @@ def test_json_format(python_project, capsys):
 
     result = check_docs(str(python_project))
 
-    # Simulate the JSON output path from _cmd_check
-    output = {
-        "directives": [
-            {
-                "file": dr.file,
-                "line": dr.line,
-                "directive": dr.directive,
-                "status": dr.status,
-                "error": dr.error,
-            }
-            for dr in result.directive_results
-        ],
-        "coverage": None,
-        "lints": [
-            {
-                "file": lint.file,
-                "line": lint.line,
-                "code": lint.code,
-                "message": lint.message,
-                "severity": lint.severity,
-            }
-            for lint in result.lints
-        ],
-        "exit_code": 0,
-    }
-    if result.coverage is not None:
-        cov = result.coverage
-        output["coverage"] = {
-            "total_public": cov.total_public,
-            "referenced": cov.referenced,
-            "referenced_symbols": cov.referenced_symbols,
-            "unreferenced_symbols": cov.unreferenced_symbols,
-        }
+    # The real JSON output path from _cmd_check, not a copy of it.
+    output = serialize_check_result(
+        result, check_exit_code(result, coverage_below_threshold=False),
+    )
 
     json_str = json.dumps(output, indent=2)
     print(json_str)

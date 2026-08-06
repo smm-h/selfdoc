@@ -497,7 +497,13 @@ def _cmd_deploy(ctx):
 def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
                version_override=""):
     """Check documentation coverage and consistency."""
-    from selfdoc.check import check_docs, filter_lints, print_results
+    from selfdoc.check import (
+        check_docs,
+        check_exit_code,
+        filter_lints,
+        print_results,
+        serialize_check_result,
+    )
     from selfdoc.config import load_config
 
     config = load_config(".")
@@ -542,10 +548,6 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
     # Filter lints
     result.lints = filter_lints(result.lints, ignore_codes)
 
-    # Determine exit code before output
-    has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
-    has_errors = any(lint.severity == "error" for lint in result.lints)
-
     # Coverage threshold check (uses documented count, not referenced)
     coverage_below_threshold = False
     if result.coverage is not None and result.coverage.total_public > 0:
@@ -554,47 +556,11 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
         if ratio < threshold:
             coverage_below_threshold = True
 
-    exit_code = 1 if (
-        has_failures
-        or has_errors
-        or coverage_below_threshold
-    ) else 0
+    # Determine exit code before output
+    exit_code = check_exit_code(result, coverage_below_threshold)
 
     if format == "json":
-        output = {
-            "directives": [
-                {
-                    "file": dr.file,
-                    "line": dr.line,
-                    "directive": dr.directive,
-                    "status": dr.status,
-                    "error": dr.error,
-                }
-                for dr in result.directive_results
-            ],
-            "coverage": None,
-            "lints": [
-                {
-                    "file": lint.file,
-                    "line": lint.line,
-                    "code": lint.code,
-                    "message": lint.message,
-                    "severity": lint.severity,
-                }
-                for lint in result.lints
-            ],
-            "exit_code": exit_code,
-        }
-        if result.coverage is not None:
-            cov = result.coverage
-            output["coverage"] = {
-                "total_public": cov.total_public,
-                "referenced": cov.referenced,
-                "documented": cov.documented,
-                "referenced_symbols": cov.referenced_symbols,
-                "documented_symbols": cov.documented_symbols,
-                "unreferenced_symbols": cov.unreferenced_symbols,
-            }
+        output = serialize_check_result(result, exit_code)
         print(json.dumps(output, indent=2))
     else:
         print_results(result)

@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from selfdoc.check import check_docs
+from selfdoc.check import check_docs, check_exit_code, serialize_check_result
 
 
 # -- Schema-aware validation helpers (no jsonschema dependency) --
@@ -130,15 +130,22 @@ def _validate_check_output(data):
     cov = data["coverage"]
     if cov is not None:
         assert isinstance(cov, dict), "coverage must be null or an object"
-        for field in ("total_public", "referenced", "referenced_symbols", "unreferenced_symbols"):
+        for field in ("total_public", "referenced", "documented",
+                      "referenced_symbols", "documented_symbols",
+                      "unreferenced_symbols"):
             assert field in cov, f"coverage missing required field: {field}"
         assert isinstance(cov["total_public"], int), "coverage.total_public must be an integer"
         assert cov["total_public"] >= 0, "coverage.total_public must be >= 0"
         assert isinstance(cov["referenced"], int), "coverage.referenced must be an integer"
         assert cov["referenced"] >= 0, "coverage.referenced must be >= 0"
+        assert isinstance(cov["documented"], int), "coverage.documented must be an integer"
+        assert cov["documented"] >= 0, "coverage.documented must be >= 0"
         assert isinstance(cov["referenced_symbols"], list), "coverage.referenced_symbols must be an array"
         for j, sym in enumerate(cov["referenced_symbols"]):
             assert isinstance(sym, str), f"coverage.referenced_symbols[{j}] must be a string"
+        assert isinstance(cov["documented_symbols"], list), "coverage.documented_symbols must be an array"
+        for j, sym in enumerate(cov["documented_symbols"]):
+            assert isinstance(sym, str), f"coverage.documented_symbols[{j}] must be a string"
         assert isinstance(cov["unreferenced_symbols"], list), "coverage.unreferenced_symbols must be an array"
         for j, sym in enumerate(cov["unreferenced_symbols"]):
             assert isinstance(sym, str), f"coverage.unreferenced_symbols[{j}] must be a string"
@@ -166,44 +173,19 @@ def _validate_check_output(data):
 
 
 def _serialize_check_result(result):
-    """Serialize a CheckResult to JSON dict, matching cli.py logic."""
-    output = {
-        "directives": [
-            {
-                "file": dr.file,
-                "line": dr.line,
-                "directive": dr.directive,
-                "status": dr.status,
-                "error": dr.error,
-            }
-            for dr in result.directive_results
-        ],
-        "coverage": None,
-        "lints": [
-            {
-                "file": lint.file,
-                "line": lint.line,
-                "code": lint.code,
-                "message": lint.message,
-                "severity": lint.severity,
-            }
-            for lint in result.lints
-        ],
-        "exit_code": 1 if any(
-            dr.status == "FAILED" for dr in result.directive_results
-        ) or any(
-            lint.severity == "error" for lint in result.lints
-        ) else 0,
-    }
-    if result.coverage is not None:
-        cov = result.coverage
-        output["coverage"] = {
-            "total_public": cov.total_public,
-            "referenced": cov.referenced,
-            "referenced_symbols": cov.referenced_symbols,
-            "unreferenced_symbols": cov.unreferenced_symbols,
-        }
-    return output
+    """Serialize a CheckResult exactly as the CLI does.
+
+    Delegates to the production serializer -- no reimplementation here.
+    A hand-copied mirror of it drifted from cli.py once already (it never
+    grew the documented/documented_symbols coverage fields), which is why
+    these tests exercise the shipped function instead.
+
+    Coverage threshold is not in play for these fixtures, so the exit code
+    is computed with coverage_below_threshold=False.
+    """
+    return serialize_check_result(
+        result, check_exit_code(result, coverage_below_threshold=False),
+    )
 
 
 # -- Fixtures --
