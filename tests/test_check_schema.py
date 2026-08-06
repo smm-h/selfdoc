@@ -3,6 +3,8 @@
 import json
 import os
 import re
+import subprocess
+import sys
 
 import pytest
 
@@ -38,6 +40,39 @@ def _schema_lint_codes():
     return set(
         schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
     )
+
+
+def _schema_coverage_object():
+    """The object variant of the schema's ``coverage`` property."""
+    schema = _load_schema()
+    for variant in schema["properties"]["coverage"]["oneOf"]:
+        if variant.get("type") == "object":
+            return variant
+    raise AssertionError("schema coverage has no object variant")
+
+
+def _cli_check_output(project_dir):
+    """Run the real ``selfdoc check --format json`` and parse its output.
+
+    This is the shipped contract as consumers see it -- not a
+    reconstruction of it -- so schema-completeness assertions below hold
+    against what the CLI actually emits.
+    """
+    proc = subprocess.run(
+        [
+            sys.executable, "-m", "selfdoc",
+            "check", "--format", "json", "--no-auto-commit",
+        ],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert proc.stdout.strip(), (
+        f"selfdoc check produced no stdout (exit {proc.returncode}):\n"
+        f"{proc.stderr}"
+    )
+    return json.loads(proc.stdout)
 
 
 def _source_emitted_lint_codes():
@@ -426,6 +461,44 @@ def test_schema_lint_enum_matches_source_emitted_codes():
         "lint codes in the schema enum that no source module emits: "
         f"{stale_in_schema}. Remove them from "
         "schemas/check-output.schema.json."
+    )
+
+
+def test_schema_coverage_properties_match_emitted_fields(python_project):
+    """The schema's coverage object declares exactly the fields the CLI emits.
+
+    Structural guard against schema rot, sibling of the lint-enum test:
+    extra properties validate silently, so a field emitted by
+    ``selfdoc check --format json`` but absent from the schema is invisible
+    to validators while breaking every type-generating consumer.
+    """
+    data = _cli_check_output(python_project)
+    assert data["coverage"] is not None, (
+        "fixture project must produce coverage for this test to mean anything"
+    )
+    emitted = set(data["coverage"])
+
+    coverage_schema = _schema_coverage_object()
+    declared = set(coverage_schema["properties"])
+    required = set(coverage_schema["required"])
+
+    missing_from_schema = sorted(emitted - declared)
+    stale_in_schema = sorted(declared - emitted)
+
+    assert not missing_from_schema, (
+        "coverage fields emitted by selfdoc check but absent from the schema: "
+        f"{missing_from_schema}. Add them to "
+        "schemas/check-output.schema.json."
+    )
+    assert not stale_in_schema, (
+        "coverage fields declared by the schema that selfdoc check never "
+        f"emits: {stale_in_schema}. Remove them from "
+        "schemas/check-output.schema.json."
+    )
+    # Every emitted field is unconditional, so all of them are required.
+    assert required == emitted, (
+        "schema coverage.required must list every emitted field; "
+        f"required={sorted(required)} emitted={sorted(emitted)}"
     )
 
 

@@ -23,11 +23,16 @@
         {"type": "null"},
         {
           "type": "object",
-          "required": ["total_public", "referenced", "referenced_symbols", "unreferenced_symbols"],
+          "required": [
+            "total_public", "referenced", "documented",
+            "referenced_symbols", "documented_symbols", "unreferenced_symbols"
+          ],
           "properties": {
             "total_public": {"type": "integer", "minimum": 0},
             "referenced": {"type": "integer", "minimum": 0},
+            "documented": {"type": "integer", "minimum": 0},
             "referenced_symbols": {"type": "array", "items": {"type": "string"}},
+            "documented_symbols": {"type": "array", "items": {"type": "string"}},
             "unreferenced_symbols": {"type": "array", "items": {"type": "string"}}
           }
         }
