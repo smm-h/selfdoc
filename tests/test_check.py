@@ -4417,6 +4417,243 @@ def test_example001_invalid_json(lint_project):
     assert "JSON syntax error" in ex001[0].message
 
 
+# -- EXAMPLE002/EXAMPLE003: opt-in semantic example validation --
+#
+# A ``validate`` marker on a fence opts the block into the semantic tier:
+# selfdoc writes the block to a scratch file and hands it to the command
+# configured for that language under the ``examples`` config key.  Unmarked
+# blocks never reach this tier and keep the syntax-only behavior above.
+
+import shlex
+import sys
+
+
+def _py_validator():
+    """A command template that runs the snippet with this interpreter."""
+    return f"{shlex.quote(sys.executable)} {{file}}"
+
+
+def _write_page(docs_dir, body, name="page.md"):
+    """Write a docs page with valid frontmatter and *body* as content."""
+    with open(os.path.join(docs_dir, name), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: example validation fixture page\n---\n"
+            "# Example\n\n" + body
+        )
+
+
+# A snippet that PARSES cleanly but fails when executed -- the exact class of
+# breakage the syntax-only tier cannot see.
+_RUNTIME_BROKEN = (
+    "def greet(name):\n"
+    "    return 'Hello, ' + name\n"
+    "\n"
+    "greet()\n"
+)
+
+_RUNTIME_OK = (
+    "def greet(name):\n"
+    "    return 'Hello, ' + name\n"
+    "\n"
+    "print(greet('world'))\n"
+)
+
+
+def test_example002_semantic_failure(lint_project):
+    """EXAMPLE002: a marked block that fails at runtime is reported."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(docs_dir, f"```python validate\n{_RUNTIME_BROKEN}```\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex002 = [r for r in results if r.code == "EXAMPLE002"]
+    assert len(ex002) == 1
+    assert ex002[0].severity == "error"
+    assert ex002[0].file == "page.md"
+    assert "TypeError" in ex002[0].message
+    # The syntax tier does not double-report a block the semantic tier owns.
+    assert [r for r in results if r.code == "EXAMPLE001"] == []
+    assert [r for r in results if r.code == "EXAMPLE003"] == []
+
+
+def test_example002_valid_block_is_silent(lint_project):
+    """A marked block that runs cleanly produces no example lint."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(docs_dir, f"```python validate\n{_RUNTIME_OK}```\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    assert [r for r in results if r.code.startswith("EXAMPLE")] == []
+
+
+def test_example002_catches_indentation_error_the_swallow_hides(lint_project):
+    """The semantic tier sees the IndentationError the syntax tier swallows."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(
+        docs_dir,
+        "```python validate\n"
+        "    print('over-indented')\n"
+        "    print('still over-indented')\n"
+        "```\n",
+    )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex002 = [r for r in results if r.code == "EXAMPLE002"]
+    assert len(ex002) == 1
+    assert "IndentationError" in ex002[0].message
+
+
+def test_example002_language_agnostic_dispatch(lint_project, tmp_path):
+    """Any configured language is validated; the scratch file is suffixed."""
+    _, docs_dir, config = lint_project
+    probe = os.path.join(tmp_path, "probe.py")
+    with open(probe, "w", encoding="utf-8") as f:
+        f.write(
+            "import sys\n"
+            "path = sys.argv[1]\n"
+            "sys.stderr.write('suffix=' + path[path.rfind('.'):] + '\\n')\n"
+            "sys.stderr.write(open(path).read())\n"
+            "sys.exit(3)\n"
+        )
+    config["examples"] = {
+        "go": f"{shlex.quote(sys.executable)} {shlex.quote(probe)} {{file}}",
+    }
+    _write_page(
+        docs_dir,
+        "```go validate\n"
+        "package main\n"
+        "\n"
+        "func main() {}\n"
+        "```\n",
+    )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex002 = [r for r in results if r.code == "EXAMPLE002"]
+    assert len(ex002) == 1
+    assert "suffix=.go" in ex002[0].message
+    assert "package main" in ex002[0].message
+
+
+def test_example003_marker_without_any_config(lint_project):
+    """EXAMPLE003: a marker with no 'examples' config at all is a hard signal."""
+    _, docs_dir, config = lint_project
+    _write_page(docs_dir, f"```python validate\n{_RUNTIME_OK}```\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex003 = [r for r in results if r.code == "EXAMPLE003"]
+    assert len(ex003) == 1
+    assert ex003[0].severity == "error"
+    assert "python" in ex003[0].message
+    assert [r for r in results if r.code == "EXAMPLE002"] == []
+
+
+def test_example003_marker_for_unconfigured_language(lint_project):
+    """EXAMPLE003: the marked block's language has no configured command."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"go": "true {file}"}
+    _write_page(docs_dir, f"```python validate\n{_RUNTIME_OK}```\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex003 = [r for r in results if r.code == "EXAMPLE003"]
+    assert len(ex003) == 1
+    assert "python" in ex003[0].message
+
+
+def test_example003_falls_back_to_the_syntax_tier(lint_project):
+    """An unvalidatable marked block still gets the syntax-only treatment."""
+    _, docs_dir, config = lint_project
+    _write_page(
+        docs_dir,
+        "```python validate\n"
+        "def greet(name)\n"
+        "    return name\n"
+        "\n"
+        "greet('x')\n"
+        "```\n",
+    )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    assert len([r for r in results if r.code == "EXAMPLE003"]) == 1
+    assert len([r for r in results if r.code == "EXAMPLE001"]) == 1
+
+
+def test_unmarked_block_is_never_executed(lint_project):
+    """Without the marker, a runtime-broken block stays invisible (old behavior)."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(docs_dir, f"```python\n{_RUNTIME_BROKEN}```\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    assert [r for r in results if r.code.startswith("EXAMPLE")] == []
+
+
+def test_unmarked_syntax_error_still_example001_with_examples_configured(lint_project):
+    """Configuring 'examples' does not change the unmarked syntax tier."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(
+        docs_dir,
+        "```python\n"
+        "def greet(name)\n"
+        "    return name\n"
+        "\n"
+        "greet('x')\n"
+        "```\n",
+    )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex001 = [r for r in results if r.code == "EXAMPLE001"]
+    assert len(ex001) == 1
+    assert "Python syntax error" in ex001[0].message
+    assert [r for r in results if r.code == "EXAMPLE002"] == []
+
+
+def test_example002_timeout(lint_project, monkeypatch):
+    """A validator that hangs is reported as EXAMPLE002, not left to hang."""
+    from selfdoc import check as check_mod
+
+    monkeypatch.setattr(check_mod, "_EXAMPLE_VALIDATE_TIMEOUT", 1)
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(
+        docs_dir,
+        "```python validate\n"
+        "import time\n"
+        "\n"
+        "time.sleep(30)\n"
+        "```\n",
+    )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex002 = [r for r in results if r.code == "EXAMPLE002"]
+    assert len(ex002) == 1
+    assert "timed out" in ex002[0].message
+
+
+def test_example002_missing_validator_binary(lint_project):
+    """A configured command whose binary is absent is reported, not raised."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": "selfdoc-no-such-validator-binary {file}"}
+    _write_page(docs_dir, f"```python validate\n{_RUNTIME_OK}```\n")
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    ex002 = [r for r in results if r.code == "EXAMPLE002"]
+    assert len(ex002) == 1
+    assert "selfdoc-no-such-validator-binary" in ex002[0].message
+
+
+def test_example_validation_leaves_no_scratch_files(lint_project, tmp_path):
+    """The scratch snippet file is created and removed inside the same call."""
+    _, docs_dir, config = lint_project
+    config["examples"] = {"python": _py_validator()}
+    _write_page(docs_dir, f"```python validate\n{_RUNTIME_OK}```\n")
+
+    before = sorted(os.listdir(tmp_path))
+    _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    assert sorted(os.listdir(tmp_path)) == before
+
+
 # -- DRIFT001: source docstring drift detection --
 
 

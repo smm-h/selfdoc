@@ -69,6 +69,34 @@ class TestCodeBlock:
         assert tokens[1].start == 4
         assert tokens[1].end == 6
 
+    def test_validate_marker_absent_by_default(self):
+        tokens = tokenize("```python\nprint('hi')\n```")
+        assert tokens[0].validate is False
+
+    def test_validate_marker(self):
+        tokens = tokenize("```python validate\nprint('hi')\n```")
+        assert tokens[0].lang == "python"
+        assert tokens[0].validate is True
+
+    def test_validate_marker_alongside_other_tokens(self):
+        tokens = tokenize("```python run validate lines=5\nprint('hi')\n```")
+        t = tokens[0]
+        assert t.lang == "python"
+        assert t.validate is True
+        assert t.run is True
+        assert t.line_numbers is True
+        assert t.line_start == 5
+
+    def test_validate_as_language_is_not_a_marker(self):
+        """A bare ```validate fence names a language, not the marker."""
+        tokens = tokenize("```validate\nfoo\n```")
+        assert tokens[0].lang == "validate"
+        assert tokens[0].validate is False
+
+    def test_unknown_info_tokens_still_ignored(self):
+        tokens = tokenize("```python nonsense validate\nprint('hi')\n```")
+        assert tokens[0].validate is True
+
 
 class TestHeading:
     def test_h1(self):

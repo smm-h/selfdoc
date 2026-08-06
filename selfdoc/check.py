@@ -9,8 +9,10 @@ referenced by directives vs. the total in source files.
 import ast
 import json
 import os
+import shlex
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 
 import re
@@ -63,6 +65,135 @@ def _machine_owned_keys(all_docs, dir_path, cli_structure, locale_prefix):
     return keys
 
 _DIRECTIVE_MARKERS = {":-:", ":<:", ":>:", ":@:", ":=:", ":::"}
+
+
+# ---------------------------------------------------------------------------
+# EXAMPLE002/EXAMPLE003 -- opt-in semantic example validation
+# ---------------------------------------------------------------------------
+#
+# EXAMPLE001 parses a fenced block; it cannot tell a program that compiles
+# from a program that works.  A ``validate`` token in the fence info string
+# opts a block into the semantic tier: selfdoc writes it to a scratch file
+# and hands the path to the command configured for that language under the
+# ``examples`` config key.  The marker is opt-in because most documentation
+# snippets are deliberately partial -- an opt-out polarity would flag them
+# all.  A marker whose language has no configured command is EXAMPLE003, a
+# hard error rather than a silent skip: a marker that validates nothing is
+# indistinguishable from a passing one, which is the failure mode the whole
+# tier exists to remove.
+#
+# No sandbox: the configured validators compile and register, they are not a
+# harness for running untrusted payloads, and the snippets are the project's
+# own documentation.
+
+# Seconds a configured validator may run before it is killed.  Selfdoc's
+# "external calls must have timeouts" convention -- no unbounded wait.
+_EXAMPLE_VALIDATE_TIMEOUT = 60
+
+# How many trailing output lines of a failing validator reach the message.
+_EXAMPLE_STDERR_TAIL_LINES = 5
+
+# Scratch-file suffix per fenced-block language.  Validators dispatch on the
+# extension (a Go toolchain will not look at a file that is not ``*.go``), so
+# the marked language has to survive the trip to disk.
+_EXAMPLE_SUFFIXES = {
+    "python": ".py", "py": ".py", "python3": ".py",
+    "go": ".go", "golang": ".go",
+    "ts": ".ts", "typescript": ".ts",
+    "js": ".js", "javascript": ".js", "jsx": ".jsx", "tsx": ".tsx",
+    "json": ".json",
+    "rust": ".rs", "rs": ".rs",
+    "sh": ".sh", "bash": ".sh", "shell": ".sh",
+    "c": ".c", "cpp": ".cpp", "c++": ".cpp",
+    "java": ".java", "kotlin": ".kt", "kt": ".kt",
+    "swift": ".swift", "dart": ".dart", "zig": ".zig",
+    "ruby": ".rb", "rb": ".rb",
+    "sql": ".sql", "toml": ".toml",
+    "yaml": ".yaml", "yml": ".yml",
+    "svelte": ".svelte",
+}
+
+
+def _example_suffix(lang):
+    """Return the scratch-file suffix for a fenced-block *lang*."""
+    known = _EXAMPLE_SUFFIXES.get(lang)
+    if known:
+        return known
+    cleaned = re.sub(r"[^a-z0-9]", "", lang.lower())
+    return f".{cleaned}" if cleaned else ".txt"
+
+
+def _example_output_tail(proc):
+    """Collapse a failing validator's output into one message-sized line."""
+    text = (proc.stderr or "") or (proc.stdout or "")
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return f"exit status {proc.returncode}, no output"
+    return " | ".join(lines[-_EXAMPLE_STDERR_TAIL_LINES:])
+
+
+def _validate_example_block(tok, rel_path, command_template, cwd):
+    """Execute one ``validate``-marked block; return an EXAMPLE002 or None.
+
+    The block's raw text is written to a scratch file whose suffix names the
+    language, ``{file}`` in *command_template* is replaced with that path,
+    and the result runs through the effects chokepoint.  Under ``--dry-run``
+    the run is recorded rather than executed, so there is no verdict to
+    report and the block yields no lint.
+    """
+    argv_template = shlex.split(command_template)
+    body = "\n".join(tok.lines)
+    if not body.endswith("\n"):
+        body += "\n"
+
+    with tempfile.TemporaryDirectory(prefix="selfdoc-example-") as scratch:
+        snippet = os.path.join(scratch, f"example{_example_suffix(tok.lang)}")
+        with open(snippet, "w", encoding="utf-8") as fh:  # effects: exempt -- self-owned scratch snippet, created, read by the validator and deleted inside this call
+            fh.write(body)
+        argv = [part.replace("{file}", snippet) for part in argv_template]
+        try:
+            proc = effects.run(
+                argv,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=_EXAMPLE_VALIDATE_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            return LintResult(
+                file=rel_path,
+                line=tok.start,
+                code="EXAMPLE002",
+                message=(
+                    f"example validator timed out after"
+                    f" {_EXAMPLE_VALIDATE_TIMEOUT}s:"
+                    f" {command_template}"
+                ),
+                severity="error",
+            )
+        except OSError as e:
+            return LintResult(
+                file=rel_path,
+                line=tok.start,
+                code="EXAMPLE002",
+                message=(
+                    f"example validator could not be run"
+                    f" ({command_template}): {e}"
+                ),
+                severity="error",
+            )
+        if effects.unsettled(proc) or proc.returncode == 0:
+            return None
+        return LintResult(
+            file=rel_path,
+            line=tok.start,
+            code="EXAMPLE002",
+            message=(
+                f"{tok.lang} example failed validation"
+                f" (exit {proc.returncode}): {_example_output_tail(proc)}"
+            ),
+            severity="error",
+        )
 
 
 @dataclass
@@ -1070,7 +1201,13 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
     for rd in (resolved_directives or []):
         page_directives.setdefault(rd.file, []).append(rd)
 
-    project_name = os.path.basename(os.path.dirname(os.path.abspath(docs_dir)))
+    project_root = os.path.dirname(os.path.abspath(docs_dir))
+    project_name = os.path.basename(project_root)
+
+    # EXAMPLE002/EXAMPLE003 -- validator command templates keyed by fenced
+    # language.  Absent config means the feature is off, which turns every
+    # 'validate' marker in the tree into an EXAMPLE003.
+    example_commands = config.get("examples") or {}
 
     # SEO014 -- Meaningless alt text
     # SEO015 -- Generic anchor text
@@ -1540,9 +1677,38 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                 ))
 
         # EXAMPLE001 -- code block syntax validation
+        # EXAMPLE002/EXAMPLE003 -- opt-in semantic validation ('validate')
         for tok in tokens:
             if not isinstance(tok, CodeBlock):
                 continue
+
+            # Semantic tier: opted into per block, never inferred.  A block
+            # the tier owns is not also parsed below -- the validator's own
+            # diagnostic supersedes a second-hand syntax message.  A marker
+            # with no configured command owns nothing, so EXAMPLE003 is
+            # raised and the block falls through to the syntax tier.
+            if tok.validate:
+                command_template = example_commands.get(tok.lang)
+                if command_template is not None:
+                    lint = _validate_example_block(
+                        tok, rel_path, command_template, project_root,
+                    )
+                    if lint is not None:
+                        results.append(lint)
+                    continue
+                results.append(LintResult(
+                    file=rel_path,
+                    line=tok.start,
+                    code="EXAMPLE003",
+                    message=(
+                        f"code block marked 'validate' but no validator is"
+                        f" configured for language '{tok.lang}': add"
+                        f" \"examples\": {{\"{tok.lang}\": \"<command>"
+                        f" {{file}}\"}} to selfdoc.json, or drop the marker"
+                    ),
+                    severity="error",
+                ))
+
             # Python code blocks
             if tok.lang in ("python", "py", "python3"):
                 if len(tok.lines) < 3:

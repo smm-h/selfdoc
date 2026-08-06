@@ -338,3 +338,61 @@ def test_redirects_unknown_key(config_dir):
     ]))
     with pytest.raises(ConfigError, match="invalid.*key 'bogus'"):
         load_config(str(config_dir))
+
+
+# -- examples: per-language validator command templates --
+
+
+def test_examples_absent(config_dir):
+    """Config without 'examples' loads with None (feature off)."""
+    _write_config(config_dir, _cfg())
+    cfg = load_config(str(config_dir))
+    assert cfg["examples"] is None
+
+
+def test_examples_valid(config_dir):
+    """A language -> command template mapping loads verbatim."""
+    _write_config(config_dir, _cfg(examples={
+        "python": "uv run --directory python python {file}",
+        "go": "scripts/validate-example-go.sh {file}",
+    }))
+    cfg = load_config(str(config_dir))
+    assert cfg["examples"] == {
+        "python": "uv run --directory python python {file}",
+        "go": "scripts/validate-example-go.sh {file}",
+    }
+
+
+def test_examples_missing_file_placeholder(config_dir):
+    """A command template without '{file}' is rejected at load."""
+    _write_config(config_dir, _cfg(examples={"python": "python -c pass"}))
+    with pytest.raises(ConfigError, match=r"examples\.python.*\{file\}"):
+        load_config(str(config_dir))
+
+
+def test_examples_non_string_command(config_dir):
+    """A non-string command template is rejected at load."""
+    _write_config(config_dir, _cfg(examples={"python": ["python", "{file}"]}))
+    with pytest.raises(ConfigError, match=r"examples\.python.*string"):
+        load_config(str(config_dir))
+
+
+def test_examples_empty_command(config_dir):
+    """An empty command template is rejected at load."""
+    _write_config(config_dir, _cfg(examples={"python": ""}))
+    with pytest.raises(ConfigError, match=r"examples\.python"):
+        load_config(str(config_dir))
+
+
+def test_examples_malformed_language_key(config_dir):
+    """A malformed language key is rejected at load (strict keys)."""
+    _write_config(config_dir, _cfg(examples={"Python 3!": "python {file}"}))
+    with pytest.raises(ConfigError, match="examples.*key"):
+        load_config(str(config_dir))
+
+
+def test_examples_not_an_object(config_dir):
+    """'examples' must be an object, not a list."""
+    _write_config(config_dir, _cfg(examples=["python"]))
+    with pytest.raises(ConfigError, match="'examples' must be an object"):
+        load_config(str(config_dir))
