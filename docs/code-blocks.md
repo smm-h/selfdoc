@@ -1,6 +1,6 @@
 ---
 title: Code Blocks
-description: "Syntax highlighting, language icons, line numbers, run buttons, annotations, diff highlighting, code tabs, and copy buttons in selfdoc code blocks."
+description: "Syntax highlighting, language icons, line numbers, run buttons, validated examples, annotations, diff highlighting, code tabs, and copy buttons in selfdoc."
 nav_group: "Guides"
 nav_order: 8
 ---
@@ -86,6 +86,36 @@ When enabled, code blocks get a "Run" button that opens the code in an appropria
 print("Hello, world!")
 ```
 ````
+
+## Validated Examples
+
+Mark a fenced block `validate` to declare it a complete, self-contained program, and `selfdoc check` will execute it against the validator you configure for that language. This catches the examples that parse cleanly but no longer work -- a renamed function, a changed signature, a removed keyword argument -- which syntax checking alone can never see. The marker is opt-in because most documentation snippets are deliberately partial:
+
+````markdown
+```python validate
+from mylib import greet
+
+print(greet("world"))
+```
+````
+
+Validators are declared per language in `selfdoc.json` under `examples`. Each value is a command template, and `{file}` is replaced with the path of the assembled snippet:
+
+```json
+{
+  "examples": {
+    "python": "uv run --directory python python {file}",
+    "go": "scripts/validate-example-go.sh {file}"
+  }
+}
+```
+
+Commands run from the project root, with a 60-second timeout. selfdoc writes the block's raw text to a scratch file whose extension names the language (`.py`, `.go`, `.ts`), passes the path in, and reports a non-zero exit as an `EXAMPLE002` error carrying the last five lines of the validator's output. A `validate` marker whose language has no configured command is an `EXAMPLE003` error -- never a silent skip, because a marker that validates nothing is indistinguishable from a passing one.
+
+Blocks without the marker are untouched: they still get the `EXAMPLE001` syntax check and are never executed.
+
+> [!NOTE]
+> There is no sandbox. Validators compile, type-check, and register -- they are not a harness for untrusted code, and the snippets they run are your own documentation.
 
 ## Annotations
 

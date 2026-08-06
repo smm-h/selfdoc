@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: "Complete reference for selfdoc.json configuration options including project settings, themes, SEO, deployment, and branding."
+description: "Complete reference for selfdoc.json configuration options including project settings, themes, SEO, deployment, example validators, and branding."
 order: 20
 nav_group: "Guides"
 nav_order: 1
@@ -97,3 +97,19 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
   }
 }
 ```
+
+## Example Validators
+
+The `examples` key maps a fenced-block language to the command that validates a snippet written in it. `selfdoc check` uses these commands for code blocks marked `validate` in their fence info string, writing each block to a scratch file and substituting its path for `{file}`:
+
+```json
+{
+  "examples": {
+    "python": "uv run --directory python python {file}",
+    "go": "scripts/validate-example-go.sh {file}",
+    "ts": "scripts/validate-example-ts.sh {file}"
+  }
+}
+```
+
+Every command template must contain the `{file}` placeholder; a template without it is rejected when the config loads, since it would validate nothing. Keys are language names exactly as they appear after the opening fence, so a block opened with ` ```py ` needs a `py` entry, not a `python` one. Omitting `examples` entirely turns the feature off, and any `validate` marker in the docs then reports `EXAMPLE003`. See the [Check Guide](check-guide/) for the full behavior.

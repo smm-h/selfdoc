@@ -1,6 +1,6 @@
 ---
 title: Check Guide
-description: "Use selfdoc check to validate directives, measure documentation coverage, and run the SEO, staleness, drift, CLI, and version lint rules locally or in CI."
+description: "Use selfdoc check to validate directives, measure coverage, execute code examples marked validate, and run the SEO, staleness, CLI, and version rules."
 nav_group: "Guides"
 nav_order: 10
 ---
@@ -70,7 +70,7 @@ Modules listed in `gen.exclude` are excluded from both coverage calculations and
 
 ## Lint Rules
 
-selfdoc runs 14 SEO lint rules during every `selfdoc check` invocation, plus staleness, source-drift, CLI reference, and version-consistency rules. Each rule has a unique code, a severity level (error or warning), and an actionable message explaining what is wrong and how to fix it. Errors cause non-zero exit; warnings are informational.
+selfdoc runs 14 SEO lint rules during every `selfdoc check` invocation, plus staleness, source-drift, CLI reference, example-validation, and version-consistency rules. Each rule has a unique code, a severity level (error or warning), and an actionable message explaining what is wrong and how to fix it. Errors cause non-zero exit; warnings are informational.
 
 | Code | Severity | What it checks |
 | ---- | -------- | -------------- |
@@ -93,6 +93,9 @@ selfdoc runs 14 SEO lint rules during every `selfdoc check` invocation, plus sta
 | DRIFT001 | error | The source docstrings (or CLI schema) a page documents changed while its description did not. Update the description, or run `selfdoc baseline accept <page>` if it is still accurate. |
 | CLI001 | warning | strictcli project: a CLI reference page is missing for a command, or a flag in the schema is not documented on its page. |
 | CLI002 | warning | strictcli project: a command, group, or flag help text is shorter than 50 characters. |
+| EXAMPLE001 | warning | A Python or JSON code block does not parse. Fix the snippet's syntax. |
+| EXAMPLE002 | error | A code block marked `validate` failed its configured validator. The message carries the validator's exit code and output tail. |
+| EXAMPLE003 | error | A code block is marked `validate` but no `examples` command is configured for its language. Add one, or drop the marker. |
 | VER001 | error | A version listed in `versions` could not be extracted from its git tag, so it could not be validated. |
 | VER002 | error | `version` in selfdoc.json does not match the version detected from the project manifest (pyproject.toml, package.json, or a `VERSION` file). |
 | VER003 | error | The last entry of the `versions` array does not match `version` in selfdoc.json. |
@@ -121,6 +124,32 @@ Both sources are combined -- CLI flags and config are merged.
 selfdoc tracks SHA-256 hashes of each page's resolved content and frontmatter description. When the content changes but the description stays the same, it raises a STALE001 error. This catches the common case where you update a page's content but forget to revise the description that feeds into meta tags and search results.
 
 Hashes are stored in `.selfdoc/hashes/hashes.json` and auto-committed after each check (unless you pass `--no-auto-commit` or `--dry-run`).
+
+## Example Validation
+
+Every Python and JSON code block is parsed during `selfdoc check`, and a block that does not parse raises `EXAMPLE001`. Parsing proves only that a snippet is well-formed, not that it still works: an example calling a function you renamed six months ago parses perfectly and is completely wrong. To catch that class, mark the block `validate` and configure a validator for its language:
+
+````markdown
+```python validate
+from mylib import greet
+
+print(greet("world"))
+```
+````
+
+```json
+{
+  "examples": {
+    "python": "uv run --directory python python {file}",
+    "go": "scripts/validate-example-go.sh {file}",
+    "ts": "scripts/validate-example-ts.sh {file}"
+  }
+}
+```
+
+selfdoc writes each marked block to a scratch file suffixed for its language, substitutes the path for `{file}`, and runs the command from the project root with a 60-second timeout. A non-zero exit becomes an `EXAMPLE002` error naming the exit code and the last five lines of the validator's output. A marked block whose language has no configured command becomes an `EXAMPLE003` error rather than being skipped, so an unhonored marker can never masquerade as a passing one.
+
+The marker is opt-in per block: unmarked blocks are never executed and keep the `EXAMPLE001` syntax check exactly as before. Validators run without a sandbox, so configure commands that compile, type-check, and register rather than ones that execute arbitrary payloads.
 
 ## Output Formats
 
