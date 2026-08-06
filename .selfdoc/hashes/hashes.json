@@ -18,7 +18,7 @@
     "schema_hash": "1fbe90cc550eb10d2060783cf2cbf6efe6f3728dc5c236550b051aa2d6aa065d"
   },
   "en/cli-baseline.md": {
-    "content": "a41dfd38ad4ea2d30167d2b85185db80554b2212853c193164a1b2353c706a17",
+    "content": "935a653a677f6fc425ad785690de0cd9a518c6e40fb21e124fc9f39e1acd4669",
     "description": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a",
     "schema_hash": "fc98a4ffb1dbaedce53024ec69b68e6479500ed5ca1d7fa66aeed211866842bb",
     "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
@@ -63,7 +63,7 @@
     "schema_hash": "c5c8e3e3d599335fa405a2115c7f7c6e44b63194724b69fe1fa6be8ec7635e1f"
   },
   "en/cli-quality.md": {
-    "content": "3c4190b821adacf392abb20102f8fef7f3713d35aa1190eeeb55288d910dd55f",
+    "content": "a865fb0c2093e7fd0b6478a207b94c8b3a6632b30fd2d693959a51622a474d03",
     "description": "cedb351399c5b2dae0fca76f35010f96817d8ce3062e7e8f3b0d27ac7afbbee2",
     "schema_hash": "c47fbe16941cd132488b9caf781c27cd13e80ac76da16bf3dd89e09c76898862",
     "seed_hash": "cedb351399c5b2dae0fca76f35010f96817d8ce3062e7e8f3b0d27ac7afbbee2"
