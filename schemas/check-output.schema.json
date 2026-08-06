@@ -43,7 +43,24 @@
           "line": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
           "code": {
             "type": "string",
-            "enum": ["SEO001", "SEO002", "SEO003", "SEO004", "SEO006", "SEO007", "SEO008", "SEO009", "SEO010", "SEO011", "SEO012", "SEO013", "SEO014", "SEO015", "STALE001"]
+            "enum": [
+              "CLI001", "CLI002",
+              "DQ001", "DQ002", "DQ003",
+              "DRIFT001",
+              "EXAMPLE001", "EXAMPLE002", "EXAMPLE003",
+              "LANG001",
+              "PARAM001",
+              "POST001", "POST002", "POST003", "POST004", "POST005",
+              "RETURN001",
+              "SEARCH001",
+              "SEO001", "SEO002", "SEO003", "SEO004", "SEO006", "SEO007",
+              "SEO008", "SEO009", "SEO010", "SEO011", "SEO012", "SEO013",
+              "SEO014", "SEO015",
+              "STALE001", "STALE002",
+              "UNIFIED001", "UNIFIED002",
+              "VER001", "VER002", "VER003", "VER004",
+              "XREF001", "XREF002"
+            ]
           },
           "message": {"type": "string"},
           "severity": {"type": "string", "enum": ["error", "warning"]}

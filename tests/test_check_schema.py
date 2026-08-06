@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 
 import pytest
 
@@ -11,13 +12,52 @@ from selfdoc.check import check_docs
 # -- Schema-aware validation helpers (no jsonschema dependency) --
 
 
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_SCHEMA_PATH = os.path.join(_REPO_ROOT, "schemas", "check-output.schema.json")
+
+# Modules that construct LintResult objects. Every lint code reachable from a
+# CheckResult originates in one of these; the consistency test below pins the
+# schema enum to what they actually emit so the enum cannot silently rot.
+_LINT_SOURCE_FILES = (
+    os.path.join(_REPO_ROOT, "selfdoc", "check.py"),
+    os.path.join(_REPO_ROOT, "selfblog", "check.py"),
+)
+
+_CODE_LITERAL_RE = re.compile(r'code\s*=\s*"([A-Z][A-Z0-9]*[0-9]{3})"')
+
+
+def _load_schema():
+    """Load the check-output JSON schema from disk."""
+    with open(_SCHEMA_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _schema_lint_codes():
+    """The lint-code enum declared by the JSON schema."""
+    schema = _load_schema()
+    return set(
+        schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+    )
+
+
+def _source_emitted_lint_codes():
+    """Scan the lint-producing modules for the codes they actually emit."""
+    codes = set()
+    for path in _LINT_SOURCE_FILES:
+        assert os.path.isfile(path), (
+            f"lint source file missing: {path} -- update _LINT_SOURCE_FILES"
+        )
+        with open(path, "r", encoding="utf-8") as f:
+            codes.update(_CODE_LITERAL_RE.findall(f.read()))
+    assert codes, "no lint codes found in source -- the scan regex is broken"
+    return codes
+
+
 _VALID_STATUSES = {"OK", "FAILED"}
 _VALID_SEVERITIES = {"error", "warning"}
-_VALID_LINT_CODES = {
-    "SEO001", "SEO002", "SEO003", "SEO004", "SEO006", "SEO007",
-    "SEO008", "SEO009", "SEO010", "SEO011", "SEO012", "SEO013",
-    "SEO014", "SEO015", "STALE001",
-}
+# Derived from the schema rather than hand-mirrored, so the assertions in this
+# file always test the shipped contract instead of a stale copy of it.
+_VALID_LINT_CODES = _schema_lint_codes()
 
 
 def _validate_check_output(data):
@@ -313,3 +353,84 @@ def test_check_output_with_lint_warnings(python_project):
     for lint in parsed["lints"]:
         assert lint["code"] in _VALID_LINT_CODES
         assert lint["severity"] in _VALID_SEVERITIES
+
+
+def test_example_lint_code_validates_against_schema():
+    """A payload carrying an EXAMPLE002 lint conforms to the schema.
+
+    Regression: the schema's lint-code enum listed only SEO*/STALE001, so
+    consumers validating ``selfdoc check --format json`` rejected every
+    example, doc-quality, param/return and drift code.
+    """
+    data = {
+        "directives": [],
+        "coverage": None,
+        "lints": [
+            {
+                "file": "docs/index.md",
+                "line": 12,
+                "code": "EXAMPLE002",
+                "message": "Example failed validation: exit 1",
+                "severity": "error",
+            },
+        ],
+        "exit_code": 1,
+    }
+    _validate_check_output(data)
+
+
+@pytest.mark.parametrize(
+    "code",
+    ["EXAMPLE001", "EXAMPLE002", "EXAMPLE003", "DQ001", "DQ002", "DQ003",
+     "PARAM001", "RETURN001", "DRIFT001", "STALE002", "CLI001", "CLI002",
+     "LANG001", "SEARCH001", "XREF001", "XREF002", "VER001", "VER002",
+     "VER003", "VER004", "POST001", "POST005"],
+)
+def test_schema_accepts_current_lint_code(code):
+    """Every currently-emitted lint code is accepted by the schema enum."""
+    data = {
+        "directives": [],
+        "coverage": None,
+        "lints": [
+            {
+                "file": "docs/index.md",
+                "line": None,
+                "code": code,
+                "message": "example message",
+                "severity": "warning",
+            },
+        ],
+        "exit_code": 0,
+    }
+    _validate_check_output(data)
+
+
+def test_schema_lint_enum_matches_source_emitted_codes():
+    """The schema enum equals the set of lint codes emitted by the source.
+
+    This is the structural guard against enum rot: adding a new lint code
+    without extending schemas/check-output.schema.json fails here.
+    """
+    schema_codes = _schema_lint_codes()
+    source_codes = _source_emitted_lint_codes()
+
+    missing_from_schema = sorted(source_codes - schema_codes)
+    stale_in_schema = sorted(schema_codes - source_codes)
+
+    assert not missing_from_schema, (
+        "lint codes emitted by source but absent from the schema enum: "
+        f"{missing_from_schema}. Add them to "
+        "schemas/check-output.schema.json."
+    )
+    assert not stale_in_schema, (
+        "lint codes in the schema enum that no source module emits: "
+        f"{stale_in_schema}. Remove them from "
+        "schemas/check-output.schema.json."
+    )
+
+
+def test_schema_lint_enum_is_sorted_and_unique():
+    """The schema enum has no duplicates, keeping the contract unambiguous."""
+    schema = _load_schema()
+    enum = schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+    assert len(enum) == len(set(enum)), f"duplicate codes in enum: {enum}"
