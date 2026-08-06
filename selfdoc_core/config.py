@@ -31,14 +31,25 @@ class FieldSpec:
     default_factory: Callable[[], Any] | None = None
     choices: tuple[Any, ...] | None = None
     pattern: str | None = None
+    # For STR: a literal substring the value must contain.  Says what a
+    # regex would say, but the rejection message names the missing text
+    # instead of printing a pattern the reader has to decode.
+    must_contain: str | None = None
     description: str = ""
     non_empty: bool = True
     min_val: int | None = None
     max_val: int | None = None
     min_length: int | None = None
     children: tuple[FieldSpec, ...] | None = None
+    # For LIST: the spec every element is validated against.  For a
+    # childless DICT (open key set), the spec every VALUE is validated
+    # against -- the dict analogue of the list case.
     item_spec: FieldSpec | None = None
     strict_keys: bool = False
+    # For a childless DICT: the regex every KEY must match.  A closed
+    # ``children`` tuple cannot express an open-but-well-formed key set
+    # (e.g. fence language names), so the keys are constrained by shape.
+    key_pattern: str | None = None
     transform: Callable[[Any], Any] | None = None
     internal: bool = False
 
@@ -308,6 +319,31 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         default_factory=dict,
         strict_keys=False,
         description="Custom directive mappings from directive name to source file path.",
+    ),
+    FieldSpec(
+        name="examples",
+        type=_D,
+        default=None,
+        # Keys are fenced-block language names, an open set (any language may
+        # appear after a fence), so they are constrained by shape rather than
+        # by a closed children tuple: a malformed key is rejected, an
+        # unanticipated-but-well-formed language is not.
+        key_pattern=r"^[a-z][a-z0-9+#._-]*$",
+        item_spec=FieldSpec(
+            name="<language>",
+            type=_S,
+            must_contain="{file}",
+            description=(
+                "Validator command template; '{file}' is replaced with the"
+                " path of the assembled snippet."
+            ),
+        ),
+        description=(
+            "Validator command templates keyed by code-block language, used by"
+            " 'selfdoc check' to execute fenced blocks marked 'validate'."
+            " Each template must contain the '{file}' placeholder. Absent"
+            " means example validation is off."
+        ),
     ),
     FieldSpec(
         name="author",
@@ -762,6 +798,10 @@ def _validate_field(spec: FieldSpec, value, path: str) -> Any:
             raise ConfigError(
                 f"invalid {path} {value!r}; must match pattern {spec.pattern}"
             )
+        if spec.must_contain and spec.must_contain not in value:
+            raise ConfigError(
+                f"invalid {path} {value!r}; must contain {spec.must_contain!r}"
+            )
         if spec.transform:
             value = spec.transform(value)
         return value
@@ -826,8 +866,22 @@ def _validate_field(spec: FieldSpec, value, path: str) -> Any:
         if not isinstance(value, dict):
             raise ConfigError(f"'{path}' must be an object")
 
-        # No children = open dict (e.g. directives), just check it's a dict
+        # No children = open key set (e.g. directives, examples).  Keys may
+        # still be shape-constrained and values may still carry their own
+        # spec; without either this is just a dict check.
         if not spec.children:
+            if spec.key_pattern:
+                for key in value:
+                    if not isinstance(key, str) or not re.match(spec.key_pattern, key):
+                        raise ConfigError(
+                            f"invalid {spec.name} key {key!r}; "
+                            f"must match pattern {spec.key_pattern}"
+                        )
+            if spec.item_spec:
+                for key in list(value):
+                    value[key] = _validate_field(
+                        spec.item_spec, value[key], f"{path}.{key}",
+                    )
             return value
 
         # Check for unknown keys in strict mode

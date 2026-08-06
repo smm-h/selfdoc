@@ -28,6 +28,10 @@ class CodeBlock:
     run: bool = False
     line_numbers: bool = False
     line_start: int = 1
+    # Opt-in semantic validation: the ``validate`` info-string token declares
+    # that this block is a self-contained program, so ``selfdoc check`` may
+    # hand it to the validator command configured for ``lang``.
+    validate: bool = False
 
 
 @dataclass(eq=True, slots=True)
@@ -158,6 +162,7 @@ def tokenize(content: str) -> list[Block]:
             info_parts = info_string.split()
             lang = info_parts[0] if info_parts else ""
             run_flag = "run" in info_parts[1:]
+            validate_flag = "validate" in info_parts[1:]
             # Parse line numbers annotation: "lines" or "lines=N"
             ln_flag = False
             ln_start = 1
@@ -196,6 +201,7 @@ def tokenize(content: str) -> list[Block]:
                 run=run_flag,
                 line_numbers=ln_flag,
                 line_start=ln_start,
+                validate=validate_flag,
             ))
             continue
 
