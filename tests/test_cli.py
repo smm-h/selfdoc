@@ -264,6 +264,69 @@ def test_check_exits_1_on_errors(project_dir, capsys):
     assert "SEO006" in captured.out
 
 
+def test_check_exits_1_on_broken_validated_example(project_dir, capsys):
+    """A `validate` example that fails at runtime makes `selfdoc check` exit 1.
+
+    Acceptance pin at the real CLI boundary: both snippets below parse
+    cleanly, so only *executing* them can tell them apart. The run must
+    surface the runtime failure as EXAMPLE002 and a non-zero exit, and it
+    must do so on the strength of the example alone -- the assertion on the
+    error-severity code set proves no ambient lint is carrying the exit code.
+    """
+    import shlex
+
+    from selfdoc.cli import _cmd_init, _cmd_check
+
+    _cmd_init(None)
+    _add_base_url(project_dir)
+
+    config_path = project_dir / "selfdoc.json"
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    config["examples"] = {"python": f"{shlex.quote(sys.executable)} {{file}}"}
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    def _page(name, snippet, summary):
+        (project_dir / "docs" / name).write_text(
+            f"---\ntitle: {name}\ndescription: {summary}\n---\n\n"
+            f"# {name}\n\n```python validate\n{snippet}```\n"
+        )
+
+    _page(
+        "good.md",
+        "def greet(name):\n"
+        "    return 'Hello, ' + name\n"
+        "\n"
+        "print(greet('world'))\n",
+        "A page whose executable example runs to completion without any error",
+    )
+    _page(
+        "broken.md",
+        "def greet(name):\n"
+        "    return 'Hello, ' + name\n"
+        "\n"
+        "greet()\n",
+        "A page whose executable example parses fine but raises when it runs",
+    )
+
+    capsys.readouterr()  # discard init chatter so stdout is pure JSON
+
+    with pytest.raises(SystemExit) as exc_info:
+        _cmd_check(None, format="json", auto_commit=False)
+
+    assert exc_info.value.code == 1
+
+    report = json.loads(capsys.readouterr().out)
+    assert report["exit_code"] == 1
+
+    errors = [lint for lint in report["lints"] if lint["severity"] == "error"]
+    assert {lint["code"] for lint in errors} == {"EXAMPLE002"}
+    assert len(errors) == 1
+    assert errors[0]["file"] == "broken.md"
+    assert "TypeError" in errors[0]["message"]
+
+
 def test_build_without_init_fails(project_dir):
     """selfdoc build without selfdoc.json exits with error."""
     from selfdoc.cli import _cmd_build
