@@ -830,12 +830,15 @@ def _build_unified_body(
 
     # --- Root redirect to common landing ---
     redirect_url = f"/{default_locale_code}/common/{latest_version}/"
+    # Absolute canonical: a root-relative one resolves against whatever host
+    # served the stub, so every alias of the site would claim to be canonical.
+    canonical_url = lb["url_builder"].page_url(redirect_url)
     root_index_html = (
         "<!DOCTYPE html>\n"
         "<html>\n"
         "<head>\n"
         f'  <meta http-equiv="refresh" content="0;url={redirect_url}">\n'
-        f'  <link rel="canonical" href="{redirect_url}">\n'
+        f'  <link rel="canonical" href="{canonical_url}">\n'
         "</head>\n"
         "<body>\n"
         f'  <script>window.location.replace("{redirect_url}")</script>\n'

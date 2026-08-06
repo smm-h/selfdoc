@@ -6108,6 +6108,85 @@ def test_redirect_generates_cloudflare_rule(tmp_path):
     assert "/en/1.0.0/old-cmd/ /en/1.0.0/new-cmd/ 301\n" in content
 
 
+def test_root_redirect_stub_canonical_is_absolute(project_dir):
+    """The root redirect stub names an absolute canonical, not a site-root path.
+
+    A root-relative canonical resolves against whatever host served the
+    stub, so every alias of the site claims to be canonical.
+    """
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+    assert (
+        f'<link rel="canonical" href="https://example.com/{DEFAULT_PREFIX}/">'
+        in content
+    )
+    # The meta refresh stays root-relative: it is a same-site hop.
+    assert f'content="0;url=/{DEFAULT_PREFIX}/"' in content
+
+
+def test_root_redirect_stub_canonical_uses_the_topology_url_builder(tmp_path):
+    """Under a topology config the canonical carries the project slug."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        topology={"slug": "proj", "docs_base": "https://docs.example.com"},
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+    assert (
+        '<link rel="canonical" '
+        f'href="https://docs.example.com/proj/{DEFAULT_PREFIX}/">'
+        in content
+    )
+
+
+def test_redirect_stub_canonical_is_absolute(tmp_path):
+    """Config-driven redirect stubs name an absolute canonical target."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        redirects=[{"from": "edit-release", "to": "release/edit"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    redirect_html_path = os.path.join(
+        output_dir, "en", "1.0.0", "edit-release", "index.html",
+    )
+    with open(redirect_html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert (
+        '<link rel="canonical" '
+        'href="https://example.com/en/1.0.0/release/edit/">'
+        in content
+    )
+    assert 'content="0;url=/en/1.0.0/release/edit/"' in content
+
+
 def test_redirect_skips_existing_page(tmp_path):
     """Redirect does not overwrite a page that already exists at the old path."""
     config = default_config(

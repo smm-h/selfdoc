@@ -2121,12 +2121,16 @@ def _build_body(
     # Root redirect to default locale / latest version
     latest_prefix = f"{default_locale_code}/{latest_version}"
     redirect_url = f"/{latest_prefix}/"
+    # The canonical must be absolute: a root-relative one resolves against
+    # whatever host served the stub, so every alias of the site would claim
+    # to be canonical.  The refresh/JS hops stay relative -- same site.
+    canonical_url = lb["url_builder"].page_url(redirect_url)
     root_index_html = (
         "<!DOCTYPE html>\n"
         "<html>\n"
         "<head>\n"
         f'  <meta http-equiv="refresh" content="0;url={redirect_url}">\n'
-        f'  <link rel="canonical" href="{redirect_url}">\n'
+        f'  <link rel="canonical" href="{canonical_url}">\n'
         "</head>\n"
         "<body>\n"
         f'  <script>window.location.replace("{redirect_url}")</script>\n'
@@ -2165,13 +2169,15 @@ def _build_body(
                         continue
                     # Target URL for the redirect
                     target_url = f"/{locale_code}/{ver_str}/{to_slug}/"
+                    # Absolute canonical (see the root stub above).
+                    target_canonical = lb["url_builder"].page_url(target_url)
                     # Generate HTML meta-refresh page
                     meta_html = (
                         "<!DOCTYPE html>\n"
                         "<html>\n"
                         "<head>\n"
                         f'  <meta http-equiv="refresh" content="0;url={target_url}">\n'
-                        f'  <link rel="canonical" href="{target_url}">\n'
+                        f'  <link rel="canonical" href="{target_canonical}">\n'
                         "</head>\n"
                         "<body>\n"
                         f'  <script>window.location.replace("{target_url}")</script>\n'

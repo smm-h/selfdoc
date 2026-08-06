@@ -202,6 +202,25 @@ def test_build_unified_root_redirect(make_unified_project):
     assert "/en/common/1.0.0/" in root_index
 
 
+def test_build_unified_root_redirect_canonical_is_absolute(make_unified_project):
+    """The unified root stub names an absolute canonical, not a site-root path."""
+    projects = [
+        {"name": "core", "language": "python"},
+    ]
+    docs_site_dir = make_unified_project(projects)
+
+    build_unified(str(docs_site_dir))
+
+    output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
+    root_index = _read(os.path.join(output_dir, "index.html"))
+    assert (
+        '<link rel="canonical" href="https://example.com/en/common/1.0.0/">'
+        in root_index
+    )
+    # The meta refresh stays root-relative: it is a same-site hop.
+    assert 'content="0;url=/en/common/1.0.0/"' in root_index
+
+
 def test_build_unified_landing_page(make_unified_project):
     """Verify landing page lists all projects."""
     projects = [
