@@ -740,6 +740,8 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
                       description="GitHub repository for the assembly (e.g., owner/repo)."),
             FieldSpec(name="pages_project", type=_S,
                       description="Cloudflare Pages project the assembled site deploys to. Used by both 'assembly init' (project creation) and the generated deploy workflow, so the two can never diverge. No default."),
+            FieldSpec(name="portfolio_canonical", type=_S,
+                      description="Absolute canonical URL of the portfolio page the assembly serves as its site root (e.g., 'https://smmh.dev/'). The portfolio is the apex, not a docs page, so its canonical is NOT topology.docs_base -- the same bytes are served on both hosts and one of them has to be named. No default: 'assembly generate-shared' hard-errors when a portfolio file is supplied without it."),
         ),
     ),
 )

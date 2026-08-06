@@ -479,8 +479,12 @@ def _cmd_assembly_init(ctx):
         )
         sys.exit(1)
     legacy_blog_host = topology.get("legacy_blog_host") or ""
+    portfolio_canonical = assembly_config.get("portfolio_canonical") or ""
 
-    files = assembly_init(repo, pages_project, canonical_base, legacy_blog_host)
+    files = assembly_init(
+        repo, pages_project, canonical_base, legacy_blog_host,
+        portfolio_canonical,
+    )
 
     # Create the private GitHub repo
     print(f"Creating repository {repo}...")
@@ -806,11 +810,13 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
 @strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the target of the generated redirect worker and of the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
 @strictcli.flag("legacy-blog-host", type=str, help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
 @strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
+@strictcli.flag("portfolio-canonical", type=str, help="Absolute canonical URL of the portfolio page, from assembly.portfolio_canonical (e.g. 'https://smmh.dev/'). The portfolio is the site apex, not a docs page, so this is NOT --canonical-base. Required whenever --portfolio-file names an existing file: the same portfolio bytes are served on every host bound to the Pages project, and one of them has to be named canonical.")
 @effects.handler
-def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", portfolio_file=""):
+def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", portfolio_file="", portfolio_canonical=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfblog.assembly import generate_worker_js
     from selfblog.shared import (
+        _ensure_canonical,
         generate_blog_index,
         generate_homepage,
         generate_nav_json,
@@ -900,8 +906,23 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
     # When a portfolio file is provided, it becomes the root index.html
     # and the project listing moves to /projects/index.html
     if portfolio_file and os.path.isfile(portfolio_file):
+        if not portfolio_canonical:
+            print(
+                "Error: --portfolio-canonical is required when a portfolio "
+                "file is supplied (set assembly.portfolio_canonical in "
+                "selfdoc.json and regenerate the assembly workflow). The "
+                "portfolio is the site apex, not a docs page, so it has no "
+                "default canonical.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         with open(portfolio_file, "r", encoding="utf-8") as f:
             portfolio_html = f.read()
+        try:
+            portfolio_html = _ensure_canonical(portfolio_html, portfolio_canonical)
+        except ValueError as exc:
+            print(f"Error: {portfolio_file}: {exc}", file=sys.stderr)
+            sys.exit(1)
         index_path = os.path.join(site_dir, "index.html")
         effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
         atomic_write(index_path, portfolio_html)

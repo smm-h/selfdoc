@@ -4,9 +4,45 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from datetime import datetime
 
 from selfdoc_core.build import _make_feed_entry
+
+# Matches a <link rel=canonical ...> element with any attribute order and
+# any quoting style.  Hand-authored HTML is not normalized, so the pattern
+# has to be permissive about how the element was written.
+_CANONICAL_LINK_RE = re.compile(
+    r"""<link\b[^>]*\brel\s*=\s*["']?canonical["']?[^>]*>""",
+    re.IGNORECASE,
+)
+_HEAD_OPEN_RE = re.compile(r"<head\b[^>]*>", re.IGNORECASE)
+
+
+def _ensure_canonical(page_html: str, url: str) -> str:
+    """Return *page_html* carrying exactly one rel=canonical link naming *url*.
+
+    The portfolio is hand-authored HTML that selfblog copies rather than
+    generates, so it may already declare a canonical (possibly the wrong
+    one) or none at all.  An existing link is rewritten in place; otherwise
+    one is spliced in directly after the opening ``<head>`` tag.
+
+    Raises:
+        ValueError: when the document has no ``<head>`` to splice into.
+            A page that cannot declare a canonical is a hard error, not a
+            page served without one.
+    """
+    link = f'<link rel="canonical" href="{html.escape(url)}">'
+    if _CANONICAL_LINK_RE.search(page_html):
+        return _CANONICAL_LINK_RE.sub(lambda _m: link, page_html, count=1)
+    match = _HEAD_OPEN_RE.search(page_html)
+    if match is None:
+        raise ValueError(
+            "cannot declare a canonical URL: the document has no <head> "
+            "element to splice the rel=canonical link into"
+        )
+    insert_at = match.end()
+    return f"{page_html[:insert_at]}\n  {link}{page_html[insert_at:]}"
 
 
 def wrap_shared_page(

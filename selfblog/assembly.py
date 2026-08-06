@@ -13,6 +13,7 @@ def generate_workflow_yaml(
     pages_project: str,
     canonical_base: str,
     legacy_blog_host: str,
+    portfolio_canonical: str,
 ) -> str:
     """Return a GitHub Actions workflow YAML for assembly deployment.
 
@@ -26,6 +27,10 @@ def generate_workflow_yaml(
         from ``topology.docs_base``.  Required.
     legacy_blog_host: hostname of a retired blog subdomain, from
         ``topology.legacy_blog_host``.  Empty when none exists.
+    portfolio_canonical: absolute canonical URL of the portfolio page,
+        from ``assembly.portfolio_canonical``.  Empty when the assembly
+        has no portfolio -- the generated step hard-errors if a portfolio
+        file turns up without it.
     """
     if not pages_project:
         raise ValueError(
@@ -193,7 +198,7 @@ jobs:
             if [ -f portfolio/index.html ]; then
               PORTFOLIO_FLAG="--portfolio-file portfolio/index.html"
             fi
-            selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' --canonical-base '@@CANONICAL_BASE@@' --legacy-blog-host '@@LEGACY_BLOG_HOST@@' $PORTFOLIO_FLAG
+            selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' --canonical-base '@@CANONICAL_BASE@@' --legacy-blog-host '@@LEGACY_BLOG_HOST@@' --portfolio-canonical '@@PORTFOLIO_CANONICAL@@' $PORTFOLIO_FLAG
 
             # Build search index
             python3 -m pagefind --site site/
@@ -222,6 +227,8 @@ jobs:
         "@@CANONICAL_BASE@@", canonical_base,
     ).replace(
         "@@LEGACY_BLOG_HOST@@", legacy_blog_host,
+    ).replace(
+        "@@PORTFOLIO_CANONICAL@@", portfolio_canonical,
     )
 
 
@@ -230,6 +237,7 @@ def assembly_init(
     pages_project: str,
     canonical_base: str,
     legacy_blog_host: str,
+    portfolio_canonical: str,
 ) -> dict[str, str]:
     """Return a dict mapping filename to file content for a new assembly repo.
 
@@ -237,10 +245,13 @@ def assembly_init(
     pages_project: Cloudflare Pages project the workflow deploys to.
     canonical_base: absolute canonical base URL of the assembly site.
     legacy_blog_host: retired blog subdomain, or "" when none exists.
+    portfolio_canonical: absolute canonical URL of the portfolio page,
+        or "" when the assembly has no portfolio.
     """
     return {
         ".github/workflows/deploy.yml": generate_workflow_yaml(
             pages_project, canonical_base, legacy_blog_host,
+            portfolio_canonical,
         ),
         ".gitignore": _gitignore_content(),
         "projects.json": json.dumps({}, indent=2) + "\n",

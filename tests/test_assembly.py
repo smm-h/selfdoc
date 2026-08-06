@@ -20,7 +20,7 @@ from selfblog.assembly import (
 
 def test_workflow_yaml_is_valid_yaml():
     """generate_workflow_yaml returns a non-empty string with expected YAML markers."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert isinstance(yaml_str, str)
     assert len(yaml_str) > 0
     # Basic YAML structure markers
@@ -30,13 +30,13 @@ def test_workflow_yaml_is_valid_yaml():
 
 
 def test_workflow_yaml_has_dispatch_trigger():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "repository_dispatch" in yaml_str
     assert "project-updated" in yaml_str
 
 
 def test_workflow_yaml_has_concurrency():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "assembly-deploy" in yaml_str
     assert "cancel-in-progress: false" in yaml_str
     assert "queue: max" in yaml_str
@@ -44,30 +44,30 @@ def test_workflow_yaml_has_concurrency():
 
 def test_workflow_yaml_has_queue_max():
     """queue: max enables FIFO queuing of up to 100 pending workflow runs."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "queue: max" in yaml_str
 
 
 def test_workflow_yaml_has_deploy_job():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "deploy:" in yaml_str
     assert "ubuntu-latest" in yaml_str
 
 
 def test_workflow_yaml_has_checkout_step():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "actions/checkout@v4" in yaml_str
 
 
 def test_workflow_yaml_first_checkout_has_fetch_depth():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     # First checkout uses full clone for push retry support
     assert "fetch-depth: 0" in yaml_str
 
 
 def test_workflow_yaml_has_second_checkout_for_source():
     """Workflow has a second actions/checkout to clone the source project."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     # There should be two occurrences of actions/checkout@v4
     count = yaml_str.count("actions/checkout@v4")
     assert count == 2, f"Expected 2 checkout steps, found {count}"
@@ -76,24 +76,24 @@ def test_workflow_yaml_has_second_checkout_for_source():
 
 
 def test_workflow_yaml_has_python_setup():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "actions/setup-python@v5" in yaml_str
     assert "3.12" in yaml_str
 
 
 def test_workflow_yaml_has_permissions():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "permissions:" in yaml_str
     assert "contents: write" in yaml_str
 
 
 def test_workflow_yaml_has_selfdoc_install():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "pip install selfdoc selfblog" in yaml_str
 
 
 def test_workflow_yaml_has_payload_extraction():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "SLUG=" in yaml_str
     assert "VERSION=" in yaml_str
     assert "REF=" in yaml_str
@@ -101,19 +101,19 @@ def test_workflow_yaml_has_payload_extraction():
 
 
 def test_workflow_yaml_has_clone_step():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "Clone source project" in yaml_str
     assert "repository:" in yaml_str
 
 
 def test_workflow_yaml_has_build_step():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "selfdoc build" in yaml_str
 
 
 def test_workflow_yaml_has_git_config_and_push():
     """Workflow configures git and commits+pushes the built site."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "git config user.name" in yaml_str
     assert "git config user.email" in yaml_str
     assert "git commit" in yaml_str
@@ -121,36 +121,36 @@ def test_workflow_yaml_has_git_config_and_push():
 
 
 def test_workflow_yaml_has_generate_shared():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "selfblog assembly generate-shared" in yaml_str
 
 
 def test_workflow_yaml_has_pagefind():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "pagefind --site site/" in yaml_str
 
 
 def test_workflow_yaml_has_projects_json_update():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "projects.json" in yaml_str
     # The step writes to projects.json via inline Python
     assert "json.dump" in yaml_str
 
 
 def test_workflow_yaml_has_update_manifest():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     # Manifest copy is inside the commit-and-push retry loop
     assert "manifests/" in yaml_str
     assert "manifest.json" in yaml_str
 
 
 def test_workflow_yaml_has_wrangler_deploy():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "wrangler pages deploy site/ --project-name 'smmh'" in yaml_str
 
 
 def test_workflow_yaml_has_secrets():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "CF_ACCOUNT_ID" in yaml_str
     assert "CF_PAGES_API_TOKEN" in yaml_str
 
@@ -159,44 +159,44 @@ def test_workflow_yaml_has_secrets():
 
 
 def test_init_returns_three_files():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert len(result) == 3
 
 
 def test_init_has_workflow_file():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert ".github/workflows/deploy.yml" in result
 
 
 def test_init_has_gitignore():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert ".gitignore" in result
 
 
 def test_init_has_projects_json():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "projects.json" in result
 
 
 def test_init_projects_json_is_valid_empty_json():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     parsed = json.loads(result["projects.json"])
     assert parsed == {}
 
 
 def test_init_gitignore_has_node_modules():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "node_modules" in result[".gitignore"]
 
 
 def test_init_gitignore_has_dist():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "dist/" in result[".gitignore"]
 
 
 def test_init_workflow_matches_generator():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev")
-    assert result[".github/workflows/deploy.yml"] == generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
+    assert result[".github/workflows/deploy.yml"] == generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
 
 
 # -- assembly_push -----------------------------------------------------------
@@ -307,7 +307,7 @@ def test_rebuild_uses_project_info():
 
 def test_workflow_yaml_extracts_scope():
     """SCOPE is extracted from client_payload in the payload extraction step."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'SCOPE=${{ github.event.client_payload.scope }}' in yaml_str
 
 
@@ -316,19 +316,19 @@ def test_workflow_yaml_extracts_scope():
 
 def test_workflow_yaml_posts_build():
     """When SCOPE is posts, workflow runs selfblog build --target posts."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'selfblog build --target posts --no-auto-commit' in yaml_str
 
 
 def test_workflow_yaml_full_build_with_version():
     """Full build with LATEST_VERSION uses --version flag."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'selfdoc build --no-auto-commit --version "$LATEST_VERSION"' in yaml_str
 
 
 def test_workflow_yaml_conditional_build_structure():
     """Build step uses SCOPE conditional to choose posts vs full build."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert '[ "$SCOPE" = "posts" ]' in yaml_str
 
 
@@ -337,26 +337,26 @@ def test_workflow_yaml_conditional_build_structure():
 
 def test_workflow_yaml_posts_subtree_replacement():
     """Posts scope replaces only site/$SLUG/posts/ subtree."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'rm -rf "site/$SLUG/posts/"' in yaml_str
 
 
 def test_workflow_yaml_posts_manifest_copy():
     """Posts scope copies post-manifest.json to manifests/$SLUG-posts.json."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'post-manifest.json' in yaml_str
     assert 'manifests/$SLUG-posts.json' in yaml_str
 
 
 def test_workflow_yaml_full_subtree_replacement():
     """Full build replaces entire site/$SLUG/ subtree."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'rm -rf "site/$SLUG/"' in yaml_str
 
 
 def test_workflow_yaml_full_manifest_copy():
     """Full build copies manifest.json to manifests/$SLUG.json."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'manifests/$SLUG.json' in yaml_str
 
 
@@ -365,7 +365,7 @@ def test_workflow_yaml_full_manifest_copy():
 
 def test_workflow_yaml_reconciles_posts_overlay():
     """Full build deletes manifests/$SLUG-posts.json to reconcile overlay."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert 'rm -f "manifests/$SLUG-posts.json"' in yaml_str
 
 
@@ -374,7 +374,7 @@ def test_workflow_yaml_reconciles_posts_overlay():
 
 def test_workflow_yaml_has_version_count_check():
     """When LATEST is empty, workflow checks VERSION_COUNT for multi-version error."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     assert "VERSION_COUNT" in yaml_str
     assert "Could not detect latest version for multi-version project" in yaml_str
 
@@ -496,7 +496,7 @@ def test_push_files_tree_payload_has_correct_paths_and_shas():
 
 def test_workflow_yaml_clone_step_has_shared_only_condition():
     """Clone source project step has if: condition skipping shared-only scope."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     # Find the clone step and check it has the if: condition before the uses: line
     lines = yaml_str.splitlines()
     for i, line in enumerate(lines):
@@ -511,7 +511,7 @@ def test_workflow_yaml_clone_step_has_shared_only_condition():
 
 def test_workflow_yaml_build_step_has_shared_only_condition():
     """Build documentation step has if: condition skipping shared-only scope."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     lines = yaml_str.splitlines()
     for i, line in enumerate(lines):
         if "Build documentation" in line:
@@ -524,7 +524,7 @@ def test_workflow_yaml_build_step_has_shared_only_condition():
 
 def test_workflow_yaml_version_detection_has_shared_only_condition():
     """Detect latest version step has if: condition skipping shared-only scope."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     lines = yaml_str.splitlines()
     for i, line in enumerate(lines):
         if "Detect latest version" in line:
@@ -537,7 +537,7 @@ def test_workflow_yaml_version_detection_has_shared_only_condition():
 
 def test_workflow_yaml_retry_loop_skips_file_copy_for_shared_only():
     """The retry loop wraps file copy in a shared-only conditional."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev")
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
     # Find the retry loop section (starts with "Commit and push")
     commit_push_idx = yaml_str.index("Commit and push")
     retry_section = yaml_str[commit_push_idx:]

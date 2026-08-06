@@ -41,6 +41,7 @@ def render_artifacts(config: dict) -> dict[str, str]:
     pages_project = assembly.get("pages_project")
     canonical_base = topology.get("docs_base")
     legacy_blog_host = topology.get("legacy_blog_host") or ""
+    portfolio_canonical = assembly.get("portfolio_canonical") or ""
 
     missing = [
         name for name, value in (
@@ -57,6 +58,7 @@ def render_artifacts(config: dict) -> dict[str, str]:
     return {
         ".github/workflows/deploy.yml": generate_workflow_yaml(
             pages_project, canonical_base, legacy_blog_host,
+            portfolio_canonical,
         ),
         "site/_worker.js": generate_worker_js(canonical_base, legacy_blog_host),
     }

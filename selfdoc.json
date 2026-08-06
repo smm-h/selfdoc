@@ -112,6 +112,7 @@
   },
   "assembly": {
     "repo": "smm-h/selfdoc-cache",
-    "pages_project": "smmh"
+    "pages_project": "smmh",
+    "portfolio_canonical": "https://smmh.dev/"
   }
 }

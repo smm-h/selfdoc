@@ -18,6 +18,7 @@ from selfblog.cli import _cmd_assembly_init
 PAGES_PROJECT = "unified-site"
 CANONICAL_BASE = "https://docs.example.com"
 LEGACY_BLOG_HOST = "blog.example.com"
+PORTFOLIO_CANONICAL = "https://apex.example.com/"
 
 
 def _setup_project(tmp_path, config_overrides=None):
@@ -41,19 +42,23 @@ def _setup_project(tmp_path, config_overrides=None):
 
 def test_workflow_requires_pages_project():
     with pytest.raises(ValueError) as excinfo:
-        generate_workflow_yaml("", CANONICAL_BASE, LEGACY_BLOG_HOST)
+        generate_workflow_yaml(
+            "", CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+        )
     assert "pages_project" in str(excinfo.value)
 
 
 def test_workflow_requires_canonical_base():
     with pytest.raises(ValueError) as excinfo:
-        generate_workflow_yaml(PAGES_PROJECT, "", LEGACY_BLOG_HOST)
+        generate_workflow_yaml(
+            PAGES_PROJECT, "", LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+        )
     assert "docs_base" in str(excinfo.value)
 
 
 def test_workflow_deploys_to_the_configured_project():
     yaml_str = generate_workflow_yaml(
-        PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST,
+        PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
     )
     assert f"--project-name '{PAGES_PROJECT}'" in yaml_str
     assert "--project-name smmh" not in yaml_str
@@ -61,7 +66,7 @@ def test_workflow_deploys_to_the_configured_project():
 
 def test_workflow_passes_canonical_base_to_generate_shared():
     yaml_str = generate_workflow_yaml(
-        PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST,
+        PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
     )
     assert f"--canonical-base '{CANONICAL_BASE}'" in yaml_str
     assert f"--legacy-blog-host '{LEGACY_BLOG_HOST}'" in yaml_str
@@ -69,13 +74,14 @@ def test_workflow_passes_canonical_base_to_generate_shared():
 
 def test_workflow_carries_no_foreign_hostnames():
     """A third-party assembly repo must not inherit our hostnames."""
-    yaml_str = generate_workflow_yaml(PAGES_PROJECT, CANONICAL_BASE, "")
+    yaml_str = generate_workflow_yaml(PAGES_PROJECT, CANONICAL_BASE, "", "")
     assert "smmh" not in yaml_str
 
 
 def test_assembly_init_files_use_the_configured_project():
     files = assembly_init(
         "owner/assembly", PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST,
+        PORTFOLIO_CANONICAL,
     )
     workflow = files[".github/workflows/deploy.yml"]
     assert f"--project-name '{PAGES_PROJECT}'" in workflow

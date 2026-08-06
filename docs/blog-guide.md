@@ -261,6 +261,12 @@ The shared homepage and blog index also carry a `rel="canonical"` link pointing 
 
 Set `topology.posts_base` to the same canonical blog URL. It is a path on the docs site, not a separate host.
 
+### The portfolio canonical
+
+An assembly may serve a hand-authored portfolio page as its site root (`portfolio/index.html` in the assembly repo, passed as `--portfolio-file`). That page is the *apex*, not a docs page, so its canonical is **not** `topology.docs_base` -- the same bytes are served on every host bound to the Pages project, and one of them has to be named.
+
+Set `assembly.portfolio_canonical` to that apex URL. The generated deploy workflow passes it as `--portfolio-canonical`, and generate-shared splices a `rel="canonical"` link into the portfolio's `<head>` (rewriting one that is already there). There is no default: supplying a portfolio file without `--portfolio-canonical` is a hard error, as is a portfolio document with no `<head>` to splice into.
+
 #### Operator steps (outside selfblog)
 
 Two pieces of this topology live on platform dashboards and are not automated:
