@@ -207,6 +207,7 @@ Custom directives take priority over built-in names.
 | `redirects` | no | Page-level redirects expanded across all locale/version combos. |
 | `deploy` | no | Deployment configuration for publishing the generated site. |
 | `directives` | no | Custom directive mappings from directive name to source file path. |
+| `examples` | no | Validator command templates keyed by code-block language, used by 'selfdoc check' to execute fenced blocks marked 'validate'. Each template must contain the '{file}' placeholder. Absent means example validation is off. |
 | `author` | no | Author information for meta tags and structured data. |
 | `feedback` | no | Feedback collection configuration (at least one of webhook or ga required). |
 | `branding` | no | Landing page branding and call-to-action configuration. |

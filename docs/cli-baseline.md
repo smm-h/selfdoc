@@ -16,6 +16,8 @@ Manage the content and description hash baselines that drive staleness (STALE001
 
 Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.
 
+**Effect:** mutating
+
 ### Flags
 
 | Name | Short | Type | Default | Env | Description |

@@ -11,6 +11,8 @@ nav_order: 6
 
 Generate data files by running sandboxed scripts via bwrap
 
+**Effect:** mutating
+
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |

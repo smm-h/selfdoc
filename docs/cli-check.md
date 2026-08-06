@@ -11,6 +11,8 @@ nav_order: 3
 
 Check documentation coverage, directive resolution, and lint rules
 
+**Effect:** mutating
+
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |

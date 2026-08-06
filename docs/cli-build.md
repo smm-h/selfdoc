@@ -11,6 +11,8 @@ nav_order: 2
 
 Build the documentation site from templates and source code
 
+**Effect:** mutating
+
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |

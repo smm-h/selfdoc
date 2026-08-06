@@ -10,3 +10,12 @@ nav_order: 4
 # selfdoc deploy
 
 Deploy the built documentation site to the configured provider
+
+**Effect:** mutating · **consequential** (prompts before running; `--approve-consequential` skips)
+
+## Grants
+
+| Kind | Name | Reason |
+| --- | --- | --- |
+| proc_mutate | `deploy` | publishes the built site to the configured Cloudflare Pages project; the deployment is live the moment it lands |
+| proc_mutate | `force-push` | replaces the remote gh-pages branch wholesale; the previous published tree is not recoverable from the remote afterwards |

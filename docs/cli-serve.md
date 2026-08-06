@@ -11,6 +11,8 @@ nav_order: 9
 
 Serve the documentation site locally with live reload
 
+**Effect:** mutating
+
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |

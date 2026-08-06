@@ -11,6 +11,8 @@ nav_order: 7
 
 Initialize selfdoc configuration and starter docs template
 
+**Effect:** mutating
+
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |

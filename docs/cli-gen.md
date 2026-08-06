@@ -11,6 +11,8 @@ nav_order: 5
 
 Auto-generate documentation pages from project structure
 
+**Effect:** mutating
+
 ## Flags
 
 | Name | Short | Type | Default | Env | Description |
