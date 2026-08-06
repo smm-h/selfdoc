@@ -75,11 +75,49 @@ def schema_json():
         "help": "A test app",
         "env_prefix": None,
         "config": False,
-        "global_flags": [],
+        "global_flags": [
+            {
+                "name": "json",
+                "type": "bool",
+                "help": "emit machine-readable JSON",
+                "short": None,
+                "default": False,
+                "env": None,
+                "negatable": True,
+            },
+        ],
+        "infra": {
+            "roots": [
+                {"env_var": "TESTAPP_HOME", "default": "~/.testapp"},
+            ],
+            "handshakes": [
+                {
+                    "env_var": "TESTAPP_SESSION_ID",
+                    "help": "session identifier set by the invoking agent",
+                },
+            ],
+            "connections": [
+                {"env_var": "TESTAPP_DB_URL", "help": "database connection URL"},
+            ],
+        },
         "commands": {
             "deploy": {
                 "name": "deploy",
                 "help": "deploy stuff",
+                "effect": "mutating",
+                "consequential": True,
+                "dry_run_supported": False,
+                "dry_run_unsupported_reason": (
+                    "the remote decides what a deploy does, so a preview "
+                    "cannot honestly show the result"
+                ),
+                "grants": [
+                    {
+                        "kind": "proc_mutate",
+                        "name": "push",
+                        "reason": "publishing the build is what this command is for",
+                    },
+                ],
                 "flags": [
                     {
                         "name": "target",
@@ -118,6 +156,7 @@ def schema_json():
                     "show": {
                         "name": "show",
                         "help": "show config",
+                        "effect": "read_only",
                         "flags": [
                             {
                                 "name": "format",
@@ -140,7 +179,7 @@ def schema_json():
                 "groups": {},
             },
         },
-        "deprecated": {},
+        "deprecated": {"ship": "use 'deploy' instead"},
     }
 
 
@@ -1099,6 +1138,383 @@ class TestGenerateDocsPreservesCliDescriptions:
             content = f.read()
 
         assert f'description: "{custom}"' in content
+
+
+# ---------------------------------------------------------------------------
+# Effects metadata: badges, grants, app-level sections, reserved quartet
+# ---------------------------------------------------------------------------
+
+
+def _gen_from_schema(tmp_path, schema):
+    """Write *schema*, read it back, and generate CLI pages into docs/."""
+    _write_schema(tmp_path, schema)
+    structure = read_schema_json(str(tmp_path))
+    docs_dir = os.path.join(tmp_path, "docs")
+    generate_cli_pages(structure, docs_dir)
+    return docs_dir
+
+
+def _read_page(docs_dir, fname):
+    with open(os.path.join(docs_dir, fname), "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@pytest.fixture()
+def pre_effects_structure():
+    """A CLI structure from a schema that predates the effects regime.
+
+    No ``effect`` key anywhere -- the badge lines and the reserved-quartet
+    section must both stay off for such an app.
+    """
+    return {
+        "app_name": "oldapp",
+        "app_version": "1.0",
+        "app_help": "An app built before the effects regime",
+        "commands": [
+            {
+                "name": "deploy",
+                "help": "deploy stuff",
+                "flags": [],
+                "args": [],
+            },
+        ],
+        "groups": [
+            {
+                "name": "config",
+                "help": "configuration",
+                "commands": [
+                    {"name": "show", "help": "show config", "flags": [], "args": []},
+                ],
+            },
+        ],
+    }
+
+
+class TestReadSchemaJsonAppLevelFields:
+    """read_schema_json must not drop global_flags / infra / deprecated."""
+
+    def test_global_flags_passthrough(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        assert len(result["global_flags"]) == 1
+        assert result["global_flags"][0]["name"] == "json"
+        assert result["global_flags"][0]["help"] == "emit machine-readable JSON"
+
+    def test_infra_passthrough(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        assert result["infra"]["roots"][0]["env_var"] == "TESTAPP_HOME"
+        assert result["infra"]["handshakes"][0]["env_var"] == "TESTAPP_SESSION_ID"
+        assert result["infra"]["connections"][0]["env_var"] == "TESTAPP_DB_URL"
+
+    def test_deprecated_passthrough(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        assert result["deprecated"] == {"ship": "use 'deploy' instead"}
+
+    def test_absent_app_level_fields_normalize_to_empty(self, tmp_path):
+        """A schema omitting the three keys yields empty containers, not None."""
+        _write_schema(tmp_path, {
+            "name": "bare", "project_id": "bare", "version": "1.0", "help": "",
+            "commands": {}, "groups": {},
+        })
+        result = read_schema_json(str(tmp_path))
+
+        assert result["global_flags"] == []
+        assert result["infra"] == {}
+        assert result["deprecated"] == {}
+
+    def test_null_app_level_fields_normalize_to_empty(self, tmp_path):
+        """Explicit JSON nulls also normalize (strictcli emits null for these)."""
+        _write_schema(tmp_path, {
+            "name": "bare", "project_id": "bare", "version": "1.0", "help": "",
+            "commands": {}, "groups": {},
+            "global_flags": None, "infra": None, "deprecated": None,
+        })
+        result = read_schema_json(str(tmp_path))
+
+        assert result["global_flags"] == []
+        assert result["infra"] == {}
+        assert result["deprecated"] == {}
+
+    def test_command_effect_fields_passthrough(self, tmp_path, schema_json):
+        _write_schema(tmp_path, schema_json)
+        result = read_schema_json(str(tmp_path))
+
+        deploy = result["commands"][0]
+        assert deploy["effect"] == "mutating"
+        assert deploy["consequential"] is True
+        assert deploy["dry_run_supported"] is False
+        assert deploy["grants"][0]["kind"] == "proc_mutate"
+
+        show = result["groups"][0]["commands"][0]
+        assert show["effect"] == "read_only"
+
+
+class TestEffectBadges:
+    """Per-command effect / consequential / dry-run badge lines."""
+
+    def test_command_page_mutating_consequential_badge(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-deploy.md")
+
+        assert "**Effect:** mutating" in content
+        assert "**consequential**" in content
+        assert "`--approve-consequential`" in content
+
+    def test_command_page_dry_run_unsupported_line(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-deploy.md")
+
+        assert "**Dry run:** not supported" in content
+        assert "the remote decides what a deploy does" in content
+
+    def test_group_page_read_only_badge(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-config.md")
+
+        assert "**Effect:** read_only" in content
+        # A read_only command is never consequential.
+        assert "**consequential**" not in content
+
+    def test_dry_run_line_absent_when_supported(self, tmp_path, schema_json):
+        """Absence of dry_run_supported means the normal case -- render nothing."""
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-config.md")
+
+        assert "**Dry run:**" not in content
+
+    def test_no_badge_for_pre_effects_schema(self, tmp_path, pre_effects_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(pre_effects_structure, docs_dir)
+
+        assert "**Effect:**" not in _read_page(docs_dir, "cli-deploy.md")
+        assert "**Effect:**" not in _read_page(docs_dir, "cli-config.md")
+
+
+class TestGrantsTable:
+    """Commands carrying grants render a Kind | Name | Reason table."""
+
+    def test_command_page_grants_table(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-deploy.md")
+
+        assert "## Grants" in content
+        assert "| Kind | Name | Reason |" in content
+        assert "| proc_mutate | `push` |" in content
+        assert "publishing the build is what this command is for" in content
+
+    def test_command_page_no_grants_table_when_absent(
+        self, tmp_path, pre_effects_structure,
+    ):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(pre_effects_structure, docs_dir)
+
+        assert "Grants" not in _read_page(docs_dir, "cli-deploy.md")
+
+    def test_group_page_grants_table(self, tmp_path):
+        """A subcommand's grants render under an H3 inside the group page."""
+        structure = {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [],
+            "groups": [
+                {
+                    "name": "release",
+                    "help": "release management",
+                    "commands": [
+                        {
+                            "name": "run",
+                            "help": "run a release",
+                            "effect": "mutating",
+                            "consequential": True,
+                            "grants": [
+                                {
+                                    "kind": "net_mutate",
+                                    "name": "publish",
+                                    "reason": "a release publishes to a registry",
+                                },
+                            ],
+                            "flags": [],
+                            "args": [],
+                        },
+                    ],
+                },
+            ],
+        }
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(structure, docs_dir)
+        content = _read_page(docs_dir, "cli-release.md")
+
+        assert "### Grants" in content
+        assert "| Kind | Name | Reason |" in content
+        assert "| net_mutate | `publish` |" in content
+
+
+class TestGroupDeprecatedSection:
+    """A group's own deprecated map renders on its page."""
+
+    def test_group_page_deprecated_list(self, tmp_path):
+        structure = {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [],
+            "groups": [
+                {
+                    "name": "config",
+                    "help": "configuration",
+                    "deprecated": {"dump": "use 'config show' instead"},
+                    "commands": [
+                        {
+                            "name": "show",
+                            "help": "show config",
+                            "effect": "read_only",
+                            "flags": [],
+                            "args": [],
+                        },
+                    ],
+                },
+            ],
+        }
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(structure, docs_dir)
+        content = _read_page(docs_dir, "cli-config.md")
+
+        assert "## Deprecated" in content
+        assert "`dump`" in content
+        assert "use 'config show' instead" in content
+
+    def test_group_page_no_deprecated_section_when_empty(
+        self, tmp_path, pre_effects_structure,
+    ):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(pre_effects_structure, docs_dir)
+
+        assert "Deprecated" not in _read_page(docs_dir, "cli-config.md")
+
+
+class TestReservedQuartetSection:
+    """The static framework-flag section, keyed on schema effect presence."""
+
+    def test_quartet_section_present_for_effects_schema(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert "## Framework flags" in content
+        assert "`--dry-run`" in content
+        assert "`--approve-consequential`" in content
+        assert "`--quiet`" in content
+        assert "`--verbose`" in content
+
+    def test_quartet_section_absent_for_pre_effects_schema(
+        self, tmp_path, pre_effects_structure,
+    ):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(pre_effects_structure, docs_dir)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert "## Framework flags" not in content
+        assert "--approve-consequential" not in content
+
+    def test_quartet_keyed_on_group_subcommand_effect(self, tmp_path):
+        """An app whose only effect declarations live inside a group still
+        gets the section -- the key is the schema, not the top level."""
+        structure = {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [],
+            "groups": [
+                {
+                    "name": "config",
+                    "help": "configuration",
+                    "commands": [
+                        {
+                            "name": "show",
+                            "help": "show config",
+                            "effect": "read_only",
+                            "flags": [],
+                            "args": [],
+                        },
+                    ],
+                },
+            ],
+        }
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(structure, docs_dir)
+
+        assert "## Framework flags" in _read_page(docs_dir, "cli-index.md")
+
+
+class TestIndexAppLevelSections:
+    """Global flags, infrastructure and deprecated sections on cli-index.md."""
+
+    def test_global_flags_table(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert "## Global flags" in content
+        assert "| Name | Short | Type | Default | Env | Description |" in content
+        assert "`--json`" in content
+        assert "emit machine-readable JSON" in content
+
+    def test_infrastructure_sections(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert "## Infrastructure" in content
+        assert "`TESTAPP_HOME`" in content
+        assert "~/.testapp" in content
+        assert "`TESTAPP_SESSION_ID`" in content
+        assert "session identifier set by the invoking agent" in content
+        assert "`TESTAPP_DB_URL`" in content
+
+    def test_deprecated_list(self, tmp_path, schema_json):
+        docs_dir = _gen_from_schema(tmp_path, schema_json)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert "## Deprecated" in content
+        assert "`ship`" in content
+        assert "use 'deploy' instead" in content
+
+    def test_sections_absent_when_empty(self, tmp_path, pre_effects_structure):
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(pre_effects_structure, docs_dir)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert "## Global flags" not in content
+        assert "## Infrastructure" not in content
+        assert "## Deprecated" not in content
+
+    def test_global_flag_container_default_renders_as_json(self, tmp_path):
+        """A structured default (strictcli's relative_to_root form) renders as
+        compact JSON, not a Python dict repr."""
+        structure = {
+            "app_name": "testapp",
+            "app_version": "1.0",
+            "app_help": "A test app",
+            "commands": [],
+            "groups": [],
+            "global_flags": [
+                {
+                    "name": "archive-dir",
+                    "type": "str",
+                    "help": "path to the archive directory",
+                    "default": {"relative_to_root": {"env_var": "T_HOME"}},
+                },
+            ],
+        }
+        docs_dir = os.path.join(tmp_path, "docs")
+        generate_cli_pages(structure, docs_dir)
+        content = _read_page(docs_dir, "cli-index.md")
+
+        assert '{"relative_to_root": {"env_var": "T_HOME"}}' in content
+        assert "'relative_to_root'" not in content
 
 
 class TestExpectedCliPageFilenames:

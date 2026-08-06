@@ -220,12 +220,20 @@ def read_schema_json(base_dir, source_paths=None):
     """Read ``.strictcli/schema.json`` and translate to the internal format.
 
     Returns a dict with ``app_name``, ``app_version``, ``app_help``,
+    ``global_flags`` (list), ``infra`` (dict), ``deprecated`` (dict),
     ``commands`` (list), and ``groups`` (list) -- or ``None`` if the
     schema file does not exist.
 
     The translation preserves new fields from the schema (``choices``,
     ``hidden``, ``deprecated``, ``variadic``, ``passthrough``,
-    ``repeatable``, ``negatable``) so downstream consumers can use them.
+    ``repeatable``, ``negatable``) so downstream consumers can use them,
+    plus the effects-regime per-command fields (``effect``,
+    ``consequential``, ``grants``, ``dry_run_supported``,
+    ``dry_run_unsupported_reason``), which pass through untouched.
+
+    strictcli omits the app-level ``global_flags``/``infra``/``deprecated``
+    keys when they are empty, and some emitters write an explicit ``null``;
+    both normalize to empty containers so renderers can truth-test them.
     """
     schema_path = os.path.join(base_dir, ".strictcli", "schema.json")
     if not os.path.isfile(schema_path):
@@ -253,6 +261,9 @@ def read_schema_json(base_dir, source_paths=None):
         "app_name": schema.get("name", ""),
         "app_version": schema.get("version", ""),
         "app_help": schema.get("help", ""),
+        "global_flags": schema.get("global_flags") or [],
+        "infra": schema.get("infra") or {},
+        "deprecated": schema.get("deprecated") or {},
     }
 
     # Translate commands dict -> list
@@ -458,6 +469,54 @@ def generate_cli_pages(cli_structure, docs_dir):
             index_lines.append(f"- [{grp['name']}]({fname}) -- {grp.get('help', '')}")
         index_lines.append("")
 
+    global_flags = cli_structure.get("global_flags") or []
+    if global_flags:
+        index_lines.append("## Global flags")
+        index_lines.append("")
+        index_lines.append(_flag_table(global_flags))
+        index_lines.append("")
+
+    if _schema_has_effects(cli_structure):
+        index_lines.append("## Framework flags")
+        index_lines.append("")
+        index_lines.append(_RESERVED_QUARTET_INTRO)
+        index_lines.append("")
+        index_lines.append(render_markdown_table(
+            ["Flag", "Effect"], _RESERVED_QUARTET_ROWS,
+        ))
+        index_lines.append("")
+
+    infra = cli_structure.get("infra") or {}
+    if infra:
+        index_lines.append("## Infrastructure")
+        index_lines.append("")
+        roots = infra.get("roots") or []
+        if roots:
+            index_lines.append("### Roots")
+            index_lines.append("")
+            index_lines.append(_env_table(roots, "Default"))
+            index_lines.append("")
+        handshakes = infra.get("handshakes") or []
+        if handshakes:
+            index_lines.append("### Handshake variables")
+            index_lines.append("")
+            index_lines.append(_env_table(handshakes, "Description"))
+            index_lines.append("")
+        connections = infra.get("connections") or []
+        if connections:
+            index_lines.append("### Connection variables")
+            index_lines.append("")
+            index_lines.append(_env_table(connections, "Description"))
+            index_lines.append("")
+
+    deprecated = cli_structure.get("deprecated") or {}
+    if deprecated:
+        index_lines.append("## Deprecated")
+        index_lines.append("")
+        for dname in sorted(deprecated):
+            index_lines.append(f"- `{dname}` -- {deprecated[dname]}")
+        index_lines.append("")
+
     index_filename = "cli-index.md"
     _write_page(
         os.path.join(docs_dir, index_filename),
@@ -499,6 +558,159 @@ def generate_cli_pages(cli_structure, docs_dir):
 def _write_page(filepath, content):
     """Write a generated page atomically with read-only permissions."""
     _atomic_write(filepath, content, permissions=0o444)
+
+
+# ---------------------------------------------------------------------------
+# Effects-regime rendering helpers
+# ---------------------------------------------------------------------------
+
+
+# The framework-owned reserved quartet. These four flags are declared by
+# strictcli itself, never by the app, so they appear nowhere in schema.json at
+# any level -- the section is static and keyed on the schema carrying `effect`
+# fields (a schema with effects is a post-quartet app).
+_RESERVED_QUARTET_ROWS = [
+    [
+        "`--dry-run`",
+        "Preview mode: no mutation runs. The framework prints a log of "
+        "every effect the command would have performed.",
+    ],
+    [
+        "`--approve-consequential`",
+        "Skips the confirmation prompt a consequential command shows "
+        "before it runs.",
+    ],
+    [
+        "`--quiet`",
+        "Hides informational output. Warnings, errors, structured data "
+        "and the dry-run log are never suppressed.",
+    ],
+    [
+        "`--verbose`",
+        "Shows debug output. `--quiet` wins when both are passed.",
+    ],
+]
+
+_RESERVED_QUARTET_INTRO = (
+    "These flags are owned by the strictcli framework, not by the app. "
+    "No command may declare a flag with one of these names, and each is "
+    "recognized anywhere on the command line."
+)
+
+
+def _schema_has_effects(cli_structure):
+    """Return True if any command in *cli_structure* declares an ``effect``.
+
+    Classification is mandatory under the effects regime, so a single
+    ``effect`` field anywhere proves the app is built on a strictcli that
+    owns the reserved quartet.
+    """
+    for cmd in cli_structure.get("commands", []) or []:
+        if cmd.get("effect"):
+            return True
+    for grp in cli_structure.get("groups", []) or []:
+        for cmd in grp.get("commands", []) or []:
+            if cmd.get("effect"):
+                return True
+    return False
+
+
+def _fmt_default(value):
+    """Format a flag default for table display.
+
+    Falsy defaults (``None``, ``False``, ``0``, ``""``) render as an empty
+    cell. Structured defaults -- strictcli's ``relative_to_root`` form, for
+    instance -- render as compact JSON rather than a Python repr.
+    """
+    if not value:
+        return ""
+    if isinstance(value, (dict, list)):
+        return f"`{json.dumps(value)}`"
+    return str(value)
+
+
+def _flag_table(flags):
+    """Render the standard flag table for a list of schema flags."""
+    rows = []
+    for fl in flags:
+        rows.append([
+            f"`--{fl['name']}`",
+            _fmt_short(fl.get("short") or ""),
+            fl.get("type", "str"),
+            _fmt_default(fl.get("default")),
+            fl.get("env") or "",
+            fl.get("help", ""),
+        ])
+    return render_markdown_table(
+        ["Name", "Short", "Type", "Default", "Env", "Description"],
+        rows,
+    )
+
+
+def _arg_table(args):
+    """Render the standard argument table for a list of schema args."""
+    rows = []
+    for ar in args:
+        req = "yes" if ar.get("required", True) else "no"
+        rows.append([f"`{ar['name']}`", req, ar.get("help", "")])
+    return render_markdown_table(["Name", "Required", "Description"], rows)
+
+
+def _command_meta_lines(cmd):
+    """Return the effect badge and dry-run refusal lines for one command.
+
+    Empty for a pre-effects schema: ``effect`` is mandatory under the effects
+    regime, so its absence means the app predates the regime and there is
+    nothing honest to print.
+    """
+    lines = []
+    effect = cmd.get("effect")
+    if effect:
+        badge = f"**Effect:** {effect}"
+        if cmd.get("consequential"):
+            badge += (
+                " · **consequential** (prompts before running; "
+                "`--approve-consequential` skips)"
+            )
+        lines.extend([badge, ""])
+
+    # Emitted by strictcli only on a command that refuses --dry-run; absence
+    # is the normal case (dry run works) and prints nothing.
+    if cmd.get("dry_run_supported") is False:
+        reason = cmd.get("dry_run_unsupported_reason", "")
+        text = "**Dry run:** not supported"
+        if reason:
+            text += f" — {reason}"
+        lines.extend([text, ""])
+
+    return lines
+
+
+def _grants_lines(cmd, heading):
+    """Return the grants table lines for one command, or an empty list."""
+    grants = cmd.get("grants") or []
+    if not grants:
+        return []
+    rows = [
+        [g.get("kind", ""), f"`{g.get('name', '')}`", g.get("reason", "")]
+        for g in grants
+    ]
+    return [
+        heading,
+        "",
+        render_markdown_table(["Kind", "Name", "Reason"], rows),
+        "",
+    ]
+
+
+def _env_table(entries, description_header):
+    """Render an infra env-var table (``env_var`` plus one other column)."""
+    key = "default" if description_header == "Default" else "help"
+    rows = [
+        [f"`{e.get('env_var', '')}`", e.get(key, "") or ""]
+        for e in entries
+    ]
+    return render_markdown_table(["Env var", description_header], rows)
 
 
 def _render_command_page(cmd, app_name, nav_order, existing_path=None):
@@ -548,37 +760,21 @@ def _render_command_page(cmd, app_name, nav_order, existing_path=None):
         lines.append(chelp)
         lines.append("")
 
+    lines.extend(_command_meta_lines(cmd))
+
     if flags:
         lines.append("## Flags")
         lines.append("")
-        flag_rows = []
-        for fl in flags:
-            short = fl.get("short") or ""
-            ftype = fl.get("type", "str")
-            default = fl.get("default") or ""
-            env = fl.get("env") or ""
-            desc = fl.get("help", "")
-            flag_rows.append([
-                f"`--{fl['name']}`", _fmt_short(short), ftype, default, env, desc,
-            ])
-        lines.append(render_markdown_table(
-            ["Name", "Short", "Type", "Default", "Env", "Description"],
-            flag_rows,
-        ))
+        lines.append(_flag_table(flags))
         lines.append("")
 
     if args:
         lines.append("## Arguments")
         lines.append("")
-        arg_rows = []
-        for ar in args:
-            req = "yes" if ar.get("required", True) else "no"
-            arg_rows.append([f"`{ar['name']}`", req, ar.get("help", "")])
-        lines.append(render_markdown_table(
-            ["Name", "Required", "Description"],
-            arg_rows,
-        ))
+        lines.append(_arg_table(args))
         lines.append("")
+
+    lines.extend(_grants_lines(cmd, "## Grants"))
 
     return "\n".join(lines)
 
@@ -629,6 +825,14 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
         lines.append(ghelp)
         lines.append("")
 
+    grp_deprecated = grp.get("deprecated") or {}
+    if grp_deprecated:
+        lines.append("## Deprecated")
+        lines.append("")
+        for dname in sorted(grp_deprecated):
+            lines.append(f"- `{dname}` -- {grp_deprecated[dname]}")
+        lines.append("")
+
     for cmd in subcmds:
         cname = cmd["name"]
         chelp = cmd.get("help", "")
@@ -641,37 +845,21 @@ def _render_group_page(grp, app_name, nav_order, existing_path=None):
             lines.append(chelp)
             lines.append("")
 
+        lines.extend(_command_meta_lines(cmd))
+
         if flags:
             lines.append("### Flags")
             lines.append("")
-            flag_rows = []
-            for fl in flags:
-                short = fl.get("short") or ""
-                ftype = fl.get("type", "str")
-                default = fl.get("default") or ""
-                env = fl.get("env") or ""
-                desc = fl.get("help", "")
-                flag_rows.append([
-                    f"`--{fl['name']}`", _fmt_short(short), ftype, default, env, desc,
-                ])
-            lines.append(render_markdown_table(
-                ["Name", "Short", "Type", "Default", "Env", "Description"],
-                flag_rows,
-            ))
+            lines.append(_flag_table(flags))
             lines.append("")
 
         if args:
             lines.append("### Arguments")
             lines.append("")
-            arg_rows = []
-            for ar in args:
-                req = "yes" if ar.get("required", True) else "no"
-                arg_rows.append([f"`{ar['name']}`", req, ar.get("help", "")])
-            lines.append(render_markdown_table(
-                ["Name", "Required", "Description"],
-                arg_rows,
-            ))
+            lines.append(_arg_table(args))
             lines.append("")
+
+        lines.extend(_grants_lines(cmd, "### Grants"))
 
     return "\n".join(lines)
 
