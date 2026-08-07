@@ -24,12 +24,12 @@
     "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
   },
   "en/cli-build.md": {
-    "content": "c404e38be15be86c2aef95ce92fe4459c2dfa96f74e895ca05dad863e3c7bcec",
+    "content": "45935e7764a22d7a30ff2d21310021ac58102c7b5c8b7a96264c7c3b4397857b",
     "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8",
     "schema_hash": "fe0892d4955fbd801bf9d75ffa21bec86d0b3bc9933ea884e57a6f02515df750"
   },
   "en/cli-check.md": {
-    "content": "1bb090b0fe9937140997571f506fc80ece87e3db2ba300575bc579c50840fe94",
+    "content": "25ef24c0424f86fce8caf937d7e6407c715d25eb4b4fbbe2908229c4b10102d3",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd",
     "schema_hash": "6ff1a90505b4f77523b7a5dfc6408aaca0800adc0cacfa001fe0eec67d73f6f3"
   },
@@ -39,12 +39,12 @@
     "schema_hash": "675e32580b6227418a4b559a355f7babcc6151afc2f812645344278abb2cffc6"
   },
   "en/cli-gen-data.md": {
-    "content": "022774c91f577bea2510deedf0210344f00a029f408eb4832f65242a01db87c1",
+    "content": "a087c14d17669179e7b9688ddcf355424134062166230d142bfbadd999359e43",
     "description": "ae2ec87204ace68d67a6aaaccce864bdd6cdf63714801c5f43e0b71f0d188bc6",
     "schema_hash": "ea3d4db4994ef40ac2e62933de311d63d95188ea5560c61c60a0a41060f623ad"
   },
   "en/cli-gen.md": {
-    "content": "25d7cb51ab5493eb82f99591d01b25fce64277562773f028b9662f0174d6aa55",
+    "content": "f0a49e62f99c9d9a904643a20dfc40a298308166c1d01458a8a6750b62fd7cca",
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac",
     "schema_hash": "cb722f83e5eb702cef62bfd1b46cdc8e7e06288beefc8a0ef4ae533afb2c6f5a"
   },
@@ -53,7 +53,7 @@
     "description": "c30342a2cd66cf7bfb9c53315e71bfff9e51498aaa457679673189ccaff05b1d"
   },
   "en/cli-init.md": {
-    "content": "b4c45399a04462a6bc929f388415711204324792e7560319fbdb06c56206defa",
+    "content": "53239f462acca643b4234076ab4eb603690cbe84ecc18e062de8a54c7e958c6e",
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb",
     "schema_hash": "dd64eecb25b1baeff3aea13646ee399a4012027cd4037800bb5b9cbab2bb6b0f"
   },
@@ -69,7 +69,7 @@
     "seed_hash": "cedb351399c5b2dae0fca76f35010f96817d8ce3062e7e8f3b0d27ac7afbbee2"
   },
   "en/cli-serve.md": {
-    "content": "5f9d765a95d20f7b14c8934c3836da8c5f2cf3a0a2f7a90472d5fe28e4b991f8",
+    "content": "ca92c9da236023447de336d444f6ab6f240d6adfdf76cb184c94b05f2b92b51b",
     "description": "764bb3e3e5a1599a9fba9de3ab6d0beecdfc58cd56e59c85e6adb4c3df3a5892",
     "schema_hash": "be460c6b1e8079380716f20be2ac1392a5037e827c6d8077604722183556038d"
   },
