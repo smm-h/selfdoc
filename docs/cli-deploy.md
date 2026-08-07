@@ -1,6 +1,6 @@
 ---
 title: selfdoc deploy
-description: "Reference for the selfdoc deploy command — usage, flags, arguments, and examples for the deploy subcommand of the selfdoc CLI."
+description: "Reference for the selfdoc deploy command — its mutating effect, the consequential confirmation prompt, and the two process grants publishing needs."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 4
