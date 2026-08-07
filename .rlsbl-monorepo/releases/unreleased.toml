@@ -1,44 +1,69 @@
 [releasables.selfdoc]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+bump = "minor"
+description = "Generated CLI reference pages carry effects metadata, and selfdoc check executes validate-marked examples instead of merely parsing them."
+context = """
+Two gaps closed in the same visit.
+
+Generated cli-*.md pages threw away every effects field the strictcli schema
+carries. A reader of the published docs could not learn that a command was
+consequential, what it would refuse to do under --dry-run, or which dangerous
+steps it had authored grant reasons for -- the first notice was a CI job dying
+on a confirmation prompt. The pages now render the effect classification, the
+consequential badge with --approve-consequential, the dry-run-unsupported
+reason and the grants table, and the index gains global flags, the reserved
+framework-flag quartet, infrastructure and deprecated sections.
+
+Separately, code blocks in documentation were only ever parsed for syntax, so
+an example that parsed but could not run shipped looking correct. A block
+marked validate is now assembled and executed through the validator its
+language declares under the new examples config key; a failing run is
+EXAMPLE002 with the validator's output, and a validate marker with no
+configured command is EXAMPLE003 rather than a silent skip. Unmarked blocks are
+unaffected and are never executed.
+
+Also: schemas/check-output.schema.json now enumerates every lint code selfdoc
+check emits and declares the two coverage fields it was omitting, so consumers
+validating or generating types from the JSON output stop losing data.
+"""
 include = ["npm", "pypi"]
 exclude = []
 
 [releasables.selfdoc-core]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+bump = "minor"
+description = "The validate fence marker and the examples config key land in core, and every generated redirect stub now declares an absolute canonical URL."
+context = """
+The core half of the example-validation work: the tokenizer accepts a validate
+token in a fenced block's info string, and the config loader accepts a
+top-level examples key mapping a block language to the validator command
+template (with a {file} placeholder) that selfdoc check substitutes and runs.
+
+The canonicalization fix is unrelated but ships together. Generated redirect
+stubs -- both the root redirect and the config-driven ones -- emitted a
+root-relative rel=canonical, which means a site reachable on more than one
+hostname had every alias declaring itself the original. The canonical is now
+built through the project's URL builder, so it is absolute and
+topology-aware. The new assembly.portfolio_canonical key names the portfolio
+page's canonical explicitly: the portfolio is the site apex, not a docs page,
+so topology.docs_base is the wrong answer and there is deliberately no default.
+"""
 include = ["pypi"]
 exclude = []
 
 [releasables.selfblog]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+bump = "minor"
+description = "The assembly portfolio page and the unified site's root redirect stub both declare absolute canonical URLs."
+context = """
+selfblog's share of the canonicalization pass. assembly generate-shared now
+splices a rel=canonical link into the portfolio it copies to the site root,
+and the unified site's root redirect stub emits an absolute canonical instead
+of a root-relative one -- previously every hostname bound to a site claimed to
+be the canonical one.
+
+The canonical URL is supplied by a new required --portfolio-canonical flag
+(assembly.portfolio_canonical, templated into the generated deploy workflow).
+Supplying a portfolio file without it is a hard error rather than a silent
+default, because the portfolio's canonical is the apex and no other configured
+value stands in for it. Callers that pass a portfolio file must add the flag.
+"""
 include = ["npm", "pypi"]
 exclude = []
