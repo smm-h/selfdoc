@@ -54,10 +54,6 @@
     "docs/_CLAUDE.md",
     "docs/_README.md"
   ],
-  "deploy": {
-    "provider": "cloudflare-pages",
-    "project": "selfdoc"
-  },
   "branding": {
     "tagline": "Your code is the documentation.",
     "cta_text": "Get Started",
