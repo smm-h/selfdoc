@@ -1041,6 +1041,17 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 
 ## 0.5.0
 
+Directive attribute enforcement: unknown or missing attributes are hard errors; attribute keys may contain hyphens
+
+<details>
+<summary>Context</summary>
+
+Phase 9.5 coordinated breaking release. selfdoc-core gains validate_directive_attrs, which enforces that a directive only uses attributes its catalog spec declares (an unknown or missing attribute is a hard error), and the attribute-key character class now permits hyphens (e.g. schema-dir). This is the mechanism the selfdoc CLI surfaces as strict gen/check behavior, and it underpins the table-commands schema-dir attribute.
+
+The eight external consumer repositories using table-commands were migrated to the new directive syntax in lockstep with this release.
+
+</details>
+
 ### Features
 
 - [selfdoc-core] **Directive attribute validation.** New `validate_directive_attrs` enforces that directives only use attributes their catalog spec declares.
@@ -1051,6 +1062,15 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 
 ## 0.4.0
 
+Staleness v3: content hashes canonicalize directive attributes; per-page seed hashes; baseline re-established
+
+<details>
+<summary>Context</summary>
+
+The staleness hash store advances to v3. Content hashes canonicalize directive marker attributes so mechanical path renames render identically and no longer flag stale descriptions, and per-page seed hashes are recorded to support description ownership. Older (v2) stores hold none of the data v3 needs, so they are discarded and re-baselined from current content on first load.
+
+</details>
+
 ### Features
 
 - [selfdoc-core] **Staleness hash store re-baselines on upgrade (v3).** The store now records per-page seed hashes and canonicalizes directive markers; older (v2) stores are discarded and re-established from current content, so the first `selfdoc check` after upgrading re-baselines every page instead of reporting migration-induced staleness.
@@ -1060,6 +1080,17 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 - [selfdoc-core] **Directive path renames no longer flag stale descriptions.** Renaming a directive's `path` attribute (e.g. `path="old"` to `path="new"`) is a mechanical change with identical rendered output, so it no longer triggers a false stale-description error.
 
 ## 0.3.0
+
+Summary truncation abolished: complete first sentences and paragraphs everywhere, soft-wrap normalization across all extractors, and feed summaries carry the full first paragraph.
+
+<details>
+<summary>Context</summary>
+
+Truncation produced mid-sentence garbage in llms.txt, Atom feeds, and SEO meta descriptions.
+Extracted summaries now use a first-sentence / first-paragraph unit picker with soft-wrapped
+lines joined, so no output is cut mid-sentence or capped at 155 characters.
+
+</details>
 
 ### Breaking
 
@@ -1077,6 +1108,8 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 
 ## 0.2.0
 
+Multi-source project name config key; skeleton pages exempt from staleness holds (update_hashes now requires skeleton_pages).
+
 ### Breaking
 
 - [selfdoc-core] **Skeleton pages no longer deadlock staleness.** `update_hashes` exempts generated + machine-seeded pages from the staleness/drift baseline hold so they stop re-erroring forever; it now requires an explicit `skeleton_pages` keyword argument (breaking for direct callers).
@@ -1087,17 +1120,37 @@ Fixes make the Python extractor's `ref` output count `__all__` re-exports and mo
 
 ## 0.1.2
 
+hash raw template body for STALE001 instead of resolved content
+
+<details>
+<summary>Context</summary>
+
+STALE001 previously hashed resolved content, which included dynamic directive values like project.version. This caused false staleness on every version bump. Now hashes the raw template body, so only actual template edits trigger staleness.
+
+</details>
+
 ### Fixes
 
 - [selfdoc-core] **Fix.** STALE001 now hashes the raw template body instead of resolved content, preventing false staleness on version bumps and other dynamic directive values.
 
 ## 0.1.1
 
+Fix CI: point test paths at selfdoc-core's own test directory, fix publish gate regex
+
+<details>
+<summary>Context</summary>
+
+v0.1.0 CI failed because testpaths pointed at shared tests that depend on strictcli (not a selfdoc-core dependency). Created selfdoc-core-specific smoke tests.
+
+</details>
+
 ### Fixes
 
 - [selfdoc-core] **Fix CI.** Point test paths at selfdoc-core's own test directory so CI passes and the package publishes to PyPI.
 
 ## 0.1.0
+
+Initial release of the selfdoc core library.
 
 ### Features
 
