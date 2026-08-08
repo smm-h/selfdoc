@@ -2,6 +2,10 @@
 
 # Changelog
 
+## Unreleased
+
+- No user-facing changes.
+
 ## 0.36.0
 
 Generated CLI reference pages carry effects metadata, and selfdoc check executes validate-marked examples instead of merely parsing them.
@@ -110,12 +114,32 @@ Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier sc
 
 ## 0.33.0
 
+table-commands discovers the strictcli schema automatically (path attribute removed; schema-dir disambiguates multi-schema repos)
+
+<details>
+<summary>Context</summary>
+
+Phase 9.5 coordinated breaking release. table-commands no longer accepts a path attribute; it auto-discovers the unique .strictcli/schema.json by walking the project root, with an optional schema-dir attribute to disambiguate repos that carry more than one schema. Directive attribute handling is now strict across gen and check: an unknown or missing attribute is a hard error (exit 1) reporting the file, line, directive, and allowed attributes.
+
+Because table-commands path removal is a breaking directive change, all in-tree docs and the eight external consumer repositories that use table-commands were migrated to the new bare-directive syntax in lockstep before this release, so no consumer is left on a directive that would now hard-error.
+
+</details>
+
 ### Breaking
 
 - [selfdoc] **Strict directive attributes.** `selfdoc check` and `selfdoc gen` now hard-error (exit 1) when a directive uses an unknown attribute or omits a required one, reporting the file, line, directive, and allowed attributes.
 - [selfdoc] **table-commands auto-discovers the CLI schema.** `table-commands` no longer takes `path`; it finds `.strictcli/schema.json` by walking the project root. Migration: drop `path`, and if discovery is ambiguous add `schema-dir="<dir>"`.
 
 ## 0.32.0
+
+Description ownership by content: handwritten text is never overwritten; machine placeholders identified by hash/template/live-recompute
+
+<details>
+<summary>Context</summary>
+
+gen now classifies a page's description text itself -- via current/historical module templates, the per-page seed hash, or a live recompute of CLI defaults -- instead of trusting the seeded flag. Hand-rewritten descriptions survive regeneration even with a stale seeded:true marker, and the STALE001/DRIFT001 exemption keys on the ownership predicate so hand-described generated pages get full staleness protection.
+
+</details>
 
 ### Fixes
 
@@ -124,6 +148,19 @@ Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier sc
 - [selfdoc] **A legacy auto-generated API reference index description is refreshed on `selfdoc gen`.** Projects still carrying the old "Complete auto-generated API reference index …" placeholder now have it reseeded with a project-specific description instead of being frozen as if hand-written.
 
 ## 0.31.0
+
+New `name` config key, gen-index naming fix, legacy description reseed, CLI defaults are now complete sentences, and the list-features directive is removed (migrated to list-modules).
+
+<details>
+<summary>Context</summary>
+
+Descriptions are handwritten-first with machine placeholders: auto-seeded page and CLI
+descriptions are recognizable so they can be reseeded, while hand-authored frontmatter is
+left verbatim. The old 155-character truncation produced mid-sentence cuts, so machine
+placeholders are now complete first sentences. list-features is superseded by list-modules,
+which yields richer module summaries.
+
+</details>
 
 ### Features
 
@@ -136,12 +173,23 @@ Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier sc
 
 ## 0.30.0
 
+gen-index descriptions: correct project naming, legacy wrong descriptions self-heal; no more phantom STALE/DRIFT on generated pages.
+
 ### Fixes
 
 - [selfdoc] **Correct API reference index description.** `selfdoc gen` no longer bakes an arbitrary source folder's name into the API reference index for multi-source projects (it uses the configured `name` or a generic phrasing), and it now refreshes index pages that still carry the old hardcoded description instead of preserving it forever.
 - [selfdoc] **No more phantom staleness errors on auto-generated pages.** `selfdoc check` no longer reports STALE001/DRIFT001 on skeleton (generated + seeded) pages whose source changed -- those pages advance automatically instead of being stuck in an unfixable error.
 
 ## 0.29.0
+
+baseline accept command and gen-index staleness fix
+
+<details>
+<summary>Context</summary>
+
+Adds `selfdoc baseline accept` for clearing staleness dead-ends on pages with dynamic content. Fixes gen-index to use content-aware seeded descriptions, preventing STALE001 deadlocks on generated index pages.
+
+</details>
 
 ### Features
 
@@ -153,11 +201,22 @@ Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier sc
 
 ## 0.28.1
 
+Fix CI: install playwright browsers before running tests, fix publish gate regex
+
+<details>
+<summary>Context</summary>
+
+v0.28.0 CI failed because playwright browsers were not installed. The publish gate regex also did not match the actual CI job name. Both are fixed.
+
+</details>
+
 ### Fixes
 
 - [selfdoc] **Fix CI.** Install playwright browsers before running tests so CI passes and the package publishes to PyPI.
 
 ## 0.28.0
+
+Monorepo conversion with three independent packages (selfdoc, selfdoc-core, selfblog).
 
 ### Breaking
 
