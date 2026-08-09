@@ -829,7 +829,13 @@ def _build_unified_body(
     written.update(aux_written)
 
     # --- Root redirect to common landing ---
-    redirect_url = f"/{default_locale_code}/common/{latest_version}/"
+    landing_prefix = f"{default_locale_code}/common/{latest_version}"
+    # Document-relative, with no leading slash.  The build output is not
+    # always served from an origin root: an assembly serves it under
+    # /<slug>/ and GitHub Pages project sites under /<repo>/.  A
+    # root-relative hop escapes that subtree; a document-relative one
+    # resolves correctly in every case, origin root included.
+    redirect_url = f"{landing_prefix}/"
     # Absolute canonical: a root-relative one resolves against whatever host
     # served the stub, so every alias of the site would claim to be canonical.
     canonical_url = lb["url_builder"].page_url(redirect_url)
@@ -851,7 +857,10 @@ def _build_unified_body(
         f.write(root_index_html)
     written[root_index_path] = True
 
-    redirects_content = f"/ {redirect_url} 302\n"
+    # Cloudflare only ever reads the _redirects at the deployed site root,
+    # where there is no document to resolve a relative target against --
+    # this rule stays site-absolute.
+    redirects_content = f"/ /{landing_prefix}/ 302\n"
     redirects_path = os.path.join(output_dir, "_redirects")
     with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)
