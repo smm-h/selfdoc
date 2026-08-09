@@ -1,44 +1,28 @@
-[releasables.selfdoc]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
-include = ["npm", "pypi"]
-exclude = []
-
 [releasables.selfdoc-core]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+bump = "patch"
+description = "Fix root and config-driven redirect stubs so their hop resolves inside the site subtree instead of at the origin root."
+context = """
+The generated root index.html stub hopped to /<locale>/<version>/. That is
+correct only when the build output is served from an origin root. A
+multi-project documentation assembly serves each project's output under
+/<slug>/, so the hop left the project entirely and landed on whatever the
+assembly root serves -- every project's landing page on the assembly was
+broken. GitHub Pages project sites, served under /<repo>/, had the same
+problem. The hop is now document-relative, so it resolves correctly under any
+mount point, origin root included; the rel=canonical stays absolute.
+"""
 include = ["pypi"]
 exclude = []
 
 [releasables.selfblog]
-# Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
-# Short description of this release (required)
-description = ""
-# Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+bump = "patch"
+description = "Fix the unified build's root redirect stub so its hop resolves inside the site subtree."
+context = """
+The unified build carried the same root-relative stub hop as the per-project
+build (/<locale>/common/<version>/), which escapes any path prefix the site is
+served under. The Cloudflare _redirects rule stays site-absolute, because it
+is only ever read at the deployed site root, where there is no document for a
+relative target to resolve against.
+"""
 include = ["npm", "pypi"]
 exclude = []
