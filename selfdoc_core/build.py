@@ -6,6 +6,7 @@ import gzip
 import io
 import json
 import os
+import posixpath
 import re
 import struct
 import subprocess
@@ -2120,10 +2121,15 @@ def _build_body(
 
     # Root redirect to default locale / latest version
     latest_prefix = f"{default_locale_code}/{latest_version}"
-    redirect_url = f"/{latest_prefix}/"
+    # Document-relative, with no leading slash.  The build output is not
+    # always served from an origin root: an assembly serves it under
+    # /<slug>/ and GitHub Pages project sites under /<repo>/.  A
+    # root-relative hop escapes that subtree; a document-relative one
+    # resolves correctly in every case, origin root included.
+    redirect_url = f"{latest_prefix}/"
     # The canonical must be absolute: a root-relative one resolves against
     # whatever host served the stub, so every alias of the site would claim
-    # to be canonical.  The refresh/JS hops stay relative -- same site.
+    # to be canonical.
     canonical_url = lb["url_builder"].page_url(redirect_url)
     root_index_html = (
         "<!DOCTYPE html>\n"
@@ -2143,7 +2149,10 @@ def _build_body(
         f.write(root_index_html)
     written[root_index_path] = True
 
-    redirects_content = f"/ {redirect_url} 302\n"
+    # Cloudflare only ever reads the _redirects at the deployed site root,
+    # where there is no document to resolve a relative target against --
+    # these rules stay site-absolute.
+    redirects_content = f"/ /{latest_prefix}/ 302\n"
     redirects_path = os.path.join(output_dir, "_redirects")
     with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)
@@ -2167,10 +2176,16 @@ def _build_body(
                     # Skip if the page already exists (e.g. cached old-version page)
                     if os.path.exists(old_path):
                         continue
-                    # Target URL for the redirect
-                    target_url = f"/{locale_code}/{ver_str}/{to_slug}/"
+                    # Target path within the site, and the document-relative
+                    # hop from the stub's own directory to it (see the root
+                    # stub above for why a root-relative hop is wrong).
+                    target_path = f"{locale_code}/{ver_str}/{to_slug}/"
+                    stub_dir = f"{locale_code}/{ver_str}/{from_slug}"
+                    target_url = (
+                        posixpath.relpath(target_path, stub_dir) + "/"
+                    )
                     # Absolute canonical (see the root stub above).
-                    target_canonical = lb["url_builder"].page_url(target_url)
+                    target_canonical = lb["url_builder"].page_url(target_path)
                     # Generate HTML meta-refresh page
                     meta_html = (
                         "<!DOCTYPE html>\n"
@@ -2193,7 +2208,7 @@ def _build_body(
                     with effects.open_write(redirects_path, "a", encoding="utf-8") as f:
                         f.write(
                             f"/{locale_code}/{ver_str}/{from_slug}/ "
-                            f"{target_url} 301\n"
+                            f"/{target_path} 301\n"
                         )
                     redirect_count += 1
         if redirect_count:
