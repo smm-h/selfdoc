@@ -2,7 +2,10 @@
 
 import json
 import os
+import re
 import subprocess
+
+from urllib.parse import urljoin
 
 import pytest
 
@@ -25,6 +28,27 @@ from conftest import _git, _write_json, _write_text
 def _read(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+def _stub_hops(html):
+    """Return every same-site hop a redirect stub emits.
+
+    A stub states its target four times (meta refresh, JS replace, anchor
+    href, anchor text).  All four must resolve identically, so tests assert
+    against the whole set rather than one representative.
+    """
+    hops = set(re.findall(r'content="0;url=([^"]*)"', html))
+    hops |= set(re.findall(r'window\.location\.replace\("([^"]*)"\)', html))
+    hops |= set(re.findall(r'<a href="([^"]*)">', html))
+    assert hops, "stub emitted no hop at all"
+    return hops
+
+
+def _canonical_of(html):
+    """Return the single rel=canonical URL a stub declares."""
+    found = re.findall(r'<link rel="canonical" href="([^"]*)">', html)
+    assert len(found) == 1, f"expected one canonical, got {found}"
+    return found[0]
 
 
 # -- Unit tests for helpers --
@@ -217,8 +241,56 @@ def test_build_unified_root_redirect_canonical_is_absolute(make_unified_project)
         '<link rel="canonical" href="https://example.com/en/common/1.0.0/">'
         in root_index
     )
-    # The meta refresh stays root-relative: it is a same-site hop.
-    assert 'content="0;url=/en/common/1.0.0/"' in root_index
+    for hop in _stub_hops(root_index):
+        assert urljoin("https://example.com/", hop) == (
+            "https://example.com/en/common/1.0.0/"
+        )
+
+
+def test_build_unified_root_redirect_hop_resolves_under_a_subpath_base_url(
+    make_unified_project,
+):
+    """A unified site served under a path prefix must hop within that prefix.
+
+    An assembly serves each project under ``/<slug>/``; a root-relative hop
+    leaves the subtree and lands on whatever the assembly root serves.
+    """
+    projects = [
+        {"name": "core", "language": "python"},
+    ]
+    docs_site_dir = make_unified_project(
+        projects, base_url="https://docs.example.com/proj",
+    )
+
+    build_unified(str(docs_site_dir))
+
+    output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
+    root_index = _read(os.path.join(output_dir, "index.html"))
+
+    served_at = "https://docs.example.com/proj/"
+    canonical = _canonical_of(root_index)
+    assert canonical == "https://docs.example.com/proj/en/common/1.0.0/"
+    for hop in _stub_hops(root_index):
+        assert "proj" in urljoin(served_at, hop), (
+            f"hop {hop!r} escapes the project subtree"
+        )
+        assert urljoin(served_at, hop) == canonical
+
+
+def test_build_unified_cloudflare_redirect_rule_stays_site_absolute(
+    make_unified_project,
+):
+    """``_redirects`` is read at the deployed root, so its target is absolute."""
+    projects = [
+        {"name": "core", "language": "python"},
+    ]
+    docs_site_dir = make_unified_project(projects)
+
+    build_unified(str(docs_site_dir))
+
+    output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
+    redirects = _read(os.path.join(output_dir, "_redirects"))
+    assert "/ /en/common/1.0.0/ 302\n" in redirects
 
 
 def test_build_unified_landing_page(make_unified_project):

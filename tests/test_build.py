@@ -12,6 +12,8 @@ import gzip as gzip_module
 
 from unittest import mock
 
+from urllib.parse import urljoin
+
 from selfdoc.build import build, _generate_robots_txt, _generate_headers, _generate_sitemap, _generate_atom_feed, _make_feed_entry, _minify_css, _minify_html, _extract_critical_css, _add_image_dimensions, _read_jpeg_dimensions, _read_webp_dimensions, _compress_output, _generate_og_png_basic, _generate_favicon_svg, SimpleURLBuilder
 from selfdoc.config import ConfigError
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
@@ -6076,8 +6078,10 @@ def test_redirect_generates_meta_refresh_html(tmp_path):
 
     with open(redirect_html_path, "r", encoding="utf-8") as f:
         content = f.read()
-    assert 'content="0;url=/en/1.0.0/release/edit/"' in content
-    assert "/en/1.0.0/release/edit/" in content
+    # The hop is document-relative so it survives being served under a path
+    # prefix; the canonical names the absolute target.
+    assert 'content="0;url=../release/edit/"' in content
+    assert "https://example.com/en/1.0.0/release/edit/" in content
 
 
 def test_redirect_generates_cloudflare_rule(tmp_path):
@@ -6123,8 +6127,9 @@ def test_root_redirect_stub_canonical_is_absolute(project_dir):
         f'<link rel="canonical" href="https://example.com/{DEFAULT_PREFIX}/">'
         in content
     )
-    # The meta refresh stays root-relative: it is a same-site hop.
-    assert f'content="0;url=/{DEFAULT_PREFIX}/"' in content
+    # The meta refresh is document-relative: a same-site hop that must keep
+    # working when the site is served under a path prefix.
+    assert f'content="0;url={DEFAULT_PREFIX}/"' in content
 
 
 def test_root_redirect_stub_canonical_uses_the_topology_url_builder(tmp_path):
@@ -6152,6 +6157,189 @@ def test_root_redirect_stub_canonical_uses_the_topology_url_builder(tmp_path):
         '<link rel="canonical" '
         f'href="https://docs.example.com/proj/{DEFAULT_PREFIX}/">'
         in content
+    )
+
+
+def _stub_hops(html):
+    """Return every same-site hop a redirect stub emits.
+
+    A stub states its target four times (meta refresh, JS replace, anchor
+    href, anchor text).  All four must resolve identically, so tests assert
+    against the whole set rather than one representative.
+    """
+    hops = set(re.findall(r'content="0;url=([^"]*)"', html))
+    hops |= set(re.findall(r'window\.location\.replace\("([^"]*)"\)', html))
+    hops |= set(re.findall(r'<a href="([^"]*)">', html))
+    assert hops, "stub emitted no hop at all"
+    return hops
+
+
+def _canonical_of(html):
+    """Return the single rel=canonical URL a stub declares."""
+    found = re.findall(r'<link rel="canonical" href="([^"]*)">', html)
+    assert len(found) == 1, f"expected one canonical, got {found}"
+    return found[0]
+
+
+def test_root_redirect_stub_hop_resolves_under_an_assembly_slug_prefix(tmp_path):
+    """The root stub's hop must land inside the project's own subtree.
+
+    An assembly serves each project's build output under ``/<slug>/``, so a
+    root-relative hop (``/en/1.0.0/``) leaves the project entirely and lands
+    on whatever the assembly root serves.  Resolving the hop against the
+    served stub URL must reproduce the canonical.
+    """
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        topology={"slug": "proj", "docs_base": "https://docs.example.com"},
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    served_at = "https://docs.example.com/proj/"
+    canonical = _canonical_of(content)
+    assert canonical == f"https://docs.example.com/proj/{DEFAULT_PREFIX}/"
+    for hop in _stub_hops(content):
+        assert "proj" in urljoin(served_at, hop), (
+            f"hop {hop!r} escapes the project subtree"
+        )
+        assert urljoin(served_at, hop) == canonical
+
+
+def test_root_redirect_stub_hop_resolves_under_a_subpath_base_url(tmp_path):
+    """The root stub's hop must survive a site deployed under a path prefix.
+
+    GitHub Pages project sites live at ``/<repo>/``; a root-relative hop
+    would leave the repo's site the same way it leaves an assembly slug.
+    """
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        base_url="https://owner.github.io/repo",
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    served_at = "https://owner.github.io/repo/"
+    canonical = _canonical_of(content)
+    assert canonical == f"https://owner.github.io/repo/{DEFAULT_PREFIX}/"
+    for hop in _stub_hops(content):
+        assert urljoin(served_at, hop) == canonical
+
+
+def test_root_redirect_stub_hop_resolves_at_an_origin_root(project_dir):
+    """A site served from its own origin root keeps resolving correctly."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    canonical = _canonical_of(content)
+    assert canonical == f"https://example.com/{DEFAULT_PREFIX}/"
+    for hop in _stub_hops(content):
+        assert urljoin("https://example.com/", hop) == canonical
+
+
+def test_root_cloudflare_redirect_rule_stays_site_absolute(project_dir):
+    """``_redirects`` is read at the deployed root, so its target is absolute.
+
+    Cloudflare only ever reads the root ``_redirects``; a relative target
+    there has no document to resolve against.
+    """
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, "_redirects"), "r", encoding="utf-8") as f:
+        content = f.read()
+    assert f"/ /{DEFAULT_PREFIX}/ 302\n" in content
+
+
+def test_config_redirect_stub_hop_resolves_under_an_assembly_slug_prefix(tmp_path):
+    """Config-driven redirect stubs must hop within the project subtree too.
+
+    These stubs sit several directories deep, so their hop resolves against
+    ``/<slug>/<locale>/<version>/<from>/`` rather than the site root.
+    """
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        topology={"slug": "proj", "docs_base": "https://docs.example.com"},
+        redirects=[{"from": "edit-release", "to": "release/edit"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    stub_path = os.path.join(
+        output_dir, "en", "1.0.0", "edit-release", "index.html",
+    )
+    with open(stub_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    served_at = "https://docs.example.com/proj/en/1.0.0/edit-release/"
+    canonical = _canonical_of(content)
+    assert canonical == "https://docs.example.com/proj/en/1.0.0/release/edit/"
+    for hop in _stub_hops(content):
+        assert urljoin(served_at, hop) == canonical
+
+
+def test_config_redirect_cloudflare_rule_stays_site_absolute(tmp_path):
+    """The appended ``_redirects`` rule keeps a site-absolute target."""
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        redirects=[{"from": "edit-release", "to": "release/edit"}],
+    )
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "_redirects"), "r", encoding="utf-8") as f:
+        content = f.read()
+    assert (
+        "/en/1.0.0/edit-release/ /en/1.0.0/release/edit/ 301\n" in content
     )
 
 
@@ -6184,7 +6372,7 @@ def test_redirect_stub_canonical_is_absolute(tmp_path):
         'href="https://example.com/en/1.0.0/release/edit/">'
         in content
     )
-    assert 'content="0;url=/en/1.0.0/release/edit/"' in content
+    assert 'content="0;url=../release/edit/"' in content
 
 
 def test_redirect_skips_existing_page(tmp_path):
