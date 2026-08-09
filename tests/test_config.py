@@ -1120,7 +1120,6 @@ _CROSS_PROJECT_CONFIGS = [
     "/home/m/Projects/codehome/selfdoc.json",
     "/home/m/Projects/go-toml-edit/selfdoc.json",
     "/home/m/Projects/howmuchleft/selfdoc.json",
-    "/home/m/Projects/migrable/selfdoc.json",
     "/home/m/Projects/predraw/selfdoc.json",
     "/home/m/Projects/rlsbl/selfdoc.json",
     "/home/m/Projects/safegit/selfdoc.json",

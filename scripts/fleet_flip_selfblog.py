@@ -29,7 +29,6 @@ STANDALONE_REPOS = [
     "claudewheel",
     "go-toml-edit",
     "howmuchleft",
-    "migrable",
     "pgdesign",
     "predraw",
     "safegit",
