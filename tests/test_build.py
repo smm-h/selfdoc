@@ -19,7 +19,7 @@ from selfdoc.config import ConfigError
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
 from selfdoc.themes import get_theme_meta
-from conftest import default_config, DEFAULT_PREFIX
+from conftest import default_config, DEFAULT_PREFIX, page_addresses_for
 
 
 @pytest.fixture()
@@ -472,7 +472,9 @@ def test_breadcrumb_list_on_non_index_page(project_dir):
         guide_html = f.read()
     assert '"BreadcrumbList"' in guide_html
     assert '"Home"' in guide_html
-    assert "https://example.com/index.html" in guide_html
+    # The Home crumb addresses the mounted home page, not a mountless path.
+    assert f"https://example.com/{DEFAULT_PREFIX}/" in guide_html
+    assert "https://example.com/index.html" not in guide_html
 
     # Index page should NOT have BreadcrumbList
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
@@ -622,7 +624,10 @@ def test_og_url_present(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<meta property="og:url" content="https://example.com/index.html">' in content
+    assert (
+        '<meta property="og:url" content="https://example.com/en/1.0.0/">'
+        in content
+    )
 
 
 def test_og_description_present(project_dir):
@@ -786,8 +791,8 @@ def test_atom_feed_contains_valid_structure(project_dir):
     assert "<entry>" in content
     assert "</entry>" in content
     assert "<title>Guide Page</title>" in content
-    assert '<link href="https://example.com/guide/"/>' in content
-    assert "<id>https://example.com/guide/</id>" in content
+    assert f'<link href="https://example.com/{DEFAULT_PREFIX}/guide/"/>' in content
+    assert f"<id>https://example.com/{DEFAULT_PREFIX}/guide/</id>" in content
     assert "<updated>2026-05-01T00:00:00Z</updated>" in content
     assert "<summary>This is a guide.</summary>" in content
 
@@ -808,7 +813,7 @@ def test_atom_feed_link_in_html_with_base_url(project_dir):
         content = f.read()
 
     assert '<link rel="alternate" type="application/atom+xml"' in content
-    assert 'href="feed.xml">' in content
+    assert 'href="../../feed.xml">' in content
 
 
 def test_feed_max_entries_truncates(tmp_path):
@@ -832,6 +837,7 @@ def test_feed_max_entries_truncates(tmp_path):
         frontmatter={},
         page_dates=page_dates,
         url_builder=SimpleURLBuilder("https://example.com"),
+        page_addresses=page_addresses_for(markdown_files),
         feed_max_entries=2,
     )
     with open(feed_path, "r", encoding="utf-8") as f:
@@ -1050,7 +1056,7 @@ def test_404_contains_sidebar_navigation(project_dir):
         content = f.read()
 
     assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
-    assert 'href="guide/"' in content
+    assert f'href="{DEFAULT_PREFIX}/guide/"' in content
     assert "index.html" in content
 
 
@@ -1082,8 +1088,8 @@ def test_404_contains_popular_page_links(project_dir):
         content = f.read()
 
     assert "Popular pages" in content
-    assert 'href="guide/"' in content
-    assert 'href="api/"' in content
+    assert f'href="{DEFAULT_PREFIX}/guide/"' in content
+    assert f'href="{DEFAULT_PREFIX}/api/"' in content
     assert "index.html" in content
 
 
@@ -1319,7 +1325,7 @@ def test_built_html_has_noscript_fallback(project_dir):
         content = f.read()
 
     assert "<noscript>" in content
-    assert '<link rel="stylesheet" href="style.css">' in content
+    assert '<link rel="stylesheet" href="../../style.css">' in content
 
 
 def test_critical_css_contains_root_variables(project_dir):
@@ -3151,10 +3157,10 @@ def test_breadcrumbs_json_ld_nested(project_dir):
     assert len(items) == 3
     assert items[0]["position"] == 1
     assert items[0]["name"] == "Home"
-    assert items[0]["item"] == "https://example.com/index.html"
+    assert items[0]["item"] == f"https://example.com/{DEFAULT_PREFIX}/"
     assert items[1]["position"] == 2
     assert items[1]["name"] == "Api"
-    assert items[1]["item"] == "https://example.com/api/"
+    assert items[1]["item"] == f"https://example.com/{DEFAULT_PREFIX}/api/"
     assert items[2]["position"] == 3
     assert items[2]["name"] == "Endpoints"
     assert "item" not in items[2]
@@ -3565,8 +3571,8 @@ def test_search_js_deferred(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    # External deferred script tag must point to search.js
-    assert '<script defer src="search.js">' in content
+    # External deferred script tag must point to search.js at the site root
+    assert '<script defer src="../../search.js">' in content
 
     # The inline <script> block must NOT contain search index logic
     inline_match = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
@@ -5867,7 +5873,7 @@ def test_directory_index_canonical_urls_use_dir_paths(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert 'href="https://example.com/guide/"' in content
+    assert 'href="https://example.com/en/1.0.0/guide/"' in content
     assert 'href="https://example.com/guide.html"' not in content
 
 

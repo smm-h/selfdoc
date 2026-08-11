@@ -12,6 +12,7 @@ def _render_old_version_page(page_type=None):
         "TestProject",
         "1.0.0",
         prefix="",
+        asset_prefix="../../",
         page_type=page_type,
         is_latest=False,
         current_version="0.9.0",
@@ -19,7 +20,8 @@ def _render_old_version_page(page_type=None):
             {"version": "0.9.0", "indexed": True},
             {"version": "1.0.0", "indexed": True},
         ],
-        url_prefix="en/0.9.0",
+        mount_locale="en",
+        mount_version="0.9.0",
     )
 
 

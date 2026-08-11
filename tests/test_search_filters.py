@@ -45,13 +45,13 @@ def test_search_dialog_has_default_version_attr(project_dir):
 
 def test_render_search_dialog_version_attr():
     """_render_search_dialog includes data-default-version when version given."""
-    html = _render_search_dialog(prefix="", current_version="2.5.0")
+    html = _render_search_dialog(asset_prefix="", current_version="2.5.0")
     assert 'data-default-version="2.5.0"' in html
 
 
 def test_render_search_dialog_no_version_attr():
     """_render_search_dialog omits data-default-version when version empty."""
-    html = _render_search_dialog(prefix="")
+    html = _render_search_dialog(asset_prefix="")
     assert 'data-default-version' not in html
 
 
@@ -121,6 +121,6 @@ def test_search_filter_js_default_version_injection():
 
 def test_search_dialog_version_escapes_html():
     """Version string with special chars is HTML-escaped."""
-    html = _render_search_dialog(prefix="", current_version='1.0.0"<script>')
+    html = _render_search_dialog(asset_prefix="", current_version='1.0.0"<script>')
     assert '1.0.0"<script>' not in html
     assert "&quot;" in html or "&lt;" in html

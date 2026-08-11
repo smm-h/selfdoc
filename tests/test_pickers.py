@@ -159,8 +159,22 @@ def test_no_locale_picker_when_none():
 
 
 def test_search_dialog_has_data_search_base():
-    """Search dialog has data-search-base='/' instead of data-search-prefix."""
+    """Search dialog carries a document-relative data-search-base."""
     files = _make_html()
     content = files["index.html"]
-    assert 'data-search-base="/"' in content
+    # Unmounted build: the page is already at the output root.
+    assert 'data-search-base="./"' in content
     assert "data-search-prefix" not in content
+
+
+def test_search_dialog_base_is_never_site_absolute():
+    """A mounted page reaches the search index without leaving the mount."""
+    files = generate_html(
+        {"guide.md": "# Guide\n\nHello.\n"},
+        project_name="TestProject",
+        version="1.0.0",
+        mount_locale="en",
+        mount_version="1.0.0",
+    )
+    content = files["en/1.0.0/guide/index.html"]
+    assert 'data-search-base="../../../"' in content

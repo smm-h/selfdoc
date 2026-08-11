@@ -17,6 +17,7 @@ from datetime import datetime
 
 from selfdoc_core import require_post_provider
 from selfdoc_core.config import load_config, ConfigError
+from selfdoc_core.address import page_address
 from selfdoc_core.prose import first_paragraph
 from selfdoc_core.context import SearchEntry
 from selfdoc_core.docs import resolve_all_docs
@@ -483,12 +484,20 @@ def _build_search_index(
     project="",
     frontmatter=None,
     nav_items=None,
+    mount_locale="",
+    mount_project="",
+    mount_version="",
 ):
     """Build a search index from markdown files.
 
     Splits each file by headings and creates one entry per section.
     Returns a list of SearchEntry dataclasses with title, path, body,
     and metadata fields (version, locale, group, type, tags, etc.).
+
+    Entry paths are output-root relative (mount included), because the
+    search dialog resolves them against the output root -- not against
+    the page the reader happens to be on.  ``version``/``locale`` remain
+    the search *facets* and are independent of the mount coordinates.
     """
     if frontmatter is None:
         frontmatter = {}
@@ -505,7 +514,12 @@ def _build_search_index(
 
     entries = []
     for md_path, content in markdown_files.items():
-        url_path = _html_path_to_url(_md_to_html_path(md_path))
+        url_path = page_address(
+            _md_to_html_path(md_path),
+            locale=mount_locale,
+            project=mount_project,
+            version=mount_version,
+        ).pinned
         lines = content.split("\n")
         current_title = None
         current_slug = None
@@ -825,10 +839,16 @@ def _first_content_paragraph(content):
     return first_paragraph("\n".join(prose_lines))
 
 
-def _generate_llms_txt(project_name, markdown_files, url_builder):
+def _generate_llms_txt(project_name, markdown_files, url_builder,
+                       page_addresses):
     """Generate llms.txt (brief index) content.
 
     Lists each page with its title and first sentence.
+
+    Args:
+        page_addresses: md_path -> PageAddress for every page listed.
+            Required: a page's absolute URL is its mounted address, and
+            this function has no way to work one out on its own.
     """
     lines = [f"# {project_name} Documentation", ""]
 
@@ -850,7 +870,7 @@ def _generate_llms_txt(project_name, markdown_files, url_builder):
     for md_path in sorted(markdown_files.keys()):
         content = markdown_files[md_path]
         title = _extract_title(content, md_path.replace(".md", ""))
-        url_path = _html_path_to_url(_md_to_html_path(md_path))
+        url_path = page_addresses[md_path].pinned
 
         # Summary is the complete first paragraph of the page.
         first = _first_content_paragraph(content)
@@ -918,9 +938,13 @@ def _make_feed_entry(title, url, date, summary="", page_type=""):
 def _generate_atom_feed(
     output_dir, base_url, project_name, description,
     markdown_files, frontmatter, page_dates,
-    url_builder, feed_max_entries=None,
+    url_builder, page_addresses, feed_max_entries=None,
 ):
     """Generate an Atom feed (feed.xml) for the documentation site.
+
+    Args:
+        page_addresses: md_path -> PageAddress for every page in the feed.
+            Required: an entry's link and id are its mounted address.
 
     Returns the path written.
     """
@@ -936,7 +960,7 @@ def _generate_atom_feed(
         if meta.get("feed") is False:
             continue
 
-        url_path = _html_path_to_url(_md_to_html_path(md_path))
+        url_path = page_addresses[md_path].pinned
         title = meta.get("title")
         if not title:
             title = _extract_title(content, md_path.replace(".md", ""))
@@ -1049,8 +1073,9 @@ def _compress_output(output_dir):
     return count, has_brotli
 
 
-def build_single(dir_path=".", config=None, output_subdir=None,
-                  url_prefix=None, version_override=None,
+def build_single(dir_path=".", config=None,
+                  mount_locale=None, mount_project="", mount_version=None,
+                  version_override=None,
                   locale_override=None,
                   available_versions=None, available_locales=None,
                   current_version="", current_locale="",
@@ -1065,14 +1090,22 @@ def build_single(dir_path=".", config=None, output_subdir=None,
     Args:
         dir_path: Project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc_core.json).
-        output_subdir: Subdirectory within output for this build (e.g.
-            "en/0.7.0").  Pass ``""`` explicitly for no subdirectory.
-            When ``None`` (default), auto-computed from config.
-        url_prefix: URL path prefix for versioned/localized links (e.g.
-            "en/0.7.0").  Pass ``""`` explicitly for no prefix.  When
-            ``None`` (default), auto-computed from config.
+        mount_locale: Locale segment of this build's output mount (e.g.
+            "en").  Pass ``""`` explicitly for an unmounted build.  When
+            ``None`` (default), auto-computed from config alongside
+            ``mount_version``.
+        mount_project: Constituent-project segment of the mount on a
+            unified site (e.g. "core"); ``""`` on a standalone site.
+        mount_version: Version segment of this build's output mount (e.g.
+            "0.7.0").  Pass ``""`` explicitly for pages that are not
+            version-scoped.  When ``None`` (default), auto-computed from
+            config alongside ``mount_locale``.
         version_override: Override detected version string (optional).
         locale_override: Override detected locale string (optional).
+
+    The mount is the single input that decides where pages land and how
+    they reach the output root; ``selfdoc_core.address.page_address``
+    turns it plus a page path into every address the page has.
 
     Returns:
         BuildResult dataclass containing all build outputs for this version/locale.
@@ -1085,8 +1118,8 @@ def build_single(dir_path=".", config=None, output_subdir=None,
             "No selfdoc.json found. Run 'selfdoc init' to initialize."
         )
 
-    # Compute output_subdir and url_prefix from config if not explicitly set
-    if output_subdir is None and url_prefix is None:
+    # Resolve the mount coordinates from config when not explicitly set
+    if mount_locale is None and mount_version is None:
         locales = config.get("locales")
         versions = config.get("versions")
         if locales and versions:
@@ -1096,18 +1129,16 @@ def build_single(dir_path=".", config=None, output_subdir=None,
                 if loc.get("default") is True:
                     default_locale = loc
                     break
-            locale_code = default_locale["code"]
-            version_str = versions[0]["version"]
-            output_subdir = f"{locale_code}/{version_str}"
-            url_prefix = output_subdir
+            mount_locale = default_locale["code"]
+            mount_version = versions[0]["version"]
         else:
-            output_subdir = ""
-            url_prefix = ""
+            mount_locale = ""
+            mount_version = ""
     else:
-        if output_subdir is None:
-            output_subdir = ""
-        if url_prefix is None:
-            url_prefix = ""
+        if mount_locale is None:
+            mount_locale = ""
+        if mount_version is None:
+            mount_version = ""
 
     docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
     output_dir = os.path.join(dir_path, config["output"].rstrip("/"))
@@ -1321,7 +1352,9 @@ def build_single(dir_path=".", config=None, output_subdir=None,
         page_progress=config.get("page_progress", True),
         code_icons=config.get("code_icons", "colorful"),
         glossary=config.get("glossary", True),
-        url_prefix=url_prefix,
+        mount_locale=mount_locale,
+        mount_project=mount_project,
+        mount_version=mount_version,
         available_versions=available_versions,
         available_locales=available_locales,
         current_version=current_version,
@@ -1333,19 +1366,18 @@ def build_single(dir_path=".", config=None, output_subdir=None,
     )
 
     # Post-process HTML pages: add image dimensions from file inspection
-    # (Phase 3.3). Convert html_path keys back to md_path for lookup.
-    for html_path in list(html_files):
-        md_path = _html_to_md_path(html_path)
-        html_files[html_path] = _add_image_dimensions(
-            html_files[html_path], docs_dir, md_path,
+    # (Phase 3.3). Keys are output keys (mount included), so strip the
+    # mount before converting back to a docs-relative md_path.
+    mount = page_address("index.html", locale=mount_locale,
+                         project=mount_project, version=mount_version).mount
+    for output_key in list(html_files):
+        page_path = (
+            output_key[len(mount) + 1:] if mount else output_key
         )
-
-    # Prefix html_files keys with output_subdir so callers write under
-    # the versioned/localized subdirectory (e.g. "en/1.0.0/index.html")
-    if output_subdir:
-        html_files = {
-            f"{output_subdir}/{k}": v for k, v in html_files.items()
-        }
+        md_path = _html_to_md_path(page_path)
+        html_files[output_key] = _add_image_dimensions(
+            html_files[output_key], docs_dir, md_path,
+        )
 
     # Build nav items (used by search index and auxiliary files)
     nav_items = _build_nav(
@@ -1363,6 +1395,9 @@ def build_single(dir_path=".", config=None, output_subdir=None,
         project=project_name,
         frontmatter=frontmatter,
         nav_items=nav_items,
+        mount_locale=mount_locale,
+        mount_project=mount_project,
+        mount_version=mount_version,
     )
 
     return BuildResult(
@@ -1645,8 +1680,8 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
         result = build_single(
             dir_path=dir_path,
             config=config,
-            output_subdir="",
-            url_prefix="",
+            mount_locale="",
+            mount_version="",
             version_override="",
             page_filter=page_filter,
         )
@@ -1830,8 +1865,9 @@ def _build_body(
         for ver_entry in build_versions:
             ver_str = ver_entry["version"]
             is_latest = (ver_str == latest_version)
-            output_subdir = f"{locale_code}/{ver_str}"
-            url_prefix = output_subdir
+            output_subdir = page_address(
+                "index.html", locale=locale_code, version=ver_str,
+            ).mount
 
             if is_latest:
                 build_dir = dir_path
@@ -1850,8 +1886,8 @@ def _build_body(
             result = build_single(
                 dir_path=build_dir,
                 config=locale_config,
-                output_subdir=output_subdir,
-                url_prefix=url_prefix,
+                mount_locale=locale_code,
+                mount_version=ver_str,
                 version_override=ver_str,
                 locale_override=locale_code,
                 available_versions=versions,
@@ -1910,6 +1946,13 @@ def _build_body(
                 latest_build = {
                     "html_files": html_files,
                     "markdown_files": markdown_files,
+                    "page_addresses": {
+                        md: page_address(
+                            _md_to_html_path(md),
+                            locale=locale_code, version=ver_str,
+                        )
+                        for md in markdown_files
+                    },
                     "frontmatter": frontmatter,
                     "page_dates": page_dates,
                     "project_name": project_name,
@@ -1931,6 +1974,13 @@ def _build_body(
         latest_build = {
             "html_files": html_files,
             "markdown_files": markdown_files,
+            "page_addresses": {
+                md: page_address(
+                    _md_to_html_path(md),
+                    locale=locale_code, version=ver_str,
+                )
+                for md in markdown_files
+            },
             "frontmatter": frontmatter,
             "page_dates": page_dates,
             "project_name": project_name,
@@ -1953,8 +2003,9 @@ def _build_body(
         for locale in build_locales:
             locale_code = locale["code"]
             # Unversioned pages output to /{locale}/page/ (no version)
-            uv_output_subdir = locale_code
-            uv_url_prefix = locale_code
+            uv_output_subdir = page_address(
+                "index.html", locale=locale_code,
+            ).mount
 
             # Resolve locale-specific docs directory
             locale_docs_dir = _resolve_locale_docs_dir(
@@ -1966,8 +2017,8 @@ def _build_body(
             uv_result = build_single(
                 dir_path=dir_path,
                 config=locale_config,
-                output_subdir=uv_output_subdir,
-                url_prefix=uv_url_prefix,
+                mount_locale=locale_code,
+                mount_version="",
                 version_override="",
                 locale_override=locale_code,
                 available_versions=versions,
@@ -2007,6 +2058,12 @@ def _build_body(
                     "markdown_files": uv_result.markdown_files,
                     "frontmatter": uv_result.frontmatter,
                     "page_dates": uv_result.page_dates,
+                    "page_addresses": {
+                        md: page_address(
+                            _md_to_html_path(md), locale=locale_code,
+                        )
+                        for md in uv_result.markdown_files
+                    },
                 }
 
     # Merge unversioned data into latest_build for auxiliary files
@@ -2022,6 +2079,12 @@ def _build_body(
         latest_build["page_dates"] = {
             **latest_build["page_dates"],
             **uv_latest_build["page_dates"],
+        }
+        # Unversioned pages mount one level shallower, so their addresses
+        # come from their own build, not the versioned one.
+        latest_build["page_addresses"] = {
+            **latest_build["page_addresses"],
+            **uv_latest_build["page_addresses"],
         }
 
     lb = latest_build
@@ -2098,6 +2161,11 @@ def _build_body(
         feed_max_entries=config.get("feed_max_entries"),
         has_sitemap_index=has_sitemap_index,
         url_builder=lb["url_builder"],
+        # 404.html sits at the output root; its sidebar links into the
+        # default locale at the latest version.
+        mount_locale=default_locale_code,
+        mount_version=latest_version,
+        page_addresses=lb["page_addresses"],
     )
     written.update(aux_written)
 
@@ -2238,12 +2306,25 @@ def _generate_auxiliary_files(
     frontmatter=None, description="", feed_url=None, critical_css=None,
     accent_color="#0969da", theme_meta=None, deploy=None,
     feed_max_entries=None, has_sitemap_index=False,
+    mount_locale="", mount_project="", mount_version="",
+    page_addresses=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
 
     Called by build() after the main HTML pages and static files are written.
+
+    ``page_addresses`` maps every md_path in ``markdown_files`` to its
+    :class:`~selfdoc_core.address.PageAddress`.  It is mandatory: the feed
+    and llms.txt emit absolute page URLs, and a page's URL is its mounted
+    address -- there is no sensible mountless answer to fall back on.
+
     Returns a dict of {output_path: True} for files written.
     """
+    if page_addresses is None:
+        raise ValueError(
+            "page_addresses is required: auxiliary files emit absolute page "
+            "URLs, which are the pages' mounted addresses"
+        )
     written = {}
 
     # Generate OG social card PNGs (Feature 21)
@@ -2266,7 +2347,8 @@ def _generate_auxiliary_files(
     written[sitemap_path] = True
 
     # Generate llms.txt and llms-full.txt (Feature 24)
-    llms_txt = _generate_llms_txt(project_name, markdown_files, url_builder)
+    llms_txt = _generate_llms_txt(project_name, markdown_files, url_builder,
+                                  page_addresses)
     llms_path = os.path.join(output_dir, "llms.txt")
     with effects.open_write(llms_path, "w", encoding="utf-8") as f:
         f.write(llms_txt)
@@ -2288,6 +2370,7 @@ def _generate_auxiliary_files(
         frontmatter=frontmatter,
         page_dates=page_dates,
         url_builder=url_builder,
+        page_addresses=page_addresses,
         feed_max_entries=feed_max_entries,
     )
     written[feed_path] = True
@@ -2306,6 +2389,9 @@ def _generate_auxiliary_files(
         feed_url=feed_url,
         critical_css=critical_css,
         theme_meta=theme_meta,
+        mount_locale=mount_locale,
+        mount_project=mount_project,
+        mount_version=mount_version,
     )
     not_found_path = os.path.join(output_dir, "404.html")
     with effects.open_write(not_found_path, "w", encoding="utf-8") as f:

@@ -288,3 +288,22 @@ def make_unified_project(tmp_path):
         return docs_site_dir
 
     return _factory
+
+
+def page_addresses_for(markdown_files, locale="", project="", version=""):
+    """Map every md_path to its PageAddress under the given mount.
+
+    Test helper for the auxiliary-file generators (feed, llms.txt), which
+    require the mapping because a page's absolute URL is its mounted
+    address.
+    """
+    from selfdoc_core.address import page_address
+    from selfdoc_core.html import _md_to_html_path
+
+    return {
+        md: page_address(
+            _md_to_html_path(md),
+            locale=locale, project=project, version=version,
+        )
+        for md in markdown_files
+    }

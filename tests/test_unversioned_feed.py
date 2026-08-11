@@ -3,6 +3,7 @@
 import os
 
 from selfdoc.build import _make_feed_entry, _generate_atom_feed, SimpleURLBuilder
+from conftest import page_addresses_for
 
 
 # --- _make_feed_entry tests ---
@@ -85,6 +86,7 @@ def test_generate_atom_feed_includes_pages(tmp_path):
         frontmatter={},
         page_dates=page_dates,
         url_builder=SimpleURLBuilder("https://example.com"),
+        page_addresses=page_addresses_for(markdown_files),
     )
     content = open(path).read()
     assert "<title>Guide</title>" in content
@@ -119,6 +121,7 @@ def test_generate_atom_feed_with_mixed_versioned_unversioned(tmp_path):
         frontmatter={},
         page_dates=page_dates,
         url_builder=SimpleURLBuilder("https://docs.example.com"),
+        page_addresses=page_addresses_for(markdown_files),
     )
     content = open(path).read()
     assert "<title>API Reference</title>" in content
@@ -150,6 +153,7 @@ def test_generate_atom_feed_skips_feed_false(tmp_path):
         frontmatter=frontmatter,
         page_dates=page_dates,
         url_builder=SimpleURLBuilder("https://example.com"),
+        page_addresses=page_addresses_for(markdown_files),
     )
     content = open(path).read()
     assert "<title>Visible</title>" in content
@@ -178,6 +182,7 @@ def test_generate_atom_feed_ordered_by_date(tmp_path):
         frontmatter={},
         page_dates=page_dates,
         url_builder=SimpleURLBuilder("https://example.com"),
+        page_addresses=page_addresses_for(markdown_files),
     )
     content = open(path).read()
     pos_new = content.index("<title>New Page</title>")
@@ -205,6 +210,7 @@ def test_generate_atom_feed_max_entries(tmp_path):
         frontmatter={},
         page_dates=page_dates,
         url_builder=SimpleURLBuilder("https://example.com"),
+        page_addresses=page_addresses_for(markdown_files),
         feed_max_entries=3,
     )
     content = open(path).read()

@@ -126,7 +126,7 @@ class TestPagefindUI:
         from selfdoc.html import _wrap_page
         html = _wrap_page(
             "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="../../", search_engine="pagefind",
+            prefix="", asset_prefix="../../", search_engine="pagefind",
         )
         assert '../../pagefind/pagefind-ui.css' in html
         assert '../../pagefind/pagefind-ui.js' in html

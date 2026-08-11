@@ -10,6 +10,7 @@ import re
 import unicodedata
 from datetime import datetime
 
+from selfdoc_core.address import page_address
 from selfdoc_core.icons import get_icon
 from selfdoc_core.prose import first_sentence
 from selfdoc_core.themes import get_theme, get_theme_meta
@@ -309,7 +310,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    line_numbers=False,
                    page_nav=True, page_progress=True,
                    code_icons="colorful", glossary=True,
-                   url_prefix="",
+                   mount_locale="", mount_project="", mount_version="",
                    available_versions=None, available_locales=None,
                    current_version="", current_locale="",
                    is_latest=True,
@@ -329,7 +330,11 @@ def generate_html(markdown_files, project_name=None, version=None,
         page_dates: Dict mapping relative paths to (published, modified) tuples (optional).
         author: Author dict from config (optional, keys: name, type, url).
         feed_url: Relative URL to the Atom feed (optional, e.g. "feed.xml").
-        url_prefix: Path prefix for versioned/localized URLs (e.g. "en/0.7.0").
+        mount_locale: Locale segment of the output mount (e.g. "en").
+        mount_project: Constituent-project segment of the output mount on a
+            unified site (e.g. "core"); empty on a standalone site.
+        mount_version: Version segment of the output mount (e.g. "0.7.0");
+            empty for pages that are not version-scoped.
         available_versions: List of version dicts for version picker (optional).
         available_locales: List of locale dicts for locale picker (optional).
         current_version: Current version being built (e.g. "0.7.0").
@@ -337,7 +342,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         is_latest: Whether this is the latest version (default True).
 
     Returns:
-        Dict mapping file paths (.html) to HTML content.
+        Dict mapping output keys (mount-prefixed .html paths) to HTML content.
     """
     if not project_name:
         project_name = "Documentation"
@@ -395,11 +400,19 @@ def generate_html(markdown_files, project_name=None, version=None,
                 f"or set 'title:' in frontmatter."
             )
 
-        # Compute relative path from this file back to root for nav links.
-        # With directory-index URLs, non-index pages go one level deeper
-        # (e.g. guide.md -> guide/index.html), so add 1 for those.
-        depth = html_path.count("/")
-        prefix = "../" * depth if depth > 0 else ""
+        # Every relative reference this page emits comes from its address.
+        # Two distinct hops: `prefix` reaches this page's own mount root
+        # (where its sibling pages are), `asset_prefix` reaches the output
+        # root (where the shared assets are). They differ by the mount, so
+        # deriving one from the other's depth is what broke asset links.
+        addr = page_address(
+            html_path,
+            locale=mount_locale,
+            project=mount_project,
+            version=mount_version,
+        )
+        prefix = addr.to_mount_root
+        asset_prefix = addr.to_site_root
         md_config = {}
         if auto_detect:
             md_config["auto_detect"] = auto_detect
@@ -449,8 +462,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         # (The advisory SEO length lint in check.py still pressures authors to
         # keep descriptions concise -- only silent mutation was removed.)
 
-        css_href = prefix + "style.css"
-        custom_css_href = (prefix + "custom.css") if has_custom_css else None
+        css_href = asset_prefix + "style.css"
+        custom_css_href = (asset_prefix + "custom.css") if has_custom_css else None
 
         # Prev/next page links (Feature 8)
         prev_page = flat_nav[page_idx - 1] if page_idx > 0 else None
@@ -474,8 +487,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         date_published = date_tuple[0] if date_tuple else None
         date_modified = date_tuple[1] if date_tuple else None
 
-        # Compute feed href relative to this page's depth
-        page_feed_url = (prefix + feed_url) if feed_url else None
+        # The feed lives at the output root, not the mount root.
+        page_feed_url = (asset_prefix + feed_url) if feed_url else None
 
         # Schema type from frontmatter (e.g. "itemlist" for ItemList JSON-LD)
         schema = page_meta.get("schema")
@@ -553,6 +566,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Store all per-page state for pass 2
         page_data.append({
             "html_path": html_path,
+            "address": addr,
+            "asset_prefix": asset_prefix,
             "body_html": body_html,
             "nav_html": nav_html,
             "title": title,
@@ -639,8 +654,15 @@ def generate_html(markdown_files, project_name=None, version=None,
 
         # Re-render nav HTML for the glossary page and rebuild nav for
         # existing pages (since the glossary link is now in the sidebar)
+        glossary_addr = page_address(
+            "glossary/index.html",
+            locale=mount_locale,
+            project=mount_project,
+            version=mount_version,
+        )
         glossary_nav_html = _render_nav(
-            nav_items, prefix="../", current_path="glossary/index.html",
+            nav_items, prefix=glossary_addr.to_mount_root,
+            current_path="glossary/index.html",
         )
 
         # Update nav_html for all previously collected page_data entries
@@ -652,26 +674,34 @@ def generate_html(markdown_files, project_name=None, version=None,
 
         # Build page_data entry for the glossary page
         glossary_toc_html = _build_toc(glossary_body)
+        glossary_asset_prefix = glossary_addr.to_site_root
         page_data.append({
             "html_path": "glossary/index.html",
+            "address": glossary_addr,
+            "asset_prefix": glossary_asset_prefix,
             "body_html": glossary_body,
             "nav_html": glossary_nav_html,
             "title": "Glossary",
             "description": "",
             "frontmatter_description": None,
-            "css_href": "../style.css",
-            "custom_css_href": ("../custom.css" if has_custom_css else None),
+            "css_href": glossary_asset_prefix + "style.css",
+            "custom_css_href": (
+                (glossary_asset_prefix + "custom.css") if has_custom_css else None
+            ),
             "toc_html": glossary_toc_html,
             "breadcrumbs": _build_breadcrumbs(
-                "glossary/index.html", "Glossary", "../", all_html_paths,
+                "glossary/index.html", "Glossary",
+                glossary_addr.to_mount_root, all_html_paths,
             ),
             "prev_page": None,
             "next_page": None,
-            "prefix": "../",
+            "prefix": glossary_addr.to_mount_root,
             "source_path": None,
             "date_published": None,
             "date_modified": None,
-            "page_feed_url": ("../" + feed_url) if feed_url else None,
+            "page_feed_url": (
+                (glossary_asset_prefix + feed_url) if feed_url else None
+            ),
             "schema": None,
             "page_type": "glossary",
             "page_tags": [],
@@ -691,6 +721,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             prev_page=pd["prev_page"],
             next_page=pd["next_page"],
             prefix=pd["prefix"],
+            asset_prefix=pd["asset_prefix"],
             repo=repo,
             source_path=pd["source_path"],
             base_url=base_url,
@@ -721,14 +752,18 @@ def generate_html(markdown_files, project_name=None, version=None,
             deploy_target=deploy_target,
             page_nav=page_nav,
             page_progress=page_progress,
-            url_prefix=url_prefix,
+            mount_locale=mount_locale,
+            mount_project=mount_project,
+            mount_version=mount_version,
             available_versions=available_versions,
             available_locales=available_locales,
             current_version=current_version,
             current_locale=current_locale,
             is_latest=is_latest,
         )
-        html_files[pd["html_path"]] = full_html
+        # Keyed by the output key from the address, so no caller has to
+        # staple the mount on afterwards.
+        html_files[pd["address"].output_key] = full_html
 
     return html_files
 
@@ -736,8 +771,14 @@ def generate_html(markdown_files, project_name=None, version=None,
 def generate_404_page(project_name=None, version=None, has_custom_css=False,
                       nav_items=None, repo=None, base_url=None, url_builder=None,
                       lang="en",
-                      feed_url=None, critical_css=None, theme_meta=None):
+                      feed_url=None, critical_css=None, theme_meta=None,
+                      mount_locale="", mount_project="", mount_version=""):
     """Generate a custom 404 page using the standard page template (Feature 39).
+
+    The 404 page is written at the output root, so its assets need no
+    relative hop -- but the pages it links to live under a mount, and the
+    mount coordinates say which one (the default locale at the latest
+    version).
 
     Returns the full HTML string for 404.html.
     """
@@ -748,8 +789,18 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     if nav_items is None:
         nav_items = []
 
+    # Hop from the output root (where 404.html sits) into the mount whose
+    # pages the sidebar lists.
+    mount_prefix = page_address(
+        "index.html",
+        locale=mount_locale,
+        project=mount_project,
+        version=mount_version,
+    ).pinned
+
     # Render sidebar navigation from nav_items
-    nav_html = _render_nav(nav_items, prefix="", current_path="404.html")
+    nav_html = _render_nav(nav_items, prefix=mount_prefix,
+                           current_path="404.html")
 
     # Search prompt button
     search_html = (
@@ -770,7 +821,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         popular_links = []
         for item in flat_nav[:5]:
             popular_links.append(
-                f'<li><a href="{_html_path_to_url(item["path"])}">'
+                f'<li><a href="{mount_prefix}{_html_path_to_url(item["path"])}">'
                 f'{_escape_html(item["label"])}</a></li>'
             )
         popular_html = (
@@ -781,7 +832,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     # The H1 is auto-generated by _wrap_page from the title.
     body_html = (
         '<p>The page you are looking for does not exist.</p>\n'
-        '<p><a href="index.html">Go to the homepage</a></p>\n'
+        f'<p><a href="{mount_prefix}index.html">Go to the homepage</a></p>\n'
         + search_html
         + popular_html
     )
@@ -791,7 +842,8 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         body_html, nav_html, title, project_name, version,
         css_href="style.css",
         custom_css_href="custom.css" if has_custom_css else None,
-        prefix="",
+        prefix=mount_prefix,
+        asset_prefix="",
         base_url=base_url,
         url_builder=url_builder,
         page_path=None,
@@ -2032,7 +2084,8 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
                      date_modified, lang, breadcrumbs, schema,
                      twitter_site, deploy_target,
                      available_locales=None, current_locale="",
-                     url_prefix="", url_builder=None,
+                     mount_locale="", mount_project="", mount_version="",
+                     url_builder=None,
                      page_type=None, schema_types=None,
                      page_tags=None):
     """Build SEO tags: JSON-LD structured data, OG meta, canonical, hreflang, security."""
@@ -2041,11 +2094,22 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
     seo_tags = ""
     escaped_title = _escape_html(title)
     escaped_project = _escape_html(project_name)
-    canonical_url = (
-        url_builder.page_url(_html_path_to_url(page_path))
-        if url_builder and page_path
-        else (f"{base_url}/{_html_path_to_url(page_path)}" if page_path else None)
-    )
+    # The canonical addresses the page where it actually lives -- mount
+    # included. A mountless path names no emitted page.
+    if page_path:
+        page_url = page_address(
+            page_path,
+            locale=mount_locale,
+            project=mount_project,
+            version=mount_version,
+        ).pinned
+        canonical_url = (
+            url_builder.page_url(page_url)
+            if url_builder
+            else f"{base_url}/{page_url}"
+        )
+    else:
+        canonical_url = None
 
     # TechArticle JSON-LD -- emitted when page_path is set
     if page_path:
@@ -2109,13 +2173,24 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
 
     # BreadcrumbList JSON-LD for non-index pages
     if breadcrumbs and page_path:
-        home_item = {
+        def _crumb_url(crumb_page_path):
+            """Absolute URL for a crumb, addressed within this page's mount."""
+            pinned = page_address(
+                crumb_page_path,
+                locale=mount_locale,
+                project=mount_project,
+                version=mount_version,
+            ).pinned
+            if url_builder:
+                return url_builder.page_url(pinned)
+            return f"{base_url}/{pinned}"
+
+        items = [{
             "@type": "ListItem",
             "position": 1,
             "name": "Home",
-            "item": url_builder.page_url(_html_path_to_url('index.html')) if url_builder else f"{base_url}/{_html_path_to_url('index.html')}",
-        }
-        items = [home_item]
+            "item": _crumb_url("index.html"),
+        }]
         # Use logical path (strip trailing /index.html) for breadcrumb
         logical_page_path = page_path
         if logical_page_path.endswith("/index.html"):
@@ -2128,7 +2203,7 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
                 "@type": "ListItem",
                 "position": len(items) + 1,
                 "name": dir_name.capitalize(),
-                "item": url_builder.page_url(f"{dir_path}/") if url_builder else f"{base_url}/{dir_path}/",
+                "item": _crumb_url(f"{dir_path}/index.html"),
             }
             items.append(entry)
         # Final page entry (no item URL per Google spec)
@@ -2396,32 +2471,35 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
 
     # hreflang tags -- only when multiple locales are configured
     if available_locales and len(available_locales) > 1 and page_path and base_url:
-        # Determine the version part of the URL prefix (e.g. "0.7.0" from "en/0.7.0")
-        version_part = ""
-        if url_prefix:
-            parts = url_prefix.split("/")
-            if len(parts) >= 2:
-                version_part = parts[1]
+        def _locale_href(code):
+            """This same page's address in another locale."""
+            pinned = page_address(
+                page_path,
+                locale=code,
+                project=mount_project,
+                version=mount_version,
+            ).pinned
+            if url_builder:
+                return url_builder.page_url(pinned)
+            return f"{base_url}/{pinned}"
 
-        page_url_suffix = _html_path_to_url(page_path)
         default_locale_code = None
         for loc in available_locales:
             code = loc["code"]
             if loc.get("default") is True:
                 default_locale_code = code
-            locale_prefix = f"{code}/{version_part}" if version_part else code
-            href = url_builder.page_url(f"{locale_prefix}/{page_url_suffix}") if url_builder else f"{base_url}/{locale_prefix}/{page_url_suffix}"
-            seo_tags += f'\n<link rel="alternate" hreflang="{code}" href="{href}">'
+            seo_tags += (
+                f'\n<link rel="alternate" hreflang="{code}" '
+                f'href="{_locale_href(code)}">'
+            )
 
         # x-default points to the default locale (or first locale)
         if default_locale_code is None:
             default_locale_code = available_locales[0]["code"]
-        default_prefix = (
-            f"{default_locale_code}/{version_part}"
-            if version_part else default_locale_code
+        seo_tags += (
+            f'\n<link rel="alternate" hreflang="x-default" '
+            f'href="{_locale_href(default_locale_code)}">'
         )
-        default_href = url_builder.page_url(f"{default_prefix}/{page_url_suffix}") if url_builder else f"{base_url}/{default_prefix}/{page_url_suffix}"
-        seo_tags += f'\n<link rel="alternate" hreflang="x-default" href="{default_href}">'
 
     # Security meta tags for GitHub Pages (Phase 7.1)
     # Cloudflare Pages uses _headers file instead; HSTS and Permissions-Policy
@@ -2469,7 +2547,6 @@ def _render_page_footer(edit_link_html, date_display_html,
 
 def _render_topbar(project_name, version_badge, topbar_page_title_html,
                    search_trigger_html, prefix,
-                   url_prefix="",
                    available_versions=None, available_locales=None,
                    current_version="", current_locale="",
                    is_latest=True):
@@ -2637,11 +2714,15 @@ def _pagefind_init_script():
     )
 
 
-def _render_search_dialog(prefix, current_version="", search_engine=None):
+def _render_search_dialog(asset_prefix, current_version="", search_engine=None):
     """Build the search dialog HTML.
 
     Args:
-        prefix: Relative path prefix back to root.
+        asset_prefix: Relative hop from this page back to the output root,
+            where ``search-index.json`` lives and against which search
+            result paths resolve.  Must not be site-absolute: the built
+            site has to work under any mount point, not just an origin
+            root.
         current_version: Current version string for the default-version
             filter attribute (e.g. "1.0.0").
         search_engine: Search engine name (None, "builtin", "fuse",
@@ -2651,9 +2732,13 @@ def _render_search_dialog(prefix, current_version="", search_engine=None):
     if current_version:
         version_attr = f' data-default-version="{_escape_html(current_version)}"'
 
+    # Document-relative, never "/": search result paths are output-root
+    # relative, and the site may be served from any subpath.
+    search_base = asset_prefix or "./"
+
     if search_engine == "pagefind":
         return (
-            f'<dialog class="search-dialog" id="search-dialog" data-search-base="/"{version_attr} aria-label="Search documentation">\n'
+            f'<dialog class="search-dialog" id="search-dialog" data-search-base="{search_base}"{version_attr} aria-label="Search documentation">\n'
             f'<div class="search-inner">\n'
             f'<div class="search-header">\n'
             f'<span class="search-header-title">Search</span>\n'
@@ -2665,7 +2750,7 @@ def _render_search_dialog(prefix, current_version="", search_engine=None):
         )
 
     return (
-        f'<dialog class="search-dialog" id="search-dialog" data-search-base="/"{version_attr} aria-label="Search documentation">\n'
+        f'<dialog class="search-dialog" id="search-dialog" data-search-base="{search_base}"{version_attr} aria-label="Search documentation">\n'
         f'<div class="search-inner">\n'
         f'<div class="search-header">\n'
         f'<input type="search" class="search-input" placeholder="Search... (Cmd+K)" aria-controls="search-results">\n'
@@ -2683,7 +2768,8 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                      toc_html, summary, date_modified, feed_url, page_path,
                      site_terms, has_custom_css_href, version, project_name,
                      description, has_hero, custom_css_href, theme_meta,
-                     url_prefix="",
+                     asset_prefix="",
+                     mount_locale="", mount_project="", mount_version="",
                      available_versions=None, available_locales=None,
                      current_version="", current_locale="",
                      is_latest=True, page_type=None):
@@ -2931,8 +3017,15 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     if _is_doc_type and not is_latest and available_versions and current_version:
         latest_ver = available_versions[-1]["version"] if available_versions else ""
         if latest_ver:
-            banner_locale = url_prefix.split("/")[0] if "/" in url_prefix else "en"
-            latest_url = f"/{banner_locale}/{latest_ver}/"
+            # Document-relative hop to the latest version's landing page.
+            # A site-absolute one escapes the mount when the site is served
+            # under a slug or a project-pages subpath.
+            latest_url = asset_prefix + page_address(
+                "index.html",
+                locale=mount_locale or "en",
+                project=mount_project,
+                version=latest_ver,
+            ).pinned
             version_banner_html = (
                 f'<div class="version-banner">'
                 f'You are viewing docs for v{_escape_html(current_version)}. '
@@ -2980,7 +3073,8 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
 def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
-               next_page=None, prefix="", repo=None, source_path=None,
+               next_page=None, prefix="", asset_prefix="",
+               repo=None, source_path=None,
                base_url=None, url_builder=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
                feed_url=None, summary=None, critical_css=None,
@@ -2990,11 +3084,16 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                site_terms=None, page_number=None, total_pages=None,
                theme_meta=None, has_hero=False, deploy_target=None,
                page_nav=True, page_progress=True,
-               url_prefix="",
+               mount_locale="", mount_project="", mount_version="",
                available_versions=None, available_locales=None,
                current_version="", current_locale="",
                is_latest=True):
-    """Wrap converted HTML body in the full page template."""
+    """Wrap converted HTML body in the full page template.
+
+    ``prefix`` reaches this page's own mount root (sibling pages);
+    ``asset_prefix`` reaches the output root (shared assets). Both come
+    from :func:`selfdoc_core.address.page_address`.
+    """
     # Use default theme metadata when none provided (backward compatible)
     if theme_meta is None:
         theme_meta = get_theme_meta("minimal")
@@ -3012,7 +3111,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         project_name=project_name, description=description,
         has_hero=has_hero, custom_css_href=custom_css_href,
         theme_meta=theme_meta,
-        url_prefix=url_prefix,
+        asset_prefix=asset_prefix,
+        mount_locale=mount_locale,
+        mount_project=mount_project,
+        mount_version=mount_version,
         available_versions=available_versions,
         available_locales=available_locales,
         current_version=current_version,
@@ -3035,7 +3137,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         deploy_target=deploy_target,
         available_locales=available_locales,
         current_locale=current_locale,
-        url_prefix=url_prefix,
+        mount_locale=mount_locale,
+        mount_project=mount_project,
+        mount_version=mount_version,
     )
 
     # Per-version SEO (Phase 2): noindex for non-indexed, canonical override
@@ -3048,21 +3152,21 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                 break
         if cur_ver_entry and not cur_ver_entry.get("indexed", True):
             version_seo_tags += '\n<meta name="robots" content="noindex, nofollow">'
-        if base_url and page_path and url_prefix:
+        if base_url and page_path and mount_locale and mount_version:
             latest_ver = available_versions[-1]["version"]
-            parts = url_prefix.split("/")
-            if len(parts) >= 2:
-                latest_prefix = f"{parts[0]}/{latest_ver}"
-                base = url_builder.base() if url_builder else base_url
-                canonical_latest = (
-                    f"{base}/{latest_prefix}/"
-                    f"{_html_path_to_url(page_path)}"
-                )
-                seo_tags = re.sub(
-                    r'<link rel="canonical" href="[^"]*">',
-                    f'<link rel="canonical" href="{canonical_latest}">',
-                    seo_tags,
-                )
+            latest_pinned = page_address(
+                page_path,
+                locale=mount_locale,
+                project=mount_project,
+                version=latest_ver,
+            ).pinned
+            base = url_builder.base() if url_builder else base_url
+            canonical_latest = f"{base}/{latest_pinned}"
+            seo_tags = re.sub(
+                r'<link rel="canonical" href="[^"]*">',
+                f'<link rel="canonical" href="{canonical_latest}">',
+                seo_tags,
+            )
 
     # Search trigger HTML (configurable: "icon", "bar", or "hidden")
     effective_search = search if search else "icon"
@@ -3091,7 +3195,6 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         topbar_page_title_html=meta["topbar_page_title_html"],
         search_trigger_html=search_trigger_html,
         prefix=prefix,
-        url_prefix=url_prefix,
         available_versions=available_versions,
         available_locales=available_locales,
         current_version=current_version,
@@ -3100,7 +3203,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     )
 
     # Build search dialog
-    search_dialog_html = _render_search_dialog(prefix, current_version=current_version, search_engine=search_engine)
+    search_dialog_html = _render_search_dialog(asset_prefix, current_version=current_version, search_engine=search_engine)
 
     # Load JS from external files via the loader module
     from selfdoc_core.js.loader import load_js, assemble_body_js
@@ -3147,7 +3250,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<meta charset="UTF-8">\n'
         f'<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
         f'<title>{_escape_html(title)} - {_escape_html(project_name)}</title>{meta["description_tag"]}\n'
-        f'<link rel="icon" type="image/svg+xml" href="{prefix}favicon.svg">\n'
+        f'<link rel="icon" type="image/svg+xml" href="{asset_prefix}favicon.svg">\n'
         f'{meta["font_tags"]}'
         f'{"<style>" + critical_css + "</style>" + chr(10) if critical_css else ""}'
         f'<link rel="preload" href="{css_href}" as="style">\n'
@@ -3157,7 +3260,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{version_seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
-        f'{"<link href=\"" + prefix + "pagefind/pagefind-ui.css\" rel=\"stylesheet\">" + chr(10) + "<script src=\"" + prefix + "pagefind/pagefind-ui.js\"></script>" + chr(10) if search_engine == "pagefind" else ""}'
+        f'{"<link href=\"" + asset_prefix + "pagefind/pagefind-ui.css\" rel=\"stylesheet\">" + chr(10) + "<script src=\"" + asset_prefix + "pagefind/pagefind-ui.js\"></script>" + chr(10) if search_engine == "pagefind" else ""}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
         f'{"<script src=\"https://cdn.jsdelivr.net/npm/minisearch@7.1.1/dist/umd/index.min.js\"></script>" + chr(10) if search_engine == "minisearch" else ""}'
         f'</head>\n'
@@ -3191,7 +3294,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
         f'{search_dialog_html}\n'
-        f'{_pagefind_init_script() if search_engine == "pagefind" else "<script defer src=\"" + prefix + "search.js\"></script>"}\n'
+        f'{_pagefind_init_script() if search_engine == "pagefind" else "<script defer src=\"" + asset_prefix + "search.js\"></script>"}\n'
         f'</body>\n'
         f'</html>\n'
     )

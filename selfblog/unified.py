@@ -12,6 +12,7 @@ import json
 import os
 import re
 
+from selfdoc_core.address import page_address
 from selfdoc_core.build import (
     _check_reserved_paths,
     _check_unversioned_collisions,
@@ -30,6 +31,7 @@ from selfdoc_core.config import ConfigError, load_config
 from selfdoc_core.html import (
     _escape_html,
     _html_path_to_url,
+    _md_to_html_path,
     _slugify,
     generate_pygments_css,
     get_css,
@@ -486,8 +488,10 @@ def _build_unified_body(
             # Build the project for each locale
             for locale in locales:
                 locale_code = locale["code"]
-                output_subdir = f"{locale_code}/{slug}/{ver_str}"
-                url_prefix = output_subdir
+                output_subdir = page_address(
+                    "index.html", locale=locale_code, project=slug,
+                    version=ver_str,
+                ).mount
 
                 proj_v_pages, proj_uv_pages, proj_uv_md, proj_uv_fm = (
                     project_page_partitions.get(
@@ -497,8 +501,9 @@ def _build_unified_body(
                 result = build_single(
                     dir_path=build_dir,
                     config=proj_config,
-                    output_subdir=output_subdir,
-                    url_prefix=url_prefix,
+                    mount_locale=locale_code,
+                    mount_project=slug,
+                    mount_version=ver_str,
                     version_override=proj_version or ver_str,
                     locale_override=locale_code,
                     available_versions=versions,
@@ -566,14 +571,16 @@ def _build_unified_body(
 
         for locale in locales:
             locale_code = locale["code"]
-            output_subdir = f"{locale_code}/{slug}"
-            url_prefix = output_subdir
+            output_subdir = page_address(
+                "index.html", locale=locale_code, project=slug,
+            ).mount
 
             uv_result = build_single(
                 dir_path=project_path,
                 config=proj_config,
-                output_subdir=output_subdir,
-                url_prefix=url_prefix,
+                mount_locale=locale_code,
+                mount_project=slug,
+                mount_version="",
                 version_override="",
                 locale_override=locale_code,
                 available_versions=versions,
@@ -608,14 +615,17 @@ def _build_unified_body(
     common_latest_build = None
     for locale in locales:
         locale_code = locale["code"]
-        common_subdir = f"{locale_code}/common/{latest_version}"
-        common_url_prefix = common_subdir
+        common_subdir = page_address(
+            "index.html", locale=locale_code, project="common",
+            version=latest_version,
+        ).mount
 
         result = build_single(
             dir_path=dir_path,
             config=config,
-            output_subdir=common_subdir,
-            url_prefix=common_url_prefix,
+            mount_locale=locale_code,
+            mount_project="common",
+            mount_version=latest_version,
             version_override=latest_version,
             locale_override=locale_code,
             available_versions=versions,
@@ -677,14 +687,16 @@ def _build_unified_body(
     if ds_unversioned:
         for locale in locales:
             locale_code = locale["code"]
-            uv_subdir = f"{locale_code}/common"
-            uv_url_prefix = uv_subdir
+            uv_subdir = page_address(
+                "index.html", locale=locale_code, project="common",
+            ).mount
 
             uv_result = build_single(
                 dir_path=dir_path,
                 config=config,
-                output_subdir=uv_subdir,
-                url_prefix=uv_url_prefix,
+                mount_locale=locale_code,
+                mount_project="common",
+                mount_version="",
                 version_override="",
                 locale_override=locale_code,
                 available_versions=versions,
@@ -825,6 +837,20 @@ def _build_unified_body(
         deploy=config.get("deploy"),
         feed_max_entries=config.get("feed_max_entries"),
         url_builder=lb["url_builder"],
+        # The aux files describe the docs-site's own common pages, which
+        # mount under <locale>/common/<version>.
+        mount_locale=default_locale_code,
+        mount_project="common",
+        mount_version=latest_version,
+        page_addresses={
+            md: page_address(
+                _md_to_html_path(md),
+                locale=default_locale_code,
+                project="common",
+                version=latest_version,
+            )
+            for md in lb["markdown_files"]
+        },
     )
     written.update(aux_written)
 
