@@ -315,6 +315,112 @@
               "help": "Absolute canonical URL of the portfolio page, from assembly.portfolio_canonical (e.g. 'https://smmh.dev/'). The portfolio is the site apex, not a docs page, so this is NOT --canonical-base. Required whenever --portfolio-file names an existing file: the same portfolio bytes are served on every host bound to the Pages project, and one of them has to be named canonical."
             }
           ]
+        },
+        "integrate": {
+          "name": "integrate",
+          "help": "Integrate one dispatched project into the assembly repository checkout and push the result. Builds the cloned source project, replaces its subtree under site/, refreshes its manifest and membership record, regenerates the shared cross-project elements, rebuilds the search index, then commits and pushes with a re-sync retry loop so concurrent deploys converge instead of clobbering each other. This is the whole body of the generated deploy workflow.",
+          "effect": "mutating",
+          "flags": [
+            {
+              "name": "slug",
+              "type": "str",
+              "help": "Project slug being integrated; the site subtree is site/<slug>/. Required unless --scope is 'shared-only'.",
+              "default": ""
+            },
+            {
+              "name": "version",
+              "type": "str",
+              "help": "Version of the project being integrated, recorded in projects.json and the commit message",
+              "default": ""
+            },
+            {
+              "name": "ref",
+              "type": "str",
+              "help": "Git ref (tag) the source project was cloned at, recorded in projects.json",
+              "default": ""
+            },
+            {
+              "name": "source-repo",
+              "type": "str",
+              "help": "Source project repository (owner/name), recorded in projects.json",
+              "default": ""
+            },
+            {
+              "name": "scope",
+              "type": "str",
+              "help": "What this dispatch replaces: 'full' (the whole project subtree), 'posts' (only site/<slug>/posts/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.",
+              "default": ""
+            },
+            {
+              "name": "canonical-base",
+              "type": "str",
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.",
+              "default": ""
+            },
+            {
+              "name": "legacy-blog-host",
+              "type": "str",
+              "help": "Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.",
+              "default": ""
+            },
+            {
+              "name": "portfolio-canonical",
+              "type": "str",
+              "help": "Absolute canonical URL of the portfolio page, required whenever the assembly checkout has a portfolio/index.html",
+              "default": ""
+            },
+            {
+              "name": "assembly-dir",
+              "type": "str",
+              "help": "Path to the assembly repository checkout being updated",
+              "default": "."
+            },
+            {
+              "name": "source-dir",
+              "type": "str",
+              "help": "Path to the cloned source project. Defaults to <assembly-dir>/source/<slug>, where the deploy workflow clones it.",
+              "default": ""
+            },
+            {
+              "name": "branch",
+              "type": "str",
+              "help": "Assembly repository branch the deploy commits and pushes to",
+              "default": "main"
+            },
+            {
+              "name": "attempts",
+              "type": "int",
+              "help": "How many times to re-sync with the remote and retry the push before failing",
+              "default": 3
+            }
+          ],
+          "grants": [
+            {
+              "name": "assembly-commit",
+              "reason": "pushes a commit to the assembly repository's deploy branch, which is the content the live documentation site serves",
+              "kind": "proc_mutate"
+            }
+          ]
+        },
+        "sync-workflow": {
+          "name": "sync-workflow",
+          "help": "Regenerate the assembly repository's deploy workflow from this project's configuration and push it. The deployed workflow is a generated artifact like any other: without this it stays frozen at whatever the template said when 'assembly init' ran. Pushes only when the content actually differs.",
+          "effect": "mutating",
+          "flags": [
+            {
+              "name": "pin-version",
+              "type": "str",
+              "help": "selfblog version the regenerated workflow pins its toolchain install to. Defaults to the running selfblog's version, which is what the release path wants: the workflow names the selfblog that generated it.",
+              "default": ""
+            }
+          ],
+          "grants": [
+            {
+              "name": "assembly-commit",
+              "reason": "commits the regenerated deploy workflow to the assembly repository through the GitHub Git Data API",
+              "kind": "proc_mutate"
+            }
+          ]
         }
       }
     }

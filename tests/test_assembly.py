@@ -87,61 +87,82 @@ def test_workflow_yaml_has_permissions():
     assert "contents: write" in yaml_str
 
 
-def test_workflow_yaml_has_selfdoc_install():
+def test_workflow_yaml_installs_the_toolchain():
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "pip install selfdoc selfblog" in yaml_str
+    assert "pip install selfdoc" in yaml_str
+    assert "pagefind[bin]" in yaml_str
 
 
-def test_workflow_yaml_has_payload_extraction():
+def test_workflow_yaml_pins_the_selfblog_version():
+    """The install line names one selfblog version, not 'whatever is newest'."""
+    yaml_str = generate_workflow_yaml(
+        "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/",
+        "9.9.9",
+    )
+    assert "'selfblog==9.9.9'" in yaml_str
+
+
+def test_workflow_yaml_pin_defaults_to_the_generating_version():
+    """An unspecified pin is the version of the selfblog writing the file."""
+    from selfblog import __version__
+
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "", "")
+    assert f"'selfblog=={__version__}'" in yaml_str
+
+
+def test_workflow_yaml_invokes_the_integrate_command():
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "SLUG=" in yaml_str
-    assert "VERSION=" in yaml_str
-    assert "REF=" in yaml_str
-    assert "SOURCE_REPO=" in yaml_str
+    assert "selfblog assembly integrate" in yaml_str
 
 
-def test_workflow_yaml_has_clone_step():
+def test_workflow_yaml_hands_every_payload_field_to_integrate():
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "Clone source project" in yaml_str
-    assert "repository:" in yaml_str
+    for flag, field in (
+        ("--slug", "slug"),
+        ("--version", "version"),
+        ("--ref", "ref"),
+        ("--source-repo", "repo"),
+        ("--scope", "scope"),
+    ):
+        assert f"{flag} '${{{{ github.event.client_payload.{field} }}}}'" in yaml_str
 
 
-def test_workflow_yaml_has_build_step():
+def test_workflow_yaml_hands_the_config_values_to_integrate():
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "selfdoc build" in yaml_str
+    assert "--canonical-base 'https://docs.smmh.dev'" in yaml_str
+    assert "--legacy-blog-host 'blog.smmh.dev'" in yaml_str
+    assert "--portfolio-canonical 'https://smmh.dev/'" in yaml_str
 
 
-def test_workflow_yaml_has_git_config_and_push():
-    """Workflow configures git and commits+pushes the built site."""
+def test_workflow_yaml_has_no_inline_interpreter():
+    """The deploy body lives in a command, not in embedded interpreters."""
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "git config user.name" in yaml_str
-    assert "git config user.email" in yaml_str
-    assert "git commit" in yaml_str
-    assert "git push" in yaml_str
+    for marker in ("python3 -c", "python -c", "python3 -m", "python -m",
+                   "import json", "json.dump", "bash -c", "sh -c"):
+        assert marker not in yaml_str, f"workflow still embeds {marker!r}"
 
 
-def test_workflow_yaml_has_generate_shared():
+def test_workflow_yaml_has_no_recursive_deletion():
+    """Nothing in CI shell may recursively delete a tree any more."""
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "selfblog assembly generate-shared" in yaml_str
+    assert "rm -rf" not in yaml_str
+    assert "rm -r " not in yaml_str
+    assert "rm -f " not in yaml_str
 
 
-def test_workflow_yaml_has_pagefind():
+def test_workflow_yaml_has_no_embedded_retry_loop_or_git_plumbing():
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "pagefind --site site/" in yaml_str
+    for marker in ("for attempt", "git fetch", "git reset", "git commit",
+                   "git push", "git config", "git add", "cp -r", "find "):
+        assert marker not in yaml_str, f"workflow still embeds {marker!r}"
 
 
-def test_workflow_yaml_has_projects_json_update():
+def test_workflow_yaml_step_count_is_thin():
+    """checkout, setup-python, install, clone, integrate, deploy -- and no more."""
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "projects.json" in yaml_str
-    # The step writes to projects.json via inline Python
-    assert "json.dump" in yaml_str
-
-
-def test_workflow_yaml_has_update_manifest():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    # Manifest copy is inside the commit-and-push retry loop
-    assert "manifests/" in yaml_str
-    assert "manifest.json" in yaml_str
+    steps = [line for line in yaml_str.splitlines()
+             if line.strip().startswith("- name:") or line.strip().startswith("- uses:")]
+    assert len(steps) == 6, steps
 
 
 def test_workflow_yaml_has_wrangler_deploy():
@@ -302,81 +323,15 @@ def test_rebuild_uses_project_info():
     assert cp["ref"] == "v3.0.0"
 
 
-# -- workflow: SCOPE extraction -----------------------------------------------
+# -- workflow: the scope reaches the command, not a shell branch --------------
 
 
-def test_workflow_yaml_extracts_scope():
-    """SCOPE is extracted from client_payload in the payload extraction step."""
+def test_workflow_yaml_scope_is_a_command_flag():
+    """SCOPE is no longer an env var branched on by shell."""
     yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'SCOPE=${{ github.event.client_payload.scope }}' in yaml_str
-
-
-# -- workflow: conditional build step -----------------------------------------
-
-
-def test_workflow_yaml_posts_build():
-    """When SCOPE is posts, workflow runs selfblog build --target posts."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'selfblog build --target posts --no-auto-commit' in yaml_str
-
-
-def test_workflow_yaml_full_build_with_version():
-    """Full build with LATEST_VERSION uses --version flag."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'selfdoc build --no-auto-commit --version "$LATEST_VERSION"' in yaml_str
-
-
-def test_workflow_yaml_conditional_build_structure():
-    """Build step uses SCOPE conditional to choose posts vs full build."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert '[ "$SCOPE" = "posts" ]' in yaml_str
-
-
-# -- workflow: conditional subtree replacement --------------------------------
-
-
-def test_workflow_yaml_posts_subtree_replacement():
-    """Posts scope replaces only site/$SLUG/posts/ subtree."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'rm -rf "site/$SLUG/posts/"' in yaml_str
-
-
-def test_workflow_yaml_posts_manifest_copy():
-    """Posts scope copies post-manifest.json to manifests/$SLUG-posts.json."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'post-manifest.json' in yaml_str
-    assert 'manifests/$SLUG-posts.json' in yaml_str
-
-
-def test_workflow_yaml_full_subtree_replacement():
-    """Full build replaces entire site/$SLUG/ subtree."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'rm -rf "site/$SLUG/"' in yaml_str
-
-
-def test_workflow_yaml_full_manifest_copy():
-    """Full build copies manifest.json to manifests/$SLUG.json."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'manifests/$SLUG.json' in yaml_str
-
-
-# -- workflow: reconciliation -------------------------------------------------
-
-
-def test_workflow_yaml_reconciles_posts_overlay():
-    """Full build deletes manifests/$SLUG-posts.json to reconcile overlay."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert 'rm -f "manifests/$SLUG-posts.json"' in yaml_str
-
-
-# -- workflow: LATEST_VERSION robustness --------------------------------------
-
-
-def test_workflow_yaml_has_version_count_check():
-    """When LATEST is empty, workflow checks VERSION_COUNT for multi-version error."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    assert "VERSION_COUNT" in yaml_str
-    assert "Could not detect latest version for multi-version project" in yaml_str
+    assert "--scope '${{ github.event.client_payload.scope }}'" in yaml_str
+    assert 'SCOPE=' not in yaml_str
+    assert '[ "$SCOPE"' not in yaml_str
 
 
 # -- push_files_to_repo -------------------------------------------------------
@@ -403,11 +358,15 @@ def _mock_run_factory(responses: list[tuple[int, str, str]]):
     return side_effect, call_log
 
 
+EMPTY_TREE = json.dumps({"sha": "tree456", "truncated": False, "tree": []})
+
+
 def test_push_files_successful_sequence():
     """Successful push with 2 files produces correct API call sequence."""
     responses = [
         (0, "abc123\n", ""),  # get HEAD ref
         (0, "tree456\n", ""),  # get tree SHA
+        (0, EMPTY_TREE, ""),  # list the remote tree (nothing there yet)
         (0, "blob_a\n", ""),  # create blob for file_a
         (0, "blob_b\n", ""),  # create blob for file_b
         (0, "newtree\n", ""),  # create tree
@@ -417,17 +376,19 @@ def test_push_files_successful_sequence():
     effect, call_log = _mock_run_factory(responses)
     files = {"dir/a.txt": "content a", "dir/b.txt": "content b"}
     with patch("selfblog.assembly.effects.run", side_effect=effect):
-        sha = push_files_to_repo("owner/repo", files, "test commit")
-    assert sha == "newcommit"
-    assert len(call_log) == 7
-    # Verify call sequence: HEAD, tree, blob, blob, tree, commit, ref
+        result = push_files_to_repo("owner/repo", files, "test commit")
+    assert result.sha == "newcommit"
+    assert result.changed is True
+    assert len(call_log) == 8
+    # Verify call sequence: HEAD, tree, list, blob, blob, tree, commit, ref
     assert "/repos/owner/repo/git/ref/heads/main" in " ".join(call_log[0]["cmd"])
     assert "/repos/owner/repo/git/commits/abc123" in " ".join(call_log[1]["cmd"])
-    assert "--method" in call_log[2]["cmd"] and "blobs" in " ".join(call_log[2]["cmd"])
+    assert "/repos/owner/repo/git/trees/tree456" in " ".join(call_log[2]["cmd"])
     assert "--method" in call_log[3]["cmd"] and "blobs" in " ".join(call_log[3]["cmd"])
-    assert "--method" in call_log[4]["cmd"] and "trees" in " ".join(call_log[4]["cmd"])
-    assert "--method" in call_log[5]["cmd"] and "commits" in " ".join(call_log[5]["cmd"])
-    assert "--method" in call_log[6]["cmd"] and "refs" in " ".join(call_log[6]["cmd"])
+    assert "--method" in call_log[4]["cmd"] and "blobs" in " ".join(call_log[4]["cmd"])
+    assert "--method" in call_log[5]["cmd"] and "trees" in " ".join(call_log[5]["cmd"])
+    assert "--method" in call_log[6]["cmd"] and "commits" in " ".join(call_log[6]["cmd"])
+    assert "--method" in call_log[7]["cmd"] and "refs" in " ".join(call_log[7]["cmd"])
 
 
 def test_push_files_blob_error_raises():
@@ -435,6 +396,7 @@ def test_push_files_blob_error_raises():
     responses = [
         (0, "abc123\n", ""),  # get HEAD ref
         (0, "tree456\n", ""),  # get tree SHA
+        (0, EMPTY_TREE, ""),  # list the remote tree
         (1, "", "Not Found"),  # blob creation fails
     ]
     effect, _ = _mock_run_factory(responses)
@@ -448,6 +410,7 @@ def test_push_files_tree_error_raises():
     responses = [
         (0, "abc123\n", ""),  # get HEAD ref
         (0, "tree456\n", ""),  # get tree SHA
+        (0, EMPTY_TREE, ""),  # list the remote tree
         (0, "blob_a\n", ""),  # blob OK
         (1, "", "Server Error"),  # tree creation fails
     ]
@@ -468,6 +431,7 @@ def test_push_files_tree_payload_has_correct_paths_and_shas():
     responses = [
         (0, "head_sha\n", ""),
         (0, "base_tree\n", ""),
+        (0, json.dumps({"truncated": False, "tree": []}), ""),
         (0, "sha_for_a\n", ""),
         (0, "sha_for_b\n", ""),
         (0, "new_tree\n", ""),
@@ -478,8 +442,8 @@ def test_push_files_tree_payload_has_correct_paths_and_shas():
     files = {"site/index.html": "<html/>", "site/style.css": "body{}"}
     with patch("selfblog.assembly.effects.run", side_effect=effect):
         push_files_to_repo("owner/repo", files, "deploy")
-    # call_log[4] is the tree creation call
-    tree_input = json.loads(call_log[4]["input"])
+    # call_log[5] is the tree creation call
+    tree_input = json.loads(call_log[5]["input"])
     assert tree_input["base_tree"] == "base_tree"
     tree_entries = tree_input["tree"]
     paths = {e["path"] for e in tree_entries}
@@ -507,42 +471,3 @@ def test_workflow_yaml_clone_step_has_shared_only_condition():
             break
     else:
         raise AssertionError("Clone source project step not found")
-
-
-def test_workflow_yaml_build_step_has_shared_only_condition():
-    """Build documentation step has if: condition skipping shared-only scope."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    lines = yaml_str.splitlines()
-    for i, line in enumerate(lines):
-        if "Build documentation" in line:
-            remaining = "\n".join(lines[i : i + 3])
-            assert "github.event.client_payload.scope != 'shared-only'" in remaining
-            break
-    else:
-        raise AssertionError("Build documentation step not found")
-
-
-def test_workflow_yaml_version_detection_has_shared_only_condition():
-    """Detect latest version step has if: condition skipping shared-only scope."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    lines = yaml_str.splitlines()
-    for i, line in enumerate(lines):
-        if "Detect latest version" in line:
-            remaining = "\n".join(lines[i : i + 3])
-            assert "github.event.client_payload.scope != 'shared-only'" in remaining
-            break
-    else:
-        raise AssertionError("Detect latest version step not found")
-
-
-def test_workflow_yaml_retry_loop_skips_file_copy_for_shared_only():
-    """The retry loop wraps file copy in a shared-only conditional."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/")
-    # Find the retry loop section (starts with "Commit and push")
-    commit_push_idx = yaml_str.index("Commit and push")
-    retry_section = yaml_str[commit_push_idx:]
-    assert '"$SCOPE" != "shared-only"' in retry_section
-    # Within the retry loop, shared-only guard must come before the posts conditional
-    idx_shared = retry_section.index('"$SCOPE" != "shared-only"')
-    idx_posts = retry_section.index('"$SCOPE" = "posts"')
-    assert idx_shared < idx_posts, "shared-only guard must come before posts conditional"

@@ -591,7 +591,12 @@ def _cmd_assembly_init(ctx):
 def _cmd_assembly_push(ctx):
     """Dispatch an assembly rebuild for the current project."""
 
-    from selfblog.assembly import assembly_push
+    from selfblog.assembly import (
+        assembly_push,
+        check_version_is_declared,
+        list_repo_tags,
+        resolve_project_tag,
+    )
     from selfdoc_core.config import load_config
 
     config = load_config(".")
@@ -623,31 +628,30 @@ def _cmd_assembly_push(ctx):
         sys.exit(1)
     source_repo = result.stdout.strip()
 
-    # Detect ref (prefer exact tag on HEAD, fall back to latest tag)
-    result = effects.run(
-        ["git", "describe", "--tags", "--exact-match", "HEAD"],
-        check=False, capture_output=True, text=True, timeout=10,
-        read=True,
-    )
-    if result.returncode == 0:
-        ref = result.stdout.strip()
-    else:
-        result = effects.run(
-            ["git", "describe", "--tags", "--abbrev=0"],
-            check=False, capture_output=True, text=True, timeout=10,
-            read=True,
-        )
-        if result.returncode == 0:
-            ref = result.stdout.strip()
-        else:
-            print("Error: No git tags found. Run a release first.", file=sys.stderr)
-            sys.exit(1)
-
     # Detect version
     version = config.get("version", "")
     if not version:
         from selfdoc_core.utils import detect_project_version
         version = detect_project_version(".", fallback="0.0.0")
+
+    # The assembly builds selfdoc.json's newest declared version, so a
+    # 'versions' array that omits the version being dispatched would
+    # publish something else under this version's name.
+    try:
+        check_version_is_declared(config, version)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve the tag that names THIS project's version. Never the
+    # repository's newest tag: in a repo that releases more than one
+    # thing, that is a sibling's tag and the assembly builds the wrong
+    # source tree under this project's slug.
+    try:
+        ref = resolve_project_tag(list_repo_tags("."), version)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     dispatch = assembly_push(repo, source_repo, slug, version, ref)
 
@@ -814,18 +818,7 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
 @effects.handler
 def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", portfolio_file="", portfolio_canonical=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
-    from selfblog.assembly import generate_worker_js
-    from selfblog.shared import (
-        _ensure_canonical,
-        generate_blog_index,
-        generate_homepage,
-        generate_nav_json,
-        generate_sitemap,
-        generate_unified_feed,
-        wrap_shared_page,
-    )
-    from selfdoc_core.manifest import manifest_compat
-    from selfdoc_core.utils import atomic_write
+    from selfblog.assembly import generate_shared_files
 
     if not site_dir:
         print("Error: --site-dir is required.", file=sys.stderr)
@@ -840,142 +833,190 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
             file=sys.stderr,
         )
         sys.exit(1)
-    canonical_base = canonical_base.rstrip("/")
 
-    # Load all manifest JSON files, separating base manifests from
-    # post overlays.  Post overlays are files matching *-posts.json;
-    # they carry updated post lists that replace the base manifest's
-    # posts for the same project slug.
-    #
-    # Revisions sidecars (*-revisions.json) are skipped here -- they
-    # are not manifests and are not consumed by generate-shared.
-    base_manifests = []
-    post_overlays = []
-    if os.path.isdir(manifests_dir):
-        for fname in sorted(os.listdir(manifests_dir)):
-            if not fname.endswith(".json"):
-                continue
-            if fname.endswith("-revisions.json"):
-                continue
-            fpath = os.path.join(manifests_dir, fname)
-            with open(fpath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            # Run through manifest_compat to validate and normalize.
-            # Post overlays also have slug/posts structure that
-            # manifest_compat can handle (unknown keys are ignored).
-            manifest_compat(data, source=fpath)
-            if fname.endswith("-posts.json"):
-                post_overlays.append(data)
-            else:
-                base_manifests.append(data)
-
-    # Apply post overlays: replace base manifest posts with overlay posts
-    if post_overlays:
-        base_by_slug = {m["slug"]: m for m in base_manifests}
-        for overlay in post_overlays:
-            slug = overlay.get("slug", "")
-            if slug in base_by_slug:
-                base_by_slug[slug]["posts"] = overlay.get("posts", [])
-
-    manifests = base_manifests
-
-    # Strip trailing slash from docs_base for consistent URL construction
-    docs_base = docs_base.rstrip("/")
-
-    # Generate fragments and wrap
-    homepage_fragment = generate_homepage(manifests, docs_base)
-    blog_fragment = generate_blog_index(manifests, docs_base)
-    nav_json = generate_nav_json(manifests)
-    feed_xml = generate_unified_feed(manifests, docs_base)
-    sitemap_xml = generate_sitemap(manifests, docs_base)
-
-    blog_html = wrap_shared_page(
-        "Blog", blog_fragment, canonical_url=f"{canonical_base}/blog/",
-    )
-
-    headers_content = (
-        "/*\n"
-        "  X-Frame-Options: DENY\n"
-        "  X-Content-Type-Options: nosniff\n"
-        "  Referrer-Policy: strict-origin-when-cross-origin\n"
-    )
-
-    # Write outputs
-    written = []
-
-    # When a portfolio file is provided, it becomes the root index.html
-    # and the project listing moves to /projects/index.html
-    if portfolio_file and os.path.isfile(portfolio_file):
-        if not portfolio_canonical:
-            print(
-                "Error: --portfolio-canonical is required when a portfolio "
-                "file is supplied (set assembly.portfolio_canonical in "
-                "selfdoc.json and regenerate the assembly workflow). The "
-                "portfolio is the site apex, not a docs page, so it has no "
-                "default canonical.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        with open(portfolio_file, "r", encoding="utf-8") as f:
-            portfolio_html = f.read()
-        try:
-            portfolio_html = _ensure_canonical(portfolio_html, portfolio_canonical)
-        except ValueError as exc:
-            print(f"Error: {portfolio_file}: {exc}", file=sys.stderr)
-            sys.exit(1)
-        index_path = os.path.join(site_dir, "index.html")
-        effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
-        atomic_write(index_path, portfolio_html)
-        written.append(index_path)
-
-        projects_dir = os.path.join(site_dir, "projects")
-        effects.makedirs(projects_dir, exist_ok=True)
-        projects_path = os.path.join(projects_dir, "index.html")
-        atomic_write(projects_path, wrap_shared_page(
-            "Projects", homepage_fragment,
-            canonical_url=f"{canonical_base}/projects/",
-        ))
-        written.append(projects_path)
-    else:
-        index_path = os.path.join(site_dir, "index.html")
-        effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
-        atomic_write(index_path, wrap_shared_page(
-            "Projects", homepage_fragment,
-            canonical_url=f"{canonical_base}/",
-        ))
-        written.append(index_path)
-
-    blog_dir = os.path.join(site_dir, "blog")
-    effects.makedirs(blog_dir, exist_ok=True)
-    blog_path = os.path.join(blog_dir, "index.html")
-    atomic_write(blog_path, blog_html)
-    written.append(blog_path)
-
-    nav_path = os.path.join(site_dir, "nav.json")
-    atomic_write(nav_path, nav_json)
-    written.append(nav_path)
-
-    feed_path = os.path.join(site_dir, "feed.xml")
-    atomic_write(feed_path, feed_xml)
-    written.append(feed_path)
-
-    sitemap_path = os.path.join(site_dir, "sitemap.xml")
-    atomic_write(sitemap_path, sitemap_xml)
-    written.append(sitemap_path)
-
-    headers_path = os.path.join(site_dir, "_headers")
-    atomic_write(headers_path, headers_content)
-    written.append(headers_path)
-
-    worker_js_content = generate_worker_js(canonical_base, legacy_blog_host)
-    worker_js_path = os.path.join(site_dir, "_worker.js")
-    atomic_write(worker_js_path, worker_js_content)
-    written.append(worker_js_path)
+    try:
+        written = generate_shared_files(
+            site_dir, manifests_dir, canonical_base,
+            docs_base=docs_base,
+            legacy_blog_host=legacy_blog_host,
+            portfolio_file=portfolio_file,
+            portfolio_canonical=portfolio_canonical,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     print(f"Generated {len(written)} shared file(s):")
     for path in written:
         print(f"  {path}")
 
+    return 0
+
+
+@assembly_group.command("integrate", help="Integrate one dispatched project into the assembly repository checkout and push the result. Builds the cloned source project, replaces its subtree under site/, refreshes its manifest and membership record, regenerates the shared cross-project elements, rebuilds the search index, then commits and pushes with a re-sync retry loop so concurrent deploys converge instead of clobbering each other. This is the whole body of the generated deploy workflow.", effect="mutating",
+    # Deliberately NOT consequential: it runs unattended inside the assembly
+    # repo's own CI, re-deriving already-public docs from an already-public
+    # tag. A prompt here would hang the deploy forever. Same reasoning as
+    # `assembly push`; strictcli's `consequential-grant-agreement` check warns
+    # about the pairing by design and this comment is the answer to it.
+    # This command cannot honestly preview: every later step reads what an
+    # earlier step wrote -- the shared generator reads the manifests the graft
+    # just copied, the index reads the pages it just wrote, the commit reads
+    # the tree all of them produced. It should therefore declare
+    # dry_run_supported=False with that reason, but strictcli exposes those
+    # two parameters on App.command only, not on Group.command (todo filed
+    # against strictcli). Until then the run stops at the first recorded
+    # effect, which truncates the preview rather than lying about it.
+    grants=[
+        strictcli.Grant(
+            "assembly-commit",
+            "pushes a commit to the assembly repository's deploy branch, "
+            "which is the content the live documentation site serves",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@strictcli.flag("slug", type=str, default="", help="Project slug being integrated; the site subtree is site/<slug>/. Required unless --scope is 'shared-only'.")
+@strictcli.flag("version", type=str, default="", help="Version of the project being integrated, recorded in projects.json and the commit message")
+@strictcli.flag("ref", type=str, default="", help="Git ref (tag) the source project was cloned at, recorded in projects.json")
+@strictcli.flag("source-repo", type=str, default="", help="Source project repository (owner/name), recorded in projects.json")
+@strictcli.flag("scope", type=str, default="", help="What this dispatch replaces: 'full' (the whole project subtree), 'posts' (only site/<slug>/posts/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.")
+@strictcli.flag("canonical-base", type=str, default="", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.")
+@strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
+@strictcli.flag("portfolio-canonical", type=str, default="", help="Absolute canonical URL of the portfolio page, required whenever the assembly checkout has a portfolio/index.html")
+@strictcli.flag("assembly-dir", type=str, default=".", help="Path to the assembly repository checkout being updated")
+@strictcli.flag("source-dir", type=str, default="", help="Path to the cloned source project. Defaults to <assembly-dir>/source/<slug>, where the deploy workflow clones it.")
+@strictcli.flag("branch", type=str, default="main", help="Assembly repository branch the deploy commits and pushes to")
+@strictcli.flag("attempts", type=int, default=3, help="How many times to re-sync with the remote and retry the push before failing")
+@effects.handler
+def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
+                            scope="", canonical_base="", legacy_blog_host="",
+                            portfolio_canonical="", assembly_dir=".",
+                            source_dir="", branch="main", attempts=3):
+    """Integrate a dispatched project into the assembly and push."""
+    from selfblog.assembly import integrate_project
+
+    if not canonical_base:
+        print(
+            "Error: --canonical-base is required (set topology.docs_base in "
+            "selfdoc.json and regenerate the assembly workflow with "
+            "'selfblog assembly sync-workflow').",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        summary = integrate_project(
+            slug=slug,
+            version=version,
+            ref=ref,
+            source_repo=source_repo,
+            scope=scope,
+            canonical_base=canonical_base,
+            assembly_dir=assembly_dir,
+            source_dir=source_dir,
+            legacy_blog_host=legacy_blog_host,
+            portfolio_canonical=portfolio_canonical,
+            branch=branch,
+            attempts=attempts,
+        )
+    except (ValueError, RuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if summary["committed"]:
+        print(
+            f"Integrated {summary['scope']} scope for "
+            f"{summary['slug'] or 'shared elements'} "
+            f"(attempt {summary['attempt']}, "
+            f"{len(summary['shared'])} shared file(s))."
+        )
+    else:
+        print(
+            f"Nothing to commit for {summary['slug'] or 'shared elements'} "
+            f"({summary['scope']} scope); the assembly is already current."
+        )
+    return 0
+
+
+@assembly_group.command("sync-workflow", help="Regenerate the assembly repository's deploy workflow from this project's configuration and push it. The deployed workflow is a generated artifact like any other: without this it stays frozen at whatever the template said when 'assembly init' ran. Pushes only when the content actually differs.", effect="mutating",
+    # Deliberately NOT consequential: it rewrites one tool-owned generated
+    # file to match the generator, and rerunning converges. See the note on
+    # `assembly push`.
+    grants=[
+        strictcli.Grant(
+            "assembly-commit",
+            "commits the regenerated deploy workflow to the assembly "
+            "repository through the GitHub Git Data API",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@strictcli.flag("pin-version", type=str, default="", help="selfblog version the regenerated workflow pins its toolchain install to. Defaults to the running selfblog's version, which is what the release path wants: the workflow names the selfblog that generated it.")
+@effects.handler
+def _cmd_assembly_sync_workflow(ctx, pin_version=""):
+    """Regenerate and push the assembly repo's deploy workflow."""
+    from selfblog import __version__ as selfblog_version
+    from selfblog.assembly import WORKFLOW_PATH, generate_workflow_yaml, push_files_to_repo
+    from selfdoc_core.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    pages_project = assembly_config.get("pages_project")
+    if not pages_project:
+        print(
+            "Error: assembly.pages_project not configured in selfdoc.json.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    topology = config.get("topology") or {}
+    canonical_base = topology.get("docs_base")
+    if not canonical_base:
+        print(
+            "Error: topology.docs_base not configured in selfdoc.json.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    pin = pin_version or selfblog_version
+    content = generate_workflow_yaml(
+        pages_project,
+        canonical_base,
+        topology.get("legacy_blog_host") or "",
+        assembly_config.get("portfolio_canonical") or "",
+        pin,
+    )
+
+    try:
+        result = push_files_to_repo(
+            repo,
+            {WORKFLOW_PATH: content},
+            f"assembly: sync deploy workflow (selfblog {pin})",
+        )
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if result.changed:
+        print(
+            f"Synced {WORKFLOW_PATH} on {repo} "
+            f"(selfblog {pin}, commit {result.sha})."
+        )
+    else:
+        print(
+            f"{WORKFLOW_PATH} on {repo} is already current "
+            f"(selfblog {pin}); nothing pushed."
+        )
     return 0
 
 

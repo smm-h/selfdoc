@@ -77,6 +77,10 @@ SELFBLOG_EFFECTS = {
     "assembly.redirects": "read_only",
     # writes the assembled site's shared files
     "assembly.generate-shared": "mutating",
+    # rewrites the assembly checkout's tree and pushes the deploy commit
+    "assembly.integrate": "mutating",
+    # commits the regenerated deploy workflow to the assembly repo
+    "assembly.sync-workflow": "mutating",
     # rewrites the content-hash store and auto-commits it
     "check": "mutating",
     # writes the built output tree and auto-commits the hash store
