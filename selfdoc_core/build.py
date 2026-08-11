@@ -18,11 +18,11 @@ from datetime import datetime
 
 from selfdoc_core import require_post_provider
 from selfdoc_core.config import load_config, ConfigError
-from selfdoc_core.address import page_address
+from selfdoc_core.address import ARCHIVE_PREFIX, locale_segment, page_address
 from selfdoc_core.prose import first_paragraph
 from selfdoc_core.context import SearchEntry
 from selfdoc_core.docs import resolve_all_docs
-from selfdoc_core.utils import detect_project_version
+from selfdoc_core.utils import detect_project_version, parse_frontmatter
 from selfdoc_core.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
     _md_to_html_path, _html_path_to_url, _html_to_md_path,
@@ -38,6 +38,10 @@ from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
 
 from selfdoc_core import effects
+
+#: Site-level URL segment every post is emitted under: ``blog/<slug>/``.
+#: Fixed, and the same in a standalone build and on the unified site.
+POSTS_PREFIX = "blog"
 
 try:
     from predraw.model import Scene, Element, Font
@@ -493,6 +497,7 @@ def _build_search_index(
     mount_locale="",
     mount_project="",
     mount_version="",
+    mount_archived=False,
 ):
     """Build a search index from markdown files.
 
@@ -525,7 +530,8 @@ def _build_search_index(
             locale=mount_locale,
             project=mount_project,
             version=mount_version,
-        ).pinned
+            archived=mount_archived,
+        ).url
         lines = content.split("\n")
         tokens = tokenize_md(content)
         current_title = None
@@ -888,7 +894,7 @@ def _generate_llms_txt(project_name, markdown_files, url_builder,
     for md_path in sorted(markdown_files.keys()):
         content = markdown_files[md_path]
         title = _extract_title(content, md_path.replace(".md", ""))
-        url_path = page_addresses[md_path].pinned
+        url_path = page_addresses[md_path].stable
 
         # Summary is the complete first paragraph of the page.
         first = _first_content_paragraph(content)
@@ -978,7 +984,7 @@ def _generate_atom_feed(
         if meta.get("feed") is False:
             continue
 
-        url_path = page_addresses[md_path].pinned
+        url_path = page_addresses[md_path].stable
         title = meta.get("title")
         if not title:
             title = _extract_title(content, md_path.replace(".md", ""))
@@ -1093,9 +1099,11 @@ def _compress_output(output_dir):
 
 def build_single(dir_path=".", config=None,
                   mount_locale=None, mount_project="", mount_version=None,
+                  mount_archived=False,
                   version_override=None,
                   locale_override=None,
                   available_versions=None, available_locales=None,
+                  version_pages=None,
                   current_version="", current_locale="",
                   is_latest=True, page_filter=None,
                   unversioned_markdown=None, unversioned_frontmatter=None,
@@ -1121,10 +1129,13 @@ def build_single(dir_path=".", config=None,
             ``mount_version``.
         mount_project: Constituent-project segment of the mount on a
             unified site (e.g. "core"); ``""`` on a standalone site.
-        mount_version: Version segment of this build's output mount (e.g.
-            "0.7.0").  Pass ``""`` explicitly for pages that are not
-            version-scoped.  When ``None`` (default), auto-computed from
-            config alongside ``mount_locale``.
+        mount_version: Version these pages are built from (e.g. "0.7.0").
+            Pass ``""`` explicitly for pages that are not version-scoped.
+            When ``None`` (default), auto-computed from config alongside
+            ``mount_locale``.  A version does not imply a version segment:
+            the current version is emitted at the stable address.
+        mount_archived: Whether this build is a superseded version, emitted
+            under ``v/<version>/`` beside the stable tree.
         version_override: Override detected version string (optional).
         locale_override: Override detected locale string (optional).
         overlay_docs: Optional dict mapping a docs-relative ``.md`` path to
@@ -1160,7 +1171,7 @@ def build_single(dir_path=".", config=None,
                 if loc.get("default") is True:
                     default_locale = loc
                     break
-            mount_locale = default_locale["code"]
+            mount_locale = locale_segment(default_locale["code"], locales)
             mount_version = versions[0]["version"]
         else:
             mount_locale = ""
@@ -1396,8 +1407,10 @@ def build_single(dir_path=".", config=None,
         mount_locale=mount_locale,
         mount_project=mount_project,
         mount_version=mount_version,
+        mount_archived=mount_archived,
         available_versions=available_versions,
         available_locales=available_locales,
+        version_pages=version_pages,
         current_version=current_version,
         current_locale=current_locale,
         is_latest=is_latest,
@@ -1410,7 +1423,8 @@ def build_single(dir_path=".", config=None,
     # (Phase 3.3). Keys are output keys (mount included), so strip the
     # mount before converting back to a docs-relative md_path.
     mount = page_address("index.html", locale=mount_locale,
-                         project=mount_project, version=mount_version).mount
+                         project=mount_project, version=mount_version,
+                         archived=mount_archived).mount
     for output_key in list(html_files):
         page_path = (
             output_key[len(mount) + 1:] if mount else output_key
@@ -1439,6 +1453,7 @@ def build_single(dir_path=".", config=None,
         mount_locale=mount_locale,
         mount_project=mount_project,
         mount_version=mount_version,
+        mount_archived=mount_archived,
     )
 
     return BuildResult(
@@ -1503,66 +1518,101 @@ def _partition_pages(config, docs_dir, dir_path):
     Resolves all docs once and checks frontmatter for ``versioned: false``.
     Pages without the key (or with ``versioned: true``) are versioned by default.
 
+    Pages under the posts prefix are neither: they are site-level pages,
+    built once with no mount at all, and come back as their own set.
+
     Returns (versioned_paths, unversioned_paths, unversioned_markdown,
-    unversioned_frontmatter) where the first two are sets of relative md paths,
-    ``unversioned_markdown`` maps md_path to resolved content, and
+    unversioned_frontmatter, site_paths) where the sets hold relative md
+    paths, ``unversioned_markdown`` maps md_path to resolved content, and
     ``unversioned_frontmatter`` maps md_path to frontmatter dicts.
     """
     all_docs = resolve_all_docs(config, docs_dir=docs_dir, base_dir=dir_path)
     versioned = set()
     unversioned = set()
+    site = set()
     unversioned_markdown = {}
     unversioned_frontmatter = {}
     for rel_path, (fm, resolved, _raw, _lc) in all_docs.items():
-        if fm and fm.get("versioned") is False:
+        if rel_path.split("/", 1)[0] == POSTS_PREFIX:
+            site.add(rel_path)
+        elif fm and fm.get("versioned") is False:
             unversioned.add(rel_path)
             unversioned_markdown[rel_path] = resolved
             if fm:
                 unversioned_frontmatter[rel_path] = fm
         else:
             versioned.add(rel_path)
-    return versioned, unversioned, unversioned_markdown, unversioned_frontmatter
+    return (
+        versioned, unversioned, unversioned_markdown, unversioned_frontmatter,
+        site,
+    )
 
 
-def _check_unversioned_collisions(unversioned_paths, version_strs):
-    """Verify no unversioned page output path collides with versioned paths.
+def _versioned_html_paths(build_dir, docs_dir_name, locale_code, locales):
+    """HTML paths of the version-scoped pages a docs tree would build.
 
-    Unversioned pages output to ``/{locale}/{page_path}/`` (no version segment).
-    If an unversioned page lives in a directory whose name matches a version
-    string, its output would collide with versioned pages in that version.
-
-    Raises RuntimeError on collision.
+    A cheap scan -- walk the tree, read frontmatter, skip the site-level
+    and ``versioned: false`` pages -- because the only question it answers
+    is which versions hold a given page.  The version picker asks that
+    before offering a version, so it never links to a file no build wrote.
     """
-    version_set = set(version_strs)
-    for uv_path in unversioned_paths:
-        parts = uv_path.split("/")
-        if len(parts) > 1 and parts[0] in version_set:
-            raise RuntimeError(
-                f"Unversioned page '{uv_path}' would collide with versioned "
-                f"output under version '{parts[0]}'. Rename the page or remove "
-                f"'versioned: false' from its frontmatter."
-            )
+    try:
+        locale_docs_dir = _resolve_locale_docs_dir(
+            build_dir, docs_dir_name, locale_code, locales,
+        )
+    except RuntimeError:
+        return set()
+
+    paths = set()
+    for root, _dirs, files in os.walk(locale_docs_dir):
+        for fname in files:
+            if not fname.endswith(".md") or fname.startswith("_"):
+                continue
+            full = os.path.join(root, fname)
+            rel = os.path.relpath(full, locale_docs_dir).replace(os.sep, "/")
+            if rel.split("/", 1)[0] == POSTS_PREFIX:
+                continue
+            with open(full, "r", encoding="utf-8") as f:
+                fm, _body = parse_frontmatter(f.read())
+            if fm.get("versioned") is False:
+                continue
+            paths.add(_md_to_html_path(rel))
+
+    # build_single injects the project's changelog as a page of its own.
+    for name in ("CHANGELOG.md", "Changelog.md", "changelog.md"):
+        if os.path.isfile(os.path.join(build_dir, name)):
+            paths.add(_md_to_html_path("changelog.md"))
+            break
+    return paths
 
 
-def _check_reserved_paths(version_strs, config):
-    """Verify version strings do not clash with reserved URL prefixes.
+def _check_reserved_page_paths(md_paths):
+    """Refuse pages whose top-level segment is a reserved one.
 
-    Currently the only reserved prefix is the posts listing path
-    (default ``posts``).  Raises RuntimeError on conflict.
+    Two segments at the top of a mount belong to the build rather than to
+    the author:
+
+    * ``v`` is where superseded versions are emitted
+      (``v/<version>/<page>/``), so a page named ``v`` would collide with
+      the whole archive tree.
+    * ``blog`` is where posts are emitted, at the site level.
+
+    Raises RuntimeError naming the page and the segment.
     """
-    reserved = set()
-    posts_config = config.get("posts")
-    if posts_config:
-        listing_path = posts_config.get("listing_path", "posts")
-        reserved.add(listing_path)
-    # Future reserved prefixes can be added here
-
-    for ver_str in version_strs:
-        if ver_str in reserved:
+    reserved = {
+        ARCHIVE_PREFIX: (
+            f"superseded versions are emitted at "
+            f"'{ARCHIVE_PREFIX}/<version>/<page>/'"
+        ),
+        POSTS_PREFIX: "posts are emitted at 'blog/<slug>/'",
+    }
+    for md_path in sorted(md_paths):
+        first = md_path.split("/", 1)[0]
+        stem = first[:-3] if first.endswith(".md") else first
+        if stem in reserved:
             raise RuntimeError(
-                f"Version string '{ver_str}' conflicts with reserved URL "
-                f"prefix. Reserved prefixes: {', '.join(sorted(reserved))}. "
-                f"Rename the version or change the conflicting config."
+                f"Page '{md_path}' uses the reserved top-level path "
+                f"'{stem}': {reserved[stem]}. Rename the page."
             )
 
 
@@ -1592,7 +1642,7 @@ def _render_post_listing(published_posts):
             date = post["date"]
             title = post["title"]
             slug = post["slug"]
-            lines.append(f"- **{date}** -- [{title}](posts/{slug}.html)")
+            lines.append(f"- **{date}** -- [{title}]({slug}/)")
     lines.append("")
     return "\n".join(lines)
 
@@ -1600,8 +1650,11 @@ def _render_post_listing(published_posts):
 def post_docs_payloads(published_posts):
     """Return the docs-tree markdown for a set of published posts.
 
-    Maps a docs-relative path (``posts/<slug>.md``, plus ``posts/index.md``
-    for the listing) to the markdown that page is built from.  This is the
+    Maps a docs-relative path (``blog/<slug>.md``, plus ``blog/index.md``
+    for the listing) to the markdown that page is built from.  Posts are
+    site-level pages: they are built at ``blog/<slug>/`` under the output
+    root, with no locale, project or version segment, and both the full
+    build and the posts-only build emit them at that same address.  This is the
     one place a post becomes a docs page: ``_inject_posts_into_docs``
     writes these payloads into the docs tree, and the in-memory render path
     hands the same payloads to ``build_single`` as an overlay -- so both
@@ -1622,25 +1675,26 @@ def post_docs_payloads(published_posts):
                 fm_lines.append(f"{key}: [{', '.join(str(v) for v in val)}]")
             else:
                 fm_lines.append(f"{key}: {val}")
-        payloads[f"posts/{post['slug']}.md"] = (
+        payloads[f"{POSTS_PREFIX}/{post['slug']}.md"] = (
             "---\n" + "\n".join(fm_lines) + "\n---\n" + post["content"]
         )
 
     if published_posts:
-        payloads["posts/index.md"] = _render_post_listing(published_posts)
+        payloads[f"{POSTS_PREFIX}/index.md"] = _render_post_listing(published_posts)
 
     return payloads
 
 
 def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
-    """Write post markdown files into docs/posts/ for the build pipeline.
+    """Write post markdown files into docs/blog/ for the build pipeline.
 
     Discovers posts from the configured posts directory, filters drafts
     unless ``include_drafts`` is True, and writes each post as a ``.md``
-    file under ``docs_dir/posts/``.  Also generates a listing page at
-    ``docs_dir/posts/index.md``.  The written files are picked up by
-    ``resolve_all_docs`` and partitioned as unversioned pages (they have
-    ``versioned: false`` in their frontmatter).
+    file under ``docs_dir/blog/``.  Also generates a listing page at
+    ``docs_dir/blog/index.md``.  The written files are picked up by
+    ``resolve_all_docs`` and partitioned into the site-level page set,
+    which is built with no mount at all -- so a post is at ``blog/<slug>/``
+    whichever build produced it.
 
     Returns a list of absolute paths to injected files (for cleanup).
     """
@@ -1674,13 +1728,13 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
 def _cleanup_injected_posts(injected_files, docs_dir):
     """Remove post files injected into docs/ by ``_inject_posts_into_docs``.
 
-    Also removes the ``posts/`` subdirectory under ``docs_dir`` if it
+    Also removes the ``blog/`` subdirectory under ``docs_dir`` if it
     becomes empty after cleanup.
     """
     for fpath in injected_files:
         if os.path.isfile(fpath):
             effects.remove(fpath)
-    posts_subdir = os.path.join(docs_dir, "posts")
+    posts_subdir = os.path.join(docs_dir, POSTS_PREFIX)
     if os.path.isdir(posts_subdir) and not os.listdir(posts_subdir):
         effects.rmdir(posts_subdir)
 
@@ -1689,10 +1743,14 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
                       docs_dir, include_drafts):
     """Build only post pages, skipping versioned docs and auxiliary files.
 
-    Injects posts into ``docs/posts/``, runs them through
-    ``build_single`` with a page filter, writes the HTML output, cleans
-    up, and generates a post-manifest.  No sitemap, feed, search index,
-    or CSS is generated.
+    Injects posts into ``docs/blog/``, runs them through ``build_single``
+    with a page filter and no mount, writes the HTML output, cleans up,
+    and generates a post-manifest.  No sitemap, feed, search index, or CSS
+    is generated.
+
+    The mount is empty here and the post pages are site-level in the full
+    build too, so a post is at ``blog/<slug>/`` either way -- the two
+    builds cannot disagree about where a post lives.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -1861,14 +1919,19 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
             latest_docs_dir, include_drafts,
         )
 
-    # --- Partition pages into versioned and unversioned ---
+    # --- Partition pages into versioned, unversioned and site-level ---
     version_strs = [v["version"] for v in versions]
-    _check_reserved_paths(version_strs, config)
 
-    # Inject posts into docs/posts/ so the normal pipeline discovers them
+    # Inject posts into docs/blog/ so the normal pipeline discovers them
     injected_post_files = _inject_posts_into_docs(
         dir_path, config, latest_docs_dir, include_drafts,
     )
+    # Post pages are site-level: built once, with no mount, from the tree
+    # they were just written into.
+    site_pages = {
+        os.path.relpath(f, latest_docs_dir).replace(os.sep, "/")
+        for f in injected_post_files
+    }
 
     # Partition per locale.  Page paths are relative to the locale's own
     # docs directory, so a single partition of the top-level docs/ tree
@@ -1883,8 +1946,9 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         locale_config = dict(config)
         locale_config["docs"] = os.path.relpath(locale_docs_dir, dir_path)
         partition = _partition_pages(locale_config, locale_docs_dir, dir_path)
-        # Check for collisions between unversioned output paths and versions
-        _check_unversioned_collisions(partition[1], version_strs)
+        # The build owns two top-level segments; an author page may not
+        # take either.  Post pages are exempt: the build put them there.
+        _check_reserved_page_paths(partition[0] | partition[1])
         partitions[locale_code] = partition
 
     try:
@@ -1892,7 +1956,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
             dir_path, config, locales, versions, default_locale_code,
             latest_version, build_versions, build_locales, output_dir,
             docs_dir_name, latest_docs_dir, partitions,
-            version_strs, include_drafts,
+            version_strs, include_drafts, site_pages,
         )
     finally:
         _cleanup_injected_posts(injected_post_files, latest_docs_dir)
@@ -1904,14 +1968,18 @@ def _build_body(
     dir_path, config, locales, versions, default_locale_code,
     latest_version, build_versions, build_locales, output_dir,
     docs_dir_name, latest_docs_dir, partitions,
-    version_strs, include_drafts,
+    version_strs, include_drafts, site_pages,
 ):
     """Core build logic for single-project sites.
 
     ``partitions`` maps a locale code to that locale's
-    ``(versioned, unversioned, uv_markdown, uv_frontmatter)`` page
+    ``(versioned, unversioned, uv_markdown, uv_frontmatter, site)`` page
     partition, because page paths are relative to the locale's own docs
     directory.
+
+    The current version is emitted at the stable address and every older
+    version under ``v/<version>/``; site-level pages (posts) are built
+    once, with no mount at all.
 
     Extracted so ``build`` can wrap it in try/finally for
     post-injection cleanup.
@@ -1920,28 +1988,50 @@ def _build_body(
     content_pages = 0
     all_search_entries = []
     latest_build = None
-    # Track per-locale indexed HTML paths for per-locale sitemaps
-    per_locale_indexed_html = {}  # locale_code -> list of html rel paths
+    # Track per-locale stable HTML paths for the sitemaps.  Archived
+    # versions are excluded: they canonicalize to the stable address, so
+    # listing them would ask a crawler to index a page that points away
+    # from itself.
+    per_locale_stable_html = {}  # locale_code -> list of html rel paths
+
+    # Extract every version's content once, up front, and learn which
+    # pages each version holds -- the version picker is rendered inside
+    # each page and offers a version only when that version has the page.
+    build_dirs = {}
+    for ver_entry in build_versions:
+        ver_str = ver_entry["version"]
+        build_dirs[ver_str] = (
+            dir_path if ver_str == latest_version
+            else _extract_version_content(ver_str, config, dir_path)
+        )
+    version_pages = {}  # locale_code -> {version: set of html paths}
+    for locale in build_locales:
+        version_pages[locale["code"]] = {
+            ver_entry["version"]: _versioned_html_paths(
+                build_dirs[ver_entry["version"]], docs_dir_name,
+                locale["code"], locales,
+            )
+            for ver_entry in build_versions
+        }
 
     # Multi-locale / multi-version build loop (locales = outer, versions = inner)
     for locale in build_locales:
         locale_code = locale["code"]
-        per_locale_indexed_html[locale_code] = []
-        versioned_pages, unversioned_pages, uv_markdown, uv_frontmatter = (
-            partitions[locale_code]
-        )
+        mount_locale = locale_segment(locale_code, locales)
+        per_locale_stable_html[locale_code] = []
+        (versioned_pages, unversioned_pages, uv_markdown, uv_frontmatter,
+         _site_pages) = partitions[locale_code]
 
         for ver_entry in build_versions:
             ver_str = ver_entry["version"]
             is_latest = (ver_str == latest_version)
+            archived = not is_latest
             output_subdir = page_address(
-                "index.html", locale=locale_code, version=ver_str,
+                "index.html", locale=mount_locale, version=ver_str,
+                archived=archived,
             ).mount
 
-            if is_latest:
-                build_dir = dir_path
-            else:
-                build_dir = _extract_version_content(ver_str, config, dir_path)
+            build_dir = build_dirs[ver_str]
 
             # Resolve locale-specific docs directory
             locale_docs_dir = _resolve_locale_docs_dir(
@@ -1955,12 +2045,14 @@ def _build_body(
             result = build_single(
                 dir_path=build_dir,
                 config=locale_config,
-                mount_locale=locale_code,
+                mount_locale=mount_locale,
                 mount_version=ver_str,
+                mount_archived=archived,
                 version_override=ver_str,
                 locale_override=locale_code,
                 available_versions=versions,
                 available_locales=locales,
+                version_pages=version_pages[locale_code],
                 current_version=ver_str,
                 current_locale=locale_code,
                 is_latest=is_latest,
@@ -2003,14 +2095,14 @@ def _build_body(
                 effects.copy_file(src, dst)
                 written[dst] = True
 
-            # Collect indexed HTML paths for per-locale sitemaps
-            if ver_entry.get("indexed", True):
-                ver_prefix = os.path.join(output_dir, output_subdir)
-                for k in written:
-                    if k.startswith(ver_prefix) and k.endswith(".html"):
-                        rel = os.path.relpath(k, output_dir)
-                        if rel not in per_locale_indexed_html[locale_code]:
-                            per_locale_indexed_html[locale_code].append(rel)
+            # Collect stable HTML paths for the sitemaps.  Only the
+            # current version is listed; an archive is canonicalized away.
+            if is_latest:
+                for rel_path in html_files:
+                    if rel_path.endswith(".html") and (
+                        rel_path not in per_locale_stable_html[locale_code]
+                    ):
+                        per_locale_stable_html[locale_code].append(rel_path)
 
             if is_latest and locale_code == default_locale_code:
                 latest_build = {
@@ -2019,7 +2111,7 @@ def _build_body(
                     "page_addresses": {
                         md: page_address(
                             _md_to_html_path(md),
-                            locale=locale_code, version=ver_str,
+                            locale=mount_locale, version=ver_str,
                         )
                         for md in markdown_files
                     },
@@ -2047,7 +2139,8 @@ def _build_body(
             "page_addresses": {
                 md: page_address(
                     _md_to_html_path(md),
-                    locale=locale_code, version=ver_str,
+                    locale=locale_segment(locale_code, locales),
+                    version=ver_str,
                 )
                 for md in markdown_files
             },
@@ -2067,16 +2160,18 @@ def _build_body(
             "lang": lang,
         }
 
-    # --- Build unversioned pages (once per locale, no version segment) ---
+    # --- Build unversioned pages (once per locale, no version) ---
     uv_latest_build = None
     for locale in build_locales:
         locale_code = locale["code"]
+        mount_locale = locale_segment(locale_code, locales)
         unversioned_pages = partitions[locale_code][1]
         if not unversioned_pages:
             continue
-        # Unversioned pages output to /{locale}/page/ (no version)
+        # Unversioned pages sit at the stable mount, beside the current
+        # version's pages.
         uv_output_subdir = page_address(
-            "index.html", locale=locale_code,
+            "index.html", locale=mount_locale,
         ).mount
 
         # Resolve locale-specific docs directory
@@ -2089,12 +2184,13 @@ def _build_body(
         uv_result = build_single(
             dir_path=dir_path,
             config=locale_config,
-            mount_locale=locale_code,
+            mount_locale=mount_locale,
             mount_version="",
             version_override="",
             locale_override=locale_code,
             available_versions=versions,
             available_locales=locales,
+            version_pages=version_pages[locale_code],
             current_version="",
             current_locale=locale_code,
             is_latest=True,
@@ -2118,13 +2214,12 @@ def _build_body(
             effects.copy_file(src, dst)
             written[dst] = True
 
-        # Add to per-locale indexed HTML
-        uv_prefix = os.path.join(output_dir, uv_output_subdir)
-        for k in written:
-            if k.startswith(uv_prefix) and k.endswith(".html"):
-                rel = os.path.relpath(k, output_dir)
-                if rel not in per_locale_indexed_html[locale_code]:
-                    per_locale_indexed_html[locale_code].append(rel)
+        # Unversioned pages are stable addresses: they belong in the sitemap.
+        for rel_path in uv_result.html_files:
+            if rel_path.endswith(".html") and (
+                rel_path not in per_locale_stable_html[locale_code]
+            ):
+                per_locale_stable_html[locale_code].append(rel_path)
 
         if locale_code == default_locale_code:
             uv_latest_build = {
@@ -2133,11 +2228,52 @@ def _build_body(
                 "page_dates": uv_result.page_dates,
                 "page_addresses": {
                     md: page_address(
-                        _md_to_html_path(md), locale=locale_code,
+                        _md_to_html_path(md), locale=mount_locale,
                     )
                     for md in uv_result.markdown_files
                 },
             }
+
+    # --- Build site-level pages (posts) once, with no mount at all ---
+    # They are read from the top-level docs tree, which is where they were
+    # injected, so a localized project's posts are not dropped on the floor
+    # by a per-locale partition that never sees them.
+    site_latest_build = None
+    if site_pages:
+        site_config = dict(config)
+        site_config["docs"] = docs_dir_name
+        site_result = build_single(
+            dir_path=dir_path,
+            config=site_config,
+            mount_locale="",
+            mount_version="",
+            version_override="",
+            locale_override=default_locale_code,
+            available_locales=None,
+            current_version="",
+            current_locale=default_locale_code,
+            is_latest=True,
+            page_filter=site_pages,
+        )
+        all_search_entries.extend(site_result.search_entries)
+        for rel_path, html_content in site_result.html_files.items():
+            out_path = os.path.join(output_dir, rel_path)
+            effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with effects.open_write(out_path, "w", encoding="utf-8") as f:
+                f.write(_minify_html(html_content))
+            written[out_path] = True
+            content_pages += 1
+            if rel_path not in per_locale_stable_html[default_locale_code]:
+                per_locale_stable_html[default_locale_code].append(rel_path)
+        site_latest_build = {
+            "markdown_files": site_result.markdown_files,
+            "frontmatter": site_result.frontmatter,
+            "page_dates": site_result.page_dates,
+            "page_addresses": {
+                md: page_address(_md_to_html_path(md))
+                for md in site_result.markdown_files
+            },
+        }
 
     # A build that wrote no page at all is a build whose page filters
     # matched nothing.  It still writes assets, a sitemap and redirect
@@ -2150,25 +2286,23 @@ def _build_body(
             f"'{config['docs']}' resolve for the configured locales."
         )
 
-    # Merge unversioned data into latest_build for auxiliary files
-    if uv_latest_build and latest_build:
+    # Merge unversioned and site-level data into latest_build for aux files
+    for extra in (uv_latest_build, site_latest_build):
+        if not (extra and latest_build):
+            continue
         latest_build["markdown_files"] = {
-            **latest_build["markdown_files"],
-            **uv_latest_build["markdown_files"],
+            **latest_build["markdown_files"], **extra["markdown_files"],
         }
         latest_build["frontmatter"] = {
-            **latest_build["frontmatter"],
-            **uv_latest_build["frontmatter"],
+            **latest_build["frontmatter"], **extra["frontmatter"],
         }
         latest_build["page_dates"] = {
-            **latest_build["page_dates"],
-            **uv_latest_build["page_dates"],
+            **latest_build["page_dates"], **extra["page_dates"],
         }
-        # Unversioned pages mount one level shallower, so their addresses
-        # come from their own build, not the versioned one.
+        # These pages mount elsewhere, so their addresses come from their
+        # own build, not from the versioned one.
         latest_build["page_addresses"] = {
-            **latest_build["page_addresses"],
-            **uv_latest_build["page_addresses"],
+            **latest_build["page_addresses"], **extra["page_addresses"],
         }
 
     lb = latest_build
@@ -2216,11 +2350,11 @@ def _build_body(
         effects.copy_file(custom_css_src, custom_css_dst)
         written[custom_css_dst] = True
 
-    # Auxiliary files using latest version data only
-    # Collect all indexed HTML paths across all locales for the root sitemap
-    all_indexed_html_paths = []
-    for locale_paths in per_locale_indexed_html.values():
-        all_indexed_html_paths.extend(locale_paths)
+    # Auxiliary files using latest version data only.  The sitemap lists
+    # stable addresses across every locale, and nothing else.
+    all_stable_html_paths = []
+    for locale_paths in per_locale_stable_html.values():
+        all_stable_html_paths.extend(locale_paths)
 
     repo = config.get("repo", None)
     has_sitemap_index = len(build_locales) > 1
@@ -2229,7 +2363,7 @@ def _build_body(
         project_name=lb["project_name"],
         version=lb["version"],
         markdown_files=lb["markdown_files"],
-        html_paths=all_indexed_html_paths,
+        html_paths=all_stable_html_paths,
         base_url=lb["base_url"],
         has_custom_css=lb["has_custom_css"],
         repo=repo,
@@ -2246,9 +2380,8 @@ def _build_body(
         has_sitemap_index=has_sitemap_index,
         url_builder=lb["url_builder"],
         # 404.html sits at the output root; its sidebar links into the
-        # default locale at the latest version.
-        mount_locale=default_locale_code,
-        mount_version=latest_version,
+        # stable mount, where every current page lives.
+        mount_locale=locale_segment(default_locale_code, locales),
         page_addresses=lb["page_addresses"],
     )
     written.update(aux_written)
@@ -2257,7 +2390,7 @@ def _build_body(
     if len(build_locales) > 1:
         locale_sitemap_paths = _generate_per_locale_sitemaps(
             output_dir=output_dir,
-            per_locale_indexed_html=per_locale_indexed_html,
+            per_locale_stable_html=per_locale_stable_html,
             url_builder=lb["url_builder"],
             page_dates=lb["page_dates"],
         )
@@ -2266,27 +2399,30 @@ def _build_body(
 
         sitemap_index_path = _generate_sitemap_index(
             output_dir=output_dir,
-            locale_codes=list(per_locale_indexed_html.keys()),
+            locale_codes=list(per_locale_stable_html.keys()),
             url_builder=lb["url_builder"],
         )
         written[sitemap_index_path] = True
 
-    # Root redirect to default locale / latest version
-    latest_home = page_address(
-        "index.html", locale=default_locale_code, version=latest_version,
-    )
-    latest_prefix = latest_home.mount
+    # Root redirect into the stable mount.  A single-locale standalone
+    # site mounts the current version at the output root, so its home page
+    # IS the root index -- there is nothing to redirect to, and writing a
+    # stub would overwrite the page.
+    stable_home = page_address("index.html", locale=locale_segment(
+        default_locale_code, locales,
+    ))
     # Document-relative, with no leading slash.  The build output is not
     # always served from an origin root: an assembly serves it under
     # /<slug>/ and GitHub Pages project sites under /<repo>/.  A
     # root-relative hop escapes that subtree; a document-relative one
     # resolves correctly in every case, origin root included.  The stub
     # sits at the output root, so the pinned address is already the hop.
-    redirect_url = latest_home.pinned
+    redirect_url = stable_home.stable
     # The canonical must be absolute: a root-relative one resolves against
     # whatever host served the stub, so every alias of the site would claim
     # to be canonical.
     canonical_url = lb["url_builder"].page_url(redirect_url)
+    write_root_stub = bool(redirect_url)
     root_index_html = (
         "<!DOCTYPE html>\n"
         "<html>\n"
@@ -2300,18 +2436,19 @@ def _build_body(
         "</body>\n"
         "</html>\n"
     )
-    root_index_path = os.path.join(output_dir, "index.html")
-    with effects.open_write(root_index_path, "w", encoding="utf-8") as f:
-        f.write(root_index_html)
-    written[root_index_path] = True
+    if write_root_stub:
+        root_index_path = os.path.join(output_dir, "index.html")
+        with effects.open_write(root_index_path, "w", encoding="utf-8") as f:
+            f.write(root_index_html)
+        written[root_index_path] = True
 
     # Cloudflare only ever reads the _redirects at the deployed site root,
     # where there is no document to resolve a relative target against --
     # these rules stay site-absolute.  Deliberate: a standalone deployment
     # owns its origin root, and on the unified site the assembly worker
     # owns redirects instead of this file.
-    redirects_content = f"/ /{redirect_url} 302\n"
     redirects_path = os.path.join(output_dir, "_redirects")
+    redirects_content = f"/ /{redirect_url} 302\n" if write_root_stub else ""
     with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)
     written[redirects_path] = True
@@ -2324,18 +2461,21 @@ def _build_body(
             from_slug = redirect_entry["from"]
             to_slug = redirect_entry["to"]
             for locale in build_locales:
-                locale_code = locale["code"]
+                mount_locale = locale_segment(locale["code"], locales)
                 for ver_entry in build_versions:
                     ver_str = ver_entry["version"]
+                    archived = ver_str != latest_version
                     # Both ends of the redirect are pages of this mount, so
                     # both come from the addressing authority.
                     from_addr = page_address(
                         f"{from_slug}/index.html",
-                        locale=locale_code, version=ver_str,
+                        locale=mount_locale, version=ver_str,
+                        archived=archived,
                     )
                     to_addr = page_address(
                         f"{to_slug}/index.html",
-                        locale=locale_code, version=ver_str,
+                        locale=mount_locale, version=ver_str,
+                        archived=archived,
                     )
                     old_path = os.path.join(output_dir, from_addr.output_key)
                     # Skip if the page already exists (e.g. cached old-version page)
@@ -2344,7 +2484,7 @@ def _build_body(
                     # Target path within the site, and the document-relative
                     # hop from the stub's own directory to it (see the root
                     # stub above for why a root-relative hop is wrong).
-                    target_path = to_addr.pinned
+                    target_path = to_addr.url
                     stub_dir = posixpath.dirname(from_addr.output_key)
                     target_url = (
                         posixpath.relpath(target_path, stub_dir) + "/"
@@ -2372,7 +2512,7 @@ def _build_body(
                     # Append Cloudflare _redirects rule
                     with effects.open_write(redirects_path, "a", encoding="utf-8") as f:
                         f.write(
-                            f"/{from_addr.pinned} /{target_path} 301\n"
+                            f"/{from_addr.url} /{target_path} 301\n"
                         )
                     redirect_count += 1
         if redirect_count:
@@ -2402,7 +2542,7 @@ def _generate_auxiliary_files(
     frontmatter=None, description="", feed_url=None, critical_css=None,
     accent_color="#0969da", theme_meta=None, deploy=None,
     feed_max_entries=None, has_sitemap_index=False,
-    mount_locale="", mount_project="", mount_version="",
+    mount_locale="", mount_project="",
     page_addresses=None,
 ):
     """Generate auxiliary build artifacts (OG cards, sitemap, llms.txt, 404, favicon, feed).
@@ -2413,6 +2553,7 @@ def _generate_auxiliary_files(
     :class:`~selfdoc_core.address.PageAddress`.  It is mandatory: the feed
     and llms.txt emit absolute page URLs, and a page's URL is its mounted
     address -- there is no sensible mountless answer to fall back on.
+    Both emit the stable address, which is the one that keeps working.
 
     Returns a dict of {output_path: True} for files written.
     """
@@ -2500,7 +2641,6 @@ def _generate_auxiliary_files(
         theme_meta=theme_meta,
         mount_locale=mount_locale,
         mount_project=mount_project,
-        mount_version=mount_version,
     )
     not_found_path = os.path.join(output_dir, "404.html")
     with effects.open_write(not_found_path, "w", encoding="utf-8") as f:
@@ -2572,14 +2712,14 @@ def _generate_robots_txt(output_dir, base_url, url_builder, has_sitemap_index=Fa
     return path
 
 
-def _generate_per_locale_sitemaps(output_dir, per_locale_indexed_html,
+def _generate_per_locale_sitemaps(output_dir, per_locale_stable_html,
                                   url_builder, page_dates=None):
     """Generate per-locale sitemap.xml files at output_dir/{locale}/sitemap.xml.
 
     Returns a list of written file paths.
     """
     written = []
-    for locale_code, html_paths in per_locale_indexed_html.items():
+    for locale_code, html_paths in per_locale_stable_html.items():
         sitemap_content = _generate_sitemap(html_paths, url_builder,
                                             page_dates=page_dates)
         locale_dir = os.path.join(output_dir, locale_code)
