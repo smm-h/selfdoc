@@ -9,3 +9,4 @@
 {"format_version":1,"id":"18cad9da898fdba5300b23f22c164d66a8a3900b20a40b71","commits":["96e30729e68c4cbe6597faa296df55b083986e49"],"user_facing":true,"description":"**`selfdoc init` requires `--base-url`.** The site's own address cannot be inferred and every canonical link, sitemap entry and feed URL is built from it, so init now takes it explicitly.","type":"breaking","packages":["selfdoc"]}
 {"format_version":1,"id":"18cadbf8770255eb926a919cf6fd4d02b19a08635929c4e2","commits":["ab0362a171a632a0a4175ef940fad8939837425f"],"user_facing":false,"packages":["selfdoc"]}
 {"format_version":1,"id":"18cadc232311d50df3e1f1e5e7254c5ba6a0e2397f28b495","commits":["07d930bf1a3afdda18b86021f59126e758a466af"],"user_facing":false,"packages":["selfdoc"]}
+{"format_version":1,"id":"18cadc5e81a065a8ff40b341b5324330a3e1f5fdbbfb7b0e","commits":["7bfb9f183097a16f5d37856ea8072a0dece7a2b8"],"user_facing":false,"packages":["selfdoc"]}
