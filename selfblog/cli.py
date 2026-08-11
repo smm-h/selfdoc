@@ -22,6 +22,7 @@ app = strictcli.App(
 )
 
 post_group = app.group("post", help="Manage blog posts and chronological content for the documentation site")
+docs_group = app.group("docs", help="Publish this project's documentation to the unified assembly without a release")
 assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
 
 
@@ -409,6 +410,109 @@ def _cmd_post_publish(ctx):
         print(f"Archived {len(non_draft_posts)} post(s) to {posts_repo}")
 
     print(f"Published {len(non_draft_posts)} post(s) to assembly. Shared elements will regenerate.")
+    return 0
+
+
+# -- docs commands -----------------------------------------------------------
+
+
+@docs_group.command("publish", help="Publish this project's documentation to the assembly without a release. Builds the docs locally, pushes the built site, its manifest and its membership record into the assembly repo via the Git Data API -- deleting the pages this project published before and no longer produces -- then dispatches a shared-only workflow to regenerate cross-project elements.", effect="mutating",
+    # Consequential for the same reason `post publish` is: locally-authored
+    # content becomes publicly readable at the moment this runs, with no tag
+    # and no release standing between the working tree and the live site. It
+    # also deletes: a page this project published before and no longer builds
+    # disappears for readers in the same commit.
+    consequential=True,
+    grants=[
+        strictcli.Grant(
+            "assembly-dispatch",
+            "triggers a GitHub Actions workflow on the assembly repository, "
+            "which rebuilds and republishes the live documentation site",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@effects.handler
+def _cmd_docs_publish(ctx):
+    """Publish built documentation to the assembly without a software release."""
+    from selfblog.assembly import build_source_project, publish_project_docs
+    from selfdoc_core.config import load_config
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    topology = config.get("topology") or {}
+    slug = topology.get("slug")
+    if not slug:
+        print("Error: topology.slug not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    version = config.get("version", "")
+    if not version:
+        from selfdoc_core.utils import detect_project_version
+        version = detect_project_version(".", fallback="0.0.0")
+
+    # The same build the deploy runs on a cloned checkout, run here on the
+    # working tree. selfblog never imports selfdoc, so this shells out to it
+    # exactly as the assembly's own integrate step does.
+    try:
+        build_source_project(".", "full")
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    output_dir = os.path.join(".", config["output"].rstrip("/"))
+    if not os.path.isdir(output_dir):
+        print(
+            f"Error: the build produced no output at {output_dir}; there is "
+            f"nothing to publish.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        summary = publish_project_docs(
+            repo, slug, output_dir,
+            version=version,
+            manifest_path=os.path.join(".selfdoc", "manifest.json"),
+        )
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    # Dispatch a shared-only rebuild so the listing, feed, sitemap and search
+    # index take account of what just changed.
+    dispatch_payload = json.dumps({
+        "event_type": "project-updated",
+        "client_payload": {"scope": "shared-only"},
+    })
+    result = effects.run(
+        ["gh", "api", "--method", "POST",
+         f"/repos/{repo}/dispatches", "--input", "-"],
+        input=dispatch_payload, check=False, capture_output=True,
+        text=True, timeout=30,
+        resource=f"dispatch:{repo}",
+        grant="assembly-dispatch",
+    )
+    if not effects.unsettled(result) and result.returncode != 0:
+        print(f"Error: Failed to dispatch shared rebuild: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    deleted = len(summary["deleted"])
+    print(
+        f"Published {len(summary['published'])} documentation file(s) for "
+        f"{slug} to {repo}"
+        + (f", removing {deleted} page(s) it no longer builds" if deleted else "")
+        + ". Shared elements will regenerate."
+    )
     return 0
 
 
@@ -802,6 +906,79 @@ def _cmd_assembly_rebuild(ctx):
     return 0
 
 
+@assembly_group.command("retire", help="Retire a project from the unified assembly: remove its [[project]] block from the roster and, in the same commit, delete its whole site subtree, all of its manifests and its membership record, then dispatch a shared-only rebuild so the listing, feed, sitemap and search index stop naming it.", effect="mutating",
+    # Consequential: it deletes a project's published section from the live
+    # site. Nothing else in either CLI removes public content, and rerunning
+    # cannot restore it -- the pages are gone from the branch the site serves.
+    consequential=True,
+    grants=[
+        strictcli.Grant(
+            "assembly-commit",
+            "deletes a project's published documentation from the assembly "
+            "repository's deploy branch through the GitHub Git Data API",
+            strictcli.PROC_MUTATE,
+        ),
+        strictcli.Grant(
+            "assembly-dispatch",
+            "triggers a GitHub Actions workflow on the assembly repository, "
+            "which rebuilds and republishes the live documentation site",
+            strictcli.PROC_MUTATE,
+        ),
+    ],
+)
+@strictcli.flag("slug", type=str, default="", help="Slug of the project to retire; it is removed from the roster and every path it owns in the assembly is deleted")
+@effects.handler
+def _cmd_assembly_retire(ctx, slug=""):
+    """Remove a project from the assembly's roster and published tree."""
+    from selfblog.assembly import retire_project
+    from selfdoc_core.config import load_config
+
+    if not slug:
+        print("Error: --slug is required.", file=sys.stderr)
+        sys.exit(1)
+
+    config = load_config(".")
+    if config is None:
+        print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
+        sys.exit(1)
+
+    assembly_config = config.get("assembly") or {}
+    repo = assembly_config.get("repo")
+    if not repo:
+        print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        summary = retire_project(repo, slug)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    dispatch_payload = json.dumps({
+        "event_type": "project-updated",
+        "client_payload": {"scope": "shared-only"},
+    })
+    result = effects.run(
+        ["gh", "api", "--method", "POST",
+         f"/repos/{repo}/dispatches", "--input", "-"],
+        input=dispatch_payload, check=False, capture_output=True,
+        text=True, timeout=30,
+        resource=f"dispatch:{repo}",
+        grant="assembly-dispatch",
+    )
+    if not effects.unsettled(result) and result.returncode != 0:
+        print(f"Error: Failed to dispatch shared rebuild: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    print(
+        f"Retired {slug} from {repo}: {len(summary['deleted'])} path(s) "
+        f"deleted. Remaining projects: "
+        f"{', '.join(summary['remaining']) or '(none)'}. Shared elements will "
+        f"regenerate."
+    )
+    return 0
+
+
 @assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.", effect="read_only")
 @strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
@@ -1066,23 +1243,27 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
     from selfdoc_core.config import load_config
     from selfdoc_core.lints import (
         DEFAULT_COVERAGE_THRESHOLD,
+        UnknownLintCode,
         check_exit_code,
         coverage_below_threshold,
+        parse_ignore_codes,
     )
 
     from selfblog.check import check_posts, check_unified
+
+    # Validated before any work is done: a mistyped code suppresses nothing.
+    try:
+        ignore_codes = parse_ignore_codes(ignore)
+    except UnknownLintCode as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     config = load_config(".")
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
 
-    # Build combined ignore set from CLI --ignore and config lint_ignore
-    ignore_codes = set()
-    if ignore:
-        ignore_codes.update(
-            code.strip() for code in ignore.split(",") if code.strip()
-        )
+    # The config's own lint_ignore was validated at load.
     ignore_codes.update(config.get("lint_ignore", []))
 
     if config.get("unified"):
