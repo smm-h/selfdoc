@@ -554,6 +554,19 @@ def generate_docs(config, base_dir="."):
     from selfdoc.extractors import resolve_source_entries, source_paths as _source_paths
 
     src_entries = resolve_source_entries(config)
+    if not src_entries:
+        # Every page this function writes is derived from source code.  With
+        # no source entries it would write an "API reference index covering 0
+        # modules" -- an empty artifact that looks like a real reference page.
+        # Callers that know the project is codeless skip this call entirely
+        # (see _cmd_gen); reaching it means source-derived pages were asked
+        # for and cannot be produced.
+        raise RuntimeError(
+            "selfdoc gen generates API and CLI reference pages from source "
+            "code, but selfdoc.json declares no 'source' entries. Declare "
+            'the code to document: "source": [{"path": "src/", "language": '
+            '"python"}]'
+        )
 
     # Group entries by (language, extractor identity) so each group
     # collects all source paths for one language.

@@ -73,41 +73,55 @@ def _detect_main_module():
 
 
 @app.command("init", help="Initialize selfdoc configuration and starter docs template", effect="mutating")
+@strictcli.flag("base-url", type=str, help="Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated selfdoc.json and docs/index.md template files to git")
 @effects.handler
-def _cmd_init(ctx, auto_commit=True):
+def _cmd_init(ctx, base_url, auto_commit=True):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
+    from selfdoc_core.utils import detect_project_version
 
     if os.path.isfile("selfdoc.json"):
         print("selfdoc.json already exists. Aborting.")
         sys.exit(1)
 
-    detected = detect_languages(".")
-    if not detected:
-        print(
-            "Could not detect project language. "
-            "Supported: pyproject.toml (Python), go.mod (Go), "
-            "tsconfig.json/package.json (TypeScript/JavaScript)"
-        )
+    if not base_url.strip():
+        print("--base-url must be a non-empty URL.", file=sys.stderr)
         sys.exit(1)
+
+    # A project with no detectable language is a codeless project: a
+    # portfolio or personal site that is nothing but markdown pages.  It gets
+    # a config with no 'source' key at all -- an empty array would declare
+    # the same thing more verbosely -- and a starter page with no
+    # code-extraction directive.
+    detected = detect_languages(".")
 
     source_entries = []
     for entry in detected:
         source_entries.extend(_detect_source_entries(entry["language"]))
 
     # Use the first detected language for the starter template
-    primary_language = detected[0]["language"]
+    primary_language = detected[0]["language"] if detected else None
     detected_languages = [e["language"] for e in detected]
 
     project_name = os.path.basename(os.path.abspath("."))
-    main_module = _detect_main_module()
+    main_module = _detect_main_module() if detected else None
 
-    config = {
-        "source": source_entries,
+    # Everything load_config and build require is written into the file, so
+    # the emitted config is buildable with no hand-editing.  base_url comes
+    # from the caller; the single version and the single default locale are
+    # the honest starting point for a new site and are visible in the file.
+    config = {"base_url": base_url.strip().rstrip("/")}
+    if source_entries:
+        config["source"] = source_entries
+    config.update({
         "docs": "docs/",
         "output": "docs/_build/",
-    }
+        "versions": [
+            {"version": detect_project_version(".", "0.1.0"), "indexed": True},
+        ],
+        "locales": [{"code": "en", "label": "English", "default": True}],
+    })
 
     # Write selfdoc.json atomically
     config_json = json.dumps(config, indent=2) + "\n"
@@ -116,7 +130,9 @@ def _cmd_init(ctx, auto_commit=True):
     # Create docs/ directory
     effects.makedirs("docs", exist_ok=True)
 
-    # Create starter index.md
+    # Create starter index.md.  The API reference section only appears when
+    # there is source code to extract from -- in a codeless project a 'ref'
+    # directive is a hard error, not an empty section.
     index_path = os.path.join("docs", "index.md")
     if not os.path.isfile(index_path):
         today = datetime.date.today().isoformat()
@@ -130,19 +146,30 @@ def _cmd_init(ctx, auto_commit=True):
             f"# {project_name}\n"
             f"\n"
             f"Welcome to the {project_name} documentation.\n"
-            f"\n"
-            f"## API Reference\n"
-            f"\n"
-            f':-: ref path="{main_module}" lang="{primary_language}"\n'
         )
+        if detected:
+            starter += (
+                f"\n"
+                f"## API Reference\n"
+                f"\n"
+                f':-: ref path="{main_module}" lang="{primary_language}"\n'
+            )
         effects.write_text(index_path, starter)
 
     source_path_strs = [e["path"] for e in source_entries]
     langs_str = ", ".join(detected_languages)
-    print(f"Initialized selfdoc for {langs_str} project '{project_name}'")
+    if detected:
+        print(f"Initialized selfdoc for {langs_str} project '{project_name}'")
+    else:
+        print(
+            f"Initialized selfdoc for codeless project '{project_name}' "
+            "(no source code detected)"
+        )
     print("  Created: selfdoc.json")
     print("  Created: docs/index.md")
-    print(f"  Source:  {', '.join(source_path_strs)}")
+    if source_path_strs:
+        print(f"  Source:  {', '.join(source_path_strs)}")
+    print(f"  Base URL: {config['base_url']}")
     print("\nRun 'selfdoc build' to generate documentation.")
 
     if auto_commit:
@@ -629,7 +656,7 @@ def _cmd_baseline_accept(ctx, page, auto_commit=True):
 def _cmd_gen(ctx, auto_commit=True, version_override=""):
     """Auto-generate documentation pages from project structure."""
     from selfdoc.config import load_config
-    from selfdoc.gen import generate_docs, generate_root_files
+    from selfdoc.gen import GenResult, generate_docs, generate_root_files
     from selfdoc_core.content import VERSION_OVERRIDE_KEY
 
     config = load_config(".")
@@ -640,11 +667,22 @@ def _cmd_gen(ctx, auto_commit=True, version_override=""):
     if version_override:
         config[VERSION_OVERRIDE_KEY] = version_override
 
-    try:
-        gen_result = generate_docs(config, base_dir=".")
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    # A codeless project declares no 'source', which is the declaration that
+    # there are no API or CLI reference pages to derive.  Say so and go
+    # straight to the root-file templates, which need no source code.
+    if config.get("source"):
+        try:
+            gen_result = generate_docs(config, base_dir=".")
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        gen_result = GenResult()
+        print(
+            "No 'source' entries in selfdoc.json -- skipping API and CLI "
+            "reference pages (codeless project). Root file templates still "
+            "generate."
+        )
 
     # Generate root files (e.g. CLAUDE.md from docs/_CLAUDE.md)
     try:

@@ -42,7 +42,7 @@ Run `selfdoc build` and you get a full static site -- HTML, CSS, search index, s
 
 ```bash
 pip install selfdoc
-selfdoc init
+selfdoc init --base-url https://myproject.pages.dev
 selfdoc build
 ```
 

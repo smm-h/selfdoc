@@ -30,7 +30,7 @@ def test_init_creates_config_and_docs(project_dir):
     """selfdoc init creates selfdoc.json and docs/index.md."""
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None)
+    _cmd_init(None, base_url="https://example.com")
 
     # selfdoc.json was created
     config_path = project_dir / "selfdoc.json"
@@ -58,7 +58,7 @@ def test_init_index_has_frontmatter(project_dir):
     import datetime
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None)
+    _cmd_init(None, base_url="https://example.com")
 
     index_path = project_dir / "docs" / "index.md"
     content = index_path.read_text()
@@ -87,7 +87,7 @@ def test_init_aborts_if_config_exists(project_dir):
     from selfdoc.cli import _cmd_init
 
     with pytest.raises(SystemExit):
-        _cmd_init(None)
+        _cmd_init(None, base_url="https://example.com")
 
 
 def test_init_detects_multiple_languages(tmp_path, monkeypatch):
@@ -111,7 +111,7 @@ def test_init_detects_multiple_languages(tmp_path, monkeypatch):
 
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None)
+    _cmd_init(None, base_url="https://example.com")
 
     config_path = tmp_path / "selfdoc.json"
     assert config_path.exists()
@@ -133,25 +133,12 @@ def test_init_detects_multiple_languages(tmp_path, monkeypatch):
     assert len(go_entries) >= 1
 
 
-def _add_base_url(project_dir):
-    """Add base_url, versions, and locales to selfdoc.json after init."""
-    config_path = project_dir / "selfdoc.json"
-    config = json.load(open(config_path, "r", encoding="utf-8"))
-    config["base_url"] = "https://example.com"
-    config["version"] = "1.0.0"
-    config["versions"] = [{"version": "1.0.0", "indexed": True}]
-    config["locales"] = [{"code": "en", "label": "English", "default": True}]
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-
-
 def test_build_produces_output(project_dir):
     """selfdoc build produces HTML in the output directory even when lints fail."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
     # First init
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     # Build exits non-zero due to SEO lints on the starter template,
     # but the output files are still written before the lint check.
@@ -172,8 +159,7 @@ def test_check_finds_directives(project_dir, capsys):
     """selfdoc check reports directive validation results."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     # The starter template has a :::module directive that resolves OK,
     # but check exits 1 due to SEO warnings on the starter template.
@@ -192,8 +178,7 @@ def test_build_shows_seo_warnings(project_dir, capsys):
     """selfdoc build shows warnings but exits 0 when only warnings exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     # The starter template triggers SEO warnings (e.g. SEO009 short
     # description) but no errors, so build exits 0.
@@ -212,8 +197,7 @@ def test_build_exits_1_on_errors(project_dir, capsys):
     """selfdoc build exits 1 when lint errors (not just warnings) exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     # Remove the description from frontmatter to trigger SEO006 (error)
     index_path = project_dir / "docs" / "index.md"
@@ -233,8 +217,7 @@ def test_check_always_runs_seo_lints(project_dir, capsys):
     """selfdoc check always runs SEO lints (no --no-seo flag)."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     # SEO warnings appear (e.g. SEO009 short description) but only
     # warnings, so check exits 0.
@@ -248,8 +231,7 @@ def test_check_exits_1_on_errors(project_dir, capsys):
     """selfdoc check exits 1 when lint errors exist."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     # Remove the description to trigger SEO006 (error severity)
     index_path = project_dir / "docs" / "index.md"
@@ -277,8 +259,7 @@ def test_check_exits_1_on_broken_validated_example(project_dir, capsys):
 
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None)
-    _add_base_url(project_dir)
+    _cmd_init(None, base_url="https://example.com")
 
     config_path = project_dir / "selfdoc.json"
     with open(config_path, "r", encoding="utf-8") as f:

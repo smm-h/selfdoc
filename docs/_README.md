@@ -27,7 +27,7 @@ The npm package is named `selfdocumenting` (npm blocks `selfdoc` due to name sim
 
 ```bash
 # Initialize in an existing project (auto-detects language)
-selfdoc init
+selfdoc init --base-url https://myproject.pages.dev
 
 # Auto-generate API and CLI reference pages
 selfdoc gen
@@ -161,7 +161,7 @@ Custom directives take priority over built-in names.
 
 :-: table-config-schema
 
-`selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json).
+`selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json), and takes the site's own address as `--base-url`. A project with no detectable language is initialized as a codeless project: no `source` key, and no code-extraction directive in the starter page.
 
 ## Commands
 

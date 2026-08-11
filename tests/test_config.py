@@ -64,10 +64,11 @@ def test_missing_file_returns_none(tmp_path):
 # -- required fields --
 
 
-def test_missing_source(config_dir):
+def test_missing_source_is_a_codeless_project(config_dir):
+    """A config with no 'source' key is a codeless project, not an error."""
     _write_config(config_dir, {"base_url": "https://example.com"})
-    with pytest.raises(ConfigError, match="missing required field 'source'"):
-        load_config(str(config_dir))
+    config = load_config(str(config_dir))
+    assert config["source"] == []
 
 
 def test_missing_base_url(config_dir):
@@ -102,14 +103,17 @@ def test_unsupported_language_accepted_in_config(config_dir):
 
 def test_source_not_a_list(config_dir):
     _write_config(config_dir, {"source": "src/"})
-    with pytest.raises(ConfigError, match="'source' must be a non-empty list"):
+    with pytest.raises(ConfigError, match="'source' must be a list"):
         load_config(str(config_dir))
 
 
 def test_source_empty_list(config_dir):
-    _write_config(config_dir, {"source": []})
-    with pytest.raises(ConfigError, match="'source' must be a non-empty list"):
-        load_config(str(config_dir))
+    """An explicitly empty 'source' says the same thing as omitting it."""
+    _write_config(
+        config_dir, {"source": [], "base_url": "https://example.com"},
+    )
+    config = load_config(str(config_dir))
+    assert config["source"] == []
 
 
 def test_source_item_plain_string_migration_error(config_dir):

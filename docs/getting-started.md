@@ -37,16 +37,18 @@ selfdoc --version
 Navigate to the root of an existing codebase that you want to document. The `init` command detects your project language, creates the configuration file, and scaffolds a starter documentation template:
 
 ```bash
-selfdoc init
+selfdoc init --base-url https://myproject.pages.dev
 ```
+
+`--base-url` is required: it is the address the site will be served from, selfdoc cannot infer it, and every canonical link, sitemap entry and feed URL is built from it.
 
 This does three things:
 
 1. **Detects your project language** from manifest files (`pyproject.toml` for Python, `go.mod` for Go, `tsconfig.json` or `package.json` for TypeScript/JavaScript).
-2. **Creates `selfdoc.json`** with sensible defaults -- language, source directories, docs path, and output path.
+2. **Creates `selfdoc.json`** -- the base URL you passed, source directories, docs path, output path, and the `versions` and `locales` arrays with a single entry each. The emitted file builds as-is; nothing has to be added by hand.
 3. **Creates `docs/index.md`** with a starter template that includes a `ref` directive pointing at your main module.
 
-If language detection fails, you will see an error listing the supported manifest files. Create the appropriate one first, or write `selfdoc.json` manually.
+A project with no detectable language is a **codeless project** -- a portfolio or personal site that is nothing but Markdown pages. `init` initializes it too: the config gets no `source` key and the starter page gets no `ref` directive. Directives that extract from source code are a hard error in such a project, so add a `source` entry before using one.
 
 The `init` command also auto-commits the generated files unless you pass `--no-auto-commit`.
 

@@ -10,7 +10,7 @@ nav_order: 1
 
 selfdoc is configured via a `selfdoc.json` file in your project root. Run `selfdoc init` to generate a starter config interactively, or create one manually.
 
-Three fields are required: `language`, `source`, and `base_url`. Everything else is optional and has sensible defaults.
+`base_url` is the only required field. `source` is optional -- a codeless project (a portfolio or personal site that is nothing but Markdown pages) declares none, and directives that extract from source code are then a hard error rather than an empty section. Everything else is optional and has sensible defaults.
 
 :<: callout-warning
 :=:

@@ -439,13 +439,13 @@ class TestTableConfigSchema:
 
     def test_required_fields_marked(self):
         result = resolve_table_config_schema()
-        # source is required
+        # base_url is required (source is not: a codeless project has none)
         for line in result.split("\n"):
-            if "`source`" in line:
+            if "`base_url`" in line:
                 assert "| yes |" in line
                 break
         else:
-            raise AssertionError("source field not found")
+            raise AssertionError("base_url field not found")
 
     def test_optional_fields_marked(self):
         result = resolve_table_config_schema()
