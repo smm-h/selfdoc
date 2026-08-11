@@ -40,6 +40,32 @@ def _write(path, content):
         f.write(content)
 
 
+def _page(title, address, marker="", version=""):
+    """A page shaped the way a real build's pages are shaped.
+
+    The deploy verifies the tree it assembled before it pushes any of it,
+    and a page with no title or no canonical fails that verification -- so
+    a fixture standing in for a built page carries both, exactly as the
+    build's own output does.  *address* is the site-relative address the
+    page is emitted at (``alpha/guide/``), and *marker* is the body text a
+    test looks for to tell one build's output from another's.
+    """
+    version_attr = f' data-default-version="{version}"' if version else ""
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        f"  <title>{title}</title>\n"
+        f'  <link rel="canonical" href="{CANONICAL_BASE}/{address}">\n'
+        "</head>\n"
+        "<body>\n"
+        f'  <dialog class="search-dialog" data-search-base="./"{version_attr}></dialog>\n'
+        f"  <p>{marker or title}</p>\n"
+        "</body>\n"
+        "</html>\n"
+    )
+
+
 def _manifest(slug, name, version, posts=None):
     return {
         "schema_version": 1,
@@ -61,11 +87,20 @@ def assembly_tree(tmp_path):
     root = tmp_path / "assembly"
 
     # Two project subtrees already deployed.
-    _write(str(root / "site" / "alpha" / "index.html"), "<html>old alpha</html>")
-    _write(str(root / "site" / "alpha" / "guide" / "index.html"), "<html>old guide</html>")
-    _write(str(root / "site" / "alpha" / "retired" / "index.html"), "<html>gone upstream</html>")
-    _write(str(root / "site" / "alpha" / "posts" / "index.html"), "<html>old posts</html>")
-    _write(str(root / "site" / "beta" / "index.html"), "<html>beta</html>")
+    _write(str(root / "site" / "alpha" / "index.html"),
+           _page("Alpha", "alpha/", marker="old alpha"))
+    _write(str(root / "site" / "alpha" / "guide" / "index.html"),
+           _page("Alpha Guide", "alpha/guide/", marker="old guide"))
+    _write(str(root / "site" / "alpha" / "retired" / "index.html"),
+           _page("Retired", "alpha/retired/", marker="gone upstream"))
+    _write(str(root / "site" / "alpha" / "posts" / "index.html"),
+           _page("Alpha Posts", "alpha/posts/", marker="old posts"))
+    # A post published between releases: nobody's build produced it, so no
+    # publisher is entitled to prune it and it outlives a full build.
+    _write(str(root / "site" / "alpha" / "posts" / "old-post" / "index.html"),
+           _page("Old", "alpha/posts/old-post/", marker="old post"))
+    _write(str(root / "site" / "beta" / "index.html"),
+           _page("Beta", "beta/", marker="beta", version="2.0.0"))
 
     # Manifests, including a stale posts overlay for alpha.
     _write(str(root / "manifests" / "alpha.json"),
@@ -102,10 +137,17 @@ def assembly_tree(tmp_path):
         "versions": [{"version": "0.9.0"}, {"version": "1.0.0"}],
     }))
     build = source / "docs" / "_build"
-    _write(str(build / "index.html"), "<html>new alpha</html>")
-    _write(str(build / "guide" / "index.html"), "<html>new guide</html>")
-    _write(str(build / "posts" / "index.html"), "<html>new posts</html>")
-    _write(str(build / "posts" / "hello" / "index.html"), "<html>hello</html>")
+    _write(str(build / "index.html"),
+           _page("Alpha", "alpha/", marker="new alpha", version="1.0.0"))
+    _write(str(build / "guide" / "index.html"),
+           _page("Alpha Guide", "alpha/guide/", marker="new guide",
+                 version="1.0.0"))
+    _write(str(build / "posts" / "index.html"),
+           _page("Alpha Posts", "alpha/posts/", marker="new posts",
+                 version="1.0.0"))
+    _write(str(build / "posts" / "hello" / "index.html"),
+           _page("Hello", "alpha/posts/hello/", marker="hello",
+                 version="1.0.0"))
     # Per-project deploy artifacts the assembly must not inherit.
     _write(str(build / "_headers"), "/*\\n  X-Frame-Options: DENY\\n")
     _write(str(build / "_redirects"), "/* /index.html 200\\n")
@@ -137,6 +179,9 @@ class RunRecorder:
                  resource=None, skip_if_current=None, grant=None):
         argv = [str(a) for a in argv]
         self.calls.append(argv)
+        if "pagefind" in argv and "--site" in argv:
+            site = argv[argv.index("--site") + 1]
+            _write(os.path.join(site, "pagefind", "pagefind.js"), "// index")
         returncode = 0
         if argv[:2] == ["git", "push"]:
             self.pushes += 1
@@ -335,7 +380,8 @@ def test_full_integrate_regenerates_the_shared_files(assembly_tree, runner):
     names = {os.path.relpath(p, str(assembly_tree / "site")) for p in summary["shared"]}
     assert names == {
         "index.html", os.path.join("blog", "index.html"), "nav.json",
-        "feed.xml", "sitemap.xml", "_headers", "_worker.js",
+        "feed.xml", "sitemap.xml", "robots.txt", "404.html", "_headers",
+        "_worker.js",
     }
 
 

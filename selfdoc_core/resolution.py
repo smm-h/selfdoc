@@ -30,7 +30,14 @@ import re
 
 from selfdoc_core.lints import LintResult
 
-__all__ = ["LINT_CODE", "check_output_resolution"]
+__all__ = [
+    "LINT_CODE",
+    "check_output_resolution",
+    "external_references",
+    "page_references",
+    "reference_target",
+    "site_relative_path",
+]
 
 #: The lint code every unresolvable reference is reported under.
 LINT_CODE = "LINK001"
@@ -59,7 +66,7 @@ def _emitted_files(output_dir):
     return emitted
 
 
-def _target_of(page_rel, ref):
+def reference_target(page_rel, ref):
     """Resolve *ref*, written on the page at *page_rel*, to an output path.
 
     Returns None when the reference addresses nothing on its own (an empty
@@ -76,7 +83,7 @@ def _target_of(page_rel, ref):
     return posixpath.normpath(target)
 
 
-def _site_relative(url, base_url):
+def site_relative_path(url, base_url):
     """The output-relative path an absolute *url* names, or None.
 
     None means the URL is not this site's -- an external link, or a URL
@@ -93,6 +100,34 @@ def _site_relative(url, base_url):
     if not path or path.endswith("/"):
         path += "index.html"
     return posixpath.normpath(path)
+
+
+def page_references(page_html):
+    """Yield ``(attr, ref)`` for every internal reference *page_html* writes.
+
+    Internal means "addressed within this site": a fragment, an empty
+    value and every off-site scheme are dropped, so what is left is either
+    a document-relative reference or an origin-absolute one (which is a
+    defect this module reports, not a reference to follow).
+    """
+    for attr, raw in _REF_ATTR_RE.findall(page_html):
+        ref = html_mod.unescape(raw)
+        if not ref or ref.startswith("#") or ref.startswith(_SKIP_SCHEMES):
+            continue
+        yield attr, ref
+
+
+def external_references(page_html):
+    """Yield every absolute ``http(s)`` URL *page_html* references.
+
+    The other half of :func:`page_references`: what this module cannot
+    verify against the emitted tree, because it names somebody else's
+    server.  Whether those still answer is the outbound check's question.
+    """
+    for _attr, raw in _REF_ATTR_RE.findall(page_html):
+        ref = html_mod.unescape(raw)
+        if ref.startswith(("http://", "https://")):
+            yield ref
 
 
 def check_output_resolution(output_dir, base_url=""):
@@ -124,7 +159,7 @@ def check_output_resolution(output_dir, base_url=""):
         ))
 
     def _check_absolute(where, kind, url):
-        target = _site_relative(url, base_url)
+        target = site_relative_path(url, base_url)
         if target is None:
             return
         if target not in emitted:
@@ -134,10 +169,7 @@ def check_output_resolution(output_dir, base_url=""):
         with open(os.path.join(output_dir, page_rel), encoding="utf-8") as f:
             page_html = f.read()
 
-        for attr, raw in _REF_ATTR_RE.findall(page_html):
-            ref = html_mod.unescape(raw)
-            if not ref or ref.startswith("#") or ref.startswith(_SKIP_SCHEMES):
-                continue
+        for attr, ref in page_references(page_html):
             if ref.startswith("/"):
                 _fail(
                     page_rel,
@@ -146,7 +178,7 @@ def check_output_resolution(output_dir, base_url=""):
                     f"document-relative",
                 )
                 continue
-            target = _target_of(page_rel, ref)
+            target = reference_target(page_rel, ref)
             if target is None:
                 continue
             if target.startswith(".."):
@@ -176,7 +208,7 @@ def check_output_resolution(output_dir, base_url=""):
                 loc = html_mod.unescape(loc)
                 if loc.endswith(".xml"):
                     # A sitemap index names sitemaps, not pages.
-                    target = _site_relative(loc, base_url)
+                    target = site_relative_path(loc, base_url)
                     if target is not None and target not in emitted:
                         _fail(rel, f"sitemap index entry {loc} was not written")
                     continue

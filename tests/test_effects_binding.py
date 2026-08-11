@@ -90,6 +90,10 @@ SELFBLOG_EFFECTS = {
     "assembly.generate-shared": "mutating",
     # rewrites the assembly checkout's tree and pushes the deploy commit
     "assembly.integrate": "mutating",
+    # reads a built assembly checkout and reports what is wrong with it.
+    # The outbound-link results it produces are handed back to the caller
+    # rather than written: the deploy persists them, this command does not.
+    "assembly.verify": "read_only",
     # commits the regenerated deploy workflow to the assembly repo
     "assembly.sync-workflow": "mutating",
     # rewrites the content-hash store and auto-commits it

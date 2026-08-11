@@ -43,6 +43,7 @@ from tests.test_assembly_integrate import (  # noqa: F401  (fixtures)
     ROSTER,
     RunRecorder,
     _manifest,
+    _page,
     _write,
     assembly_tree,
     runner,
@@ -73,7 +74,7 @@ def _integrate(root, **overrides):
 def _publish_a_post_out_of_band(root, slug="alpha", post="fresh"):
     """Do to the fixture tree what `post publish` does to the assembly repo."""
     _write(str(root / "site" / slug / "posts" / post / "index.html"),
-           f"<html>{post}</html>")
+           _page(post.title(), f"{slug}/posts/{post}/", marker=post))
     record = root / "manifests" / f"{slug}-files.json"
     data = _read_json(str(record)) if record.exists() else {
         "schema_version": 1, "slug": slug, "owners": {},

@@ -1131,6 +1131,42 @@ def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
     return 0
 
 
+@assembly_group.command("verify", help="Assert every property a built assembly tree has to have before it is deployed: that the roster, the site subtrees and the manifests name the same projects, that each manifest's pages and posts were actually emitted, that the shared cross-project artifacts exist and parse, that every internal reference, sitemap entry, feed link and cross-project link resolves, that every page has a title and a canonical, and that no unresolved directive or per-project routing file survived. The deploy runs this itself before it pushes; this command is how you run the same assertions by hand against a checkout.", effect="read_only")
+@strictcli.flag("assembly-dir", type=str, default=".", help="Path to the assembly repository checkout to verify")
+@strictcli.flag("canonical-base", type=str, default="", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is what tells this site's absolute URLs from everybody else's, and without it half the assertions would pass by not looking.")
+@effects.handler
+def _cmd_assembly_verify(ctx, assembly_dir=".", canonical_base=""):
+    """Verify a built assembly tree and report every offender."""
+    from selfblog.verify import CHECKS, verify_assembly
+
+    if not canonical_base:
+        print(
+            "Error: --canonical-base is required (set topology.docs_base in "
+            "selfdoc.json).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        report = verify_assembly(assembly_dir, canonical_base=canonical_base)
+    except (ValueError, RuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    for check, reason in report.skipped:
+        print(f"NOT CHECKED: {check} -- {reason}", file=sys.stderr)
+
+    if not report.ok:
+        print(report.error_text(), file=sys.stderr)
+        sys.exit(1)
+
+    print(
+        f"The assembled tree at {assembly_dir} passed "
+        f"{len(report.ran)} of {len(CHECKS)} check(s)."
+    )
+    return 0
+
+
 @assembly_group.command("sync-workflow", help="Regenerate the assembly repository's deploy workflow from this project's configuration and push it. The deployed workflow is a generated artifact like any other: without this it stays frozen at whatever the template said when 'assembly init' ran. Pushes only when the content actually differs.", effect="mutating",
     # Deliberately NOT consequential: it rewrites one tool-owned generated
     # file to match the generator, and rerunning converges. See the note on

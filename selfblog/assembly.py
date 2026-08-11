@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 
+from selfblog.verify import OUTBOUND_CACHE_PATH
 from selfdoc_core import effects
 
 # Files a per-project selfdoc build emits for its own standalone hosting.
@@ -56,6 +57,7 @@ ROSTER_PATH = "roster.toml"
 
 # The derived record of what each declared project last deployed.
 PROJECTS_PATH = "projects.json"
+
 
 _BUILD_TIMEOUT = 1800
 _GIT_TIMEOUT = 300
@@ -781,9 +783,14 @@ def generate_shared_files(
 ) -> list[str]:
     """Write the assembly's shared cross-project files and return their paths.
 
-    The 7 files are the project listing (or portfolio + listing when a
+    The 9 files are the project listing (or portfolio + listing when a
     portfolio file is supplied), the blog index, ``nav.json``,
-    ``feed.xml``, ``sitemap.xml``, ``_headers`` and ``_worker.js``.
+    ``feed.xml``, ``sitemap.xml``, ``robots.txt``, ``404.html``,
+    ``_headers`` and ``_worker.js``.
+
+    ``robots.txt`` and ``404.html`` are the site's, not any project's:
+    every constituent build writes its own pair at its own output root,
+    where they end up buried under ``<slug>/`` and serve nobody.
 
     Raises ValueError when a required input is missing -- the CLI turns
     those into a usage error, the integrate command lets them abort the
@@ -794,6 +801,8 @@ def generate_shared_files(
         generate_blog_index,
         generate_homepage,
         generate_nav_json,
+        generate_not_found_page,
+        generate_robots_txt,
         generate_sitemap,
         generate_unified_feed,
         wrap_shared_page,
@@ -888,6 +897,14 @@ def generate_shared_files(
     sitemap_path = os.path.join(site_dir, "sitemap.xml")
     atomic_write(sitemap_path, sitemap_xml)
     written.append(sitemap_path)
+
+    robots_path = os.path.join(site_dir, "robots.txt")
+    atomic_write(robots_path, generate_robots_txt(canonical_base))
+    written.append(robots_path)
+
+    not_found_path = os.path.join(site_dir, "404.html")
+    atomic_write(not_found_path, generate_not_found_page(canonical_base))
+    written.append(not_found_path)
 
     headers_path = os.path.join(site_dir, "_headers")
     atomic_write(headers_path, headers_content)
@@ -1419,6 +1436,41 @@ def index_site(site_dir: str) -> None:
     )
 
 
+def verify_before_deploy(assembly_dir: str, *, canonical_base: str) -> list[str]:
+    """Verify the assembled tree, or refuse to let the deploy continue.
+
+    Returns the checks that ran.  A check that could not run says so on
+    stderr rather than passing quietly -- an assertion nobody made must
+    not look like one that held.
+
+    The outbound results this produces are written back into the checkout
+    so the next deploy inherits them; that write is the deploy's, not the
+    verification's, which is why it happens here and not inside
+    :func:`~selfblog.verify.verify_assembly`.
+
+    Raises:
+        RuntimeError: naming every offender, before anything is committed
+            or pushed.
+    """
+    from selfblog.verify import (
+        OUTBOUND_CACHE_PATH as _CACHE_PATH,
+        render_outbound_cache,
+        verify_assembly,
+    )
+
+    report = verify_assembly(assembly_dir, canonical_base=canonical_base)
+    for check, reason in report.skipped:
+        print(f"verify: {check} was NOT checked -- {reason}", file=sys.stderr)
+    if not report.ok:
+        raise RuntimeError(report.error_text())
+    if report.outbound_cache:
+        effects.write_text(
+            os.path.join(assembly_dir, _CACHE_PATH),
+            render_outbound_cache(report.outbound_cache),
+        )
+    return list(report.ran)
+
+
 def integrate_project(
     *,
     slug: str,
@@ -1521,6 +1573,7 @@ def integrate_project(
 
         summary["shared"] = generate_shared_files(
             site_dir, manifests_dir, canonical_base,
+            docs_base=canonical_base,
             legacy_blog_host=legacy_blog_host,
             portfolio_file=portfolio_file if os.path.isfile(portfolio_file) else "",
             portfolio_canonical=portfolio_canonical,
@@ -1528,7 +1581,17 @@ def integrate_project(
 
         index_site(site_dir)
 
-        _run_step(["git", "add", "site", "manifests", "projects.json"],
+        # Everything the deploy publishes exists now, and nothing has left
+        # this checkout yet. This is the last moment a broken tree can be
+        # refused instead of served, so it is where it is refused.
+        summary["verified"] = verify_before_deploy(
+            assembly_dir, canonical_base=canonical_base,
+        )
+
+        staged = ["site", "manifests", "projects.json"]
+        if os.path.isfile(os.path.join(assembly_dir, OUTBOUND_CACHE_PATH)):
+            staged.append(OUTBOUND_CACHE_PATH)
+        _run_step(["git", "add", *staged],
                   cwd=assembly_dir, step="git add", timeout=_GIT_TIMEOUT,
                   resource=f"git-add:{assembly_dir}")
 

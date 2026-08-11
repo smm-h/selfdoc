@@ -11,6 +11,7 @@ full deploy.
 """
 
 import json
+import pathlib
 
 import pytest
 
@@ -106,6 +107,22 @@ def _build(tmp_path, pages=("index.html", "guide/index.html")):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"<html>{page}</html>")
     return str(output)
+
+
+def _shape(output, rel, title, address):
+    """Rewrite a built page as a real one: with a title and a canonical.
+
+    The deploy verifies the tree it assembled before it pushes any of it,
+    so a stand-in page that declares neither is not a page the assembly
+    would ever serve.
+    """
+    path = pathlib.Path(output) / rel
+    path.write_text(
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+        f"  <title>{title}</title>\n"
+        f'  <link rel="canonical" href="https://docs.example.com/{address}">\n'
+        f"</head>\n<body><p>{rel}</p></body>\n</html>\n"
+    )
 
 
 def _publish(remote, *args, **kwargs):
@@ -440,6 +457,8 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
     # 1. Publish a documentation tree, one page of which the release will not
     #    carry, into a fake assembly repository.
     output = _build(tmp_path, pages=("index.html", "hotfix/index.html"))
+    _shape(output, "index.html", "Alpha", "alpha/")
+    _shape(output, "hotfix/index.html", "Alpha Hotfix", "alpha/hotfix/")
     remote = _remote()
     _publish(remote, REPO, "alpha", output, version="1.0.0")
 
@@ -449,7 +468,12 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
         target = assembly / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
-    (assembly / "roster.toml").write_text(ROSTER_TEXT)
+    # Only alpha: the assembly declares what it serves, and this checkout
+    # serves one project.
+    (assembly / "roster.toml").write_text(
+        render_roster([RosterEntry("alpha", "owner/alpha")]))
+    (assembly / "site" / "pagefind").mkdir(parents=True, exist_ok=True)
+    (assembly / "site" / "pagefind" / "pagefind.js").write_text("// index")
     manifests = assembly / "manifests"
     manifests.mkdir(exist_ok=True)
     (manifests / "alpha.json").write_text(json.dumps({
@@ -464,12 +488,21 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
     source = assembly / "source" / "alpha"
     release_build = source / "docs" / "_build"
     (release_build).mkdir(parents=True)
-    (release_build / "index.html").write_text("<html>released</html>")
+    (release_build / "index.html").write_text("")
+    _shape(str(release_build), "index.html", "Alpha", "alpha/")
+    (release_build / "index.html").write_text(
+        (release_build / "index.html").read_text().replace(
+            "<p>index.html</p>", "<p>released</p>"))
     (source / ".selfdoc").mkdir()
     (source / ".selfdoc" / "manifest.json").write_text(
         (manifests / "alpha.json").read_text())
 
     def quiet(argv, **kwargs):
+        argv = [str(a) for a in argv]
+        if "pagefind" in argv and "--site" in argv:
+            index = pathlib.Path(argv[argv.index("--site") + 1]) / "pagefind"
+            index.mkdir(parents=True, exist_ok=True)
+            (index / "pagefind.js").write_text("// index")
         return subprocess.CompletedProcess(
             args=[str(a) for a in argv], returncode=0,
             stdout="" if kwargs.get("capture_output") else None,
@@ -485,6 +518,6 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
 
     survivor = assembly / "site" / "alpha" / "hotfix" / "index.html"
     assert survivor.exists(), "the release destroyed a page it never built"
-    assert survivor.read_text() == "<html>hotfix/index.html</html>"
+    assert "hotfix/index.html" in survivor.read_text()
     with open(assembly / "site" / "alpha" / "index.html") as f:
         assert "released" in f.read(), "the release still supersedes its own pages"
