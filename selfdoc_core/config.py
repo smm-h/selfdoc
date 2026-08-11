@@ -709,8 +709,6 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         children=(
             FieldSpec(name="dir", type=_S, default=".selfdoc/posts/",
                       description="Directory containing post markdown files."),
-            FieldSpec(name="listing_path", type=_S, default="posts",
-                      description="URL path segment for the post listing page."),
             FieldSpec(name="repo", type=_S,
                       description="GitHub repository for archiving resolved post content (e.g., owner/posts)."),
         ),
