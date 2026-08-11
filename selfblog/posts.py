@@ -70,81 +70,9 @@ def discover_posts(
             with open(full_path, "r", encoding="utf-8") as f:
                 raw = f.read()
 
-            frontmatter, content = parse_frontmatter(raw)
-
-            # -- Validate required fields ----------------------------------
-
-            title = frontmatter.get("title")
-            if not title:
-                raise RuntimeError(
-                    f"Post {rel_path}: 'title' is required and must be "
-                    f"non-empty"
-                )
-
-            date = frontmatter.get("date")
-            if not date:
-                raise RuntimeError(
-                    f"Post {rel_path}: 'date' is required"
-                )
-            date = str(date)
-            if not _DATE_RE.match(date):
-                raise RuntimeError(
-                    f"Post {rel_path}: 'date' must be YYYY-MM-DD, "
-                    f"got {date!r}"
-                )
-
-            # -- Auto-generate slug if missing -----------------------------
-
-            slug = frontmatter.get("slug")
-            if slug:
-                slug = str(slug)
-            else:
-                slug = _to_kebab(str(title))
-
-            # -- Slug immutability check -----------------------------------
-
-            if rel_path in manifest_slugs:
-                old_slug = manifest_slugs[rel_path]
-                if old_slug != slug:
-                    raise RuntimeError(
-                        f"Post {rel_path}: slug changed from "
-                        f"{old_slug!r} to {slug!r}. Slug immutability "
-                        f"violation -- slugs cannot change once published."
-                    )
-
-            # -- Inject type and versioned ---------------------------------
-
-            frontmatter["type"] = "post"
-            frontmatter["versioned"] = False
-
-            # -- Defaults for optional fields ------------------------------
-
-            tags = frontmatter.get("tags")
-            if tags is None:
-                tags = []
-            frontmatter["tags"] = tags
-
-            draft = frontmatter.get("draft", False)
-
-            posts.append({
-                "path": rel_path,
-                "title": str(title),
-                "date": date,
-                "slug": slug,
-                "tags": tags,
-                "draft": bool(draft),
-                "type": "post",
-                "versioned": False,
-                "locale": frontmatter.get("locale"),
-                "project": frontmatter.get("project"),
-                "version": frontmatter.get("version"),
-                "prev_version": frontmatter.get("prev_version"),
-                "bump_type": frontmatter.get("bump_type"),
-                "release_url": frontmatter.get("release_url"),
-                "registry_urls": frontmatter.get("registry_urls"),
-                "content": content,
-                "frontmatter": frontmatter,
-            })
+            posts.append(parse_post(
+                raw, rel_path, published_slug=manifest_slugs.get(rel_path),
+            ))
 
     # -- Validate slug uniqueness ------------------------------------------
 
@@ -163,6 +91,106 @@ def discover_posts(
     posts.sort(key=lambda p: (-_date_sort_key(p["date"]), p["slug"]))
 
     return posts
+
+
+def parse_post(
+    raw: str,
+    rel_path: str,
+    published_slug: str | None = None,
+) -> dict:
+    """Parse and validate one post's markdown source into a post dict.
+
+    This is the whole of what makes a post a post: field validation, slug
+    derivation, and the injected ``type``/``versioned`` keys.
+    ``discover_posts`` calls it per file on disk; the render path calls it
+    on an editor buffer that may never be saved, so both agree on what the
+    source means.
+
+    Parameters
+    ----------
+    raw:
+        The post's markdown source, frontmatter included.
+    rel_path:
+        The post's path relative to the posts directory, used in error
+        messages and carried on the returned dict.
+    published_slug:
+        The slug this post was published under, when it has one.  A
+        different derived slug is a slug immutability violation.
+
+    Returns
+    -------
+    dict
+        Post metadata, in the shape ``discover_posts`` returns.
+    """
+    frontmatter, content = parse_frontmatter(raw)
+
+    # -- Validate required fields ------------------------------------------
+
+    title = frontmatter.get("title")
+    if not title:
+        raise RuntimeError(
+            f"Post {rel_path}: 'title' is required and must be non-empty"
+        )
+
+    date = frontmatter.get("date")
+    if not date:
+        raise RuntimeError(f"Post {rel_path}: 'date' is required")
+    date = str(date)
+    if not _DATE_RE.match(date):
+        raise RuntimeError(
+            f"Post {rel_path}: 'date' must be YYYY-MM-DD, got {date!r}"
+        )
+
+    # -- Auto-generate slug if missing --------------------------------------
+
+    slug = frontmatter.get("slug")
+    if slug:
+        slug = str(slug)
+    else:
+        slug = _to_kebab(str(title))
+
+    # -- Slug immutability check --------------------------------------------
+
+    if published_slug is not None and published_slug != slug:
+        raise RuntimeError(
+            f"Post {rel_path}: slug changed from "
+            f"{published_slug!r} to {slug!r}. Slug immutability "
+            f"violation -- slugs cannot change once published."
+        )
+
+    # -- Inject type and versioned ------------------------------------------
+
+    frontmatter["type"] = "post"
+    frontmatter["versioned"] = False
+
+    # -- Defaults for optional fields ---------------------------------------
+
+    tags = frontmatter.get("tags")
+    if tags is None:
+        tags = []
+    frontmatter["tags"] = tags
+
+    draft = frontmatter.get("draft", False)
+
+    return {
+        "path": rel_path,
+        "title": str(title),
+        "date": date,
+        "slug": slug,
+        "tags": tags,
+        "draft": bool(draft),
+        "type": "post",
+        "versioned": False,
+        "locale": frontmatter.get("locale"),
+        "project": frontmatter.get("project"),
+        "version": frontmatter.get("version"),
+        "prev_version": frontmatter.get("prev_version"),
+        "bump_type": frontmatter.get("bump_type"),
+        "release_url": frontmatter.get("release_url"),
+        "registry_urls": frontmatter.get("registry_urls"),
+        "content": content,
+        "frontmatter": frontmatter,
+    }
 
 
 def _date_sort_key(date_str: str) -> int:
