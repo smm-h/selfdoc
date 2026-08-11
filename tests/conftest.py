@@ -26,6 +26,59 @@ def _git(args, cwd):
     )
 
 
+class StubPyPI:
+    """A stand-in for PyPI's JSON API over a fixed set of published versions.
+
+    Every ``selfblog assembly`` path that writes a deploy workflow checks
+    its toolchain pins against the registry first, and the isolation floor
+    denies sockets -- so a test that reaches one of those paths answers
+    from this instead.  ``published`` is mutable: a test that cares which
+    versions exist rewrites the entry for its package.
+    """
+
+    def __init__(self, published=None):
+        self.published = dict(published) if published is not None else _published_by_default()
+        self.asked: list[str] = []
+
+    def __call__(self, package):
+        self.asked.append(package)
+        versions = self.published.get(package)
+        if versions is None:
+            raise RuntimeError(f"{package} is not a package on PyPI (stub)")
+        return {
+            "info": {"version": versions[-1]},
+            "releases": {
+                v: [{"filename": f"{package}-{v}.whl"}] for v in versions
+            },
+        }
+
+
+def _published_by_default():
+    """Versions the stub registry serves unless a test says otherwise.
+
+    The running selfblog and the installed selfdoc are in here because
+    that is what the pin resolver reads off this environment; the rest are
+    the fixed versions the workflow-sync tests pin explicitly.
+    """
+    from importlib.metadata import version as dist_version
+
+    from selfblog import __version__ as selfblog_version
+
+    return {
+        "selfblog": ["1.2.2", "1.2.3", "1.2.4", selfblog_version],
+        "selfdoc": ["0.35.0", dist_version("selfdoc")],
+        "pagefind": ["1.3.0", "1.4.0"],
+    }
+
+
+@pytest.fixture()
+def stub_pypi(monkeypatch):
+    """Answer selfblog's registry probe from a stub, never from the network."""
+    stub = StubPyPI()
+    monkeypatch.setattr("selfblog.assembly.fetch_pypi_metadata", stub)
+    return stub
+
+
 def _write_json(path, data):
     """Write *data* as JSON to *path*."""
     with open(path, "w", encoding="utf-8") as f:

@@ -93,36 +93,7 @@ def test_assembly_init_files_use_the_configured_project():
 # -- init round-trip: create and deploy target the same project ---------------
 
 
-@pytest.fixture()
-def registry(monkeypatch):
-    """Answer the pin probe from a stub: the suite never dials PyPI.
-
-    ``assembly init`` resolves its pins from this environment and refuses
-    any the registry cannot serve, so the stub publishes exactly what the
-    resolver will ask about.
-    """
-    from importlib.metadata import version as dist_version
-
-    from selfblog import __version__ as selfblog_version
-
-    published = {
-        "selfblog": [selfblog_version],
-        "selfdoc": [dist_version("selfdoc")],
-        "pagefind": ["1.4.0"],
-    }
-
-    def fetch(package):
-        versions = published[package]
-        return {
-            "info": {"version": versions[-1]},
-            "releases": {v: [{"filename": f"{package}-{v}.whl"}] for v in versions},
-        }
-
-    monkeypatch.setattr("selfblog.assembly.fetch_pypi_metadata", fetch)
-    return published
-
-
-def test_init_creates_the_project_the_workflow_deploys_to(tmp_path, registry, monkeypatch):
+def test_init_creates_the_project_the_workflow_deploys_to(tmp_path, stub_pypi, monkeypatch):
     _setup_project(tmp_path, {
         "assembly": {"repo": "owner/assembly", "pages_project": PAGES_PROJECT},
         "topology": {

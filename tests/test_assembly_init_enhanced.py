@@ -25,6 +25,17 @@ def _setup_project(tmp_path, repo="owner/docs-assembly",
     return tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _registry(stub_pypi):
+    """Every test here runs `assembly init`, which checks its pins against PyPI.
+
+    The isolation floor denies sockets, so the probe answers from the stub;
+    without this the whole module would fail at the network boundary rather
+    than at whatever it is actually asserting.
+    """
+    return stub_pypi
+
+
 def _make_fake_run(calls):
     """Return a fake subprocess.run that records calls and succeeds on everything."""
     def fake_run(cmd, **kwargs):

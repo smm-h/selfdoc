@@ -16,6 +16,7 @@ import os
 import subprocess
 
 import pytest
+from conftest import StubPyPI
 
 from selfblog.assembly import (
     WORKFLOW_PATH,
@@ -100,36 +101,6 @@ class FakeAssemblyRepo:
         )
 
 
-class StubRegistry:
-    """A stand-in for PyPI's JSON API over a fixed set of published versions."""
-
-    def __init__(self, published=None):
-        self.published = dict(published if published is not None else {
-            "selfblog": ["1.2.2", "1.2.3", "1.2.4"],
-            "selfdoc": ["0.35.0", PINNED_SELFDOC],
-            "pagefind": ["1.3.0", PINNED_PAGEFIND],
-        })
-        self.asked: list[str] = []
-
-    def __call__(self, package):
-        self.asked.append(package)
-        versions = self.published.get(package)
-        if versions is None:
-            raise RuntimeError(f"{package} is not on PyPI (stub)")
-        return {
-            "info": {"version": versions[-1]},
-            "releases": {v: [{"filename": f"{package}-{v}.whl"}] for v in versions},
-        }
-
-
-@pytest.fixture()
-def registry(monkeypatch):
-    """Every registry probe in the sync path answers from this stub."""
-    stub = StubRegistry()
-    monkeypatch.setattr("selfblog.assembly.fetch_pypi_metadata", stub)
-    return stub
-
-
 @pytest.fixture()
 def project(tmp_path, monkeypatch):
     _setup_project(tmp_path)
@@ -140,7 +111,7 @@ def project(tmp_path, monkeypatch):
 # -- the writer ---------------------------------------------------------------
 
 
-def test_sync_writes_the_workflow_when_the_repo_has_none(project, registry, monkeypatch, capsys):
+def test_sync_writes_the_workflow_when_the_repo_has_none(project, stub_pypi, monkeypatch, capsys):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -151,7 +122,7 @@ def test_sync_writes_the_workflow_when_the_repo_has_none(project, registry, monk
     assert "Synced" in capsys.readouterr().out
 
 
-def test_the_written_workflow_pins_the_given_version(project, registry, monkeypatch):
+def test_the_written_workflow_pins_the_given_version(project, stub_pypi, monkeypatch):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -160,7 +131,7 @@ def test_the_written_workflow_pins_the_given_version(project, registry, monkeypa
     assert b"'selfblog==1.2.3'" in remote.blobs[WORKFLOW_PATH]
 
 
-def test_the_written_workflow_carries_the_projects_config(project, registry, monkeypatch):
+def test_the_written_workflow_carries_the_projects_config(project, stub_pypi, monkeypatch):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -171,10 +142,10 @@ def test_the_written_workflow_carries_the_projects_config(project, registry, mon
     assert f"--canonical-base '{CANONICAL_BASE}'" in content
 
 
-def test_the_pin_defaults_to_the_running_selfblog(project, registry, monkeypatch):
+def test_the_pin_defaults_to_the_running_selfblog(project, stub_pypi, monkeypatch):
     from selfblog import __version__
 
-    registry.published["selfblog"] = ["1.0.0", __version__]
+    stub_pypi.published["selfblog"] = ["1.0.0", __version__]
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -186,7 +157,7 @@ def test_the_pin_defaults_to_the_running_selfblog(project, registry, monkeypatch
 # -- every tool the deploy installs is pinned ---------------------------------
 
 
-def test_the_written_workflow_pins_selfdoc_too(project, registry, monkeypatch):
+def test_the_written_workflow_pins_selfdoc_too(project, stub_pypi, monkeypatch):
     """selfdoc floated while selfblog was pinned, on the same install line.
 
     The rationale for the selfblog pin -- a released change breaking every
@@ -204,7 +175,7 @@ def test_the_written_workflow_pins_selfdoc_too(project, registry, monkeypatch):
     assert f"'selfdoc=={PINNED_SELFDOC}'" in content
 
 
-def test_the_written_workflow_pins_pagefind_too(project, registry, monkeypatch):
+def test_the_written_workflow_pins_pagefind_too(project, stub_pypi, monkeypatch):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -216,7 +187,7 @@ def test_the_written_workflow_pins_pagefind_too(project, registry, monkeypatch):
     assert f"'pagefind[bin]=={PINNED_PAGEFIND}'" in content
 
 
-def test_no_tool_on_the_install_line_floats(project, registry, monkeypatch):
+def test_no_tool_on_the_install_line_floats(project, stub_pypi, monkeypatch):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -229,11 +200,11 @@ def test_no_tool_on_the_install_line_floats(project, registry, monkeypatch):
         assert spec in install[0], f"{spec} is missing: that tool floats"
 
 
-def test_the_selfdoc_pin_defaults_to_the_installed_selfdoc(project, registry, monkeypatch):
+def test_the_selfdoc_pin_defaults_to_the_installed_selfdoc(project, stub_pypi, monkeypatch):
     from importlib.metadata import version as dist_version
 
     installed = dist_version("selfdoc")
-    registry.published["selfdoc"] = ["0.1.0", installed]
+    stub_pypi.published["selfdoc"] = ["0.1.0", installed]
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -242,9 +213,9 @@ def test_the_selfdoc_pin_defaults_to_the_installed_selfdoc(project, registry, mo
     assert f"'selfdoc=={installed}'".encode() in remote.blobs[WORKFLOW_PATH]
 
 
-def test_the_pagefind_pin_defaults_to_the_registrys_current_release(project, registry, monkeypatch):
+def test_the_pagefind_pin_defaults_to_the_registrys_current_release(project, stub_pypi, monkeypatch):
     """pagefind is a CI-only tool nothing here installs, so PyPI is the source."""
-    registry.published["pagefind"] = ["1.0.0", "9.9.9"]
+    stub_pypi.published["pagefind"] = ["1.0.0", "9.9.9"]
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -256,7 +227,7 @@ def test_the_pagefind_pin_defaults_to_the_registrys_current_release(project, reg
 # -- a pin nobody can install is refused before it is written -----------------
 
 
-def test_an_unpublished_selfblog_pin_is_refused(project, registry, monkeypatch, capsys):
+def test_an_unpublished_selfblog_pin_is_refused(project, stub_pypi, monkeypatch, capsys):
     """The default pin is the RUNNING selfblog, which in a checkout is editable.
 
     An editable install sits ahead of the registry the moment work starts on
@@ -276,7 +247,7 @@ def test_an_unpublished_selfblog_pin_is_refused(project, registry, monkeypatch, 
     assert remote.commits == 0, "nothing may be written"
 
 
-def test_an_unpublished_selfdoc_pin_is_refused(project, registry, monkeypatch, capsys):
+def test_an_unpublished_selfdoc_pin_is_refused(project, stub_pypi, monkeypatch, capsys):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -290,7 +261,7 @@ def test_an_unpublished_selfdoc_pin_is_refused(project, registry, monkeypatch, c
     assert remote.commits == 0
 
 
-def test_an_unpublished_pagefind_pin_is_refused(project, registry, monkeypatch, capsys):
+def test_an_unpublished_pagefind_pin_is_refused(project, stub_pypi, monkeypatch, capsys):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -303,7 +274,7 @@ def test_an_unpublished_pagefind_pin_is_refused(project, registry, monkeypatch, 
     assert remote.commits == 0
 
 
-def test_the_probe_runs_before_anything_is_written(project, registry, monkeypatch):
+def test_the_probe_runs_before_anything_is_written(project, stub_pypi, monkeypatch):
     """Fail-closed: the refusal happens before the first API call."""
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
@@ -312,7 +283,7 @@ def test_the_probe_runs_before_anything_is_written(project, registry, monkeypatc
         _cmd_assembly_sync_workflow(None, pin_version="9.9.9")
 
     assert remote.uploads == 0
-    assert registry.asked, "the registry must actually have been asked"
+    assert stub_pypi.asked, "the registry must actually have been asked"
 
 
 def test_a_registry_that_cannot_be_reached_is_a_hard_error(project, monkeypatch, capsys):
@@ -333,7 +304,7 @@ def test_a_registry_that_cannot_be_reached_is_a_hard_error(project, monkeypatch,
 # -- idempotence --------------------------------------------------------------
 
 
-def test_running_the_writer_twice_is_a_no_op(project, registry, monkeypatch, capsys):
+def test_running_the_writer_twice_is_a_no_op(project, stub_pypi, monkeypatch, capsys):
     remote = FakeAssemblyRepo()
     monkeypatch.setattr("selfblog.assembly.effects.run", remote)
 
@@ -348,7 +319,7 @@ def test_running_the_writer_twice_is_a_no_op(project, registry, monkeypatch, cap
     assert "already current" in capsys.readouterr().out
 
 
-def test_a_workflow_that_matches_is_recognized_without_a_push(project, registry, monkeypatch):
+def test_a_workflow_that_matches_is_recognized_without_a_push(project, stub_pypi, monkeypatch):
     """A repo already holding the generated bytes gets nothing pushed at all."""
     content = generate_workflow_yaml(
         PAGES_PROJECT, CANONICAL_BASE, "", "", PINS,
@@ -363,7 +334,7 @@ def test_a_workflow_that_matches_is_recognized_without_a_push(project, registry,
     assert remote.commits == 0
 
 
-def test_a_changed_pin_does_push(project, registry, monkeypatch):
+def test_a_changed_pin_does_push(project, stub_pypi, monkeypatch):
     content = generate_workflow_yaml(
         PAGES_PROJECT, CANONICAL_BASE, "", "", PINS,
     ).encode()
@@ -378,7 +349,7 @@ def test_a_changed_pin_does_push(project, registry, monkeypatch):
     assert b"'selfblog==1.2.4'" in remote.blobs[WORKFLOW_PATH]
 
 
-def test_a_changed_selfdoc_pin_does_push(project, registry, monkeypatch):
+def test_a_changed_selfdoc_pin_does_push(project, stub_pypi, monkeypatch):
     content = generate_workflow_yaml(
         PAGES_PROJECT, CANONICAL_BASE, "", "", PINS,
     ).encode()
@@ -448,7 +419,7 @@ def test_the_generator_renders_every_pin():
 def test_check_pins_are_published_accepts_published_versions():
     from selfblog.assembly import check_pins_are_published
 
-    check_pins_are_published(PINS, fetch=StubRegistry())
+    check_pins_are_published(PINS, fetch=StubPyPI())
 
 
 def test_check_pins_are_published_names_the_registry_and_version():
@@ -457,7 +428,7 @@ def test_check_pins_are_published_names_the_registry_and_version():
     pins = ToolchainPins(selfblog="9.9.9", selfdoc=PINNED_SELFDOC,
                          pagefind=PINNED_PAGEFIND)
     with pytest.raises(RuntimeError) as excinfo:
-        check_pins_are_published(pins, fetch=StubRegistry())
+        check_pins_are_published(pins, fetch=StubPyPI())
     message = str(excinfo.value)
     assert "9.9.9" in message
     assert "pypi.org" in message
@@ -478,7 +449,7 @@ def test_a_release_with_no_files_counts_as_unpublished():
 def test_registry_latest_version_reads_the_current_release():
     from selfblog.assembly import registry_latest_version
 
-    assert registry_latest_version("pagefind", fetch=StubRegistry()) == PINNED_PAGEFIND
+    assert registry_latest_version("pagefind", fetch=StubPyPI()) == PINNED_PAGEFIND
 
 
 def test_registry_latest_version_refuses_metadata_with_no_version():
@@ -491,7 +462,7 @@ def test_registry_latest_version_refuses_metadata_with_no_version():
 def test_resolve_pins_takes_explicit_values_verbatim():
     from selfblog.assembly import resolve_toolchain_pins
 
-    stub = StubRegistry()
+    stub = StubPyPI()
     pins = resolve_toolchain_pins(
         selfblog_version="1.2.3", selfdoc_version="0.35.0",
         pagefind_version="1.3.0", fetch=stub,
@@ -507,7 +478,7 @@ def test_resolve_pins_reads_the_running_selfblog_and_installed_selfdoc():
     from selfblog import __version__
     from selfblog.assembly import resolve_toolchain_pins
 
-    pins = resolve_toolchain_pins(fetch=StubRegistry())
+    pins = resolve_toolchain_pins(fetch=StubPyPI())
     assert pins.selfblog == __version__
     assert pins.selfdoc == dist_version("selfdoc")
 
@@ -515,7 +486,7 @@ def test_resolve_pins_reads_the_running_selfblog_and_installed_selfdoc():
 def test_resolve_pins_asks_the_registry_only_for_pagefind():
     from selfblog.assembly import resolve_toolchain_pins
 
-    stub = StubRegistry()
+    stub = StubPyPI()
     pins = resolve_toolchain_pins(fetch=stub)
     assert stub.asked == ["pagefind"]
     assert pins.pagefind == PINNED_PAGEFIND
