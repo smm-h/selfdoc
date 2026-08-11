@@ -97,11 +97,16 @@ class Resolver:
                     f"> *[selfdoc: custom directive '{name}' failed: {exc}]*"
                 )
 
-        # No language groups configured
+        # No language groups configured.  Everything that reaches this point
+        # extracts from source code, and a codeless project has none.  Raise:
+        # rendering a placeholder note here would silently turn a page that
+        # asks for an API reference into a page that has none.
         if not self._groups:
-            return (
-                f"> *[selfdoc: no source entries configured "
-                f"for :::{name}]*"
+            raise RuntimeError(
+                f"Directive :::{name} extracts from source code, but "
+                "selfdoc.json declares no 'source' entries. Either remove "
+                "the directive, or declare the code it should read: "
+                '"source": [{"path": "src/", "language": "python"}]'
             )
 
         # Single language group: dispatch directly (no ambiguity possible)

@@ -82,9 +82,12 @@ def resolve_source_entries(config: dict) -> list[SourceEntry]:
 
     Each source entry dict has 'path' and 'language' keys.
     The language is looked up in the extractor registry.
+
+    A codeless project declares no source entries, so an absent (or empty)
+    'source' key yields an empty list.
     """
     entries = []
-    for item in config["source"]:
+    for item in config.get("source") or []:
         language = item["language"]
         extractor = EXTRACTORS.get(language)
         if extractor is None:
@@ -96,5 +99,8 @@ def resolve_source_entries(config: dict) -> list[SourceEntry]:
 
 
 def source_paths(config: dict) -> list[str]:
-    """Extract just the source path strings from config."""
-    return [item["path"] for item in config["source"]]
+    """Extract just the source path strings from config.
+
+    Empty for a codeless project, which declares no source entries.
+    """
+    return [item["path"] for item in config.get("source") or []]

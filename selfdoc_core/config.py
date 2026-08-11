@@ -65,11 +65,18 @@ _L = FieldType.LIST
 
 CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
     # --- required fields ---
+    # 'source' is optional: a codeless project (a portfolio or personal site
+    # that is nothing but markdown pages) has no code to extract from and
+    # declares no source entries.  Absent normalizes to [] rather than None so
+    # every consumer can iterate it unconditionally.  Directives that need
+    # source code raise instead of rendering a placeholder note -- see
+    # selfdoc_core.resolver.Resolver and selfdoc_core.content.
     FieldSpec(
         name="source",
         type=_L,
-        required=True,
-        min_length=1,
+        required=False,
+        non_empty=False,
+        default_factory=list,
         item_spec=FieldSpec(
             name="<item>",
             type=_D,

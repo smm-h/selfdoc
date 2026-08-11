@@ -269,7 +269,15 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
 
     src_entries = resolve_source_entries(config)
     if not src_entries:
-        return "> *[selfdoc: no source entries configured]*"
+        # list-modules reads source code; a codeless project has none.  Same
+        # reasoning as the resolver: a placeholder note would hide the fact
+        # that the page lost the listing it asked for.
+        raise RuntimeError(
+            "Directive :::list-modules reads source code, but selfdoc.json "
+            "declares no 'source' entries. Either remove the directive, or "
+            'declare the code it should read: "source": '
+            '[{"path": "src/", "language": "python"}]'
+        )
 
     # Match the directive's path to a source entry
     matched_entry = None
