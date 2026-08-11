@@ -502,30 +502,49 @@ def generate_shared_files(
 # -- integrate: the deploy body the generated workflow used to embed ---------
 
 
+def build_target_version(config: dict, source: str = "") -> str:
+    """Return the version a ``selfdoc build`` of *config* would produce.
+
+    This is the one definition of "the version being built", and both the
+    build (:func:`detect_latest_version`) and the dispatch check
+    (:func:`check_version_is_declared`) read it, so they cannot disagree.
+
+    Empty when the project declares no versions at all -- a single
+    implicit version, which ``selfdoc build`` handles without
+    ``--version``.  A declared ``versions`` array whose newest entry
+    carries no version string is a hard error however long the array is:
+    the build takes ``versions[-1]``, so a blank newest entry would
+    silently publish the docs unversioned, at the wrong address.
+
+    source: what to name in the error message (a directory, usually).
+    """
+    versions = config.get("versions") or []
+    if not versions:
+        return ""
+    newest = versions[-1]
+    latest = str(newest.get("version") or "") if isinstance(newest, dict) else ""
+    if not latest:
+        where = f" for the project at {source}" if source else ""
+        raise RuntimeError(
+            f"the newest 'versions' entry in selfdoc.json{where} declares no "
+            f"version, so there is nothing to build. The build takes the last "
+            f"entry of 'versions'; give it a 'version' string."
+        )
+    return latest
+
+
 def detect_latest_version(source_dir: str) -> str:
     """Return the newest version declared by a source project's config.
 
-    Empty when the project declares no versions at all (a single implicit
-    version, which ``selfdoc build`` handles without ``--version``).  A
-    multi-version project whose newest entry carries no version string is
-    a hard error: building it unversioned would silently publish the
-    wrong docs.
+    A project with no ``selfdoc.json`` at all builds unversioned; see
+    :func:`build_target_version` for everything else.
     """
     cfg_path = os.path.join(source_dir, "selfdoc.json")
     if not os.path.isfile(cfg_path):
         return ""
     with open(cfg_path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
-    versions = cfg.get("versions") or []
-    if not versions:
-        return ""
-    latest = str(versions[-1].get("version") or "")
-    if not latest and len(versions) > 1:
-        raise RuntimeError(
-            f"Could not detect latest version for multi-version project "
-            f"at {source_dir}"
-        )
-    return latest
+    return build_target_version(cfg, source=source_dir)
 
 
 def prune_deploy_artifacts(root: str) -> list[str]:
@@ -871,12 +890,15 @@ def list_repo_tags(cwd: str = ".") -> list[str]:
 
 
 def check_version_is_declared(config: dict, version: str) -> None:
-    """Raise when *version* is absent from the project's declared versions.
+    """Raise unless *version* is the version the build will actually produce.
 
-    The assembly builds ``versions[-1]``, so a ``versions`` array that has
-    not kept up with the released version publishes docs for whatever
-    stale version it does list -- silently, and for as long as nobody
-    compares the two.
+    Membership in ``versions`` was never the question.  The assembly builds
+    ``versions[-1]`` and records the dispatch under the version the payload
+    carries, so dispatching a version that is merely *present* in the array
+    publishes the newest version's docs under the dispatched version's name
+    -- silently, and for as long as nobody compares the two.  The two have
+    to be the same version, and :func:`build_target_version` is what says
+    which one the build produces.
     """
     declared = [
         str(entry.get("version"))
@@ -888,12 +910,14 @@ def check_version_is_declared(config: dict, version: str) -> None:
             "selfdoc.json declares no versions; the assembly has nothing to "
             "build. Add the released version to 'versions'."
         )
-    if version not in declared:
+    target = build_target_version(config)
+    if version != target:
         raise RuntimeError(
-            f"version {version} is not in selfdoc.json's 'versions' "
-            f"({', '.join(declared)}). The assembly builds the newest "
-            f"declared version, so this dispatch would publish "
-            f"{declared[-1]} under the name {version}."
+            f"version {version} is not the version the assembly would build. "
+            f"selfdoc.json's newest declared version is {target} (declared: "
+            f"{', '.join(declared)}), and the build takes the newest one -- so "
+            f"this dispatch would publish {target}'s docs recorded under the "
+            f"name {version}. Make {version} the last entry of 'versions'."
         )
 
 
