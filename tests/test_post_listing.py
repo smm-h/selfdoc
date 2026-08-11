@@ -234,7 +234,8 @@ class TestRenderPostListingBasic:
 
         assert "**2024-06-15**" in result
         assert "[Hello World]" in result
-        assert "posts/hello-world.html" in result
+        # The listing is emitted at blog/, so a post is a sibling of it.
+        assert "(hello-world/)" in result
 
 
 class TestRenderPostListingMultiple:
@@ -343,16 +344,14 @@ class TestBuildGeneratesListingPage:
     """Full build produces a listing page at en/posts/index.html."""
 
     def test_build_generates_listing_page(self, tmp_path):
-        """Listing page exists in build output under en/posts/."""
+        """Listing page exists in build output at blog/."""
         project = _setup_project_with_posts(tmp_path, posts=[_POST_ALPHA])
 
         written = build(str(project))
 
         output_dir = os.path.join(project, "docs", "_build")
-        # posts/index.md maps to posts/index/index.html via _md_to_html_path
-        listing_html = os.path.join(
-            output_dir, "en", "posts", "index", "index.html",
-        )
+        # blog.md maps to blog/index.html via _md_to_html_path
+        listing_html = os.path.join(output_dir, "blog", "index.html")
         assert listing_html in written
         assert os.path.isfile(listing_html)
 
@@ -369,10 +368,8 @@ class TestListingPageContainsPostLinks:
         build(str(project))
 
         output_dir = os.path.join(project, "docs", "_build")
-        # posts/index.md maps to posts/index/index.html via _md_to_html_path
-        listing_html_path = os.path.join(
-            output_dir, "en", "posts", "index", "index.html",
-        )
+        # blog.md maps to blog/index.html via _md_to_html_path
+        listing_html_path = os.path.join(output_dir, "blog", "index.html")
         assert os.path.isfile(listing_html_path)
 
         content = open(listing_html_path).read()

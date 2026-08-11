@@ -83,7 +83,7 @@ def test_target_posts_produces_html_for_posts(tmp_path):
 
     # Post HTML should exist in the output
     output_dir = os.path.join(project, "docs", "_build")
-    post_html = os.path.join(output_dir, "posts", "hello-world", "index.html")
+    post_html = os.path.join(output_dir, "blog", "hello-world", "index.html")
     assert post_html in written
     assert os.path.isfile(post_html)
 
@@ -124,7 +124,7 @@ def test_target_posts_resolves_directives(tmp_path):
 
     output_dir = os.path.join(project, "docs", "_build")
     post_html = os.path.join(
-        output_dir, "posts", "directive-post", "index.html",
+        output_dir, "blog", "directive-post", "index.html",
     )
     assert post_html in written
     assert os.path.isfile(post_html)
@@ -172,10 +172,10 @@ def test_target_posts_multiple_posts(tmp_path):
 
     output_dir = os.path.join(project, "docs", "_build")
     hello_html = os.path.join(
-        output_dir, "posts", "hello-world", "index.html",
+        output_dir, "blog", "hello-world", "index.html",
     )
     second_html = os.path.join(
-        output_dir, "posts", "second-post", "index.html",
+        output_dir, "blog", "second-post", "index.html",
     )
     assert hello_html in written
     assert second_html in written

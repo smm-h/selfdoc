@@ -179,7 +179,7 @@ class TestServeDraftsOutput:
 
         output_dir = os.path.join(project, "docs", "_build")
         draft_html = os.path.join(
-            output_dir, "en", "posts", "draft-post", "index.html",
+            output_dir, "blog", "draft-post", "index.html",
         )
         assert draft_html in written
         assert os.path.isfile(draft_html)
@@ -202,13 +202,13 @@ class TestServeDraftsOutput:
 
         output_dir = os.path.join(project, "docs", "_build")
         draft_html = os.path.join(
-            output_dir, "en", "posts", "draft-post", "index.html",
+            output_dir, "blog", "draft-post", "index.html",
         )
         assert draft_html not in written
         assert not os.path.isfile(draft_html)
 
         # Non-draft should still be present
         hello_html = os.path.join(
-            output_dir, "en", "posts", "hello-world", "index.html",
+            output_dir, "blog", "hello-world", "index.html",
         )
         assert hello_html in written

@@ -88,7 +88,7 @@ def test_inject_posts_basic(tmp_path):
 
     # 1 post + 1 listing page
     assert len(injected) == 2
-    expected_path = os.path.join(docs_dir, "posts", "hello-world.md")
+    expected_path = os.path.join(docs_dir, "blog", "hello-world.md")
     assert expected_path in injected
     assert os.path.isfile(expected_path)
 
@@ -96,8 +96,9 @@ def test_inject_posts_basic(tmp_path):
     assert "Hello World" in content
     assert "This is the post content." in content
 
-    # Listing page generated
-    listing_path = os.path.join(docs_dir, "posts", "index.md")
+    # Listing page generated beside the post directory, at blog.md, so it
+    # is emitted at blog/ rather than blog/index/.
+    listing_path = os.path.join(docs_dir, "blog.md")
     assert listing_path in injected
     assert os.path.isfile(listing_path)
 
@@ -115,7 +116,7 @@ def test_inject_posts_draft_excluded(tmp_path):
     slugs = [os.path.basename(p) for p in injected]
     assert "hello-world.md" in slugs
     assert "draft-post.md" not in slugs
-    assert not os.path.isfile(os.path.join(docs_dir, "posts", "draft-post.md"))
+    assert not os.path.isfile(os.path.join(docs_dir, "blog", "draft-post.md"))
 
 
 def test_inject_posts_draft_included(tmp_path):
@@ -131,16 +132,16 @@ def test_inject_posts_draft_included(tmp_path):
     slugs = [os.path.basename(p) for p in injected]
     assert "hello-world.md" in slugs
     assert "draft-post.md" in slugs
-    assert os.path.isfile(os.path.join(docs_dir, "posts", "draft-post.md"))
+    assert os.path.isfile(os.path.join(docs_dir, "blog", "draft-post.md"))
 
 
 # -- Unit tests: _cleanup_injected_posts -----------------------------------
 
 
 def test_cleanup_injected_posts(tmp_path):
-    """Cleanup removes injected files and empty posts/ directory."""
+    """Cleanup removes injected files and the empty blog/ directory."""
     docs_dir = os.path.join(tmp_path, "docs")
-    posts_dir = os.path.join(docs_dir, "posts")
+    posts_dir = os.path.join(docs_dir, "blog")
     os.makedirs(posts_dir, exist_ok=True)
 
     # Create two fake injected files
@@ -158,9 +159,9 @@ def test_cleanup_injected_posts(tmp_path):
 
 
 def test_cleanup_preserves_nonempty_dir(tmp_path):
-    """Cleanup does not remove posts/ if other files remain."""
+    """Cleanup does not remove blog/ if other files remain."""
     docs_dir = os.path.join(tmp_path, "docs")
-    posts_dir = os.path.join(docs_dir, "posts")
+    posts_dir = os.path.join(docs_dir, "blog")
     os.makedirs(posts_dir, exist_ok=True)
 
     injected = os.path.join(posts_dir, "injected.md")
@@ -187,7 +188,7 @@ def test_build_with_posts(tmp_path):
 
     # Post output should exist
     output_dir = os.path.join(project, "docs", "_build")
-    post_html = os.path.join(output_dir, "en", "posts", "hello-world", "index.html")
+    post_html = os.path.join(output_dir, "blog", "hello-world", "index.html")
     assert post_html in written
     assert os.path.isfile(post_html)
 
@@ -203,7 +204,7 @@ def test_build_posts_in_output_path(tmp_path):
     written = build(str(project))
 
     output_dir = os.path.join(project, "docs", "_build")
-    expected = os.path.join(output_dir, "en", "posts", "hello-world", "index.html")
+    expected = os.path.join(output_dir, "blog", "hello-world", "index.html")
     assert expected in written
 
 
@@ -247,14 +248,14 @@ def test_build_posts_draft_excluded_by_default(tmp_path):
 
     output_dir = os.path.join(project, "docs", "_build")
     draft_html = os.path.join(
-        output_dir, "en", "posts", "draft-post", "index.html",
+        output_dir, "blog", "draft-post", "index.html",
     )
     assert draft_html not in written
     assert not os.path.isfile(draft_html)
 
     # Non-draft should still be present
     hello_html = os.path.join(
-        output_dir, "en", "posts", "hello-world", "index.html",
+        output_dir, "blog", "hello-world", "index.html",
     )
     assert hello_html in written
 
@@ -269,7 +270,7 @@ def test_build_posts_draft_included(tmp_path):
 
     output_dir = os.path.join(project, "docs", "_build")
     draft_html = os.path.join(
-        output_dir, "en", "posts", "draft-post", "index.html",
+        output_dir, "blog", "draft-post", "index.html",
     )
     assert draft_html in written
     assert os.path.isfile(draft_html)
@@ -283,7 +284,7 @@ def test_build_posts_cleanup(tmp_path):
 
     # The output must contain the post
     output_dir = os.path.join(project, "docs", "_build")
-    post_html = os.path.join(output_dir, "en", "posts", "hello-world", "index.html")
+    post_html = os.path.join(output_dir, "blog", "hello-world", "index.html")
     assert post_html in written
 
     # But docs/posts/ should have been cleaned up
