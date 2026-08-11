@@ -75,7 +75,7 @@ def test_codeless_init_config_loads(codeless_dir):
     assert config is not None
     assert config["base_url"] == BASE_URL
     assert config["source"] == []
-    assert config["versions"] and config["versions"][0]["indexed"] is True
+    assert config["versions"] and "indexed" not in config["versions"][0]
     assert config["locales"] and config["locales"][0]["code"] == "en"
 
 
@@ -187,7 +187,7 @@ def test_init_emits_loadable_config_for_code_project(code_dir):
 
     raw = _read_config(code_dir)
     assert raw["base_url"] == BASE_URL
-    assert raw["versions"] == [{"version": "2.3.4", "indexed": True}]
+    assert raw["versions"] == [{"version": "2.3.4"}]
     assert raw["locales"] == [
         {"code": "en", "label": "English", "default": True}
     ]

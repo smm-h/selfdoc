@@ -44,7 +44,7 @@ def _make_project(tmp_path, version="1.0.0", root_files=None):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
-        "versions": [{"version": version, "indexed": True}],
+        "versions": [{"version": version}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
     if root_files is not None:

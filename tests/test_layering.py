@@ -153,7 +153,7 @@ def _project_with_post(tmp_path):
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "docs": "docs/",
         "output": "docs/_build/",

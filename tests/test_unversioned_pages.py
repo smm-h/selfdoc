@@ -9,10 +9,9 @@ from selfdoc.build import (
     build,
     build_single,
     _partition_pages,
-    _check_unversioned_collisions,
-    _check_reserved_paths,
+    _check_reserved_page_paths,
 )
-from conftest import default_config, DEFAULT_PREFIX
+from conftest import default_config
 
 
 def _write_md(project_dir, rel_path, content):
@@ -58,7 +57,7 @@ def test_partition_pages_default_versioned(tmp_path):
     _write_md(project_dir, "guide.md", "# Guide\n\nSome guide.\n")
 
     docs_dir = str(project_dir / "docs")
-    versioned, unversioned, uv_md, uv_fm = _partition_pages(
+    versioned, unversioned, uv_md, uv_fm, _site = _partition_pages(
         config, docs_dir, str(project_dir),
     )
 
@@ -78,7 +77,7 @@ def test_partition_pages_with_unversioned(tmp_path):
     )
 
     docs_dir = str(project_dir / "docs")
-    versioned, unversioned, uv_md, uv_fm = _partition_pages(
+    versioned, unversioned, uv_md, uv_fm, _site = _partition_pages(
         config, docs_dir, str(project_dir),
     )
 
@@ -101,7 +100,7 @@ def test_partition_pages_explicit_true(tmp_path):
     )
 
     docs_dir = str(project_dir / "docs")
-    versioned, unversioned, uv_md, uv_fm = _partition_pages(
+    versioned, unversioned, uv_md, uv_fm, _site = _partition_pages(
         config, docs_dir, str(project_dir),
     )
 
@@ -113,7 +112,12 @@ def test_partition_pages_explicit_true(tmp_path):
 
 
 def test_unversioned_page_output_path(tmp_path):
-    """Unversioned page outputs to en/about/, versioned to en/1.0.0/."""
+    """Both the current version and an unversioned page sit at the stable mount.
+
+    With one locale there is no locale segment and the current version
+    carries no version segment, so a single-locale project's pages are at
+    the output root.
+    """
     project_dir, _config = _setup_project(tmp_path)
     _write_md(
         project_dir,
@@ -124,19 +128,17 @@ def test_unversioned_page_output_path(tmp_path):
     written = build(str(project_dir))
     output_dir = str(project_dir / "docs" / "_build")
 
-    # Versioned page at en/1.0.0/index.html
-    versioned_path = os.path.join(output_dir, "en", "1.0.0", "index.html")
-    assert versioned_path in written, f"Expected versioned path {versioned_path} in written"
-    assert os.path.isfile(versioned_path)
+    current_path = os.path.join(output_dir, "index.html")
+    assert current_path in written, f"Expected {current_path} in written"
+    assert os.path.isfile(current_path)
 
-    # Unversioned page at en/about/index.html (no version segment)
-    unversioned_path = os.path.join(output_dir, "en", "about", "index.html")
-    assert unversioned_path in written, f"Expected unversioned path {unversioned_path} in written"
+    unversioned_path = os.path.join(output_dir, "about", "index.html")
+    assert unversioned_path in written, f"Expected {unversioned_path} in written"
     assert os.path.isfile(unversioned_path)
 
 
-def test_versioned_page_not_at_unversioned_path(tmp_path):
-    """Versioned pages do NOT output to en/page/ (only en/1.0.0/page/)."""
+def test_versioned_page_is_not_also_emitted_under_the_archive_prefix(tmp_path):
+    """The only version in the project is the current one: no archive tree."""
     project_dir, _config = _setup_project(tmp_path)
     _write_md(
         project_dir,
@@ -147,63 +149,40 @@ def test_versioned_page_not_at_unversioned_path(tmp_path):
     written = build(str(project_dir))
     output_dir = str(project_dir / "docs" / "_build")
 
-    # Versioned page exists at en/1.0.0/guide/index.html
-    versioned_path = os.path.join(output_dir, "en", "1.0.0", "guide", "index.html")
-    assert versioned_path in written
-
-    # Should NOT exist at en/guide/index.html (that would be an unversioned path)
-    unversioned_path = os.path.join(output_dir, "en", "guide", "index.html")
-    assert unversioned_path not in written
-    assert not os.path.isfile(unversioned_path)
+    stable_path = os.path.join(output_dir, "guide", "index.html")
+    assert stable_path in written
+    assert not os.path.isdir(os.path.join(output_dir, "v"))
 
 
-# --- collision detection tests ---
+# --- reserved page path tests ---
 
 
-def test_collision_error(tmp_path):
-    """Unversioned page in a version-named directory triggers collision error."""
-    unversioned_paths = {"1.0.0/guide.md"}
-    version_strs = ["1.0.0"]
-
-    with pytest.raises(RuntimeError, match="collide"):
-        _check_unversioned_collisions(unversioned_paths, version_strs)
-
-
-def test_no_collision_when_different_dir(tmp_path):
-    """Unversioned pages not in version-named dirs do not collide."""
-    unversioned_paths = {"about.md", "help/faq.md"}
-    version_strs = ["1.0.0"]
-
-    # Should not raise
-    _check_unversioned_collisions(unversioned_paths, version_strs)
+def test_archive_prefix_is_reserved():
+    """A top-level page named `v` would collide with the archive tree."""
+    with pytest.raises(RuntimeError, match="reserved top-level path 'v'"):
+        _check_reserved_page_paths({"v.md"})
+    with pytest.raises(RuntimeError, match="reserved top-level path 'v'"):
+        _check_reserved_page_paths({"v/notes.md"})
 
 
-# --- reserved path tests ---
+def test_posts_prefix_is_reserved():
+    """A top-level page named `blog` would collide with the post tree."""
+    with pytest.raises(RuntimeError, match="reserved top-level path 'blog'"):
+        _check_reserved_page_paths({"blog.md"})
 
 
-def test_reserved_path_collision():
-    """Version string matching posts listing_path triggers reserved path error."""
-    config = {"posts": {"listing_path": "posts"}}
-    version_strs = ["posts"]
-
-    with pytest.raises(RuntimeError, match="reserved URL"):
-        _check_reserved_paths(version_strs, config)
-
-
-def test_reserved_path_no_collision():
-    """Normal version strings do not conflict with posts."""
-    config = {"posts": {"listing_path": "posts"}}
-    version_strs = ["1.0.0", "2.0.0"]
-
-    # Should not raise
-    _check_reserved_paths(version_strs, config)
+def test_ordinary_pages_are_not_reserved():
+    """A version-shaped directory name is fine: versions live under v/."""
+    _check_reserved_page_paths({
+        "about.md", "help/faq.md", "1.0.0/guide.md", "versions.md",
+    })
 
 
 # --- full build edge cases ---
 
 
 def test_all_pages_unversioned(tmp_path):
-    """When ALL pages have 'versioned: false', versioned build returns empty."""
+    """When ALL pages have 'versioned: false', the versioned build is empty."""
     project_dir, _config = _setup_project(tmp_path)
     # Overwrite default index.md to be unversioned
     _write_md(
@@ -215,18 +194,15 @@ def test_all_pages_unversioned(tmp_path):
     written = build(str(project_dir))
     output_dir = str(project_dir / "docs" / "_build")
 
-    # Unversioned page at en/index.html
-    unversioned_index = os.path.join(output_dir, "en", "index.html")
-    assert unversioned_index in written
-
-    # There should be no content at en/1.0.0/index.html (versioned build
-    # returned empty because all pages are unversioned)
-    versioned_index = os.path.join(output_dir, "en", "1.0.0", "index.html")
-    assert versioned_index not in written
+    # The unversioned page is at the stable mount, which for a
+    # single-locale project is the output root.
+    assert os.path.join(output_dir, "index.html") in written
+    # No archive tree: the only version is the current one.
+    assert not os.path.isdir(os.path.join(output_dir, "v"))
 
 
-def test_build_with_no_unversioned_pages_unchanged(tmp_path):
-    """With no unversioned pages, output is identical to pre-Phase-2."""
+def test_no_version_segment_anywhere_for_a_single_version_project(tmp_path):
+    """The current version's pages carry no version segment at all."""
     project_dir, _config = _setup_project(tmp_path)
     _write_md(
         project_dir,
@@ -237,23 +213,14 @@ def test_build_with_no_unversioned_pages_unchanged(tmp_path):
     written = build(str(project_dir))
     output_dir = str(project_dir / "docs" / "_build")
 
-    # All pages at en/1.0.0/
-    versioned_index = os.path.join(output_dir, "en", "1.0.0", "index.html")
-    versioned_guide = os.path.join(output_dir, "en", "1.0.0", "guide", "index.html")
-    assert versioned_index in written
-    assert versioned_guide in written
+    assert os.path.join(output_dir, "index.html") in written
+    assert os.path.join(output_dir, "guide", "index.html") in written
 
-    # No unversioned outputs (no en/<page> without version segment,
-    # except shared assets like style.css and the root redirect)
-    html_paths = [p for p in written if p.endswith(".html")]
-    for p in html_paths:
-        rel = os.path.relpath(p, output_dir)
+    for path in (p for p in written if p.endswith(".html")):
+        rel = os.path.relpath(path, output_dir)
         parts = rel.split(os.sep)
-        # Every HTML page should be under en/1.0.0/ or be a root redirect
-        if parts[0] == "en" and len(parts) > 1:
-            assert parts[1] == "1.0.0" or rel == os.path.join("en", "index.html"), (
-                f"Unexpected HTML at non-versioned path: {rel}"
-            )
+        assert "1.0.0" not in parts, f"version segment in {rel}"
+        assert "en" not in parts, f"locale segment in {rel}"
 
 
 # --- build_single page_filter tests ---

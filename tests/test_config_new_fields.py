@@ -51,13 +51,12 @@ def test_all_new_fields_absent(config_dir):
 def test_versions_valid(config_dir):
     """Config with valid versions list loads correctly."""
     _write_config(config_dir, _cfg(versions=[
-        {"version": "1.0", "indexed": True},
-        {"version": "2.0", "indexed": False, "projects": {"core": "2.0.1"}},
+        {"version": "1.0"},
+        {"version": "2.0", "projects": {"core": "2.0.1"}},
     ]))
     cfg = load_config(str(config_dir))
     assert len(cfg["versions"]) == 2
     assert cfg["versions"][0]["version"] == "1.0"
-    assert cfg["versions"][0]["indexed"] is True
     assert cfg["versions"][1]["projects"]["core"] == "2.0.1"
 
 
@@ -67,26 +66,27 @@ def test_versions_valid(config_dir):
 def test_versions_duplicate_version_strings(config_dir):
     """Duplicate version strings raise ConfigError."""
     _write_config(config_dir, _cfg(versions=[
-        {"version": "1.0", "indexed": True},
-        {"version": "1.0", "indexed": False},
+        {"version": "1.0"},
+        {"version": "1.0"},
     ]))
     with pytest.raises(ConfigError, match="duplicate version string '1.0'"):
         load_config(str(config_dir))
 
 
-def test_versions_entry_missing_indexed(config_dir):
-    """Version entry missing 'indexed' raises ConfigError."""
+def test_versions_entry_rejects_indexed(config_dir):
+    """The per-version 'indexed' flag is gone: whether a version is an archive
+    subsumes it, so declaring the key is a hard error rather than a no-op."""
     _write_config(config_dir, _cfg(versions=[
-        {"version": "1.0"},
+        {"version": "1.0", "indexed": True},
     ]))
-    with pytest.raises(ConfigError, match="versions\\[0\\].indexed.*required"):
+    with pytest.raises(ConfigError, match="indexed"):
         load_config(str(config_dir))
 
 
 def test_versions_entry_missing_version(config_dir):
     """Version entry missing 'version' raises ConfigError."""
     _write_config(config_dir, _cfg(versions=[
-        {"indexed": True},
+        {"projects": {"core": "1.0"}},
     ]))
     with pytest.raises(ConfigError, match="versions\\[0\\].version.*required"):
         load_config(str(config_dir))
@@ -95,7 +95,7 @@ def test_versions_entry_missing_version(config_dir):
 def test_versions_entry_unknown_key(config_dir):
     """Unknown key in version entry is rejected (strict_keys)."""
     _write_config(config_dir, _cfg(versions=[
-        {"version": "1.0", "indexed": True, "bogus": "val"},
+        {"version": "1.0", "bogus": "val"},
     ]))
     with pytest.raises(ConfigError, match="invalid.*key 'bogus'"):
         load_config(str(config_dir))

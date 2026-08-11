@@ -514,12 +514,10 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
         "versions": [
             {
                 "version": "1.0.0",
-                "indexed": True,
                 "projects": {"core": "1.0.0"},
             },
             {
                 "version": "2.0.0",
-                "indexed": True,
             },
         ],
         "locales": [{"code": "en", "label": "English", "default": True}],

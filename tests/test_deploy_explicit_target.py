@@ -87,7 +87,7 @@ def test_cli_deploy_passes_an_explicit_target(tmp_path, monkeypatch):
         "output": "docs/_build/",
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "deploy": {"provider": "github-pages"},
     }), encoding="utf-8")

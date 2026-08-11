@@ -6039,7 +6039,7 @@ def test_build_missing_locales_raises(tmp_path):
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -6418,8 +6418,8 @@ def test_redirect_multiple_locales_versions(tmp_path):
         docs="docs/",
         output="docs/_build/",
         versions=[
-            {"version": "0.9.0", "indexed": True},
-            {"version": "1.0.0", "indexed": True},
+            {"version": "0.9.0"},
+            {"version": "1.0.0"},
         ],
         locales=[
             {"code": "en", "label": "English", "default": True},

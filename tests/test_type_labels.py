@@ -17,8 +17,8 @@ def _render_old_version_page(page_type=None):
         is_latest=False,
         current_version="0.9.0",
         available_versions=[
-            {"version": "0.9.0", "indexed": True},
-            {"version": "1.0.0", "indexed": True},
+            {"version": "0.9.0"},
+            {"version": "1.0.0"},
         ],
         mount_locale="en",
         mount_version="0.9.0",
@@ -78,7 +78,7 @@ class TestVersionBannerSuppression:
             page_type="guide",
             is_latest=True,
             current_version="1.0.0",
-            available_versions=[{"version": "1.0.0", "indexed": True}],
+            available_versions=[{"version": "1.0.0"}],
         )
         assert "version-banner" not in html
 

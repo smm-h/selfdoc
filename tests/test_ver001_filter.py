@@ -39,8 +39,8 @@ def _make_multiversion_project(tmp_path):
         "base_url": "https://example.com",
         "version": "0.2.0",
         "versions": [
-            {"version": "0.1.0", "indexed": True},
-            {"version": "0.2.0", "indexed": True},
+            {"version": "0.1.0"},
+            {"version": "0.2.0"},
         ],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }

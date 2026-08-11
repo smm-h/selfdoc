@@ -24,7 +24,7 @@ def _minimal_config(docs="docs/", output="site/", **extra):
         "output": output,
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
     cfg.update(extra)
@@ -126,7 +126,7 @@ def test_constituent_posts_injected(
     mock_inject.side_effect = fake_inject
 
     # Mock _partition_pages to return empty partitions
-    mock_partition.return_value = (set(), set(), {}, {})
+    mock_partition.return_value = (set(), set(), {}, {}, set())
 
     # Mock body to return empty dict
     mock_body.return_value = {}
@@ -202,7 +202,7 @@ def test_constituent_posts_cleaned_up(
         return [os.path.join(ds_docs, "posts", "main.md")]
 
     mock_inject.side_effect = fake_inject
-    mock_partition.return_value = (set(), set(), {}, {})
+    mock_partition.return_value = (set(), set(), {}, {}, set())
     mock_body.return_value = {}
 
     build_unified(str(docs_site), config=config)
@@ -245,10 +245,10 @@ def test_unified_cleanup_on_build_failure(
     ds_docs = os.path.join(str(docs_site), "docs")
 
     def fake_inject(dir_path, cfg, docs_dir, include_drafts):
-        return [os.path.join(ds_docs, "posts", "post.md")]
+        return [os.path.join(ds_docs, "blog", "post.md")]
 
     mock_inject.side_effect = fake_inject
-    mock_partition.return_value = (set(), set(), {}, {})
+    mock_partition.return_value = (set(), set(), {}, {}, set())
 
     # Make the build body raise
     mock_body.side_effect = RuntimeError("Build failed!")
@@ -259,7 +259,7 @@ def test_unified_cleanup_on_build_failure(
     # Cleanup MUST still be called despite the exception
     assert mock_cleanup.call_count == 1
     cleanup_files, cleanup_dir = mock_cleanup.call_args[0]
-    assert cleanup_files == [os.path.join(ds_docs, "posts", "post.md")]
+    assert cleanup_files == [os.path.join(ds_docs, "blog", "post.md")]
     assert os.path.normpath(cleanup_dir) == os.path.normpath(ds_docs)
 
 
@@ -267,10 +267,9 @@ def test_unified_cleanup_on_build_failure(
 @patch("selfdoc_core.build._cleanup_injected_posts")
 @patch("selfdoc_core.build._inject_posts_into_docs")
 @patch("selfdoc_core.build._partition_pages")
-@patch("selfdoc_core.build._check_unversioned_collisions")
-@patch("selfdoc_core.build._check_reserved_paths")
+@patch("selfdoc_core.build._check_reserved_page_paths")
 def test_build_cleanup_on_failure(
-    mock_reserved, mock_collisions, mock_partition, mock_inject,
+    mock_reserved, mock_partition, mock_inject,
     mock_cleanup, mock_body, tmp_path,
 ):
     """build() cleans up injected posts even when _build_body raises."""
@@ -291,10 +290,10 @@ def test_build_cleanup_on_failure(
     latest_docs = os.path.join(str(project), "docs")
 
     def fake_inject(dir_path, cfg, docs_dir, include_drafts):
-        return [os.path.join(latest_docs, "posts", "post.md")]
+        return [os.path.join(latest_docs, "blog", "post.md")]
 
     mock_inject.side_effect = fake_inject
-    mock_partition.return_value = (set(), set(), {}, {})
+    mock_partition.return_value = (set(), set(), {}, {}, set())
     mock_body.side_effect = RuntimeError("Build exploded!")
 
     with pytest.raises(RuntimeError, match="Build exploded!"):
@@ -303,17 +302,16 @@ def test_build_cleanup_on_failure(
     # Cleanup MUST still be called
     assert mock_cleanup.call_count == 1
     cleanup_files, cleanup_dir = mock_cleanup.call_args[0]
-    assert cleanup_files == [os.path.join(latest_docs, "posts", "post.md")]
+    assert cleanup_files == [os.path.join(latest_docs, "blog", "post.md")]
 
 
 @patch("selfdoc_core.build._build_body")
 @patch("selfdoc_core.build._cleanup_injected_posts")
 @patch("selfdoc_core.build._inject_posts_into_docs")
 @patch("selfdoc_core.build._partition_pages")
-@patch("selfdoc_core.build._check_unversioned_collisions")
-@patch("selfdoc_core.build._check_reserved_paths")
+@patch("selfdoc_core.build._check_reserved_page_paths")
 def test_build_cleanup_on_success(
-    mock_reserved, mock_collisions, mock_partition, mock_inject,
+    mock_reserved, mock_partition, mock_inject,
     mock_cleanup, mock_body, tmp_path,
 ):
     """build() cleans up injected posts on successful build too."""
@@ -334,10 +332,10 @@ def test_build_cleanup_on_success(
     latest_docs = os.path.join(str(project), "docs")
 
     def fake_inject(dir_path, cfg, docs_dir, include_drafts):
-        return [os.path.join(latest_docs, "posts", "post.md")]
+        return [os.path.join(latest_docs, "blog", "post.md")]
 
     mock_inject.side_effect = fake_inject
-    mock_partition.return_value = (set(), set(), {}, {})
+    mock_partition.return_value = (set(), set(), {}, {}, set())
     mock_body.return_value = {"some_file": True}
 
     result = build(str(project), config=config)
@@ -371,7 +369,7 @@ def test_unified_no_cleanup_when_no_injected_files(
 
     # No posts injected anywhere
     mock_inject.return_value = []
-    mock_partition.return_value = (set(), set(), {}, {})
+    mock_partition.return_value = (set(), set(), {}, {}, set())
     mock_body.return_value = {}
 
     build_unified(str(docs_site), config=config)

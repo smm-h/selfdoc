@@ -15,7 +15,7 @@ def _setup_project(tmp_path, config_overrides=None):
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "output": "docs/_build/",
         "docs": "docs/",

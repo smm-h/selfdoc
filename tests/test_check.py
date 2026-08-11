@@ -2867,8 +2867,8 @@ class TestVersionConsistencyLints:
             "base_url": "https://example.com",
             "version": "2.0.0",
             "versions": [
-                {"version": "1.0.0", "indexed": True},
-                {"version": "1.5.0", "indexed": True},
+                {"version": "1.0.0"},
+                {"version": "1.5.0"},
             ],
         }
         # Make detected version match config to avoid VER002
@@ -2890,8 +2890,8 @@ class TestVersionConsistencyLints:
             "base_url": "https://example.com",
             "version": "2.0.0",
             "versions": [
-                {"version": "1.0.0", "indexed": True},
-                {"version": "2.0.0", "indexed": True},
+                {"version": "1.0.0"},
+                {"version": "2.0.0"},
             ],
         }
         self._make_project(tmp_path, config, pyproject_version="2.0.0")

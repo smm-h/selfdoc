@@ -223,7 +223,7 @@ def _setup_project(tmp_path, config_overrides=None):
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "assembly": {"repo": "owner/assembly", "pages_project": "site"},
         "topology": {"slug": "myproject", "docs_base": "https://docs.example.com"},
@@ -292,7 +292,7 @@ def test_dispatch_payload_carries_the_resolved_ref(tmp_path, monkeypatch):
 def test_dispatch_refuses_when_the_version_is_undeclared(tmp_path, monkeypatch, capsys):
     _setup_project(tmp_path, {
         "version": "1.0.0",
-        "versions": [{"version": "0.1.0", "indexed": True}],
+        "versions": [{"version": "0.1.0"}],
     })
     monkeypatch.chdir(tmp_path)
     fake_run, _calls = _fake_run_factory(["v1.0.0"])

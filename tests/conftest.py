@@ -98,7 +98,7 @@ def default_config(**overrides):
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
     config.update(overrides)
@@ -162,7 +162,7 @@ def make_versioned_project(tmp_path):
 
         # --- base config ---
         versions_config = [
-            {"version": v, "indexed": True} for v in versions
+            {"version": v} for v in versions
         ]
         locales_config = [
             {"code": "en", "label": "English", "default": True},
@@ -232,7 +232,7 @@ def make_localized_project(tmp_path):
             "base_url": "https://example.com",
             "version": "1.0.0",
             "locales": locales,
-            "versions": [{"version": "1.0.0", "indexed": True}],
+            "versions": [{"version": "1.0.0"}],
         }
         config.update(overrides)
 
@@ -314,7 +314,7 @@ def make_unified_project(tmp_path):
             "base_url": "https://example.com",
             "unified": {"projects": unified_entries},
             "version": "1.0.0",
-            "versions": [{"version": "1.0.0", "indexed": True}],
+            "versions": [{"version": "1.0.0"}],
             "locales": [
                 {"code": "en", "label": "English", "default": True},
             ],

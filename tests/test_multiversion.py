@@ -132,51 +132,49 @@ class TestMultiVersionBuild:
         assert "*" in content
 
 
-class TestNonIndexedVersion:
-    """Tests for versions with indexed: false."""
+class TestArchivedVersion:
+    """A superseded version is an archive: no noindex, and out of the sitemap.
+
+    The per-version ``indexed`` flag is gone.  Whether a version is an
+    archive answers the same question, and an archive carries a canonical
+    pointing at the stable address -- never a canonical *and* a noindex,
+    which would ask a crawler to both follow the canonical and drop the
+    page it points from.
+    """
 
     @staticmethod
-    def _build_with_indexed_config(make_versioned_project):
-        """Helper: create a project where v0.1.0 is not indexed."""
-        # Create the versioned project with standard tags
+    def _build(make_versioned_project):
         project_dir = make_versioned_project(["0.1.0", "0.2.0"])
-        # Overwrite selfdoc.json to set indexed: false on v0.1.0
-        config_path = os.path.join(str(project_dir), "selfdoc.json")
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        config["versions"] = [
-            {"version": "0.1.0", "indexed": False},
-            {"version": "0.2.0", "indexed": True},
-        ]
-        with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f)
         build(str(project_dir))
         return project_dir
 
-    def test_noindex_meta_tag(self, make_versioned_project):
-        """Non-indexed version pages should have noindex meta tag."""
-        project_dir = self._build_with_indexed_config(make_versioned_project)
+    def test_archive_has_no_noindex(self, make_versioned_project):
+        """An archived page is canonicalized away, never noindexed."""
+        project_dir = self._build(make_versioned_project)
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        old_html = _read_html(output_dir, "en/0.1.0/index.html")
-        assert 'content="noindex, nofollow"' in old_html
+        old_html = _read_html(output_dir, "v/0.1.0/index.html")
+        assert "noindex" not in old_html
 
-    def test_indexed_version_no_noindex(self, make_versioned_project):
-        """Indexed version pages should NOT have noindex meta tag."""
-        project_dir = self._build_with_indexed_config(make_versioned_project)
+    def test_archive_canonical_is_the_stable_address(self, make_versioned_project):
+        project_dir = self._build(make_versioned_project)
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        latest_html = _read_html(output_dir, "en/0.2.0/index.html")
-        assert 'content="noindex, nofollow"' not in latest_html
+        old_html = _read_html(output_dir, "v/0.1.0/index.html")
+        current_html = _read_html(output_dir, "index.html")
+        canonical = re.search(
+            r'<link rel="canonical" href="([^"]*)">', old_html,
+        )
+        assert canonical, old_html[:400]
+        assert canonical.group(1).endswith("/")
+        assert "/v/0.1.0/" not in canonical.group(1)
+        assert canonical.group(1) in current_html
 
-    def test_sitemap_excludes_non_indexed(self, make_versioned_project):
-        """Sitemap should only contain pages from indexed versions."""
-        project_dir = self._build_with_indexed_config(make_versioned_project)
+    def test_sitemap_lists_only_stable_addresses(self, make_versioned_project):
+        project_dir = self._build(make_versioned_project)
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        sitemap_path = os.path.join(output_dir, "sitemap.xml")
-        assert os.path.isfile(sitemap_path)
-        with open(sitemap_path, "r", encoding="utf-8") as f:
+        with open(os.path.join(output_dir, "sitemap.xml"), encoding="utf-8") as f:
             sitemap = f.read()
-        assert "en/0.1.0" not in sitemap
-        assert "en/0.2.0" in sitemap
+        assert "/v/0.1.0" not in sitemap
+        assert "<loc>" in sitemap
 
 
 class TestVersionFilter:
@@ -334,21 +332,9 @@ class TestCheckValidatesAllVersions:
         )
 
 
-def test_sitemap_excludes_non_indexed_version(make_versioned_project):
-    """Sitemap should exclude pages from non-indexed versions."""
+def test_sitemap_excludes_archived_versions(make_versioned_project):
+    """The sitemap lists stable addresses only; archives canonicalize away."""
     project_dir = make_versioned_project(["0.1.0", "0.2.0"])
-
-    # Overwrite config to set indexed: false on v0.1.0
-    config_path = os.path.join(str(project_dir), "selfdoc.json")
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-    config["versions"] = [
-        {"version": "0.1.0", "indexed": False},
-        {"version": "0.2.0", "indexed": True},
-    ]
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-
     build(str(project_dir))
 
     output_dir = os.path.join(str(project_dir), "docs", "_build")
@@ -357,7 +343,8 @@ def test_sitemap_excludes_non_indexed_version(make_versioned_project):
     with open(sitemap_path, "r", encoding="utf-8") as f:
         sitemap = f.read()
 
-    # Pages from the indexed version ARE in the sitemap
-    assert "en/0.2.0" in sitemap
-    # Pages from the non-indexed version are NOT in the sitemap
-    assert "en/0.1.0" not in sitemap
+    # The current version is listed at its stable, version-free address.
+    assert "<loc>" in sitemap
+    assert "/0.2.0/" not in sitemap
+    # The archived version is not listed at all.
+    assert "/v/0.1.0" not in sitemap

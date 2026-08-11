@@ -60,7 +60,7 @@ def test_emitted_drift001_lint_carries_the_hint(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
-        "versions": [{"version": "1.0.0", "indexed": True}],
+        "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }), encoding="utf-8")
     (proj / "docs" / "index.md").write_text(
