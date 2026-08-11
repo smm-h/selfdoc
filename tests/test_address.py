@@ -24,7 +24,7 @@ import subprocess
 
 import pytest
 
-from selfdoc_core.address import PageAddress, page_address
+from selfdoc_core.address import PageAddress, locale_segment, page_address
 from selfdoc.build import build
 from selfblog.unified import build_unified
 
@@ -35,31 +35,65 @@ from selfblog.unified import build_unified
 class TestPageAddress:
     """The addressing authority itself."""
 
-    def test_root_page_versioned(self):
+    def test_current_version_has_no_version_segment(self):
         addr = page_address("index.html", locale="en", version="1.0.0")
-        assert addr.output_key == "en/1.0.0/index.html"
-        assert addr.pinned == "en/1.0.0/"
+        assert addr.output_key == "en/index.html"
         assert addr.stable == "en/"
-        assert addr.depth == 2
-        assert addr.to_site_root == "../../"
+        assert addr.pinned == "en/v/1.0.0/"
+        assert addr.url == "en/"
+        assert addr.depth == 1
+        assert addr.to_site_root == "../"
         assert addr.to_mount_root == ""
 
-    def test_nested_page_versioned(self):
-        addr = page_address("guide/index.html", locale="en", version="1.0.0")
-        assert addr.output_key == "en/1.0.0/guide/index.html"
-        assert addr.pinned == "en/1.0.0/guide/"
-        assert addr.stable == "en/guide/"
+    def test_archived_version_sits_under_the_archive_prefix(self):
+        addr = page_address(
+            "index.html", locale="en", version="1.0.0", archived=True,
+        )
+        assert addr.output_key == "en/v/1.0.0/index.html"
+        assert addr.stable == "en/"
+        assert addr.pinned == "en/v/1.0.0/"
+        assert addr.url == addr.pinned
         assert addr.depth == 3
         assert addr.to_site_root == "../../../"
+        assert addr.to_mount_root == ""
+
+    def test_no_locale_segment_when_the_site_has_one_locale(self):
+        """The caller drops the locale via locale_segment; addressing obeys."""
+        addr = page_address("guide/index.html", version="1.0.0")
+        assert addr.output_key == "guide/index.html"
+        assert addr.stable == "guide/"
+        assert addr.pinned == "v/1.0.0/guide/"
+        assert addr.depth == 1
+
+    def test_nested_page_current_version(self):
+        addr = page_address("guide/index.html", locale="en", version="1.0.0")
+        assert addr.output_key == "en/guide/index.html"
+        assert addr.stable == "en/guide/"
+        assert addr.depth == 2
+        assert addr.to_site_root == "../../"
         assert addr.to_mount_root == "../"
+
+    def test_nested_page_archived(self):
+        addr = page_address(
+            "guide/index.html", locale="en", version="1.0.0", archived=True,
+        )
+        assert addr.output_key == "en/v/1.0.0/guide/index.html"
+        assert addr.pinned == "en/v/1.0.0/guide/"
+        assert addr.stable == "en/guide/"
+        assert addr.depth == 4
+        assert addr.to_site_root == "../../../../"
+        assert addr.to_mount_root == "../"
+        # Two levels further out than to_mount_root: over v/<version>/.
+        assert addr.to_stable_mount_root == "../../../"
 
     def test_deeply_nested_page(self):
         addr = page_address(
             "reference/deep/notes/index.html", locale="fa", version="0.2.0",
+            archived=True,
         )
-        assert addr.output_key == "fa/0.2.0/reference/deep/notes/index.html"
-        assert addr.depth == 5
-        assert addr.to_site_root == "../../../../../"
+        assert addr.output_key == "fa/v/0.2.0/reference/deep/notes/index.html"
+        assert addr.depth == 6
+        assert addr.to_site_root == "../../../../../../"
         assert addr.to_mount_root == "../../../"
 
     def test_unversioned_page_keeps_locale(self):
@@ -72,31 +106,42 @@ class TestPageAddress:
         assert addr.to_mount_root == "../"
 
     def test_no_mount_at_all(self):
-        addr = page_address("posts/hello/index.html")
-        assert addr.output_key == "posts/hello/index.html"
-        assert addr.pinned == "posts/hello/"
-        assert addr.stable == "posts/hello/"
+        addr = page_address("blog/hello/index.html")
+        assert addr.output_key == "blog/hello/index.html"
+        assert addr.pinned == "blog/hello/"
+        assert addr.stable == "blog/hello/"
         assert addr.depth == 2
         assert addr.to_site_root == "../../"
         assert addr.to_mount_root == "../../"
 
     def test_mount(self):
-        assert page_address("index.html", locale="en", version="1.0").mount == "en/1.0"
+        assert page_address("index.html", locale="en", version="1.0").mount == "en"
+        assert page_address(
+            "index.html", locale="en", version="1.0", archived=True,
+        ).mount == "en/v/1.0"
         assert page_address("index.html", locale="en").mount == "en"
         assert page_address("index.html").mount == ""
 
     def test_unified_project_mount(self):
-        """A unified site mounts each constituent at <locale>/<slug>/<version>."""
+        """A unified site mounts each constituent at <locale>/<slug>/."""
         addr = page_address(
             "guide/index.html", locale="en", project="core", version="1.0.0",
         )
-        assert addr.mount == "en/core/1.0.0"
-        assert addr.output_key == "en/core/1.0.0/guide/index.html"
-        assert addr.pinned == "en/core/1.0.0/guide/"
+        assert addr.mount == "en/core"
+        assert addr.output_key == "en/core/guide/index.html"
         assert addr.stable == "en/core/guide/"
-        assert addr.depth == 4
-        assert addr.to_site_root == "../../../../"
+        assert addr.pinned == "en/core/v/1.0.0/guide/"
+        assert addr.depth == 3
+        assert addr.to_site_root == "../../../"
         assert addr.to_mount_root == "../"
+
+    def test_unified_project_archived(self):
+        addr = page_address(
+            "guide/index.html", locale="en", project="core", version="1.0.0",
+            archived=True,
+        )
+        assert addr.output_key == "en/core/v/1.0.0/guide/index.html"
+        assert addr.stable == "en/core/guide/"
 
     def test_unified_project_unversioned(self):
         addr = page_address("about/index.html", locale="en", project="core")
@@ -104,18 +149,23 @@ class TestPageAddress:
         assert addr.pinned == "en/core/about/"
         assert addr.stable == "en/core/about/"
 
-    def test_rejects_project_without_locale(self):
-        with pytest.raises(ValueError):
-            page_address("index.html", project="core")
+    def test_project_without_locale_is_a_single_locale_unified_site(self):
+        """With one locale the segment is gone, project or no project."""
+        addr = page_address("index.html", project="core")
+        assert addr.output_key == "core/index.html"
+        assert addr.stable == "core/"
 
     def test_site_root_hop_reaches_the_output_root(self):
         """to_site_root resolves the output key's directory back to "."."""
         for page in ("index.html", "guide/index.html", "a/b/c/index.html"):
-            addr = page_address(page, locale="en", version="1.0.0")
-            here = posixpath.dirname(addr.output_key)
-            assert posixpath.normpath(
-                posixpath.join(here, addr.to_site_root or "."),
-            ) == "."
+            for archived in (False, True):
+                addr = page_address(
+                    page, locale="en", version="1.0.0", archived=archived,
+                )
+                here = posixpath.dirname(addr.output_key)
+                assert posixpath.normpath(
+                    posixpath.join(here, addr.to_site_root or "."),
+                ) == "."
 
     def test_mount_root_hop_reaches_the_mount_root(self):
         for page in ("index.html", "guide/index.html", "a/b/c/index.html"):
@@ -123,7 +173,25 @@ class TestPageAddress:
             here = posixpath.dirname(addr.output_key)
             assert posixpath.normpath(
                 posixpath.join(here, addr.to_mount_root or "."),
-            ) == "en/1.0.0"
+            ) == "en"
+            archived = page_address(
+                page, locale="en", version="1.0.0", archived=True,
+            )
+            here = posixpath.dirname(archived.output_key)
+            assert posixpath.normpath(
+                posixpath.join(here, archived.to_mount_root or "."),
+            ) == "en/v/1.0.0"
+
+    def test_stable_mount_hop_reaches_the_stable_mount(self):
+        """From an archive page, the hop lands on the current version's mount."""
+        for page in ("index.html", "guide/index.html", "a/b/c/index.html"):
+            addr = page_address(
+                page, locale="en", version="1.0.0", archived=True,
+            )
+            here = posixpath.dirname(addr.output_key)
+            assert posixpath.normpath(
+                posixpath.join(here, addr.to_stable_mount_root or "."),
+            ) == "en"
 
     def test_is_frozen(self):
         addr = page_address("index.html", locale="en", version="1.0.0")
@@ -139,10 +207,37 @@ class TestPageAddress:
         with pytest.raises(ValueError):
             page_address("", locale="en", version="1.0.0")
 
-    def test_rejects_version_without_locale(self):
-        """A version segment with no locale is not an address this site emits."""
-        with pytest.raises(ValueError):
-            page_address("index.html", locale="", version="1.0.0")
+    def test_rejects_the_reserved_archive_segment(self):
+        """A top-level page named `v` would collide with the archive tree."""
+        with pytest.raises(ValueError, match="reserved segment"):
+            page_address("v/index.html", locale="en", version="1.0.0")
+
+    def test_rejects_archived_without_a_version(self):
+        with pytest.raises(ValueError, match="needs a version"):
+            page_address("index.html", locale="en", archived=True)
+
+    def test_a_bare_version_needs_no_locale(self):
+        """A single-locale site's archive is v/<version>/, locale-free."""
+        addr = page_address("index.html", version="1.0.0", archived=True)
+        assert addr.output_key == "v/1.0.0/index.html"
+
+
+class TestLocaleSegment:
+    """The one place that decides whether a mount carries a locale."""
+
+    ONE = [{"code": "en", "label": "English", "default": True}]
+    TWO = ONE + [{"code": "fa", "label": "Persian"}]
+
+    def test_single_locale_drops_the_segment(self):
+        assert locale_segment("en", self.ONE) == ""
+
+    def test_multi_locale_keeps_the_segment(self):
+        assert locale_segment("en", self.TWO) == "en"
+        assert locale_segment("fa", self.TWO) == "fa"
+
+    def test_no_locales_configured_drops_the_segment(self):
+        assert locale_segment("en", []) == ""
+        assert locale_segment("en", None) == ""
 
 
 # --- Whole-tree link walker --------------------------------------------
@@ -342,17 +437,23 @@ def test_multi_locale_with_unversioned_page_builds_every_page(tmp_path):
     )
     build(str(project))
     emitted = _emitted_files(os.path.join(str(project), "docs", "_build"))
+    pages = (
+        "index.html",
+        "guide/index.html",
+        "reference/api/index.html",
+        "reference/deep/notes/index.html",
+    )
     for locale in ("en", "fa"):
-        for version in ("0.1.0", "0.2.0"):
-            for page in (
-                "index.html",
-                "guide/index.html",
-                "reference/api/index.html",
-                "reference/deep/notes/index.html",
-            ):
-                assert f"{locale}/{version}/{page}" in emitted
-            assert f"{locale}/{version}/about/index.html" not in emitted
+        # The current version at the stable mount, 0.1.0 under the archive
+        # prefix beside it.
+        for mount in (locale, f"{locale}/v/0.1.0"):
+            for page in pages:
+                assert f"{mount}/{page}" in emitted
+        assert f"{locale}/v/0.2.0" not in " ".join(sorted(emitted))
+        # The unversioned page is built once per locale, at the stable
+        # mount, and never inside an archive.
         assert f"{locale}/about/index.html" in emitted
+        assert f"{locale}/v/0.1.0/about/index.html" not in emitted
 
 
 def test_a_build_that_produces_no_content_pages_is_a_hard_error(
@@ -374,7 +475,10 @@ def test_a_build_that_produces_no_content_pages_is_a_hard_error(
     def _locale_blind_partition(config, docs_dir, dir_path):
         # Paths that carry the locale segment: no per-locale build can
         # match them, so every filtered build yields nothing.
-        return ({"en/index.md"}, {"en/about.md"}, {"en/about.md": "# About"}, {})
+        return (
+            {"en/index.md"}, {"en/about.md"}, {"en/about.md": "# About"}, {},
+            set(),
+        )
 
     monkeypatch.setattr(build_mod, "_partition_pages", _locale_blind_partition)
 
@@ -440,3 +544,282 @@ def test_search_index_paths_are_site_relative(tmp_path):
         assert not path.startswith("/"), entry
         target = posixpath.normpath(posixpath.join(path, "index.html"))
         assert target in emitted, f"search entry {entry['path']} -> {target}"
+
+
+# --- The scheme itself, over a built tree ------------------------------
+
+
+def _canonical_of(html):
+    """The single rel=canonical URL a page declares."""
+    found = re.findall(r'<link rel="canonical" href="([^"]*)">', html)
+    assert len(found) == 1, f"expected one canonical, got {found}"
+    return found[0]
+
+
+def _read(output_dir, rel):
+    with open(os.path.join(output_dir, rel), encoding="utf-8") as f:
+        return f.read()
+
+
+@pytest.mark.parametrize(
+    "config_extra, name",
+    [(ORIGIN_ROOT_CONFIG, "origin"), (SLUG_PREFIX_CONFIG, "slug")],
+)
+def test_two_versions_emit_the_stable_tree_plus_one_archive(
+    tmp_path, config_extra, name,
+):
+    """The current version at the stable address, the older one under v/.
+
+    The emitted tree is the same under either mount: a documentation site
+    has to work at whatever path it is served from.
+    """
+    project = _make_fixture(tmp_path / name, config_extra)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+    emitted = _emitted_files(output_dir)
+    pages = (
+        "index.html",
+        "guide/index.html",
+        "reference/api/index.html",
+        "reference/deep/notes/index.html",
+    )
+    for page in pages:
+        assert page in emitted, f"{page} missing from the stable tree"
+        assert f"v/0.1.0/{page}" in emitted, f"{page} missing from the archive"
+    # The current version has no archive tree of its own.
+    assert not any(p.startswith("v/0.2.0/") for p in emitted)
+    # And the unversioned page is emitted once, at the stable mount.
+    assert "about/index.html" in emitted
+    assert "v/0.1.0/about/index.html" not in emitted
+
+
+def test_no_locale_segment_in_single_locale_output(tmp_path):
+    """One locale means no locale segment anywhere -- paths or links."""
+    project = _make_fixture(tmp_path / "single", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+    for rel in _emitted_files(output_dir):
+        assert "en/" not in rel, f"locale segment in output path {rel}"
+    home = _read(output_dir, "index.html")
+    assert "/en/" not in home
+    assert 'hreflang' not in home
+
+
+def test_multi_locale_keeps_the_locale_segment(tmp_path):
+    """Two locales: the segment is back, and it leads both trees."""
+    project = _make_fixture(
+        tmp_path / "ml-scheme", ORIGIN_ROOT_CONFIG, locale_codes=("en", "fa"),
+    )
+    build(str(project))
+    emitted = _emitted_files(os.path.join(str(project), "docs", "_build"))
+    assert "en/guide/index.html" in emitted
+    assert "fa/guide/index.html" in emitted
+    assert "en/v/0.1.0/guide/index.html" in emitted
+    assert "fa/v/0.1.0/guide/index.html" in emitted
+
+
+def test_archives_carry_the_stable_canonical_and_no_index_directive(tmp_path):
+    """An archive is canonicalized away, never noindexed.
+
+    A page carrying both a canonical and a noindex tells a crawler to
+    follow the canonical and to drop the page it points from, so the
+    directive can be attributed to the canonical target.  Archives carry
+    the canonical alone.
+    """
+    project = _make_fixture(tmp_path / "canon", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    for page in ("index.html", "guide/index.html"):
+        current = _read(output_dir, page)
+        archived = _read(output_dir, f"v/0.1.0/{page}")
+        assert _canonical_of(archived) == _canonical_of(current)
+        assert "/v/0.1.0/" not in _canonical_of(archived)
+        assert "noindex" not in archived
+        assert "noindex" not in current
+
+
+def test_sitemap_lists_stable_addresses_only(tmp_path):
+    """Archives are canonicalized away, so the sitemap does not list them."""
+    project = _make_fixture(tmp_path / "sitemap", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+    sitemap = _read(output_dir, "sitemap.xml")
+    locs = re.findall(r"<loc>([^<]*)</loc>", sitemap)
+    assert locs
+    for loc in locs:
+        assert "/v/" not in loc, f"archive address in the sitemap: {loc}"
+    assert "https://example.com/guide/" in locs
+    # Every listed address is a page this build wrote.
+    emitted = _emitted_files(output_dir)
+    for loc in locs:
+        rel = loc[len("https://example.com/"):] or ""
+        assert posixpath.normpath(posixpath.join(rel, "index.html")) in emitted
+
+
+def test_feed_links_stable_addresses(tmp_path):
+    project = _make_fixture(tmp_path / "feed", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    feed = _read(os.path.join(str(project), "docs", "_build"), "feed.xml")
+    for link in re.findall(r'<link href="([^"]*)"', feed):
+        assert "/v/" not in link, f"archive address in the feed: {link}"
+
+
+def test_version_picker_links_are_server_side_and_resolve(tmp_path):
+    """Every option carries the address the build computed for it."""
+    project = _make_fixture(tmp_path / "picker", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+    emitted = _emitted_files(output_dir)
+
+    page = "guide/index.html"
+    html = _read(output_dir, page)
+    options = re.findall(r'<option value="([^"]*)" data-href="([^"]*)"', html)
+    assert {v for v, _ in options} == {"0.1.0", "0.2.0"}
+    for version, href in options:
+        target = _resolve(page, html_mod.unescape(href))
+        assert target in emitted, f"picker option {version} -> {target}"
+    # The current version's option is the stable address; the older one's
+    # is its archive.
+    hrefs = dict(options)
+    assert hrefs["0.2.0"] == "../guide/"
+    assert hrefs["0.1.0"] == "../v/0.1.0/guide/"
+
+    # From inside the archive the hops are longer, and still resolve.
+    archived_page = "v/0.1.0/guide/index.html"
+    archived_hrefs = dict(re.findall(
+        r'<option value="([^"]*)" data-href="([^"]*)"',
+        _read(output_dir, archived_page),
+    ))
+    assert archived_hrefs["0.2.0"] == "../../../guide/"
+    assert archived_hrefs["0.1.0"] == "../../../v/0.1.0/guide/"
+    # No client-side path arithmetic is left in the picker script.
+    assert "location.pathname" not in html
+
+
+def test_archive_pages_carry_a_dismissable_notice_keyed_per_version(tmp_path):
+    project = _make_fixture(tmp_path / "notice", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    archived = _read(output_dir, "v/0.1.0/guide/index.html")
+    assert 'class="version-notice"' in archived
+    assert 'data-notice-key="0.1.0"' in archived
+    assert 'class="version-notice-dismiss"' in archived
+    assert "selfdoc-version-notice-" in archived, "dismissal is not stored"
+    # The current version has nothing to say about being superseded.
+    assert 'class="version-notice"' not in _read(output_dir, "guide/index.html")
+
+
+def test_every_versioned_page_offers_both_share_addresses(tmp_path):
+    project = _make_fixture(tmp_path / "share", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    for page in ("guide/index.html", "v/0.1.0/guide/index.html"):
+        html = _read(output_dir, page)
+        urls = re.findall(r'data-share-url="([^"]*)"', html)
+        assert len(urls) == 2, f"{page} offers {urls}"
+        assert "https://example.com/guide/" in urls
+    assert "https://example.com/v/0.1.0/guide/" in re.findall(
+        r'data-share-url="([^"]*)"',
+        _read(output_dir, "v/0.1.0/guide/index.html"),
+    )
+    assert "https://example.com/v/0.2.0/guide/" in re.findall(
+        r'data-share-url="([^"]*)"', _read(output_dir, "guide/index.html"),
+    )
+
+
+def test_a_page_named_v_is_refused(tmp_path):
+    """`v` is the archive prefix, so no page may take it."""
+    project = _make_fixture(tmp_path / "reserved", ORIGIN_ROOT_CONFIG)
+    with open(os.path.join(str(project), "docs", "v.md"), "w") as f:
+        f.write("# V\n\nA page that wants the archive prefix.\n")
+    with pytest.raises(RuntimeError, match="reserved top-level path 'v'"):
+        build(str(project))
+
+
+def test_the_resolution_check_passes_on_a_good_build(tmp_path):
+    """LINK001 is the walker's assertion as a user-facing check."""
+    from selfdoc_core.resolution import check_output_resolution
+
+    project = _make_fixture(tmp_path / "resolve-ok", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+    assert check_output_resolution(
+        output_dir, base_url="https://example.com",
+    ) == []
+
+
+def test_the_resolution_check_fires_on_a_broken_reference(tmp_path):
+    from selfdoc_core.resolution import check_output_resolution
+
+    project = _make_fixture(tmp_path / "resolve-bad", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    page = os.path.join(output_dir, "guide", "index.html")
+    with open(page, encoding="utf-8") as f:
+        html = f.read()
+    with open(page, "w", encoding="utf-8") as f:
+        f.write(html.replace("<article", '<a href="../nowhere/">gone</a><article', 1))
+
+    lints = check_output_resolution(output_dir, base_url="https://example.com")
+    assert [lint.code for lint in lints] == ["LINK001"]
+    assert lints[0].severity == "error"
+    assert "nowhere" in lints[0].message
+    assert lints[0].file == "guide/index.html"
+
+
+def test_the_resolution_check_fires_on_a_broken_sitemap_entry(tmp_path):
+    from selfdoc_core.resolution import check_output_resolution
+
+    project = _make_fixture(tmp_path / "resolve-sitemap", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    sitemap = os.path.join(output_dir, "sitemap.xml")
+    with open(sitemap, encoding="utf-8") as f:
+        body = f.read()
+    with open(sitemap, "w", encoding="utf-8") as f:
+        f.write(body.replace(
+            "</urlset>",
+            "  <url><loc>https://example.com/ghost/</loc></url>\n</urlset>",
+        ))
+
+    lints = check_output_resolution(output_dir, base_url="https://example.com")
+    assert [lint.code for lint in lints] == ["LINK001"]
+    assert "ghost" in lints[0].message
+
+
+def test_posts_are_at_the_same_blog_address_in_both_builds(tmp_path):
+    """The full build and the posts-only build agree on where a post lives."""
+    import selfblog  # registers the post provider
+
+    assert selfblog
+    project = _make_fixture(tmp_path / "posts", ORIGIN_ROOT_CONFIG)
+    posts_dir = os.path.join(str(project), ".selfdoc", "posts")
+    os.makedirs(posts_dir, exist_ok=True)
+    with open(os.path.join(posts_dir, "2026-01-01-hello.md"), "w") as f:
+        f.write(
+            "---\ntitle: Hello World\ndate: 2026-01-01\nslug: hello-world\n"
+            "---\n\nA post body paragraph.\n"
+        )
+    config_path = os.path.join(str(project), "selfdoc.json")
+    with open(config_path, encoding="utf-8") as f:
+        config = json.load(f)
+    config["posts"] = {"dir": ".selfdoc/posts/"}
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    build(str(project))
+    full = _emitted_files(output_dir)
+    assert "blog/hello-world/index.html" in full
+    assert "blog/index.html" in full
+    _walk_and_check(output_dir)
+
+    build(str(project), target="posts")
+    posts_only = {p for p in _emitted_files(output_dir) if p.endswith(".html")}
+    assert posts_only == {"blog/hello-world/index.html", "blog/index.html"}
