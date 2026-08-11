@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable
 
+from selfdoc_core.lints import UnknownLintCode, validate_lint_codes
+
 class FieldType(Enum):
     """Supported field types for config validation."""
 
@@ -984,6 +986,16 @@ def _post_validate(config: dict) -> dict:
                     f"duplicate version string {v!r} in 'versions'"
                 )
             seen_versions.add(v)
+
+    # lint_ignore validation: every suppressed code must be a real one.  A
+    # mistyped code suppresses nothing, so it is refused at load rather than
+    # sitting in the config looking effective.
+    lint_ignore = config.get("lint_ignore")
+    if lint_ignore:
+        try:
+            validate_lint_codes(lint_ignore, source="'lint_ignore'")
+        except UnknownLintCode as exc:
+            raise ConfigError(str(exc)) from exc
 
     # Unified validation: unique project slugs (explicit or derived from path)
     unified = config.get("unified")

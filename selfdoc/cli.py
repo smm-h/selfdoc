@@ -537,6 +537,16 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
         serialize_check_result,
     )
     from selfdoc.config import load_config
+    from selfdoc_core.lints import UnknownLintCode, parse_ignore_codes
+
+    # Validated before any work is done: a mistyped code suppresses nothing,
+    # and a check run that silently ignored the typo would report lints the
+    # caller believes it silenced.
+    try:
+        flag_ignore_codes = parse_ignore_codes(ignore)
+    except UnknownLintCode as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     config = load_config(".")
 
@@ -569,11 +579,8 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
         )
 
     # Build combined ignore set from CLI --ignore and config lint_ignore
-    ignore_codes = set()
-    if ignore:
-        ignore_codes.update(
-            code.strip() for code in ignore.split(",") if code.strip()
-        )
+    # (both already validated against the registry).
+    ignore_codes = set(flag_ignore_codes)
     if config:
         ignore_codes.update(config.get("lint_ignore", []))
 

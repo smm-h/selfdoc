@@ -227,6 +227,32 @@ def test_check_always_runs_seo_lints(project_dir, capsys):
     assert "SEO" in captured.out
 
 
+def test_check_rejects_an_unregistered_ignore_code(project_dir, capsys):
+    """`--ignore SEO0O8` is a typo that would suppress nothing -- refuse it."""
+    from selfdoc.cli import _cmd_init, _cmd_check
+
+    _cmd_init(None, base_url="https://example.com")
+
+    with pytest.raises(SystemExit) as exc_info:
+        _cmd_check(None, ignore="SEO0O8")
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "SEO0O8" in captured.err
+
+
+def test_check_accepts_a_registered_ignore_code(project_dir, capsys):
+    """A registered code passed to --ignore suppresses that rule's output."""
+    from selfdoc.cli import _cmd_init, _cmd_check
+
+    _cmd_init(None, base_url="https://example.com")
+
+    _cmd_check(None, ignore="SEO009")
+
+    captured = capsys.readouterr()
+    assert "SEO009" not in captured.out
+
+
 def test_check_exits_1_on_errors(project_dir, capsys):
     """selfdoc check exits 1 when lint errors exist."""
     from selfdoc.cli import _cmd_init, _cmd_check

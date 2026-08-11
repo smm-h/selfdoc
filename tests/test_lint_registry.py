@@ -12,6 +12,7 @@ The emission side needs no test to stay honest: :class:`LintResult` takes no
 ``severity`` argument and refuses an unregistered code.
 """
 
+import dataclasses
 import os
 import re
 
@@ -22,7 +23,9 @@ from selfdoc_core.lints import (
     LintResult,
     UnknownLintCode,
     lint_severity,
+    parse_ignore_codes,
     render_lint_table,
+    validate_lint_codes,
 )
 
 
@@ -105,6 +108,52 @@ def test_lint_result_rejects_an_unregistered_code():
 def test_lint_severity_rejects_an_unregistered_code():
     with pytest.raises(UnknownLintCode):
         lint_severity("NOPE001")
+
+
+def test_lint_result_is_immutable():
+    """A constructed diagnostic cannot have its severity rewritten."""
+    result = LintResult(file="a.md", line=1, code="SEO001", message="m")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        result.severity = "warning"
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        result.code = "SEO002"
+    assert result.severity == "error"
+
+
+# -- Suppression lists are checked against the registry -----------------------
+
+
+def test_parse_ignore_codes_accepts_registered_codes():
+    """A comma-separated flag value becomes the set of codes to suppress."""
+    assert parse_ignore_codes("SEO007, SEO008") == {"SEO007", "SEO008"}
+
+
+def test_parse_ignore_codes_of_empty_value_is_empty():
+    """No --ignore flag means no suppression, not an error."""
+    assert parse_ignore_codes("") == set()
+    assert parse_ignore_codes(None) == set()
+
+
+def test_parse_ignore_codes_rejects_an_unregistered_code():
+    """A typo suppresses nothing, so it is refused instead of ignored."""
+    with pytest.raises(UnknownLintCode) as excinfo:
+        parse_ignore_codes("SEO007,SEO0O8")
+    assert "SEO0O8" in str(excinfo.value)
+
+
+def test_validate_lint_codes_names_the_source_and_every_bad_code():
+    """The message names where the codes came from and all of the bad ones."""
+    with pytest.raises(UnknownLintCode) as excinfo:
+        validate_lint_codes(["SEO007", "NOPE001", "NOPE002"], source="lint_ignore")
+    message = str(excinfo.value)
+    assert "lint_ignore" in message
+    assert "NOPE001" in message
+    assert "NOPE002" in message
+
+
+def test_validate_lint_codes_passes_registered_codes():
+    """Every registered code is accepted, whatever the source."""
+    validate_lint_codes(sorted(LINT_REGISTRY), source="--ignore")
 
 
 # -- The documentation table is derived ---------------------------------------

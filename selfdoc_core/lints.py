@@ -112,7 +112,56 @@ def lint_severity(code: str) -> str:
     return spec.severity
 
 
-@dataclass
+def validate_lint_codes(codes, *, source: str) -> None:
+    """Refuse any code in *codes* that the registry does not carry.
+
+    A suppression list is only meaningful against the registry: a mistyped
+    code suppresses nothing and hides the fact that it suppresses nothing.
+    So an unregistered code is a hard error where the list is read, not a
+    silently inert entry.
+
+    Args:
+        codes: The lint codes to check, in the order the user wrote them.
+        source: Where the codes came from, named in the error message
+            (e.g. ``"lint_ignore"`` or ``"--ignore"``).
+
+    Raises:
+        UnknownLintCode: Naming every unregistered code, not just the first.
+    """
+    unknown = [code for code in codes if code not in LINT_REGISTRY]
+    if not unknown:
+        return
+    listed = ", ".join(repr(code) for code in unknown)
+    raise UnknownLintCode(
+        f"{source} names lint code(s) the registry does not carry: {listed}. "
+        f"Every suppressible code is declared in selfdoc_core/"
+        f"{_REGISTRY_DOCUMENT}; known codes are: "
+        f"{', '.join(sorted(LINT_REGISTRY))}."
+    )
+
+
+def parse_ignore_codes(raw, *, source: str = "--ignore") -> set[str]:
+    """Parse a comma-separated ``--ignore`` value into a validated code set.
+
+    Args:
+        raw: The flag value as given, or None/empty when the flag was not
+            passed.
+        source: Flag name to attribute a rejection to.
+
+    Returns:
+        The set of codes to suppress -- empty when nothing was passed.
+
+    Raises:
+        UnknownLintCode: When any code is not in the registry.
+    """
+    if not raw:
+        return set()
+    codes = [part.strip() for part in raw.split(",") if part.strip()]
+    validate_lint_codes(codes, source=source)
+    return set(codes)
+
+
+@dataclass(frozen=True)
 class LintResult:
     """A single lint diagnostic (e.g. SEO warning).
 
@@ -120,6 +169,9 @@ class LintResult:
     for the given code.  That is what keeps severities out of the ~50
     construction sites scattered across the check modules, and what makes an
     unregistered code impossible to emit.
+
+    The instance is frozen: a diagnostic's severity is the registry's answer
+    for its code, and nothing downstream may rewrite it after the fact.
     """
 
     file: str  # relative path within docs/
@@ -129,7 +181,9 @@ class LintResult:
     severity: str = field(init=False)  # derived from the registry
 
     def __post_init__(self):
-        self.severity = lint_severity(self.code)
+        # Frozen instances refuse ordinary assignment; the derived field is
+        # written the one way a frozen dataclass permits.
+        object.__setattr__(self, "severity", lint_severity(self.code))
 
 
 def lint_table_rows() -> list[tuple[str, str, str]]:

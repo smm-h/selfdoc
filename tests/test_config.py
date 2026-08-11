@@ -1116,6 +1116,33 @@ def test_root_files_invalid_item(config_dir):
         load_config(str(config_dir))
 
 
+# -- lint_ignore field --
+
+
+def test_lint_ignore_registered_codes_load(config_dir):
+    """A suppression list of registered lint codes loads unchanged."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "lint_ignore": ["SEO007", "SEO008"],
+    })
+    cfg = load_config(str(config_dir))
+    assert cfg["lint_ignore"] == ["SEO007", "SEO008"]
+
+
+def test_lint_ignore_unregistered_code_is_a_hard_error(config_dir):
+    """A code the registry does not carry would suppress nothing -- refuse it."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "lint_ignore": ["SEO007", "SEO0O8"],
+    })
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(str(config_dir))
+    assert "SEO0O8" in str(excinfo.value)
+    assert "lint_ignore" in str(excinfo.value)
+
+
 # -- cross-project config validation --
 
 _CROSS_PROJECT_CONFIGS = [
