@@ -30,7 +30,6 @@ from selfdoc_core.build import (
 from selfdoc_core.config import ConfigError, load_config
 from selfdoc_core.html import (
     _escape_html,
-    _html_path_to_url,
     _md_to_html_path,
     _slugify,
     generate_pygments_css,
@@ -85,60 +84,18 @@ def _project_nav_title(project_entry):
     )
 
 
-def _build_unified_nav(common_nav, projects_nav, config):
-    """Merge navigation from common docs and constituent projects.
-
-    Returns a flat nav_items list suitable for _render_nav:
-    - Common (docs-site) pages first
-    - Then one collapsible group per constituent project
-
-    Args:
-        common_nav: Nav items from the docs-site's own docs.
-        projects_nav: List of (slug, nav_title, nav_items, url_prefix)
-            tuples, one per constituent project.
-        config: The docs-site's config dict.
-    """
-    merged = list(common_nav)
-    for slug, nav_title, nav_items, url_prefix in projects_nav:
-        # Wrap each project's nav as a collapsible group
-        # Prefix each item's path with the project's output_subdir
-        prefixed_items = []
-        for item in nav_items:
-            if "group" in item:
-                # Nested group: prefix each sub-item's path
-                prefixed_sub = []
-                for sub in item["items"]:
-                    prefixed_sub.append({
-                        "label": sub["label"],
-                        "path": f"{url_prefix}/{sub['path']}",
-                        "md_path": sub.get("md_path", ""),
-                    })
-                prefixed_items.append({
-                    "group": item["group"],
-                    "slug": item.get("slug", ""),
-                    "items": prefixed_sub,
-                })
-            else:
-                prefixed_items.append({
-                    "label": item["label"],
-                    "path": f"{url_prefix}/{item['path']}",
-                    "md_path": item.get("md_path", ""),
-                })
-        merged.append({
-            "group": nav_title,
-            "slug": _slugify(nav_title),
-            "items": prefixed_items,
-        })
-    return merged
-
-
-def _generate_landing_page(projects_info, config):
+def _generate_landing_page(projects_info, config, to_site_root):
     """Generate an HTML landing page listing all constituent projects as cards.
 
     Args:
         projects_info: List of dicts with keys: slug, nav_title, description,
-            version, url_prefix.
+            version, home (the project's site-root-relative home URL).
         config: The docs-site config dict.
+        to_site_root: Hop from the landing page's own directory back to
+            the output root.  Each card addresses a page in a different
+            mount, so it goes out to the root and back in; a bare
+            site-root path would only work if the site were served from
+            an origin root.
 
     Returns:
         HTML body string for the landing page.
@@ -148,7 +105,7 @@ def _generate_landing_page(projects_info, config):
         title = _escape_html(info["nav_title"])
         desc = _escape_html(info.get("description", ""))
         version = _escape_html(info.get("version", ""))
-        link = _html_path_to_url(f"{info['url_prefix']}/index.html")
+        link = to_site_root + info["home"]
         card = (
             f'<div class="project-card">'
             f'<h3><a href="{link}">{title}</a></h3>'
@@ -443,7 +400,6 @@ def _build_unified_body(
     written = {}
     all_search_entries = []
     projects_info = []
-    projects_nav_data = []
 
     # Check reserved paths and collisions
     version_strs = [v["version"] for v in versions]
@@ -488,10 +444,11 @@ def _build_unified_body(
             # Build the project for each locale
             for locale in locales:
                 locale_code = locale["code"]
-                output_subdir = page_address(
+                project_home = page_address(
                     "index.html", locale=locale_code, project=slug,
                     version=ver_str,
-                ).mount
+                )
+                output_subdir = project_home.mount
 
                 proj_v_pages, proj_uv_pages, proj_uv_md, proj_uv_fm = (
                     project_page_partitions.get(
@@ -519,7 +476,6 @@ def _build_unified_body(
                 search_entries = result.search_entries
                 proj_docs_dir = result.docs_dir
                 other_files = result.other_files
-                nav_items = result.nav_items
                 config_description = result.config_description
 
                 # Override the project field in search entries
@@ -545,17 +501,14 @@ def _build_unified_body(
                     effects.copy_file(src, dst)
                     written[dst] = True
 
-                # Collect nav data (only for latest version + default locale)
+                # Collect card data (only for latest version + default locale)
                 if is_latest and locale_code == default_locale_code:
-                    projects_nav_data.append(
-                        (slug, nav_title, nav_items, output_subdir)
-                    )
                     projects_info.append({
                         "slug": slug,
                         "nav_title": nav_title,
                         "description": config_description or "",
                         "version": proj_version or ver_str,
-                        "url_prefix": output_subdir,
+                        "home": project_home.pinned,
                     })
 
     # --- Build unversioned pages for each constituent project ---
@@ -641,7 +594,6 @@ def _build_unified_body(
         search_entries = result.search_entries
         common_docs_dir = result.docs_dir
         other_files = result.other_files
-        nav_items = result.nav_items
 
         # Mark common search entries
         patched_entries = []
@@ -729,6 +681,15 @@ def _build_unified_body(
 
             # Merge unversioned data into common_latest_build for auxiliary files
             if locale_code == default_locale_code and common_latest_build:
+                # These pages mount one level shallower than the versioned
+                # ones, so their addresses come from their own build.
+                common_latest_build["unversioned_addresses"] = {
+                    md: page_address(
+                        _md_to_html_path(md),
+                        locale=locale_code, project="common",
+                    )
+                    for md in uv_result.markdown_files
+                }
                 common_latest_build["markdown_files"] = {
                     **common_latest_build["markdown_files"],
                     **uv_result.markdown_files,
@@ -743,18 +704,24 @@ def _build_unified_body(
                 }
 
     # --- Generate landing page ---
-    landing_body = _generate_landing_page(projects_info, config)
-    common_subdir = f"{default_locale_code}/common/{latest_version}"
-    landing_html_path = os.path.join(
-        output_dir, common_subdir, "projects", "index.html",
+    # The landing page is a page of the common mount like any other, so
+    # its own address decides both hops: out to the output root for the
+    # shared stylesheet, and out and back in for each project card.
+    landing_addr = page_address(
+        "projects/index.html", locale=default_locale_code,
+        project="common", version=latest_version,
     )
+    landing_body = _generate_landing_page(
+        projects_info, config, landing_addr.to_site_root,
+    )
+    landing_html_path = os.path.join(output_dir, landing_addr.output_key)
     # Wrap landing page in minimal HTML
     landing_full = (
         '<!DOCTYPE html>'
         '<html lang="en">'
         '<head><meta charset="utf-8">'
         f'<title>Projects - {common_latest_build["project_name"]}</title>'
-        f'<link rel="stylesheet" href="../style.css">'
+        f'<link rel="stylesheet" href="{landing_addr.to_site_root}style.css">'
         '</head>'
         '<body>'
         f'<h1>Projects</h1>'
@@ -843,25 +810,31 @@ def _build_unified_body(
         mount_project="common",
         mount_version=latest_version,
         page_addresses={
-            md: page_address(
-                _md_to_html_path(md),
-                locale=default_locale_code,
-                project="common",
-                version=latest_version,
-            )
-            for md in lb["markdown_files"]
+            **{
+                md: page_address(
+                    _md_to_html_path(md),
+                    locale=default_locale_code,
+                    project="common",
+                    version=latest_version,
+                )
+                for md in lb["markdown_files"]
+            },
+            **lb.get("unversioned_addresses", {}),
         },
     )
     written.update(aux_written)
 
     # --- Root redirect to common landing ---
-    landing_prefix = f"{default_locale_code}/common/{latest_version}"
     # Document-relative, with no leading slash.  The build output is not
     # always served from an origin root: an assembly serves it under
     # /<slug>/ and GitHub Pages project sites under /<repo>/.  A
     # root-relative hop escapes that subtree; a document-relative one
-    # resolves correctly in every case, origin root included.
-    redirect_url = f"{landing_prefix}/"
+    # resolves correctly in every case, origin root included.  The stub
+    # sits at the output root, so the pinned address is already the hop.
+    redirect_url = page_address(
+        "index.html", locale=default_locale_code, project="common",
+        version=latest_version,
+    ).pinned
     # Absolute canonical: a root-relative one resolves against whatever host
     # served the stub, so every alias of the site would claim to be canonical.
     canonical_url = lb["url_builder"].page_url(redirect_url)
@@ -885,8 +858,10 @@ def _build_unified_body(
 
     # Cloudflare only ever reads the _redirects at the deployed site root,
     # where there is no document to resolve a relative target against --
-    # this rule stays site-absolute.
-    redirects_content = f"/ /{landing_prefix}/ 302\n"
+    # this rule stays site-absolute.  Deliberate: the standalone
+    # deployment owns its origin root, and on the assembly site the
+    # worker owns redirects instead of this file.
+    redirects_content = f"/ /{redirect_url} 302\n"
     redirects_path = os.path.join(output_dir, "_redirects")
     with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)

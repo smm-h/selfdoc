@@ -12,7 +12,6 @@ import pytest
 from selfdoc.build import build
 from selfdoc.config import ConfigError, load_config
 from selfblog.unified import (
-    _build_unified_nav,
     _generate_landing_page,
     _project_nav_title,
     _project_slug,
@@ -101,46 +100,6 @@ def test_resolve_project_path_missing(tmp_path):
         assert "does not exist" in str(e)
 
 
-# -- Unified nav --
-
-def test_build_unified_nav_merges():
-    common_nav = [
-        {"label": "Home", "path": "index.html", "md_path": "index.md"},
-    ]
-    projects_nav = [
-        ("core", "Core", [
-            {"label": "Core Home", "path": "index.html", "md_path": "index.md"},
-        ], "en/core/1.0.0"),
-        ("cli", "CLI", [
-            {"label": "CLI Home", "path": "index.html", "md_path": "index.md"},
-        ], "en/cli/1.0.0"),
-    ]
-    result = _build_unified_nav(common_nav, projects_nav, {})
-    assert result[0]["label"] == "Home"
-    assert result[1]["group"] == "Core"
-    assert result[1]["items"][0]["path"] == "en/core/1.0.0/index.html"
-    assert result[2]["group"] == "CLI"
-    assert result[2]["items"][0]["path"] == "en/cli/1.0.0/index.html"
-
-
-def test_build_unified_nav_nested_groups():
-    common_nav = []
-    projects_nav = [
-        ("core", "Core", [
-            {"group": "API", "slug": "api", "items": [
-                {"label": "Config", "path": "api/config.html", "md_path": "api/config.md"},
-            ]},
-        ], "en/core/1.0.0"),
-    ]
-    result = _build_unified_nav(common_nav, projects_nav, {})
-    group = result[0]
-    assert group["group"] == "Core"
-    # The nested group's items should be prefixed
-    nested = group["items"][0]
-    assert nested["group"] == "API"
-    assert nested["items"][0]["path"] == "en/core/1.0.0/api/config.html"
-
-
 # -- Landing page --
 
 def test_generate_landing_page():
@@ -150,14 +109,29 @@ def test_generate_landing_page():
             "nav_title": "Core Library",
             "description": "The core framework",
             "version": "2.0.0",
-            "url_prefix": "en/core/1.0.0",
+            "home": "en/core/1.0.0/",
         },
     ]
-    html = _generate_landing_page(info, {})
+    html = _generate_landing_page(info, {}, "../../../../")
     assert "project-grid" in html
     assert "Core Library" in html
     assert "The core framework" in html
     assert "v2.0.0" in html
+
+
+def test_generate_landing_page_card_hops_out_to_the_site_root():
+    """A card addresses another mount, so it climbs to the root first."""
+    info = [
+        {
+            "slug": "core",
+            "nav_title": "Core",
+            "description": "",
+            "version": "1.0.0",
+            "home": "en/core/1.0.0/",
+        },
+    ]
+    html = _generate_landing_page(info, {}, "../../../../")
+    assert 'href="../../../../en/core/1.0.0/"' in html
 
 
 # -- Full unified build --
