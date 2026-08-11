@@ -41,6 +41,31 @@ def _to_kebab(name: str) -> str:
     return s.strip("-")
 
 
+def _page_headings(frontmatter: dict, content: str) -> list[dict]:
+    """Return this page's headings with the anchors the built page carries.
+
+    Anchors come from the same assignment the HTML renderer and the search
+    index use, so a manifest anchor is always an id that exists on the
+    page -- de-duplicated (``setup``, ``setup-1``) and free of ``#`` lines
+    inside fenced code blocks.
+    """
+    # Imported here: html pulls in themes/icons, and manifest is loaded by
+    # readers that never render.
+    from selfdoc_core.html import assign_heading_anchors
+    from selfdoc_core.tokenizer import tokenize
+
+    # A frontmatter title renames the page's H1, and its anchor with it.
+    # Without one the H1's own text is the title, which is what
+    # assign_heading_anchors falls back to.
+    title = frontmatter.get("title")
+    page_title = str(title) if title else None
+
+    return [
+        {"level": ha.level, "text": ha.text, "anchor": ha.anchor}
+        for ha in assign_heading_anchors(tokenize(content), page_title=page_title)
+    ]
+
+
 def _extract_title(frontmatter: dict, raw_content: str) -> str:
     """Extract page title from frontmatter or first heading."""
     title = frontmatter.get("title")
@@ -107,13 +132,17 @@ def generate_manifest(
 
     # Pages
     pages = []
-    for rel_path, (frontmatter, _resolved, raw, _fm_line_count) in sorted(
+    for rel_path, (frontmatter, resolved, raw, _fm_line_count) in sorted(
         pages_data.items()
     ):
+        page_title = _extract_title(frontmatter, raw)
         pages.append({
             "path": rel_path,
-            "title": _extract_title(frontmatter, raw),
+            "title": page_title,
             "type": frontmatter.get("type", "doc"),
+            # Headings are read from the resolved content -- what the
+            # renderer sees -- so directive-generated headings are included.
+            "headings": _page_headings(frontmatter, resolved),
         })
 
     # Posts
