@@ -312,7 +312,9 @@ def generate_html(markdown_files, project_name=None, version=None,
                    page_nav=True, page_progress=True,
                    code_icons="colorful", glossary=True,
                    mount_locale="", mount_project="", mount_version="",
+                   mount_archived=False,
                    available_versions=None, available_locales=None,
+                   version_pages=None,
                    current_version="", current_locale="",
                    is_latest=True,
                    schema_types=None,
@@ -334,10 +336,18 @@ def generate_html(markdown_files, project_name=None, version=None,
         mount_locale: Locale segment of the output mount (e.g. "en").
         mount_project: Constituent-project segment of the output mount on a
             unified site (e.g. "core"); empty on a standalone site.
-        mount_version: Version segment of the output mount (e.g. "0.7.0");
-            empty for pages that are not version-scoped.
+        mount_version: Version these pages were built from (e.g. "0.7.0");
+            empty for pages that are not version-scoped.  The current
+            version carries no version segment -- see ``mount_archived``.
+        mount_archived: Whether this build is a superseded version, emitted
+            under ``v/<version>/`` instead of at the stable address.
         available_versions: List of version dicts for version picker (optional).
         available_locales: List of locale dicts for locale picker (optional).
+        version_pages: Optional ``version -> set of html paths`` map saying
+            which pages each version actually has.  The version picker
+            offers a version only when it holds the page being rendered.
+            ``None`` means the caller cannot tell them apart, and every
+            version is offered.
         current_version: Current version being built (e.g. "0.7.0").
         current_locale: Current locale being built (e.g. "en").
         is_latest: Whether this is the latest version (default True).
@@ -411,13 +421,14 @@ def generate_html(markdown_files, project_name=None, version=None,
             locale=mount_locale,
             project=mount_project,
             version=mount_version,
+            archived=mount_archived,
         )
         prefix = addr.to_mount_root
         asset_prefix = addr.to_site_root
         # Pages marked `versioned: false` are built at the version-free
         # mount, one level shallower than this page's own.
         unversioned_prefix = addr.to_stable_mount_root
-        home_href = _home_href(addr, all_html_paths, available_versions)
+        home_href = _home_href(addr, all_html_paths)
         md_config = {}
         if auto_detect:
             md_config["auto_detect"] = auto_detect
@@ -670,6 +681,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             locale=mount_locale,
             project=mount_project,
             version=mount_version,
+            archived=mount_archived,
         )
         glossary_nav_html = _render_nav(
             nav_items, prefix=glossary_addr.to_mount_root,
@@ -705,17 +717,13 @@ def generate_html(markdown_files, project_name=None, version=None,
             "breadcrumbs": _build_breadcrumbs(
                 "glossary/index.html", "Glossary",
                 glossary_addr.to_mount_root, all_html_paths,
-                home_href=_home_href(
-                    glossary_addr, all_html_paths, available_versions,
-                ),
+                home_href=_home_href(glossary_addr, all_html_paths),
             ),
             "prev_page": None,
             "next_page": None,
             "prefix": glossary_addr.to_mount_root,
             "unversioned_prefix": glossary_addr.to_stable_mount_root,
-            "home_href": _home_href(
-                glossary_addr, all_html_paths, available_versions,
-            ),
+            "home_href": _home_href(glossary_addr, all_html_paths),
             "source_path": None,
             "date_published": None,
             "date_modified": None,
@@ -777,8 +785,10 @@ def generate_html(markdown_files, project_name=None, version=None,
             mount_locale=mount_locale,
             mount_project=mount_project,
             mount_version=mount_version,
+            mount_archived=mount_archived,
             available_versions=available_versions,
             available_locales=available_locales,
+            version_pages=version_pages,
             current_version=current_version,
             current_locale=current_locale,
             is_latest=is_latest,
@@ -794,13 +804,14 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
                       nav_items=None, repo=None, base_url=None, url_builder=None,
                       lang="en",
                       feed_url=None, critical_css=None, theme_meta=None,
-                      mount_locale="", mount_project="", mount_version=""):
+                      mount_locale="", mount_project=""):
     """Generate a custom 404 page using the standard page template (Feature 39).
 
     The 404 page is written at the output root, so its assets need no
     relative hop -- but the pages it links to live under a mount, and the
-    mount coordinates say which one (the default locale at the latest
-    version).
+    mount coordinates say which one.  Every page it links to is a current
+    one, so the hop is always to the stable mount: the sidebar never
+    points a lost reader into an archived version.
 
     Returns the full HTML string for 404.html.
     """
@@ -811,17 +822,15 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     if nav_items is None:
         nav_items = []
 
-    # Hops from the output root (where 404.html sits) into the mounts whose
-    # pages the sidebar lists: the versioned mount, and the version-free
-    # mount that holds the `versioned: false` pages.
+    # Hop from the output root (where 404.html sits) into the stable mount,
+    # where every current page lives -- version-scoped or not.
     root_addr = page_address(
         "index.html",
         locale=mount_locale,
         project=mount_project,
-        version=mount_version,
     )
-    mount_prefix = root_addr.pinned
-    unversioned_prefix = root_addr.stable
+    mount_prefix = root_addr.stable
+    unversioned_prefix = mount_prefix
 
     # Render sidebar navigation from nav_items
     nav_html = _render_nav(nav_items, prefix=mount_prefix,
@@ -899,6 +908,19 @@ class HeadingAnchor:
     is_page_title: bool
 
 
+def page_title_anchor(title):
+    """The element id the page-title H1 carries.
+
+    Part of the anchor authority: the page title is rendered as an H1 by
+    :func:`_wrap_page` rather than by the body renderer, so both sides ask
+    this function instead of slugifying the title themselves.  Like every
+    other heading, the title is slugified from its *rendered* inline form,
+    so ``# The `build` command`` anchors the same way whether the words
+    reach the page through frontmatter or through markdown.
+    """
+    return _slugify(_inline_format(title))
+
+
 def assign_heading_anchors(tokens, page_title=None):
     """Assign the final element id to every heading in *tokens*.
 
@@ -930,7 +952,7 @@ def assign_heading_anchors(tokens, page_title=None):
                 index=index,
                 level=token.level,
                 text=token.text,
-                anchor=_slugify(title),
+                anchor=page_title_anchor(title),
                 is_page_title=True,
             ))
             continue
@@ -1842,32 +1864,25 @@ def _html_to_md_path(html_path):
     return html_path.replace(".html", ".md")
 
 
-def _home_href(addr, own_pages, available_versions=None):
+def _home_href(addr, own_pages):
     """Document-relative href to the home page, seen from *addr*'s page.
 
     ``own_pages`` is the set of HTML paths this build emits under the
-    same mount.  Three cases, decided by what exists:
+    same mount.  Two cases, decided by what exists:
 
-    * The mount has its own ``index.html`` -- the normal versioned page.
-      Home is that page.
-    * It does not, which is what an unversioned build looks like: its
-      pages sit at ``<locale>/<project>/`` and the index page is
-      version-scoped.  Home is the same locale's index at the latest
-      version.
-    * No locale or no version list to name one.  Home is the redirect
-      stub at the output root, which every build writes.
+    * The mount has its own ``index.html``.  Home is that page -- an
+      archive page's home is the same archived version's index, so a
+      reader browsing v0.1.0 stays in v0.1.0.
+    * It does not, which is what a build of only the site-level or
+      ``versioned: false`` pages looks like.  Home is the current
+      version's index at the stable mount, which every build writes.
     """
     if "index.html" in own_pages:
         return addr.to_mount_root + "index.html"
-    latest = available_versions[-1]["version"] if available_versions else ""
-    if latest and addr.locale:
-        return addr.to_site_root + page_address(
-            "index.html",
-            locale=addr.locale,
-            project=addr.project,
-            version=latest,
-        ).pinned
-    return addr.to_site_root + "index.html"
+    stable_home = page_address(
+        "index.html", locale=addr.locale, project=addr.project,
+    ).stable
+    return addr.to_site_root + stable_home + "index.html"
 
 
 def _build_nav(markdown_files, frontmatter=None,
@@ -2237,15 +2252,16 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
     seo_tags = ""
     escaped_title = _escape_html(title)
     escaped_project = _escape_html(project_name)
-    # The canonical addresses the page where it actually lives -- mount
-    # included. A mountless path names no emitted page.
+    # The canonical is the stable address, from every version including the
+    # archived ones: one page, one canonical URL, and an archived copy tells
+    # a crawler which address supersedes it.
     if page_path:
         page_url = page_address(
             page_path,
             locale=mount_locale,
             project=mount_project,
             version=mount_version,
-        ).pinned
+        ).stable
         canonical_url = (
             url_builder.page_url(page_url)
             if url_builder
@@ -2317,16 +2333,20 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
     # BreadcrumbList JSON-LD for non-index pages
     if breadcrumbs and page_path:
         def _crumb_url(crumb_page_path):
-            """Absolute URL for a crumb, addressed within this page's mount."""
-            pinned = page_address(
+            """Absolute URL for a crumb, at its stable address.
+
+            Structured data names the address a crawler should keep, which
+            is the stable one -- the same address this page's canonical
+            points at, archived copy or not.
+            """
+            stable = page_address(
                 crumb_page_path,
                 locale=mount_locale,
                 project=mount_project,
-                version=mount_version,
-            ).pinned
+            ).stable
             if url_builder:
-                return url_builder.page_url(pinned)
-            return f"{base_url}/{pinned}"
+                return url_builder.page_url(stable)
+            return f"{base_url}/{stable}"
 
         items = [{
             "@type": "ListItem",
@@ -2615,16 +2635,15 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
     # hreflang tags -- only when multiple locales are configured
     if available_locales and len(available_locales) > 1 and page_path and base_url:
         def _locale_href(code):
-            """This same page's address in another locale."""
-            pinned = page_address(
+            """This same page's stable address in another locale."""
+            stable = page_address(
                 page_path,
                 locale=code,
                 project=mount_project,
-                version=mount_version,
-            ).pinned
+            ).stable
             if url_builder:
-                return url_builder.page_url(pinned)
-            return f"{base_url}/{pinned}"
+                return url_builder.page_url(stable)
+            return f"{base_url}/{stable}"
 
         default_locale_code = None
         for loc in available_locales:
@@ -2688,16 +2707,165 @@ def _render_page_footer(edit_link_html, date_display_html,
     )
 
 
+def _page_href(addr, target):
+    """Document-relative href from *addr*'s page to another emitted address.
+
+    Both sides come from the addressing authority: ``to_site_root`` walks
+    out to the output root and the target's own emitted URL walks back in,
+    so the link is correct under every mount point.  An empty result means
+    "this same directory", which is written ``./`` rather than ``""``.
+    """
+    return (addr.to_site_root + target.url) or "./"
+
+
+def _render_version_picker(addr, available_versions, version_pages):
+    """Build the version picker for a version-scoped page.
+
+    Every option carries the href the browser should go to, computed here
+    from the addressing authority: the current version's option addresses
+    the stable page, an older version's option addresses its archive copy.
+    Nothing is left for the client to work out from ``location.pathname``,
+    which was only ever right when the site was served from an origin root.
+
+    ``version_pages`` maps a version to the set of page paths it has; a
+    version that does not have this page is not offered, because the link
+    would point at a file no build wrote.  ``None`` means the caller cannot
+    distinguish them and every version is offered.
+    """
+    if not available_versions or not addr.version:
+        return ""
+    latest_version = available_versions[-1]["version"]
+    options = []
+    for entry in available_versions:
+        ver = entry["version"]
+        if version_pages is not None:
+            if addr.page_path not in version_pages.get(ver, set()):
+                continue
+        target = page_address(
+            addr.page_path,
+            locale=addr.locale,
+            project=addr.project,
+            version=ver,
+            archived=(ver != latest_version),
+        )
+        selected = " selected" if ver == addr.version else ""
+        options.append(
+            f'<option value="{_escape_html(ver)}"'
+            f' data-href="{_escape_html(_page_href(addr, target))}"'
+            f'{selected}>v{_escape_html(ver)}</option>'
+        )
+    if len(options) <= 1:
+        return ""
+    return (
+        '<select class="version-picker" aria-label="Documentation version">\n'
+        + "\n".join(options)
+        + "\n</select>\n"
+    )
+
+
+def _render_locale_picker(addr, available_locales, current_locale):
+    """Build the locale picker, with a server-side href per locale.
+
+    Rendered only for a genuinely multi-locale site: with one locale there
+    is no locale segment in any address and nothing for the control to
+    switch between.
+    """
+    if not available_locales or len(available_locales) <= 1:
+        return ""
+    options = []
+    for loc in available_locales:
+        code = loc["code"]
+        target = page_address(
+            addr.page_path,
+            locale=code,
+            project=addr.project,
+            version=addr.version,
+            archived=addr.archived,
+        )
+        selected = " selected" if code == current_locale else ""
+        options.append(
+            f'<option value="{_escape_html(code)}"'
+            f' data-href="{_escape_html(_page_href(addr, target))}"'
+            f'{selected}>{_escape_html(loc["label"])}</option>'
+        )
+    return (
+        '<select class="locale-picker" aria-label="Language">\n'
+        + "\n".join(options)
+        + "\n</select>\n"
+    )
+
+
+def _render_version_notice(addr):
+    """Build the "this is a superseded version" notice for an archive page.
+
+    Rendered server-side, dismissable, and the dismissal is keyed per
+    version: dismissing the notice on v0.1.0 says nothing about v0.2.0, so
+    a reader who lands on a different old version is told again.
+    """
+    if not addr.archived:
+        return ""
+    current = page_address(
+        addr.page_path, locale=addr.locale, project=addr.project,
+    )
+    href = _page_href(addr, current)
+    ver = _escape_html(addr.version)
+    return (
+        f'<div class="version-notice" role="note" data-notice-key="{ver}">'
+        f'<p>You are reading v{ver} of this page, which has been superseded. '
+        f'<a href="{href}">Go to the current version</a>.</p>'
+        f'<button type="button" class="version-notice-dismiss"'
+        f' aria-label="Dismiss this notice">Dismiss</button>'
+        f'</div>'
+    )
+
+
+def _render_share_control(addr, url_builder, base_url):
+    """Build the share control for a version-scoped page.
+
+    Two explicit choices, never one guessed for the reader: the evergreen
+    address, which always shows the current version, and the pinned
+    address, which always shows this exact version.  Both are absolute --
+    a shared link leaves the site -- so they come from the URL builder
+    rather than from a relative hop.
+    """
+    if not addr.version:
+        return ""
+
+    def _absolute(path):
+        if url_builder:
+            return url_builder.page_url(path)
+        if base_url:
+            return f"{base_url}/{path}"
+        return ""
+
+    evergreen = _absolute(addr.stable)
+    pinned = _absolute(addr.pinned)
+    if not evergreen or not pinned:
+        return ""
+    ver = _escape_html(addr.version)
+    return (
+        '<div class="share-address">'
+        '<span class="share-address-label">Share this page</span>'
+        f'<button type="button" class="share-address-copy"'
+        f' data-share-url="{_escape_html(evergreen)}">'
+        f'Evergreen link (always current)</button>'
+        f'<button type="button" class="share-address-copy"'
+        f' data-share-url="{_escape_html(pinned)}">'
+        f'Pinned link (v{ver})</button>'
+        '</div>'
+    )
+
+
 def _render_topbar(project_name, version_badge, topbar_page_title_html,
                    search_trigger_html, home_href,
-                   available_versions=None, available_locales=None,
-                   current_version="", current_locale="",
-                   is_latest=True):
+                   version_picker_html="", locale_picker_html=""):
     """Build the topbar header with hamburger, project name, theme toggle, search.
 
     ``home_href`` is where the site-name link points -- the home page as
     seen from the rendering page, which is not always this mount's own
-    index (see :func:`_home_href`).
+    index (see :func:`_home_href`).  The two pickers are rendered by
+    :func:`_render_version_picker` and :func:`_render_locale_picker`,
+    which is where their links are decided.
     """
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
@@ -2730,47 +2898,6 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
         '<path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/>'
         '</svg>'
     )
-
-    # Version picker (Phase 1.4)
-    version_picker_html = ""
-    if available_versions:
-        disabled = " disabled" if len(available_versions) <= 1 else ""
-        options = []
-        for v in available_versions:
-            ver = v["version"]
-            selected = " selected" if ver == current_version else ""
-            options.append(
-                f'<option value="{_escape_html(ver)}"{selected}>'
-                f'v{_escape_html(ver)}</option>'
-            )
-        version_picker_html = (
-            f'<select class="version-picker"'
-            f' data-current-locale="{_escape_html(current_locale)}"'
-            f'{disabled}>\n'
-            + "\n".join(options)
-            + "\n</select>\n"
-        )
-
-    # Locale picker (Phase 1.4)
-    locale_picker_html = ""
-    if available_locales:
-        disabled = " disabled" if len(available_locales) <= 1 else ""
-        options = []
-        for loc in available_locales:
-            code = loc["code"]
-            label = loc["label"]
-            selected = " selected" if code == current_locale else ""
-            options.append(
-                f'<option value="{_escape_html(code)}"{selected}>'
-                f'{_escape_html(label)}</option>'
-            )
-        locale_picker_html = (
-            f'<select class="locale-picker"'
-            f' data-current-version="{_escape_html(current_version)}"'
-            f'{disabled}>\n'
-            + "\n".join(options)
-            + "\n</select>\n"
-        )
 
     return (
         f'<header class="topbar">\n'
@@ -3158,7 +3285,9 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     # is present, it already provides the H1 so we suppress the auto H1.
     auto_h1_html = ""
     if not has_hero:
-        h1_slug = _slugify(title)
+        # One implementation assigns every anchor on the page, the page
+        # title's included -- see page_title_anchor.
+        h1_slug = page_title_anchor(title)
         h1_readable = _escape_html(title)
         h1_anchor = (
             f'<a class="heading-link" href="#{h1_slug}"'
@@ -3167,30 +3296,6 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         auto_h1_html = (
             f'<h1 id="{h1_slug}">{h1_anchor}{_escape_html(title)}</h1>'
         )
-
-    # Version banner for old versions (Phase 2)
-    # Suppress for non-doc types (post, essay, etc.) -- only doc types show it
-    _doc_types = {"guide", "api", "cli", "reference", "tutorial", "changelog", "glossary"}
-    _is_doc_type = (page_type or "guide") in _doc_types
-    version_banner_html = ""
-    if _is_doc_type and not is_latest and available_versions and current_version:
-        latest_ver = available_versions[-1]["version"] if available_versions else ""
-        if latest_ver:
-            # Document-relative hop to the latest version's landing page.
-            # A site-absolute one escapes the mount when the site is served
-            # under a slug or a project-pages subpath.
-            latest_url = asset_prefix + page_address(
-                "index.html",
-                locale=mount_locale or "en",
-                project=mount_project,
-                version=latest_ver,
-            ).pinned
-            version_banner_html = (
-                f'<div class="version-banner">'
-                f'You are viewing docs for v{_escape_html(current_version)}. '
-                f'<a href="{latest_url}">See latest</a>'
-                f'</div>'
-            )
 
     # Feed link in site footer (Feature 9.5)
     feed_footer_html = ""
@@ -3225,7 +3330,6 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         "font_tags": font_tags,
         "auto_h1_html": auto_h1_html,
         "feed_footer_html": feed_footer_html,
-        "version_banner_html": version_banner_html,
     }
 
 
@@ -3245,7 +3349,9 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                theme_meta=None, has_hero=False, deploy_target=None,
                page_nav=True, page_progress=True,
                mount_locale="", mount_project="", mount_version="",
+               mount_archived=False,
                available_versions=None, available_locales=None,
+               version_pages=None,
                current_version="", current_locale="",
                is_latest=True):
     """Wrap converted HTML body in the full page template.
@@ -3269,6 +3375,32 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         unversioned_prefix = prefix
     if home_href is None:
         home_href = prefix + "index.html"
+
+    # The page's own address decides every control that names another
+    # address: the two pickers, the superseded-version notice, and the
+    # share control.  Pages with no path of their own (404.html) have no
+    # address and get none of them.
+    if page_path:
+        addr = page_address(
+            page_path,
+            locale=mount_locale,
+            project=mount_project,
+            version=mount_version,
+            archived=mount_archived,
+        )
+        version_picker_html = _render_version_picker(
+            addr, available_versions, version_pages,
+        )
+        locale_picker_html = _render_locale_picker(
+            addr, available_locales, current_locale,
+        )
+        version_notice_html = _render_version_notice(addr)
+        share_html = _render_share_control(addr, url_builder, base_url)
+    else:
+        version_picker_html = ""
+        locale_picker_html = ""
+        version_notice_html = ""
+        share_html = ""
 
     # Compute all page metadata variables
     meta = _build_page_meta(
@@ -3315,32 +3447,6 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         mount_version=mount_version,
     )
 
-    # Per-version SEO (Phase 2): noindex for non-indexed, canonical override
-    version_seo_tags = ""
-    if available_versions and current_version and not is_latest:
-        cur_ver_entry = None
-        for v in available_versions:
-            if v["version"] == current_version:
-                cur_ver_entry = v
-                break
-        if cur_ver_entry and not cur_ver_entry.get("indexed", True):
-            version_seo_tags += '\n<meta name="robots" content="noindex, nofollow">'
-        if base_url and page_path and mount_locale and mount_version:
-            latest_ver = available_versions[-1]["version"]
-            latest_pinned = page_address(
-                page_path,
-                locale=mount_locale,
-                project=mount_project,
-                version=latest_ver,
-            ).pinned
-            base = url_builder.base() if url_builder else base_url
-            canonical_latest = f"{base}/{latest_pinned}"
-            seo_tags = re.sub(
-                r'<link rel="canonical" href="[^"]*">',
-                f'<link rel="canonical" href="{canonical_latest}">',
-                seo_tags,
-            )
-
     # Search trigger HTML (configurable: "icon", "bar", or "hidden")
     effective_search = search if search else "icon"
     if effective_search == "icon":
@@ -3368,11 +3474,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         topbar_page_title_html=meta["topbar_page_title_html"],
         search_trigger_html=search_trigger_html,
         home_href=home_href,
-        available_versions=available_versions,
-        available_locales=available_locales,
-        current_version=current_version,
-        current_locale=current_locale,
-        is_latest=is_latest,
+        version_picker_html=version_picker_html,
+        locale_picker_html=locale_picker_html,
     )
 
     # Build search dialog
@@ -3384,7 +3487,10 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     head_js = load_js("head")
 
     # Assemble body JS from external files via the loader
-    body_js = _minify_js(assemble_body_js(body_html, toc_html, meta["footer_html"]))
+    body_js = _minify_js(assemble_body_js(
+        body_html, toc_html, meta["footer_html"],
+        extras_html=version_notice_html + share_html,
+    ))
 
     # Google Analytics script (injected when feedback.ga is configured)
     ga_head_script = ""
@@ -3430,7 +3536,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'<link rel="stylesheet" href="{css_href}" media="print"'
         f" onload=\"this.media='all'\">"
         f'<noscript><link rel="stylesheet" href="{css_href}"></noscript>'
-        f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{version_seo_tags}{security_meta}\n'
+        f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
         f'{"<link href=\"" + asset_prefix + "pagefind/pagefind-ui.css\" rel=\"stylesheet\">" + chr(10) + "<script src=\"" + asset_prefix + "pagefind/pagefind-ui.js\"></script>" + chr(10) if search_engine == "pagefind" else ""}'
@@ -3448,13 +3554,14 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</ul>\n'
         f'</nav>\n'
         f'<main class="content" id="main-content">\n'
-        f'{meta["version_banner_html"]}\n'
+        f'{version_notice_html}\n'
         f'<article{pf_attrs}>\n'
         f'{meta["breadcrumbs_html"]}\n'
         f'{meta["mobile_toc_html"]}\n'
         f'{meta["summary_html"]}\n'
         f'{meta["auto_h1_html"]}\n'
         f'{body_html}\n'
+        f'{share_html}\n'
         f'{meta["footer_html"]}\n'
         f'</article>\n'
         f'{post_read_script}\n'

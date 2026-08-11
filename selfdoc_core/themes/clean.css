@@ -2367,3 +2367,61 @@ dfn {
     border-color: var(--link);
     color: var(--link);
 }
+
+
+/* Superseded-version notice and the two-address share control */
+.version-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.5rem;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--link);
+    border-radius: 4px;
+    background: var(--bg-alt, var(--bg));
+    font-size: 0.9rem;
+}
+.version-notice p {
+    margin: 0;
+    flex: 1;
+}
+.version-notice-dismiss {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+.version-notice-dismiss:hover {
+    border-color: var(--link);
+    color: var(--link);
+}
+.share-address {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 2rem 0 0;
+    font-size: 0.8rem;
+}
+.share-address-label {
+    color: var(--text-muted, var(--text));
+}
+.share-address-copy {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+.share-address-copy:hover {
+    border-color: var(--link);
+    color: var(--link);
+}

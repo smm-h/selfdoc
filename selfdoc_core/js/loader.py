@@ -35,7 +35,8 @@ def load_search_js(engine: str = "builtin") -> str:
 
 
 def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
-                     search_engine: str | None = None) -> str:
+                     search_engine: str | None = None,
+                     extras_html: str = "") -> str:
     """Assemble the body JS blocks based on page content.
 
     Always includes: theme-toggle, sidebar, nav-groups,
@@ -48,6 +49,9 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         toc_html: The table-of-contents HTML (empty string if none).
         footer_html: The page footer HTML.
         search_engine: Search engine name (unused here, kept for API).
+        extras_html: Template-level HTML the article body does not carry --
+            the superseded-version notice and the share control, which the
+            page wrapper renders around the body.
 
     Returns:
         Concatenated JS string (not yet minified).
@@ -77,6 +81,10 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         js_blocks.append(load_js("heading-copy"))
     if 'class="table-wrap"' in body_html:
         js_blocks.append(load_js("sortable-tables"))
+    if 'class="version-notice"' in extras_html:
+        js_blocks.append(load_js("version-notice"))
+    if 'class="share-address"' in extras_html:
+        js_blocks.append(load_js("share-address"))
 
     # Always last: re-enable smooth scroll
     js_blocks.append(load_js("smooth-scroll"))
