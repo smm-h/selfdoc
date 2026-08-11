@@ -26,7 +26,7 @@ The npm package is named `selfdocumenting` (npm blocks `selfdoc` due to name sim
 
 ```bash
 # Initialize in an existing project (auto-detects language)
-selfdoc init
+selfdoc init --base-url https://myproject.pages.dev
 
 # Auto-generate API and CLI reference pages
 selfdoc gen
@@ -50,7 +50,7 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
   "language": "python",
   "source": ["src/"],
   "base_url": "https://my-project.example.com",
-  "versions": [{"version": "1.0.0", "indexed": true}],
+  "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}]
 }
 ```
@@ -169,7 +169,7 @@ Custom directives take priority over built-in names.
   "docs": "docs/",
   "output": "docs/_build/",
   "base_url": "https://my-project.example.com",
-  "versions": [{"version": "1.0.0", "indexed": true}],
+  "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}],
   "deploy": {
     "provider": "cloudflare-pages",
@@ -181,7 +181,7 @@ Custom directives take priority over built-in names.
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `source` | yes | List of source entries to extract documentation from. |
+| `source` | no | List of source entries to extract documentation from. |
 | `base_url` | yes | Base URL of the generated site, used for canonical links and SEO. |
 | `version` | no | Project version. When present, used by deploy instead of reading from pyproject.toml/package.json. |
 | `docs` | no | Directory containing Markdown documentation templates. |
@@ -222,7 +222,7 @@ Custom directives take priority over built-in names.
 | `topology` | no | Deployment topology for multi-project unified sites. |
 | `assembly` | no | Assembly configuration for unified site deployment. |
 
-`selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json).
+`selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json), and takes the site's own address as `--base-url`. A project with no detectable language is initialized as a codeless project: no `source` key, and no code-extraction directive in the starter page.
 
 ## Commands
 

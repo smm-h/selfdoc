@@ -10,372 +10,3220 @@
     {
       "path": "architecture.md",
       "title": "Architecture",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Architecture",
+          "anchor": "architecture"
+        },
+        {
+          "level": 2,
+          "text": "Build Pipeline Overview",
+          "anchor": "build-pipeline-overview"
+        },
+        {
+          "level": 2,
+          "text": "How Directives Resolve",
+          "anchor": "how-directives-resolve"
+        },
+        {
+          "level": 3,
+          "text": "What each directive extracts",
+          "anchor": "what-each-directive-extracts"
+        },
+        {
+          "level": 2,
+          "text": "How Themes Work",
+          "anchor": "how-themes-work"
+        },
+        {
+          "level": 2,
+          "text": "Auxiliary Outputs",
+          "anchor": "auxiliary-outputs"
+        },
+        {
+          "level": 2,
+          "text": "Post-Processors",
+          "anchor": "post-processors"
+        },
+        {
+          "level": 2,
+          "text": "Staleness Tracking",
+          "anchor": "staleness-tracking"
+        }
+      ]
     },
     {
       "path": "blog-guide.md",
       "title": "Blog Posts",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Blog Posts",
+          "anchor": "blog-posts"
+        },
+        {
+          "level": 2,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "Creating Posts",
+          "anchor": "creating-posts"
+        },
+        {
+          "level": 3,
+          "text": "Manual creation",
+          "anchor": "manual-creation"
+        },
+        {
+          "level": 3,
+          "text": "Release-generated posts",
+          "anchor": "release-generated-posts"
+        },
+        {
+          "level": 2,
+          "text": "Frontmatter Format",
+          "anchor": "frontmatter-format"
+        },
+        {
+          "level": 3,
+          "text": "Required fields",
+          "anchor": "required-fields"
+        },
+        {
+          "level": 3,
+          "text": "Optional fields",
+          "anchor": "optional-fields"
+        },
+        {
+          "level": 3,
+          "text": "Release-specific fields",
+          "anchor": "release-specific-fields"
+        },
+        {
+          "level": 3,
+          "text": "Slug immutability",
+          "anchor": "slug-immutability"
+        },
+        {
+          "level": 2,
+          "text": "Listing Posts",
+          "anchor": "listing-posts"
+        },
+        {
+          "level": 2,
+          "text": "Publishing Posts",
+          "anchor": "publishing-posts"
+        },
+        {
+          "level": 2,
+          "text": "Revision Tracking",
+          "anchor": "revision-tracking"
+        },
+        {
+          "level": 3,
+          "text": "How it works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 2,
+          "text": "Post Validation",
+          "anchor": "post-validation"
+        },
+        {
+          "level": 2,
+          "text": "Integration with the Assembly",
+          "anchor": "integration-with-the-assembly"
+        },
+        {
+          "level": 3,
+          "text": "How posts reach the unified site",
+          "anchor": "how-posts-reach-the-unified-site"
+        },
+        {
+          "level": 3,
+          "text": "Post URLs in the unified site",
+          "anchor": "post-urls-in-the-unified-site"
+        },
+        {
+          "level": 3,
+          "text": "The canonical blog URL",
+          "anchor": "the-canonical-blog-url"
+        },
+        {
+          "level": 3,
+          "text": "The portfolio canonical",
+          "anchor": "the-portfolio-canonical"
+        },
+        {
+          "level": 4,
+          "text": "Operator steps (outside selfblog)",
+          "anchor": "operator-steps-outside-selfblog"
+        },
+        {
+          "level": 3,
+          "text": "The deploy workflow is a generated artifact",
+          "anchor": "the-deploy-workflow-is-a-generated-artifact"
+        },
+        {
+          "level": 3,
+          "text": "Posts-only vs full builds",
+          "anchor": "posts-only-vs-full-builds"
+        },
+        {
+          "level": 2,
+          "text": "Publishing Without a Release",
+          "anchor": "publishing-without-a-release"
+        },
+        {
+          "level": 3,
+          "text": "What a build owns",
+          "anchor": "what-a-build-owns"
+        },
+        {
+          "level": 2,
+          "text": "Membership: the Roster",
+          "anchor": "membership-the-roster"
+        },
+        {
+          "level": 3,
+          "text": "Retiring a project",
+          "anchor": "retiring-a-project"
+        },
+        {
+          "level": 2,
+          "text": "Building Posts Locally",
+          "anchor": "building-posts-locally"
+        }
+      ]
     },
     {
       "path": "check-guide.md",
       "title": "Check Guide",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Check Guide",
+          "anchor": "check-guide"
+        },
+        {
+          "level": 2,
+          "text": "What It Does",
+          "anchor": "what-it-does"
+        },
+        {
+          "level": 2,
+          "text": "Directive Validation",
+          "anchor": "directive-validation"
+        },
+        {
+          "level": 2,
+          "text": "Coverage",
+          "anchor": "coverage"
+        },
+        {
+          "level": 3,
+          "text": "Coverage threshold",
+          "anchor": "coverage-threshold"
+        },
+        {
+          "level": 3,
+          "text": "Excluding modules",
+          "anchor": "excluding-modules"
+        },
+        {
+          "level": 2,
+          "text": "Lint Rules",
+          "anchor": "lint-rules"
+        },
+        {
+          "level": 3,
+          "text": "Suppressing rules",
+          "anchor": "suppressing-rules"
+        },
+        {
+          "level": 2,
+          "text": "Staleness Detection",
+          "anchor": "staleness-detection"
+        },
+        {
+          "level": 2,
+          "text": "Example Validation",
+          "anchor": "example-validation"
+        },
+        {
+          "level": 2,
+          "text": "Output Formats",
+          "anchor": "output-formats"
+        },
+        {
+          "level": 3,
+          "text": "Text (default)",
+          "anchor": "text-default"
+        },
+        {
+          "level": 3,
+          "text": "JSON",
+          "anchor": "json"
+        },
+        {
+          "level": 2,
+          "text": "Exit Codes",
+          "anchor": "exit-codes"
+        }
+      ]
     },
     {
       "path": "cli-baseline.md",
       "title": "selfdoc baseline",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc baseline",
+          "anchor": "selfdoc-baseline"
+        },
+        {
+          "level": 2,
+          "text": "baseline accept",
+          "anchor": "baseline-accept"
+        },
+        {
+          "level": 3,
+          "text": "Flags",
+          "anchor": "flags"
+        },
+        {
+          "level": 3,
+          "text": "Arguments",
+          "anchor": "arguments"
+        }
+      ]
     },
     {
       "path": "cli-build.md",
       "title": "selfdoc build",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc build",
+          "anchor": "selfdoc-build"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "cli-check.md",
       "title": "selfdoc check",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc check",
+          "anchor": "selfdoc-check"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "cli-deploy.md",
       "title": "selfdoc deploy",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc deploy",
+          "anchor": "selfdoc-deploy"
+        },
+        {
+          "level": 2,
+          "text": "Grants",
+          "anchor": "grants"
+        }
+      ]
     },
     {
       "path": "cli-gen-data.md",
       "title": "selfdoc gen-data",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc gen-data",
+          "anchor": "selfdoc-gen-data"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "cli-gen.md",
       "title": "selfdoc gen",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc gen",
+          "anchor": "selfdoc-gen"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "cli-index.md",
       "title": "selfdoc CLI Reference",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc CLI Reference",
+          "anchor": "selfdoc-cli-reference"
+        },
+        {
+          "level": 2,
+          "text": "Commands",
+          "anchor": "commands"
+        },
+        {
+          "level": 2,
+          "text": "Command Groups",
+          "anchor": "command-groups"
+        },
+        {
+          "level": 2,
+          "text": "Framework flags",
+          "anchor": "framework-flags"
+        }
+      ]
     },
     {
       "path": "cli-init.md",
       "title": "selfdoc init",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc init",
+          "anchor": "selfdoc-init"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "cli-quality.md",
       "title": "selfdoc quality",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc quality",
+          "anchor": "selfdoc-quality"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "cli-serve.md",
       "title": "selfdoc serve",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc serve",
+          "anchor": "selfdoc-serve"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
     },
     {
       "path": "code-blocks.md",
       "title": "Code Blocks",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Code Blocks",
+          "anchor": "code-blocks"
+        },
+        {
+          "level": 2,
+          "text": "Syntax Highlighting",
+          "anchor": "syntax-highlighting"
+        },
+        {
+          "level": 2,
+          "text": "Language Icons",
+          "anchor": "language-icons"
+        },
+        {
+          "level": 2,
+          "text": "Line Numbers",
+          "anchor": "line-numbers"
+        },
+        {
+          "level": 2,
+          "text": "Run Buttons",
+          "anchor": "run-buttons"
+        },
+        {
+          "level": 2,
+          "text": "Validated Examples",
+          "anchor": "validated-examples"
+        },
+        {
+          "level": 2,
+          "text": "Annotations",
+          "anchor": "annotations"
+        },
+        {
+          "level": 2,
+          "text": "Diff Highlighting",
+          "anchor": "diff-highlighting"
+        },
+        {
+          "level": 2,
+          "text": "Code Tabs",
+          "anchor": "code-tabs"
+        },
+        {
+          "level": 2,
+          "text": "Copy Button",
+          "anchor": "copy-button"
+        }
+      ]
     },
     {
       "path": "comparisons.md",
       "title": "Comparisons",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Comparisons",
+          "anchor": "comparisons"
+        },
+        {
+          "level": 2,
+          "text": "Feature Comparison",
+          "anchor": "feature-comparison"
+        },
+        {
+          "level": 2,
+          "text": "Where Each Tool Shines",
+          "anchor": "where-each-tool-shines"
+        },
+        {
+          "level": 3,
+          "text": "Sphinx",
+          "anchor": "sphinx"
+        },
+        {
+          "level": 3,
+          "text": "MkDocs",
+          "anchor": "mkdocs"
+        },
+        {
+          "level": 3,
+          "text": "Docusaurus",
+          "anchor": "docusaurus"
+        },
+        {
+          "level": 3,
+          "text": "VitePress",
+          "anchor": "vitepress"
+        },
+        {
+          "level": 3,
+          "text": "Rustdoc",
+          "anchor": "rustdoc"
+        },
+        {
+          "level": 3,
+          "text": "Godoc",
+          "anchor": "godoc"
+        },
+        {
+          "level": 3,
+          "text": "TypeDoc",
+          "anchor": "typedoc"
+        },
+        {
+          "level": 3,
+          "text": "selfdoc",
+          "anchor": "selfdoc"
+        }
+      ]
     },
     {
       "path": "configuration.md",
       "title": "Configuration",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "Config Reference",
+          "anchor": "config-reference"
+        },
+        {
+          "level": 3,
+          "text": "Core",
+          "anchor": "core"
+        },
+        {
+          "level": 3,
+          "text": "Features",
+          "anchor": "features"
+        },
+        {
+          "level": 3,
+          "text": "SEO",
+          "anchor": "seo"
+        },
+        {
+          "level": 3,
+          "text": "Deploy",
+          "anchor": "deploy"
+        },
+        {
+          "level": 3,
+          "text": "Branding",
+          "anchor": "branding"
+        },
+        {
+          "level": 3,
+          "text": "Generation",
+          "anchor": "generation"
+        },
+        {
+          "level": 2,
+          "text": "Common Configurations",
+          "anchor": "common-configurations"
+        },
+        {
+          "level": 3,
+          "text": "Minimal Python project",
+          "anchor": "minimal-python-project"
+        },
+        {
+          "level": 3,
+          "text": "Go project with deployment",
+          "anchor": "go-project-with-deployment"
+        },
+        {
+          "level": 3,
+          "text": "Full-featured project with branding",
+          "anchor": "full-featured-project-with-branding"
+        },
+        {
+          "level": 2,
+          "text": "Example Validators",
+          "anchor": "example-validators"
+        }
+      ]
     },
     {
       "path": "custom-directives.md",
       "title": "Custom Directives",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Custom Directives",
+          "anchor": "custom-directives"
+        },
+        {
+          "level": 2,
+          "text": "How It Works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 2,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "The resolve Interface",
+          "anchor": "the-resolve-interface"
+        },
+        {
+          "level": 2,
+          "text": "Example: Directive Catalog",
+          "anchor": "example-directive-catalog"
+        },
+        {
+          "level": 2,
+          "text": "Example: Config Schema",
+          "anchor": "example-config-schema"
+        },
+        {
+          "level": 2,
+          "text": "Tips",
+          "anchor": "tips"
+        }
+      ]
     },
     {
       "path": "deployment.md",
       "title": "Deployment",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Deployment",
+          "anchor": "deployment"
+        },
+        {
+          "level": 2,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "Cloudflare Pages",
+          "anchor": "cloudflare-pages"
+        },
+        {
+          "level": 3,
+          "text": "Setup",
+          "anchor": "setup"
+        },
+        {
+          "level": 3,
+          "text": "Environment Variables",
+          "anchor": "environment-variables"
+        },
+        {
+          "level": 3,
+          "text": "Security Headers",
+          "anchor": "security-headers"
+        },
+        {
+          "level": 2,
+          "text": "GitHub Pages",
+          "anchor": "github-pages"
+        },
+        {
+          "level": 3,
+          "text": "Setup",
+          "anchor": "setup-1"
+        },
+        {
+          "level": 3,
+          "text": "How It Works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 3,
+          "text": "Security Headers",
+          "anchor": "security-headers-1"
+        },
+        {
+          "level": 2,
+          "text": "Directory-Index URLs",
+          "anchor": "directory-index-urls"
+        },
+        {
+          "level": 2,
+          "text": "CI Integration",
+          "anchor": "ci-integration"
+        },
+        {
+          "level": 3,
+          "text": "Post-release hook example",
+          "anchor": "post-release-hook-example"
+        },
+        {
+          "level": 3,
+          "text": "Manual CI",
+          "anchor": "manual-ci"
+        },
+        {
+          "level": 2,
+          "text": "Custom Domain",
+          "anchor": "custom-domain"
+        }
+      ]
     },
     {
       "path": "directives-guide.md",
       "title": "Directives Guide",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Directives Guide",
+          "anchor": "directives-guide"
+        },
+        {
+          "level": 2,
+          "text": "Marker Types",
+          "anchor": "marker-types"
+        },
+        {
+          "level": 2,
+          "text": "Directive Forms",
+          "anchor": "directive-forms"
+        },
+        {
+          "level": 3,
+          "text": "One-liner (self-closing)",
+          "anchor": "one-liner-self-closing"
+        },
+        {
+          "level": 3,
+          "text": "Block directive",
+          "anchor": "block-directive"
+        },
+        {
+          "level": 3,
+          "text": "Block with attributes and body separator",
+          "anchor": "block-with-attributes-and-body-separator"
+        },
+        {
+          "level": 3,
+          "text": "Block with no body",
+          "anchor": "block-with-no-body"
+        },
+        {
+          "level": 3,
+          "text": "Inline directives",
+          "anchor": "inline-directives"
+        },
+        {
+          "level": 2,
+          "text": "Attribute Syntax",
+          "anchor": "attribute-syntax"
+        },
+        {
+          "level": 2,
+          "text": "Built-in Directives",
+          "anchor": "built-in-directives"
+        },
+        {
+          "level": 3,
+          "text": "Code Extraction Directives",
+          "anchor": "code-extraction-directives"
+        },
+        {
+          "level": 4,
+          "text": "`ref`",
+          "anchor": "ref"
+        },
+        {
+          "level": 4,
+          "text": "`table-schema`",
+          "anchor": "table-schema"
+        },
+        {
+          "level": 4,
+          "text": "`code-test`",
+          "anchor": "code-test"
+        },
+        {
+          "level": 4,
+          "text": "`code-help`",
+          "anchor": "code-help"
+        },
+        {
+          "level": 4,
+          "text": "`table-config`",
+          "anchor": "table-config"
+        },
+        {
+          "level": 4,
+          "text": "`prose-desc`",
+          "anchor": "prose-desc"
+        },
+        {
+          "level": 3,
+          "text": "Content Directives",
+          "anchor": "content-directives"
+        },
+        {
+          "level": 4,
+          "text": "`callout-note`",
+          "anchor": "callout-note"
+        },
+        {
+          "level": 4,
+          "text": "`callout-warning`",
+          "anchor": "callout-warning"
+        },
+        {
+          "level": 4,
+          "text": "`callout-tip`",
+          "anchor": "callout-tip"
+        },
+        {
+          "level": 4,
+          "text": "`callout-danger`",
+          "anchor": "callout-danger"
+        },
+        {
+          "level": 4,
+          "text": "`callout-important`",
+          "anchor": "callout-important"
+        },
+        {
+          "level": 4,
+          "text": "`list-glossary`",
+          "anchor": "list-glossary"
+        },
+        {
+          "level": 4,
+          "text": "`list-tree`",
+          "anchor": "list-tree"
+        },
+        {
+          "level": 4,
+          "text": "`table-dep`",
+          "anchor": "table-dep"
+        },
+        {
+          "level": 4,
+          "text": "`list-modules`",
+          "anchor": "list-modules"
+        },
+        {
+          "level": 4,
+          "text": "`table-commands`",
+          "anchor": "table-commands"
+        },
+        {
+          "level": 4,
+          "text": "`table-endpoint`",
+          "anchor": "table-endpoint"
+        },
+        {
+          "level": 4,
+          "text": "`table-directives`",
+          "anchor": "table-directives"
+        },
+        {
+          "level": 4,
+          "text": "`table-config-schema`",
+          "anchor": "table-config-schema"
+        },
+        {
+          "level": 4,
+          "text": "`var`",
+          "anchor": "var"
+        },
+        {
+          "level": 2,
+          "text": "Custom Directives",
+          "anchor": "custom-directives"
+        },
+        {
+          "level": 3,
+          "text": "The resolve Interface",
+          "anchor": "the-resolve-interface"
+        },
+        {
+          "level": 3,
+          "text": "Registering Custom Directives",
+          "anchor": "registering-custom-directives"
+        },
+        {
+          "level": 3,
+          "text": "Resolution Priority",
+          "anchor": "resolution-priority"
+        },
+        {
+          "level": 3,
+          "text": "Example: Dynamic Catalog Table",
+          "anchor": "example-dynamic-catalog-table"
+        },
+        {
+          "level": 3,
+          "text": "Error Handling",
+          "anchor": "error-handling"
+        },
+        {
+          "level": 2,
+          "text": "Best Practices",
+          "anchor": "best-practices"
+        }
+      ]
     },
     {
       "path": "directives.md",
       "title": "Directives Reference",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Directives Reference",
+          "anchor": "directives-reference"
+        },
+        {
+          "level": 2,
+          "text": "Syntax",
+          "anchor": "syntax"
+        },
+        {
+          "level": 2,
+          "text": "Built-in Directives",
+          "anchor": "built-in-directives"
+        },
+        {
+          "level": 3,
+          "text": "Code Extraction",
+          "anchor": "code-extraction"
+        },
+        {
+          "level": 4,
+          "text": "Code Extraction Examples",
+          "anchor": "code-extraction-examples"
+        },
+        {
+          "level": 3,
+          "text": "Content Blocks",
+          "anchor": "content-blocks"
+        },
+        {
+          "level": 4,
+          "text": "Content Blocks Examples",
+          "anchor": "content-blocks-examples"
+        },
+        {
+          "level": 3,
+          "text": "The `exclude` Attribute",
+          "anchor": "the-exclude-attribute"
+        },
+        {
+          "level": 2,
+          "text": "Custom Directives",
+          "anchor": "custom-directives"
+        }
+      ]
     },
     {
       "path": "feeds.md",
       "title": "Atom Feeds",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Atom Feeds",
+          "anchor": "atom-feeds"
+        },
+        {
+          "level": 2,
+          "text": "How It Works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 2,
+          "text": "Date Handling",
+          "anchor": "date-handling"
+        },
+        {
+          "level": 2,
+          "text": "Excluding Pages from the Feed",
+          "anchor": "excluding-pages-from-the-feed"
+        },
+        {
+          "level": 2,
+          "text": "Limiting Feed Size",
+          "anchor": "limiting-feed-size"
+        },
+        {
+          "level": 2,
+          "text": "Subscribing",
+          "anchor": "subscribing"
+        }
+      ]
     },
     {
       "path": "gen-data-guide.md",
       "title": "Data Generation",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Data Generation",
+          "anchor": "data-generation"
+        },
+        {
+          "level": 2,
+          "text": "When to Use This",
+          "anchor": "when-to-use-this"
+        },
+        {
+          "level": 2,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "How the Sandbox Works",
+          "anchor": "how-the-sandbox-works"
+        },
+        {
+          "level": 2,
+          "text": "Output Validation",
+          "anchor": "output-validation"
+        },
+        {
+          "level": 2,
+          "text": "Running It",
+          "anchor": "running-it"
+        },
+        {
+          "level": 2,
+          "text": "Requirements",
+          "anchor": "requirements"
+        },
+        {
+          "level": 2,
+          "text": "Example: selfdoc's Own Directive Stats",
+          "anchor": "example-selfdocs-own-directive-stats"
+        }
+      ]
     },
     {
       "path": "gen-index.md",
       "title": "API Reference",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "API Reference",
+          "anchor": "api-reference"
+        }
+      ]
     },
     {
       "path": "getting-started.md",
       "title": "Getting Started",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Getting Started",
+          "anchor": "getting-started"
+        },
+        {
+          "level": 2,
+          "text": "Installation",
+          "anchor": "installation"
+        },
+        {
+          "level": 2,
+          "text": "Initialize a Project",
+          "anchor": "initialize-a-project"
+        },
+        {
+          "level": 2,
+          "text": "Project Structure",
+          "anchor": "project-structure"
+        },
+        {
+          "level": 3,
+          "text": "selfdoc.json",
+          "anchor": "selfdocjson"
+        },
+        {
+          "level": 3,
+          "text": "The docs directory",
+          "anchor": "the-docs-directory"
+        },
+        {
+          "level": 2,
+          "text": "Writing Your First Directive",
+          "anchor": "writing-your-first-directive"
+        },
+        {
+          "level": 3,
+          "text": "Adding more directives",
+          "anchor": "adding-more-directives"
+        },
+        {
+          "level": 2,
+          "text": "Building",
+          "anchor": "building"
+        },
+        {
+          "level": 2,
+          "text": "Local Development",
+          "anchor": "local-development"
+        },
+        {
+          "level": 2,
+          "text": "Checking Your Docs",
+          "anchor": "checking-your-docs"
+        },
+        {
+          "level": 2,
+          "text": "Next Steps",
+          "anchor": "next-steps"
+        }
+      ]
     },
     {
       "path": "glossary-guide.md",
       "title": "Glossary Guide",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Glossary Guide",
+          "anchor": "glossary-guide"
+        },
+        {
+          "level": 2,
+          "text": "Defining Terms",
+          "anchor": "defining-terms"
+        },
+        {
+          "level": 3,
+          "text": "Inline `<dfn>` tags",
+          "anchor": "inline-ltdfngt-tags"
+        },
+        {
+          "level": 3,
+          "text": "The `list-glossary` directive",
+          "anchor": "the-list-glossary-directive"
+        },
+        {
+          "level": 2,
+          "text": "Auto-linking",
+          "anchor": "auto-linking"
+        },
+        {
+          "level": 2,
+          "text": "The Generated Glossary Page",
+          "anchor": "the-generated-glossary-page"
+        },
+        {
+          "level": 2,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "Tips",
+          "anchor": "tips"
+        }
+      ]
     },
     {
       "path": "glossary-terms.md",
       "title": "Glossary",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Glossary",
+          "anchor": "glossary"
+        }
+      ]
     },
     {
       "path": "index.md",
       "title": "selfdoc",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 2,
+          "text": "How it works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 3,
+          "text": "1. Write Markdown with directives",
+          "anchor": "1-write-markdown-with-directives"
+        },
+        {
+          "level": 3,
+          "text": "2. Configure with selfdoc.json",
+          "anchor": "2-configure-with-selfdocjson"
+        },
+        {
+          "level": 3,
+          "text": "3. Build and deploy",
+          "anchor": "3-build-and-deploy"
+        },
+        {
+          "level": 2,
+          "text": "Before and after",
+          "anchor": "before-and-after"
+        },
+        {
+          "level": 2,
+          "text": "Features",
+          "anchor": "features"
+        },
+        {
+          "level": 2,
+          "text": "Get started",
+          "anchor": "get-started"
+        }
+      ]
     },
     {
       "path": "internals.md",
       "title": "Internals",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Internals",
+          "anchor": "internals"
+        },
+        {
+          "level": 2,
+          "text": "Tokenizer",
+          "anchor": "tokenizer"
+        },
+        {
+          "level": 3,
+          "text": "Token types",
+          "anchor": "token-types"
+        },
+        {
+          "level": 3,
+          "text": "Design rationale",
+          "anchor": "design-rationale"
+        },
+        {
+          "level": 2,
+          "text": "Rendering Pipeline",
+          "anchor": "rendering-pipeline"
+        },
+        {
+          "level": 3,
+          "text": "Phase 1: Tokenize and render blocks",
+          "anchor": "phase-1-tokenize-and-render-blocks"
+        },
+        {
+          "level": 3,
+          "text": "Phase 2: Post-processors",
+          "anchor": "phase-2-post-processors"
+        },
+        {
+          "level": 3,
+          "text": "Phase 3: Page assembly",
+          "anchor": "phase-3-page-assembly"
+        },
+        {
+          "level": 3,
+          "text": "Why post-processors operate on HTML strings",
+          "anchor": "why-post-processors-operate-on-html-strings"
+        },
+        {
+          "level": 2,
+          "text": "Extractor Protocol",
+          "anchor": "extractor-protocol"
+        },
+        {
+          "level": 3,
+          "text": "Implementations",
+          "anchor": "implementations"
+        },
+        {
+          "level": 3,
+          "text": "Language detection",
+          "anchor": "language-detection"
+        },
+        {
+          "level": 2,
+          "text": "Resolver Dispatch Chain",
+          "anchor": "resolver-dispatch-chain"
+        },
+        {
+          "level": 3,
+          "text": "Built-in directive catalog",
+          "anchor": "built-in-directive-catalog"
+        },
+        {
+          "level": 2,
+          "text": "Lint System",
+          "anchor": "lint-system"
+        },
+        {
+          "level": 3,
+          "text": "Directive validation",
+          "anchor": "directive-validation"
+        },
+        {
+          "level": 3,
+          "text": "Coverage analysis",
+          "anchor": "coverage-analysis"
+        },
+        {
+          "level": 3,
+          "text": "SEO lint checks",
+          "anchor": "seo-lint-checks"
+        },
+        {
+          "level": 3,
+          "text": "Why tokens, not raw Markdown",
+          "anchor": "why-tokens-not-raw-markdown"
+        },
+        {
+          "level": 3,
+          "text": "Staleness detection",
+          "anchor": "staleness-detection"
+        }
+      ]
     },
     {
       "path": "llms-txt.md",
       "title": "llms.txt",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "llms.txt",
+          "anchor": "llmstxt"
+        },
+        {
+          "level": 2,
+          "text": "What Is llms.txt?",
+          "anchor": "what-is-llmstxt"
+        },
+        {
+          "level": 2,
+          "text": "The Two Files",
+          "anchor": "the-two-files"
+        },
+        {
+          "level": 3,
+          "text": "llms.txt",
+          "anchor": "llmstxt"
+        },
+        {
+          "level": 3,
+          "text": "llms-full.txt",
+          "anchor": "llms-fulltxt"
+        },
+        {
+          "level": 2,
+          "text": "AI Crawler Access",
+          "anchor": "ai-crawler-access"
+        },
+        {
+          "level": 2,
+          "text": "Why It Matters",
+          "anchor": "why-it-matters"
+        }
+      ]
     },
     {
       "path": "monorepo-conversion.md",
       "title": "Monorepo Conversion Plan",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Monorepo Conversion Plan",
+          "anchor": "monorepo-conversion-plan"
+        },
+        {
+          "level": 2,
+          "text": "Current State",
+          "anchor": "current-state"
+        },
+        {
+          "level": 2,
+          "text": "Target State",
+          "anchor": "target-state"
+        },
+        {
+          "level": 3,
+          "text": "Releasable: selfdoc_core",
+          "anchor": "releasable-selfdoc_core"
+        },
+        {
+          "level": 3,
+          "text": "Releasable: selfdoc",
+          "anchor": "releasable-selfdoc"
+        },
+        {
+          "level": 3,
+          "text": "Releasable: selfblog",
+          "anchor": "releasable-selfblog"
+        },
+        {
+          "level": 2,
+          "text": "Conversion Steps",
+          "anchor": "conversion-steps"
+        },
+        {
+          "level": 3,
+          "text": "1. Initialize monorepo structure",
+          "anchor": "1-initialize-monorepo-structure"
+        },
+        {
+          "level": 3,
+          "text": "2. Configure workspace.toml",
+          "anchor": "2-configure-workspacetoml"
+        },
+        {
+          "level": 3,
+          "text": "3. Migrate changelog history",
+          "anchor": "3-migrate-changelog-history"
+        },
+        {
+          "level": 3,
+          "text": "4. Per-package pyproject.toml activation",
+          "anchor": "4-per-package-pyprojecttoml-activation"
+        },
+        {
+          "level": 3,
+          "text": "5. CI/CD scaffolding",
+          "anchor": "5-cicd-scaffolding"
+        },
+        {
+          "level": 2,
+          "text": "Open Questions",
+          "anchor": "open-questions"
+        },
+        {
+          "level": 2,
+          "text": "rlsbl Call-Site Flip",
+          "anchor": "rlsbl-call-site-flip"
+        },
+        {
+          "level": 2,
+          "text": "Assembly Workflow Update",
+          "anchor": "assembly-workflow-update"
+        },
+        {
+          "level": 3,
+          "text": "Install step",
+          "anchor": "install-step"
+        },
+        {
+          "level": 3,
+          "text": "Build step",
+          "anchor": "build-step"
+        },
+        {
+          "level": 3,
+          "text": "Shared elements step",
+          "anchor": "shared-elements-step"
+        }
+      ]
     },
     {
       "path": "multi-language.md",
       "title": "Multi-Language Support",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Multi-Language Support",
+          "anchor": "multi-language-support"
+        },
+        {
+          "level": 2,
+          "text": "Setting the Language",
+          "anchor": "setting-the-language"
+        },
+        {
+          "level": 2,
+          "text": "Go Examples",
+          "anchor": "go-examples"
+        },
+        {
+          "level": 3,
+          "text": "Module reference",
+          "anchor": "module-reference"
+        },
+        {
+          "level": 3,
+          "text": "Struct schema table",
+          "anchor": "struct-schema-table"
+        },
+        {
+          "level": 3,
+          "text": "Embedding test code",
+          "anchor": "embedding-test-code"
+        },
+        {
+          "level": 2,
+          "text": "TypeScript / JavaScript Examples",
+          "anchor": "typescript-javascript-examples"
+        },
+        {
+          "level": 3,
+          "text": "Module reference",
+          "anchor": "module-reference-1"
+        },
+        {
+          "level": 3,
+          "text": "Interface or class schema",
+          "anchor": "interface-or-class-schema"
+        },
+        {
+          "level": 3,
+          "text": "Code examples from tests",
+          "anchor": "code-examples-from-tests"
+        },
+        {
+          "level": 2,
+          "text": "Source File Detection",
+          "anchor": "source-file-detection"
+        },
+        {
+          "level": 2,
+          "text": "Cross-Language Limitations",
+          "anchor": "cross-language-limitations"
+        }
+      ]
     },
     {
       "path": "quality-guide.md",
       "title": "Quality Guide",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Quality Guide",
+          "anchor": "quality-guide"
+        },
+        {
+          "level": 2,
+          "text": "Tiers",
+          "anchor": "tiers"
+        },
+        {
+          "level": 3,
+          "text": "What each tier means in practice",
+          "anchor": "what-each-tier-means-in-practice"
+        },
+        {
+          "level": 2,
+          "text": "Doc ratio",
+          "anchor": "doc-ratio"
+        },
+        {
+          "level": 2,
+          "text": "Content grade",
+          "anchor": "content-grade"
+        },
+        {
+          "level": 2,
+          "text": "Example output",
+          "anchor": "example-output"
+        },
+        {
+          "level": 3,
+          "text": "Reading the output",
+          "anchor": "reading-the-output"
+        },
+        {
+          "level": 2,
+          "text": "JSON output",
+          "anchor": "json-output"
+        },
+        {
+          "level": 2,
+          "text": "Using quality to find improvement areas",
+          "anchor": "using-quality-to-find-improvement-areas"
+        },
+        {
+          "level": 2,
+          "text": "Prerequisites",
+          "anchor": "prerequisites"
+        }
+      ]
     },
     {
       "path": "rlsbl-integration.md",
       "title": "rlsbl Integration",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "rlsbl Integration",
+          "anchor": "rlsbl-integration"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc Side",
+          "anchor": "selfdoc-side"
+        },
+        {
+          "level": 3,
+          "text": "Auto-commit preference chain",
+          "anchor": "auto-commit-preference-chain"
+        },
+        {
+          "level": 3,
+          "text": "Changelog auto-detection",
+          "anchor": "changelog-auto-detection"
+        },
+        {
+          "level": 3,
+          "text": "Version from manifest",
+          "anchor": "version-from-manifest"
+        },
+        {
+          "level": 3,
+          "text": "Overriding the version during a release",
+          "anchor": "overriding-the-version-during-a-release"
+        },
+        {
+          "level": 2,
+          "text": "rlsbl Side",
+          "anchor": "rlsbl-side"
+        },
+        {
+          "level": 3,
+          "text": "Docs checks during release",
+          "anchor": "docs-checks-during-release"
+        },
+        {
+          "level": 3,
+          "text": "Post-release build and deploy",
+          "anchor": "post-release-build-and-deploy"
+        },
+        {
+          "level": 3,
+          "text": "Skip flag",
+          "anchor": "skip-flag"
+        },
+        {
+          "level": 2,
+          "text": "Credential Handling",
+          "anchor": "credential-handling"
+        },
+        {
+          "level": 2,
+          "text": "Setting It Up",
+          "anchor": "setting-it-up"
+        }
+      ]
     },
     {
       "path": "root-files.md",
       "title": "Root Files",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Root Files",
+          "anchor": "root-files"
+        },
+        {
+          "level": 2,
+          "text": "How It Works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 2,
+          "text": "Configuration",
+          "anchor": "configuration"
+        },
+        {
+          "level": 2,
+          "text": "Template Format",
+          "anchor": "template-format"
+        },
+        {
+          "level": 2,
+          "text": "Generated File Markers",
+          "anchor": "generated-file-markers"
+        },
+        {
+          "level": 2,
+          "text": "Read-Only Permissions",
+          "anchor": "read-only-permissions"
+        },
+        {
+          "level": 2,
+          "text": "Regenerating",
+          "anchor": "regenerating"
+        }
+      ]
     },
     {
       "path": "search.md",
       "title": "Search",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Search",
+          "anchor": "search"
+        },
+        {
+          "level": 2,
+          "text": "Search Engines",
+          "anchor": "search-engines"
+        },
+        {
+          "level": 2,
+          "text": "UI Modes",
+          "anchor": "ui-modes"
+        },
+        {
+          "level": 2,
+          "text": "How the Index Works",
+          "anchor": "how-the-index-works"
+        },
+        {
+          "level": 2,
+          "text": "Search Filters",
+          "anchor": "search-filters"
+        },
+        {
+          "level": 3,
+          "text": "Available filter dimensions",
+          "anchor": "available-filter-dimensions"
+        },
+        {
+          "level": 3,
+          "text": "Filter syntax",
+          "anchor": "filter-syntax"
+        },
+        {
+          "level": 3,
+          "text": "Auto-injected version filter",
+          "anchor": "auto-injected-version-filter"
+        },
+        {
+          "level": 3,
+          "text": "Filter chips",
+          "anchor": "filter-chips"
+        },
+        {
+          "level": 2,
+          "text": "Adding Tags to Pages",
+          "anchor": "adding-tags-to-pages"
+        }
+      ]
     },
     {
       "path": "selfdoc-__main__.md",
       "title": "selfdoc.__main__",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.__main__",
+          "anchor": "selfdoc__main__"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.__main__",
+          "anchor": "selfdoc__main__"
+        }
+      ]
     },
     {
       "path": "selfdoc-_version.md",
       "title": "selfdoc._version",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc._version",
+          "anchor": "selfdoc_version"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc._version",
+          "anchor": "selfdoc_version"
+        },
+        {
+          "level": 3,
+          "text": "_detect_version",
+          "anchor": "_detect_version"
+        }
+      ]
     },
     {
       "path": "selfdoc-build.md",
       "title": "selfdoc.build",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.build",
+          "anchor": "selfdocbuild"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.build",
+          "anchor": "selfdocbuild"
+        }
+      ]
     },
     {
       "path": "selfdoc-check.md",
       "title": "selfdoc.check",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.check",
+          "anchor": "selfdoccheck"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.check",
+          "anchor": "selfdoccheck"
+        },
+        {
+          "level": 3,
+          "text": "_machine_owned_keys",
+          "anchor": "_machine_owned_keys"
+        },
+        {
+          "level": 3,
+          "text": "_example_suffix",
+          "anchor": "_example_suffix"
+        },
+        {
+          "level": 3,
+          "text": "_example_output_tail",
+          "anchor": "_example_output_tail"
+        },
+        {
+          "level": 3,
+          "text": "_validate_example_block",
+          "anchor": "_validate_example_block"
+        },
+        {
+          "level": 3,
+          "text": "DirectiveResult",
+          "anchor": "directiveresult"
+        },
+        {
+          "level": 3,
+          "text": "ResolvedDirective",
+          "anchor": "resolveddirective"
+        },
+        {
+          "level": 3,
+          "text": "CoverageStats",
+          "anchor": "coveragestats"
+        },
+        {
+          "level": 3,
+          "text": "CheckResult",
+          "anchor": "checkresult"
+        },
+        {
+          "level": 3,
+          "text": "_validate_directives",
+          "anchor": "_validate_directives"
+        },
+        {
+          "level": 3,
+          "text": "_resolve_root_templates",
+          "anchor": "_resolve_root_templates"
+        },
+        {
+          "level": 3,
+          "text": "check_docs",
+          "anchor": "check_docs"
+        },
+        {
+          "level": 3,
+          "text": "AcceptError",
+          "anchor": "accepterror"
+        },
+        {
+          "level": 3,
+          "text": "compute_staleness_state",
+          "anchor": "compute_staleness_state"
+        },
+        {
+          "level": 3,
+          "text": "accept_baselines",
+          "anchor": "accept_baselines"
+        },
+        {
+          "level": 3,
+          "text": "_token_text_lines",
+          "anchor": "_token_text_lines"
+        },
+        {
+          "level": 3,
+          "text": "_check_version_consistency",
+          "anchor": "_check_version_consistency"
+        },
+        {
+          "level": 3,
+          "text": "_check_version_match",
+          "anchor": "_check_version_match"
+        },
+        {
+          "level": 3,
+          "text": "_has_version_var_directive",
+          "anchor": "_has_version_var_directive"
+        },
+        {
+          "level": 3,
+          "text": "_check_manifest_freshness",
+          "anchor": "_check_manifest_freshness"
+        },
+        {
+          "level": 3,
+          "text": "counts_as_statistic",
+          "anchor": "counts_as_statistic"
+        },
+        {
+          "level": 3,
+          "text": "_run_lints",
+          "anchor": "_run_lints"
+        },
+        {
+          "level": 3,
+          "text": "_parse_hex_color",
+          "anchor": "_parse_hex_color"
+        },
+        {
+          "level": 3,
+          "text": "_relative_luminance",
+          "anchor": "_relative_luminance"
+        },
+        {
+          "level": 3,
+          "text": "_contrast_ratio",
+          "anchor": "_contrast_ratio"
+        },
+        {
+          "level": 3,
+          "text": "_extract_css_vars",
+          "anchor": "_extract_css_vars"
+        },
+        {
+          "level": 3,
+          "text": "_check_contrast",
+          "anchor": "_check_contrast"
+        },
+        {
+          "level": 3,
+          "text": "_check_pairs",
+          "anchor": "_check_pairs"
+        },
+        {
+          "level": 3,
+          "text": "_is_skeleton_page",
+          "anchor": "_is_skeleton_page"
+        },
+        {
+          "level": 3,
+          "text": "_compute_coverage",
+          "anchor": "_compute_coverage"
+        },
+        {
+          "level": 3,
+          "text": "_color",
+          "anchor": "_color"
+        },
+        {
+          "level": 3,
+          "text": "filter_lints",
+          "anchor": "filter_lints"
+        },
+        {
+          "level": 3,
+          "text": "check_result_exit_code",
+          "anchor": "check_result_exit_code"
+        },
+        {
+          "level": 3,
+          "text": "serialize_check_result",
+          "anchor": "serialize_check_result"
+        },
+        {
+          "level": 3,
+          "text": "print_results",
+          "anchor": "print_results"
+        }
+      ]
     },
     {
       "path": "selfdoc-cli.md",
       "title": "selfdoc.cli",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.cli",
+          "anchor": "selfdoccli"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.cli",
+          "anchor": "selfdoccli"
+        },
+        {
+          "level": 3,
+          "text": "_detect_source_entries",
+          "anchor": "_detect_source_entries"
+        },
+        {
+          "level": 3,
+          "text": "_detect_main_module",
+          "anchor": "_detect_main_module"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_init",
+          "anchor": "_cmd_init"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_build",
+          "anchor": "_cmd_build"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_serve",
+          "anchor": "_cmd_serve"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_deploy",
+          "anchor": "_cmd_deploy"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_check",
+          "anchor": "_cmd_check"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_baseline_accept",
+          "anchor": "_cmd_baseline_accept"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_gen",
+          "anchor": "_cmd_gen"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_gen_data",
+          "anchor": "_cmd_gen_data"
+        },
+        {
+          "level": 3,
+          "text": "run",
+          "anchor": "run"
+        }
+      ]
     },
     {
       "path": "selfdoc-config.md",
       "title": "selfdoc.config",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.config",
+          "anchor": "selfdocconfig"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.config",
+          "anchor": "selfdocconfig"
+        }
+      ]
     },
     {
       "path": "selfdoc-context.md",
       "title": "selfdoc.context",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.context",
+          "anchor": "selfdoccontext"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.context",
+          "anchor": "selfdoccontext"
+        }
+      ]
     },
     {
       "path": "selfdoc-deploy.md",
       "title": "selfdoc.deploy",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.deploy",
+          "anchor": "selfdocdeploy"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.deploy",
+          "anchor": "selfdocdeploy"
+        }
+      ]
     },
     {
       "path": "selfdoc-directives.md",
       "title": "selfdoc.directives",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.directives",
+          "anchor": "selfdocdirectives"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.directives",
+          "anchor": "selfdocdirectives"
+        }
+      ]
     },
     {
       "path": "selfdoc-docs.md",
       "title": "selfdoc.docs",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.docs",
+          "anchor": "selfdocdocs"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.docs",
+          "anchor": "selfdocdocs"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-dart.md",
       "title": "selfdoc.extractors.dart",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.dart",
+          "anchor": "selfdocextractorsdart"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.dart",
+          "anchor": "selfdocextractorsdart"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-go.md",
       "title": "selfdoc.extractors.go",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.go",
+          "anchor": "selfdocextractorsgo"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.go",
+          "anchor": "selfdocextractorsgo"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-kotlin.md",
       "title": "selfdoc.extractors.kotlin",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.kotlin",
+          "anchor": "selfdocextractorskotlin"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.kotlin",
+          "anchor": "selfdocextractorskotlin"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-python.md",
       "title": "selfdoc.extractors.python",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.python",
+          "anchor": "selfdocextractorspython"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.python",
+          "anchor": "selfdocextractorspython"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-sql.md",
       "title": "selfdoc.extractors.sql",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.sql",
+          "anchor": "selfdocextractorssql"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.sql",
+          "anchor": "selfdocextractorssql"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-svelte.md",
       "title": "selfdoc.extractors.svelte",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.svelte",
+          "anchor": "selfdocextractorssvelte"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.svelte",
+          "anchor": "selfdocextractorssvelte"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-swift.md",
       "title": "selfdoc.extractors.swift",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.swift",
+          "anchor": "selfdocextractorsswift"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.swift",
+          "anchor": "selfdocextractorsswift"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-typescript.md",
       "title": "selfdoc.extractors.typescript",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.typescript",
+          "anchor": "selfdocextractorstypescript"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.typescript",
+          "anchor": "selfdocextractorstypescript"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors-zig.md",
       "title": "selfdoc.extractors.zig",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors.zig",
+          "anchor": "selfdocextractorszig"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors.zig",
+          "anchor": "selfdocextractorszig"
+        }
+      ]
     },
     {
       "path": "selfdoc-extractors.md",
       "title": "selfdoc.extractors",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.extractors",
+          "anchor": "selfdocextractors"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.extractors",
+          "anchor": "selfdocextractors"
+        }
+      ]
     },
     {
       "path": "selfdoc-gen.md",
       "title": "selfdoc.gen",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.gen",
+          "anchor": "selfdocgen"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.gen",
+          "anchor": "selfdocgen"
+        },
+        {
+          "level": 3,
+          "text": "GenResult",
+          "anchor": "genresult"
+        },
+        {
+          "level": 3,
+          "text": "_should_skip_dir",
+          "anchor": "_should_skip_dir"
+        },
+        {
+          "level": 3,
+          "text": "_has_generated_marker",
+          "anchor": "_has_generated_marker"
+        },
+        {
+          "level": 3,
+          "text": "_file_to_module_path",
+          "anchor": "_file_to_module_path"
+        },
+        {
+          "level": 3,
+          "text": "_module_to_filename",
+          "anchor": "_module_to_filename"
+        },
+        {
+          "level": 3,
+          "text": "_staleness_store_key",
+          "anchor": "_staleness_store_key"
+        },
+        {
+          "level": 3,
+          "text": "_read_go_module_name",
+          "anchor": "_read_go_module_name"
+        },
+        {
+          "level": 3,
+          "text": "_go_root_package_name",
+          "anchor": "_go_root_package_name"
+        },
+        {
+          "level": 3,
+          "text": "_collect_go_packages",
+          "anchor": "_collect_go_packages"
+        },
+        {
+          "level": 3,
+          "text": "_is_excluded",
+          "anchor": "_is_excluded"
+        },
+        {
+          "level": 3,
+          "text": "_read_existing_description",
+          "anchor": "_read_existing_description"
+        },
+        {
+          "level": 3,
+          "text": "_generate_page_content",
+          "anchor": "_generate_page_content"
+        },
+        {
+          "level": 3,
+          "text": "_resolve_project_name",
+          "anchor": "_resolve_project_name"
+        },
+        {
+          "level": 3,
+          "text": "_read_existing_index_description",
+          "anchor": "_read_existing_index_description"
+        },
+        {
+          "level": 3,
+          "text": "_generate_index_content",
+          "anchor": "_generate_index_content"
+        },
+        {
+          "level": 3,
+          "text": "_remove_stale_generated",
+          "anchor": "_remove_stale_generated"
+        },
+        {
+          "level": 3,
+          "text": "_get_locale_docs_dirs",
+          "anchor": "_get_locale_docs_dirs"
+        },
+        {
+          "level": 3,
+          "text": "generate_docs",
+          "anchor": "generate_docs"
+        },
+        {
+          "level": 3,
+          "text": "_record_seed_hashes",
+          "anchor": "_record_seed_hashes"
+        },
+        {
+          "level": 3,
+          "text": "_generate_docs_for_dir",
+          "anchor": "_generate_docs_for_dir"
+        },
+        {
+          "level": 3,
+          "text": "_make_root_file_header",
+          "anchor": "_make_root_file_header"
+        },
+        {
+          "level": 3,
+          "text": "generate_root_files",
+          "anchor": "generate_root_files"
+        }
+      ]
     },
     {
       "path": "selfdoc-gendata.md",
       "title": "selfdoc.gendata",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.gendata",
+          "anchor": "selfdocgendata"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.gendata",
+          "anchor": "selfdocgendata"
+        }
+      ]
     },
     {
       "path": "selfdoc-html.md",
       "title": "selfdoc.html",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.html",
+          "anchor": "selfdochtml"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.html",
+          "anchor": "selfdochtml"
+        }
+      ]
     },
     {
       "path": "selfdoc-icons.md",
       "title": "selfdoc.icons",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.icons",
+          "anchor": "selfdocicons"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.icons",
+          "anchor": "selfdocicons"
+        }
+      ]
     },
     {
       "path": "selfdoc-js-loader.md",
       "title": "selfdoc.js.loader",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.js.loader",
+          "anchor": "selfdocjsloader"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.js.loader",
+          "anchor": "selfdocjsloader"
+        }
+      ]
     },
     {
       "path": "selfdoc-js.md",
       "title": "selfdoc.js",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.js",
+          "anchor": "selfdocjs"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.js",
+          "anchor": "selfdocjs"
+        }
+      ]
     },
     {
       "path": "selfdoc-manifest.md",
       "title": "selfdoc.manifest",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.manifest",
+          "anchor": "selfdocmanifest"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.manifest",
+          "anchor": "selfdocmanifest"
+        }
+      ]
     },
     {
       "path": "selfdoc-ownership.md",
       "title": "selfdoc.ownership",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.ownership",
+          "anchor": "selfdocownership"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.ownership",
+          "anchor": "selfdocownership"
+        },
+        {
+          "level": 3,
+          "text": "normalize_description",
+          "anchor": "normalize_description"
+        },
+        {
+          "level": 3,
+          "text": "description_seed_hash",
+          "anchor": "description_seed_hash"
+        },
+        {
+          "level": 3,
+          "text": "is_machine_owned_module_description",
+          "anchor": "is_machine_owned_module_description"
+        },
+        {
+          "level": 3,
+          "text": "is_machine_owned_index_description",
+          "anchor": "is_machine_owned_index_description"
+        },
+        {
+          "level": 3,
+          "text": "is_machine_owned_cli_description",
+          "anchor": "is_machine_owned_cli_description"
+        },
+        {
+          "level": 3,
+          "text": "_lookup_cli",
+          "anchor": "_lookup_cli"
+        },
+        {
+          "level": 3,
+          "text": "is_machine_owned",
+          "anchor": "is_machine_owned"
+        }
+      ]
     },
     {
       "path": "selfdoc-quality.md",
       "title": "selfdoc.quality",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.quality",
+          "anchor": "selfdocquality"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.quality",
+          "anchor": "selfdocquality"
+        },
+        {
+          "level": 3,
+          "text": "check_dirstat",
+          "anchor": "check_dirstat"
+        },
+        {
+          "level": 3,
+          "text": "get_submodule_paths",
+          "anchor": "get_submodule_paths"
+        },
+        {
+          "level": 3,
+          "text": "get_code_loc",
+          "anchor": "get_code_loc"
+        },
+        {
+          "level": 3,
+          "text": "count_markdown",
+          "anchor": "count_markdown"
+        },
+        {
+          "level": 3,
+          "text": "get_selfdoc_info",
+          "anchor": "get_selfdoc_info"
+        },
+        {
+          "level": 3,
+          "text": "compute_tier",
+          "anchor": "compute_tier"
+        },
+        {
+          "level": 3,
+          "text": "content_grade",
+          "anchor": "content_grade"
+        },
+        {
+          "level": 3,
+          "text": "count_test_loc",
+          "anchor": "count_test_loc"
+        },
+        {
+          "level": 3,
+          "text": "score_project",
+          "anchor": "score_project"
+        },
+        {
+          "level": 3,
+          "text": "format_single_text",
+          "anchor": "format_single_text"
+        },
+        {
+          "level": 3,
+          "text": "format_json",
+          "anchor": "format_json"
+        },
+        {
+          "level": 3,
+          "text": "run_quality",
+          "anchor": "run_quality"
+        }
+      ]
     },
     {
       "path": "selfdoc-resolver.md",
       "title": "selfdoc.resolver",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.resolver",
+          "anchor": "selfdocresolver"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.resolver",
+          "anchor": "selfdocresolver"
+        }
+      ]
     },
     {
       "path": "selfdoc-strictcli_support.md",
       "title": "selfdoc.strictcli_support",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.strictcli_support",
+          "anchor": "selfdocstrictcli_support"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.strictcli_support",
+          "anchor": "selfdocstrictcli_support"
+        },
+        {
+          "level": 3,
+          "text": "_normalize_cli_description",
+          "anchor": "_normalize_cli_description"
+        },
+        {
+          "level": 3,
+          "text": "compute_default_cli_description",
+          "anchor": "compute_default_cli_description"
+        },
+        {
+          "level": 3,
+          "text": "is_default_cli_description",
+          "anchor": "is_default_cli_description"
+        },
+        {
+          "level": 3,
+          "text": "uses_strictcli",
+          "anchor": "uses_strictcli"
+        },
+        {
+          "level": 3,
+          "text": "SchemaDiscoveryError",
+          "anchor": "schemadiscoveryerror"
+        },
+        {
+          "level": 3,
+          "text": "discover_schema_dirs",
+          "anchor": "discover_schema_dirs"
+        },
+        {
+          "level": 3,
+          "text": "read_schema_json",
+          "anchor": "read_schema_json"
+        },
+        {
+          "level": 3,
+          "text": "_translate_command",
+          "anchor": "_translate_command"
+        },
+        {
+          "level": 3,
+          "text": "_translate_group",
+          "anchor": "_translate_group"
+        },
+        {
+          "level": 3,
+          "text": "extract_cli_structure",
+          "anchor": "extract_cli_structure"
+        },
+        {
+          "level": 3,
+          "text": "expected_cli_page_filenames",
+          "anchor": "expected_cli_page_filenames"
+        },
+        {
+          "level": 3,
+          "text": "_read_existing_cli_description",
+          "anchor": "_read_existing_cli_description"
+        },
+        {
+          "level": 3,
+          "text": "generate_cli_pages",
+          "anchor": "generate_cli_pages"
+        },
+        {
+          "level": 3,
+          "text": "_write_page",
+          "anchor": "_write_page"
+        },
+        {
+          "level": 3,
+          "text": "_schema_has_effects",
+          "anchor": "_schema_has_effects"
+        },
+        {
+          "level": 3,
+          "text": "_fmt_default",
+          "anchor": "_fmt_default"
+        },
+        {
+          "level": 3,
+          "text": "_flag_table",
+          "anchor": "_flag_table"
+        },
+        {
+          "level": 3,
+          "text": "_arg_table",
+          "anchor": "_arg_table"
+        },
+        {
+          "level": 3,
+          "text": "_command_meta_lines",
+          "anchor": "_command_meta_lines"
+        },
+        {
+          "level": 3,
+          "text": "_grants_lines",
+          "anchor": "_grants_lines"
+        },
+        {
+          "level": 3,
+          "text": "_env_table",
+          "anchor": "_env_table"
+        },
+        {
+          "level": 3,
+          "text": "_render_command_page",
+          "anchor": "_render_command_page"
+        },
+        {
+          "level": 3,
+          "text": "_render_group_page",
+          "anchor": "_render_group_page"
+        },
+        {
+          "level": 3,
+          "text": "_fmt_short",
+          "anchor": "_fmt_short"
+        }
+      ]
     },
     {
       "path": "selfdoc-tables.md",
       "title": "selfdoc.tables",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.tables",
+          "anchor": "selfdoctables"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.tables",
+          "anchor": "selfdoctables"
+        }
+      ]
     },
     {
       "path": "selfdoc-tokenizer.md",
       "title": "selfdoc.tokenizer",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.tokenizer",
+          "anchor": "selfdoctokenizer"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.tokenizer",
+          "anchor": "selfdoctokenizer"
+        }
+      ]
     },
     {
       "path": "selfdoc-urls.md",
       "title": "selfdoc.urls",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.urls",
+          "anchor": "selfdocurls"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.urls",
+          "anchor": "selfdocurls"
+        }
+      ]
     },
     {
       "path": "selfdoc-utils.md",
       "title": "selfdoc.utils",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.utils",
+          "anchor": "selfdocutils"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.utils",
+          "anchor": "selfdocutils"
+        }
+      ]
     },
     {
       "path": "selfdoc.md",
       "title": "selfdoc",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc",
+          "anchor": "selfdoc"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc",
+          "anchor": "selfdoc"
+        },
+        {
+          "level": 3,
+          "text": "main",
+          "anchor": "main"
+        }
+      ]
     },
     {
       "path": "seo.md",
       "title": "SEO",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "SEO",
+          "anchor": "seo"
+        },
+        {
+          "level": 2,
+          "text": "What Gets Generated Automatically",
+          "anchor": "what-gets-generated-automatically"
+        },
+        {
+          "level": 2,
+          "text": "What You Can Control",
+          "anchor": "what-you-can-control"
+        },
+        {
+          "level": 3,
+          "text": "Frontmatter description",
+          "anchor": "frontmatter-description"
+        },
+        {
+          "level": 3,
+          "text": "Author metadata",
+          "anchor": "author-metadata"
+        },
+        {
+          "level": 3,
+          "text": "Top-level twitter config",
+          "anchor": "top-level-twitter-config"
+        },
+        {
+          "level": 3,
+          "text": "Language tag",
+          "anchor": "language-tag"
+        },
+        {
+          "level": 2,
+          "text": "Lint Rules",
+          "anchor": "lint-rules"
+        },
+        {
+          "level": 2,
+          "text": "llms.txt and llms-full.txt",
+          "anchor": "llmstxt-and-llms-fulltxt"
+        }
+      ]
     },
     {
       "path": "staleness.md",
       "title": "Staleness Detection",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Staleness Detection",
+          "anchor": "staleness-detection"
+        },
+        {
+          "level": 2,
+          "text": "The Problem",
+          "anchor": "the-problem"
+        },
+        {
+          "level": 2,
+          "text": "How It Works",
+          "anchor": "how-it-works"
+        },
+        {
+          "level": 2,
+          "text": "The STALE001 Error",
+          "anchor": "the-stale001-error"
+        },
+        {
+          "level": 2,
+          "text": "Fixing It",
+          "anchor": "fixing-it"
+        },
+        {
+          "level": 2,
+          "text": "Accepting a Reviewed Dead-End",
+          "anchor": "accepting-a-reviewed-dead-end"
+        },
+        {
+          "level": 2,
+          "text": "Hash Storage",
+          "anchor": "hash-storage"
+        },
+        {
+          "level": 3,
+          "text": "Store schema version",
+          "anchor": "store-schema-version"
+        },
+        {
+          "level": 3,
+          "text": "Description ownership (`seed_hash`)",
+          "anchor": "description-ownership-seed_hash"
+        },
+        {
+          "level": 2,
+          "text": "Dry Run Mode",
+          "anchor": "dry-run-mode"
+        },
+        {
+          "level": 2,
+          "text": "The `--no-auto-commit` Flag",
+          "anchor": "the-no-auto-commit-flag"
+        }
+      ]
     },
     {
       "path": "theming.md",
       "title": "Theming",
-      "type": "doc"
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Theming",
+          "anchor": "theming"
+        },
+        {
+          "level": 2,
+          "text": "Choosing a Theme",
+          "anchor": "choosing-a-theme"
+        },
+        {
+          "level": 2,
+          "text": "CSS Custom Properties",
+          "anchor": "css-custom-properties"
+        },
+        {
+          "level": 3,
+          "text": "Colors",
+          "anchor": "colors"
+        },
+        {
+          "level": 3,
+          "text": "Sidebar",
+          "anchor": "sidebar"
+        },
+        {
+          "level": 3,
+          "text": "Topbar",
+          "anchor": "topbar"
+        },
+        {
+          "level": 3,
+          "text": "Code",
+          "anchor": "code"
+        },
+        {
+          "level": 3,
+          "text": "Components",
+          "anchor": "components"
+        },
+        {
+          "level": 3,
+          "text": "Typography",
+          "anchor": "typography"
+        },
+        {
+          "level": 3,
+          "text": "Layout (clean only)",
+          "anchor": "layout-clean-only"
+        },
+        {
+          "level": 2,
+          "text": "Custom Styles",
+          "anchor": "custom-styles"
+        },
+        {
+          "level": 2,
+          "text": "Dark Mode",
+          "anchor": "dark-mode"
+        },
+        {
+          "level": 3,
+          "text": "How the selectors work",
+          "anchor": "how-the-selectors-work"
+        },
+        {
+          "level": 3,
+          "text": "Overriding dark mode colors",
+          "anchor": "overriding-dark-mode-colors"
+        },
+        {
+          "level": 3,
+          "text": "Dark mode property values",
+          "anchor": "dark-mode-property-values"
+        },
+        {
+          "level": 2,
+          "text": "High Contrast",
+          "anchor": "high-contrast"
+        },
+        {
+          "level": 2,
+          "text": "Design Tool",
+          "anchor": "design-tool"
+        },
+        {
+          "level": 3,
+          "text": "Exporting settings",
+          "anchor": "exporting-settings"
+        },
+        {
+          "level": 2,
+          "text": "Print Stylesheet",
+          "anchor": "print-stylesheet"
+        }
+      ]
     }
   ],
   "posts": [
@@ -391,5 +3239,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-07T12:22:55.280816+00:00"
+  "last_gen": "2026-08-11T23:08:32.447396+00:00"
 }

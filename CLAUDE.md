@@ -17,20 +17,28 @@ Code-aware static site generator. Builds full documentation sites from Markdown 
 
 ## Key concepts
 
-### Always-prefixed URLs
+### Stable addresses, archived versions
 
-Every page outputs to `/<locale>/<version>/page/`. The config MUST have `versions` and `locales` arrays -- these are required. Even a single-version, single-locale project needs them:
+The current version of every page lives at a stable, unversioned address --
+`/page/` -- and superseded versions live beside it under the archive prefix,
+at `/v/<version>/page/`. The locale segment appears only when a project
+really has more than one locale, so a single-locale project's current
+version is served from the site root. Every version of a page declares the
+stable address canonical.
+
+The config MUST have `versions` and `locales` arrays -- these are required.
+Even a single-version, single-locale project needs them:
 
 ```json
 {
-  "versions": [{"version": "0.8.1", "indexed": true}],
+  "versions": [{"version": "0.8.1"}],
   "locales": [{"code": "en", "label": "English", "default": true}]
 }
 ```
 
 ### Multi-version builds
 
-Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. Version/locale picker UI is auto-generated.
+Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. The version picker's links are computed by the build from each page's own address, and archived pages carry a dismissable notice keyed per version.
 
 ### Localization
 
@@ -82,7 +90,7 @@ uv run pytest
 
 ## Important config fields
 
-- `versions` (required): array of `{version, indexed}` objects -- controls multi-version builds
+- `versions` (required): array of `{version}` objects -- controls multi-version builds
 - `locales` (required): array of `{code, label, default}` objects -- controls localization
 - `unified`: optional, for monorepo docs-site projects -- lists constituent projects
 - `gen_data`: optional sandboxed script execution config
@@ -100,7 +108,7 @@ uv run pytest
 - **selfdoc.cli** (`selfdoc/cli.py`): CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for all commands.
 - **selfdoc.config** (`selfdoc/config.py`): Config loader for selfdoc.json -- reads project settings, validates required fields, and resolves paths for the build pipeline.
 - **selfdoc.content** (`selfdoc/content.py`): Content directives -- re-export shim + table-commands registration.
-- **selfdoc.context** (`selfdoc/context.py`): Build, page, and search context dataclasses that carry configuration, metadata, and state through the documentation pipeline.
+- **selfdoc.context** (`selfdoc/context.py`): The search index entry dataclass, the one build record that outlives a single build.
 - **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites -- supports Cloudflare Pages and GitHub Pages with atomic uploads and cache invalidation.
 - **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax -- tokenizes the 6 marker types into typed directive objects for resolution.
 - **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates -- walks the docs directory, parses frontmatter, and resolves all directives.
