@@ -7,6 +7,7 @@ referenced by directives vs. the total in source files.
 """
 
 import ast
+import dataclasses
 import json
 import os
 import shlex
@@ -774,8 +775,11 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     ver_resolved,
                 )
                 for lint in ver_lints:
-                    lint.file = f"[{ver_str}] {lint.file}"
-                    result.lints.append(lint)
+                    # LintResult is frozen: a relabelled diagnostic is a new
+                    # one, not the same object with its file rewritten.
+                    result.lints.append(dataclasses.replace(
+                        lint, file=f"[{ver_str}] {lint.file}",
+                    ))
 
     return result
 

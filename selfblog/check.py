@@ -12,6 +12,7 @@ top-level imports would be circular.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 
 from selfblog.posts import discover_posts
@@ -138,8 +139,10 @@ def check_unified(dir_path=".", config=None, dry_run=False):
 
         # Prefix lint results with project slug
         for lint in proj_result.lints:
-            lint.file = f"[{slug}] {lint.file}"
-            aggregate.lints.append(lint)
+            # LintResult is frozen: relabelling produces a new diagnostic.
+            aggregate.lints.append(dataclasses.replace(
+                lint, file=f"[{slug}] {lint.file}",
+            ))
 
         # Merge coverage stats
         if proj_result.coverage is not None:
@@ -173,7 +176,8 @@ def check_unified(dir_path=".", config=None, dry_run=False):
             dr.file = f"[common] {dr.file}"
             aggregate.directive_results.append(dr)
         for lint in common_result.lints:
-            lint.file = f"[common] {lint.file}"
-            aggregate.lints.append(lint)
+            aggregate.lints.append(dataclasses.replace(
+                lint, file=f"[common] {lint.file}",
+            ))
 
     return aggregate
