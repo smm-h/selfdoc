@@ -31,14 +31,12 @@ class TestMultiLocaleBuild:
         written = build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        assert os.path.isdir(os.path.join(output_dir, "en", "1.0.0"))
-        assert os.path.isdir(os.path.join(output_dir, "fa", "1.0.0"))
-        assert os.path.isfile(
-            os.path.join(output_dir, "en", "1.0.0", "index.html")
-        )
-        assert os.path.isfile(
-            os.path.join(output_dir, "fa", "1.0.0", "index.html")
-        )
+        # Two locales keep the locale segment; the current version drops
+        # the version segment.
+        assert os.path.isdir(os.path.join(output_dir, "en"))
+        assert os.path.isdir(os.path.join(output_dir, "fa"))
+        assert os.path.isfile(os.path.join(output_dir, "en", "index.html"))
+        assert os.path.isfile(os.path.join(output_dir, "fa", "index.html"))
 
     def test_locale_content_from_correct_source(self, make_localized_project):
         """Each locale's output contains content from its source directory."""
@@ -50,8 +48,8 @@ class TestMultiLocaleBuild:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        en_html = _read_file(output_dir, "en/1.0.0/index.html")
-        fa_html = _read_file(output_dir, "fa/1.0.0/index.html")
+        en_html = _read_file(output_dir, "en/index.html")
+        fa_html = _read_file(output_dir, "fa/index.html")
 
         # English content should contain "English" label text
         assert "English" in en_html
@@ -68,7 +66,7 @@ class TestMultiLocaleBuild:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        en_html = _read_file(output_dir, "en/1.0.0/index.html")
+        en_html = _read_file(output_dir, "en/index.html")
 
         # Should have hreflang for each locale
         assert 'hreflang="en"' in en_html
@@ -84,7 +82,7 @@ class TestMultiLocaleBuild:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        en_html = _read_file(output_dir, "en/1.0.0/index.html")
+        en_html = _read_file(output_dir, "en/index.html")
 
         # x-default should exist and point to the default locale (en)
         xdefault_match = re.search(
@@ -165,7 +163,7 @@ class TestMultiLocaleBuild:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        en_html = _read_file(output_dir, "en/1.0.0/index.html")
+        en_html = _read_file(output_dir, "en/index.html")
         assert "locale-picker" in en_html
         assert "English" in en_html
         assert "Persian" in en_html
@@ -180,10 +178,8 @@ class TestSingleLocaleBackwardCompat:
         written = build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        # Should build into en/1.0.0/ (from default config)
-        assert os.path.isfile(
-            os.path.join(output_dir, "en", "1.0.0", "index.html")
-        )
+        # One locale and one version: the page is the root index.
+        assert os.path.isfile(os.path.join(output_dir, "index.html"))
 
     def test_single_locale_no_hreflang(self, make_project):
         """Single-locale project should not have hreflang tags."""
@@ -191,7 +187,7 @@ class TestSingleLocaleBackwardCompat:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        html = _read_file(output_dir, "en/1.0.0/index.html")
+        html = _read_file(output_dir, "index.html")
         assert "hreflang" not in html
 
     def test_single_locale_no_sitemap_index(self, make_project):
@@ -228,13 +224,9 @@ class TestLocaleFilter:
         written = build(str(project_dir), locale_filter="en")
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        assert os.path.isfile(
-            os.path.join(output_dir, "en", "1.0.0", "index.html")
-        )
+        assert os.path.isfile(os.path.join(output_dir, "en", "index.html"))
         # Other locale should NOT exist
-        assert not os.path.exists(
-            os.path.join(output_dir, "fa", "1.0.0")
-        )
+        assert not os.path.exists(os.path.join(output_dir, "fa"))
 
     def test_filter_invalid_locale_raises(self, make_localized_project):
         """locale_filter with non-existent locale should raise."""
