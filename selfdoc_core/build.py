@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import zlib
 from datetime import datetime
 
@@ -1097,12 +1098,19 @@ def build_single(dir_path=".", config=None,
                   available_versions=None, available_locales=None,
                   current_version="", current_locale="",
                   is_latest=True, page_filter=None,
-                  unversioned_markdown=None, unversioned_frontmatter=None):
+                  unversioned_markdown=None, unversioned_frontmatter=None,
+                  overlay_docs=None, write_baselines=True):
     """Build HTML and search entries for a single version/locale of docs.
 
     Performs config loading, template resolution, HTML generation, image
-    dimension post-processing, and search index building. Does NOT write
-    any files to disk -- the caller (``build()``) handles all IO.
+    dimension post-processing, and search index building.  The generated
+    output goes back to the caller (``build()``), which handles all output
+    IO.
+
+    One thing is written here, and only here: the staleness baselines
+    under ``.selfdoc/hashes``.  Pass ``write_baselines=False`` to suppress
+    that and get a call that touches nothing at all -- which, together
+    with ``overlay_docs``, is what makes an in-memory render possible.
 
     Args:
         dir_path: Project root directory.
@@ -1119,6 +1127,12 @@ def build_single(dir_path=".", config=None,
             config alongside ``mount_locale``.
         version_override: Override detected version string (optional).
         locale_override: Override detected locale string (optional).
+        overlay_docs: Optional dict mapping a docs-relative ``.md`` path to
+            markdown source held in memory.  Entries are resolved like
+            files on disk and override same-named files, so pages that were
+            never written can be built.
+        write_baselines: Whether to advance the staleness baselines in
+            ``.selfdoc/hashes``.  ``False`` makes this call write nothing.
 
     The mount is the single input that decides where pages land and how
     they reach the output root; ``selfdoc_core.address.page_address``
@@ -1167,7 +1181,9 @@ def build_single(dir_path=".", config=None,
         )
 
     # Resolve all .md templates via the shared pipeline
-    all_docs = resolve_all_docs(config, docs_dir=docs_dir, base_dir=dir_path)
+    all_docs = resolve_all_docs(
+        config, docs_dir=docs_dir, base_dir=dir_path, overlay=overlay_docs,
+    )
     markdown_files = {rp: resolved for rp, (fm, resolved, raw, _) in all_docs.items()}
     frontmatter = {rp: fm for rp, (fm, resolved, raw, _) in all_docs.items() if fm}
 
@@ -1187,18 +1203,21 @@ def build_single(dir_path=".", config=None,
     # Build always proceeds -- staleness is only enforced at check time.
     # Prefix hash keys with locale code to avoid collisions between locales
     # (each locale may have the same relative paths like "index.md").
-    from selfdoc_core.staleness import update_hashes
-    # build always writes fresh baselines and never enforces staleness, so no
-    # skeleton exemption is needed. Pass an empty set explicitly (update_hashes
-    # requires the keyword).
-    if locale_override:
-        prefixed_docs = {
-            f"{locale_override}/{rp}": val
-            for rp, val in all_docs.items()
-        }
-        update_hashes(prefixed_docs, dir_path, skeleton_pages=set())
-    else:
-        update_hashes(all_docs, dir_path, skeleton_pages=set())
+    # This is the only write in build_single; write_baselines=False turns it
+    # off for renders that must leave the working tree untouched.
+    if write_baselines:
+        from selfdoc_core.staleness import update_hashes
+        # build always writes fresh baselines and never enforces staleness, so
+        # no skeleton exemption is needed. Pass an empty set explicitly
+        # (update_hashes requires the keyword).
+        if locale_override:
+            prefixed_docs = {
+                f"{locale_override}/{rp}": val
+                for rp, val in all_docs.items()
+            }
+            update_hashes(prefixed_docs, dir_path, skeleton_pages=set())
+        else:
+            update_hashes(all_docs, dir_path, skeleton_pages=set())
 
     # Apply page filter if provided (used by build() to partition
     # versioned and unversioned pages into separate build_single calls)
@@ -1225,7 +1244,12 @@ def build_single(dir_path=".", config=None,
             published = str(meta["date"])
         else:
             full_path = os.path.join(docs_dir, rel_path)
-            mtime = os.path.getmtime(full_path)
+            if os.path.isfile(full_path):
+                mtime = os.path.getmtime(full_path)
+            else:
+                # Overlay page with no file behind it. Injecting it would
+                # have written the file just now, so "now" is the same date.
+                mtime = time.time()
             mtime_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
             modified = mtime_str
             published = mtime_str
@@ -1573,6 +1597,41 @@ def _render_post_listing(published_posts):
     return "\n".join(lines)
 
 
+def post_docs_payloads(published_posts):
+    """Return the docs-tree markdown for a set of published posts.
+
+    Maps a docs-relative path (``posts/<slug>.md``, plus ``posts/index.md``
+    for the listing) to the markdown that page is built from.  This is the
+    one place a post becomes a docs page: ``_inject_posts_into_docs``
+    writes these payloads into the docs tree, and the in-memory render path
+    hands the same payloads to ``build_single`` as an overlay -- so both
+    produce the same pages.
+
+    ``published_posts`` must already be filtered (drafts removed unless
+    they were asked for) and ordered newest-first.
+    """
+    payloads = {}
+    for post in published_posts:
+        fm_lines = []
+        for key, val in post["frontmatter"].items():
+            if val is None:
+                continue
+            if isinstance(val, bool):
+                fm_lines.append(f"{key}: {'true' if val else 'false'}")
+            elif isinstance(val, list):
+                fm_lines.append(f"{key}: [{', '.join(str(v) for v in val)}]")
+            else:
+                fm_lines.append(f"{key}: {val}")
+        payloads[f"posts/{post['slug']}.md"] = (
+            "---\n" + "\n".join(fm_lines) + "\n---\n" + post["content"]
+        )
+
+    if published_posts:
+        payloads["posts/index.md"] = _render_post_listing(published_posts)
+
+    return payloads
+
+
 def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     """Write post markdown files into docs/posts/ for the build pipeline.
 
@@ -1596,42 +1655,18 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
     all_posts = discover_posts(posts_dir, manifest_path=manifest_path)
 
+    published_posts = [
+        post for post in all_posts
+        if include_drafts or not post["draft"]
+    ]
+
     injected = []
-    published_posts = []
-    for post in all_posts:
-        if post["draft"] and not include_drafts:
-            continue
-
-        published_posts.append(post)
-        post_docs_path = os.path.join(docs_dir, "posts", f"{post['slug']}.md")
+    for rel_path, content in post_docs_payloads(published_posts).items():
+        post_docs_path = os.path.join(docs_dir, rel_path)
         effects.makedirs(os.path.dirname(post_docs_path), exist_ok=True)
-
-        # Reconstruct markdown with frontmatter
-        fm = post["frontmatter"]
-        fm_lines = []
-        for key, val in fm.items():
-            if val is None:
-                continue
-            if isinstance(val, bool):
-                fm_lines.append(f"{key}: {'true' if val else 'false'}")
-            elif isinstance(val, list):
-                fm_lines.append(f"{key}: [{', '.join(str(v) for v in val)}]")
-            else:
-                fm_lines.append(f"{key}: {val}")
-        full_content = "---\n" + "\n".join(fm_lines) + "\n---\n" + post["content"]
-
         with effects.open_write(post_docs_path, "w", encoding="utf-8") as f:
-            f.write(full_content)
+            f.write(content)
         injected.append(post_docs_path)
-
-    # Generate the listing page
-    if published_posts:
-        listing_content = _render_post_listing(published_posts)
-        listing_path = os.path.join(docs_dir, "posts", "index.md")
-        effects.makedirs(os.path.dirname(listing_path), exist_ok=True)
-        with effects.open_write(listing_path, "w", encoding="utf-8") as f:
-            f.write(listing_content)
-        injected.append(listing_path)
 
     return injected
 

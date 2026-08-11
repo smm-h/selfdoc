@@ -16,11 +16,17 @@ from selfdoc_core.resolver import make_resolver
 from selfdoc_core.utils import parse_frontmatter  # re-export
 
 
-def resolve_all_docs(config, docs_dir=None, base_dir="."):
+def resolve_all_docs(config, docs_dir=None, base_dir=".", overlay=None):
     """Walk docs/, parse frontmatter, resolve directives for each .md file.
 
     Returns dict mapping rel_path to (frontmatter_dict, resolved_content,
     raw_content, fm_line_count).
+
+    *overlay* maps a docs-relative path to markdown source held in memory.
+    Each entry is parsed and resolved exactly like a file on disk and then
+    replaces (or adds to) the walked result, so a caller can render content
+    that was never written -- an editor buffer, or the post pages the build
+    would otherwise inject into the docs tree.
 
     - rel_path: relative to docs_dir (e.g. "index.md", "api/reference.md")
     - frontmatter_dict: parsed frontmatter (empty dict if none)
@@ -65,5 +71,11 @@ def resolve_all_docs(config, docs_dir=None, base_dir="."):
             fm_line_count = len(content.split('\n')) - len(body.split('\n'))
             resolved = resolve_directives(body, resolver, valid_names=valid_names)
             result[rel_path] = (frontmatter_dict, resolved, body, fm_line_count)
+
+    for rel_path, content in (overlay or {}).items():
+        frontmatter_dict, body = parse_frontmatter(content)
+        fm_line_count = len(content.split('\n')) - len(body.split('\n'))
+        resolved = resolve_directives(body, resolver, valid_names=valid_names)
+        result[rel_path] = (frontmatter_dict, resolved, body, fm_line_count)
 
     return result

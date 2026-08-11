@@ -101,6 +101,60 @@ def require_post_provider() -> object:
     return _post_provider
 
 
+# -- Post parser ---------------------------------------------------------------
+#
+# The post parser is the single-source counterpart of the post provider:
+# it turns one post's markdown source into a post dict, whether that
+# source is a file or an unsaved editor buffer.  Signature:
+#
+#   (raw: str, rel_path: str, published_slug: str | None = None) -> dict
+#
+# Core's in-memory render path uses it to build a page from a buffer
+# without writing the buffer anywhere.
+
+_post_parser: object | None = None
+
+
+def register_post_parser(parser: object) -> None:
+    """Register the post parser (selfblog's ``parse_post``).
+
+    Registering the same callable again is a no-op, so repeated imports
+    of the registering package are safe.
+
+    Args:
+        parser: Callable matching the post parser signature.
+
+    Raises:
+        ValueError: If a different parser is already registered.
+    """
+    global _post_parser
+    if _post_parser is not None and _post_parser is not parser:
+        raise ValueError("a different post parser is already registered")
+    _post_parser = parser
+
+
+def get_post_parser() -> object | None:
+    """Return the registered post parser, or None."""
+    return _post_parser
+
+
+def require_post_parser() -> object:
+    """Return the registered post parser, or raise a hard error.
+
+    Raises:
+        RuntimeError: If no parser is registered.  Blog posts are handled
+            by selfblog; the error directs the user there.
+    """
+    if _post_parser is None:
+        raise RuntimeError(
+            "Posts are present but no post parser is registered. "
+            "Blog posts are handled by selfblog -- install it "
+            "(pip install selfblog) and run post operations through "
+            "the selfblog CLI."
+        )
+    return _post_parser
+
+
 # -- Post-check hook -----------------------------------------------------------
 #
 # The post-check hook allows selfblog to supply its post validation
