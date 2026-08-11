@@ -20,17 +20,12 @@ from selfblog.posts import discover_posts
 def check_posts(config, dir_path):
     """Check blog posts for validation errors (POST001-POST005).
 
-    Returns a list of ``selfdoc.check.LintResult`` objects (empty when
+    Returns a list of ``selfdoc_core.lints.LintResult`` objects (empty when
     posts are absent or valid).  Registered with selfdoc_core as the
-    post-check hook.
+    post-check hook.  The POST severities come from the lint registry, so a
+    posts-only install never needs the selfdoc package to run this.
     """
-    try:
-        from selfdoc.check import LintResult
-    except ImportError as exc:
-        raise RuntimeError(
-            "selfblog post checks require the selfdoc package. "
-            "Install it with: pip install selfdoc"
-        ) from exc
+    from selfdoc_core.lints import LintResult
 
     posts_config = config.get("posts") or {}
     posts_dir_rel = posts_config.get("dir", "")
@@ -64,7 +59,6 @@ def check_posts(config, dir_path):
             line=None,
             code=code,
             message=msg,
-            severity="error",
         )]
 
     return []
@@ -88,13 +82,14 @@ def check_unified(dir_path=".", config=None, dry_run=False):
         CheckResult with aggregated results from all projects.
     """
     try:
-        from selfdoc.check import CheckResult, CoverageStats, LintResult, check_docs
+        from selfdoc.check import CheckResult, CoverageStats, check_docs
     except ImportError as exc:
         raise RuntimeError(
             "selfblog unified checks require the selfdoc package. "
             "Install it with: pip install selfdoc"
         ) from exc
     from selfdoc_core.config import load_config
+    from selfdoc_core.lints import LintResult
 
     from selfblog.unified import _project_slug, _resolve_project_path
 
@@ -122,7 +117,6 @@ def check_unified(dir_path=".", config=None, dry_run=False):
                 line=None,
                 code="UNIFIED001",
                 message=f"No selfdoc.json in project '{slug}'",
-                severity="error",
             ))
             continue
 
@@ -134,7 +128,6 @@ def check_unified(dir_path=".", config=None, dry_run=False):
                 line=None,
                 code="UNIFIED002",
                 message=str(exc),
-                severity="error",
             ))
             continue
 
@@ -174,7 +167,6 @@ def check_unified(dir_path=".", config=None, dry_run=False):
             line=None,
             code="UNIFIED002",
             message=str(exc),
-            severity="error",
         ))
     else:
         for dr in common_result.directive_results:
