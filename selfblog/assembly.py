@@ -243,6 +243,12 @@ def assembly_status(repo: str) -> list[list[str]]:
     ]
 
 
+#: Every field an ``assembly integrate`` run records for a project in
+#: ``projects.json``.  A rebuild replays that record, so all three have to
+#: be there -- see :func:`assembly_rebuild`.
+MEMBERSHIP_FIELDS = ("repo", "ref", "version")
+
+
 def assembly_rebuild(
     repo: str,
     projects: dict[str, dict],
@@ -250,18 +256,42 @@ def assembly_rebuild(
     """Return dispatch payloads for rebuilding all projects.
 
     repo: the assembly repo identifier
-    projects: mapping of slug to project info (must have "repo" and "ref" keys)
+    projects: mapping of slug to the membership record ``assembly
+        integrate`` wrote, which always carries ``repo``, ``ref`` and
+        ``version``.
+
+    An incomplete record is a hard error naming the project and the fields
+    it lacks.  A missing version used to become the literal string
+    ``"latest"``, which travelled through the dispatch payload and back
+    into ``projects.json`` -- so the assembly's own membership record then
+    claimed a version nobody released, and every later rebuild replayed
+    it.
     """
-    return [
-        assembly_push(
-            assembly_repo=repo,
-            source_repo=info["repo"],
-            slug=slug,
-            version=info.get("version", "latest"),
-            ref=info["ref"],
+    dispatches = []
+    for slug, info in projects.items():
+        record = info if isinstance(info, dict) else {}
+        missing = [field for field in MEMBERSHIP_FIELDS if not record.get(field)]
+        if missing:
+            raise RuntimeError(
+                f"the assembly's membership record for {slug!r} is missing "
+                f"{', '.join(missing)}. 'assembly integrate' writes all of "
+                f"{', '.join(MEMBERSHIP_FIELDS)} for every project, so this "
+                f"entry was hand-edited or written by an older deploy. Fix "
+                f"projects.json, or dispatch {slug!r} from its own repository "
+                f"with 'selfblog assembly push' -- there is no default for a "
+                f"version, and inventing one records docs under a version "
+                f"nobody released."
+            )
+        dispatches.append(
+            assembly_push(
+                assembly_repo=repo,
+                source_repo=record["repo"],
+                slug=slug,
+                version=record["version"],
+                ref=record["ref"],
+            )
         )
-        for slug, info in projects.items()
-    ]
+    return dispatches
 
 
 def generate_redirects_file(slug: str, docs_base: str) -> str:
