@@ -288,23 +288,25 @@ def test_rebuild_empty_projects():
 
 
 def test_rebuild_single_project():
-    projects = {"myproj": {"repo": "owner/myproj", "ref": "v1.0.0"}}
+    projects = {"myproj": {"repo": "owner/myproj", "ref": "v1.0.0",
+                           "version": "1.0.0"}}
     result = assembly_rebuild("owner/assembly", projects)
     assert len(result) == 1
 
 
 def test_rebuild_multiple_projects():
     projects = {
-        "proj-a": {"repo": "owner/proj-a", "ref": "v1.0.0"},
-        "proj-b": {"repo": "owner/proj-b", "ref": "v2.0.0"},
-        "proj-c": {"repo": "owner/proj-c", "ref": "main"},
+        "proj-a": {"repo": "owner/proj-a", "ref": "v1.0.0", "version": "1.0.0"},
+        "proj-b": {"repo": "owner/proj-b", "ref": "v2.0.0", "version": "2.0.0"},
+        "proj-c": {"repo": "owner/proj-c", "ref": "main", "version": "3.0.0"},
     }
     result = assembly_rebuild("owner/assembly", projects)
     assert len(result) == 3
 
 
 def test_rebuild_dispatch_format():
-    projects = {"myproj": {"repo": "owner/myproj", "ref": "v1.0.0"}}
+    projects = {"myproj": {"repo": "owner/myproj", "ref": "v1.0.0",
+                           "version": "1.0.0"}}
     result = assembly_rebuild("owner/assembly", projects)
     for dispatch in result:
         assert "endpoint" in dispatch
@@ -313,7 +315,7 @@ def test_rebuild_dispatch_format():
 
 def test_rebuild_uses_project_info():
     projects = {
-        "alpha": {"repo": "org/alpha-repo", "ref": "v3.0.0"},
+        "alpha": {"repo": "org/alpha-repo", "ref": "v3.0.0", "version": "3.0.0"},
     }
     result = assembly_rebuild("org/assembly", projects)
     dispatch = result[0]
@@ -321,6 +323,47 @@ def test_rebuild_uses_project_info():
     assert cp["slug"] == "alpha"
     assert cp["repo"] == "org/alpha-repo"
     assert cp["ref"] == "v3.0.0"
+    assert cp["version"] == "3.0.0"
+
+
+def test_rebuild_refuses_a_membership_entry_with_no_version():
+    """A missing version used to become the literal string "latest".
+
+    That string travelled into the dispatch payload and back out into
+    projects.json, so the assembly's own membership record then claimed a
+    version nobody ever released.
+    """
+    projects = {"alpha": {"repo": "org/alpha-repo", "ref": "v3.0.0"}}
+    with pytest.raises(RuntimeError) as excinfo:
+        assembly_rebuild("org/assembly", projects)
+    message = str(excinfo.value)
+    assert "alpha" in message, "the offending project must be named"
+    assert "version" in message, "the missing field must be named"
+
+
+def test_rebuild_never_invents_the_string_latest():
+    projects = {"alpha": {"repo": "org/alpha-repo", "ref": "v3.0.0"}}
+    with pytest.raises(RuntimeError):
+        assembly_rebuild("org/assembly", projects)
+
+
+def test_rebuild_refuses_a_membership_entry_with_no_repo():
+    projects = {"alpha": {"ref": "v3.0.0", "version": "3.0.0"}}
+    with pytest.raises(RuntimeError, match="repo"):
+        assembly_rebuild("org/assembly", projects)
+
+
+def test_rebuild_refuses_a_membership_entry_with_no_ref():
+    projects = {"alpha": {"repo": "org/alpha-repo", "version": "3.0.0"}}
+    with pytest.raises(RuntimeError, match="ref"):
+        assembly_rebuild("org/assembly", projects)
+
+
+def test_rebuild_refuses_an_empty_version_string():
+    projects = {"alpha": {"repo": "org/alpha-repo", "ref": "v3.0.0",
+                          "version": ""}}
+    with pytest.raises(RuntimeError, match="version"):
+        assembly_rebuild("org/assembly", projects)
 
 
 # -- workflow: the scope reaches the command, not a shell branch --------------
