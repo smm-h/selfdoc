@@ -1,4 +1,4 @@
-"""Build, page, and search context dataclasses that carry configuration, metadata, and state through the documentation pipeline.
+"""The search index entry dataclass, the one build record that outlives a single build.
 
 Re-export shim: actual implementation in selfdoc_core.context.
 """

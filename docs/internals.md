@@ -60,7 +60,7 @@ After block rendering produces a joined HTML string, five regex-based post-proce
 
 ### Phase 3: Page assembly
 
-`generate_html` wraps per-page HTML in a full document shell with sidebar navigation, breadcrumbs, canonical URLs, OpenGraph tags, JSON-LD structured data, theme CSS, and JavaScript for interactive features like code tabs and client-side search. The function receives a `BuildContext` and `PageContext` that carry all the metadata needed for the shell template.
+`generate_html` wraps per-page HTML in a full document shell with sidebar navigation, breadcrumbs, canonical URLs, OpenGraph tags, JSON-LD structured data, theme CSS, and JavaScript for interactive features like code tabs and client-side search. Every relative reference in that shell comes from the page's `PageAddress` (see `selfdoc_core.address`), which turns the mount coordinates plus the page path into the output key and the hops back to the mount root, the version-free mount, and the output root.
 
 ### Why post-processors operate on HTML strings
 

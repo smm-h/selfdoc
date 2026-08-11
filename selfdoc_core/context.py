@@ -1,47 +1,14 @@
-"""Build, page, and search context dataclasses."""
+"""The search index entry dataclass.
+
+Pages carry their own state through the build as the address plus
+the per-page dict :func:`selfdoc_core.html.generate_html` builds; a
+search entry is the one record that outlives a single build, so it
+is the one that gets a type.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
-
-@dataclass
-class BuildContext:
-    dir_path: str
-    config: dict
-    locale: str
-    version: str
-    url_prefix: str
-    output_dir: str
-    output_subdir: str
-    is_latest: bool
-    available_versions: list
-    available_locales: list
-    base_url: str | None
-    project_name: str
-    theme_meta: dict
-    accent_color: str
-    critical_css: str
-    deploy_target: str | None
-
-
-@dataclass
-class PageContext:
-    md_path: str
-    html_path: str
-    title: str
-    body_html: str
-    nav_html: str
-    toc_html: str
-    breadcrumbs: list | None
-    prefix: str
-    frontmatter: dict
-    prev_page: dict | None
-    next_page: dict | None
-    page_number: int | None
-    total_pages: int | None
-    summary: str
-    source_path: str | None
 
 
 @dataclass
