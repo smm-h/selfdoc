@@ -228,6 +228,13 @@ code = "POST005"
 severity = "error"
 description = "A published post's slug changed, which would break its permalink."
 
+# -- Emitted references -------------------------------------------------------
+
+[[lints]]
+code = "LINK001"
+severity = "error"
+description = "An emitted reference -- a link, a canonical, a sitemap entry or a feed link -- names a file the build did not write."
+
 # -- Unified multi-project sites (selfblog) -----------------------------------
 
 [[lints]]

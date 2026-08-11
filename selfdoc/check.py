@@ -715,6 +715,19 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
     # Manifest freshness (STALE002)
     result.lints.extend(_check_manifest_freshness(config, dir_path))
 
+    # Emitted-reference resolution (LINK001) over the built tree.  Every
+    # address the build emits comes from one function, and this is the
+    # assertion that the addresses it produced name files that exist: an
+    # internal link, a canonical, a sitemap entry or a feed link that
+    # resolves to nothing is a broken site.  A project with no build
+    # output has nothing to check.
+    from selfdoc_core.resolution import check_output_resolution
+
+    result.lints.extend(check_output_resolution(
+        os.path.join(dir_path, config.get("output", "docs/_build/").rstrip("/")),
+        base_url=config.get("base_url", ""),
+    ))
+
     # Validate old versions when multi-version is configured.
     # The working-tree check above covers the latest version; here we
     # extract each older version from its git tag and run directive
