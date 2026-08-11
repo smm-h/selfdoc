@@ -4,12 +4,20 @@ from selfdoc.html import generate_html
 
 
 def _make_html(available_versions=None, available_locales=None,
-               current_version="", current_locale=""):
-    """Generate HTML with the given version/locale configuration."""
+               current_version="", current_locale="",
+               mount_version="1.0.0", mount_locale=""):
+    """Generate HTML with the given version/locale configuration.
+
+    A page is only version-scoped when it was built from a version, so the
+    version picker needs a mount version to have anything to switch
+    between; the locale picker needs a mount locale for the same reason.
+    """
     return generate_html(
         {"index.md": "# Test\n\nHello.\n"},
         project_name="TestProject",
         version="1.0.0",
+        mount_version=mount_version,
+        mount_locale=mount_locale,
         available_versions=available_versions,
         available_locales=available_locales,
         current_version=current_version,
@@ -48,21 +56,38 @@ def test_version_picker_current_selected():
         current_version="1.0.0",
     )
     content = files["index.html"]
-    assert 'value="1.0.0" selected' in content
-    # The non-current version should not be selected
-    assert 'value="0.9.0" selected' not in content
+    # Each option carries the address the build computed for it, then the
+    # selected marker on the one being rendered.
+    assert 'value="1.0.0" data-href="./" selected' in content
+    assert 'value="0.9.0" data-href="v/0.9.0/"' in content
+    assert 'value="0.9.0" data-href="v/0.9.0/" selected' not in content
 
 
-def test_version_picker_disabled_single_version():
-    """Version picker is disabled when only 1 version exists."""
+def test_no_version_picker_for_a_single_version():
+    """A control with one option is not offered at all.
+
+    It used to be rendered disabled; now the picker exists only when it
+    can take the reader somewhere.
+    """
     versions = [{"version": "1.0.0"}]
     files = _make_html(
         available_versions=versions,
         current_version="1.0.0",
     )
     content = files["index.html"]
-    assert '<select class="version-picker"' in content
-    assert "disabled" in content.split("version-picker")[1].split(">")[0]
+    assert '<select class="version-picker"' not in content
+
+
+def test_no_version_picker_on_a_page_that_is_not_version_scoped():
+    """A `versioned: false` page has no version to switch away from."""
+    versions = [{"version": "0.9.0"}, {"version": "1.0.0"}]
+    files = _make_html(
+        available_versions=versions,
+        current_version="",
+        mount_version="",
+    )
+    content = files["index.html"]
+    assert '<select class="version-picker"' not in content
 
 
 def test_version_picker_not_disabled_multiple_versions():
@@ -99,11 +124,14 @@ def test_locale_picker_present_with_multiple_locales():
     files = _make_html(
         available_locales=locales,
         current_locale="en",
+        mount_locale="en",
     )
-    content = files["index.html"]
+    content = files["en/index.html"]
     assert '<select class="locale-picker"' in content
     assert "English" in content
     assert "French" in content
+    # Each option addresses this same page in the other locale.
+    assert 'value="fr" data-href="../fr/"' in content
 
 
 def test_locale_picker_current_selected():
@@ -115,22 +143,22 @@ def test_locale_picker_current_selected():
     files = _make_html(
         available_locales=locales,
         current_locale="fr",
+        mount_locale="fr",
     )
-    content = files["index.html"]
-    assert 'value="fr" selected' in content
-    assert 'value="en" selected' not in content
+    content = files["fr/index.html"]
+    assert 'value="fr" data-href="../fr/" selected' in content
+    assert 'value="en" data-href="../en/" selected' not in content
 
 
-def test_locale_picker_disabled_single_locale():
-    """Locale picker is disabled when only 1 locale exists."""
+def test_no_locale_picker_for_a_single_locale():
+    """One locale means no locale segment and nothing to switch between."""
     locales = [{"code": "en", "label": "English"}]
     files = _make_html(
         available_locales=locales,
         current_locale="en",
     )
     content = files["index.html"]
-    assert '<select class="locale-picker"' in content
-    assert "disabled" in content.split("locale-picker")[1].split(">")[0]
+    assert '<select class="locale-picker"' not in content
 
 
 def test_locale_picker_not_disabled_multiple_locales():
@@ -142,9 +170,10 @@ def test_locale_picker_not_disabled_multiple_locales():
     files = _make_html(
         available_locales=locales,
         current_locale="en",
+        mount_locale="en",
     )
-    content = files["index.html"]
-    picker_tag = content.split("locale-picker")[1].split(">")[0]
+    content = files["en/index.html"]
+    picker_tag = content.split('<select class="locale-picker"')[1].split(">")[0]
     assert "disabled" not in picker_tag
 
 
@@ -175,6 +204,7 @@ def test_search_dialog_base_is_never_site_absolute():
         version="1.0.0",
         mount_locale="en",
         mount_version="1.0.0",
+        mount_archived=True,
     )
-    content = files["en/1.0.0/guide/index.html"]
-    assert 'data-search-base="../../../"' in content
+    content = files["en/v/1.0.0/guide/index.html"]
+    assert 'data-search-base="../../../../"' in content

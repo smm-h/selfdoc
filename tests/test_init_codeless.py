@@ -92,9 +92,10 @@ def test_codeless_init_builds(codeless_dir):
     # init's emitted versions and locales arrays declare.
     out = codeless_dir / "docs" / "_build"
     assert (out / "index.html").exists()
-    assert (out / "en" / "0.1.0" / "index.html").exists()
-    assert (out / "en" / "0.1.0" / "about" / "index.html").exists()
-    assert "<!DOCTYPE html>" in (out / "en" / "0.1.0" / "index.html").read_text()
+    # One locale and one version: the pages sit at the output root.
+    assert (out / "index.html").exists()
+    assert (out / "about" / "index.html").exists()
+    assert "<!DOCTYPE html>" in (out / "index.html").read_text()
 
 
 def test_codeless_starter_has_no_code_directive(codeless_dir):
@@ -196,4 +197,4 @@ def test_init_emits_loadable_config_for_code_project(code_dir):
     assert config["source"]
 
     build(".")
-    assert (code_dir / "docs" / "_build" / "en" / "2.3.4" / "index.html").exists()
+    assert (code_dir / "docs" / "_build" / "index.html").exists()

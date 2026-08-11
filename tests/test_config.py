@@ -1177,6 +1177,11 @@ def test_cross_project_config_loads(config_path):
         pytest.skip(f"{config_path} still uses old top-level 'language' format")
     if "assembly" in (raw.get("topology") or {}):
         pytest.skip(f"{config_path} still uses the retired 'topology.assembly' key")
+    if any("indexed" in entry for entry in (raw.get("versions") or [])):
+        pytest.skip(
+            f"{config_path} still declares the retired per-version 'indexed' "
+            f"flag; the fleet sweep removes it"
+        )
     cfg = load_config(os.path.dirname(config_path))
     assert isinstance(cfg, dict)
 
