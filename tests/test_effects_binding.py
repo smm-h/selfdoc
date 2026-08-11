@@ -16,9 +16,9 @@ Three guarantees this file holds:
    the registered commands rather than the source, so a handler added later
    without the decorator fails here.
 
-3. **Exactly three commands are ``consequential``.** The framework prompts for
+3. **Exactly five commands are ``consequential``.** The framework prompts for
    those and no others; ``mutating`` no longer implies a prompt. The set below
-   is pinned in both directions, so adding a fourth is a deliberate edit to
+   is pinned in both directions, so adding a sixth is a deliberate edit to
    this file rather than a passing thought at a registration site.
 """
 
@@ -65,6 +65,12 @@ SELFBLOG_EFFECTS = {
     # pushes built HTML to the assembly repo via the Git Data API and
     # dispatches a workflow that republishes the live site
     "post.publish": "mutating",
+    # builds this project's docs into its local output tree, then pushes that
+    # tree, its manifest and its membership record into the assembly repo via
+    # the Git Data API -- deleting, in the same commit, every page the project
+    # published before and no longer builds -- and dispatches a shared-only
+    # workflow that republishes the live site
+    "docs.publish": "mutating",
     # creates a GitHub repo, a Cloudflare Pages project, and repo secrets
     "assembly.init": "mutating",
     # repository_dispatch against the assembly repo
@@ -73,6 +79,11 @@ SELFBLOG_EFFECTS = {
     "assembly.status": "read_only",
     # repository_dispatch for every registered project
     "assembly.rebuild": "mutating",
+    # one commit on the assembly repo that drops the project's [[project]]
+    # block from the roster, drops its entry from the membership record and
+    # deletes every path it owns (its whole site subtree and all its
+    # manifests), then dispatches a shared-only rebuild
+    "assembly.retire": "mutating",
     # prints the _redirects content to stdout
     "assembly.redirects": "read_only",
     # writes the assembled site's shared files
@@ -110,6 +121,15 @@ SELFBLOG_CONSEQUENTIAL = {
     # deployment credentials into repo secrets -- three named external
     # resources, none of them un-created by a rerun.
     "assembly.init",
+    # Same line as `post publish`, for documentation instead of posts: the
+    # working tree becomes publicly readable with no tag and no release in
+    # between, and it also deletes -- a page the project no longer builds
+    # disappears for readers in the same commit.
+    "docs.publish",
+    # Deletes a project's whole published section from the live site. Nothing
+    # else in either CLI removes public content, and rerunning cannot put it
+    # back: the pages are gone from the branch the site serves.
+    "assembly.retire",
 }
 
 
