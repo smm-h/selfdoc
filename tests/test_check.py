@@ -11,7 +11,7 @@ from selfdoc.check import (
     DirectiveResult,
     LintResult,
     check_docs,
-    check_exit_code,
+    check_result_exit_code,
     filter_lints,
     print_results,
     serialize_check_result,
@@ -1886,7 +1886,7 @@ def test_json_format(python_project, capsys):
 
     # The real JSON output path from _cmd_check, not a copy of it.
     output = serialize_check_result(
-        result, check_exit_code(result, coverage_below_threshold=False),
+        result, check_result_exit_code(result, config=None),
     )
 
     json_str = json.dumps(output, indent=2)

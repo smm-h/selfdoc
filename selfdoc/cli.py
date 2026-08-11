@@ -224,7 +224,7 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    from selfdoc.check import check_docs, filter_lints
+    from selfdoc.check import check_docs, check_exit_code, filter_lints
 
     output_dir = config["output"] if config else "docs/_build/"
 
@@ -263,6 +263,10 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
         print(f"{warn_count} SEO warning(s) found.")
     if error_count > 0:
         print(f"{error_count} error(s) found.")
+
+    # Reduced verdict: the build already reported directive failures inline
+    # and measures no coverage, so only the lints reach the shared rules.
+    if check_exit_code(lints) != 0:
         sys.exit(1)
     return 0
 
@@ -526,7 +530,8 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
     """Check documentation coverage and consistency."""
     from selfdoc.check import (
         check_docs,
-        check_exit_code,
+        check_result_exit_code,
+        coverage_below_threshold,
         filter_lints,
         print_results,
         serialize_check_result,
@@ -576,15 +581,10 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
     result.lints = filter_lints(result.lints, ignore_codes)
 
     # Coverage threshold check (uses documented count, not referenced)
-    coverage_below_threshold = False
-    if result.coverage is not None and result.coverage.total_public > 0:
-        threshold = config.get("coverage_threshold", 1.0) if config else 1.0
-        ratio = result.coverage.documented / result.coverage.total_public
-        if ratio < threshold:
-            coverage_below_threshold = True
+    below_threshold = coverage_below_threshold(result.coverage, config)
 
     # Determine exit code before output
-    exit_code = check_exit_code(result, coverage_below_threshold)
+    exit_code = check_result_exit_code(result, config)
 
     if format == "json":
         output = serialize_check_result(result, exit_code)
@@ -592,7 +592,7 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
     else:
         print_results(result)
 
-    if coverage_below_threshold:
+    if below_threshold:
         cov = result.coverage
         threshold = config.get("coverage_threshold", 1.0) if config else 1.0
         pct = cov.documented * 100 / cov.total_public

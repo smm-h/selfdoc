@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from selfdoc.check import check_docs, check_exit_code, serialize_check_result
+from selfdoc.check import check_docs, check_result_exit_code, serialize_check_result
 
 
 # -- Schema-aware validation helpers (no jsonschema dependency) --
@@ -180,11 +180,11 @@ def _serialize_check_result(result):
     grew the documented/documented_symbols coverage fields), which is why
     these tests exercise the shipped function instead.
 
-    Coverage threshold is not in play for these fixtures, so the exit code
-    is computed with coverage_below_threshold=False.
+    These fixtures carry no project configuration, so the exit code is
+    computed against the default coverage threshold.
     """
     return serialize_check_result(
-        result, check_exit_code(result, coverage_below_threshold=False),
+        result, check_result_exit_code(result, config=None),
     )
 
 

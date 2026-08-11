@@ -43,6 +43,7 @@ from selfdoc.staleness import (
 from selfdoc.ownership import is_machine_owned
 
 from selfdoc_core import effects
+from selfdoc_core.lints import check_exit_code, coverage_below_threshold  # noqa: F401  (re-exported: the shared verdict rules)
 
 
 def _machine_owned_keys(all_docs, dir_path, cli_structure, locale_prefix):
@@ -2191,22 +2192,28 @@ def filter_lints(lints, ignore_codes):
     return [lint for lint in lints if lint.code not in ignore_codes]
 
 
-def check_exit_code(result, coverage_below_threshold):
-    """Compute the process exit code for a check run.
+def check_result_exit_code(result, config=None):
+    """Compute the process exit code for a whole CheckResult.
+
+    Thin adapter over :func:`selfdoc_core.lints.check_exit_code` -- the one
+    implementation of the verdict rules -- for callers holding a full
+    CheckResult.  Reduced entry points (the post-build lint pass, the
+    posts-only check) call the core function directly with just their lints.
 
     Args:
         result: CheckResult to inspect (lints already filtered).
-        coverage_below_threshold: True when documented coverage is under
-            the configured coverage_threshold. Passed in because the
-            threshold lives in config, not in the CheckResult.
+        config: Project configuration, read for ``coverage_threshold``.
 
     Returns:
-        1 if any directive failed, any lint is an error, or coverage is
-        below threshold; 0 otherwise.
+        1 if any directive failed, any lint is an error, or documented
+        coverage is below the configured threshold; 0 otherwise.
     """
-    has_failures = any(dr.status == "FAILED" for dr in result.directive_results)
-    has_errors = any(lint.severity == "error" for lint in result.lints)
-    return 1 if (has_failures or has_errors or coverage_below_threshold) else 0
+    return check_exit_code(
+        result.lints,
+        directive_results=result.directive_results,
+        coverage=result.coverage,
+        config=config,
+    )
 
 
 def serialize_check_result(result, exit_code):
