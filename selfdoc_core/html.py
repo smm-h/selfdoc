@@ -414,6 +414,10 @@ def generate_html(markdown_files, project_name=None, version=None,
         )
         prefix = addr.to_mount_root
         asset_prefix = addr.to_site_root
+        # Pages marked `versioned: false` are built at the version-free
+        # mount, one level shallower than this page's own.
+        unversioned_prefix = addr.to_stable_mount_root
+        home_href = _home_href(addr, all_html_paths, available_versions)
         md_config = {}
         if auto_detect:
             md_config["auto_detect"] = auto_detect
@@ -446,7 +450,10 @@ def generate_html(markdown_files, project_name=None, version=None,
             lambda m: m.group(1) + '/)',
             body_html,
         )
-        nav_html = _render_nav(nav_items, prefix, current_path=html_path)
+        nav_html = _render_nav(
+            nav_items, prefix, current_path=html_path,
+            unversioned_prefix=unversioned_prefix,
+        )
 
         # Use frontmatter title if available, else extract from content
         # (Feature 34)
@@ -475,7 +482,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         breadcrumbs = None
         if html_path != "index.html":
             breadcrumbs = _build_breadcrumbs(html_path, title, prefix,
-                                             all_html_paths)
+                                             all_html_paths,
+                                             home_href=home_href)
 
         # Extract TOC from the body HTML (Feature 2)
         toc_html = _build_toc(body_html)
@@ -581,6 +589,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             "prev_page": prev_page,
             "next_page": next_page,
             "prefix": prefix,
+            "unversioned_prefix": unversioned_prefix,
+            "home_href": home_href,
             "source_path": source_path,
             "date_published": date_published,
             "date_modified": date_modified,
@@ -664,6 +674,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         glossary_nav_html = _render_nav(
             nav_items, prefix=glossary_addr.to_mount_root,
             current_path="glossary/index.html",
+            unversioned_prefix=glossary_addr.to_stable_mount_root,
         )
 
         # Update nav_html for all previously collected page_data entries
@@ -671,6 +682,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             pd["nav_html"] = _render_nav(
                 nav_items, prefix=pd["prefix"],
                 current_path=pd["html_path"],
+                unversioned_prefix=pd["unversioned_prefix"],
             )
 
         # Build page_data entry for the glossary page
@@ -693,10 +705,17 @@ def generate_html(markdown_files, project_name=None, version=None,
             "breadcrumbs": _build_breadcrumbs(
                 "glossary/index.html", "Glossary",
                 glossary_addr.to_mount_root, all_html_paths,
+                home_href=_home_href(
+                    glossary_addr, all_html_paths, available_versions,
+                ),
             ),
             "prev_page": None,
             "next_page": None,
             "prefix": glossary_addr.to_mount_root,
+            "unversioned_prefix": glossary_addr.to_stable_mount_root,
+            "home_href": _home_href(
+                glossary_addr, all_html_paths, available_versions,
+            ),
             "source_path": None,
             "date_published": None,
             "date_modified": None,
@@ -722,6 +741,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             prev_page=pd["prev_page"],
             next_page=pd["next_page"],
             prefix=pd["prefix"],
+            unversioned_prefix=pd["unversioned_prefix"],
+            home_href=pd["home_href"],
             asset_prefix=pd["asset_prefix"],
             repo=repo,
             source_path=pd["source_path"],
@@ -790,18 +811,22 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     if nav_items is None:
         nav_items = []
 
-    # Hop from the output root (where 404.html sits) into the mount whose
-    # pages the sidebar lists.
-    mount_prefix = page_address(
+    # Hops from the output root (where 404.html sits) into the mounts whose
+    # pages the sidebar lists: the versioned mount, and the version-free
+    # mount that holds the `versioned: false` pages.
+    root_addr = page_address(
         "index.html",
         locale=mount_locale,
         project=mount_project,
         version=mount_version,
-    ).pinned
+    )
+    mount_prefix = root_addr.pinned
+    unversioned_prefix = root_addr.stable
 
     # Render sidebar navigation from nav_items
     nav_html = _render_nav(nav_items, prefix=mount_prefix,
-                           current_path="404.html")
+                           current_path="404.html",
+                           unversioned_prefix=unversioned_prefix)
 
     # Search prompt button
     search_html = (
@@ -821,8 +846,11 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     if flat_nav:
         popular_links = []
         for item in flat_nav[:5]:
+            item_prefix = (
+                unversioned_prefix if item.get("unversioned") else mount_prefix
+            )
             popular_links.append(
-                f'<li><a href="{mount_prefix}{_html_path_to_url(item["path"])}">'
+                f'<li><a href="{item_prefix}{_html_path_to_url(item["path"])}">'
                 f'{_escape_html(item["label"])}</a></li>'
             )
         popular_html = (
@@ -844,6 +872,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         css_href="style.css",
         custom_css_href="custom.css" if has_custom_css else None,
         prefix=mount_prefix,
+        unversioned_prefix=unversioned_prefix,
         asset_prefix="",
         base_url=base_url,
         url_builder=url_builder,
@@ -1687,11 +1716,10 @@ def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
         target_page = info["page"]
         anchor = info["anchor"]
 
-        # Compute relative path from current page to target page.
-        # Both current_page and target_page are html_paths (directory-index).
-        current_depth = current_page.count("/")
-        rel_prefix = "../" * current_depth if current_depth > 0 else ""
-        href = f"{rel_prefix}{_html_path_to_url(target_page)}#{anchor}"
+        # Both current_page and target_page are mount-relative html_paths,
+        # so the target is reached through this page's own hop to the
+        # mount root -- which the caller already has from the address.
+        href = f"{prefix}{_html_path_to_url(target_page)}#{anchor}"
 
         # Page title for the tooltip: derive from target_page filename
         target_slug = _html_to_md_path(target_page).replace(".md", "")
@@ -1812,6 +1840,34 @@ def _html_to_md_path(html_path):
         return f"{stem}.md"
     # Fallback for non-directory paths
     return html_path.replace(".html", ".md")
+
+
+def _home_href(addr, own_pages, available_versions=None):
+    """Document-relative href to the home page, seen from *addr*'s page.
+
+    ``own_pages`` is the set of HTML paths this build emits under the
+    same mount.  Three cases, decided by what exists:
+
+    * The mount has its own ``index.html`` -- the normal versioned page.
+      Home is that page.
+    * It does not, which is what an unversioned build looks like: its
+      pages sit at ``<locale>/<project>/`` and the index page is
+      version-scoped.  Home is the same locale's index at the latest
+      version.
+    * No locale or no version list to name one.  Home is the redirect
+      stub at the output root, which every build writes.
+    """
+    if "index.html" in own_pages:
+        return addr.to_mount_root + "index.html"
+    latest = available_versions[-1]["version"] if available_versions else ""
+    if latest and addr.locale:
+        return addr.to_site_root + page_address(
+            "index.html",
+            locale=addr.locale,
+            project=addr.project,
+            version=latest,
+        ).pinned
+    return addr.to_site_root + "index.html"
 
 
 def _build_nav(markdown_files, frontmatter=None,
@@ -1999,7 +2055,7 @@ def _flatten_nav(nav_items):
     return flat
 
 
-def _render_nav(nav_items, prefix, current_path=""):
+def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix):
     """Render the sidebar navigation HTML.
 
     Ungrouped items render as flat ``<li><a>`` elements.  Grouped items
@@ -2009,6 +2065,13 @@ def _render_nav(nav_items, prefix, current_path=""):
 
     Link hrefs use clean directory URLs (e.g. ``guide/`` instead of
     ``guide/index.html``).
+
+    Two hops, because the sidebar spans two mounts: *prefix* reaches the
+    rendering page's own mount, and *unversioned_prefix* reaches the
+    version-free mount where every item carrying the ``unversioned``
+    marker was built.  Inside a version those differ by one level, and
+    addressing an unversioned page with the versioned hop names a file
+    no build ever writes.
     """
     items_html = []
     for item in nav_items:
@@ -2020,7 +2083,10 @@ def _render_nav(nav_items, prefix, current_path=""):
             open_attr = " open" if is_active_group else ""
             sub_items = []
             for sub in item["items"]:
-                href = prefix + _html_path_to_url(sub["path"])
+                sub_prefix = (
+                    unversioned_prefix if sub.get("unversioned") else prefix
+                )
+                href = sub_prefix + _html_path_to_url(sub["path"])
                 active_cls = (
                     ' class="active"' if sub["path"] == current_path else ""
                 )
@@ -2040,7 +2106,10 @@ def _render_nav(nav_items, prefix, current_path=""):
                 f'</li>'
             )
         else:
-            href = prefix + _html_path_to_url(item["path"])
+            item_prefix = (
+                unversioned_prefix if item.get("unversioned") else prefix
+            )
+            href = item_prefix + _html_path_to_url(item["path"])
             active_cls = (
                 ' class="active"' if item["path"] == current_path else ""
             )
@@ -2101,7 +2170,8 @@ def _build_toc(body_html):
     return '<nav class="toc-nav" aria-label="Table of contents"><ul>' + "\n".join(items) + "</ul></nav>"
 
 
-def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None):
+def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
+                       *, home_href):
     """Build breadcrumb HTML for a non-index page.
 
     For flat pages like ``guide.html``, produces ``Home / Guide``.
@@ -2115,8 +2185,11 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None):
         html_path: The current page's html path (e.g. "guide.html"
             or "api/endpoints.html").
         page_title: The page title extracted from the first heading.
-        prefix: Relative prefix back to root.
+        prefix: Relative hop to this page's own mount root, used for the
+            intermediate directory crumbs (which are pages of this mount).
         existing_pages: Optional set of HTML paths that actually exist.
+        home_href: Href for the "Home" crumb, from :func:`_home_href` --
+            not every mount has an index page of its own.
 
     Returns:
         Breadcrumb HTML string.
@@ -2130,7 +2203,7 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None):
     if logical_path.endswith("/index.html"):
         logical_path = logical_path[: -len("/index.html")]
     parts = logical_path.split("/")
-    crumbs = [f'<a href="{prefix}index.html">Home</a>']
+    crumbs = [f'<a href="{home_href}">Home</a>']
     # Add intermediate directory breadcrumbs
     for i, dir_name in enumerate(parts[:-1]):
         dir_path = "/".join(parts[:i + 1])
@@ -2616,11 +2689,16 @@ def _render_page_footer(edit_link_html, date_display_html,
 
 
 def _render_topbar(project_name, version_badge, topbar_page_title_html,
-                   search_trigger_html, prefix,
+                   search_trigger_html, home_href,
                    available_versions=None, available_locales=None,
                    current_version="", current_locale="",
                    is_latest=True):
-    """Build the topbar header with hamburger, project name, theme toggle, search."""
+    """Build the topbar header with hamburger, project name, theme toggle, search.
+
+    ``home_href`` is where the site-name link points -- the home page as
+    seen from the rendering page, which is not always this mount's own
+    index (see :func:`_home_href`).
+    """
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
         '<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" '
@@ -2700,7 +2778,7 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
         f'<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">\n'
         f'<span></span><span></span><span></span>\n'
         f'</button>\n'
-        f'<a class="project-name" href="{prefix}index.html">{_escape_html(project_name)}</a>\n'
+        f'<a class="project-name" href="{home_href}">{_escape_html(project_name)}</a>\n'
         f'{version_badge}\n'
         f'{version_picker_html}'
         f'{locale_picker_html}'
@@ -2838,7 +2916,7 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                      toc_html, summary, date_modified, feed_url, page_path,
                      site_terms, has_custom_css_href, version, project_name,
                      description, has_hero, custom_css_href, theme_meta,
-                     asset_prefix="",
+                     asset_prefix="", unversioned_prefix=None,
                      mount_locale="", mount_project="", mount_version="",
                      available_versions=None, available_locales=None,
                      current_version="", current_locale="",
@@ -2852,6 +2930,9 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     topbar_page_title_html, font_tags, auto_h1_html, search_trigger_html,
     meta_description, feed_footer_html.
     """
+    if unversioned_prefix is None:
+        unversioned_prefix = prefix
+
     # Cross-page term linking: wrap first occurrence of terms defined on
     # other pages in <a class="term-link"> before template wrapping.
     if site_terms and page_path:
@@ -2949,7 +3030,12 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         prev_link = ""
         next_link = ""
         if prev_page:
-            prev_href = prefix + _html_path_to_url(prev_page["path"])
+            # A neighbour marked unversioned lives at the version-free
+            # mount, one level up from this page's own.
+            prev_hop = (
+                unversioned_prefix if prev_page.get("unversioned") else prefix
+            )
+            prev_href = prev_hop + _html_path_to_url(prev_page["path"])
             prev_label = _escape_html(prev_page["label"])
             prev_link = (
                 f'<a class="page-nav-prev" href="{prev_href}">'
@@ -2965,7 +3051,10 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                 f'Page {page_number} of {total_pages}</span>'
             )
         if next_page:
-            next_href = prefix + _html_path_to_url(next_page["path"])
+            next_hop = (
+                unversioned_prefix if next_page.get("unversioned") else prefix
+            )
+            next_href = next_hop + _html_path_to_url(next_page["path"])
             next_label = _escape_html(next_page["label"])
             next_link = (
                 f'<a class="page-nav-next" href="{next_href}">'
@@ -3144,6 +3233,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", asset_prefix="",
+               unversioned_prefix=None, home_href=None,
                repo=None, source_path=None,
                base_url=None, url_builder=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
@@ -3161,12 +3251,24 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     """Wrap converted HTML body in the full page template.
 
     ``prefix`` reaches this page's own mount root (sibling pages);
-    ``asset_prefix`` reaches the output root (shared assets). Both come
-    from :func:`selfdoc_core.address.page_address`.
+    ``asset_prefix`` reaches the output root (shared assets);
+    ``unversioned_prefix`` reaches the version-free mount (pages marked
+    ``versioned: false``).  All three come from
+    :func:`selfdoc_core.address.page_address`.  ``home_href`` addresses
+    the page the site calls home, which is not always this mount's
+    index -- see :func:`_home_href`.
+
+    ``unversioned_prefix`` and ``home_href`` default to the mount hop:
+    on a page whose sidebar holds no unversioned item, the two hops are
+    the same answer.
     """
     # Use default theme metadata when none provided (backward compatible)
     if theme_meta is None:
         theme_meta = get_theme_meta("minimal")
+    if unversioned_prefix is None:
+        unversioned_prefix = prefix
+    if home_href is None:
+        home_href = prefix + "index.html"
 
     # Compute all page metadata variables
     meta = _build_page_meta(
@@ -3182,6 +3284,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         has_hero=has_hero, custom_css_href=custom_css_href,
         theme_meta=theme_meta,
         asset_prefix=asset_prefix,
+        unversioned_prefix=unversioned_prefix,
         mount_locale=mount_locale,
         mount_project=mount_project,
         mount_version=mount_version,
@@ -3264,7 +3367,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         version_badge=meta["version_badge"],
         topbar_page_title_html=meta["topbar_page_title_html"],
         search_trigger_html=search_trigger_html,
-        prefix=prefix,
+        home_href=home_href,
         available_versions=available_versions,
         available_locales=available_locales,
         current_version=current_version,

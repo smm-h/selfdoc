@@ -2471,8 +2471,21 @@ def _generate_auxiliary_files(
     )
     written[feed_path] = True
 
-    # Generate 404.html (Feature 39)
-    nav_items = _build_nav(markdown_files, frontmatter)
+    # Generate 404.html (Feature 39).  The sidebar spans both mounts, so
+    # the pages are split the way a page build splits them: an address
+    # with no version segment belongs to the version-free mount.
+    versioned_md = {}
+    unversioned_md = {}
+    for md_path, content in markdown_files.items():
+        if page_addresses[md_path].version:
+            versioned_md[md_path] = content
+        else:
+            unversioned_md[md_path] = content
+    nav_items = _build_nav(
+        versioned_md, frontmatter,
+        unversioned_pages=unversioned_md or None,
+        unversioned_frontmatter=frontmatter,
+    )
     not_found_html = generate_404_page(
         project_name=project_name,
         version=version,

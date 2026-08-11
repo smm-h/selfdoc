@@ -47,6 +47,11 @@ class PageAddress:
 
     Attributes:
         page_path: The mount-relative HTML path (e.g. ``guide/index.html``).
+        locale: Locale segment of the mount (``""`` when unlocalized).
+        project: Constituent-project segment of the mount (``""`` on a
+            standalone site).
+        version: Version segment of the mount (``""`` for pages that are
+            not version-scoped).
         mount: The output prefix this page is built under (``en/1.0.0``,
             ``en/core/1.0.0``, ``en``, or ``""``).
         output_key: Path of the page file relative to the output root.
@@ -56,11 +61,19 @@ class PageAddress:
     """
 
     page_path: str
+    locale: str
+    project: str
+    version: str
     mount: str
     output_key: str
     pinned: str
     stable: str
     depth: int
+
+    @property
+    def stable_mount(self) -> str:
+        """The version-free mount: where unversioned pages of this site sit."""
+        return _join(self.locale, self.project)
 
     @property
     def to_site_root(self) -> str:
@@ -71,6 +84,19 @@ class PageAddress:
     def to_mount_root(self) -> str:
         """Relative hop from this page's directory to its own mount root."""
         return "../" * self.page_path.count("/")
+
+    @property
+    def to_stable_mount_root(self) -> str:
+        """Relative hop from this page's directory to the version-free mount.
+
+        Unversioned pages (``versioned: false``) are built at
+        ``<locale>/<project>/`` with no version segment, so a versioned
+        page reaching one has to climb one level further than
+        :attr:`to_mount_root`.  On an unversioned page the two hops are
+        the same.
+        """
+        mount_depth = len([p for p in self.stable_mount.split("/") if p])
+        return "../" * (self.depth - mount_depth)
 
 
 def _to_url(html_path: str) -> str:
@@ -138,6 +164,9 @@ def page_address(
 
     return PageAddress(
         page_path=page_path,
+        locale=locale,
+        project=project,
+        version=version,
         mount=mount,
         output_key=output_key,
         # Not _join: an index page's URL segment is empty, and the mount
