@@ -12,10 +12,11 @@ import json
 import os
 import re
 
-from selfdoc_core.address import page_address
+from selfdoc_core.address import locale_segment, page_address
 from selfdoc_core.build import (
-    _check_reserved_paths,
-    _check_unversioned_collisions,
+    POSTS_PREFIX,
+    _check_post_slug_uniqueness,
+    _check_reserved_page_paths,
     _cleanup_injected_posts,
     _compress_output,
     _extract_critical_css,
@@ -335,6 +336,8 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
     # --- Partition pages for each constituent project ---
     # slug -> (versioned_set, unversioned_set, uv_markdown, uv_frontmatter)
     project_page_partitions = {}
+    # slug -> the project's site-level (post) pages and where to build them
+    project_site_pages = {}
     for project_entry in unified_config["projects"]:
         slug = _project_slug(project_entry)
         project_path = _resolve_project_path(project_entry, dir_path)
@@ -349,10 +352,18 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
             )
             if proj_injected:
                 all_injected_posts.append((proj_injected, proj_docs_dir))
-            v_pages, uv_pages, uv_md, uv_fm = _partition_pages(
+            v_pages, uv_pages, uv_md, uv_fm, site_pages = _partition_pages(
                 proj_config, proj_docs_dir, project_path,
             )
             project_page_partitions[slug] = (v_pages, uv_pages, uv_md, uv_fm)
+            # Posts are site-level on the unified site too: every project's
+            # posts land in the one ``blog/`` tree, so their slugs have to
+            # be unique across projects, not just within one.
+            project_site_pages[slug] = {
+                "dir_path": project_path,
+                "config": proj_config,
+                "pages": site_pages,
+            }
 
     # Also partition the docs-site's own pages
     docs_site_docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
@@ -364,9 +375,13 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
     if injected_post_files:
         all_injected_posts.append((injected_post_files, docs_site_docs_dir))
 
-    ds_versioned, ds_unversioned, ds_uv_markdown, ds_uv_frontmatter = _partition_pages(
-        config, docs_site_docs_dir, dir_path,
-    )
+    (ds_versioned, ds_unversioned, ds_uv_markdown, ds_uv_frontmatter,
+     ds_site_pages) = _partition_pages(config, docs_site_docs_dir, dir_path)
+    project_site_pages["common"] = {
+        "dir_path": dir_path,
+        "config": config,
+        "pages": ds_site_pages,
+    }
 
     try:
         written = _build_unified_body(
@@ -375,7 +390,7 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
             docs_site_docs_dir, project_page_partitions,
             ds_versioned, ds_unversioned, ds_uv_markdown,
             ds_uv_frontmatter, raw_theme_css, theme_meta,
-            critical_css, include_drafts,
+            critical_css, include_drafts, project_site_pages,
         )
     finally:
         for files, d_dir in all_injected_posts:
@@ -390,7 +405,7 @@ def _build_unified_body(
     docs_site_docs_dir, project_page_partitions,
     ds_versioned, ds_unversioned, ds_uv_markdown,
     ds_uv_frontmatter, raw_theme_css, theme_meta,
-    critical_css, include_drafts,
+    critical_css, include_drafts, project_site_pages,
 ):
     """Core build logic for unified sites.
 
@@ -401,12 +416,12 @@ def _build_unified_body(
     all_search_entries = []
     projects_info = []
 
-    # Check reserved paths and collisions
+    # The build owns the ``v/`` and ``blog/`` segments at the top of every
+    # mount; an author page may not take either.
     version_strs = [v["version"] for v in versions]
-    _check_reserved_paths(version_strs, config)
-    for slug, (v_pages, uv_pages, _uv_md, _uv_fm) in project_page_partitions.items():
-        _check_unversioned_collisions(uv_pages, version_strs)
-    _check_unversioned_collisions(ds_unversioned, version_strs)
+    for _slug, (v_pages, uv_pages, _uv_md, _uv_fm) in project_page_partitions.items():
+        _check_reserved_page_paths(v_pages | uv_pages)
+    _check_reserved_page_paths(ds_versioned | ds_unversioned)
 
     # --- Build each constituent project for each docs-site version ---
     for ver_entry in versions:
@@ -444,9 +459,10 @@ def _build_unified_body(
             # Build the project for each locale
             for locale in locales:
                 locale_code = locale["code"]
+                mount_locale = locale_segment(locale_code, locales)
                 project_home = page_address(
-                    "index.html", locale=locale_code, project=slug,
-                    version=ver_str,
+                    "index.html", locale=mount_locale, project=slug,
+                    version=ver_str, archived=not is_latest,
                 )
                 output_subdir = project_home.mount
 
@@ -458,9 +474,10 @@ def _build_unified_body(
                 result = build_single(
                     dir_path=build_dir,
                     config=proj_config,
-                    mount_locale=locale_code,
+                    mount_locale=mount_locale,
                     mount_project=slug,
                     mount_version=ver_str,
+                    mount_archived=not is_latest,
                     version_override=proj_version or ver_str,
                     locale_override=locale_code,
                     available_versions=versions,
@@ -508,7 +525,7 @@ def _build_unified_body(
                         "nav_title": nav_title,
                         "description": config_description or "",
                         "version": proj_version or ver_str,
-                        "home": project_home.pinned,
+                        "home": project_home.url,
                     })
 
     # --- Build unversioned pages for each constituent project ---
@@ -524,14 +541,15 @@ def _build_unified_body(
 
         for locale in locales:
             locale_code = locale["code"]
+            mount_locale = locale_segment(locale_code, locales)
             output_subdir = page_address(
-                "index.html", locale=locale_code, project=slug,
+                "index.html", locale=mount_locale, project=slug,
             ).mount
 
             uv_result = build_single(
                 dir_path=project_path,
                 config=proj_config,
-                mount_locale=locale_code,
+                mount_locale=mount_locale,
                 mount_project=slug,
                 mount_version="",
                 version_override="",
@@ -568,15 +586,16 @@ def _build_unified_body(
     common_latest_build = None
     for locale in locales:
         locale_code = locale["code"]
+        mount_locale = locale_segment(locale_code, locales)
         common_subdir = page_address(
-            "index.html", locale=locale_code, project="common",
+            "index.html", locale=mount_locale, project="common",
             version=latest_version,
         ).mount
 
         result = build_single(
             dir_path=dir_path,
             config=config,
-            mount_locale=locale_code,
+            mount_locale=mount_locale,
             mount_project="common",
             mount_version=latest_version,
             version_override=latest_version,
@@ -639,14 +658,15 @@ def _build_unified_body(
     if ds_unversioned:
         for locale in locales:
             locale_code = locale["code"]
+            mount_locale = locale_segment(locale_code, locales)
             uv_subdir = page_address(
-                "index.html", locale=locale_code, project="common",
+                "index.html", locale=mount_locale, project="common",
             ).mount
 
             uv_result = build_single(
                 dir_path=dir_path,
                 config=config,
-                mount_locale=locale_code,
+                mount_locale=mount_locale,
                 mount_project="common",
                 mount_version="",
                 version_override="",
@@ -686,7 +706,7 @@ def _build_unified_body(
                 common_latest_build["unversioned_addresses"] = {
                     md: page_address(
                         _md_to_html_path(md),
-                        locale=locale_code, project="common",
+                        locale=mount_locale, project="common",
                     )
                     for md in uv_result.markdown_files
                 }
@@ -703,12 +723,52 @@ def _build_unified_body(
                     **uv_result.page_dates,
                 }
 
+    # --- Build site-level pages (posts) from every project ---
+    # Posts have no project segment: whichever project wrote one, it is
+    # emitted at ``blog/<slug>/`` under the site root, exactly as the
+    # standalone build emits it.  The per-project listing page is dropped
+    # here -- the assembly renders one blog index for the whole site.
+    listing_page = f"{POSTS_PREFIX}/index.md"
+    _check_post_slug_uniqueness([
+        (os.path.basename(md_path)[: -len(".md")], owner)
+        for owner, spec in sorted(project_site_pages.items())
+        for md_path in sorted(spec["pages"])
+        if md_path != listing_page
+    ])
+    for owner, spec in sorted(project_site_pages.items()):
+        post_pages = {p for p in spec["pages"] if p != listing_page}
+        if not post_pages:
+            continue
+        site_result = build_single(
+            dir_path=spec["dir_path"],
+            config=spec["config"],
+            mount_locale="",
+            mount_project="",
+            mount_version="",
+            version_override="",
+            locale_override=default_locale_code,
+            available_locales=None,
+            current_version="",
+            current_locale=default_locale_code,
+            is_latest=True,
+            page_filter=post_pages,
+        )
+        for entry in site_result.search_entries:
+            all_search_entries.append(dataclasses.replace(entry, project=owner))
+        for rel_path, html_content in site_result.html_files.items():
+            out_path = os.path.join(output_dir, rel_path)
+            effects.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with effects.open_write(out_path, "w", encoding="utf-8") as f:
+                f.write(_minify_html(html_content))
+            written[out_path] = True
+
     # --- Generate landing page ---
     # The landing page is a page of the common mount like any other, so
     # its own address decides both hops: out to the output root for the
     # shared stylesheet, and out and back in for each project card.
     landing_addr = page_address(
-        "projects/index.html", locale=default_locale_code,
+        "projects/index.html",
+        locale=locale_segment(default_locale_code, locales),
         project="common", version=latest_version,
     )
     landing_body = _generate_landing_page(
@@ -806,14 +866,13 @@ def _build_unified_body(
         url_builder=lb["url_builder"],
         # The aux files describe the docs-site's own common pages, which
         # mount under <locale>/common/<version>.
-        mount_locale=default_locale_code,
+        mount_locale=locale_segment(default_locale_code, locales),
         mount_project="common",
-        mount_version=latest_version,
         page_addresses={
             **{
                 md: page_address(
                     _md_to_html_path(md),
-                    locale=default_locale_code,
+                    locale=locale_segment(default_locale_code, locales),
                     project="common",
                     version=latest_version,
                 )
@@ -832,9 +891,10 @@ def _build_unified_body(
     # resolves correctly in every case, origin root included.  The stub
     # sits at the output root, so the pinned address is already the hop.
     redirect_url = page_address(
-        "index.html", locale=default_locale_code, project="common",
-        version=latest_version,
-    ).pinned
+        "index.html",
+        locale=locale_segment(default_locale_code, locales),
+        project="common",
+    ).stable
     # Absolute canonical: a root-relative one resolves against whatever host
     # served the stub, so every alias of the site would claim to be canonical.
     canonical_url = lb["url_builder"].page_url(redirect_url)

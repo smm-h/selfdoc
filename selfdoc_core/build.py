@@ -1616,6 +1616,30 @@ def _check_reserved_page_paths(md_paths):
             )
 
 
+def _check_post_slug_uniqueness(claims):
+    """Refuse two posts claiming the same site-level address.
+
+    Posts are emitted at ``blog/<slug>/`` with no project segment, so on a
+    site assembled from several projects the slug namespace is shared.  A
+    repeat would silently overwrite one post with another, so it is a hard
+    error naming both sources.
+
+    Args:
+        claims: Iterable of ``(slug, source)`` pairs, where *source* names
+            whatever produced the post (a project slug, a file path).
+    """
+    seen = {}
+    for slug, source in claims:
+        if slug in seen:
+            raise RuntimeError(
+                f"Duplicate post slug {slug!r}: claimed by both "
+                f"{seen[slug]!r} and {source!r}. Posts are emitted at "
+                f"'{POSTS_PREFIX}/<slug>/' with no project segment, so a "
+                f"slug must be unique across every project on the site."
+            )
+        seen[slug] = source
+
+
 def _render_post_listing(published_posts):
     """Render a Markdown post listing page from published post metadata.
 
