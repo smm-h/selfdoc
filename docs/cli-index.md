@@ -16,18 +16,18 @@ Version: :-: var key="project.version"
 
 ## Commands
 
-- [init](cli-init.html) -- Initialize selfdoc configuration and starter docs template
-- [build](cli-build.html) -- Build the documentation site from templates and source code
-- [serve](cli-serve.html) -- Serve the documentation site locally with live reload
-- [deploy](cli-deploy.html) -- Deploy the built documentation site to the configured provider
-- [check](cli-check.html) -- Check documentation coverage, directive resolution, and lint rules
-- [gen](cli-gen.html) -- Auto-generate documentation pages from project structure
-- [gen-data](cli-gen-data.html) -- Generate data files by running sandboxed scripts via bwrap
-- [quality](cli-quality.html) -- Show documentation quality tier and metrics for the current project
+- [init](../cli-init/) -- Initialize selfdoc configuration and starter docs template
+- [build](../cli-build/) -- Build the documentation site from templates and source code
+- [serve](../cli-serve/) -- Serve the documentation site locally with live reload
+- [deploy](../cli-deploy/) -- Deploy the built documentation site to the configured provider
+- [check](../cli-check/) -- Check documentation coverage, directive resolution, and lint rules
+- [gen](../cli-gen/) -- Auto-generate documentation pages from project structure
+- [gen-data](../cli-gen-data/) -- Generate data files by running sandboxed scripts via bwrap
+- [quality](../cli-quality/) -- Show documentation quality tier and metrics for the current project
 
 ## Command Groups
 
-- [baseline](cli-baseline.html) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check
+- [baseline](../cli-baseline/) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check
 
 ## Framework flags
 

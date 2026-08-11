@@ -186,6 +186,7 @@ Custom directives take priority over built-in names.
 | `version` | no | Project version. When present, used by deploy instead of reading from pyproject.toml/package.json. |
 | `docs` | no | Directory containing Markdown documentation templates. |
 | `output` | no | Output directory for generated HTML files. |
+| `changelog` | no | Path to the changelog document published as the site's changelog page, relative to the project root. Absent means the project root's CHANGELOG.md is used if it exists; declare it when that file is not this site's changelog. |
 | `theme` | no | Visual theme for the generated site. |
 | `repo` | no | GitHub repository URL shown in the site header. |
 | `lang` | no | BCP 47 language tag for the site content (e.g. 'en', 'pt-BR'). |
