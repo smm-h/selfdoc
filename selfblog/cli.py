@@ -1030,6 +1030,11 @@ def _cmd_assembly_sync_workflow(ctx, pin_version=""):
 def _cmd_check(ctx, ignore="", auto_commit=True):
     """Check unified projects and blog posts."""
     from selfdoc_core.config import load_config
+    from selfdoc_core.lints import (
+        DEFAULT_COVERAGE_THRESHOLD,
+        check_exit_code,
+        coverage_below_threshold,
+    )
 
     from selfblog.check import check_posts, check_unified
 
@@ -1079,27 +1084,32 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 
         result.lints = filter_lints(result.lints, ignore_codes)
 
-        has_failures = any(
-            dr.status == "FAILED" for dr in result.directive_results
+        # The verdict rules live in selfdoc_core.lints -- one implementation
+        # for every entry point.  This path used to compare documented
+        # against total_public directly, which silently demanded 100%
+        # coverage and disagreed with 'selfdoc check' on any project that
+        # lowered coverage_threshold.
+        exit_code = check_exit_code(
+            result.lints,
+            directive_results=result.directive_results,
+            coverage=result.coverage,
+            config=config,
         )
-        has_errors = any(lint.severity == "error" for lint in result.lints)
-
-        # Coverage threshold check (uses documented count, not referenced)
-        coverage_below_threshold = False
-        if result.coverage is not None and result.coverage.total_public > 0:
-            if result.coverage.documented < result.coverage.total_public:
-                coverage_below_threshold = True
+        below_threshold = coverage_below_threshold(result.coverage, config)
 
         print_results(result)
 
-        if coverage_below_threshold:
+        if below_threshold:
             cov = result.coverage
+            threshold = config.get(
+                "coverage_threshold", DEFAULT_COVERAGE_THRESHOLD,
+            )
             print(
                 f"Coverage: {cov.documented}/{cov.total_public} symbols"
-                " documented. All public symbols must be documented."
+                f" documented. Threshold is {threshold * 100:.0f}%."
             )
 
-        if has_failures or has_errors or coverage_below_threshold:
+        if exit_code != 0:
             sys.exit(1)
         return 0
 
@@ -1114,7 +1124,9 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
             f"{lint.severity}: [{lint.code}] "
             f"{lint.file}{line_part} - {lint.message}"
         )
-    if any(lint.severity == "error" for lint in lints):
+    # Reduced verdict: posts-only runs resolve no directives and measure no
+    # coverage, so only the lints reach the shared rules.
+    if check_exit_code(lints) != 0:
         sys.exit(1)
     print("Post checks passed.")
     return 0
