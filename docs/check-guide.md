@@ -79,8 +79,8 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | SEO003 | warning | Image with empty alt text (`![](...)`). Add descriptive alt text. |
 | SEO004 | warning | Page title exceeds 60 characters (combined with project name). Shorten it. |
 | SEO006 | error | Missing `description` in frontmatter. Add one for meta tags. |
-| SEO007 | warning | First paragraph after a heading is outside the 30-80 word range. Aim for 40-60 words for AI citation. |
-| SEO008 | warning | Low numeric data density. Pages with 200+ words should include concrete numbers for AI citation. |
+| SEO007 | warning | First paragraph after a heading is outside the 30-80 word range. Every page type is held to the same band, generated pages included. |
+| SEO008 | warning | Low numeric data density. Pages with 200+ words should include concrete quantities; version strings and calendar years do not count. |
 | SEO009 | warning | Description is shorter than 120 characters. Aim for 120-155. |
 | SEO010 | warning | Frontmatter description exceeds 155 characters. Trim it. |
 | SEO011 | warning | Empty heading section (heading followed by another heading with no content between). |

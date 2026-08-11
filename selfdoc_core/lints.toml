@@ -44,12 +44,12 @@ description = "Missing `description` in frontmatter. Add one for meta tags."
 [[lints]]
 code = "SEO007"
 severity = "warning"
-description = "First paragraph after a heading is outside the 30-80 word range. Aim for 40-60 words for AI citation."
+description = "First paragraph after a heading is outside the 30-80 word range. Every page type is held to the same band, generated pages included."
 
 [[lints]]
 code = "SEO008"
 severity = "warning"
-description = "Low numeric data density. Pages with 200+ words should include concrete numbers for AI citation."
+description = "Low numeric data density. Pages with 200+ words should include concrete quantities; version strings and calendar years do not count."
 
 [[lints]]
 code = "SEO009"

@@ -1156,6 +1156,56 @@ def _check_manifest_freshness(config, dir_path):
     return results
 
 
+# Wrapping punctuation and markdown emphasis a prose token can carry.  A
+# statistic is recognized from the token's core, not from its decoration:
+# ``**42**``, ``(0.36.0)`` and ``1999.`` all reduce to their bare form.
+_STAT_TRIM = "`*_~\"'“”‘’()[]{}<>,.;:!?…—–-"
+
+# Version-shaped: either a ``v``-prefixed number of any component count
+# (``v2``, ``v1.5``, ``v0.36.0``) or a bare dotted triple (``0.36.0``), each
+# optionally followed by pre-release or build metadata
+# (``1.0.0-alpha.1``, ``2.11.3+build.7``).  A bare two-component number is
+# NOT version-shaped: ``3.5`` is far more often a measurement than a release,
+# so it keeps counting as a statistic.
+_VERSION_SHAPED = re.compile(
+    r"^(?:[vV]\d+(?:\.\d+)*|\d+\.\d+\.\d+)(?:[-+][0-9A-Za-z.]+)?$"
+)
+
+# A four-digit standalone number in the calendar range.  ``1899`` and ``2100``
+# are outside it and stay statistics; ``2026-08-11`` is not standalone.
+_BARE_YEAR = re.compile(r"^\d{4}$")
+
+
+def counts_as_statistic(word):
+    """Return True when a prose token is a concrete numeric data point.
+
+    SEO008 measures how many quantities a page offers a citing model.  A
+    digit alone does not make a quantity: release versions and calendar
+    years appear in almost every documentation page and say nothing about
+    magnitude, count or proportion.  Both are refused here, so a page whose
+    only digits are ``0.36.0`` and ``2026`` reads as having no statistics --
+    which is the truth.
+
+    Args:
+        word: A whitespace-delimited token from prose content, with any
+            markdown decoration still attached.
+
+    Returns:
+        True for genuine quantities (``42``, ``3.5``, ``87%``, ``12ms``),
+        False for digitless tokens, version-shaped tokens and bare years.
+    """
+    if not any(c.isdigit() for c in word):
+        return False
+    core = word.strip(_STAT_TRIM)
+    if not core:
+        return False
+    if _VERSION_SHAPED.match(core):
+        return False
+    if _BARE_YEAR.match(core) and 1900 <= int(core) <= 2099:
+        return False
+    return True
+
+
 def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
     """Run lint checks on documentation templates.
 
@@ -1368,17 +1418,12 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                 ),
             ))
 
-        # SEO007 -- Paragraph length after headings
-        # Generated CLI pages use CLI help strings as intro paragraphs.
-        # These are inherently concise (10-15 words) by design -- expanding
-        # them would degrade CLI --help output.  Skip the check entirely.
-        _is_generated_cli = (
-            metadata.get("generated") is True
-            and rel_path.startswith("cli-")
-        )
+        # SEO007 -- Paragraph length after headings.
+        # One threshold set applies to every page type: a generated page's
+        # lead-in is held to the same band as a hand-written one.  The only
+        # suppressions are structural (a directive supplies the content the
+        # paragraph would otherwise carry), applied below.
         for i, tok in enumerate(tokens):
-            if _is_generated_cli:
-                break
             if not isinstance(tok, Heading):
                 continue
             if tok.level not in (2, 3):
@@ -1420,7 +1465,7 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                     code="SEO007",
                     message=(
                         f"First paragraph after '{heading_text}' is"
-                        f" {word_count} words (aim for 40-60 for AI citation)"
+                        f" {word_count} words (aim for 30-80 for AI citation)"
                     ),
                 ))
 
@@ -1445,7 +1490,7 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         total_words = len(prose_words)
         if total_words >= 200:
             numeric_count = sum(
-                1 for w in prose_words if any(c.isdigit() for c in w)
+                1 for w in prose_words if counts_as_statistic(w)
             )
             expected = max(1, total_words // 200)
             if numeric_count < expected:

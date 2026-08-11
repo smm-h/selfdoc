@@ -897,6 +897,70 @@ def test_seo007_still_fires_without_directive(lint_project):
     assert "Section" in seo007[0].message
 
 
+def test_seo007_message_names_the_enforced_band(lint_project):
+    """SEO007: the message quotes the 30-80 band the rule actually enforces."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            "## Section\n\n"
+            "Short intro text only.\n\n"
+            "Some other paragraph.\n"
+        )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 1
+    assert "30-80" in seo007[0].message
+    assert "40-60" not in seo007[0].message
+
+
+def test_seo007_applies_to_generated_cli_pages(lint_project):
+    """SEO007: a generated cli-* page gets no exemption from the word band."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "cli-run.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\ngenerated: true\n---\n"
+            "# run\n\n"
+            "## Options\n\n"
+            "Run the thing.\n\n"
+            "Some other paragraph.\n"
+        )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 1
+    assert "Options" in seo007[0].message
+
+
+def test_seo007_directive_exemption_survives_on_generated_pages(lint_project):
+    """SEO007: structural directive suppression is not a page-type exemption."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    with open(os.path.join(docs_dir, "cli-run.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\ngenerated: true\n---\n"
+            "# run\n\n"
+            "## run\n\n"
+            "Run the thing.\n\n"
+            ":::cli mytool.commands.run\n"
+            ":::\n"
+        )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo007 = [r for r in results if r.code == "SEO007"]
+
+    assert len(seo007) == 0
+
+
 def test_seo001_does_not_count_directive_as_heading(lint_project):
     """SEO001: a :::module directive does not count as an H1 heading."""
     _, docs_dir, config = lint_project
@@ -1065,6 +1129,74 @@ def test_seo008_200_words_one_number(lint_project):
     seo008 = [r for r in results if r.code == "SEO008"]
 
     assert len(seo008) == 0
+
+
+# -- SEO008: what counts as a statistic --
+
+
+def test_seo008_version_strings_and_years_are_not_statistics(lint_project):
+    """SEO008: a page whose only digits are versions and years still warns."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    # 250 prose words; the only digit-bearing tokens are incidental:
+    # release versions and calendar years.
+    words = " ".join(["word"] * 244)
+    incidental = "0.36.0 v2 1.0.0-alpha.1 `v0.36.0` 2026 1999"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words} {incidental}\n"
+        )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 1
+    assert "0 numeric" in seo008[0].message
+
+
+def test_seo008_genuine_quantities_still_count(lint_project):
+    """SEO008: real quantities (counts, decimals, percentages) satisfy the rule."""
+    _, docs_dir, config = lint_project
+    config["base_url"] = "https://example.com"
+
+    words = " ".join(["word"] * 247)
+    quantities = "42 3.5 87%"
+    with open(os.path.join(docs_dir, "page.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "---\ndescription: test\n---\n"
+            "# Title\n\n"
+            f"{words} {quantities}\n"
+        )
+
+    results = _run_lints(_build_all_docs(docs_dir), docs_dir, None, config)
+    seo008 = [r for r in results if r.code == "SEO008"]
+
+    assert len(seo008) == 0
+
+
+@pytest.mark.parametrize("token", [
+    "0.36.0", "v2", "V2", "1.0.0-alpha.1", "v1.5", "`v0.36.0`", "(0.36.0)",
+    "2.11.3+build.7", "0.36.0,", "2026", "1999.", "2099", "1900",
+])
+def test_seo008_incidental_digit_tokens_rejected(token):
+    """The statistic recognizer refuses version-shaped tokens and bare years."""
+    from selfdoc.check import counts_as_statistic
+
+    assert counts_as_statistic(token) is False
+
+
+@pytest.mark.parametrize("token", [
+    "42", "3.5", "87%", "$1,200", "12ms", "1899", "2100", "7th", "0",
+    "1/3", "2026-08-11", "10x",
+])
+def test_seo008_quantity_tokens_accepted(token):
+    """The statistic recognizer keeps genuine quantities."""
+    from selfdoc.check import counts_as_statistic
+
+    assert counts_as_statistic(token) is True
 
 
 # -- SEO009: Description too short --
