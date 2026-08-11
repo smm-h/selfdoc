@@ -290,10 +290,21 @@ workflow, compares it against the deployed copy, and pushes only when the
 bytes differ. Without it the deployed workflow stays frozen at whatever the
 template said the day the repo was created.
 
-The workflow's install line pins the selfblog version that generated it. The
-pin is rewritten by every `sync-workflow` run, so it tracks releases rather
-than capping them -- and a deploy can never pick up a selfblog whose flags
-the deployed workflow does not know about.
+The workflow's install line pins **every** tool it installs -- selfdoc,
+selfblog and pagefind. Each pin is rewritten by every `sync-workflow` run, so
+they track releases rather than capping them, and a deploy can never pick up a
+tool whose behavior the deployed workflow does not know about. selfblog is
+pinned to the selfblog that generated the file and selfdoc to the selfdoc
+installed alongside it; pagefind is a CI-only tool that nothing here installs,
+so its pin is PyPI's current release at sync time. `--pin-version`,
+`--pin-selfdoc` and `--pin-pagefind` name any of them explicitly.
+
+Before writing anything, `sync-workflow` asks PyPI whether each pinned version
+is actually published, and refuses the whole run when one is not. The default
+selfblog pin is the *running* selfblog, which in a checkout is an editable
+install sitting ahead of the registry -- writing that pin would produce a
+workflow whose `pip install` cannot resolve, and the failure would surface on
+the assembly repository at the next dispatch instead of here.
 
 ### Posts-only vs full builds
 
