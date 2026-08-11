@@ -182,7 +182,7 @@ def _make_fixture(root, config_extra, locale_codes=("en",)):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "version": versions[-1],
-        "versions": [{"version": v, "indexed": True} for v in versions],
+        "versions": [{"version": v} for v in versions],
         "locales": [
             {
                 "code": code,

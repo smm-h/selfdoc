@@ -728,7 +728,7 @@ def _build_unified_body(
     # emitted at ``blog/<slug>/`` under the site root, exactly as the
     # standalone build emits it.  The per-project listing page is dropped
     # here -- the assembly renders one blog index for the whole site.
-    listing_page = f"{POSTS_PREFIX}/index.md"
+    listing_page = f"{POSTS_PREFIX}.md"
     _check_post_slug_uniqueness([
         (os.path.basename(md_path)[: -len(".md")], owner)
         for owner, spec in sorted(project_site_pages.items())

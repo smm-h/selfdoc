@@ -787,6 +787,22 @@ def _generate_og_png(project_name, title, accent_color="#0969da"):
         return _generate_og_png_basic(accent_color)
 
 
+def _output_key_to_url(output_key):
+    """URL path for an emitted HTML file, keyed from the output root.
+
+    The directory-index form the addressing authority produces, applied to
+    a full output key: ``index.html`` is the site root (``""``) and
+    ``guide/index.html`` is ``guide/``.  A sitemap entry and a canonical
+    link therefore name the same URL, which they did not while the sitemap
+    spelled the home page ``index.html``.
+    """
+    if output_key == "index.html":
+        return ""
+    if output_key.endswith("/index.html"):
+        return output_key[: -len("index.html")]
+    return output_key
+
+
 def _generate_sitemap(html_paths, url_builder, page_dates=None):
     """Generate a sitemap.xml string for the given HTML paths.
 
@@ -803,7 +819,7 @@ def _generate_sitemap(html_paths, url_builder, page_dates=None):
         # html_paths may include a locale/version prefix (e.g. "en/1.0.0/guide/index.html")
         # while page_dates is keyed by unprefixed md_path (e.g. "guide.md").
         md_path = _html_to_md_path(path)
-        url = _html_path_to_url(path)
+        url = _output_key_to_url(path)
         date_tuple = page_dates.get(md_path)
         if date_tuple is None:
             # Try stripping prefix: "en/1.0.0/guide.md" -> "guide.md"
@@ -1533,7 +1549,7 @@ def _partition_pages(config, docs_dir, dir_path):
     unversioned_markdown = {}
     unversioned_frontmatter = {}
     for rel_path, (fm, resolved, _raw, _lc) in all_docs.items():
-        if rel_path.split("/", 1)[0] == POSTS_PREFIX:
+        if _is_site_level(rel_path):
             site.add(rel_path)
         elif fm and fm.get("versioned") is False:
             unversioned.add(rel_path)
@@ -1570,7 +1586,7 @@ def _versioned_html_paths(build_dir, docs_dir_name, locale_code, locales):
                 continue
             full = os.path.join(root, fname)
             rel = os.path.relpath(full, locale_docs_dir).replace(os.sep, "/")
-            if rel.split("/", 1)[0] == POSTS_PREFIX:
+            if _is_site_level(rel):
                 continue
             with open(full, "r", encoding="utf-8") as f:
                 fm, _body = parse_frontmatter(f.read())
@@ -1614,6 +1630,18 @@ def _check_reserved_page_paths(md_paths):
                 f"Page '{md_path}' uses the reserved top-level path "
                 f"'{stem}': {reserved[stem]}. Rename the page."
             )
+
+
+def _is_site_level(md_path):
+    """Whether a docs-relative page is site-level (a post or their listing).
+
+    Site-level pages are built with no mount at all: the posts under
+    ``blog/<slug>.md`` and the listing at ``blog.md``, which is emitted at
+    ``blog/`` beside them.
+    """
+    first = md_path.split("/", 1)[0]
+    stem = first[: -len(".md")] if first.endswith(".md") else first
+    return stem == POSTS_PREFIX
 
 
 def _check_post_slug_uniqueness(claims):
@@ -1666,6 +1694,7 @@ def _render_post_listing(published_posts):
             date = post["date"]
             title = post["title"]
             slug = post["slug"]
+            # The listing is emitted at blog/, so a post is a sibling.
             lines.append(f"- **{date}** -- [{title}]({slug}/)")
     lines.append("")
     return "\n".join(lines)
@@ -1674,8 +1703,8 @@ def _render_post_listing(published_posts):
 def post_docs_payloads(published_posts):
     """Return the docs-tree markdown for a set of published posts.
 
-    Maps a docs-relative path (``blog/<slug>.md``, plus ``blog/index.md``
-    for the listing) to the markdown that page is built from.  Posts are
+    Maps a docs-relative path (``blog/<slug>.md``, plus ``blog.md``
+    for the listing, which is emitted at ``blog/``) to the markdown that page is built from.  Posts are
     site-level pages: they are built at ``blog/<slug>/`` under the output
     root, with no locale, project or version segment, and both the full
     build and the posts-only build emit them at that same address.  This is the
@@ -1704,7 +1733,7 @@ def post_docs_payloads(published_posts):
         )
 
     if published_posts:
-        payloads[f"{POSTS_PREFIX}/index.md"] = _render_post_listing(published_posts)
+        payloads[f"{POSTS_PREFIX}.md"] = _render_post_listing(published_posts)
 
     return payloads
 
@@ -1715,7 +1744,7 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     Discovers posts from the configured posts directory, filters drafts
     unless ``include_drafts`` is True, and writes each post as a ``.md``
     file under ``docs_dir/blog/``.  Also generates a listing page at
-    ``docs_dir/blog/index.md``.  The written files are picked up by
+    ``docs_dir/blog.md``, which is emitted at ``blog/``.  The written files are picked up by
     ``resolve_all_docs`` and partitioned into the site-level page set,
     which is built with no mount at all -- so a post is at ``blog/<slug>/``
     whichever build produced it.
