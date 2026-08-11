@@ -24,9 +24,14 @@ from selfdoc_core.docs import resolve_all_docs
 from selfdoc_core.utils import detect_project_version
 from selfdoc_core.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
-    _md_to_html_path, _html_path_to_url, _html_to_md_path, _slugify,
+    _md_to_html_path, _html_path_to_url, _html_to_md_path,
     _extract_title, _escape_html, _build_nav,
     _generate_search_js, _minify_js,
+    assign_heading_anchors,
+)
+from selfdoc_core.tokenizer import (
+    tokenize as tokenize_md,
+    Heading as TokHeading,
 )
 from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
@@ -521,8 +526,9 @@ def _build_search_index(
             version=mount_version,
         ).pinned
         lines = content.split("\n")
+        tokens = tokenize_md(content)
         current_title = None
-        current_slug = None
+        current_anchor = None
         current_body = []
 
         # Derive per-page metadata
@@ -559,8 +565,8 @@ def _build_search_index(
                 body_text = re.sub(r"`([^`]+)`", r"\1", body_text)
                 body_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", body_text)
                 path = url_path
-                if current_slug:
-                    path = f"{url_path}#{current_slug}"
+                if current_anchor:
+                    path = f"{url_path}#{current_anchor}"
                 entries.append(SearchEntry(
                     title=current_title,
                     path=path,
@@ -574,22 +580,33 @@ def _build_search_index(
                     tags=page_tags,
                 ))
 
-        for line in lines:
-            heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
-            if heading_match:
+        # Sections come from the same heading scan the renderer uses, so
+        # every anchor emitted here is an id that exists on the page --
+        # including the second `## Setup`, which is `setup-1` in both.
+        # Walking tokens (not lines) also means a `#` line inside a fenced
+        # code block stays code instead of becoming a phantom section.
+        page_title = page_meta.get("title") or _extract_title(content, project)
+        heading_anchors = {
+            ha.index: ha
+            for ha in assign_heading_anchors(tokens, page_title=page_title)
+        }
+
+        for token_idx, token in enumerate(tokens):
+            if isinstance(token, TokHeading):
                 _flush()
-                current_title = heading_match.group(2)
-                current_slug = _slugify(current_title)
+                current_title = token.text
+                current_anchor = heading_anchors[token_idx].anchor
                 current_body = []
-            elif line.startswith("```"):
-                # Skip code fence markers
-                pass
-            elif line.startswith(">"):
-                # Strip blockquote prefix
-                stripped = re.sub(r"^>\s?", "", line)
-                current_body.append(stripped)
-            elif line.strip():
-                current_body.append(line.strip())
+                continue
+            for line in lines[token.start - 1:token.end]:
+                if line.startswith("```"):
+                    # Skip code fence markers
+                    continue
+                if line.startswith(">"):
+                    # Strip blockquote prefix
+                    current_body.append(re.sub(r"^>\s?", "", line))
+                elif line.strip():
+                    current_body.append(line.strip())
 
         _flush()
 

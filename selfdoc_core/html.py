@@ -8,6 +8,7 @@ Syntax highlighting uses Pygments when available (optional dependency).
 import json
 import re
 import unicodedata
+from dataclasses import dataclass
 from datetime import datetime
 
 from selfdoc_core.address import page_address
@@ -854,22 +855,85 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     )
 
 
-def _render_heading(token, seen_slugs, first_h1_consumed_ref):
+@dataclass(frozen=True, slots=True)
+class HeadingAnchor:
+    """One heading and the element id it will carry on the built page.
+
+    ``index`` is the heading's position in the token list it came from,
+    so a renderer walking the same tokens can look its anchor up.
+    """
+
+    index: int
+    level: int
+    text: str
+    anchor: str
+    is_page_title: bool
+
+
+def assign_heading_anchors(tokens, page_title=None):
+    """Assign the final element id to every heading in *tokens*.
+
+    This is the one place heading anchors are decided.  The HTML renderer
+    emits these ids and the search index links to them, so the two cannot
+    drift: a repeated heading gets ``setup``, ``setup-1``, ``setup-2`` in
+    both.  Because the input is the block token list, a ``#``-prefixed
+    line inside a fenced code block is code and never becomes an anchor.
+
+    The first H1 is not rendered in the body -- ``_wrap_page`` emits it as
+    the page title heading, whose id comes from the page title.  Pass
+    *page_title* (frontmatter title, else the H1 text) to get that id
+    right; it is reported with ``is_page_title=True``.
+
+    Returns a list of ``HeadingAnchor``, in document order.
+    """
+    seen_slugs = {}  # base slug -> how many times it has been used
+    page_title_consumed = False
+    anchors = []
+
+    for index, token in enumerate(tokens):
+        if not isinstance(token, TokHeading):
+            continue
+
+        if token.level == 1 and not page_title_consumed:
+            page_title_consumed = True
+            title = page_title if page_title is not None else token.text
+            anchors.append(HeadingAnchor(
+                index=index,
+                level=token.level,
+                text=token.text,
+                anchor=_slugify(title),
+                is_page_title=True,
+            ))
+            continue
+
+        slug = _slugify(_inline_format(token.text))
+        if slug in seen_slugs:
+            seen_slugs[slug] += 1
+            slug = f"{slug}-{seen_slugs[slug]}"
+        else:
+            seen_slugs[slug] = 0
+        anchors.append(HeadingAnchor(
+            index=index,
+            level=token.level,
+            text=token.text,
+            anchor=slug,
+            is_page_title=False,
+        ))
+
+    return anchors
+
+
+def _render_heading(token, heading_anchor):
     """Render a Heading token to HTML.
 
-    Returns the HTML string, or empty string if this is the first H1
-    (which is consumed as the page title by _wrap_page).
+    Returns the HTML string, or None for the first H1 (which is consumed
+    as the page title by _wrap_page).  *heading_anchor* is this token's
+    entry from ``assign_heading_anchors``.
     """
-    if token.level == 1 and not first_h1_consumed_ref[0]:
-        first_h1_consumed_ref[0] = True
+    if heading_anchor.is_page_title:
         return None
     content = _inline_format(token.text)
-    slug = _slugify(content)
-    if slug in seen_slugs:
-        seen_slugs[slug] += 1
-        slug = f"{slug}-{seen_slugs[slug]}"
-    else:
-        seen_slugs[slug] = 0
+    slug = heading_anchor.anchor
     readable = re.sub(r"<[^>]+>", "", content).replace("_", " ")
     anchor = (
         f'<a class="heading-link" href="#{slug}"'
@@ -919,15 +983,18 @@ def _render_definition_list(token):
     )
 
 
-def _render_block(token, tokens, idx, seen_slugs, first_h1_consumed_ref,
+def _render_block(token, tokens, idx, heading_anchors,
                   run_button=False, line_numbers=False, code_icons="colorful"):
     """Dispatch a single block token to its HTML renderer.
+
+    *heading_anchors* maps a token index to its ``HeadingAnchor`` (from
+    ``assign_heading_anchors``).
 
     Returns the HTML string, or None if the token produces no output
     (e.g. BlankLine, or the first H1).
     """
     if isinstance(token, TokHeading):
-        return _render_heading(token, seen_slugs, first_h1_consumed_ref)
+        return _render_heading(token, heading_anchors[idx])
 
     if isinstance(token, TokCodeBlock):
         # Per-block run annotation or global run_button config
@@ -992,15 +1059,18 @@ def md_to_html(text, metadata=None, config=None):
     """
     tokens = tokenize_md(text)
     html_parts = []
-    seen_slugs = {}  # slug -> count, for deduplicating heading IDs
-    first_h1_consumed_ref = [False]  # mutable ref: skip the first H1
+    # The single heading scan: ids come from here, and the search index
+    # reads the same assignment from the same tokens.
+    heading_anchors = {
+        ha.index: ha for ha in assign_heading_anchors(tokens)
+    }
     cfg_run_button = config.get("run_button", False) if config else False
     cfg_line_numbers = config.get("line_numbers", False) if config else False
     cfg_code_icons = config.get("code_icons", "colorful") if config else "colorful"
 
     for idx, token in enumerate(tokens):
         rendered = _render_block(
-            token, tokens, idx, seen_slugs, first_h1_consumed_ref,
+            token, tokens, idx, heading_anchors,
             run_button=cfg_run_button,
             line_numbers=cfg_line_numbers,
             code_icons=cfg_code_icons,
