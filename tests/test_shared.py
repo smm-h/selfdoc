@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from selfblog.shared import (
     _page_path_to_url_segment,
     generate_blog_index,
@@ -9,6 +11,11 @@ from selfblog.shared import (
     generate_nav_json,
     generate_sitemap,
     generate_unified_feed,
+    merge_project_posts,
+    output_path_target,
+    page_target,
+    post_target,
+    target_output_path,
     validate_cross_project_links,
     wrap_shared_page,
 )
@@ -539,3 +546,93 @@ def test_wrap_shared_page_no_link_when_css_empty():
     """When css_url is empty (default), no <link> tag appears."""
     result = wrap_shared_page("Plain", "<p>text</p>")
     assert "<link" not in result
+
+
+# -- cross-project post slug collisions ---------------------------------------
+#
+# Posts share one slug namespace across the whole assembled site.  The unified
+# build refuses a repeat while it is building; on the assembly side the posts
+# arrive as separate manifests written by separate deploys, so nothing else
+# ever sees them together and the refusal has to happen at the merge.
+
+
+def _post(slug, title="Post", date="2024-06-01"):
+    return {"slug": slug, "title": title, "date": date,
+            "path": f"blog/{slug}.md", "tags": []}
+
+
+def test_merge_project_posts_collects_every_project():
+    merged = merge_project_posts([
+        _make_manifest("Alpha", "alpha", "1.0.0", posts=[_post("one")]),
+        _make_manifest("Beta", "beta", "2.0.0", posts=[_post("two")]),
+    ])
+    assert {p["slug"] for p in merged} == {"one", "two"}
+    assert {p["manifest_slug"] for p in merged} == {"alpha", "beta"}
+
+
+def test_merge_project_posts_refuses_a_cross_project_slug_collision():
+    """Two projects claiming one post address is a hard error naming both."""
+    with pytest.raises(RuntimeError) as exc:
+        merge_project_posts([
+            _make_manifest("Alpha", "alpha", "1.0.0", posts=[_post("hello")]),
+            _make_manifest("Beta", "beta", "2.0.0", posts=[_post("hello")]),
+        ])
+    message = str(exc.value)
+    assert "hello" in message
+    assert "alpha" in message and "beta" in message
+
+
+def test_blog_index_refuses_a_cross_project_slug_collision():
+    with pytest.raises(RuntimeError, match="hello"):
+        generate_blog_index([
+            _make_manifest("Alpha", "alpha", "1.0.0", posts=[_post("hello")]),
+            _make_manifest("Beta", "beta", "2.0.0", posts=[_post("hello")]),
+        ], "https://docs.example.com")
+
+
+def test_feed_refuses_a_cross_project_slug_collision():
+    with pytest.raises(RuntimeError, match="hello"):
+        generate_unified_feed([
+            _make_manifest("Alpha", "alpha", "1.0.0", posts=[_post("hello")]),
+            _make_manifest("Beta", "beta", "2.0.0", posts=[_post("hello")]),
+        ], "https://docs.example.com")
+
+
+def test_sitemap_refuses_a_cross_project_slug_collision():
+    with pytest.raises(RuntimeError, match="hello"):
+        generate_sitemap([
+            _make_manifest("Alpha", "alpha", "1.0.0", posts=[_post("hello")]),
+            _make_manifest("Beta", "beta", "2.0.0", posts=[_post("hello")]),
+        ], "https://docs.example.com")
+
+
+def test_one_project_repeating_a_slug_is_still_a_collision():
+    with pytest.raises(RuntimeError, match="hello"):
+        merge_project_posts([
+            _make_manifest("Alpha", "alpha", "1.0.0",
+                           posts=[_post("hello"), _post("hello")]),
+        ])
+
+
+# -- the address authority ----------------------------------------------------
+
+
+def test_page_target_and_output_path_round_trip():
+    target = page_target("alpha", "api/reference.md")
+    assert target == "alpha/api/reference/"
+    assert target_output_path(target) == "alpha/api/reference/index.html"
+    assert output_path_target("alpha/api/reference/index.html") == target
+
+
+def test_index_page_target_is_the_project_root():
+    target = page_target("alpha", "index.md")
+    assert target == "alpha/"
+    assert target_output_path(target) == "alpha/index.html"
+    assert output_path_target("alpha/index.html") == target
+
+
+def test_post_target_and_output_path_round_trip():
+    target = post_target("alpha", "hello")
+    assert target == "alpha/posts/hello"
+    assert target_output_path(target) == "alpha/posts/hello/index.html"
+    assert output_path_target("alpha/posts/hello/index.html") == target

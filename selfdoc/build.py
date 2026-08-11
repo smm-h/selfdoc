@@ -28,7 +28,7 @@ from selfdoc_core.build import (  # noqa: F401
     _minify_html,
     _partition_pages,
     _versioned_html_paths,
-    _check_post_slug_uniqueness,
+    check_post_slug_uniqueness,
     _check_reserved_page_paths,
     _read_jpeg_dimensions,
     _read_webp_dimensions,

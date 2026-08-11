@@ -1644,7 +1644,7 @@ def _is_site_level(md_path):
     return stem == POSTS_PREFIX
 
 
-def _check_post_slug_uniqueness(claims):
+def check_post_slug_uniqueness(claims):
     """Refuse two posts claiming the same site-level address.
 
     Posts are emitted at ``blog/<slug>/`` with no project segment, so on a

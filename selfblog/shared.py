@@ -7,7 +7,10 @@ import json
 import re
 from datetime import datetime
 
-from selfdoc_core.build import _make_feed_entry
+from selfdoc_core.build import _make_feed_entry, check_post_slug_uniqueness
+
+#: The segment a project's posts sit under inside its own site subtree.
+POSTS_SEGMENT = "posts"
 
 # Matches a <link rel=canonical ...> element with any attribute order and
 # any quoting style.  Hand-authored HTML is not normalized, so the pattern
@@ -137,18 +140,7 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
     Returns:
         HTML fragment with the blog index.
     """
-    posts = []
-    for m in manifests:
-        manifest_slug = m.get("slug") or ""
-        manifest_name = m.get("name") or ""
-        for post in m.get("posts") or []:
-            posts.append({
-                "date": post.get("date") or "",
-                "title": post.get("title") or "",
-                "slug": post.get("slug") or "",
-                "project_name": manifest_name,
-                "manifest_slug": manifest_slug,
-            })
+    posts = merge_project_posts(manifests)
 
     if not posts:
         return "<p>No posts yet.</p>"
@@ -160,7 +152,7 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
         date = html.escape(post["date"])
         project_name = html.escape(post["project_name"])
         title = html.escape(post["title"])
-        href = f"{docs_base}/{post['manifest_slug']}/posts/{post['slug']}/"
+        href = f"{docs_base}/{post_target(post['manifest_slug'], post['slug'])}/"
         parts.append('  <article class="blog-entry">')
         parts.append(f"    <time>{date}</time>")
         parts.append(f'    <span class="project-name">{project_name}</span>')
@@ -212,17 +204,13 @@ def generate_unified_feed(
         feed_title = "Documentation"
 
     entries = []
-    for m in manifests:
-        manifest_slug = m.get("slug") or ""
-        for post in m.get("posts") or []:
-            post_url = f"{docs_base}/{manifest_slug}/posts/{post.get('slug') or ''}/"
-            date_val = post.get("date") or ""
-            title_val = post.get("title") or ""
-            entries.append(_make_feed_entry(
-                title=title_val,
-                url=post_url,
-                date=date_val,
-            ))
+    for post in merge_project_posts(manifests):
+        post_url = f"{docs_base}/{post_target(post['manifest_slug'], post['slug'])}/"
+        entries.append(_make_feed_entry(
+            title=post["title"],
+            url=post_url,
+            date=post["date"],
+        ))
 
     # Sort by date descending
     entries.sort(key=lambda e: e[0], reverse=True)
@@ -264,17 +252,15 @@ def generate_sitemap(manifests: list[dict], docs_base: str) -> str:
     for m in manifests:
         manifest_slug = m.get("slug") or ""
         for page in m.get("pages") or []:
-            path = page.get("path") or ""
-            url_segment = _page_path_to_url_segment(path)
-            url = f"{docs_base}/{manifest_slug}/{url_segment}"
+            url = f"{docs_base}/{page_target(manifest_slug, page.get('path') or '')}"
             # Ensure trailing slash unless already present
             if not url.endswith("/"):
                 url += "/"
             urls.append(url)
-        for post in m.get("posts") or []:
-            post_slug = post.get("slug") or ""
-            url = f"{docs_base}/{manifest_slug}/posts/{post_slug}/"
-            urls.append(url)
+    for post in merge_project_posts(manifests):
+        urls.append(
+            f"{docs_base}/{post_target(post['manifest_slug'], post['slug'])}/"
+        )
 
     urls.sort()
 
@@ -286,6 +272,54 @@ def generate_sitemap(manifests: list[dict], docs_base: str) -> str:
         parts.append(f"  <url><loc>{html.escape(url)}</loc></url>")
     parts.append("</urlset>")
     return "\n".join(parts) + "\n"
+
+
+#: Crawlers the assembly's robots.txt names explicitly.  The wildcard rule
+#: already allows them; naming each one is what keeps a future disallow from
+#: being written once and applying to everybody by accident.
+ROBOTS_AGENTS = (
+    "*", "GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
+    "ClaudeBot", "Googlebot", "OAI-SearchBot",
+)
+
+
+def generate_robots_txt(canonical_base: str) -> str:
+    """Produce the assembly's robots.txt, naming the site-wide sitemap.
+
+    Each constituent project's own build writes a robots.txt at its own
+    output root, which ends up buried at ``<slug>/robots.txt`` where no
+    crawler reads it.  The one that is served is this one.
+    """
+    lines = []
+    for agent in ROBOTS_AGENTS:
+        lines.append(f"User-agent: {agent}")
+        lines.append("Allow: /")
+        lines.append("")
+    lines.append(f"Sitemap: {canonical_base.rstrip('/')}/sitemap.xml")
+    return "\n".join(lines) + "\n"
+
+
+def generate_not_found_page(canonical_base: str) -> str:
+    """Produce the assembly's root 404 page.
+
+    A project subtree carries its own 404 from its own build, but the site
+    root has no build of its own, so a request that matches no project at
+    all would otherwise be served the hosting provider's default.
+    """
+    base = canonical_base.rstrip("/")
+    body = (
+        '<main class="not-found">\n'
+        "  <h1>Page not found</h1>\n"
+        "  <p>The page you asked for is not on this site.</p>\n"
+        "  <ul>\n"
+        f'    <li><a href="{html.escape(base)}/">Projects</a></li>\n'
+        f'    <li><a href="{html.escape(base)}/blog/">Blog</a></li>\n'
+        "  </ul>\n"
+        "</main>"
+    )
+    return wrap_shared_page(
+        "Page not found", body, canonical_url=f"{base}/404.html",
+    )
 
 
 def _page_path_to_url_segment(path: str) -> str:
@@ -307,6 +341,85 @@ def _page_path_to_url_segment(path: str) -> str:
     return path + "/"
 
 
+def page_target(project_slug: str, page_path: str) -> str:
+    """Site-relative address of a project's page (``alpha/guide/``).
+
+    This and :func:`post_target` are the one place that decides where a
+    manifest entry lives on the assembled site.  The blog index, the
+    sitemap, the feed, the cross-project link check and the deploy-time
+    verifier all address pages through them, so they cannot disagree about
+    where a page is.
+    """
+    return f"{project_slug}/{_page_path_to_url_segment(page_path)}"
+
+
+def post_target(project_slug: str, post_slug: str) -> str:
+    """Site-relative address of a project's post (``alpha/posts/hello``)."""
+    return f"{project_slug}/{POSTS_SEGMENT}/{post_slug}"
+
+
+def target_output_path(target: str) -> str:
+    """The emitted file a site-relative *target* names.
+
+    Both address forms land on the same file: a directory index.  The
+    trailing slash a page target carries and the one a post target does not
+    are a spelling difference, not two addresses.
+    """
+    path = target.strip("/")
+    return f"{path}/index.html" if path else "index.html"
+
+
+def output_path_target(rel_output: str) -> str:
+    """The address form an emitted file has, as a link target.
+
+    The inverse of :func:`target_output_path`, in the spelling
+    :func:`validate_cross_project_links` recognises: a post keeps no
+    trailing slash, everything else gets one.
+    """
+    path = rel_output.replace("\\", "/")
+    if path.endswith("/index.html"):
+        path = path[: -len("/index.html")]
+    elif path == "index.html":
+        path = ""
+    segments = path.split("/")
+    if len(segments) > 2 and segments[1] == POSTS_SEGMENT:
+        return path
+    return f"{path}/" if path else ""
+
+
+def merge_project_posts(manifests: list[dict]) -> list[dict]:
+    """Return every project's posts as one list, refusing a slug collision.
+
+    Posts share one slug namespace across the whole assembled site, so two
+    projects publishing ``hello`` would claim the same address and one
+    would silently overwrite the other.  The unified build refuses that at
+    build time; this is the same refusal on the assembly side, where the
+    posts arrive as separate manifests written by separate deploys and no
+    single build ever sees them together.
+
+    Raises:
+        RuntimeError: naming both projects that claim the slug.
+    """
+    check_post_slug_uniqueness([
+        (str(post.get("slug") or ""), str(m.get("slug") or ""))
+        for m in manifests
+        for post in (m.get("posts") or [])
+        if str(post.get("slug") or "")
+    ])
+    merged = []
+    for m in manifests:
+        manifest_slug = str(m.get("slug") or "")
+        for post in m.get("posts") or []:
+            merged.append({
+                "date": str(post.get("date") or ""),
+                "title": str(post.get("title") or ""),
+                "slug": str(post.get("slug") or ""),
+                "project_name": str(m.get("name") or ""),
+                "manifest_slug": manifest_slug,
+            })
+    return merged
+
+
 def validate_cross_project_links(
     manifests: list[dict],
     link_registry: dict[str, list[str]],
@@ -326,13 +439,11 @@ def validate_cross_project_links(
         for page in m.get("pages") or []:
             known.add(page.get("path") or "")
             # Also add the URL-form page path
-            url_segment = _page_path_to_url_segment(page.get("path") or "")
-            known.add(f"{manifest_slug}/{url_segment}")
+            known.add(page_target(manifest_slug, page.get("path") or ""))
         for post in m.get("posts") or []:
             known.add(post.get("path") or "")
             # Also add the slug-based post path
-            post_slug = post.get("slug") or ""
-            known.add(f"{manifest_slug}/posts/{post_slug}")
+            known.add(post_target(manifest_slug, post.get("slug") or ""))
 
     errors = []
     for source, targets in sorted(link_registry.items()):
