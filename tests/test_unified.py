@@ -109,10 +109,10 @@ def test_generate_landing_page():
             "nav_title": "Core Library",
             "description": "The core framework",
             "version": "2.0.0",
-            "home": "en/core/1.0.0/",
+            "home": "core/",
         },
     ]
-    html = _generate_landing_page(info, {}, "../../../../")
+    html = _generate_landing_page(info, {}, "../../")
     assert "project-grid" in html
     assert "Core Library" in html
     assert "The core framework" in html
@@ -127,11 +127,11 @@ def test_generate_landing_page_card_hops_out_to_the_site_root():
             "nav_title": "Core",
             "description": "",
             "version": "1.0.0",
-            "home": "en/core/1.0.0/",
+            "home": "core/",
         },
     ]
-    html = _generate_landing_page(info, {}, "../../../../")
-    assert 'href="../../../../en/core/1.0.0/"' in html
+    html = _generate_landing_page(info, {}, "../../")
+    assert 'href="../../core/"' in html
 
 
 # -- Full unified build --
@@ -151,14 +151,14 @@ def test_build_unified_basic(make_unified_project):
 
     # Common content exists
     assert os.path.isfile(
-        os.path.join(output_dir, "en", "common", "1.0.0", "index.html")
+        os.path.join(output_dir, "common", "index.html")
     )
     # Constituent project content exists
     assert os.path.isfile(
-        os.path.join(output_dir, "en", "core", "1.0.0", "index.html")
+        os.path.join(output_dir, "core", "index.html")
     )
     assert os.path.isfile(
-        os.path.join(output_dir, "en", "cli", "1.0.0", "index.html")
+        os.path.join(output_dir, "cli", "index.html")
     )
 
 
@@ -197,7 +197,7 @@ def test_build_unified_root_redirect(make_unified_project):
 
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
     root_index = _read(os.path.join(output_dir, "index.html"))
-    assert "/en/common/1.0.0/" in root_index
+    assert 'href="common/"' in root_index
 
 
 def test_build_unified_root_redirect_canonical_is_absolute(make_unified_project):
@@ -212,12 +212,12 @@ def test_build_unified_root_redirect_canonical_is_absolute(make_unified_project)
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
     root_index = _read(os.path.join(output_dir, "index.html"))
     assert (
-        '<link rel="canonical" href="https://example.com/en/common/1.0.0/">'
+        '<link rel="canonical" href="https://example.com/common/">'
         in root_index
     )
     for hop in _stub_hops(root_index):
         assert urljoin("https://example.com/", hop) == (
-            "https://example.com/en/common/1.0.0/"
+            "https://example.com/common/"
         )
 
 
@@ -243,7 +243,7 @@ def test_build_unified_root_redirect_hop_resolves_under_a_subpath_base_url(
 
     served_at = "https://docs.example.com/proj/"
     canonical = _canonical_of(root_index)
-    assert canonical == "https://docs.example.com/proj/en/common/1.0.0/"
+    assert canonical == "https://docs.example.com/proj/common/"
     for hop in _stub_hops(root_index):
         assert "proj" in urljoin(served_at, hop), (
             f"hop {hop!r} escapes the project subtree"
@@ -264,7 +264,7 @@ def test_build_unified_cloudflare_redirect_rule_stays_site_absolute(
 
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
     redirects = _read(os.path.join(output_dir, "_redirects"))
-    assert "/ /en/common/1.0.0/ 302\n" in redirects
+    assert "/ /common/ 302\n" in redirects
 
 
 def test_build_unified_landing_page(make_unified_project):
@@ -279,7 +279,7 @@ def test_build_unified_landing_page(make_unified_project):
 
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
     landing = _read(
-        os.path.join(output_dir, "en", "common", "1.0.0", "projects", "index.html")
+        os.path.join(output_dir, "common", "projects", "index.html")
     )
     assert "project-grid" in landing
     assert "Core" in landing
@@ -297,7 +297,7 @@ def test_build_unified_constituent_content(make_unified_project):
 
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
     core_index = _read(
-        os.path.join(output_dir, "en", "core", "1.0.0", "index.html")
+        os.path.join(output_dir, "core", "index.html")
     )
     assert "core" in core_index.lower()
 
@@ -539,14 +539,14 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
 
     output_dir = str(docs_site_dir / "docs" / "_build")
 
-    # Old docs-site version should have old core content (v1.0.0)
+    # The old docs-site version is an archive: core's pinned v1.0.0 content
+    # sits under the archive prefix inside core's own mount.
     old_core_html = _read(
-        os.path.join(output_dir, "en", "core", "1.0.0", "index.html"),
+        os.path.join(output_dir, "core", "v", "1.0.0", "index.html"),
     )
     assert "Old core content" in old_core_html or "Core v1" in old_core_html
 
-    # Latest docs-site version should have new core content (v2.0.0)
-    new_core_html = _read(
-        os.path.join(output_dir, "en", "core", "2.0.0", "index.html"),
-    )
+    # The current docs-site version is the stable address, with core's
+    # v2.0.0 content.
+    new_core_html = _read(os.path.join(output_dir, "core", "index.html"))
     assert "New core content" in new_core_html or "Core v2" in new_core_html
