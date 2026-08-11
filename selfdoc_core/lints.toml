@@ -1,0 +1,241 @@
+# selfdoc lint-code registry -- the single source of truth for every lint code
+# selfdoc and selfblog can emit. Governed by
+# .strictspec/lint-registry.schema.toml and validated at load time by the
+# generated lint_registry_validator.py (see selfdoc_core/lints.py).
+#
+# A lint's severity lives here and nowhere else: LintResult derives it from
+# this document, so a construction site cannot state a severity and cannot
+# emit an unregistered code. The lint-code enum in
+# schemas/check-output.schema.json and the lint-rule table in
+# docs/check-guide.md are both pinned to this document by tests.
+#
+# Entries are in documentation order (the order the table renders in), which
+# groups the families rather than sorting the codes alphabetically.
+
+format_version = 1
+
+# -- SEO and page structure ---------------------------------------------------
+
+[[lints]]
+code = "SEO001"
+severity = "error"
+description = "Multiple H1 headings on a page. Use a single `#` heading."
+
+[[lints]]
+code = "SEO002"
+severity = "warning"
+description = "Heading level gaps (e.g., H2 followed by H4 skipping H3)."
+
+[[lints]]
+code = "SEO003"
+severity = "warning"
+description = "Image with empty alt text (`![](...)`). Add descriptive alt text."
+
+[[lints]]
+code = "SEO004"
+severity = "warning"
+description = "Page title exceeds 60 characters (combined with project name). Shorten it."
+
+[[lints]]
+code = "SEO006"
+severity = "error"
+description = "Missing `description` in frontmatter. Add one for meta tags."
+
+[[lints]]
+code = "SEO007"
+severity = "warning"
+description = "First paragraph after a heading is outside the 30-80 word range. Aim for 40-60 words for AI citation."
+
+[[lints]]
+code = "SEO008"
+severity = "warning"
+description = "Low numeric data density. Pages with 200+ words should include concrete numbers for AI citation."
+
+[[lints]]
+code = "SEO009"
+severity = "warning"
+description = "Description is shorter than 120 characters. Aim for 120-155."
+
+[[lints]]
+code = "SEO010"
+severity = "warning"
+description = "Frontmatter description exceeds 155 characters. Trim it."
+
+[[lints]]
+code = "SEO011"
+severity = "warning"
+description = "Empty heading section (heading followed by another heading with no content between)."
+
+[[lints]]
+code = "SEO012"
+severity = "warning"
+description = "WCAG contrast ratio below threshold for theme colors. Fix in CSS custom properties."
+
+[[lints]]
+code = "SEO013"
+severity = "error"
+description = "No title source: neither frontmatter `title` nor an H1 heading exists on the page."
+
+[[lints]]
+code = "SEO014"
+severity = "warning"
+description = "Meaningless image alt text (e.g., \"image\", \"screenshot\", or a bare filename). Write something descriptive."
+
+[[lints]]
+code = "SEO015"
+severity = "warning"
+description = "Generic anchor text like \"click here\" or \"read more\". Use descriptive link text."
+
+# -- Staleness, drift and description quality ---------------------------------
+
+[[lints]]
+code = "STALE001"
+severity = "error"
+description = "Page content changed but frontmatter description was not updated. Review and update the description."
+
+[[lints]]
+code = "STALE002"
+severity = "warning"
+description = "Manifest and disk disagree: a page or post exists on disk but is missing from `.selfdoc/manifest.json`, or the manifest lists one that is gone. Run `selfdoc gen`."
+
+[[lints]]
+code = "DRIFT001"
+severity = "error"
+description = "The source docstrings (or CLI schema) a page documents changed while its description did not. Update the description, or run `selfdoc baseline accept <page>` if it is still accurate."
+
+[[lints]]
+code = "DQ001"
+severity = "warning"
+description = "The frontmatter description restates the page or symbol name instead of describing it."
+
+[[lints]]
+code = "DQ002"
+severity = "warning"
+description = "Frontmatter description is shorter than 20 characters."
+
+[[lints]]
+code = "DQ003"
+severity = "warning"
+description = "A page carrying a `ref` directive has a description shorter than 30 characters."
+
+# -- Cross-references and symbol documentation --------------------------------
+
+[[lints]]
+code = "XREF001"
+severity = "warning"
+description = "A Markdown link points at a `.md` page that does not exist in the docs tree."
+
+[[lints]]
+code = "XREF002"
+severity = "error"
+description = "A directive's `path` resolves but names a file that is not on disk."
+
+[[lints]]
+code = "PARAM001"
+severity = "warning"
+description = "A referenced symbol has a parameter its docstring never documents."
+
+[[lints]]
+code = "RETURN001"
+severity = "warning"
+description = "A referenced symbol returns a value its docstring never documents."
+
+# -- Example validation -------------------------------------------------------
+
+[[lints]]
+code = "EXAMPLE001"
+severity = "warning"
+description = "A Python or JSON code block does not parse. Fix the snippet's syntax."
+
+[[lints]]
+code = "EXAMPLE002"
+severity = "error"
+description = "A code block marked `validate` failed its configured validator. The message carries the validator's exit code and output tail."
+
+[[lints]]
+code = "EXAMPLE003"
+severity = "error"
+description = "A code block is marked `validate` but no `examples` command is configured for its language. Add one, or drop the marker."
+
+# -- CLI reference, extractors and search -------------------------------------
+
+[[lints]]
+code = "CLI001"
+severity = "warning"
+description = "strictcli project: a CLI reference page is missing for a command, or a flag in the schema is not documented on its page."
+
+[[lints]]
+code = "CLI002"
+severity = "warning"
+description = "strictcli project: a command, group, or flag help text is shorter than 50 characters."
+
+[[lints]]
+code = "LANG001"
+severity = "error"
+description = "A configured source entry names a language selfdoc has no extractor for."
+
+[[lints]]
+code = "SEARCH001"
+severity = "error"
+description = "`search_engine` is set to `pagefind` but pagefind is not installed."
+
+# -- Version consistency ------------------------------------------------------
+
+[[lints]]
+code = "VER001"
+severity = "error"
+description = "A version listed in `versions` could not be extracted from its git tag, so it could not be validated."
+
+[[lints]]
+code = "VER002"
+severity = "error"
+description = "`version` in selfdoc.json does not match the version detected from the project manifest (pyproject.toml, package.json, or a `VERSION` file)."
+
+[[lints]]
+code = "VER003"
+severity = "error"
+description = "The last entry of the `versions` array does not match `version` in selfdoc.json."
+
+[[lints]]
+code = "VER004"
+severity = "error"
+description = "A generated root file that embeds `project.version` does not contain the expected version. Regenerate with `selfdoc gen --version-override <v>`."
+
+# -- Blog posts (selfblog) ----------------------------------------------------
+
+[[lints]]
+code = "POST001"
+severity = "error"
+description = "A post is missing the required `date` field in its frontmatter."
+
+[[lints]]
+code = "POST002"
+severity = "error"
+description = "A post is missing the required `title` field in its frontmatter."
+
+[[lints]]
+code = "POST003"
+severity = "error"
+description = "A post's `date` is not written as YYYY-MM-DD."
+
+[[lints]]
+code = "POST004"
+severity = "error"
+description = "Two posts resolve to the same slug."
+
+[[lints]]
+code = "POST005"
+severity = "error"
+description = "A published post's slug changed, which would break its permalink."
+
+# -- Unified multi-project sites (selfblog) -----------------------------------
+
+[[lints]]
+code = "UNIFIED001"
+severity = "error"
+description = "A project listed in the `unified` section has no selfdoc.json."
+
+[[lints]]
+code = "UNIFIED002"
+severity = "error"
+description = "A constituent project, or the docs-site's own content, could not be checked."

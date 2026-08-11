@@ -1,1 +1,2 @@
 directive_descriptor_validator.py text eol=lf linguist-generated=true
+lint_registry_validator.py text eol=lf linguist-generated=true
