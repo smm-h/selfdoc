@@ -448,7 +448,11 @@ def _cmd_assembly_init(ctx):
     """Create the assembly GitHub repo and push initial files."""
     import base64
 
-    from selfblog.assembly import assembly_init
+    from selfblog.assembly import (
+        assembly_init,
+        check_pins_are_published,
+        resolve_toolchain_pins,
+    )
     from selfdoc_core.config import load_config
 
     config = load_config(".")
@@ -481,9 +485,20 @@ def _cmd_assembly_init(ctx):
     legacy_blog_host = topology.get("legacy_blog_host") or ""
     portfolio_canonical = assembly_config.get("portfolio_canonical") or ""
 
+    # The workflow init writes pins its toolchain exactly as the one
+    # sync-workflow rewrites later, and refuses an unpublishable pin the
+    # same way -- a fresh assembly must not start life with a deploy that
+    # cannot install its own tools.
+    try:
+        pins = resolve_toolchain_pins()
+        check_pins_are_published(pins)
+    except (RuntimeError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     files = assembly_init(
         repo, pages_project, canonical_base, legacy_blog_host,
-        portfolio_canonical,
+        portfolio_canonical, pins,
     )
 
     # Create the private GitHub repo
@@ -953,11 +968,18 @@ def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
     ],
 )
 @strictcli.flag("pin-version", type=str, default="", help="selfblog version the regenerated workflow pins its toolchain install to. Defaults to the running selfblog's version, which is what the release path wants: the workflow names the selfblog that generated it.")
+@strictcli.flag("pin-selfdoc", type=str, default="", help="selfdoc version the regenerated workflow pins its toolchain install to. Defaults to the selfdoc installed in this environment; selfdoc missing here is a hard error, never an unpinned install.")
+@strictcli.flag("pin-pagefind", type=str, default="", help="pagefind version the regenerated workflow pins its toolchain install to. Defaults to PyPI's current release: pagefind is a CI-only tool nothing here installs, so there is no local version to read.")
 @effects.handler
-def _cmd_assembly_sync_workflow(ctx, pin_version=""):
+def _cmd_assembly_sync_workflow(ctx, pin_version="", pin_selfdoc="", pin_pagefind=""):
     """Regenerate and push the assembly repo's deploy workflow."""
-    from selfblog import __version__ as selfblog_version
-    from selfblog.assembly import WORKFLOW_PATH, generate_workflow_yaml, push_files_to_repo
+    from selfblog.assembly import (
+        WORKFLOW_PATH,
+        check_pins_are_published,
+        generate_workflow_yaml,
+        push_files_to_repo,
+        resolve_toolchain_pins,
+    )
     from selfdoc_core.config import load_config
 
     config = load_config(".")
@@ -988,34 +1010,46 @@ def _cmd_assembly_sync_workflow(ctx, pin_version=""):
         )
         sys.exit(1)
 
-    pin = pin_version or selfblog_version
+    # Resolve every pin, then refuse any that the registry cannot serve --
+    # before a single byte is written. A pin that resolves nowhere would
+    # otherwise fail at the next dispatch, inside the assembly repo's CI.
+    try:
+        pins = resolve_toolchain_pins(
+            selfblog_version=pin_version,
+            selfdoc_version=pin_selfdoc,
+            pagefind_version=pin_pagefind,
+        )
+        check_pins_are_published(pins)
+    except (RuntimeError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     content = generate_workflow_yaml(
         pages_project,
         canonical_base,
         topology.get("legacy_blog_host") or "",
         assembly_config.get("portfolio_canonical") or "",
-        pin,
+        pins,
     )
 
+    label = (f"selfblog {pins.selfblog}, selfdoc {pins.selfdoc}, "
+             f"pagefind {pins.pagefind}")
     try:
         result = push_files_to_repo(
             repo,
             {WORKFLOW_PATH: content},
-            f"assembly: sync deploy workflow (selfblog {pin})",
+            f"assembly: sync deploy workflow ({label})",
         )
     except RuntimeError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
     if result.changed:
-        print(
-            f"Synced {WORKFLOW_PATH} on {repo} "
-            f"(selfblog {pin}, commit {result.sha})."
-        )
+        print(f"Synced {WORKFLOW_PATH} on {repo} ({label}, commit {result.sha}).")
     else:
         print(
             f"{WORKFLOW_PATH} on {repo} is already current "
-            f"(selfblog {pin}); nothing pushed."
+            f"({label}); nothing pushed."
         )
     return 0
 

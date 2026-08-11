@@ -32,13 +32,188 @@ _BUILD_TIMEOUT = 1800
 _GIT_TIMEOUT = 300
 _INDEX_TIMEOUT = 900
 
+#: PyPI's JSON metadata endpoint, the one registry every pinned tool comes
+#: from.  A pin is checked against this before it is written into a
+#: workflow -- see :func:`check_pins_are_published`.
+PYPI_JSON_URL = "https://pypi.org/pypi/{package}/json"
+
+_REGISTRY_TIMEOUT = 15
+
+
+@dataclasses.dataclass(frozen=True)
+class ToolchainPins:
+    """The exact versions the generated deploy workflow installs.
+
+    All three tools on the install line are pinned, for one reason that
+    applies equally to each: the deploy installs its toolchain fresh on
+    every dispatch, so an unpinned name means "whatever was newest at
+    dispatch time".  A released flag change once broke every project's
+    deploy at once that way, and selfdoc -- the tool that actually builds
+    the docs -- floated for longer than selfblog did.
+
+    The pins are not the banned kind of ceiling: ``assembly sync-workflow``
+    rewrites the whole file on every release, so this is a regenerated
+    lock, not an upper bound a human wrote once and forgot.
+
+    Every field is required.  :func:`resolve_toolchain_pins` is what turns
+    an environment into a set of pins; this type only carries them.
+    """
+
+    selfblog: str
+    selfdoc: str
+    pagefind: str
+
+    def __post_init__(self):
+        for field in dataclasses.fields(self):
+            if not getattr(self, field.name):
+                raise ValueError(
+                    f"ToolchainPins.{field.name} is required: the generated "
+                    f"workflow pins every tool it installs, and there is no "
+                    f"default version."
+                )
+
+    def as_registry_map(self) -> dict[str, str]:
+        """Return PyPI distribution name -> pinned version, for every pin.
+
+        The keys are registry names, not install specifiers: pagefind is
+        installed as ``pagefind[bin]`` but published as ``pagefind``.
+        """
+        return {
+            "selfblog": self.selfblog,
+            "selfdoc": self.selfdoc,
+            "pagefind": self.pagefind,
+        }
+
+
+def fetch_pypi_metadata(package: str) -> dict:
+    """Return PyPI's JSON metadata document for *package*.
+
+    This is the one function that touches the network, so a test replaces
+    it wholesale (or passes its own ``fetch`` into the callers below).  It
+    is a GET: it changes nothing, which is why it does not go through the
+    effects handle -- a recorded read would have nothing to record and a
+    preview still needs the answer.
+    """
+    import urllib.error
+    import urllib.request
+
+    url = PYPI_JSON_URL.format(package=package)
+    try:
+        with urllib.request.urlopen(url, timeout=_REGISTRY_TIMEOUT) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise RuntimeError(
+                f"{package} is not a package on PyPI ({url} returned 404)"
+            ) from exc
+        raise RuntimeError(f"could not read {url}: HTTP {exc.code}") from exc
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise RuntimeError(f"could not read {url}: {exc}") from exc
+
+
+def registry_latest_version(package: str, *, fetch=None) -> str:
+    """Return the version PyPI currently serves as *package*'s latest."""
+    fetch = fetch if fetch is not None else fetch_pypi_metadata
+    data = fetch(package)
+    version = str((data.get("info") or {}).get("version") or "")
+    if not version:
+        raise RuntimeError(
+            f"PyPI's metadata for {package} names no current version "
+            f"({PYPI_JSON_URL.format(package=package)})"
+        )
+    return version
+
+
+def check_pins_are_published(pins: ToolchainPins, *, fetch=None) -> None:
+    """Raise unless every pinned version can actually be installed from PyPI.
+
+    ``assembly sync-workflow`` defaults the selfblog pin to the *running*
+    selfblog, which in a development checkout is an editable install that
+    sits ahead of the registry the moment work starts on the next version.
+    Writing that pin produces a workflow whose ``pip install selfblog==X``
+    cannot resolve, and the failure surfaces at the next dispatch, on the
+    assembly repository, far from whoever wrote it.  So the pins are
+    checked here, before anything is written.
+
+    A version that exists but has no files is unpublished for this
+    purpose: pip cannot install it either.
+    """
+    fetch = fetch if fetch is not None else fetch_pypi_metadata
+    for package, version in pins.as_registry_map().items():
+        url = PYPI_JSON_URL.format(package=package)
+        data = fetch(package)
+        releases = data.get("releases")
+        if not isinstance(releases, dict):
+            raise RuntimeError(f"PyPI's metadata for {package} lists no releases ({url})")
+        if not releases.get(version):
+            raise RuntimeError(
+                f"{package} {version} is not published on PyPI ({url}). The "
+                f"generated workflow would run 'pip install "
+                f"{package}=={version}', which cannot resolve, and the deploy "
+                f"would fail on the assembly repository at the next dispatch. "
+                f"Release {package} {version} first, or name a published "
+                f"version explicitly."
+            )
+
+
+def resolve_toolchain_pins(
+    *,
+    selfblog_version: str = "",
+    selfdoc_version: str = "",
+    pagefind_version: str = "",
+    fetch=None,
+) -> ToolchainPins:
+    """Resolve the three pins the generated workflow installs.
+
+    An explicitly supplied version is taken verbatim.  Otherwise:
+
+    * **selfblog** is the running selfblog.  That is the release path's
+      whole point: the deployed workflow names the selfblog that generated
+      it.
+    * **selfdoc** is the selfdoc installed in this environment.  Absent is
+      a hard error, not an unpinned install.
+    * **pagefind** is PyPI's current release.  pagefind is a CI-only tool
+      that neither selfblog nor this workspace depends on, so there is no
+      installed distribution to read a version from -- the honest options
+      are the registry's current release or an explicitly named version,
+      and the registry answer is the one that keeps regenerating on every
+      release the way the other two do.  This is the one pin that does not
+      describe the machine doing the generating; that difference is
+      deliberate and there is nowhere better to read it from.
+    """
+    if not selfblog_version:
+        from selfblog import __version__ as selfblog_version
+
+    if not selfdoc_version:
+        from importlib.metadata import PackageNotFoundError
+        from importlib.metadata import version as dist_version
+
+        try:
+            selfdoc_version = dist_version("selfdoc")
+        except PackageNotFoundError as exc:
+            raise RuntimeError(
+                "selfdoc is not installed here, so the deploy workflow's "
+                "selfdoc pin cannot be read from this environment. Install "
+                "selfdoc, or name the pin explicitly -- the workflow does not "
+                "install selfdoc unpinned."
+            ) from exc
+
+    if not pagefind_version:
+        pagefind_version = registry_latest_version("pagefind", fetch=fetch)
+
+    return ToolchainPins(
+        selfblog=selfblog_version,
+        selfdoc=selfdoc_version,
+        pagefind=pagefind_version,
+    )
+
 
 def generate_workflow_yaml(
     pages_project: str,
     canonical_base: str,
     legacy_blog_host: str,
     portfolio_canonical: str,
-    selfblog_version: str = "",
+    pins: ToolchainPins,
 ) -> str:
     """Return a GitHub Actions workflow YAML for assembly deployment.
 
@@ -64,17 +239,11 @@ def generate_workflow_yaml(
         from ``assembly.portfolio_canonical``.  Empty when the assembly
         has no portfolio -- the generated step hard-errors if a portfolio
         file turns up without it.
-    selfblog_version: the selfblog version the generated workflow pins
-        its toolchain install to.  Empty means the version of the
-        selfblog doing the generating.
-
-        The pin is not the banned kind: it is not a ceiling a human wrote
-        once and forgot.  ``assembly sync-workflow`` rewrites this file on
-        every release, so the deployed workflow always names the selfblog
-        that generated it -- a lockfile, regenerated, not an upper bound.
-        Without it the workflow installs whatever is newest at dispatch
-        time, which is how a released flag change once broke every
-        project's deploy at once.
+    pins: the :class:`ToolchainPins` the install step names.  Required and
+        complete: this function renders pins, it never resolves them, so
+        it reads neither the environment nor the network.
+        :func:`resolve_toolchain_pins` does the resolving and
+        :func:`check_pins_are_published` refuses a pin nobody can install.
     """
     if not pages_project:
         raise ValueError(
@@ -86,9 +255,12 @@ def generate_workflow_yaml(
             "generate_workflow_yaml requires a canonical base URL "
             "(topology.docs_base); there is no default."
         )
+    if not isinstance(pins, ToolchainPins):
+        raise ValueError(
+            "generate_workflow_yaml requires a ToolchainPins; the generated "
+            "workflow pins every tool it installs."
+        )
     canonical_base = canonical_base.rstrip("/")
-    if not selfblog_version:
-        from selfblog import __version__ as selfblog_version
     return """\
 name: Assembly Deploy
 
@@ -117,7 +289,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tools
-        run: pip install selfdoc 'selfblog==@@SELFBLOG_VERSION@@' 'pagefind[bin]'
+        run: pip install 'selfdoc==@@SELFDOC_VERSION@@' 'selfblog==@@SELFBLOG_VERSION@@' 'pagefind[bin]==@@PAGEFIND_VERSION@@'
 
       - name: Clone source project
         if: github.event.client_payload.scope != 'shared-only'
@@ -154,7 +326,11 @@ jobs:
     ).replace(
         "@@PORTFOLIO_CANONICAL@@", portfolio_canonical,
     ).replace(
-        "@@SELFBLOG_VERSION@@", selfblog_version,
+        "@@SELFBLOG_VERSION@@", pins.selfblog,
+    ).replace(
+        "@@SELFDOC_VERSION@@", pins.selfdoc,
+    ).replace(
+        "@@PAGEFIND_VERSION@@", pins.pagefind,
     )
 
 
@@ -164,7 +340,7 @@ def assembly_init(
     canonical_base: str,
     legacy_blog_host: str,
     portfolio_canonical: str,
-    selfblog_version: str = "",
+    pins: ToolchainPins,
 ) -> dict[str, str]:
     """Return a dict mapping filename to file content for a new assembly repo.
 
@@ -174,13 +350,12 @@ def assembly_init(
     legacy_blog_host: retired blog subdomain, or "" when none exists.
     portfolio_canonical: absolute canonical URL of the portfolio page,
         or "" when the assembly has no portfolio.
-    selfblog_version: selfblog version the generated workflow pins its
-        toolchain to; empty means the running selfblog's version.
+    pins: the toolchain versions the generated workflow installs.
     """
     return {
         WORKFLOW_PATH: generate_workflow_yaml(
             pages_project, canonical_base, legacy_blog_host,
-            portfolio_canonical, selfblog_version,
+            portfolio_canonical, pins,
         ),
         ".gitignore": _gitignore_content(),
         "projects.json": json.dumps({}, indent=2) + "\n",
