@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, assembly integration, the canonical blog URL, and the portfolio canonical."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, assembly integration, publishing documentation without a release, the declared roster and project retirement, the canonical blog URL, and the portfolio canonical."
 nav_group: "Guides"
 nav_order: 19
 ---
@@ -237,7 +237,7 @@ Blog posts integrate into the unified multi-project documentation site through t
    - A navigation JSON file with project and blog links
    - A homepage listing all projects
 
-4. **Post overlay merging**: Post-manifest files (`*-posts.json`) act as overlays. When the shared elements generator finds a post overlay for a project, it replaces that project's posts in the base manifest with the overlay's posts. This lets posts be updated independently of full documentation rebuilds.
+4. **Post overlay merging**: Post-manifest files (`*-posts.json`) act as overlays. When the shared elements generator finds a post overlay for a project, it replaces that project's posts in the base manifest with the overlay's posts, which is why deleting a post and republishing removes it from the site. A full build does not delete the overlay -- it folds its own posts into it, so a release's posts appear without the overlay's out-of-band posts being lost.
 
 ### Post URLs in the unified site
 
@@ -311,8 +311,80 @@ the assembly repository at the next dispatch instead of here.
 The assembly workflow distinguishes between posts-only and full documentation dispatches:
 
 - **Posts-only** (`scope: "posts"`): rebuilds only the posts subtree, preserving the rest of the project's documentation. Uses `selfblog build --target posts`.
-- **Full build**: rebuilds all documentation including posts. Removes any post overlay since the full manifest replaces it.
-- **Shared-only** (`scope: "shared-only"`): regenerates only cross-project elements (blog index, feed, sitemap) without rebuilding any project's documentation. Used after post publishes.
+- **Full build**: rebuilds all documentation including posts, and folds its posts into the post overlay.
+- **Shared-only** (`scope: "shared-only"`): regenerates only cross-project elements (blog index, feed, sitemap) without rebuilding any project's documentation. Used after post publishes, documentation publishes and retirements.
+
+Every scope reconciles membership first: whatever else a dispatch is doing, it makes the tree match `roster.toml` before it makes it match the build.
+
+## Publishing Without a Release
+
+Two commands put content on the live site with no tag and no release. Both build locally, push straight into the assembly repository through the Git Data API, and then dispatch a shared-only rebuild.
+
+```bash
+selfblog post publish    # non-draft posts
+selfblog docs publish    # the project's documentation
+```
+
+`docs publish` builds the docs the same way the deploy does, applies the same deploy-artifact exclusions (`_headers`, `_redirects`, `_worker.js`, `.gz`, `.br`), and pushes the project's subtree, its manifest, its published-file record and its membership entry in one commit. Content travels as bytes, so images and fonts survive intact. Deletions travel with it: a page the project published before and no longer builds is removed in the same commit.
+
+Both commands are consequential -- they make locally-authored writing publicly readable -- so they prompt unless `--approve-consequential` is passed. Neither can create membership: publishing into a slug `roster.toml` does not declare is a hard error naming the block that would have to exist.
+
+### What a build owns
+
+A full build used to replace `site/{slug}/` wholesale, which meant a release destroyed anything published into that subtree since the last one. It prunes to its own output instead.
+
+Every publisher -- the release-time integrate, `docs publish`, `post publish` -- records the paths it produced in `manifests/{slug}-files.json`:
+
+```json
+{
+  "schema_version": 1,
+  "slug": "myproject",
+  "owners": {
+    "release": ["index.html", "reference/index.html"],
+    "docs": ["index.html", "hotfix/index.html"],
+    "posts": ["posts/widget-support/index.html"]
+  }
+}
+```
+
+A publisher removes a path only when it produced that path before and does not produce it now, and never when another publisher currently claims it. So:
+
+| Situation | Outcome |
+| --- | --- |
+| A page the new build dropped | Pruned |
+| A page published between releases that the build never produced | Kept |
+| A page both a release and a documentation publish produce | Refreshed by whichever ran last |
+| A post published out of band, on a release that does not carry it | Kept |
+
+An absent record means nobody has published anything for that project yet, so nothing is removed -- a publisher never deletes what it cannot show it wrote.
+
+## Membership: the Roster
+
+The projects the unified site serves are declared in `roster.toml`, hand-edited and committed in the assembly repository:
+
+```toml
+[[project]]
+slug = "myproject"
+repo = "owner/myproject"
+
+[[project]]
+slug = "otherproject"
+repo = "owner/otherproject"
+```
+
+`slug` and `repo` are both required, unknown keys are a hard error, a duplicate slug is a hard error, and a slug that collides with one of the assembly's own directories (`blog`, `projects`, `pagefind`) is a hard error. A missing file is a hard error too: membership has no empty default, because a deploy that guessed at it would be accumulating membership again.
+
+`projects.json` beside it is **derived** state, rewritten by every deploy: it records what each declared project last deployed (`repo`, `ref`, `version`) and is what `selfblog assembly rebuild` replays. It cannot gain a key on its own -- a dispatch for a slug the roster does not declare is refused, and a slug the roster declares under a different repository is refused too.
+
+Every deploy reconciles the tree to the declaration. A project that is no longer declared loses its site subtree, all of its manifest kinds, its `projects.json` record, and -- because the search index is rebuilt from scratch whenever anything went -- its entries in the index.
+
+### Retiring a project
+
+```bash
+selfblog assembly retire --slug oldproject
+```
+
+One operation: the `[[project]]` block leaves the roster and, in the same commit, every path the project owns is deleted; the shared-only dispatch that follows regenerates the listing, blog index, feed, sitemap and search index without it. It is consequential -- the only command in either CLI that removes published content -- and retiring a slug the roster does not declare is a hard error naming the ones it does.
 
 ## Building Posts Locally
 
