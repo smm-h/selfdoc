@@ -11,8 +11,7 @@
   "base_url": "https://selfdoc.smmh.dev",
   "versions": [
     {
-      "version": "0.36.0",
-      "indexed": true
+      "version": "0.36.0"
     }
   ],
   "locales": [

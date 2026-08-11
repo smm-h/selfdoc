@@ -597,12 +597,6 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
                     description="Version string (e.g. '1.0', 'latest').",
                 ),
                 FieldSpec(
-                    name="indexed",
-                    type=_B,
-                    required=True,
-                    description="Whether this version is included in search indexes.",
-                ),
-                FieldSpec(
                     name="projects",
                     type=_D,
                     required=False,

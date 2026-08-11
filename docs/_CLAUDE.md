@@ -24,7 +24,7 @@ Every page outputs to `/<locale>/<version>/page/`. The config MUST have `version
 
 ```json
 {
-  "versions": [{"version": "0.8.1", "indexed": true}],
+  "versions": [{"version": "0.8.1"}],
   "locales": [{"code": "en", "label": "English", "default": true}]
 }
 ```
@@ -83,7 +83,7 @@ uv run pytest
 
 ## Important config fields
 
-- `versions` (required): array of `{version, indexed}` objects -- controls multi-version builds
+- `versions` (required): array of `{version}` objects -- controls multi-version builds
 - `locales` (required): array of `{code, label, default}` objects -- controls localization
 - `unified`: optional, for monorepo docs-site projects -- lists constituent projects
 - `gen_data`: optional sandboxed script execution config

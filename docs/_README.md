@@ -51,7 +51,7 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
   "language": "python",
   "source": ["src/"],
   "base_url": "https://my-project.example.com",
-  "versions": [{"version": "1.0.0", "indexed": true}],
+  "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}]
 }
 ```
@@ -149,7 +149,7 @@ Custom directives take priority over built-in names.
   "docs": "docs/",
   "output": "docs/_build/",
   "base_url": "https://my-project.example.com",
-  "versions": [{"version": "1.0.0", "indexed": true}],
+  "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}],
   "deploy": {
     "provider": "cloudflare-pages",

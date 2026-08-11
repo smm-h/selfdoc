@@ -117,9 +117,7 @@ def _cmd_init(ctx, base_url, auto_commit=True):
     config.update({
         "docs": "docs/",
         "output": "docs/_build/",
-        "versions": [
-            {"version": detect_project_version(".", "0.1.0"), "indexed": True},
-        ],
+        "versions": [{"version": detect_project_version(".", "0.1.0")}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     })
 
