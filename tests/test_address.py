@@ -6,12 +6,13 @@ Two layers:
    plus its locale/version to an output key, a stable address, a pinned
    address, and a depth.
 2. A whole-tree link walker: build a fixture project with multi-level
-   pages and two versions, then assert that every ``href``/``src``/
-   canonical reference emitted into the output resolves to a file the
-   same build actually wrote.  The walker runs the project twice --
-   once mounted at an origin root and once under a slug prefix -- and
-   the emitted tree must be identical, because a documentation site has
-   to work at whatever path it is served from.
+   pages, two versions and an unversioned page, then assert that every
+   ``href``/``src``/canonical reference emitted into the output resolves
+   to a file the same build actually wrote.  The walker runs over every
+   shape the addressing has to survive: an origin-root mount, a slug
+   mount, a two-locale build, and a unified site with two constituent
+   projects.  The emitted tree must not depend on the mount, because a
+   documentation site has to work at whatever path it is served from.
 """
 
 import html as html_mod
@@ -25,6 +26,7 @@ import pytest
 
 from selfdoc_core.address import PageAddress, page_address
 from selfdoc.build import build
+from selfblog.unified import build_unified
 
 
 # --- Unit tests: page_address ------------------------------------------
@@ -159,18 +161,36 @@ PAGES = {
     "reference/deep/notes.md": (
         "---\ntitle: Notes\n---\n\n# Notes\n\nThree levels down.\n"
     ),
+    # A page that opts out of versioning: it is built once per locale at
+    # <locale>/about/, one level shallower than every versioned page, and
+    # every versioned page links to it from the sidebar.
+    "about.md": (
+        "---\ntitle: About\nversioned: false\n---\n\n"
+        "# About\n\nThe same page under every version.\n"
+    ),
 }
 
 
-def _make_fixture(root, config_extra):
-    """Create a two-version, multi-level fixture project under *root*."""
+def _make_fixture(root, config_extra, locale_codes=("en",)):
+    """Create a two-version, multi-level fixture project under *root*.
+
+    With more than one locale the pages are written per-locale under
+    ``docs/<code>/``, which is the layout a localized project uses.
+    """
     root.mkdir(parents=True, exist_ok=True)
     versions = ["0.1.0", "0.2.0"]
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "version": versions[-1],
         "versions": [{"version": v, "indexed": True} for v in versions],
-        "locales": [{"code": "en", "label": "English", "default": True}],
+        "locales": [
+            {
+                "code": code,
+                "label": code.upper(),
+                "default": idx == 0,
+            }
+            for idx, code in enumerate(locale_codes)
+        ],
     }
     config.update(config_extra)
     (root / "selfdoc.json").write_text(json.dumps(config, indent=2))
@@ -180,17 +200,25 @@ def _make_fixture(root, config_extra):
     (src / "__init__.py").write_text('"""Fixture package."""\n')
 
     docs = root / "docs"
-    for rel, text in PAGES.items():
-        path = docs / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+    localized = len(locale_codes) > 1
+    doc_roots = [
+        (docs / code) if localized else docs for code in locale_codes
+    ]
+    for doc_root in doc_roots:
+        for rel, text in PAGES.items():
+            path = doc_root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
 
     _git(["init"], cwd=root)
     _git(["add", "."], cwd=root)
     _git(["commit", "-m", "initial"], cwd=root)
     for v in versions:
-        (docs / "index.md").write_text(f"# Fixture\n\nRoot page for {v}.\n")
-        _git(["add", "docs/index.md"], cwd=root)
+        for doc_root in doc_roots:
+            (doc_root / "index.md").write_text(
+                f"# Fixture\n\nRoot page for {v}.\n",
+            )
+        _git(["add", "docs"], cwd=root)
         _git(["commit", "-m", f"docs {v}"], cwd=root)
         _git(["tag", f"v{v}"], cwd=root)
     return root
@@ -291,6 +319,98 @@ def test_every_emitted_reference_resolves(tmp_path, config_extra, name):
     project = _make_fixture(tmp_path / name, config_extra)
     build(str(project))
     _walk_and_check(os.path.join(str(project), "docs", "_build"))
+
+
+def test_every_emitted_reference_resolves_multi_locale(tmp_path):
+    """Two locales, versioned and unversioned pages: every link resolves."""
+    project = _make_fixture(
+        tmp_path / "ml", ORIGIN_ROOT_CONFIG, locale_codes=("en", "fa"),
+    )
+    build(str(project))
+    _walk_and_check(os.path.join(str(project), "docs", "_build"))
+
+
+def test_multi_locale_with_unversioned_page_builds_every_page(tmp_path):
+    """A ``versioned: false`` page must not silence the whole build.
+
+    The page partition is per-locale: a project whose docs live under
+    ``docs/<locale>/`` still has to produce every versioned page in
+    every locale, plus the unversioned page once per locale.
+    """
+    project = _make_fixture(
+        tmp_path / "ml2", ORIGIN_ROOT_CONFIG, locale_codes=("en", "fa"),
+    )
+    build(str(project))
+    emitted = _emitted_files(os.path.join(str(project), "docs", "_build"))
+    for locale in ("en", "fa"):
+        for version in ("0.1.0", "0.2.0"):
+            for page in (
+                "index.html",
+                "guide/index.html",
+                "reference/api/index.html",
+                "reference/deep/notes/index.html",
+            ):
+                assert f"{locale}/{version}/{page}" in emitted
+            assert f"{locale}/{version}/about/index.html" not in emitted
+        assert f"{locale}/about/index.html" in emitted
+
+
+def test_a_build_that_produces_no_content_pages_is_a_hard_error(
+    tmp_path, monkeypatch,
+):
+    """Zero content pages must fail loudly instead of writing an empty site.
+
+    The page partition drives every content build; when it hands back
+    paths no build can match (the shape a locale-blind partition
+    produced), the site used to be written with assets and redirect
+    stubs and no pages at all.
+    """
+    from selfdoc_core import build as build_mod
+
+    project = _make_fixture(
+        tmp_path / "empty", ORIGIN_ROOT_CONFIG, locale_codes=("en", "fa"),
+    )
+
+    def _locale_blind_partition(config, docs_dir, dir_path):
+        # Paths that carry the locale segment: no per-locale build can
+        # match them, so every filtered build yields nothing.
+        return ({"en/index.md"}, {"en/about.md"}, {"en/about.md": "# About"}, {})
+
+    monkeypatch.setattr(build_mod, "_partition_pages", _locale_blind_partition)
+
+    with pytest.raises(RuntimeError, match="no content pages"):
+        build(str(project))
+
+
+def _add_walker_pages(docs_dir):
+    """Give a fixture docs tree depth plus one unversioned page."""
+    for rel, text in PAGES.items():
+        if rel == "index.md":
+            continue
+        path = os.path.join(docs_dir, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+
+def test_every_emitted_reference_resolves_unified(make_unified_project):
+    """A unified site with two constituents: every link resolves.
+
+    The unified mount adds a project segment, and the docs-site's own
+    pages mount under ``common``.  Both the landing page and the
+    constituent pages have to address each other across those mounts.
+    """
+    docs_site = make_unified_project([
+        {"name": "core", "language": "python"},
+        {"name": "cli", "language": "python"},
+    ])
+    packages_dir = os.path.dirname(str(docs_site))
+    for name in ("core", "cli"):
+        _add_walker_pages(os.path.join(packages_dir, name, "docs"))
+    _add_walker_pages(os.path.join(str(docs_site), "docs"))
+
+    build_unified(str(docs_site))
+    _walk_and_check(os.path.join(str(docs_site), "docs", "_build"))
 
 
 def test_output_tree_is_mount_independent(tmp_path):
