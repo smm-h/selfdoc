@@ -3,6 +3,8 @@ table-config-schema, var)."""
 
 import os
 
+import pytest
+
 from selfdoc.content import (
     resolve_content,
     resolve_list_modules,
@@ -299,6 +301,32 @@ class TestListModules:
         )
         assert "requires project config" in result
 
+    def test_codeless_project_hard_error(self, tmp_path):
+        """A codeless project using list-modules is a hard error, not a note."""
+        (tmp_path / "src").mkdir()
+        with pytest.raises(RuntimeError, match="declares no 'source' entries"):
+            resolve_list_modules({"path": "src/"}, {}, str(tmp_path))
+
+    def test_codeless_project_missing_directory_hard_error(self, tmp_path):
+        """The realistic codeless case: the directive path is not on disk.
+
+        The missing-source check must run before the isdir check, otherwise
+        the build renders a placeholder note and exits 0 -- the silent no-op
+        the hard error exists to prevent.
+        """
+        with pytest.raises(RuntimeError, match="declares no 'source' entries"):
+            resolve_list_modules({"path": "src/"}, {}, str(tmp_path))
+
+    def test_codeless_error_names_authored_directive_syntax(self, tmp_path):
+        """The error quotes ``:-: list-modules``, the authored syntax.
+
+        ``:::`` is the section-content marker, not a directive prefix.
+        """
+        with pytest.raises(RuntimeError) as exc:
+            resolve_list_modules({"path": "src/"}, {}, str(tmp_path))
+        assert ":-: list-modules" in str(exc.value)
+        assert ":::" not in str(exc.value)
+
 
 # -- table-commands ------------------------------------------------------------
 
@@ -580,3 +608,21 @@ class TestVar:
             _PROJECT_DIR, config=None,
         )
         assert "requires project config" in result
+
+    def test_project_language_codeless_hard_error(self):
+        """project.language is source-derived: a codeless project errors."""
+        with pytest.raises(RuntimeError, match="project.language"):
+            resolve_var({"key": "project.language"}, {}, _PROJECT_DIR)
+
+    def test_project_language_codeless_error_explains_why(self):
+        """The error says the value is derived from the 'source' entries."""
+        with pytest.raises(RuntimeError) as exc:
+            resolve_var(
+                {"key": "project.language"},
+                {"source": []},
+                _PROJECT_DIR,
+            )
+        message = str(exc.value)
+        assert "'source'" in message
+        assert ":-: var" in message
+        assert ":::" not in message

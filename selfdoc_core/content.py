@@ -260,24 +260,28 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     if not path:
         return "> *[selfdoc: list-modules requires a path attribute]*"
 
-    full_path = resolve_directive_path(base_dir, path)
-    if not os.path.isdir(full_path):
-        return f"> *[selfdoc: directory '{path}' not found]*"
-
     from selfdoc_core.extractors import EXTRACTORS, resolve_source_entries
     from selfdoc_core.extractors.base import StubExtractor
 
+    # This check runs before the isdir check on purpose: a codeless project
+    # usually has no source directory on disk either, so testing isdir first
+    # would render the "directory not found" note and let the build exit 0 --
+    # exactly the silent no-op this hard error exists to prevent.
     src_entries = resolve_source_entries(config)
     if not src_entries:
         # list-modules reads source code; a codeless project has none.  Same
         # reasoning as the resolver: a placeholder note would hide the fact
         # that the page lost the listing it asked for.
         raise RuntimeError(
-            "Directive :::list-modules reads source code, but selfdoc.json "
+            "Directive :-: list-modules reads source code, but selfdoc.json "
             "declares no 'source' entries. Either remove the directive, or "
             'declare the code it should read: "source": '
             '[{"path": "src/", "language": "python"}]'
         )
+
+    full_path = resolve_directive_path(base_dir, path)
+    if not os.path.isdir(full_path):
+        return f"> *[selfdoc: directory '{path}' not found]*"
 
     # Match the directive's path to a source entry
     matched_entry = None
@@ -583,9 +587,18 @@ def resolve_var(attrs: dict, config: dict, base_dir: str) -> str:
         return "> *[selfdoc: var requires a key attribute]*"
 
     if key == "project.language":
-        source = config.get("source", [])
+        source = config.get("source") or []
         if not source:
-            return "unknown"
+            # project.language is derived from the source entries; a codeless
+            # project has none.  Returning "unknown" would silently put a
+            # placeholder word in the rendered page.
+            raise RuntimeError(
+                "Directive :-: var key=\"project.language\" is derived from "
+                "the source code, but selfdoc.json declares no 'source' "
+                "entries, so there is no language to report. Either remove "
+                'the directive, or declare the code: "source": '
+                '[{"path": "src/", "language": "python"}]'
+            )
         # Collect unique languages in first-appearance order
         seen: set[str] = set()
         languages: list[str] = []
