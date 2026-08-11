@@ -89,7 +89,7 @@ def _tree_fingerprint(root):
 
 
 def _built_post_bytes(project, slug):
-    path = os.path.join(project, "docs", "_build", "posts", slug, "index.html")
+    path = os.path.join(project, "docs", "_build", "blog", slug, "index.html")
     with open(path, "rb") as f:
         return f.read()
 
@@ -154,7 +154,7 @@ class TestWritesNothing:
             "render_post mutated the working tree: "
             f"{set(after_entries) ^ set(before_entries)}"
         )
-        assert not os.path.isdir(os.path.join(project, "docs", "posts"))
+        assert not os.path.isdir(os.path.join(project, "docs", "blog"))
         assert not os.path.isdir(os.path.join(project, ".selfdoc", "hashes"))
 
     def test_edited_buffer_is_not_written_back(self, tmp_path):

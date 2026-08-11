@@ -212,7 +212,7 @@ class TestCliIndexVersionDirective:
 
         build(dir_path=str(tmp_path))
         out = os.path.join(
-            tmp_path, "docs", "_build", "en", "2.0.0", "cli-index", "index.html",
+            tmp_path, "docs", "_build", "cli-index", "index.html",
         )
         with open(out, encoding="utf-8") as f:
             html = f.read()

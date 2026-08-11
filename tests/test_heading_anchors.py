@@ -135,7 +135,9 @@ class TestBuiltSiteAnchorsResolve:
                 continue
             page, anchor = path.split("#", 1)
             page = page.lstrip("/")
-            if page.endswith("/"):
+            # An empty path is the site root: a single-locale project's
+            # current version mounts there.
+            if page == "" or page.endswith("/"):
                 page += "index.html"
             html_path = os.path.join(out, page)
             assert os.path.isfile(html_path), f"{html_path} not built"

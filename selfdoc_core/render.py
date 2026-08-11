@@ -19,6 +19,7 @@ import os
 
 from selfdoc_core import require_post_parser, require_post_provider
 from selfdoc_core.build import (
+    POSTS_PREFIX,
     _minify_html,
     build_single,
     post_docs_payloads,
@@ -93,7 +94,7 @@ def render_post(dir_path, source_path, content, config=None,
     ]
     payloads = post_docs_payloads(published)
 
-    page_md = f"posts/{edited['slug']}.md"
+    page_md = f"{POSTS_PREFIX}/{edited['slug']}.md"
     result = build_single(
         dir_path=dir_path,
         config=config,
