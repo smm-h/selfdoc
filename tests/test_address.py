@@ -365,8 +365,13 @@ def _resolve(page_rel, ref):
     return posixpath.normpath(target)
 
 
-def _walk_and_check(output_dir):
-    """Assert every local reference in every emitted page resolves to an emitted file."""
+def _walk_and_check(output_dir, base_url=""):
+    """Assert every local reference in every emitted page resolves to an emitted file.
+
+    ``base_url`` opts in to the absolute references too -- the share
+    control's addresses, which are handed to a reader to open and so must
+    name a page this build wrote just as much as an ``href`` does.
+    """
     emitted = _emitted_files(output_dir)
     pages = sorted(p for p in emitted if p.endswith(".html"))
     assert pages, "build emitted no HTML"
@@ -398,6 +403,22 @@ def _walk_and_check(output_dir):
                 problems.append(
                     f"{page_rel}: {attr}=\"{raw}\" -> {target} (not emitted)",
                 )
+        if base_url:
+            prefix = base_url.rstrip("/") + "/"
+            for raw in re.findall(r'data-share-url="([^"]*)"', page_html):
+                share = html_mod.unescape(raw)
+                assert share.startswith(prefix), (
+                    f"{page_rel}: share address {share} is not this site's"
+                )
+                target = share[len(prefix):] or "index.html"
+                if target.endswith("/"):
+                    target += "index.html"
+                checked += 1
+                if target not in emitted:
+                    problems.append(
+                        f"{page_rel}: data-share-url=\"{share}\" -> {target} "
+                        f"(not emitted)",
+                    )
     assert checked > 0, "walker checked no references"
     assert not problems, (
         f"{len(problems)} unresolvable reference(s):\n  "
@@ -413,7 +434,10 @@ def test_every_emitted_reference_resolves(tmp_path, config_extra, name):
     """Every href/src in the emitted tree points at a file the build wrote."""
     project = _make_fixture(tmp_path / name, config_extra)
     build(str(project))
-    _walk_and_check(os.path.join(str(project), "docs", "_build"))
+    _walk_and_check(
+        os.path.join(str(project), "docs", "_build"),
+        base_url=config_extra["base_url"],
+    )
 
 
 def test_every_emitted_reference_resolves_multi_locale(tmp_path):
@@ -422,7 +446,10 @@ def test_every_emitted_reference_resolves_multi_locale(tmp_path):
         tmp_path / "ml", ORIGIN_ROOT_CONFIG, locale_codes=("en", "fa"),
     )
     build(str(project))
-    _walk_and_check(os.path.join(str(project), "docs", "_build"))
+    _walk_and_check(
+        os.path.join(str(project), "docs", "_build"),
+        base_url=ORIGIN_ROOT_CONFIG["base_url"],
+    )
 
 
 def test_multi_locale_with_unversioned_page_builds_every_page(tmp_path):
@@ -711,23 +738,42 @@ def test_archive_pages_carry_a_dismissable_notice_keyed_per_version(tmp_path):
     assert 'class="version-notice"' not in _read(output_dir, "guide/index.html")
 
 
-def test_every_versioned_page_offers_both_share_addresses(tmp_path):
+def test_the_share_control_never_offers_an_address_that_is_not_emitted(tmp_path):
+    """A pinned choice appears only where the pinned address is real.
+
+    The current version is emitted at the stable address and nowhere else;
+    its ``v/<current>/`` address does not exist until a newer version
+    supersedes it.  So the current version's page offers the evergreen
+    choice alone, and the pinned choice belongs to archive pages, where it
+    names the page's own address.
+    """
     project = _make_fixture(tmp_path / "share", ORIGIN_ROOT_CONFIG)
     build(str(project))
     output_dir = os.path.join(str(project), "docs", "_build")
 
-    for page in ("guide/index.html", "v/0.1.0/guide/index.html"):
-        html = _read(output_dir, page)
-        urls = re.findall(r'data-share-url="([^"]*)"', html)
-        assert len(urls) == 2, f"{page} offers {urls}"
-        assert "https://example.com/guide/" in urls
-    assert "https://example.com/v/0.1.0/guide/" in re.findall(
-        r'data-share-url="([^"]*)"',
-        _read(output_dir, "v/0.1.0/guide/index.html"),
-    )
-    assert "https://example.com/v/0.2.0/guide/" in re.findall(
-        r'data-share-url="([^"]*)"', _read(output_dir, "guide/index.html"),
-    )
+    def _share_urls(page):
+        return re.findall(
+            r'data-share-url="([^"]*)"', _read(output_dir, page),
+        )
+
+    # Current version: one choice, the evergreen address it is served at.
+    current = _share_urls("guide/index.html")
+    assert current == ["https://example.com/guide/"], current
+
+    # Archive: both, and the pinned one is this page's own address.
+    archived = _share_urls("v/0.1.0/guide/index.html")
+    assert archived == [
+        "https://example.com/guide/",
+        "https://example.com/v/0.1.0/guide/",
+    ], archived
+
+    # Nothing anywhere in the tree offers the current version's phantom
+    # archive address.
+    emitted = _emitted_files(output_dir)
+    for page in sorted(p for p in emitted if p.endswith(".html")):
+        for url in _share_urls(page):
+            target = url[len("https://example.com/"):] + "index.html"
+            assert target in emitted, f"{page} shares {url}, never written"
 
 
 def test_a_page_named_v_is_refused(tmp_path):
@@ -768,6 +814,39 @@ def test_the_resolution_check_fires_on_a_broken_reference(tmp_path):
     assert [lint.code for lint in lints] == ["LINK001"]
     assert lints[0].severity == "error"
     assert "nowhere" in lints[0].message
+    assert lints[0].file == "guide/index.html"
+
+
+def test_the_resolution_check_fires_on_a_share_address_that_was_not_written(
+    tmp_path,
+):
+    """A share address is a reference, so LINK001 owns it too.
+
+    This is the structural guard behind the share control's shape: the
+    control offering the current version's ``v/<version>/`` address (which
+    nothing writes until that version is superseded) is not a judgement
+    call the renderer gets to make quietly -- the check refuses the build.
+    """
+    from selfdoc_core.resolution import check_output_resolution
+
+    project = _make_fixture(tmp_path / "resolve-share", ORIGIN_ROOT_CONFIG)
+    build(str(project))
+    output_dir = os.path.join(str(project), "docs", "_build")
+
+    page = os.path.join(output_dir, "guide", "index.html")
+    with open(page, encoding="utf-8") as f:
+        html = f.read()
+    with open(page, "w", encoding="utf-8") as f:
+        f.write(html.replace(
+            'data-share-url="https://example.com/guide/"',
+            'data-share-url="https://example.com/v/0.2.0/guide/"',
+            1,
+        ))
+
+    lints = check_output_resolution(output_dir, base_url="https://example.com")
+    assert [lint.code for lint in lints] == ["LINK001"]
+    assert "share address" in lints[0].message
+    assert "v/0.2.0/guide/" in lints[0].message
     assert lints[0].file == "guide/index.html"
 
 

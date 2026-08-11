@@ -2822,11 +2822,20 @@ def _render_version_notice(addr):
 def _render_share_control(addr, url_builder, base_url):
     """Build the share control for a version-scoped page.
 
-    Two explicit choices, never one guessed for the reader: the evergreen
-    address, which always shows the current version, and the pinned
-    address, which always shows this exact version.  Both are absolute --
-    a shared link leaves the site -- so they come from the URL builder
-    rather than from a relative hop.
+    Explicit choices, never one guessed for the reader: the evergreen
+    address, which always shows the current version, and -- on an archive
+    page -- the pinned address, which always shows this exact version.
+    Both are absolute -- a shared link leaves the site -- so they come
+    from the URL builder rather than from a relative hop.
+
+    The pinned choice is offered only where the pinned address is a page
+    this build wrote.  The current version is emitted at the stable
+    address and nowhere else: its ``v/<version>/`` address is where it
+    *will* live once a newer version supersedes it, so offering it today
+    would hand the reader a 404.  A control that offers a dead address is
+    worse than one that offers fewer, so the current version offers the
+    evergreen address alone -- which, for it, is the address it is served
+    at anyway.
     """
     if not addr.version:
         return ""
@@ -2839,19 +2848,25 @@ def _render_share_control(addr, url_builder, base_url):
         return ""
 
     evergreen = _absolute(addr.stable)
-    pinned = _absolute(addr.pinned)
-    if not evergreen or not pinned:
+    if not evergreen:
         return ""
-    ver = _escape_html(addr.version)
+    choices = [
+        (evergreen, "Evergreen link (always current)"),
+    ]
+    if addr.archived:
+        pinned = _absolute(addr.pinned)
+        if not pinned:
+            return ""
+        choices.append((pinned, f"Pinned link (v{_escape_html(addr.version)})"))
+    buttons = "".join(
+        f'<button type="button" class="share-address-copy"'
+        f' data-share-url="{_escape_html(url)}">{label}</button>'
+        for url, label in choices
+    )
     return (
         '<div class="share-address">'
         '<span class="share-address-label">Share this page</span>'
-        f'<button type="button" class="share-address-copy"'
-        f' data-share-url="{_escape_html(evergreen)}">'
-        f'Evergreen link (always current)</button>'
-        f'<button type="button" class="share-address-copy"'
-        f' data-share-url="{_escape_html(pinned)}">'
-        f'Pinned link (v{ver})</button>'
+        f'{buttons}'
         '</div>'
     )
 

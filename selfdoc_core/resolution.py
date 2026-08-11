@@ -5,17 +5,20 @@ test suite walks a built tree asserting that each emitted reference lands
 on an emitted file.  This module is that assertion as a user-facing check:
 one lint code, ``LINK001``, over the output directory.
 
-Four kinds of reference are covered, which is every kind the build emits:
+Five kinds of reference are covered, which is every kind the build emits:
 
 * document-relative ``href``/``src`` attributes in the pages themselves,
 * the absolute ``rel="canonical"`` link on each page,
+* the absolute ``data-share-url`` addresses the share control offers,
 * the ``<loc>`` entries of every sitemap,
 * the entry links of the Atom feed.
 
-The last three are absolute URLs, so they are checked against the site's
+The last four are absolute URLs, so they are checked against the site's
 configured base: an absolute URL that points into this site must name a
 page this build wrote, and one that points elsewhere is not ours to
-verify.
+verify.  A share address is a reference like any other -- it is handed to
+a reader to open -- so a control that offers an address the build did not
+write fails here rather than 404ing for whoever it was shared with.
 """
 
 from __future__ import annotations
@@ -34,6 +37,7 @@ LINT_CODE = "LINK001"
 
 _REF_ATTR_RE = re.compile(r'\b(href|src|data-search-base)="([^"]*)"')
 _CANONICAL_RE = re.compile(r'<link rel="canonical" href="([^"]*)"')
+_SHARE_URL_RE = re.compile(r'\bdata-share-url="([^"]*)"')
 _LOC_RE = re.compile(r"<loc>([^<]*)</loc>")
 _FEED_LINK_RE = re.compile(r'<link href="([^"]*)"')
 _SKIP_SCHEMES = (
@@ -157,6 +161,11 @@ def check_output_resolution(output_dir, base_url=""):
         for canonical in _CANONICAL_RE.findall(page_html):
             _check_absolute(
                 page_rel, "canonical", html_mod.unescape(canonical),
+            )
+
+        for share in _SHARE_URL_RE.findall(page_html):
+            _check_absolute(
+                page_rel, "share address", html_mod.unescape(share),
             )
 
     for rel in sorted(emitted):
