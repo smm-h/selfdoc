@@ -91,4 +91,4 @@ This resolves directives in every template listed in `root_files` and overwrites
 > [!TIP]
 > If you use rlsbl for releases, add `selfdoc gen` to your pre-checks hook so root files are always up to date before a release is tagged.
 
-Next: [Data Generation](gen-data-guide/) -->
+Next: [Data Generation](../gen-data-guide/) -->

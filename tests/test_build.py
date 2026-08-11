@@ -2150,6 +2150,36 @@ def test_definition_list_multiple_definitions_per_term():
     assert result.count("<dd>") == 2
 
 
+def test_synthesized_glossary_source_links_resolve(project_dir):
+    """The glossary's "Source" links land on the page that defined the term.
+
+    The synthesized glossary page is emitted at ``glossary/index.html``,
+    one level inside the mount, while the term's page URL is
+    mount-relative.  Without the hop back the link resolved to
+    ``glossary/<page>/`` -- a directory no build writes.
+    """
+    docs_dir = os.path.join(project_dir, "docs")
+    with open(os.path.join(docs_dir, "terms.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# Terms\n\n"
+            "API\n"
+            ": Application Programming Interface\n"
+        )
+
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    glossary = os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html")
+    with open(glossary, encoding="utf-8") as f:
+        content = f.read()
+
+    hrefs = re.findall(r'<a href="([^"]*)">Source</a>', content)
+    assert hrefs == ["../terms/"], hrefs
+    assert os.path.isfile(
+        os.path.join(output_dir, DEFAULT_PREFIX, "terms", "index.html"),
+    )
+
+
 def test_definition_list_generates_defined_term_set_jsonld(project_dir):
     """DefinedTermSet JSON-LD is auto-generated from definition list syntax (no :::glossary)."""
     docs_dir = os.path.join(project_dir, "docs")
@@ -5304,6 +5334,69 @@ def test_changelog_case_insensitive(tmp_path):
     with open(changelog_html, "r", encoding="utf-8") as f:
         content = f.read()
     assert "First beta" in content
+
+
+def test_declared_changelog_is_published_instead_of_the_root_one(tmp_path):
+    """``changelog`` names the document, and it wins over the root file.
+
+    The root-CHANGELOG convention reads "the root changelog is this
+    project's changelog".  In a workspace whose root file rolls up several
+    independently versioned projects that is false, and nothing in the
+    build can tell which of them a given site documents -- so the site
+    declares it.
+    """
+    config = default_config(docs="docs/", output="docs/_build/")
+    config["changelog"] = "packages/thing/CHANGELOG.md"
+    config_path = os.path.join(tmp_path, "selfdoc.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome.\n")
+
+    # The workspace roll-up at the root: three projects, three H1s.
+    with open(os.path.join(tmp_path, "CHANGELOG.md"), "w", encoding="utf-8") as f:
+        f.write(
+            "# thing\n\n## 1.0.0\n\n- Root roll-up\n\n"
+            "# other\n\n## 2.0.0\n\n- A sibling release\n"
+        )
+    package_dir = os.path.join(tmp_path, "packages", "thing")
+    os.makedirs(package_dir)
+    with open(os.path.join(package_dir, "CHANGELOG.md"), "w", encoding="utf-8") as f:
+        f.write("# Changelog\n\n## 1.0.0\n\n- This site's own release\n")
+
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(
+        os.path.join(output_dir, DEFAULT_PREFIX, "changelog", "index.html"),
+        encoding="utf-8",
+    ) as f:
+        content = f.read()
+    assert "own release" in content
+    assert "A sibling release" not in content
+    assert "Root roll-up" not in content
+
+
+def test_a_declared_changelog_that_does_not_exist_is_an_error(tmp_path):
+    """The page was asked for, so a missing file is a broken build."""
+    config = default_config(docs="docs/", output="docs/_build/")
+    config["changelog"] = "packages/thing/CHANGELOG.md"
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Home\n\nWelcome.\n")
+    # A root CHANGELOG.md exists, and must not be quietly substituted.
+    with open(os.path.join(tmp_path, "CHANGELOG.md"), "w", encoding="utf-8") as f:
+        f.write("# Changelog\n\n## 1.0.0\n\n- Root\n")
+
+    with pytest.raises(RuntimeError, match="packages/thing/CHANGELOG.md"):
+        build(str(tmp_path))
 
 
 def test_no_changelog_no_error(tmp_path):

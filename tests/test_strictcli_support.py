@@ -636,14 +636,21 @@ class TestGenerateCliPages:
         assert "`--format`" in content
 
     def test_index_links(self, tmp_path, cli_structure):
+        """The index links its siblings at the address they are served from.
+
+        Pages are emitted at ``<stem>/index.html``, so the index page is
+        itself inside a directory and a bare ``cli-deploy/`` would resolve
+        inside it.  The hop back up is what makes the link land.
+        """
         docs_dir = os.path.join(tmp_path, "docs")
         generate_cli_pages(cli_structure, docs_dir)
 
         with open(os.path.join(docs_dir, "cli-index.md"), "r") as f:
             content = f.read()
 
-        assert "cli-deploy.html" in content
-        assert "cli-config.html" in content
+        assert "(../cli-deploy/)" in content
+        assert "(../cli-config/)" in content
+        assert ".html)" not in content
 
     def test_overwrite_existing(self, tmp_path, cli_structure):
         """Existing read-only pages are overwritten on re-run."""

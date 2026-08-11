@@ -7,7 +7,7 @@ nav_order: 1
 
 # Internals
 
-This page documents selfdoc's internal design for contributors and anyone extending or debugging the system. For the user-facing overview, see [Architecture](architecture/).
+This page documents selfdoc's internal design for contributors and anyone extending or debugging the system. For the user-facing overview, see [Architecture](../architecture/).
 
 ## Tokenizer
 

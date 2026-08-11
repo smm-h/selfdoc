@@ -79,4 +79,4 @@ This is especially useful for:
 > [!TIP]
 > Both files use `base_url` from your `selfdoc.json` for absolute URLs. Without `base_url`, links in `llms.txt` will be relative and may not resolve correctly for external AI agents.
 
-Next: [Glossary Guide](glossary-guide/) -->
+Next: [Glossary Guide](../glossary-guide/) -->

@@ -115,4 +115,4 @@ The selfdoc.json config for this:
 
 The script uses only `tomllib`, `ast`, and `json` from the standard library (no imports needed inside the sandbox), and writes the output to `.selfdoc/data/directive-stats.json`. The generated JSON contains every core directive with its description, category, and attribute requirements, plus all planned future directives grouped by prefix.
 
-Next: [Staleness Detection](staleness/) -->
+Next: [Staleness Detection](../staleness/) -->

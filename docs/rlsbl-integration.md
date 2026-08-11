@@ -131,4 +131,4 @@ That is it. On the next `rlsbl release`, docs are checked before release and reb
 > [!WARNING]
 > Make sure the post-release hook has `source ~/Projects/.env` before `selfdoc deploy`. Without it, the Cloudflare API token is missing and the deploy will fail silently (post-release hooks are non-fatal).
 
-Next: [Atom Feeds](feeds/) -->
+Next: [Atom Feeds](../feeds/) -->

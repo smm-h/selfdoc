@@ -6,6 +6,7 @@ import stat
 from dataclasses import dataclass, field
 
 from selfdoc.utils import parse_frontmatter as _parse_frontmatter
+from selfdoc_core.address import root_page_link
 from selfdoc_core.prose import first_sentence
 from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES, validate_directive_attrs
 from selfdoc.directives import (
@@ -476,9 +477,9 @@ def _generate_index_content(generated_pages, project_name,
         "",
     ])
     for module_name, md_filename in generated_pages:
-        # Link to the sibling page (same docs/ directory)
-        html_name = md_filename.replace(".md", ".html")
-        lines.append(f"- [{module_name}]({html_name})")
+        # Both pages are root-level, and each is emitted at <stem>/index.html,
+        # so the sibling is one level up from inside this page's directory.
+        lines.append(f"- [{module_name}]({root_page_link(md_filename)})")
     lines.append("")
     return "\n".join(lines)
 

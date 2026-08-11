@@ -129,6 +129,21 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         default="docs/_build/",
         description="Output directory for generated HTML files.",
     ),
+    # Absent keeps the convention every standalone repo relies on: the
+    # project root's CHANGELOG.md becomes the changelog page.  That
+    # convention reads "the root changelog is this project's changelog",
+    # which is false in a workspace whose root file rolls up several
+    # independently versioned projects -- and nothing in the build can tell
+    # which of them a given site documents.  So the answer is declared, not
+    # guessed: name the file, and a name that does not exist is an error
+    # rather than a silently missing page.
+    FieldSpec(
+        name="changelog",
+        type=_S,
+        required=False,
+        default=None,
+        description="Path to the changelog document published as the site's changelog page, relative to the project root. Absent means the project root's CHANGELOG.md is used if it exists; declare it when that file is not this site's changelog.",
+    ),
     FieldSpec(
         name="theme",
         type=_S,

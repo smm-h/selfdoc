@@ -79,7 +79,7 @@ This accepts any BCP 47 tag (e.g., `en`, `en-US`, `pt-BR`).
 
 ## Lint Rules
 
-`selfdoc check` runs 15 SEO lint rules that cover heading structure, meta descriptions, image alt text, contrast ratios, title lengths, content density, and accessibility. Each rule has a code, severity level, and actionable fix suggestion. See the [Check Guide](check-guide/) for the full list with fix suggestions.
+`selfdoc check` runs 15 SEO lint rules that cover heading structure, meta descriptions, image alt text, contrast ratios, title lengths, content density, and accessibility. Each rule has a code, severity level, and actionable fix suggestion. See the [Check Guide](../check-guide/) for the full list with fix suggestions.
 
 ## llms.txt and llms-full.txt
 
@@ -93,4 +93,4 @@ Both files are placed in the build output root alongside `sitemap.xml` and `robo
 > [!TIP]
 > Make sure `base_url` is set in your `selfdoc.json`. Without it, canonical URLs, sitemap entries, and OG tags will be missing or relative, which hurts SEO significantly.
 
-Next: [Code Blocks](code-blocks/) -->
+Next: [Code Blocks](../code-blocks/) -->

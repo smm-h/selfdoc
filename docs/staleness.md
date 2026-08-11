@@ -140,4 +140,4 @@ This is useful when you want to update hashes as part of a larger change that yo
 > [!TIP]
 > New pages (ones not yet in the hash store) never trigger STALE001. Staleness is only detected on subsequent runs after the initial hashes are recorded. Run `selfdoc check` once after adding new pages to establish the baseline.
 
-Next: [Glossary](glossary-terms/) -->
+Next: [Glossary](../glossary-terms/) -->

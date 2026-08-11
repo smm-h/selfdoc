@@ -54,7 +54,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ["ARCHIVE_PREFIX", "PageAddress", "locale_segment", "page_address"]
+__all__ = [
+    "ARCHIVE_PREFIX",
+    "PageAddress",
+    "locale_segment",
+    "page_address",
+    "root_page_link",
+]
 
 #: URL segment every archived (superseded) version is emitted under.
 ARCHIVE_PREFIX = "v"
@@ -132,6 +138,26 @@ class PageAddress:
         """
         mount_depth = len([p for p in self.stable_mount.split("/") if p])
         return "../" * (self.depth - mount_depth)
+
+
+def root_page_link(md_filename: str) -> str:
+    """Link written on one root-level docs page to another root-level page.
+
+    Every root-level page except ``index.md`` is emitted at
+    ``<stem>/index.html``, so a page writing a link is itself inside a
+    directory and a sibling is one level up: ``../<stem>/``.  Writing the
+    bare ``<stem>/`` -- correct back when pages were flat ``<stem>.html``
+    files -- now resolves inside the writing page's own directory and
+    names nothing.
+
+    The generated index pages (the API reference and the CLI reference)
+    are the callers: both are always at the docs root, which is what makes
+    the single hop the right one.
+    """
+    stem = md_filename[:-3] if md_filename.endswith(".md") else md_filename
+    if stem == "index":
+        return "../"
+    return f"../{stem}/"
 
 
 def locale_segment(locale_code: str, locales) -> str:

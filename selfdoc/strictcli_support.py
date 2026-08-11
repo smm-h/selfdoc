@@ -12,6 +12,7 @@ import re
 from selfdoc.utils import _read_project_field, parse_frontmatter as _parse_frontmatter
 from selfdoc.tables import render_markdown_table
 from selfdoc.utils import atomic_write as _atomic_write
+from selfdoc_core.address import root_page_link
 from selfdoc_core.prose import first_sentence
 
 from selfdoc_core import effects
@@ -457,16 +458,16 @@ def generate_cli_pages(cli_structure, docs_dir):
         index_lines.append("## Commands")
         index_lines.append("")
         for cmd in commands:
-            fname = f"cli-{cmd['name']}.html"
-            index_lines.append(f"- [{cmd['name']}]({fname}) -- {cmd.get('help', '')}")
+            href = root_page_link(f"cli-{cmd['name']}.md")
+            index_lines.append(f"- [{cmd['name']}]({href}) -- {cmd.get('help', '')}")
         index_lines.append("")
 
     if groups:
         index_lines.append("## Command Groups")
         index_lines.append("")
         for grp in groups:
-            fname = f"cli-{grp['name']}.html"
-            index_lines.append(f"- [{grp['name']}]({fname}) -- {grp.get('help', '')}")
+            href = root_page_link(f"cli-{grp['name']}.md")
+            index_lines.append(f"- [{grp['name']}]({href}) -- {grp.get('help', '')}")
         index_lines.append("")
 
     global_flags = cli_structure.get("global_flags") or []

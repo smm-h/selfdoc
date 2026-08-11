@@ -210,4 +210,4 @@ Warnings alone do not cause a non-zero exit. This makes it safe to use in CI -- 
 > [!TIP]
 > Run `selfdoc check --dry-run` to see staleness results without writing hash files to disk. Useful for previewing what would change.
 
-Next: [rlsbl Integration](rlsbl-integration/) -->
+Next: [rlsbl Integration](../rlsbl-integration/) -->

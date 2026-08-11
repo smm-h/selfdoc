@@ -8,7 +8,7 @@ nav_order: 5
 
 # Architecture
 
-This page explains how selfdoc works at a high level -- what happens when you run `selfdoc build`, how directives get resolved, and how themes control the output. For internal implementation details (tokenizer internals, extractor protocol, resolver dispatch chain), see [Internals](internals/).
+This page explains how selfdoc works at a high level -- what happens when you run `selfdoc build`, how directives get resolved, and how themes control the output. For internal implementation details (tokenizer internals, extractor protocol, resolver dispatch chain), see [Internals](../internals/).
 
 ## Build Pipeline Overview
 
@@ -57,7 +57,7 @@ The theme system works in layers:
 - **Custom overrides** via `docs/custom.css` are injected after the theme, so your rules always win
 - **High contrast** responds to `prefers-contrast: more` with stronger borders and text
 
-See the [Theming](theming/) page for the full property reference and design tool.
+See the [Theming](../theming/) page for the full property reference and design tool.
 
 ## Auxiliary Outputs
 

@@ -72,4 +72,4 @@ The glossary feature is controlled by a single boolean in `selfdoc.json`. When e
 - The glossary page filename is based on whether you have a `glossary-terms.md` template in `docs/`. If you do, its content is used as the page body above the auto-generated term list.
 - In unified (multi-project) builds, terms from all projects are merged into a single glossary with project attribution.
 
-Next: [Multi-Language Support](multi-language/) -->
+Next: [Multi-Language Support](../multi-language/) -->

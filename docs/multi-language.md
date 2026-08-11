@@ -119,4 +119,4 @@ Each project has one language. If your codebase has a Go backend and a TypeScrip
 > [!NOTE]
 > The `javascript` language value is an alias for `typescript` -- they use the same extractor and the same file extensions. Use whichever name matches your project.
 
-Next: [Root Files](root-files/) -->
+Next: [Root Files](../root-files/) -->

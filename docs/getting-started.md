@@ -272,6 +272,6 @@ selfdoc check --format json
 
 Now that you have a working documentation site with live directives, full-text search, and dark mode, explore these topics to learn about advanced configuration, theming, deployment to production hosting, and the full directive reference:
 
-- **[Directives Reference](directives/)** -- complete reference for all built-in directives, block syntax, and custom directives.
-- **[Configuration](selfdoc-config/)** -- all `selfdoc.json` options including deploy providers, coverage thresholds, and lint suppression.
-- **[CLI Reference](cli-index/)** -- detailed documentation for every CLI command and flag.
+- **[Directives Reference](../directives/)** -- complete reference for all built-in directives, block syntax, and custom directives.
+- **[Configuration](../selfdoc-config/)** -- all `selfdoc.json` options including deploy providers, coverage thresholds, and lint suppression.
+- **[CLI Reference](../cli-index/)** -- detailed documentation for every CLI command and flag.

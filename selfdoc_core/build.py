@@ -1113,6 +1113,48 @@ def _compress_output(output_dir):
     return count, has_brotli
 
 
+#: Root filenames the changelog page is auto-detected from, in order.
+_ROOT_CHANGELOG_NAMES = ("CHANGELOG.md", "Changelog.md", "changelog.md")
+
+
+def _changelog_source(config, dir_path, *, missing_ok=False):
+    """Path to the changelog document this site publishes, or None.
+
+    Two ways in, and the config decides which:
+
+    * ``changelog`` names the file.  A declared name that is not there is
+      an error -- the page was asked for, so its absence is a broken
+      build rather than a page that quietly does not appear.
+    * Absent, the project root's ``CHANGELOG.md`` is used when it exists.
+      That convention reads "the root changelog is this project's
+      changelog", which holds for a standalone repo and fails in a
+      workspace whose root file rolls up several independently versioned
+      projects; such a project declares the key instead.
+
+    ``missing_ok`` is for the scans that ask which pages a *past* version
+    held: an older checkout need not have the file, and that is an answer
+    rather than a failure.
+    """
+    declared = (config or {}).get("changelog")
+    if declared:
+        candidate = os.path.join(dir_path, declared)
+        if os.path.isfile(candidate):
+            return candidate
+        if missing_ok:
+            return None
+        raise RuntimeError(
+            f"changelog: '{declared}' does not exist under {dir_path}. "
+            f"The config names the changelog document to publish, so it "
+            f"has to be a file; remove the key to fall back to the "
+            f"project root's CHANGELOG.md."
+        )
+    for name in _ROOT_CHANGELOG_NAMES:
+        candidate = os.path.join(dir_path, name)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
 def build_single(dir_path=".", config=None,
                   mount_locale=None, mount_project="", mount_version=None,
                   mount_archived=False,
@@ -1282,13 +1324,7 @@ def build_single(dir_path=".", config=None,
             published = mtime_str
         page_dates[rel_path] = (published, modified)
 
-    # Auto-detect changelog in project root (case-insensitive)
-    changelog_path = None
-    for name in ("CHANGELOG.md", "Changelog.md", "changelog.md"):
-        candidate = os.path.join(dir_path, name)
-        if os.path.isfile(candidate):
-            changelog_path = candidate
-            break
+    changelog_path = _changelog_source(config, dir_path)
 
     if changelog_path is not None and (page_filter is None or "changelog.md" in page_filter):
         with open(changelog_path, "r", encoding="utf-8") as f:
@@ -1564,7 +1600,8 @@ def _partition_pages(config, docs_dir, dir_path):
     )
 
 
-def _versioned_html_paths(build_dir, docs_dir_name, locale_code, locales):
+def _versioned_html_paths(build_dir, docs_dir_name, locale_code, locales,
+                          config=None):
     """HTML paths of the version-scoped pages a docs tree would build.
 
     A cheap scan -- walk the tree, read frontmatter, skip the site-level
@@ -1595,10 +1632,8 @@ def _versioned_html_paths(build_dir, docs_dir_name, locale_code, locales):
             paths.add(_md_to_html_path(rel))
 
     # build_single injects the project's changelog as a page of its own.
-    for name in ("CHANGELOG.md", "Changelog.md", "changelog.md"):
-        if os.path.isfile(os.path.join(build_dir, name)):
-            paths.add(_md_to_html_path("changelog.md"))
-            break
+    if _changelog_source(config, build_dir, missing_ok=True) is not None:
+        paths.add(_md_to_html_path("changelog.md"))
     return paths
 
 
@@ -2062,7 +2097,7 @@ def _build_body(
         version_pages[locale["code"]] = {
             ver_entry["version"]: _versioned_html_paths(
                 build_dirs[ver_entry["version"]], docs_dir_name,
-                locale["code"], locales,
+                locale["code"], locales, config,
             )
             for ver_entry in build_versions
         }

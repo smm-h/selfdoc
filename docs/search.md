@@ -103,4 +103,4 @@ tags: [deploy, cloudflare, hosting]
 
 Tags are indexed in `search-index.json` and can be filtered with `tags=deploy` or `tags=deploy|hosting` in the search box.
 
-Next: [SEO](seo/) -->
+Next: [SEO](../seo/) -->

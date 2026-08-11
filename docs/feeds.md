@@ -70,4 +70,4 @@ Common readers that work:
 > [!TIP]
 > Make sure `base_url` is set in your `selfdoc.json`. The feed uses absolute URLs for entry links, and without `base_url` those links will be broken.
 
-Next: [llms.txt](llms-txt/) -->
+Next: [llms.txt](../llms-txt/) -->

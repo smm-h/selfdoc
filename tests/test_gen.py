@@ -320,7 +320,10 @@ class TestIndexPage:
         assert "nav_order: 0" in content
         assert "order: 90" in content
         assert "mylib.core" in content
-        assert "mylib-core.html" in content
+        # Pages are emitted at <stem>/index.html, so the index page is
+        # itself inside a directory: a sibling is one level up.
+        assert "(../mylib-core/)" in content
+        assert ".html)" not in content
 
     def test_index_has_readonly_permissions(self, python_project):
         config = _load_config(python_project)

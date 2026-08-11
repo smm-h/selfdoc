@@ -620,6 +620,13 @@ def generate_html(markdown_files, project_name=None, version=None,
     # Skip if the user already has a glossary.md in their docs.
     existing_html_paths = {pd["html_path"] for pd in page_data}
     if glossary and site_terms and "glossary/index.html" not in existing_html_paths:
+        glossary_addr = page_address(
+            "glossary/index.html",
+            locale=mount_locale,
+            project=mount_project,
+            version=mount_version,
+            archived=mount_archived,
+        )
         # Build glossary body HTML
         sorted_terms = sorted(site_terms.values(), key=lambda t: t["term"].lower())
         glossary_dl_items = []
@@ -628,7 +635,12 @@ def generate_html(markdown_files, project_name=None, version=None,
             term_name = _escape_html(info["term"])
             definition = info["definition"]
             source_page = info["page"]
-            source_url = _html_path_to_url(source_page)
+            # _html_path_to_url gives the URL relative to the mount, and the
+            # glossary page sits a level inside it, so the hop back is what
+            # makes a "Source" link land on the page that defined the term.
+            source_url = (
+                glossary_addr.to_mount_root + _html_path_to_url(source_page)
+            )
             glossary_dl_items.append(
                 f'<dt id="{anchor}"><dfn>{term_name}</dfn></dt>'
                 f'<dd>{definition} '
@@ -676,13 +688,6 @@ def generate_html(markdown_files, project_name=None, version=None,
 
         # Re-render nav HTML for the glossary page and rebuild nav for
         # existing pages (since the glossary link is now in the sidebar)
-        glossary_addr = page_address(
-            "glossary/index.html",
-            locale=mount_locale,
-            project=mount_project,
-            version=mount_version,
-            archived=mount_archived,
-        )
         glossary_nav_html = _render_nav(
             nav_items, prefix=glossary_addr.to_mount_root,
             current_path="glossary/index.html",

@@ -169,4 +169,4 @@ This renders as a single code block with "python" and "bash" tabs. The user clic
 
 Every code block gets a copy-to-clipboard button automatically. No config needed. It appears in the top-right corner of the block on hover and copies the raw code content (without line numbers or annotations).
 
-Next: [Custom Directives](custom-directives/) -->
+Next: [Custom Directives](../custom-directives/) -->

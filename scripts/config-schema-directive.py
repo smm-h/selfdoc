@@ -50,6 +50,20 @@ SCHEMA = [
         "description": 'Build output directory. Default: `"docs/_build/"`.',
     },
     {
+        "key": "changelog",
+        "type": "string",
+        "required": False,
+        "category": "Core",
+        "description": (
+            "Path to the changelog document published as the site's changelog "
+            "page, relative to the project root. Absent, the project root's "
+            "`CHANGELOG.md` is used if it exists; declare it when that file is "
+            "not this site's changelog (a workspace root that rolls up several "
+            "independently versioned projects, say). A declared path that does "
+            "not exist is a build error."
+        ),
+    },
+    {
         "key": "repo",
         "type": "string",
         "required": False,

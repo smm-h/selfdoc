@@ -137,4 +137,4 @@ This approach keeps the schema definition close to the directive that renders it
 > [!WARNING]
 > Custom directive scripts run as Python code during the build. They have full access to the filesystem and Python environment. Only use trusted scripts.
 
-Next: [Check Guide](check-guide/) -->
+Next: [Check Guide](../check-guide/) -->
