@@ -230,7 +230,7 @@ Blog posts integrate into the unified multi-project documentation site through t
 
 2. **Assembly push**: `selfblog post publish` pushes built HTML into `site/{slug}/posts/` in the assembly repo and the post-manifest into `manifests/{slug}-posts.json`.
 
-3. **Shared regeneration**: The assembly workflow runs `selfblog assembly generate-shared`, which reads all per-project manifests and post overlays to produce:
+3. **Shared regeneration**: The assembly workflow runs `selfblog assembly integrate`, which grafts the dispatched build into the assembly tree and then regenerates the shared cross-project elements from all per-project manifests and post overlays:
    - A blog index page listing all posts across all projects, sorted newest-first
    - An Atom RSS feed aggregating posts from every project
    - An XML sitemap including all post URLs
@@ -255,7 +255,7 @@ The canonical blog URL is `<topology.docs_base>/blog/`. Everything else redirect
 | `<topology.legacy_blog_host>/<path>` | `301` to `<docs_base>/blog/<path>` |
 | any other host bound to the project, path under `/blog` | `301` to `<docs_base>/blog...` |
 
-Both redirects are single-hop and are implemented in the `_worker.js` that `selfblog assembly generate-shared` writes into the site output. The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base`) and its retired-subdomain rule from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
+Both redirects are single-hop and are implemented in the `_worker.js` that the shared-element generator writes into the site output (`selfblog assembly integrate` during a deploy, `selfblog assembly generate-shared` when run by hand). The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base` to `integrate`) and its retired-subdomain rule from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
 
 The shared homepage and blog index also carry a `rel="canonical"` link pointing at the canonical host, so a crawler that reaches them through a non-canonical domain still records the canonical address.
 
@@ -263,9 +263,9 @@ Set `topology.posts_base` to the same canonical blog URL. It is a path on the do
 
 ### The portfolio canonical
 
-An assembly may serve a hand-authored portfolio page as its site root (`portfolio/index.html` in the assembly repo, passed as `--portfolio-file`). That page is the *apex*, not a docs page, so its canonical is **not** `topology.docs_base` -- the same bytes are served on every host bound to the Pages project, and one of them has to be named.
+An assembly may serve a hand-authored portfolio page as its site root (`portfolio/index.html` in the assembly repo; `integrate` picks it up when it exists, and `generate-shared` takes it as `--portfolio-file`). That page is the *apex*, not a docs page, so its canonical is **not** `topology.docs_base` -- the same bytes are served on every host bound to the Pages project, and one of them has to be named.
 
-Set `assembly.portfolio_canonical` to that apex URL. The generated deploy workflow passes it as `--portfolio-canonical`, and generate-shared splices a `rel="canonical"` link into the portfolio's `<head>` (rewriting one that is already there). There is no default: supplying a portfolio file without `--portfolio-canonical` is a hard error, as is a portfolio document with no `<head>` to splice into.
+Set `assembly.portfolio_canonical` to that apex URL. The generated deploy workflow passes it as `--portfolio-canonical`, and the shared-element generator splices a `rel="canonical"` link into the portfolio's `<head>` (rewriting one that is already there). There is no default: supplying a portfolio file without `--portfolio-canonical` is a hard error, as is a portfolio document with no `<head>` to splice into.
 
 #### Operator steps (outside selfblog)
 
@@ -273,6 +273,27 @@ Two pieces of this topology live on platform dashboards and are not automated:
 
 1. **Custom domains.** Every hostname the worker redirects *from* must be attached to the assembly's Cloudflare Pages project, otherwise the worker never runs for it and the request does not reach the redirect. Add them under the Pages project's *Custom domains* tab.
 2. **Search Console.** Register a **Domain property** for the root domain rather than one URL-prefix property per subdomain. A Domain property covers the canonical host, the retired blog subdomain, and the apex in a single property, so the consolidation is visible as redirects instead of appearing as unrelated sites competing with each other.
+
+### The deploy workflow is a generated artifact
+
+The assembly repo's `.github/workflows/deploy.yml` is generated from the
+project's `selfdoc.json`, not hand-written. It is deliberately thin: check
+out the assembly, install the toolchain, clone the dispatched project, run
+`selfblog assembly integrate`, deploy the result to Cloudflare Pages. Every
+decision the deploy makes lives in the command, so it can be tested without
+dispatching a real deploy.
+
+`selfblog assembly init` writes that file when the assembly repo is created,
+and **`selfblog assembly sync-workflow` rewrites it afterwards**. Run it (or
+let the release path run it) whenever selfblog changes: it regenerates the
+workflow, compares it against the deployed copy, and pushes only when the
+bytes differ. Without it the deployed workflow stays frozen at whatever the
+template said the day the repo was created.
+
+The workflow's install line pins the selfblog version that generated it. The
+pin is rewritten by every `sync-workflow` run, so it tracks releases rather
+than capping them -- and a deploy can never pick up a selfblog whose flags
+the deployed workflow does not know about.
 
 ### Posts-only vs full builds
 
