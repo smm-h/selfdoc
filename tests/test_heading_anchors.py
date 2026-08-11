@@ -15,7 +15,7 @@ import re
 from selfdoc_core.build import _build_search_index
 from selfdoc_core.html import md_to_html
 from selfdoc.build import build
-from conftest import default_config, DEFAULT_PREFIX
+from conftest import default_config
 
 
 def _ids_in(html: str) -> set[str]:
@@ -147,4 +147,3 @@ class TestBuiltSiteAnchorsResolve:
             checked += 1
 
         assert checked > 0
-        assert DEFAULT_PREFIX  # locale/version prefix is in use

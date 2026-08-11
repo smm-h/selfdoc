@@ -105,8 +105,10 @@ def default_config(**overrides):
     return config
 
 
-# Default locale/version prefix used in output paths for test assertions
-DEFAULT_PREFIX = "en/1.0.0"
+# Mount prefix the default fixture config emits its current version at.
+# Empty: one locale drops the locale segment, and the current version
+# carries no version segment, so the pages sit at the output root.
+DEFAULT_PREFIX = ""
 
 
 @pytest.fixture()

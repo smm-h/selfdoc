@@ -66,7 +66,7 @@ def test_build_produces_html(project_dir):
     assert root_index in written
     with open(root_index, "r", encoding="utf-8") as f:
         root_content = f.read()
-    assert f"/{DEFAULT_PREFIX}/" in root_content
+    assert f"/" in root_content
 
 
 def test_build_resolves_directives_with_error_for_missing(project_dir):
@@ -119,10 +119,12 @@ def test_build_multiple_files(project_dir):
     output_dir = os.path.join(project_dir, "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"))
-    # 2 HTML (under en/1.0.0/) + 1 style.css + 1 search-index.json + 1 search.js
-    # + 2 OG PNGs + 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt
-    # + 1 sitemap.xml + 1 feed.xml + 1 root index.html redirect + 1 _redirects
-    assert len(written) == 16
+    # 2 HTML (at the stable mount, which is the output root here) +
+    # 1 style.css + 1 search-index.json + 1 search.js + 2 OG PNGs +
+    # 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt +
+    # 1 sitemap.xml + 1 feed.xml + 1 _redirects.  No root redirect stub:
+    # the home page is itself the root index.
+    assert len(written) == 15
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
     assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
@@ -473,7 +475,7 @@ def test_breadcrumb_list_on_non_index_page(project_dir):
     assert '"BreadcrumbList"' in guide_html
     assert '"Home"' in guide_html
     # The Home crumb addresses the mounted home page, not a mountless path.
-    assert f"https://example.com/{DEFAULT_PREFIX}/" in guide_html
+    assert f"https://example.com/" in guide_html
     assert "https://example.com/index.html" not in guide_html
 
     # Index page should NOT have BreadcrumbList
@@ -625,7 +627,7 @@ def test_og_url_present(project_dir):
         content = f.read()
 
     assert (
-        '<meta property="og:url" content="https://example.com/en/1.0.0/">'
+        '<meta property="og:url" content="https://example.com/">'
         in content
     )
 
@@ -791,8 +793,8 @@ def test_atom_feed_contains_valid_structure(project_dir):
     assert "<entry>" in content
     assert "</entry>" in content
     assert "<title>Guide Page</title>" in content
-    assert f'<link href="https://example.com/{DEFAULT_PREFIX}/guide/"/>' in content
-    assert f"<id>https://example.com/{DEFAULT_PREFIX}/guide/</id>" in content
+    assert f'<link href="https://example.com/guide/"/>' in content
+    assert f"<id>https://example.com/guide/</id>" in content
     assert "<updated>2026-05-01T00:00:00Z</updated>" in content
     assert "<summary>This is a guide.</summary>" in content
 
@@ -813,7 +815,7 @@ def test_atom_feed_link_in_html_with_base_url(project_dir):
         content = f.read()
 
     assert '<link rel="alternate" type="application/atom+xml"' in content
-    assert 'href="../../feed.xml">' in content
+    assert 'href="feed.xml">' in content
 
 
 def test_feed_max_entries_truncates(tmp_path):
@@ -1056,7 +1058,7 @@ def test_404_contains_sidebar_navigation(project_dir):
         content = f.read()
 
     assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
-    assert f'href="{DEFAULT_PREFIX}/guide/"' in content
+    assert f'href="guide/"' in content
     assert "index.html" in content
 
 
@@ -1088,8 +1090,8 @@ def test_404_contains_popular_page_links(project_dir):
         content = f.read()
 
     assert "Popular pages" in content
-    assert f'href="{DEFAULT_PREFIX}/guide/"' in content
-    assert f'href="{DEFAULT_PREFIX}/api/"' in content
+    assert f'href="guide/"' in content
+    assert f'href="api/"' in content
     assert "index.html" in content
 
 
@@ -1325,7 +1327,7 @@ def test_built_html_has_noscript_fallback(project_dir):
         content = f.read()
 
     assert "<noscript>" in content
-    assert '<link rel="stylesheet" href="../../style.css">' in content
+    assert '<link rel="stylesheet" href="style.css">' in content
 
 
 def test_critical_css_contains_root_variables(project_dir):
@@ -2970,8 +2972,41 @@ def test_glossary_and_inline_dfn_no_duplicates():
 # --- Phase 7A: Trailing slash redirect rules ---
 
 
-def test_redirects_file_generated_for_root_redirect(project_dir):
-    """_redirects file is generated with root -> locale/version redirect."""
+def _write_multi_locale_project(tmp_path, **overrides):
+    """Write a two-locale project: the case where a locale segment exists.
+
+    A single-locale site drops the locale segment entirely, so the root
+    redirect stub only has a target when there is more than one locale.
+    """
+    config = default_config(
+        docs="docs/",
+        output="docs/_build/",
+        locales=[
+            {"code": "en", "label": "English", "default": True},
+            {"code": "fr", "label": "French"},
+        ],
+        **overrides,
+    )
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    for locale in ("en", "fr"):
+        locale_docs = os.path.join(tmp_path, "docs", locale)
+        os.makedirs(locale_docs, exist_ok=True)
+        with open(os.path.join(locale_docs, "index.md"), "w", encoding="utf-8") as f:
+            f.write(f"# Test ({locale})\n\nContent.\n")
+    src_dir = os.path.join(tmp_path, "src")
+    os.makedirs(src_dir, exist_ok=True)
+    with open(os.path.join(src_dir, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write('"""Test."""\n')
+    return tmp_path
+
+
+def test_redirects_file_has_no_root_rule_for_a_single_locale_site(project_dir):
+    """A single-locale site mounts its current version at the output root.
+
+    The home page *is* the root index, so there is nothing to redirect to
+    and no rule to write.
+    """
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
@@ -2979,7 +3014,18 @@ def test_redirects_file_generated_for_root_redirect(project_dir):
     assert os.path.isfile(redirects_path)
     with open(redirects_path, "r", encoding="utf-8") as f:
         content = f.read()
-    assert f"/ /{DEFAULT_PREFIX}/ 302" in content
+    assert content == ""
+
+
+def test_root_redirect_rule_targets_the_stable_mount_when_localized(tmp_path):
+    """With more than one locale the stable mount carries a locale segment."""
+    _write_multi_locale_project(tmp_path)
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "_redirects"), encoding="utf-8") as f:
+        content = f.read()
+    assert "/ /en/ 302\n" in content
 
 
 def test_headers_only_for_cloudflare_pages(tmp_path):
@@ -3157,10 +3203,10 @@ def test_breadcrumbs_json_ld_nested(project_dir):
     assert len(items) == 3
     assert items[0]["position"] == 1
     assert items[0]["name"] == "Home"
-    assert items[0]["item"] == f"https://example.com/{DEFAULT_PREFIX}/"
+    assert items[0]["item"] == f"https://example.com/"
     assert items[1]["position"] == 2
     assert items[1]["name"] == "Api"
-    assert items[1]["item"] == f"https://example.com/{DEFAULT_PREFIX}/api/"
+    assert items[1]["item"] == f"https://example.com/api/"
     assert items[2]["position"] == 3
     assert items[2]["name"] == "Endpoints"
     assert "item" not in items[2]
@@ -3572,7 +3618,7 @@ def test_search_js_deferred(project_dir):
         content = f.read()
 
     # External deferred script tag must point to search.js at the site root
-    assert '<script defer src="../../search.js">' in content
+    assert '<script defer src="search.js">' in content
 
     # The inline <script> block must NOT contain search index logic
     inline_match = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
@@ -5873,7 +5919,7 @@ def test_directory_index_canonical_urls_use_dir_paths(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert 'href="https://example.com/en/1.0.0/guide/"' in content
+    assert 'href="https://example.com/guide/"' in content
     assert 'href="https://example.com/guide.html"' not in content
 
 
@@ -5889,10 +5935,10 @@ def test_directory_index_sitemap_uses_dir_paths(project_dir):
     with open(os.path.join(output_dir, "sitemap.xml"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert f"https://example.com/{DEFAULT_PREFIX}/guide/" in content
+    assert f"https://example.com/guide/" in content
     assert "https://example.com/guide.html" not in content
     # Root index uses prefixed path
-    assert f"https://example.com/{DEFAULT_PREFIX}/" in content
+    assert f"https://example.com/" in content
 
 
 def test_no_meta_description_without_paragraphs(project_dir):
@@ -6077,7 +6123,7 @@ def test_redirect_generates_meta_refresh_html(tmp_path):
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
     redirect_html_path = os.path.join(
-        output_dir, "en", "1.0.0", "edit-release", "index.html",
+        output_dir, "edit-release", "index.html",
     )
     assert redirect_html_path in written
     assert os.path.isfile(redirect_html_path)
@@ -6087,7 +6133,7 @@ def test_redirect_generates_meta_refresh_html(tmp_path):
     # The hop is document-relative so it survives being served under a path
     # prefix; the canonical names the absolute target.
     assert 'content="0;url=../release/edit/"' in content
-    assert "https://example.com/en/1.0.0/release/edit/" in content
+    assert "https://example.com/release/edit/" in content
 
 
 def test_redirect_generates_cloudflare_rule(tmp_path):
@@ -6112,47 +6158,55 @@ def test_redirect_generates_cloudflare_rule(tmp_path):
     redirects_path = os.path.join(output_dir, "_redirects")
     with open(redirects_path, "r", encoding="utf-8") as f:
         content = f.read()
-    # Root redirect should still be present
-    assert "/ /en/1.0.0/ 302\n" in content
-    # Config-driven redirect should be appended
-    assert "/en/1.0.0/old-cmd/ /en/1.0.0/new-cmd/ 301\n" in content
+    # A single-locale site has no root rule: its home page is the root
+    # index.  The config-driven redirect is still appended.
+    assert "302" not in content
+    assert "/old-cmd/ /new-cmd/ 301\n" in content
 
 
-def test_root_redirect_stub_canonical_is_absolute(project_dir):
-    """The root redirect stub names an absolute canonical, not a site-root path.
+def test_single_locale_root_index_is_the_home_page_not_a_stub(project_dir):
+    """No stub is written over the home page.
 
-    A root-relative canonical resolves against whatever host served the
-    stub, so every alias of the site claims to be canonical.
+    A single-locale site mounts its current version at the output root, so
+    the root index is the home page itself.  Writing a redirect stub there
+    would overwrite the page it redirects to.
     """
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
+    assert 'meta http-equiv="refresh"' not in content
+    assert '<link rel="canonical" href="https://example.com/">' in content
+
+
+def test_root_redirect_stub_canonical_is_absolute(tmp_path):
+    """The root redirect stub names an absolute canonical, not a site-root path.
+
+    A root-relative canonical resolves against whatever host served the
+    stub, so every alias of the site claims to be canonical.
+    """
+    _write_multi_locale_project(tmp_path)
+    build(str(tmp_path))
+
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
     assert (
-        f'<link rel="canonical" href="https://example.com/{DEFAULT_PREFIX}/">'
+        '<link rel="canonical" href="https://example.com/en/">'
         in content
     )
     # The meta refresh is document-relative: a same-site hop that must keep
     # working when the site is served under a path prefix.
-    assert f'content="0;url={DEFAULT_PREFIX}/"' in content
+    assert 'content="0;url=en/"' in content
 
 
 def test_root_redirect_stub_canonical_uses_the_topology_url_builder(tmp_path):
     """Under a topology config the canonical carries the project slug."""
-    config = default_config(
-        docs="docs/",
-        output="docs/_build/",
+    _write_multi_locale_project(
+        tmp_path,
         topology={"slug": "proj", "docs_base": "https://docs.example.com"},
     )
-    config_path = os.path.join(tmp_path, "selfdoc.json")
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-
-    docs_dir = os.path.join(tmp_path, "docs")
-    os.makedirs(docs_dir)
-    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write("# Test\n\nContent.\n")
 
     build(str(tmp_path))
 
@@ -6161,7 +6215,7 @@ def test_root_redirect_stub_canonical_uses_the_topology_url_builder(tmp_path):
         content = f.read()
     assert (
         '<link rel="canonical" '
-        f'href="https://docs.example.com/proj/{DEFAULT_PREFIX}/">'
+        'href="https://docs.example.com/proj/en/">'
         in content
     )
 
@@ -6195,19 +6249,10 @@ def test_root_redirect_stub_hop_resolves_under_an_assembly_slug_prefix(tmp_path)
     on whatever the assembly root serves.  Resolving the hop against the
     served stub URL must reproduce the canonical.
     """
-    config = default_config(
-        docs="docs/",
-        output="docs/_build/",
+    _write_multi_locale_project(
+        tmp_path,
         topology={"slug": "proj", "docs_base": "https://docs.example.com"},
     )
-    config_path = os.path.join(tmp_path, "selfdoc.json")
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-
-    docs_dir = os.path.join(tmp_path, "docs")
-    os.makedirs(docs_dir)
-    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write("# Test\n\nContent.\n")
 
     build(str(tmp_path))
 
@@ -6217,7 +6262,7 @@ def test_root_redirect_stub_hop_resolves_under_an_assembly_slug_prefix(tmp_path)
 
     served_at = "https://docs.example.com/proj/"
     canonical = _canonical_of(content)
-    assert canonical == f"https://docs.example.com/proj/{DEFAULT_PREFIX}/"
+    assert canonical == "https://docs.example.com/proj/en/"
     for hop in _stub_hops(content):
         assert "proj" in urljoin(served_at, hop), (
             f"hop {hop!r} escapes the project subtree"
@@ -6231,19 +6276,7 @@ def test_root_redirect_stub_hop_resolves_under_a_subpath_base_url(tmp_path):
     GitHub Pages project sites live at ``/<repo>/``; a root-relative hop
     would leave the repo's site the same way it leaves an assembly slug.
     """
-    config = default_config(
-        docs="docs/",
-        output="docs/_build/",
-        base_url="https://owner.github.io/repo",
-    )
-    config_path = os.path.join(tmp_path, "selfdoc.json")
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-
-    docs_dir = os.path.join(tmp_path, "docs")
-    os.makedirs(docs_dir)
-    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write("# Test\n\nContent.\n")
+    _write_multi_locale_project(tmp_path, base_url="https://owner.github.io/repo")
 
     build(str(tmp_path))
 
@@ -6253,37 +6286,39 @@ def test_root_redirect_stub_hop_resolves_under_a_subpath_base_url(tmp_path):
 
     served_at = "https://owner.github.io/repo/"
     canonical = _canonical_of(content)
-    assert canonical == f"https://owner.github.io/repo/{DEFAULT_PREFIX}/"
+    assert canonical == "https://owner.github.io/repo/en/"
     for hop in _stub_hops(content):
         assert urljoin(served_at, hop) == canonical
 
 
-def test_root_redirect_stub_hop_resolves_at_an_origin_root(project_dir):
+def test_root_redirect_stub_hop_resolves_at_an_origin_root(tmp_path):
     """A site served from its own origin root keeps resolving correctly."""
-    build(str(project_dir))
+    _write_multi_locale_project(tmp_path)
+    build(str(tmp_path))
 
-    output_dir = os.path.join(project_dir, "docs", "_build")
+    output_dir = os.path.join(tmp_path, "docs", "_build")
     with open(os.path.join(output_dir, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     canonical = _canonical_of(content)
-    assert canonical == f"https://example.com/{DEFAULT_PREFIX}/"
+    assert canonical == "https://example.com/en/"
     for hop in _stub_hops(content):
         assert urljoin("https://example.com/", hop) == canonical
 
 
-def test_root_cloudflare_redirect_rule_stays_site_absolute(project_dir):
+def test_root_cloudflare_redirect_rule_stays_site_absolute(tmp_path):
     """``_redirects`` is read at the deployed root, so its target is absolute.
 
     Cloudflare only ever reads the root ``_redirects``; a relative target
     there has no document to resolve against.
     """
-    build(str(project_dir))
+    _write_multi_locale_project(tmp_path)
+    build(str(tmp_path))
 
-    output_dir = os.path.join(project_dir, "docs", "_build")
+    output_dir = os.path.join(tmp_path, "docs", "_build")
     with open(os.path.join(output_dir, "_redirects"), "r", encoding="utf-8") as f:
         content = f.read()
-    assert f"/ /{DEFAULT_PREFIX}/ 302\n" in content
+    assert "/ /en/ 302\n" in content
 
 
 def test_config_redirect_stub_hop_resolves_under_an_assembly_slug_prefix(tmp_path):
@@ -6310,15 +6345,13 @@ def test_config_redirect_stub_hop_resolves_under_an_assembly_slug_prefix(tmp_pat
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    stub_path = os.path.join(
-        output_dir, "en", "1.0.0", "edit-release", "index.html",
-    )
+    stub_path = os.path.join(output_dir, "edit-release", "index.html")
     with open(stub_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    served_at = "https://docs.example.com/proj/en/1.0.0/edit-release/"
+    served_at = "https://docs.example.com/proj/edit-release/"
     canonical = _canonical_of(content)
-    assert canonical == "https://docs.example.com/proj/en/1.0.0/release/edit/"
+    assert canonical == "https://docs.example.com/proj/release/edit/"
     for hop in _stub_hops(content):
         assert urljoin(served_at, hop) == canonical
 
@@ -6344,9 +6377,7 @@ def test_config_redirect_cloudflare_rule_stays_site_absolute(tmp_path):
     output_dir = os.path.join(tmp_path, "docs", "_build")
     with open(os.path.join(output_dir, "_redirects"), "r", encoding="utf-8") as f:
         content = f.read()
-    assert (
-        "/en/1.0.0/edit-release/ /en/1.0.0/release/edit/ 301\n" in content
-    )
+    assert "/edit-release/ /release/edit/ 301\n" in content
 
 
 def test_redirect_stub_canonical_is_absolute(tmp_path):
@@ -6368,14 +6399,12 @@ def test_redirect_stub_canonical_is_absolute(tmp_path):
     build(str(tmp_path))
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
-    redirect_html_path = os.path.join(
-        output_dir, "en", "1.0.0", "edit-release", "index.html",
-    )
+    redirect_html_path = os.path.join(output_dir, "edit-release", "index.html")
     with open(redirect_html_path, "r", encoding="utf-8") as f:
         content = f.read()
     assert (
         '<link rel="canonical" '
-        'href="https://example.com/en/1.0.0/release/edit/">'
+        'href="https://example.com/release/edit/">'
         in content
     )
     assert 'content="0;url=../release/edit/"' in content
@@ -6401,9 +6430,7 @@ def test_redirect_skips_existing_page(tmp_path):
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
     # index/index.html is the actual index page -- it should NOT be a redirect
-    index_html_path = os.path.join(
-        output_dir, "en", "1.0.0", "index.html",
-    )
+    index_html_path = os.path.join(output_dir, "index.html")
     assert os.path.isfile(index_html_path)
     with open(index_html_path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -6463,25 +6490,30 @@ def test_redirect_multiple_locales_versions(tmp_path):
 
     output_dir = os.path.join(tmp_path, "docs", "_build")
 
-    # Check all 4 combinations: en/0.9.0, en/1.0.0, fr/0.9.0, fr/1.0.0
-    for locale in ("en", "fr"):
-        for ver in ("0.9.0", "1.0.0"):
-            redirect_path = os.path.join(
-                output_dir, locale, ver, "old-page", "index.html",
-            )
-            assert os.path.isfile(redirect_path), (
-                f"Missing redirect for {locale}/{ver}"
-            )
-            with open(redirect_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            expected_url = f"/{locale}/{ver}/new-page/"
-            assert expected_url in content
+    # Four combinations, each at the address its version is emitted at:
+    # the current version at the stable mount, 0.9.0 under the archive
+    # prefix.
+    mounts = {
+        ("en", "1.0.0"): "en",
+        ("fr", "1.0.0"): "fr",
+        ("en", "0.9.0"): "en/v/0.9.0",
+        ("fr", "0.9.0"): "fr/v/0.9.0",
+    }
+    for (locale, ver), mount in mounts.items():
+        redirect_path = os.path.join(
+            output_dir, *mount.split("/"), "old-page", "index.html",
+        )
+        assert os.path.isfile(redirect_path), (
+            f"Missing redirect for {locale}/{ver}"
+        )
+        with open(redirect_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert f"https://example.com/{mount}/new-page/" in content
 
     # Check _redirects has all 4 rules
     redirects_path = os.path.join(output_dir, "_redirects")
     with open(redirects_path, "r", encoding="utf-8") as f:
         redirects_content = f.read()
-    for locale in ("en", "fr"):
-        for ver in ("0.9.0", "1.0.0"):
-            rule = f"/{locale}/{ver}/old-page/ /{locale}/{ver}/new-page/ 301"
-            assert rule in redirects_content
+    for mount in mounts.values():
+        rule = f"/{mount}/old-page/ /{mount}/new-page/ 301"
+        assert rule in redirects_content
