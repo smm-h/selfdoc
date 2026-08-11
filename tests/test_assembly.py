@@ -184,9 +184,12 @@ def test_workflow_yaml_has_secrets():
 # -- assembly_init -----------------------------------------------------------
 
 
-def test_init_returns_three_files():
+def test_init_returns_four_files():
     result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
-    assert len(result) == 3
+    assert sorted(result) == [
+        ".github/workflows/deploy.yml", ".gitignore", "projects.json",
+        "roster.toml",
+    ]
 
 
 def test_init_has_workflow_file():

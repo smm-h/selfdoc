@@ -16,15 +16,22 @@ import subprocess
 import pytest
 
 from selfblog.assembly import (
+    RosterEntry,
     apply_project_files,
     detect_latest_version,
     integrate_project,
+    load_files_manifest,
     prune_deploy_artifacts,
-    replace_subtree,
-    update_projects_json,
+    record_membership,
+    render_roster,
 )
 
 CANONICAL_BASE = "https://docs.example.com"
+
+ROSTER = {
+    "alpha": RosterEntry("alpha", "owner/alpha"),
+    "beta": RosterEntry("beta", "owner/beta"),
+}
 
 
 def _write(path, content):
@@ -70,11 +77,23 @@ def assembly_tree(tmp_path):
     _write(str(root / "manifests" / "beta.json"),
            json.dumps(_manifest("beta", "Beta", "2.0.0")))
 
-    # Membership file with both projects.
+    # Membership file with both projects, and the roster that declares them.
     _write(str(root / "projects.json"), json.dumps({
         "alpha": {"repo": "owner/alpha", "ref": "v0.9.0", "version": "0.9.0"},
         "beta": {"repo": "owner/beta", "ref": "v2.0.0", "version": "2.0.0"},
     }, indent=2) + "\n")
+    _write(str(root / "roster.toml"), render_roster(ROSTER.values()))
+
+    # What the last release published for alpha, which is what a prune is
+    # entitled to remove. The out-of-band post below is deliberately absent.
+    _write(str(root / "manifests" / "alpha-files.json"), json.dumps({
+        "schema_version": 1,
+        "slug": "alpha",
+        "owners": {"release": [
+            "index.html", "guide/index.html", "retired/index.html",
+            "posts/index.html",
+        ]},
+    }))
 
     # The cloned source project, as the workflow's second checkout leaves it,
     # with a build output tree as `selfdoc build` would have produced.
@@ -93,8 +112,11 @@ def assembly_tree(tmp_path):
     _write(str(build / "_worker.js"), "export default {}\\n")
     _write(str(build / "index.html.gz"), "gzipped")
     _write(str(build / "guide" / "index.html.br"), "brotli")
+    # A full build's manifest carries the posts the build rendered.
     _write(str(source / ".selfdoc" / "manifest.json"),
-           json.dumps(_manifest("alpha", "Alpha", "1.0.0")))
+           json.dumps(_manifest("alpha", "Alpha", "1.0.0",
+                                posts=[{"slug": "hello", "title": "Hello",
+                                        "date": "2024-06-01"}])))
     _write(str(source / ".selfdoc" / "post-manifest.json"),
            json.dumps(_manifest("alpha", "Alpha", "1.0.0",
                                 posts=[{"slug": "hello", "title": "Hello",
@@ -208,41 +230,38 @@ def test_prune_removes_every_deploy_artifact(assembly_tree):
     assert os.path.exists(os.path.join(build, "index.html"))
 
 
-def test_replace_subtree_is_total(assembly_tree):
-    dest = str(assembly_tree / "site" / "alpha")
-    src = str(assembly_tree / "source" / "alpha" / "docs" / "_build")
-    replace_subtree(dest, src)
-    assert not os.path.exists(os.path.join(dest, "retired", "index.html"))
-    with open(os.path.join(dest, "index.html"), encoding="utf-8") as f:
-        assert "new alpha" in f.read()
-
-
-def test_replace_subtree_with_a_missing_source_empties_the_destination(assembly_tree):
-    dest = str(assembly_tree / "site" / "alpha")
-    replace_subtree(dest, str(assembly_tree / "source" / "nope" / "_build"))
-    assert os.path.isdir(dest)
-    assert os.listdir(dest) == []
-
-
-def test_update_projects_json_keeps_other_members(assembly_tree):
+def test_record_membership_keeps_other_members(assembly_tree):
     path = str(assembly_tree / "projects.json")
-    data = update_projects_json(path, "alpha", "owner/alpha", "v1.0.0", "1.0.0")
+    data = record_membership(path, ROSTER, "alpha", "owner/alpha", "v1.0.0", "1.0.0")
     assert data["alpha"] == {"repo": "owner/alpha", "ref": "v1.0.0", "version": "1.0.0"}
     assert data["beta"]["version"] == "2.0.0"
     assert _read_json(path)["alpha"]["ref"] == "v1.0.0"
 
 
-def test_update_projects_json_creates_the_file_when_absent(tmp_path):
+def test_record_membership_creates_the_file_when_absent(tmp_path):
     path = str(tmp_path / "projects.json")
-    update_projects_json(path, "alpha", "owner/alpha", "v1", "1")
+    record_membership(path, ROSTER, "alpha", "owner/alpha", "v1", "1")
     assert list(_read_json(path)) == ["alpha"]
 
 
-def test_update_projects_json_refuses_to_rewrite_a_corrupt_file(tmp_path):
+def test_record_membership_refuses_to_rewrite_a_corrupt_file(tmp_path):
     path = str(tmp_path / "projects.json")
     _write(path, "{not json")
     with pytest.raises(RuntimeError, match="not valid JSON"):
-        update_projects_json(path, "alpha", "owner/alpha", "v1", "1")
+        record_membership(path, ROSTER, "alpha", "owner/alpha", "v1", "1")
+
+
+def test_record_membership_refuses_an_undeclared_slug(tmp_path):
+    """A deploy cannot add a project; membership only comes from the roster."""
+    path = str(tmp_path / "projects.json")
+    with pytest.raises(RuntimeError, match="not declared in roster.toml"):
+        record_membership(path, ROSTER, "gamma", "owner/gamma", "v1", "1")
+
+
+def test_record_membership_refuses_a_slug_claimed_by_another_repo(tmp_path):
+    path = str(tmp_path / "projects.json")
+    with pytest.raises(RuntimeError, match="one slug has one owning repository|declares 'alpha'"):
+        record_membership(path, ROSTER, "alpha", "someone/else", "v1", "1")
 
 
 def test_apply_project_files_full_scope(assembly_tree):
@@ -254,8 +273,23 @@ def test_apply_project_files_full_scope(assembly_tree):
     assert not (site / "_headers").exists()
     assert not (site / "index.html.gz").exists()
     assert _read_json(str(assembly_tree / "manifests" / "alpha.json"))["version"] == "1.0.0"
-    # The full build carries its own posts, so the stale overlay must go.
-    assert not (assembly_tree / "manifests" / "alpha-posts.json").exists()
+
+
+def test_apply_project_files_records_what_the_release_published(assembly_tree):
+    apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+                        "alpha", "full")
+    owners = load_files_manifest(str(assembly_tree / "manifests" / "alpha-files.json"))
+    assert set(owners["release"]) == {
+        "index.html", "guide/index.html", "posts/index.html",
+        "posts/hello/index.html",
+    }
+
+
+def test_apply_project_files_keeps_the_posts_overlay(assembly_tree):
+    """The overlay carries posts published between releases; it is merged now."""
+    apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+                        "alpha", "full")
+    assert (assembly_tree / "manifests" / "alpha-posts.json").exists()
 
 
 def test_apply_project_files_posts_scope_touches_only_posts(assembly_tree):

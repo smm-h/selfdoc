@@ -21,12 +21,41 @@ from selfdoc_core import effects
 DEPLOY_ARTIFACT_NAMES = ("_headers", "_redirects", "_worker.js")
 DEPLOY_ARTIFACT_SUFFIXES = (".gz", ".br")
 
+# Who may have written a path inside a project's site subtree.  Every
+# publisher records the set of paths it produced, and prunes only paths it
+# produced before and does not produce now -- see :func:`prune_plan`.
+#
+#   release  the full-scope integrate the deploy workflow runs from a tag
+#   docs     `selfblog docs publish`, a documentation update with no release
+#   posts    `selfblog post publish` and the posts-scope integrate
+#
+# The point of separating them is that a full build no longer knows how to
+# destroy content it never produced: an out-of-band post or documentation
+# page belongs to another owner, so a release that does not carry it leaves
+# it alone.
+PUBLISH_OWNERS = ("release", "docs", "posts")
+
+# Sidecars under manifests/ that are not project manifests and must not be
+# loaded as one.
+MANIFEST_SIDECAR_SUFFIXES = ("-revisions.json", "-files.json")
+
+# Directories under site/ that belong to the assembly itself rather than to
+# any project, so membership reconciliation never mistakes one for a slug.
+SITE_RESERVED_DIRS = ("blog", "projects", "pagefind")
+
 # Scopes a dispatch may carry. "" from a client payload that omits the key
 # means a full project build; the workflow always passes the flag.
 INTEGRATE_SCOPES = ("full", "posts", "shared-only")
 
 # The one path in the assembly repo that holds the generated deploy workflow.
 WORKFLOW_PATH = ".github/workflows/deploy.yml"
+
+# The hand-edited file in the assembly repo that declares which projects the
+# unified site serves.
+ROSTER_PATH = "roster.toml"
+
+# The derived record of what each declared project last deployed.
+PROJECTS_PATH = "projects.json"
 
 _BUILD_TIMEOUT = 1800
 _GIT_TIMEOUT = 300
@@ -83,6 +112,139 @@ class ToolchainPins:
             "selfdoc": self.selfdoc,
             "pagefind": self.pagefind,
         }
+
+
+# -- the declared roster -----------------------------------------------------
+
+
+#: Every key a ``[[project]]`` block may carry, all of them required.  An
+#: unknown key is a hard error rather than a silently ignored line: a typo in
+#: a membership declaration would otherwise retire a project.
+ROSTER_FIELDS = ("slug", "repo")
+
+ROSTER_HEADER = """\
+# The assembly's membership: every project the unified site serves.
+#
+# This file is the declaration; the deploy reconciles the site to it and can
+# never add to it. A project with no [[project]] block here has its subtree,
+# its manifests, its membership record and its search-index entries removed at
+# the next deploy -- which is what `selfblog assembly retire <slug>` does in
+# one operation.
+#
+# projects.json next to this file is derived state, rewritten by every deploy.
+# Edit this file, never that one.
+"""
+
+
+@dataclasses.dataclass(frozen=True)
+class RosterEntry:
+    """One declared member of the assembly.
+
+    ``repo`` is part of the declaration rather than derived from a dispatch
+    so that a slug has one owning repository on record: a dispatch arriving
+    for a declared slug from a different repository is a hard error instead
+    of a silent takeover of that slug's section.
+    """
+
+    slug: str
+    repo: str
+
+
+def render_roster(entries) -> str:
+    """Return the TOML text for *entries* (an iterable of RosterEntry)."""
+    blocks = []
+    for entry in sorted(entries, key=lambda e: e.slug):
+        blocks.append(
+            "[[project]]\n"
+            f"slug = {json.dumps(entry.slug)}\n"
+            f"repo = {json.dumps(entry.repo)}\n"
+        )
+    return ROSTER_HEADER + "\n" + "\n".join(blocks)
+
+
+def parse_roster(text: str, *, source: str = ROSTER_PATH) -> dict[str, RosterEntry]:
+    """Return slug -> :class:`RosterEntry` for the roster document *text*.
+
+    Validation is strict in every direction: an unknown top-level table, an
+    unknown key on a block, a missing or empty required key, a duplicate
+    slug, and a slug that collides with one of the assembly's own directories
+    are each a hard error naming the offending declaration.  A roster with no
+    ``[[project]]`` block at all is legal and means an empty assembly.
+    """
+    import tomllib
+
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise RuntimeError(f"{source} is not valid TOML: {exc}") from exc
+
+    unknown_tables = sorted(set(data) - {"project"})
+    if unknown_tables:
+        raise RuntimeError(
+            f"{source} declares unknown top-level key(s) "
+            f"{', '.join(repr(k) for k in unknown_tables)}. The roster holds "
+            f"nothing but [[project]] blocks."
+        )
+
+    raw = data.get("project", [])
+    if not isinstance(raw, list):
+        raise RuntimeError(
+            f"{source}: 'project' must be a list of [[project]] blocks."
+        )
+
+    entries: dict[str, RosterEntry] = {}
+    for index, item in enumerate(raw, start=1):
+        where = f"{source}: [[project]] #{index}"
+        if not isinstance(item, dict):
+            raise RuntimeError(f"{where} is not a table.")
+        unknown = sorted(set(item) - set(ROSTER_FIELDS))
+        if unknown:
+            raise RuntimeError(
+                f"{where} declares unknown key(s) "
+                f"{', '.join(repr(k) for k in unknown)}. A [[project]] block "
+                f"carries exactly {', '.join(ROSTER_FIELDS)}."
+            )
+        missing = [f for f in ROSTER_FIELDS if not item.get(f)]
+        if missing:
+            raise RuntimeError(
+                f"{where} is missing {', '.join(missing)}. Every declared "
+                f"project names {', '.join(ROSTER_FIELDS)}."
+            )
+        slug = str(item["slug"])
+        if slug in SITE_RESERVED_DIRS:
+            raise RuntimeError(
+                f"{where} claims the slug {slug!r}, which is one of the "
+                f"assembly's own directories "
+                f"({', '.join(SITE_RESERVED_DIRS)}). Give the project a "
+                f"different slug."
+            )
+        if slug in entries:
+            raise RuntimeError(
+                f"{where} repeats the slug {slug!r}, which an earlier block "
+                f"already declares."
+            )
+        entries[slug] = RosterEntry(slug=slug, repo=str(item["repo"]))
+    return entries
+
+
+def _missing_roster_error(path: str) -> RuntimeError:
+    example = render_roster([RosterEntry("example", "owner/example")])
+    return RuntimeError(
+        f"{path} does not exist, so the assembly declares no membership. "
+        f"Membership is a declared list the deploy reconciles to, never "
+        f"something a deploy accumulates, so there is no empty default. "
+        f"Create the file in the assembly repository with one block per "
+        f"project the site serves:\n\n{example}"
+    )
+
+
+def load_roster(assembly_dir: str = ".") -> dict[str, RosterEntry]:
+    """Return the roster declared in *assembly_dir*, or raise if absent."""
+    path = os.path.join(assembly_dir, ROSTER_PATH)
+    if not os.path.isfile(path):
+        raise _missing_roster_error(path)
+    with open(path, "r", encoding="utf-8") as f:
+        return parse_roster(f.read(), source=path)
 
 
 def fetch_pypi_metadata(package: str) -> dict:
@@ -358,7 +520,8 @@ def assembly_init(
             portfolio_canonical, pins,
         ),
         ".gitignore": _gitignore_content(),
-        "projects.json": json.dumps({}, indent=2) + "\n",
+        ROSTER_PATH: render_roster([]),
+        PROJECTS_PATH: json.dumps({}, indent=2) + "\n",
     }
 
 
@@ -536,13 +699,46 @@ def generate_worker_js(canonical_base: str, legacy_blog_host: str) -> str:
     )
 
 
+def merge_post_lists(base_posts: list, overlay_posts: list) -> list:
+    """Return the union of a build's post list and the overlay's, by slug.
+
+    The build wins on a slug both carry -- it just re-rendered that post from
+    the tag it was released at.  What the overlay contributes is the posts
+    the build does not carry at all: the ones published between releases.
+
+    This runs when a full build lands, not when the assembly is read: the
+    overlay stays the one authority on a project's posts, and stays a
+    complete list, so republishing after deleting a post still removes it
+    from the site.
+    """
+    merged = list(base_posts or [])
+    known = {
+        str(post.get("slug") or "")
+        for post in merged
+        if isinstance(post, dict)
+    }
+    for post in overlay_posts or []:
+        if not isinstance(post, dict):
+            continue
+        slug = str(post.get("slug") or "")
+        if slug and slug in known:
+            continue
+        merged.append(post)
+        known.add(slug)
+    return merged
+
+
 def load_assembly_manifests(manifests_dir: str) -> list[dict]:
     """Return the assembly's per-project manifests with post overlays applied.
 
     ``*-posts.json`` files are overlays written by ``post publish``: they
-    carry a fresher post list than the base manifest of the same slug and
-    replace its ``posts`` array.  ``*-revisions.json`` sidecars are not
-    manifests and are skipped.
+    carry a complete post list for their slug and replace the base
+    manifest's ``posts`` array, which is how deleting a post and
+    republishing removes it from the site.  A full build folds its own posts
+    into the overlay when it lands (see :func:`merge_post_lists`), so
+    replacing here never hides a release's posts behind an older overlay.
+    ``*-revisions.json`` and ``*-files.json`` sidecars are not manifests and
+    are skipped.
     """
     from selfdoc_core.manifest import manifest_compat
 
@@ -552,7 +748,7 @@ def load_assembly_manifests(manifests_dir: str) -> list[dict]:
         for fname in sorted(os.listdir(manifests_dir)):
             if not fname.endswith(".json"):
                 continue
-            if fname.endswith("-revisions.json"):
+            if fname.endswith(MANIFEST_SIDECAR_SUFFIXES):
                 continue
             fpath = os.path.join(manifests_dir, fname)
             with open(fpath, "r", encoding="utf-8") as f:
@@ -770,27 +966,173 @@ def prune_deploy_artifacts(root: str) -> list[str]:
     return sorted(removed)
 
 
-def replace_subtree(dest: str, src: str) -> None:
-    """Replace the *dest* directory with a copy of *src*.
+def is_deploy_artifact(name: str) -> bool:
+    """Return whether a file *name* is a per-project deploy artifact."""
+    return name in DEPLOY_ARTIFACT_NAMES or name.endswith(DEPLOY_ARTIFACT_SUFFIXES)
 
-    The replacement is total: a page deleted upstream disappears here,
-    which an overlay copy would not achieve.  A missing *src* leaves an
-    empty *dest* -- the build produced nothing for this subtree.
+
+def build_output_paths(root: str, *, skip_artifacts: bool = True) -> set[str]:
+    """Return every file under *root* as a ``/``-joined relative path.
+
+    This is the "what the build produces" set the prune is driven by, so it
+    excludes the per-project deploy artifacts by default: those are filtered
+    out on the way in and must not be recorded as though the assembly served
+    them.
     """
-    if os.path.isdir(dest):
-        effects.rmtree(dest)
+    found: set[str] = set()
+    if not os.path.isdir(root):
+        return found
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            if skip_artifacts and is_deploy_artifact(name):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, name), root)
+            found.add(rel.replace(os.sep, "/"))
+    return found
+
+
+def prune_empty_dirs(root: str) -> list[str]:
+    """Remove empty directories under *root*; return the ones removed.
+
+    *root* itself always survives, even when the subtree ends up empty: the
+    project still has a section, it just has no files in it.
+    """
+    removed = []
+    if not os.path.isdir(root):
+        return removed
+    for dirpath, _dirnames, _filenames in sorted(os.walk(root, topdown=False)):
+        if dirpath == root:
+            continue
+        if not os.listdir(dirpath):
+            effects.rmdir(dirpath)
+            removed.append(dirpath)
+    return removed
+
+
+def files_manifest_path(manifests_dir: str, slug: str) -> str:
+    """Return the path of *slug*'s published-file record."""
+    return os.path.join(manifests_dir, f"{slug}-files.json")
+
+
+def load_files_manifest(path: str) -> dict[str, list[str]]:
+    """Return owner -> published paths from the record at *path*.
+
+    An absent record is an empty mapping, which is not a fallback but the
+    real initial state: nothing has published anything for this project yet,
+    so there is nothing anybody is entitled to remove.  A malformed record
+    is a hard error -- rewriting it would hand every path back to whichever
+    publisher ran next.
+    """
+    if not os.path.isfile(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        raw = f.read()
+    if not raw.strip():
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"{path} must contain a JSON object")
+    owners = data.get("owners") or {}
+    if not isinstance(owners, dict):
+        raise RuntimeError(f"{path}: 'owners' must be a JSON object")
+    unknown = sorted(set(owners) - set(PUBLISH_OWNERS))
+    if unknown:
+        raise RuntimeError(
+            f"{path} records paths under unknown publisher(s) "
+            f"{', '.join(repr(o) for o in unknown)}; known publishers are "
+            f"{', '.join(PUBLISH_OWNERS)}."
+        )
+    result = {}
+    for owner, paths in owners.items():
+        if not isinstance(paths, list) or any(not isinstance(p, str) for p in paths):
+            raise RuntimeError(
+                f"{path}: the paths recorded for {owner!r} must be a list of "
+                f"strings."
+            )
+        result[owner] = sorted(paths)
+    return result
+
+
+def render_files_manifest(slug: str, owners: dict[str, list[str]]) -> str:
+    """Return the JSON text of *slug*'s published-file record."""
+    return json.dumps(
+        {
+            "schema_version": 1,
+            "slug": slug,
+            "owners": {
+                owner: sorted(owners.get(owner, []))
+                for owner in PUBLISH_OWNERS
+                if owners.get(owner)
+            },
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
+def prune_plan(
+    owners: dict[str, list[str]],
+    owner: str,
+    produced,
+) -> tuple[list[str], dict[str, list[str]]]:
+    """Return the paths *owner* must remove, and the updated owners map.
+
+    This is the whole of "prune instead of wipe".  A publisher removes a
+    path only when it published that path before and does not publish it
+    now -- so a page a build dropped disappears, while content the build
+    never produced is untouched, because nothing entitles this publisher to
+    it.  A path another publisher currently claims is never removed either:
+    a documentation page or a post published between releases outlives a
+    full build that happens not to carry it.
+    """
+    if owner not in PUBLISH_OWNERS:
+        raise ValueError(
+            f"unknown publisher {owner!r}; expected one of "
+            f"{', '.join(PUBLISH_OWNERS)}"
+        )
+    produced = set(produced)
+    previous = set(owners.get(owner, ()))
+    claimed_elsewhere: set[str] = set()
+    for other, paths in owners.items():
+        if other != owner:
+            claimed_elsewhere |= set(paths)
+    removed = sorted((previous - produced) - claimed_elsewhere)
+    updated = {o: sorted(p) for o, p in owners.items()}
+    updated[owner] = sorted(produced)
+    return removed, updated
+
+
+def graft_subtree(
+    dest: str,
+    src: str,
+    produced,
+    removed,
+) -> None:
+    """Copy *produced* out of *src* into *dest* and delete *removed* from it.
+
+    Both path sets are ``/``-joined relative paths, so the caller can graft a
+    sub-portion of a build (the posts subtree, say) with the same relative
+    addressing the record uses.
+    """
     effects.makedirs(dest, exist_ok=True)
-    if os.path.isdir(src):
-        effects.copytree(src, dest, dirs_exist_ok=True)
+    for rel in sorted(produced):
+        target = os.path.join(dest, *rel.split("/"))
+        effects.makedirs(os.path.dirname(target) or dest, exist_ok=True)
+        effects.copy_file(os.path.join(src, *rel.split("/")), target)
+    for rel in sorted(removed):
+        target = os.path.join(dest, *rel.split("/"))
+        if os.path.isfile(target):
+            effects.remove(target)
 
 
-def update_projects_json(path: str, slug: str, repo: str, ref: str,
-                         version: str) -> dict:
-    """Record *slug*'s membership in the assembly and return the new mapping.
+def load_projects_json(path: str) -> dict:
+    """Return the derived membership record at *path*.
 
-    A malformed ``projects.json`` is a hard error rather than a fresh
-    empty mapping: rewriting it would silently drop every other project's
-    membership record.
+    A malformed file is a hard error rather than a fresh empty mapping:
+    rewriting it would silently drop every other project's record.
     """
     data: dict = {}
     if os.path.isfile(path):
@@ -803,9 +1145,144 @@ def update_projects_json(path: str, slug: str, repo: str, ref: str,
                 raise RuntimeError(f"{path} is not valid JSON: {exc}") from exc
         if not isinstance(data, dict):
             raise RuntimeError(f"{path} must contain a JSON object")
-    data[slug] = {"repo": repo, "ref": ref, "version": version}
-    effects.write_text(path, json.dumps(data, indent=2, sort_keys=True) + "\n")
     return data
+
+
+def render_projects_json(data: dict) -> str:
+    """Return the JSON text of a derived membership record."""
+    return json.dumps(data, indent=2, sort_keys=True) + "\n"
+
+
+def record_membership(path: str, roster: dict[str, RosterEntry], slug: str,
+                      repo: str, ref: str, version: str) -> dict:
+    """Record what *slug* just deployed and return the new mapping.
+
+    ``projects.json`` is derived state now: it records what each declared
+    project last deployed, and a deploy can only write a record for a slug
+    the roster declares.  Membership therefore cannot grow as a side effect
+    of a dispatch -- an undeclared slug is refused, naming the file that
+    would have to declare it.
+    """
+    entry = roster.get(slug)
+    if entry is None:
+        declared = ", ".join(sorted(roster)) or "(none)"
+        raise RuntimeError(
+            f"{slug!r} is not declared in {ROSTER_PATH}, so the assembly will "
+            f"not publish it. Membership is declared, never accumulated by a "
+            f"deploy. Add a [[project]] block naming slug = {slug!r} and its "
+            f"repo. Declared projects: {declared}."
+        )
+    if repo and entry.repo != repo:
+        raise RuntimeError(
+            f"{ROSTER_PATH} declares {slug!r} as {entry.repo}, but this "
+            f"deploy came from {repo}. One slug has one owning repository; "
+            f"fix the declaration or dispatch under the right slug."
+        )
+    data = load_projects_json(path)
+    data[slug] = {"repo": entry.repo, "ref": ref, "version": version}
+    effects.write_text(path, render_projects_json(data))
+    return data
+
+
+def manifest_files_for(manifests_dir: str, slug: str) -> list[str]:
+    """Return every file under *manifests_dir* that belongs to *slug*.
+
+    "Belongs" is the base manifest plus every kind sidecar -- the posts
+    overlay, the revisions sidecar, the published-file record, and anything
+    added later, since the rule is the ``<slug>-`` prefix rather than a
+    closed list of kinds.
+    """
+    if not os.path.isdir(manifests_dir):
+        return []
+    found = []
+    for name in sorted(os.listdir(manifests_dir)):
+        if not name.endswith(".json"):
+            continue
+        stem = name[: -len(".json")]
+        if stem == slug or stem.startswith(f"{slug}-"):
+            found.append(os.path.join(manifests_dir, name))
+    return found
+
+
+def _manifest_owner(stem: str, declared) -> str | None:
+    """Return the declared slug a manifest file's *stem* belongs to."""
+    if stem in declared:
+        return stem
+    head, sep, _kind = stem.rpartition("-")
+    if sep and head in declared:
+        return head
+    return None
+
+
+def reconcile_membership(assembly_dir: str, roster: dict[str, RosterEntry]) -> dict:
+    """Remove every trace of a project the roster no longer declares.
+
+    A project drops out of the assembly by leaving the roster, and this is
+    what "leaving" costs it: its site subtree, every one of its manifest
+    kinds, its derived membership record, and -- because the search index is
+    rebuilt from scratch whenever anything went -- its entries in the index.
+
+    Returns a summary naming the retired slugs and every path removed.
+    """
+    site_dir = os.path.join(assembly_dir, "site")
+    manifests_dir = os.path.join(assembly_dir, "manifests")
+    projects_json = os.path.join(assembly_dir, PROJECTS_PATH)
+    declared = set(roster)
+
+    retired: set[str] = set()
+    removed: list[str] = []
+
+    if os.path.isdir(site_dir):
+        for name in sorted(os.listdir(site_dir)):
+            path = os.path.join(site_dir, name)
+            if not os.path.isdir(path):
+                continue
+            if name in declared or name in SITE_RESERVED_DIRS:
+                continue
+            retired.add(name)
+
+    membership = load_projects_json(projects_json)
+    retired |= {slug for slug in membership if slug not in declared}
+
+    for slug in sorted(retired):
+        subtree = os.path.join(site_dir, slug)
+        if os.path.isdir(subtree):
+            effects.rmtree(subtree)
+            removed.append(subtree)
+        for path in manifest_files_for(manifests_dir, slug):
+            effects.remove(path)
+            removed.append(path)
+
+    # A manifest whose stem matches no declared project at all is stale even
+    # when no subtree or record named it -- a hand-dropped file, or a kind
+    # sidecar left by a slug that was renamed.
+    if os.path.isdir(manifests_dir):
+        for name in sorted(os.listdir(manifests_dir)):
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(manifests_dir, name)
+            if path in removed:
+                continue
+            if _manifest_owner(name[: -len(".json")], declared) is None:
+                effects.remove(path)
+                removed.append(path)
+
+    dropped = [slug for slug in membership if slug not in declared]
+    if dropped:
+        for slug in dropped:
+            del membership[slug]
+        effects.write_text(projects_json, render_projects_json(membership))
+
+    # pagefind keys its fragments by content hash, so a page that is gone
+    # from the tree can still have a fragment on disk. Rebuilding the index
+    # from an empty directory is the only way to be sure a retired project
+    # stops answering searches.
+    index_dir = os.path.join(site_dir, "pagefind")
+    if removed and os.path.isdir(index_dir):
+        effects.rmtree(index_dir)
+        removed.append(index_dir)
+
+    return {"retired": sorted(retired), "removed": removed}
 
 
 def _settled(result):
@@ -846,42 +1323,91 @@ def build_source_project(source_dir: str, scope: str) -> list[str]:
 
 def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
                         scope: str) -> list[str]:
-    """Graft a built project into the assembly tree; return changed paths."""
+    """Graft a built project into the assembly tree; return changed paths.
+
+    The graft prunes rather than wipes: what the build produces is what the
+    build owns, and only paths this publisher produced *before* and does not
+    produce now are removed.  Everything else in the subtree -- a post or a
+    documentation page published between releases -- is somebody else's and
+    survives.  The published-file record at ``manifests/<slug>-files.json``
+    is what makes that distinction possible.
+    """
+    build_root = os.path.join(source_dir, "docs", "_build")
     site_slug_dir = os.path.join(assembly_dir, "site", slug)
     manifests_dir = os.path.join(assembly_dir, "manifests")
     effects.makedirs(manifests_dir, exist_ok=True)
     touched: list[str] = []
 
     if scope == "posts":
-        # Posts-only: only the posts subtree is authoritative here; the
-        # rest of the project's pages stay as the last full build left them.
-        posts_dest = os.path.join(site_slug_dir, "posts")
-        replace_subtree(posts_dest, os.path.join(source_dir, "docs", "_build", "posts"))
-        prune_deploy_artifacts(posts_dest)
-        touched.append(posts_dest)
+        # Posts-only: the posts subtree is this publisher's whole world, so
+        # its produced set is addressed under the same "posts/" prefix the
+        # record uses for the project as a whole.
+        owner = "posts"
+        produced = {
+            f"posts/{rel}"
+            for rel in build_output_paths(os.path.join(build_root, "posts"))
+        }
         src_manifest = os.path.join(source_dir, ".selfdoc", "post-manifest.json")
         dest_manifest = os.path.join(manifests_dir, f"{slug}-posts.json")
-        if os.path.isfile(src_manifest):
-            effects.copy_file(src_manifest, dest_manifest)
-            touched.append(dest_manifest)
-        return touched
+    else:
+        owner = "release"
+        produced = build_output_paths(build_root)
+        src_manifest = os.path.join(source_dir, ".selfdoc", "manifest.json")
+        dest_manifest = os.path.join(manifests_dir, f"{slug}.json")
 
-    # Full build: the project subtree is replaced wholesale.
-    replace_subtree(site_slug_dir, os.path.join(source_dir, "docs", "_build"))
+    record_path = files_manifest_path(manifests_dir, slug)
+    owners = load_files_manifest(record_path)
+    removed, owners = prune_plan(owners, owner, produced)
+
+    graft_subtree(site_slug_dir, build_root, produced, removed)
+    # An artifact already in the tree from an older deploy is removed on
+    # sight: the assembly serves one set of headers, redirects and worker for
+    # the whole site, and a project's own copies fight them wherever they sit.
     prune_deploy_artifacts(site_slug_dir)
+    prune_empty_dirs(site_slug_dir)
     touched.append(site_slug_dir)
-    src_manifest = os.path.join(source_dir, ".selfdoc", "manifest.json")
-    dest_manifest = os.path.join(manifests_dir, f"{slug}.json")
+
+    effects.write_text(record_path, render_files_manifest(slug, owners))
+    touched.append(record_path)
+
     if os.path.isfile(src_manifest):
         effects.copy_file(src_manifest, dest_manifest)
         touched.append(dest_manifest)
-    # The full build carries its own posts, so a stale posts overlay would
-    # re-apply an older post list on top of it.
-    overlay = os.path.join(manifests_dir, f"{slug}-posts.json")
-    if os.path.isfile(overlay):
-        effects.remove(overlay)
-        touched.append(overlay)
+
+    if owner == "release":
+        overlay = fold_posts_into_overlay(manifests_dir, slug, src_manifest)
+        if overlay:
+            touched.append(overlay)
     return touched
+
+
+def fold_posts_into_overlay(manifests_dir: str, slug: str,
+                            build_manifest: str) -> str:
+    """Add a full build's posts to *slug*'s post overlay; return its path.
+
+    The overlay is the assembly's one authority on a project's posts, so a
+    full build cannot simply ignore it -- an overlay written before the
+    release would keep the release's own posts off the site.  It used to
+    delete the overlay outright for exactly that reason, which threw away
+    every post published between releases along with the staleness.
+
+    Folding is the version that keeps both: the build's posts go in, the
+    overlay's posts that the build does not carry stay, and the file remains
+    the complete list ``post publish`` overwrites wholesale.  Returns "" when
+    there is no overlay to fold into.
+    """
+    overlay_path = os.path.join(manifests_dir, f"{slug}-posts.json")
+    if not os.path.isfile(overlay_path) or not os.path.isfile(build_manifest):
+        return ""
+    with open(overlay_path, "r", encoding="utf-8") as f:
+        overlay = json.load(f)
+    with open(build_manifest, "r", encoding="utf-8") as f:
+        built = json.load(f)
+    overlay["posts"] = merge_post_lists(
+        built.get("posts") or [], overlay.get("posts") or [],
+    )
+    effects.write_text(overlay_path, json.dumps(overlay, indent=2) + "\n")
+    return overlay_path
 
 
 def index_site(site_dir: str) -> None:
@@ -939,7 +1465,7 @@ def integrate_project(
     source_dir = source_dir or os.path.join(assembly_dir, "source", slug)
     site_dir = os.path.join(assembly_dir, "site")
     manifests_dir = os.path.join(assembly_dir, "manifests")
-    projects_json = os.path.join(assembly_dir, "projects.json")
+    projects_json = os.path.join(assembly_dir, PROJECTS_PATH)
     portfolio_file = os.path.join(assembly_dir, "portfolio", "index.html")
 
     summary = {
@@ -948,6 +1474,7 @@ def integrate_project(
         "version": version,
         "touched": [],
         "shared": [],
+        "retired": [],
         "attempt": 0,
         "committed": False,
     }
@@ -969,11 +1496,28 @@ def integrate_project(
                   resource=f"git-reset:{assembly_dir}")
 
         effects.makedirs(manifests_dir, exist_ok=True)
+
+        # The roster is read after the re-sync, so a retirement another
+        # deploy landed a minute ago is honoured by this one too. Every
+        # scope reconciles: membership is declared, and the deploy's job is
+        # to make the tree match the declaration whatever else it is doing.
+        roster = load_roster(assembly_dir)
+        if scope != "shared-only" and slug not in roster:
+            raise RuntimeError(
+                f"{slug!r} is not declared in {ROSTER_PATH} on the assembly "
+                f"repository, so this dispatch has nothing to publish into. "
+                f"Add a [[project]] block naming slug = {slug!r} and its "
+                f"repo, then dispatch again."
+            )
+        summary["retired"] = reconcile_membership(assembly_dir, roster)["retired"]
+
         if scope != "shared-only":
             summary["touched"] = apply_project_files(
                 assembly_dir, source_dir, slug, scope,
             )
-            update_projects_json(projects_json, slug, source_repo, ref, version)
+            record_membership(
+                projects_json, roster, slug, source_repo, ref, version,
+            )
 
         summary["shared"] = generate_shared_files(
             site_dir, manifests_dir, canonical_base,
@@ -1340,3 +1884,237 @@ def push_files_to_repo(
         uploaded=tuple(uploaded),
         deleted=tuple(deleted),
     )
+
+
+# -- reading the assembly from the outside -----------------------------------
+
+
+def list_remote_paths(repo: str, branch: str = "main") -> list[str]:
+    """Return every file path on *repo*'s *branch*, recursively.
+
+    This is how a publisher that never clones the assembly learns what is
+    already there: which of a project's pages exist remotely, so the ones the
+    local build no longer produces can be deleted in the same commit that
+    uploads the ones it does.
+    """
+    head_sha = _gh_api(
+        [f"/repos/{repo}/git/ref/heads/{branch}", "--jq", ".object.sha"],
+        step="get HEAD ref",
+        read=True,
+    )
+    tree_sha = _gh_api(
+        [f"/repos/{repo}/git/commits/{head_sha}", "--jq", ".tree.sha"],
+        step="get tree SHA",
+        read=True,
+    )
+    return sorted(_remote_blob_shas(repo, tree_sha))
+
+
+def fetch_remote_text(repo: str, path: str, *, missing_ok: bool = False) -> str:
+    """Return the text of *path* on *repo*'s default branch.
+
+    A missing file raises unless *missing_ok*, in which case it is the empty
+    string -- used only where absence is a real state (no membership record
+    yet), never to paper over a missing declaration.
+    """
+    result = effects.run(
+        ["gh", "api", f"/repos/{repo}/contents/{path}", "--jq", ".content"],
+        check=False, capture_output=True, text=True, timeout=30, read=True,
+    )
+    if result.returncode != 0:
+        if missing_ok:
+            return ""
+        raise RuntimeError(
+            f"could not read {path} from {repo}: {(result.stderr or '').strip()}"
+        )
+    encoded = "".join((result.stdout or "").split())
+    if not encoded:
+        return ""
+    try:
+        return base64.b64decode(encoded).decode()
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise RuntimeError(f"could not decode {path} from {repo}: {exc}") from exc
+
+
+def load_remote_roster(repo: str) -> dict[str, RosterEntry]:
+    """Return the roster declared on the assembly repository *repo*."""
+    text = fetch_remote_text(repo, ROSTER_PATH, missing_ok=True)
+    if not text.strip():
+        raise _missing_roster_error(f"{repo}:{ROSTER_PATH}")
+    return parse_roster(text, source=f"{repo}:{ROSTER_PATH}")
+
+
+def project_paths(paths, slug: str) -> list[str]:
+    """Return every assembly path that belongs to *slug*.
+
+    That is its whole site subtree plus every one of its manifest kinds --
+    the base manifest, the posts overlay, the revisions sidecar and the
+    published-file record.
+    """
+    site_prefix = f"site/{slug}/"
+    manifest_prefix = f"manifests/{slug}-"
+    base_manifest = f"manifests/{slug}.json"
+    owned = [
+        path for path in paths
+        if path.startswith(site_prefix)
+        or path == base_manifest
+        or (path.startswith(manifest_prefix) and path.endswith(".json"))
+    ]
+    return sorted(set(owned))
+
+
+def retire_project(repo: str, slug: str, *, branch: str = "main") -> dict:
+    """Remove *slug* from the assembly's roster and tree in one commit.
+
+    Retirement is a roster edit plus the reconciliation that edit implies,
+    done together so the published site never lags the declaration: the
+    ``[[project]]`` block goes, the derived membership record loses its
+    entry, and every path the project owns -- its whole section and all its
+    manifest kinds -- is deleted in the same commit.  What remains is the
+    shared elements, which the caller regenerates by dispatching a
+    shared-only rebuild; that pass also rebuilds the search index, so the
+    retired project stops answering searches.
+
+    Returns a summary: the paths deleted, the roster that remains, and the
+    :class:`PushResult`.
+    """
+    roster = load_remote_roster(repo)
+    if slug not in roster:
+        declared = ", ".join(sorted(roster)) or "(none)"
+        raise RuntimeError(
+            f"{slug!r} is not declared in {ROSTER_PATH} on {repo}, so there "
+            f"is nothing to retire. Declared projects: {declared}."
+        )
+
+    remaining = [entry for name, entry in roster.items() if name != slug]
+    deleted = project_paths(list_remote_paths(repo, branch), slug)
+
+    files: dict[str, str | bytes] = {ROSTER_PATH: render_roster(remaining)}
+
+    raw_membership = fetch_remote_text(repo, PROJECTS_PATH, missing_ok=True)
+    if raw_membership.strip():
+        try:
+            membership = json.loads(raw_membership)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"{repo}:{PROJECTS_PATH} is not valid JSON: {exc}") from exc
+        if not isinstance(membership, dict):
+            raise RuntimeError(f"{repo}:{PROJECTS_PATH} must contain a JSON object")
+        if slug in membership:
+            del membership[slug]
+            files[PROJECTS_PATH] = render_projects_json(membership)
+
+    push = push_files_to_repo(
+        repo, files, f"assembly: retire {slug}", branch, delete_paths=deleted,
+    )
+    return {
+        "slug": slug,
+        "deleted": deleted,
+        "remaining": sorted(entry.slug for entry in remaining),
+        "push": push,
+    }
+
+
+def collect_site_files(output_dir: str, slug: str) -> dict[str, bytes]:
+    """Return assembly path -> bytes for every file a local build produced.
+
+    Content travels as bytes because a documentation site is not all text:
+    fonts, favicons and screenshots go through the same commit as the HTML,
+    and decoding them as UTF-8 on the way past would destroy them.  The same
+    per-project deploy artifacts the deploy filters out are filtered here --
+    see :func:`build_output_paths`.
+    """
+    files: dict[str, bytes] = {}
+    for rel in sorted(build_output_paths(output_dir)):
+        with open(os.path.join(output_dir, *rel.split("/")), "rb") as f:
+            files[f"site/{slug}/{rel}"] = f.read()
+    return files
+
+
+def publish_project_docs(
+    repo: str,
+    slug: str,
+    output_dir: str,
+    *,
+    version: str,
+    manifest_path: str = "",
+    branch: str = "main",
+) -> dict:
+    """Push a locally built documentation site into the assembly.
+
+    This is the documentation counterpart of publishing a post: a
+    documentation change reaches the live site with no tag and no release,
+    through the same Git Data API commit that a post takes.  What it pushes
+    is the project's subtree, its manifest, its published-file record and its
+    derived membership entry; what it deletes is every page it published
+    before and does not publish now, so a page removed locally disappears
+    remotely.
+
+    It cannot create membership: publishing into a slug the roster does not
+    declare is a hard error naming the block that would have to exist.
+
+    Returns a summary: the paths uploaded and deleted, and the
+    :class:`PushResult`.
+    """
+    roster = load_remote_roster(repo)
+    if slug not in roster:
+        declared = ", ".join(sorted(roster)) or "(none)"
+        raise RuntimeError(
+            f"{slug!r} is not declared in {ROSTER_PATH} on {repo}, so there is "
+            f"no section to publish into. Membership is declared, never "
+            f"created by a publish. Add a [[project]] block naming "
+            f"slug = {slug!r} and its repo. Declared projects: {declared}."
+        )
+
+    produced = build_output_paths(output_dir)
+    files: dict[str, str | bytes] = dict(collect_site_files(output_dir, slug))
+
+    record_path = f"manifests/{slug}-files.json"
+    raw_record = fetch_remote_text(repo, record_path, missing_ok=True)
+    owners: dict[str, list[str]] = {}
+    if raw_record.strip():
+        try:
+            data = json.loads(raw_record)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"{repo}:{record_path} is not valid JSON: {exc}") from exc
+        owners = {
+            owner: sorted(paths)
+            for owner, paths in (data.get("owners") or {}).items()
+        }
+    removed, owners = prune_plan(owners, "docs", produced)
+    files[record_path] = render_files_manifest(slug, owners)
+
+    if manifest_path and os.path.isfile(manifest_path):
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            files[f"manifests/{slug}.json"] = f.read()
+
+    raw_membership = fetch_remote_text(repo, PROJECTS_PATH, missing_ok=True)
+    membership: dict = {}
+    if raw_membership.strip():
+        try:
+            membership = json.loads(raw_membership)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"{repo}:{PROJECTS_PATH} is not valid JSON: {exc}") from exc
+        if not isinstance(membership, dict):
+            raise RuntimeError(f"{repo}:{PROJECTS_PATH} must contain a JSON object")
+    # A documentation publish has no tag, which is the point of it, so it
+    # records the version it built and leaves whatever ref the last release
+    # recorded alone. A project that has never been released therefore has no
+    # ref here, and `assembly rebuild` says so rather than inventing one.
+    previous = membership.get(slug) if isinstance(membership.get(slug), dict) else {}
+    entry = {"repo": roster[slug].repo, "version": version}
+    if previous.get("ref"):
+        entry["ref"] = previous["ref"]
+    membership[slug] = entry
+    files[PROJECTS_PATH] = render_projects_json(membership)
+
+    delete_paths = [f"site/{slug}/{rel}" for rel in removed]
+    push = push_files_to_repo(
+        repo, files, f"docs: {slug} {version}".strip(), branch,
+        delete_paths=delete_paths,
+    )
+    return {
+        "slug": slug,
+        "published": sorted(produced),
+        "deleted": delete_paths,
+        "push": push,
+    }
