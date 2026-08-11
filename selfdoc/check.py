@@ -43,7 +43,14 @@ from selfdoc.staleness import (
 from selfdoc.ownership import is_machine_owned
 
 from selfdoc_core import effects
-from selfdoc_core.lints import check_exit_code, coverage_below_threshold  # noqa: F401  (re-exported: the shared verdict rules)
+# Re-exported: the lint registry owns LintResult (severity is derived from the
+# registered code, never passed in) and the shared check-verdict rules.
+from selfdoc_core.lints import (  # noqa: F401
+    LINT_REGISTRY,
+    LintResult,
+    check_exit_code,
+    coverage_below_threshold,
+)
 
 
 def _machine_owned_keys(all_docs, dir_path, cli_structure, locale_prefix):
@@ -170,7 +177,6 @@ def _validate_example_block(tok, rel_path, command_template, cwd):
                     f" {_EXAMPLE_VALIDATE_TIMEOUT}s:"
                     f" {command_template}"
                 ),
-                severity="error",
             )
         except OSError as e:
             return LintResult(
@@ -181,7 +187,6 @@ def _validate_example_block(tok, rel_path, command_template, cwd):
                     f"example validator could not be run"
                     f" ({command_template}): {e}"
                 ),
-                severity="error",
             )
         if effects.unsettled(proc) or proc.returncode == 0:
             return None
@@ -193,7 +198,6 @@ def _validate_example_block(tok, rel_path, command_template, cwd):
                 f"{tok.lang} example failed validation"
                 f" (exit {proc.returncode}): {_example_output_tail(proc)}"
             ),
-            severity="error",
         )
 
 
@@ -232,17 +236,6 @@ class CoverageStats:
     documented_symbols: list[str] = field(default_factory=list)
     # Symbols that are NOT referenced by any directive
     unreferenced_symbols: list[str] = field(default_factory=list)
-
-
-@dataclass
-class LintResult:
-    """A single lint diagnostic (e.g. SEO warning)."""
-
-    file: str  # relative path within docs/
-    line: int | None
-    code: str  # e.g. "SEO001"
-    message: str
-    severity: str  # "warning", "error", or "info"
 
 
 @dataclass
@@ -498,7 +491,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     "search_engine is 'pagefind' but pagefind is not installed. "
                     "Install with: uv add pagefind"
                 ),
-                severity="error",
             ))
 
     # XREF002: directive path validation -- verify resolved directive
@@ -520,7 +512,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     f"directive path '{path_arg}' resolves but"
                     f" file does not exist on disk"
                 ),
-                severity="error",
             ))
 
     # LANG001: unsupported language detection via StubExtractor
@@ -535,7 +526,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     f"No extractor for language '{entry.language}'"
                     f" (source path: {entry.path})"
                 ),
-                severity="error",
             ))
 
     # CLI001: CLI reference completeness for strictcli projects
@@ -557,7 +547,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     line=None,
                     code="CLI001",
                     message=f"missing CLI page for command '{cmd_name}'",
-                    severity="warning",
                 ))
             else:
                 # Page exists -- check if all flags from schema are documented
@@ -591,7 +580,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                             line=None,
                             code="CLI001",
                             message=f"flag '{flag_name}' not documented",
-                            severity="warning",
                         ))
 
         # CLI002: minimum help text length
@@ -604,7 +592,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     file=page_file,
                     line=None,
                     code="CLI002",
-                    severity="warning",
                     message=(
                         f"{element_kind} '{element_name}' help text too short "
                         f"({len(help_text)} chars, minimum {_MIN_HELP_LEN})"
@@ -706,7 +693,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
             line=None,
             code="STALE001",
             message=stale_msg,
-            severity="error",
         ))
     for rel_path, drift_msg in drift_warnings:
         result.lints.append(LintResult(
@@ -714,7 +700,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
             line=None,
             code="DRIFT001",
             message=drift_msg,
-            severity="error",
         ))
 
     # Post validation (POST001-POST005) -- runs via the post-check hook
@@ -753,7 +738,6 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     line=None,
                     code="VER001",
                     message=f"Could not extract content for version {ver_str}",
-                    severity="error",
                 ))
                 continue
 
@@ -998,7 +982,6 @@ def _check_version_consistency(config, dir_path):
                     f"Config version '{config_version}' does not match"
                     f" detected project version '{detected}'"
                 ),
-                severity="error",
             ))
 
     # VER003: versions array last entry vs config version
@@ -1014,7 +997,6 @@ def _check_version_consistency(config, dir_path):
                     f"Last entry in versions array ('{last_version}') does"
                     f" not match config version ('{config_version}')"
                 ),
-                severity="error",
             ))
 
     return results
@@ -1076,7 +1058,6 @@ def _check_version_match(config, dir_path, version_override=None):
                     f" 'selfdoc gen --version-override {expected}' so the"
                     f" committed file is not one release behind."
                 ),
-                severity="error",
             ))
 
     return results
@@ -1143,7 +1124,6 @@ def _check_manifest_freshness(config, dir_path):
             line=None,
             code="STALE002",
             message="page exists on disk but not in manifest (run 'selfdoc gen' to update)",
-            severity="warning",
         ))
 
     # Manifest pages not on disk
@@ -1153,7 +1133,6 @@ def _check_manifest_freshness(config, dir_path):
             line=None,
             code="STALE002",
             message=f"manifest lists page '{path}' but file not found on disk",
-            severity="warning",
         ))
 
     # Posts on disk but not in manifest
@@ -1163,7 +1142,6 @@ def _check_manifest_freshness(config, dir_path):
             line=None,
             code="STALE002",
             message="post exists on disk but not in manifest (run 'selfdoc gen' to update)",
-            severity="warning",
         ))
 
     # Manifest posts not on disk
@@ -1173,7 +1151,6 @@ def _check_manifest_freshness(config, dir_path):
             line=None,
             code="STALE002",
             message=f"manifest lists post '{path}' but file not found on disk",
-            severity="warning",
         ))
 
     return results
@@ -1263,7 +1240,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                 line=None,
                 code="SEO001",
                 message=f"Multiple H1 headings ({h1_count} found); use a single '# ' heading per page",
-                severity="error",
             ))
         has_frontmatter_title = bool(metadata.get("title"))
         if h1_count == 0 and not has_frontmatter_title:
@@ -1272,7 +1248,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                 line=None,
                 code="SEO013",
                 message="No title source: add a '# Heading' or set 'title:' in frontmatter",
-                severity="error",
             ))
 
         # SEO002 -- Heading level gaps
@@ -1288,7 +1263,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f"Heading level jumps from H{prev_level} to H{level}"
                         f" (skips H{prev_level + 1})"
                     ),
-                    severity="warning",
                 ))
             prev_level = level
 
@@ -1305,7 +1279,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         line=tok.start + offset + fm_offset,
                         code="SEO003",
                         message="Image with empty alt text",
-                        severity="warning",
                     ))
 
         # SEO004 -- Title too long
@@ -1321,7 +1294,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f"Title too long for SEO ({len(combined)} chars):"
                         f" \"{combined}\""
                     ),
-                    severity="warning",
                 ))
         else:
             # Auto-extract title from first H1 heading token
@@ -1337,7 +1309,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                             f"Title too long for SEO ({len(combined)} chars):"
                             f" \"{combined}\""
                         ),
-                        severity="warning",
                     ))
 
         # SEO006 -- Missing description
@@ -1347,7 +1318,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                 line=None,
                 code="SEO006",
                 message="No 'description' in frontmatter",
-                severity="error",
             ))
 
         # SEO009 -- Description too short
@@ -1364,7 +1334,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f"Frontmatter description is {len(fm_description)}"
                         f" chars (max 155)"
                     ),
-                    severity="warning",
                 ))
             effective_desc = str(fm_description)
         else:
@@ -1397,7 +1366,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                     f" {len(effective_desc)} chars"
                     f" (aim for 120-155)"
                 ),
-                severity="warning",
             ))
 
         # SEO007 -- Paragraph length after headings
@@ -1454,7 +1422,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f"First paragraph after '{heading_text}' is"
                         f" {word_count} words (aim for 40-60 for AI citation)"
                     ),
-                    severity="warning",
                 ))
 
         # SEO008 -- Statistics density (count only prose content tokens)
@@ -1492,7 +1459,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f" (recommend at least {expected}"
                         f" for AI citation)"
                     ),
-                    severity="warning",
                 ))
 
         # SEO011 -- Empty heading section (heading followed by same-or-higher
@@ -1512,7 +1478,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                                 f"H{prev_level} heading has no content"
                                 f" before next H{level} heading"
                             ),
-                            severity="warning",
                         ))
                 last_heading_info = (tok.start, level)
             elif not isinstance(tok, (BlankLine, Heading)):
@@ -1543,7 +1508,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                                 f"Meaningless alt text '{alt}';"
                                 f" use a descriptive alternative"
                             ),
-                            severity="warning",
                         ))
 
         # SEO015 -- Generic anchor text (only in text-bearing tokens)
@@ -1563,7 +1527,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                                 f"Generic anchor text '{m.group(1).strip()}';"
                                 f" use descriptive link text"
                             ),
-                            severity="warning",
                         ))
 
         # XREF001 -- Broken internal page links
@@ -1596,7 +1559,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                             line=tok.start + offset + fm_offset,
                             code="XREF001",
                             message=f"link to '{target}' resolves to unknown page",
-                            severity="warning",
                         ))
 
         # DQ001 -- Description restates the symbol/page name
@@ -1642,7 +1604,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         line=None,
                         code="DQ001",
                         message="description restates the symbol name",
-                        severity="warning",
                     ))
 
         # DQ002 -- Description too short
@@ -1656,7 +1617,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                     f"description too short ({len(str(fm_desc_raw))} chars,"
                     f" minimum 20)"
                 ),
-                severity="warning",
             ))
 
         # DQ003 -- Function-referencing pages need substantive descriptions
@@ -1674,7 +1634,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f" ({len(str(fm_desc_raw))} chars, minimum 30"
                         f" for API reference pages)"
                     ),
-                    severity="warning",
                 ))
 
         # EXAMPLE001 -- code block syntax validation
@@ -1707,7 +1666,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         f" \"examples\": {{\"{tok.lang}\": \"<command>"
                         f" {{file}}\"}} to selfdoc.json, or drop the marker"
                     ),
-                    severity="error",
                 ))
 
             # Python code blocks
@@ -1731,7 +1689,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         line=tok.start + lineno,
                         code="EXAMPLE001",
                         message=f"Python syntax error in code block: {e.msg}",
-                        severity="warning",
                     ))
             # JSON code blocks
             elif tok.lang == "json":
@@ -1751,7 +1708,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         line=tok.start + e.lineno,
                         code="EXAMPLE001",
                         message=f"JSON syntax error in code block: {e.msg}",
-                        severity="warning",
                     ))
 
     # SEO012 -- WCAG contrast ratio checks
@@ -1783,7 +1739,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                     line=None,
                     code="PARAM001",
                     message=f"parameter '{param['name']}' not documented",
-                    severity="warning",
                 ))
         # RETURN001 -- return type documentation
         return_type = details["return_type"]
@@ -1797,7 +1752,6 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                 line=None,
                 code="RETURN001",
                 message=f"return type '{return_type}' not documented",
-                severity="warning",
             ))
 
     return results
@@ -1947,7 +1901,6 @@ def _check_pairs(lints, css_vars, pairs, mode_prefix, css_file="theme CSS"):
                     f"{mode_prefix}{name} on {bg_var} "
                     f"(WCAG AA requires {threshold}:1)"
                 ),
-                severity="warning",
             ))
 
 

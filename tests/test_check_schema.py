@@ -9,6 +9,7 @@ import sys
 import pytest
 
 from selfdoc.check import check_docs, check_result_exit_code, serialize_check_result
+from selfdoc_core.lints import LINT_REGISTRY
 
 
 # -- Schema-aware validation helpers (no jsonschema dependency) --
@@ -18,8 +19,8 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _SCHEMA_PATH = os.path.join(_REPO_ROOT, "schemas", "check-output.schema.json")
 
 # Modules that construct LintResult objects. Every lint code reachable from a
-# CheckResult originates in one of these; the consistency test below pins the
-# schema enum to what they actually emit so the enum cannot silently rot.
+# CheckResult originates in one of these; the tests below pin both the schema
+# enum and these construction sites to the registry in selfdoc_core/lints.toml.
 _LINT_SOURCE_FILES = (
     os.path.join(_REPO_ROOT, "selfdoc", "check.py"),
     os.path.join(_REPO_ROOT, "selfblog", "check.py"),
@@ -76,7 +77,7 @@ def _cli_check_output(project_dir):
 
 
 def _source_emitted_lint_codes():
-    """Scan the lint-producing modules for the codes they actually emit."""
+    """Scan the lint-producing modules for the code literals they name."""
     codes = set()
     for path in _LINT_SOURCE_FILES:
         assert os.path.isfile(path), (
@@ -422,27 +423,52 @@ def test_schema_accepts_current_lint_code(code):
     _validate_check_output(data)
 
 
-def test_schema_lint_enum_matches_source_emitted_codes():
-    """The schema enum equals the set of lint codes emitted by the source.
+def test_schema_lint_enum_is_derived_from_the_registry():
+    """The schema enum is exactly the registry, in sorted order.
 
-    This is the structural guard against enum rot: adding a new lint code
-    without extending schemas/check-output.schema.json fails here.
+    The JSON output schema is a DERIVED surface: selfdoc_core/lints.toml is
+    the single source of truth for which codes exist. Registering a code
+    without extending schemas/check-output.schema.json fails here, and so
+    does an enum entry no longer in the registry.
     """
-    schema_codes = _schema_lint_codes()
-    source_codes = _source_emitted_lint_codes()
+    schema = _load_schema()
+    enum = schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+    expected = sorted(LINT_REGISTRY)
 
-    missing_from_schema = sorted(source_codes - schema_codes)
-    stale_in_schema = sorted(schema_codes - source_codes)
-
-    assert not missing_from_schema, (
-        "lint codes emitted by source but absent from the schema enum: "
-        f"{missing_from_schema}. Add them to "
-        "schemas/check-output.schema.json."
+    assert sorted(enum) == expected, (
+        "the schema's lint-code enum has drifted from the registry in "
+        "selfdoc_core/lints.toml. Missing from the schema: "
+        f"{sorted(set(expected) - set(enum))}; stale in the schema: "
+        f"{sorted(set(enum) - set(expected))}."
     )
-    assert not stale_in_schema, (
-        "lint codes in the schema enum that no source module emits: "
-        f"{stale_in_schema}. Remove them from "
-        "schemas/check-output.schema.json."
+    assert enum == expected, (
+        "the schema's lint-code enum must be sorted, matching the derivation "
+        "order: sorted(LINT_REGISTRY)."
+    )
+
+
+def test_schema_severity_enum_matches_registry_severities():
+    """The schema's severity enum is exactly the severities the registry uses."""
+    schema = _load_schema()
+    declared = schema["properties"]["lints"]["items"]["properties"]["severity"]["enum"]
+    used = sorted({spec.severity for spec in LINT_REGISTRY.values()})
+    assert sorted(declared) == used, (
+        f"schema severity enum {sorted(declared)} does not match the "
+        f"severities the registry uses ({used})."
+    )
+
+
+def test_every_code_literal_in_the_check_modules_is_registered():
+    """No check module names a lint code the registry does not carry.
+
+    LintResult refuses an unregistered code at construction time, so this is
+    the static half of the same rule: a code literal on a path no test
+    exercises is still caught here.
+    """
+    unregistered = sorted(_source_emitted_lint_codes() - set(LINT_REGISTRY))
+    assert not unregistered, (
+        f"lint codes named in the check modules but absent from the "
+        f"registry: {unregistered}. Declare them in selfdoc_core/lints.toml."
     )
 
 

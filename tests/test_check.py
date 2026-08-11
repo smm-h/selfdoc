@@ -292,7 +292,6 @@ def test_print_results_no_directives_with_lints(capsys):
                 line=None,
                 code="SEO006",
                 message="No 'description' in frontmatter",
-                severity="error",
             ),
         ],
     )
@@ -359,19 +358,19 @@ def test_check_result_has_lints_field():
 
 
 def test_lint_result_construction():
-    """LintResult can be constructed with all fields."""
+    """LintResult carries its fields and derives severity from the registry."""
     lint = LintResult(
         file="index.md",
         line=5,
         code="SEO001",
         message="Missing title tag",
-        severity="warning",
     )
     assert lint.file == "index.md"
     assert lint.line == 5
     assert lint.code == "SEO001"
     assert lint.message == "Missing title tag"
-    assert lint.severity == "warning"
+    # SEO001 is registered error-severity; the caller never states it.
+    assert lint.severity == "error"
 
 
 def test_lint_result_line_none():
@@ -381,10 +380,10 @@ def test_lint_result_line_none():
         line=None,
         code="SEO002",
         message="No meta description",
-        severity="error",
     )
     assert lint.line is None
-    assert lint.severity == "error"
+    # SEO002 is registered warning-severity.
+    assert lint.severity == "warning"
 
 
 def test_check_docs_returns_lints_list(python_project):
@@ -432,14 +431,12 @@ def test_print_results_with_lints(capsys):
                 line=3,
                 code="SEO001",
                 message="Missing title",
-                severity="warning",
             ),
             LintResult(
                 file="guide.md",
                 line=None,
                 code="SEO002",
                 message="No description",
-                severity="error",
             ),
         ],
     )
@@ -695,11 +692,11 @@ def test_clean_file_no_lints(lint_project):
     assert len(results) == 0
 
 
-# -- Info severity and verbose --
+# -- Lint display --
 
 
 def test_info_lints_always_shown(capsys):
-    """Info-level lints are always shown (no verbose flag needed)."""
+    """Warning-level lints are always shown (no verbose flag needed)."""
     from selfdoc.check import DirectiveResult
 
     result = CheckResult(
@@ -712,9 +709,8 @@ def test_info_lints_always_shown(capsys):
             LintResult(
                 file="index.md",
                 line=5,
-                code="SEO099",
+                code="SEO009",
                 message="Test info lint",
-                severity="info",
             ),
         ],
     )
@@ -722,12 +718,12 @@ def test_info_lints_always_shown(capsys):
     print_results(result)
     captured = capsys.readouterr()
 
-    assert "SEO099" in captured.out
+    assert "SEO009" in captured.out
     assert "Test info lint" in captured.out
 
 
 def test_warning_and_info_lints_both_shown(capsys):
-    """Both warning and info lints are shown together."""
+    """Error and warning lints are shown together."""
     from selfdoc.check import DirectiveResult
 
     result = CheckResult(
@@ -742,14 +738,12 @@ def test_warning_and_info_lints_both_shown(capsys):
                 line=5,
                 code="SEO001",
                 message="Test warning lint",
-                severity="warning",
             ),
             LintResult(
                 file="index.md",
                 line=10,
-                code="SEO099",
+                code="SEO009",
                 message="Test info lint",
-                severity="info",
             ),
         ],
     )
@@ -759,12 +753,12 @@ def test_warning_and_info_lints_both_shown(capsys):
 
     assert "SEO001" in captured.out
     assert "Test warning lint" in captured.out
-    assert "SEO099" in captured.out
+    assert "SEO009" in captured.out
     assert "Test info lint" in captured.out
 
 
 def test_info_lints_do_not_show_no_lints_message(capsys):
-    """When info lints exist, 'No lints.' message is not shown."""
+    """When warning lints exist, 'No lints.' message is not shown."""
     from selfdoc.check import DirectiveResult
 
     result = CheckResult(
@@ -775,12 +769,12 @@ def test_info_lints_do_not_show_no_lints_message(capsys):
         ],
         lints=[
             LintResult(
-                file="page.md", line=3, code="SEO099",
-                message="Short paragraph", severity="info",
+                file="page.md", line=3, code="SEO007",
+                message="Short paragraph",
             ),
             LintResult(
-                file="page.md", line=None, code="SEO098",
-                message="No numbers", severity="info",
+                file="page.md", line=None, code="SEO008",
+                message="No numbers",
             ),
         ],
     )
@@ -789,8 +783,8 @@ def test_info_lints_do_not_show_no_lints_message(capsys):
     captured = capsys.readouterr()
 
     assert "No lints." not in captured.out
-    assert "SEO099" in captured.out
-    assert "SEO098" in captured.out
+    assert "SEO007" in captured.out
+    assert "SEO008" in captured.out
 
 
 # -- SEO007: Paragraph length after headings --
@@ -1650,9 +1644,9 @@ def test_seo015_inside_code_block_no_warning(lint_project):
 def test_ignore_flag_suppresses_lint():
     """filter_lints with ignore='SEO001' removes SEO001 from results."""
     lints = [
-        LintResult(file="a.md", line=1, code="SEO001", message="m1", severity="warning"),
-        LintResult(file="b.md", line=2, code="SEO006", message="m2", severity="error"),
-        LintResult(file="c.md", line=3, code="SEO007", message="m3", severity="warning"),
+        LintResult(file="a.md", line=1, code="SEO001", message="m1"),
+        LintResult(file="b.md", line=2, code="SEO006", message="m2"),
+        LintResult(file="c.md", line=3, code="SEO007", message="m3"),
     ]
     filtered = filter_lints(lints, {"SEO001"})
     codes = [lint.code for lint in filtered]
@@ -1664,8 +1658,8 @@ def test_ignore_flag_suppresses_lint():
 def test_lint_ignore_config():
     """filter_lints with config lint_ignore=['SEO007'] removes SEO007."""
     lints = [
-        LintResult(file="a.md", line=1, code="SEO001", message="m1", severity="warning"),
-        LintResult(file="b.md", line=2, code="SEO007", message="m2", severity="warning"),
+        LintResult(file="a.md", line=1, code="SEO001", message="m1"),
+        LintResult(file="b.md", line=2, code="SEO007", message="m2"),
     ]
     # Simulate config lint_ignore
     config_ignore = {"SEO007"}
@@ -1678,9 +1672,9 @@ def test_lint_ignore_config():
 def test_ignore_merges_cli_and_config():
     """Combined CLI and config ignore sets filter both codes."""
     lints = [
-        LintResult(file="a.md", line=1, code="SEO001", message="m1", severity="warning"),
-        LintResult(file="b.md", line=2, code="SEO007", message="m2", severity="warning"),
-        LintResult(file="c.md", line=3, code="SEO009", message="m3", severity="warning"),
+        LintResult(file="a.md", line=1, code="SEO001", message="m1"),
+        LintResult(file="b.md", line=2, code="SEO007", message="m2"),
+        LintResult(file="c.md", line=3, code="SEO009", message="m3"),
     ]
     cli_ignore = {"SEO001"}
     config_ignore = {"SEO007"}
@@ -1707,8 +1701,8 @@ def test_color_output_on_tty(capsys):
         ],
         lints=[
             LintResult(
-                file="index.md", line=5, code="SEO001",
-                message="Test warning", severity="warning",
+                file="index.md", line=5, code="SEO002",
+                message="Test warning",
             ),
         ],
     )
@@ -1743,7 +1737,7 @@ def test_plain_output_on_pipe(capsys):
         lints=[
             LintResult(
                 file="index.md", line=5, code="SEO001",
-                message="Test warning", severity="warning",
+                message="Test warning",
             ),
         ],
     )

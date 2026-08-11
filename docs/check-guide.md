@@ -1,6 +1,6 @@
 ---
 title: Check Guide
-description: "Use selfdoc check to validate directives, measure coverage, execute code examples marked validate, and run the SEO, staleness, CLI, and version rules."
+description: "Run selfdoc check to validate directives, measure coverage, execute marked examples, and apply every registered lint rule with its declared severity."
 nav_group: "Guides"
 nav_order: 10
 ---
@@ -70,7 +70,7 @@ Modules listed in `gen.exclude` are excluded from both coverage calculations and
 
 ## Lint Rules
 
-selfdoc runs 14 SEO lint rules during every `selfdoc check` invocation, plus staleness, source-drift, CLI reference, example-validation, and version-consistency rules. Each rule has a unique code, a severity level (error or warning), and an actionable message explaining what is wrong and how to fix it. Errors cause non-zero exit; warnings are informational.
+Every `selfdoc check` invocation runs the whole lint registry: SEO and page structure, description staleness and source drift, cross-references and symbol documentation, example validation, CLI reference completeness, version consistency, blog posts, and unified sites. Each rule has a unique code, a severity, and an actionable message explaining what is wrong and how to fix it. Errors cause a non-zero exit; warnings are informational. The table below is generated from `selfdoc_core/lints.toml`, the one place a code and its severity are declared.
 
 | Code | Severity | What it checks |
 | ---- | -------- | -------------- |
@@ -91,15 +91,31 @@ selfdoc runs 14 SEO lint rules during every `selfdoc check` invocation, plus sta
 | STALE001 | error | Page content changed but frontmatter description was not updated. Review and update the description. |
 | STALE002 | warning | Manifest and disk disagree: a page or post exists on disk but is missing from `.selfdoc/manifest.json`, or the manifest lists one that is gone. Run `selfdoc gen`. |
 | DRIFT001 | error | The source docstrings (or CLI schema) a page documents changed while its description did not. Update the description, or run `selfdoc baseline accept <page>` if it is still accurate. |
-| CLI001 | warning | strictcli project: a CLI reference page is missing for a command, or a flag in the schema is not documented on its page. |
-| CLI002 | warning | strictcli project: a command, group, or flag help text is shorter than 50 characters. |
+| DQ001 | warning | The frontmatter description restates the page or symbol name instead of describing it. |
+| DQ002 | warning | Frontmatter description is shorter than 20 characters. |
+| DQ003 | warning | A page carrying a `ref` directive has a description shorter than 30 characters. |
+| XREF001 | warning | A Markdown link points at a `.md` page that does not exist in the docs tree. |
+| XREF002 | error | A directive's `path` resolves but names a file that is not on disk. |
+| PARAM001 | warning | A referenced symbol has a parameter its docstring never documents. |
+| RETURN001 | warning | A referenced symbol returns a value its docstring never documents. |
 | EXAMPLE001 | warning | A Python or JSON code block does not parse. Fix the snippet's syntax. |
 | EXAMPLE002 | error | A code block marked `validate` failed its configured validator. The message carries the validator's exit code and output tail. |
 | EXAMPLE003 | error | A code block is marked `validate` but no `examples` command is configured for its language. Add one, or drop the marker. |
+| CLI001 | warning | strictcli project: a CLI reference page is missing for a command, or a flag in the schema is not documented on its page. |
+| CLI002 | warning | strictcli project: a command, group, or flag help text is shorter than 50 characters. |
+| LANG001 | error | A configured source entry names a language selfdoc has no extractor for. |
+| SEARCH001 | error | `search_engine` is set to `pagefind` but pagefind is not installed. |
 | VER001 | error | A version listed in `versions` could not be extracted from its git tag, so it could not be validated. |
 | VER002 | error | `version` in selfdoc.json does not match the version detected from the project manifest (pyproject.toml, package.json, or a `VERSION` file). |
 | VER003 | error | The last entry of the `versions` array does not match `version` in selfdoc.json. |
 | VER004 | error | A generated root file that embeds `project.version` does not contain the expected version. Regenerate with `selfdoc gen --version-override <v>`. |
+| POST001 | error | A post is missing the required `date` field in its frontmatter. |
+| POST002 | error | A post is missing the required `title` field in its frontmatter. |
+| POST003 | error | A post's `date` is not written as YYYY-MM-DD. |
+| POST004 | error | Two posts resolve to the same slug. |
+| POST005 | error | A published post's slug changed, which would break its permalink. |
+| UNIFIED001 | error | A project listed in the `unified` section has no selfdoc.json. |
+| UNIFIED002 | error | A constituent project, or the docs-site's own content, could not be checked. |
 
 ### Suppressing rules
 
