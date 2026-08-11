@@ -25,6 +25,16 @@ This means selfdoc plays nicely with rlsbl-managed repos without any configurati
 
 When selfdoc builds a site, it looks for `CHANGELOG.md` in the project root. If found, the changelog is included as a documentation page automatically. In rlsbl-managed projects, `CHANGELOG.md` is generated from JSONL changelog entries, so the docs site always reflects the latest release notes without manual copying.
 
+That convention reads "the root changelog is this project's changelog", which holds for a standalone repo and fails in an rlsbl monorepo: the root `CHANGELOG.md` there rolls up every releasable, and nothing in the build can tell which of them a given site documents. Such a site names its own file instead:
+
+```json
+{
+  "changelog": ".rlsbl-monorepo/releasables/mytool/CHANGELOG.md"
+}
+```
+
+A declared path that does not exist is a build error -- the page was asked for, so its absence is a broken build rather than a page that quietly does not appear.
+
 ### Version from manifest
 
 selfdoc reads the project version from the language-specific manifest file (`pyproject.toml` for Python, `package.json` for npm, `go.mod` for Go). In rlsbl-managed projects, this version is bumped by `rlsbl release`, so the docs site automatically shows the current version in navigation and search metadata.

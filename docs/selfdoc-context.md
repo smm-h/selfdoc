@@ -1,6 +1,6 @@
 ---
 title: selfdoc.context
-description: "Build, page, and search context dataclasses that carry configuration, metadata, and state through the documentation pipeline."
+description: "The search index entry dataclass: the one build record that outlives a single build, and so the only one selfdoc gives a declared type."
 generated: true
 nav_group: "API Reference"
 nav_order: 4
