@@ -21,41 +21,42 @@ def _read_html(output_dir, rel_path):
 class TestMultiVersionBuild:
     """Tests for building a project with multiple configured versions."""
 
-    def test_both_version_dirs_exist(self, make_versioned_project):
-        """Build with 2 versions produces output directories for both."""
-        project_dir = make_versioned_project(["0.1.0", "0.2.0"])
-        written = build(str(project_dir))
-
-        output_dir = os.path.join(str(project_dir), "docs", "_build")
-        assert os.path.isdir(os.path.join(output_dir, "en", "0.1.0"))
-        assert os.path.isdir(os.path.join(output_dir, "en", "0.2.0"))
-        # Both should have index.html
-        assert os.path.isfile(
-            os.path.join(output_dir, "en", "0.1.0", "index.html")
-        )
-        assert os.path.isfile(
-            os.path.join(output_dir, "en", "0.2.0", "index.html")
-        )
-
-    def test_latest_version_no_banner(self, make_versioned_project):
-        """Latest version pages should NOT have a version banner."""
+    def test_current_version_is_stable_and_the_older_one_is_archived(
+        self, make_versioned_project,
+    ):
+        """Two versions: the stable tree, plus one archive tree under v/."""
         project_dir = make_versioned_project(["0.1.0", "0.2.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        latest_html = _read_html(output_dir, "en/0.2.0/index.html")
-        assert "version-banner" not in latest_html
+        assert os.path.isfile(os.path.join(output_dir, "index.html"))
+        assert os.path.isfile(
+            os.path.join(output_dir, "v", "0.1.0", "index.html")
+        )
+        # The current version has no archive copy of its own.
+        assert not os.path.isdir(os.path.join(output_dir, "v", "0.2.0"))
 
-    def test_old_version_has_banner(self, make_versioned_project):
-        """Old version pages should have a version banner with correct link."""
+    def test_current_version_has_no_superseded_notice(self, make_versioned_project):
+        """The current version has nothing to say about being superseded."""
         project_dir = make_versioned_project(["0.1.0", "0.2.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        old_html = _read_html(output_dir, "en/0.1.0/index.html")
-        assert "version-banner" in old_html
-        assert "v0.1.0" in old_html
-        assert "/en/0.2.0/" in old_html
+        latest_html = _read_html(output_dir, "index.html")
+        assert "version-notice" not in latest_html
+
+    def test_archive_has_a_dismissable_notice(self, make_versioned_project):
+        """An archived page says so, keyed per version, and links the current one."""
+        project_dir = make_versioned_project(["0.1.0", "0.2.0"])
+        build(str(project_dir))
+
+        output_dir = os.path.join(str(project_dir), "docs", "_build")
+        old_html = _read_html(output_dir, "v/0.1.0/index.html")
+        assert 'class="version-notice"' in old_html
+        assert 'data-notice-key="0.1.0"' in old_html
+        assert "version-notice-dismiss" in old_html
+        # The link out is document-relative, back to the stable address.
+        assert 'href="../../"' in old_html
 
     def test_old_version_content_from_tag(self, make_versioned_project):
         """Old version should contain content from its git tag, not HEAD."""
@@ -63,7 +64,7 @@ class TestMultiVersionBuild:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        old_html = _read_html(output_dir, "en/0.1.0/index.html")
+        old_html = _read_html(output_dir, "v/0.1.0/index.html")
         # The make_versioned_project fixture writes "Documentation for version X"
         assert "0.1.0" in old_html
 
@@ -82,29 +83,32 @@ class TestMultiVersionBuild:
         assert "0.1.0" in versions_in_index
         assert "0.2.0" in versions_in_index
 
-    def test_old_version_canonical_points_to_latest(self, make_versioned_project):
-        """Old version pages should have canonical URL pointing to latest."""
+    def test_archive_canonical_is_the_stable_address(self, make_versioned_project):
+        """An archived page canonicalizes to the version-free address."""
         project_dir = make_versioned_project(["0.1.0", "0.2.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        old_html = _read_html(output_dir, "en/0.1.0/index.html")
-        # Canonical should point to latest version's URL
+        old_html = _read_html(output_dir, "v/0.1.0/index.html")
         canonical_match = re.search(
             r'<link rel="canonical" href="([^"]+)"', old_html,
         )
         assert canonical_match is not None
         canonical_url = canonical_match.group(1)
-        assert "/en/0.2.0/" in canonical_url
+        assert canonical_url == "https://example.com/"
 
-    def test_root_redirect_points_to_latest(self, make_versioned_project):
-        """Root index.html should redirect to the latest version."""
+    def test_root_index_is_the_current_version_itself(self, make_versioned_project):
+        """With one locale the current version mounts at the output root.
+
+        There is no redirect stub to write: the root index is the home page.
+        """
         project_dir = make_versioned_project(["0.1.0", "0.2.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
         root_html = _read_html(output_dir, "index.html")
-        assert "/en/0.2.0/" in root_html
+        assert 'meta http-equiv="refresh"' not in root_html
+        assert "0.2.0" in root_html
 
     def test_cache_directory_created(self, make_versioned_project):
         """Cache directory should be created for extracted versions."""
@@ -186,14 +190,10 @@ class TestVersionFilter:
         written = build(str(project_dir), version_filter="0.2.0")
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        # Latest version should exist
-        assert os.path.isfile(
-            os.path.join(output_dir, "en", "0.2.0", "index.html")
-        )
+        # The current version is at the stable address
+        assert os.path.isfile(os.path.join(output_dir, "index.html"))
         # Old version should NOT exist (was filtered out)
-        assert not os.path.exists(
-            os.path.join(output_dir, "en", "0.1.0")
-        )
+        assert not os.path.exists(os.path.join(output_dir, "v", "0.1.0"))
 
     def test_filter_invalid_version_raises(self, make_versioned_project):
         """version_filter with non-existent version should raise."""
@@ -259,10 +259,22 @@ class TestVersionPicker:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        html = _read_html(output_dir, "en/0.2.0/index.html")
+        html = _read_html(output_dir, "index.html")
         assert "version-picker" in html
         assert "v0.1.0" in html
         assert "v0.2.0" in html
+
+    def test_version_picker_links_come_from_the_build(self, make_versioned_project):
+        """Each option carries its target address, computed server-side."""
+        project_dir = make_versioned_project(["0.1.0", "0.2.0"])
+        build(str(project_dir))
+
+        output_dir = os.path.join(str(project_dir), "docs", "_build")
+        html = _read_html(output_dir, "index.html")
+        hrefs = dict(re.findall(
+            r'<option value="([^"]*)" data-href="([^"]*)"', html,
+        ))
+        assert hrefs == {"0.1.0": "v/0.1.0/", "0.2.0": "./"}
 
     def test_version_picker_current_selected(self, make_versioned_project):
         """Version picker should have the current version selected."""
@@ -270,43 +282,43 @@ class TestVersionPicker:
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        # Check old version page
-        old_html = _read_html(output_dir, "en/0.1.0/index.html")
-        # The 0.1.0 option should be selected
+        # The archived page has its own version selected
+        old_html = _read_html(output_dir, "v/0.1.0/index.html")
         assert re.search(
-            r'<option value="0\.1\.0" selected>',
-            old_html,
+            r'<option value="0\.1\.0"[^>]* selected>', old_html,
         )
 
-        # Check latest version page
-        latest_html = _read_html(output_dir, "en/0.2.0/index.html")
+        # The stable page has the current version selected
+        latest_html = _read_html(output_dir, "index.html")
         assert re.search(
-            r'<option value="0\.2\.0" selected>',
-            latest_html,
+            r'<option value="0\.2\.0"[^>]* selected>', latest_html,
         )
 
 
 class TestSingleVersion:
     """Tests ensuring single-version projects still work correctly."""
 
-    def test_single_version_no_banner(self, make_versioned_project):
-        """Single-version project should have no version banner."""
+    def test_single_version_has_no_superseded_notice(self, make_versioned_project):
+        """The only version there is has not been superseded."""
         project_dir = make_versioned_project(["1.0.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        html = _read_html(output_dir, "en/1.0.0/index.html")
-        assert "version-banner" not in html
+        html = _read_html(output_dir, "index.html")
+        assert "version-notice" not in html
 
-    def test_single_version_picker_disabled(self, make_versioned_project):
-        """Single-version project should have a disabled version picker."""
+    def test_single_version_has_no_picker(self, make_versioned_project):
+        """A control with one option is not offered at all.
+
+        The picker used to be rendered disabled; now a picker exists only
+        when it can take the reader somewhere.
+        """
         project_dir = make_versioned_project(["1.0.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        html = _read_html(output_dir, "en/1.0.0/index.html")
-        assert "version-picker" in html
-        assert "disabled" in html
+        html = _read_html(output_dir, "index.html")
+        assert '<select class="version-picker"' not in html
 
 
 class TestCheckValidatesAllVersions:
