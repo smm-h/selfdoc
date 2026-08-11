@@ -12,13 +12,14 @@ import subprocess
 
 import pytest
 
-from selfblog.assembly import assembly_init, generate_workflow_yaml
+from selfblog.assembly import ToolchainPins, assembly_init, generate_workflow_yaml
 from selfblog.cli import _cmd_assembly_init
 
 PAGES_PROJECT = "unified-site"
 CANONICAL_BASE = "https://docs.example.com"
 LEGACY_BLOG_HOST = "blog.example.com"
 PORTFOLIO_CANONICAL = "https://apex.example.com/"
+PINS = ToolchainPins(selfblog="1.2.3", selfdoc="0.36.0", pagefind="1.4.0")
 
 
 def _setup_project(tmp_path, config_overrides=None):
@@ -43,7 +44,7 @@ def _setup_project(tmp_path, config_overrides=None):
 def test_workflow_requires_pages_project():
     with pytest.raises(ValueError) as excinfo:
         generate_workflow_yaml(
-            "", CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+            "", CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL, PINS,
         )
     assert "pages_project" in str(excinfo.value)
 
@@ -51,7 +52,7 @@ def test_workflow_requires_pages_project():
 def test_workflow_requires_canonical_base():
     with pytest.raises(ValueError) as excinfo:
         generate_workflow_yaml(
-            PAGES_PROJECT, "", LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+            PAGES_PROJECT, "", LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL, PINS,
         )
     assert "docs_base" in str(excinfo.value)
 
@@ -59,6 +60,7 @@ def test_workflow_requires_canonical_base():
 def test_workflow_deploys_to_the_configured_project():
     yaml_str = generate_workflow_yaml(
         PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+        PINS,
     )
     assert f"--project-name '{PAGES_PROJECT}'" in yaml_str
     assert "--project-name smmh" not in yaml_str
@@ -67,6 +69,7 @@ def test_workflow_deploys_to_the_configured_project():
 def test_workflow_passes_canonical_base_to_generate_shared():
     yaml_str = generate_workflow_yaml(
         PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+        PINS,
     )
     assert f"--canonical-base '{CANONICAL_BASE}'" in yaml_str
     assert f"--legacy-blog-host '{LEGACY_BLOG_HOST}'" in yaml_str
@@ -74,14 +77,14 @@ def test_workflow_passes_canonical_base_to_generate_shared():
 
 def test_workflow_carries_no_foreign_hostnames():
     """A third-party assembly repo must not inherit our hostnames."""
-    yaml_str = generate_workflow_yaml(PAGES_PROJECT, CANONICAL_BASE, "", "")
+    yaml_str = generate_workflow_yaml(PAGES_PROJECT, CANONICAL_BASE, "", "", PINS)
     assert "smmh" not in yaml_str
 
 
 def test_assembly_init_files_use_the_configured_project():
     files = assembly_init(
         "owner/assembly", PAGES_PROJECT, CANONICAL_BASE, LEGACY_BLOG_HOST,
-        PORTFOLIO_CANONICAL,
+        PORTFOLIO_CANONICAL, PINS,
     )
     workflow = files[".github/workflows/deploy.yml"]
     assert f"--project-name '{PAGES_PROJECT}'" in workflow
@@ -90,7 +93,36 @@ def test_assembly_init_files_use_the_configured_project():
 # -- init round-trip: create and deploy target the same project ---------------
 
 
-def test_init_creates_the_project_the_workflow_deploys_to(tmp_path, monkeypatch):
+@pytest.fixture()
+def registry(monkeypatch):
+    """Answer the pin probe from a stub: the suite never dials PyPI.
+
+    ``assembly init`` resolves its pins from this environment and refuses
+    any the registry cannot serve, so the stub publishes exactly what the
+    resolver will ask about.
+    """
+    from importlib.metadata import version as dist_version
+
+    from selfblog import __version__ as selfblog_version
+
+    published = {
+        "selfblog": [selfblog_version],
+        "selfdoc": [dist_version("selfdoc")],
+        "pagefind": ["1.4.0"],
+    }
+
+    def fetch(package):
+        versions = published[package]
+        return {
+            "info": {"version": versions[-1]},
+            "releases": {v: [{"filename": f"{package}-{v}.whl"}] for v in versions},
+        }
+
+    monkeypatch.setattr("selfblog.assembly.fetch_pypi_metadata", fetch)
+    return published
+
+
+def test_init_creates_the_project_the_workflow_deploys_to(tmp_path, registry, monkeypatch):
     _setup_project(tmp_path, {
         "assembly": {"repo": "owner/assembly", "pages_project": PAGES_PROJECT},
         "topology": {

@@ -280,10 +280,11 @@ def test_own_config_declares_the_portfolio_canonical():
 
 
 def test_workflow_templates_the_portfolio_canonical():
-    from selfblog.assembly import generate_workflow_yaml
+    from selfblog.assembly import ToolchainPins, generate_workflow_yaml
 
     yaml = generate_workflow_yaml(
         "proj", CANONICAL_BASE, LEGACY_BLOG_HOST, PORTFOLIO_CANONICAL,
+        ToolchainPins(selfblog="1.2.3", selfdoc="0.36.0", pagefind="1.4.0"),
     )
     assert f"--portfolio-canonical '{PORTFOLIO_CANONICAL}'" in yaml
 
