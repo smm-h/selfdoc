@@ -148,7 +148,7 @@ def test_declared_version_passes():
 
 def test_undeclared_version_is_a_hard_error():
     config = {"versions": [{"version": "0.1.0"}]}
-    with pytest.raises(RuntimeError, match="not in selfdoc.json"):
+    with pytest.raises(RuntimeError, match="not the version the assembly would build"):
         check_version_is_declared(config, "1.1.0")
 
 
@@ -162,6 +162,57 @@ def test_the_undeclared_error_names_what_would_have_been_published():
 def test_no_declared_versions_at_all_is_a_hard_error():
     with pytest.raises(RuntimeError, match="declares no versions"):
         check_version_is_declared({"versions": []}, "1.0.0")
+
+
+def test_a_declared_but_not_newest_version_is_a_hard_error():
+    """Membership was never the question: the build takes versions[-1].
+
+    Dispatching 1.0 against ``versions = [1.0, 2.0]`` passed the old
+    membership test and then published 2.0's docs recorded under the name
+    1.0 -- the exact failure the check's own error text described.
+    """
+    config = {"versions": [{"version": "1.0"}, {"version": "2.0"}]}
+    with pytest.raises(RuntimeError) as excinfo:
+        check_version_is_declared(config, "1.0")
+    message = str(excinfo.value)
+    assert "1.0" in message
+    assert "2.0" in message
+
+
+def test_the_stale_dispatch_error_names_both_versions():
+    config = {"versions": [{"version": "0.9.0"}, {"version": "1.4.2"}]}
+    with pytest.raises(RuntimeError) as excinfo:
+        check_version_is_declared(config, "0.9.0")
+    message = str(excinfo.value)
+    assert "0.9.0" in message, "the dispatched version must be named"
+    assert "1.4.2" in message, "the version the build would produce must be named"
+
+
+def test_the_newest_declared_version_passes():
+    config = {"versions": [{"version": "1.0"}, {"version": "2.0"}]}
+    check_version_is_declared(config, "2.0")
+
+
+def test_a_newest_entry_with_no_version_is_a_hard_error():
+    """The build target cannot be read, so nothing may be dispatched."""
+    config = {"versions": [{"version": "1.0"}, {}]}
+    with pytest.raises(RuntimeError):
+        check_version_is_declared(config, "1.0")
+
+
+def test_the_check_agrees_with_what_the_build_would_produce(tmp_path):
+    """One definition of "the version the build produces", used by both."""
+    import json as _json
+
+    from selfblog.assembly import detect_latest_version
+
+    config = {"versions": [{"version": "1.0"}, {"version": "2.0"}]}
+    (tmp_path / "selfdoc.json").write_text(_json.dumps(config))
+    built = detect_latest_version(str(tmp_path))
+
+    check_version_is_declared(config, built)
+    with pytest.raises(RuntimeError):
+        check_version_is_declared(config, "1.0")
 
 
 # -- the dispatch command wires both checks -----------------------------------
@@ -249,7 +300,7 @@ def test_dispatch_refuses_when_the_version_is_undeclared(tmp_path, monkeypatch, 
 
     with pytest.raises(SystemExit):
         _cmd_assembly_push(None)
-    assert "not in selfdoc.json" in capsys.readouterr().err
+    assert "not the version the assembly would build" in capsys.readouterr().err
 
 
 def test_dispatch_refuses_when_no_tag_names_the_version(tmp_path, monkeypatch, capsys):

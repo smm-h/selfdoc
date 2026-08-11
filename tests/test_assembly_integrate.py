@@ -170,8 +170,32 @@ def test_detect_latest_version_is_empty_without_a_config(tmp_path):
 
 def test_detect_latest_version_errors_on_a_versionless_multi_version_project(tmp_path):
     _write(str(tmp_path / "selfdoc.json"), json.dumps({"versions": [{}, {}]}))
-    with pytest.raises(RuntimeError, match="multi-version"):
+    with pytest.raises(RuntimeError, match="newest 'versions' entry"):
         detect_latest_version(str(tmp_path))
+
+
+def test_detect_latest_version_errors_on_a_single_versionless_entry(tmp_path):
+    """One blank entry is the same failure as two, and errors identically.
+
+    Returning "" here built the project unversioned -- silently publishing
+    docs at the wrong address -- while two blank entries hard-errored.
+    """
+    _write(str(tmp_path / "selfdoc.json"), json.dumps({"versions": [{}]}))
+    with pytest.raises(RuntimeError, match="newest 'versions' entry"):
+        detect_latest_version(str(tmp_path))
+
+
+def test_a_blank_newest_entry_errors_however_many_precede_it(tmp_path):
+    _write(str(tmp_path / "selfdoc.json"),
+           json.dumps({"versions": [{"version": "1.0.0"}, {}]}))
+    with pytest.raises(RuntimeError, match="newest 'versions' entry"):
+        detect_latest_version(str(tmp_path))
+
+
+def test_no_versions_array_at_all_is_still_the_implicit_single_version(tmp_path):
+    """A project that declares nothing builds unversioned, as before."""
+    _write(str(tmp_path / "selfdoc.json"), json.dumps({}))
+    assert detect_latest_version(str(tmp_path)) == ""
 
 
 def test_prune_removes_every_deploy_artifact(assembly_tree):
