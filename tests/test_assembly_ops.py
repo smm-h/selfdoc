@@ -125,8 +125,8 @@ def test_push_reads_assembly_repo(tmp_path, monkeypatch):
         cmd_str = " ".join(str(c) for c in cmd)
         if "repo" in cmd_str and "view" in cmd_str:
             result.stdout = "owner/source-repo\n"
-        elif "describe" in cmd_str:
-            result.stdout = "v1.0.0\n"
+        elif "for-each-ref" in cmd_str:
+            result.stdout = "v1.0.0\nv0.9.0\n"
         return result
 
     monkeypatch.setattr(subprocess, "run", fake_run)
