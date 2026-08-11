@@ -18,9 +18,17 @@ Code-aware static site generator. Builds full documentation sites from Markdown 
 
 ## Key concepts
 
-### Always-prefixed URLs
+### Stable addresses, archived versions
 
-Every page outputs to `/<locale>/<version>/page/`. The config MUST have `versions` and `locales` arrays -- these are required. Even a single-version, single-locale project needs them:
+The current version of every page lives at a stable, unversioned address --
+`/page/` -- and superseded versions live beside it under the archive prefix,
+at `/v/<version>/page/`. The locale segment appears only when a project
+really has more than one locale, so a single-locale project's current
+version is served from the site root. Every version of a page declares the
+stable address canonical.
+
+The config MUST have `versions` and `locales` arrays -- these are required.
+Even a single-version, single-locale project needs them:
 
 ```json
 {
@@ -31,7 +39,7 @@ Every page outputs to `/<locale>/<version>/page/`. The config MUST have `version
 
 ### Multi-version builds
 
-Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. Version/locale picker UI is auto-generated.
+Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. The version picker's links are computed by the build from each page's own address, and archived pages carry a dismissable notice keyed per version.
 
 ### Localization
 
