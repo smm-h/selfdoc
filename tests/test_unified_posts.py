@@ -282,6 +282,9 @@ def test_build_cleanup_on_failure(
     os.makedirs(str(project / "site"), exist_ok=True)
     os.makedirs(str(project / "src"), exist_ok=True)
     _write_text(str(project / "src" / "lib.py"), "")
+    # The page partition runs per locale, so the locale's docs directory
+    # has to resolve -- a project with no page at all never gets that far.
+    _write_text(str(project / "docs" / "index.md"), "# Home\n")
 
     config = _minimal_config()
 
@@ -322,6 +325,9 @@ def test_build_cleanup_on_success(
     os.makedirs(str(project / "site"), exist_ok=True)
     os.makedirs(str(project / "src"), exist_ok=True)
     _write_text(str(project / "src" / "lib.py"), "")
+    # The page partition runs per locale, so the locale's docs directory
+    # has to resolve -- a project with no page at all never gets that far.
+    _write_text(str(project / "docs" / "index.md"), "# Home\n")
 
     config = _minimal_config()
 
