@@ -555,3 +555,97 @@ def test_integrate_command_reports_a_bad_scope(assembly_tree, runner, monkeypatc
             assembly_dir=str(assembly_tree),
         )
     assert "unknown scope" in capsys.readouterr().err
+
+
+# -- verification blocks the deploy -------------------------------------------
+#
+# The deploy verifies the tree it assembled before it commits or pushes any
+# of it. There is no flag that turns this off: a tree that fails is a tree
+# that does not ship.
+
+
+def _broken_build(root):
+    """Put a page the assembly must not serve into the source build."""
+    _write(str(root / "source" / "alpha" / "docs" / "_build" / "index.html"),
+           "<html><head></head><body>no title, no canonical</body></html>")
+
+
+def test_a_broken_tree_fails_the_deploy(assembly_tree, runner):
+    _broken_build(assembly_tree)
+    with pytest.raises(RuntimeError, match="failed verification"):
+        _integrate(assembly_tree, build=False)
+
+
+def test_a_broken_tree_names_every_offender(assembly_tree, runner):
+    _broken_build(assembly_tree)
+    with pytest.raises(RuntimeError) as exc:
+        _integrate(assembly_tree, build=False)
+    message = str(exc.value)
+    assert "page-metadata" in message
+    assert "site/alpha/index.html" in message
+
+
+def test_nothing_is_deployed_when_verification_fails(assembly_tree, runner):
+    """The whole point: the failure lands before the commit and the push."""
+    _broken_build(assembly_tree)
+    with pytest.raises(RuntimeError):
+        _integrate(assembly_tree, build=False)
+    assert not runner.of("git", "push"), "a failing tree must never be pushed"
+    assert not [c for c in runner.calls if "commit" in c], (
+        "a failing tree must not even be committed"
+    )
+
+
+def test_a_manifest_promising_a_page_the_build_dropped_fails_the_deploy(
+    assembly_tree, runner,
+):
+    """A second defect, at the other end of the pipeline."""
+    _write(str(assembly_tree / "manifests" / "beta.json"),
+           json.dumps(_manifest("beta", "Beta", "2.0.0")
+                      | {"pages": [{"path": "gone.md", "title": "Gone"}]}))
+    with pytest.raises(RuntimeError, match="manifest-pages-emitted"):
+        _integrate(assembly_tree, build=False)
+
+
+def test_a_sound_tree_still_deploys(assembly_tree, runner):
+    summary = _integrate(assembly_tree, build=False)
+    assert summary["committed"] is True
+    assert runner.of("git", "push")
+
+
+def test_the_deploy_reports_which_checks_it_ran(assembly_tree, runner):
+    summary = _integrate(assembly_tree, build=False)
+    assert "roster-agreement" in summary["verified"]
+    assert "cross-project-links" in summary["verified"]
+
+
+def test_an_unconfigured_outbound_check_is_announced(assembly_tree, runner, capsys):
+    _integrate(assembly_tree, build=False)
+    assert "outbound-links was NOT checked" in capsys.readouterr().err
+
+
+def test_the_deploy_keeps_the_outbound_results_it_produced(
+    assembly_tree, runner, monkeypatch,
+):
+    """The store is the deploy's to write, so the next deploy inherits it."""
+    from selfblog.verify import OUTBOUND_CACHE_PATH
+
+    _write(str(assembly_tree / "outbound.toml"),
+           'cache_days = 7\n\n[[page]]\npath = "beta/index.html"\n')
+    _write(str(assembly_tree / "site" / "beta" / "index.html"),
+           _page("Beta", "beta/", version="2.0.0",
+                 marker='<a href="https://live.example.net/">x</a>'))
+
+    asked = []
+
+    def fetch(url):
+        asked.append(url)
+        return 200, ""
+
+    monkeypatch.setattr("selfblog.verify.fetch_url", fetch)
+    _integrate(assembly_tree, build=False)
+
+    assert asked == ["https://live.example.net/"]
+    stored = json.loads((assembly_tree / OUTBOUND_CACHE_PATH).read_text())
+    assert "https://live.example.net/" in stored["entries"]
+    assert any(OUTBOUND_CACHE_PATH in call for call in runner.of("git", "add"))

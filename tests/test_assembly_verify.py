@@ -475,3 +475,229 @@ def test_a_cross_project_link_to_a_published_post_resolves(assembly):
                  version="2.0.0"))
     report = _verify(assembly)
     assert report.failures_of("cross-project-links") == []
+
+
+# -- outbound links ------------------------------------------------------------
+#
+# The one check that leaves the machine.  Which pages are worth the requests
+# is declared in a committed file; with no file there is no outbound check,
+# which the report says out loud rather than passing quietly.
+
+
+class FetchRecorder:
+    """Stands in for the network. Every URL answers 200 unless told otherwise."""
+
+    def __init__(self, dead=()):
+        self.dead = set(dead)
+        self.asked: list[str] = []
+
+    def __call__(self, url):
+        self.asked.append(url)
+        if url in self.dead:
+            return 404, "Not Found"
+        return 200, ""
+
+
+def _with_outbound(root, body, page_body=None):
+    """Declare an outbound check, and put an external link on a page."""
+    _write(str(root / OUTBOUND_PATH), body)
+    if page_body is not None:
+        _write(str(root / "site" / "beta" / "index.html"),
+               _page("Beta", f"{CANONICAL_BASE}/beta/", body=page_body,
+                     version="2.0.0"))
+
+
+OUTBOUND_DECL = 'cache_days = 7\n\n[[page]]\npath = "beta/index.html"\n'
+
+
+def test_outbound_checking_is_skipped_loudly_when_it_is_not_configured(assembly):
+    report = _verify(assembly)
+    assert "outbound-links" not in report.ran
+    assert [check for check, _reason in report.skipped] == ["outbound-links"]
+    reason = report.skipped[0][1]
+    assert OUTBOUND_PATH in reason and "not configured" in reason
+
+
+def test_a_dead_outbound_link_fails(assembly):
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body='  <a href="https://dead.example.net/x">x</a>')
+    fetch = FetchRecorder(dead={"https://dead.example.net/x"})
+    report = _verify(assembly, fetch=fetch, now=1000.0)
+    messages = [str(f) for f in report.failures_of("outbound-links")]
+    assert any("dead.example.net" in m and "404" in m for m in messages)
+    assert fetch.asked == ["https://dead.example.net/x"]
+
+
+def test_a_live_outbound_link_passes(assembly):
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body='  <a href="https://live.example.net/x">x</a>')
+    report = _verify(assembly, fetch=FetchRecorder(), now=1000.0)
+    assert report.ok, report.error_text()
+    assert "outbound-links" in report.ran
+
+
+def test_a_second_run_inside_the_window_makes_no_requests(assembly):
+    """The point of the store: the same tree, checked twice, asks once."""
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body='  <a href="https://live.example.net/x">x</a>')
+    first = FetchRecorder()
+    report = _verify(assembly, fetch=first, now=1000.0)
+    assert first.asked == ["https://live.example.net/x"]
+    assert report.requests == 1
+
+    # The deploy is what persists the store; a second verification reads it.
+    _write(str(assembly / OUTBOUND_CACHE_PATH),
+           render_outbound_cache(report.outbound_cache))
+    second = FetchRecorder()
+    later = _verify(assembly, fetch=second, now=1000.0 + 6 * 86400)
+    assert second.asked == []
+    assert later.requests == 0
+    assert later.ok
+
+
+def test_a_result_older_than_the_window_is_fetched_again(assembly):
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body='  <a href="https://live.example.net/x">x</a>')
+    first = FetchRecorder()
+    report = _verify(assembly, fetch=first, now=1000.0)
+    _write(str(assembly / OUTBOUND_CACHE_PATH),
+           render_outbound_cache(report.outbound_cache))
+    second = FetchRecorder()
+    _verify(assembly, fetch=second, now=1000.0 + 8 * 86400)
+    assert second.asked == ["https://live.example.net/x"]
+
+
+def test_a_cached_failure_still_fails_without_a_request(assembly):
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body='  <a href="https://dead.example.net/x">x</a>')
+    first = FetchRecorder(dead={"https://dead.example.net/x"})
+    report = _verify(assembly, fetch=first, now=1000.0)
+    _write(str(assembly / OUTBOUND_CACHE_PATH),
+           render_outbound_cache(report.outbound_cache))
+    second = FetchRecorder()
+    later = _verify(assembly, fetch=second, now=1000.0 + 3600)
+    assert second.asked == []
+    assert later.failures_of("outbound-links")
+
+
+def test_the_sites_own_absolute_urls_are_not_outbound(assembly):
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body=f'  <a href="{CANONICAL_BASE}/alpha/">Alpha</a>')
+    fetch = FetchRecorder()
+    report = _verify(assembly, fetch=fetch, now=1000.0)
+    assert fetch.asked == []
+    assert report.ok, report.error_text()
+
+
+def test_a_declared_page_that_was_not_emitted_fails(assembly):
+    _write(str(assembly / OUTBOUND_PATH),
+           'cache_days = 7\n\n[[page]]\npath = "ghost/index.html"\n')
+    report = _verify(assembly, fetch=FetchRecorder(), now=1000.0)
+    messages = [str(f) for f in report.failures_of("outbound-links")]
+    assert any("ghost/index.html" in m for m in messages)
+
+
+def test_only_the_declared_pages_are_checked(assembly):
+    """A link on a page nobody declared costs no request."""
+    _write(str(assembly / "site" / "alpha" / "index.html"),
+           _page("Alpha", f"{CANONICAL_BASE}/alpha/", version="1.0.0",
+                 body='  <a href="guide/">Guide</a>'
+                      '  <a href="https://never.example.net/">never</a>'))
+    _with_outbound(assembly, OUTBOUND_DECL,
+                   page_body='  <a href="https://live.example.net/x">x</a>')
+    fetch = FetchRecorder()
+    _verify(assembly, fetch=fetch, now=1000.0)
+    assert fetch.asked == ["https://live.example.net/x"]
+
+
+# -- the declared file is validated strictly -----------------------------------
+
+
+def test_the_declaration_round_trips():
+    config = parse_outbound(OUTBOUND_DECL)
+    assert config.cache_days == 7
+    assert config.paths == ("beta/index.html",)
+
+
+@pytest.mark.parametrize("text,match", [
+    ('cache_days = 7\ncheck_days = 3\n\n[[page]]\npath = "a"\n', "unknown key"),
+    ('[[page]]\npath = "a"\n', "no cache_days"),
+    ('cache_days = 0\n\n[[page]]\npath = "a"\n', "at least 1"),
+    ('cache_days = "7"\n\n[[page]]\npath = "a"\n', "at least 1"),
+    ('cache_days = 7\n\n[[page]]\npath = "a"\nwhen = "x"\n', "unknown key"),
+    ('cache_days = 7\n\n[[page]]\n', "declares no path"),
+    ('cache_days = 7\n\n[[page]]\npath = "a"\n[[page]]\npath = "a"\n', "repeats"),
+    ('cache_days = 7\n', "no \\[\\[page\\]\\] block"),
+    ("cache_days = [7\n", "not valid TOML"),
+])
+def test_a_malformed_declaration_is_a_hard_error(text, match):
+    with pytest.raises(RuntimeError, match=match):
+        parse_outbound(text)
+
+
+def test_an_absent_declaration_is_not_an_empty_one(tmp_path):
+    assert load_outbound(str(tmp_path)) is None
+
+
+def test_a_corrupt_cache_is_a_hard_error(assembly):
+    _write(str(assembly / OUTBOUND_CACHE_PATH), "{not json")
+    with pytest.raises(RuntimeError, match="not valid JSON"):
+        _verify(assembly)
+
+
+# -- the command ---------------------------------------------------------------
+
+
+def test_the_command_passes_a_sound_tree(assembly, capsys):
+    from selfblog.cli import _cmd_assembly_verify
+
+    assert _cmd_assembly_verify(
+        None, assembly_dir=str(assembly), canonical_base=CANONICAL_BASE,
+    ) == 0
+    assert "passed" in capsys.readouterr().out
+
+
+def test_the_command_fails_and_names_the_offender(assembly, capsys):
+    from selfblog.cli import _cmd_assembly_verify
+
+    os.remove(str(assembly / "site" / "robots.txt"))
+    with pytest.raises(SystemExit):
+        _cmd_assembly_verify(
+            None, assembly_dir=str(assembly), canonical_base=CANONICAL_BASE,
+        )
+    assert "robots.txt" in capsys.readouterr().err
+
+
+def test_the_command_requires_a_canonical_base(assembly, capsys):
+    from selfblog.cli import _cmd_assembly_verify
+
+    with pytest.raises(SystemExit):
+        _cmd_assembly_verify(None, assembly_dir=str(assembly), canonical_base="")
+    assert "--canonical-base is required" in capsys.readouterr().err
+
+
+def test_the_command_announces_what_it_did_not_check(assembly, capsys):
+    from selfblog.cli import _cmd_assembly_verify
+
+    _cmd_assembly_verify(
+        None, assembly_dir=str(assembly), canonical_base=CANONICAL_BASE,
+    )
+    assert "NOT CHECKED: outbound-links" in capsys.readouterr().err
+
+
+def test_the_command_is_read_only():
+    """It reads a checkout and reports; the deploy is what writes."""
+    from selfblog.cli import app
+
+    declared = app.dump_schema_dict()["groups"]["assembly"]["commands"]["verify"]
+    assert declared["effect"] == "read_only"
+
+
+def test_the_command_reports_a_missing_roster(tmp_path, capsys):
+    from selfblog.cli import _cmd_assembly_verify
+
+    with pytest.raises(SystemExit):
+        _cmd_assembly_verify(
+            None, assembly_dir=str(tmp_path), canonical_base=CANONICAL_BASE,
+        )
+    assert "roster.toml" in capsys.readouterr().err
