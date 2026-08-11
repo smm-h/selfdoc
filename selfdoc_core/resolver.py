@@ -103,7 +103,7 @@ class Resolver:
         # asks for an API reference into a page that has none.
         if not self._groups:
             raise RuntimeError(
-                f"Directive :::{name} extracts from source code, but "
+                f"Directive :-: {name} extracts from source code, but "
                 "selfdoc.json declares no 'source' entries. Either remove "
                 "the directive, or declare the code it should read: "
                 '"source": [{"path": "src/", "language": "python"}]'
