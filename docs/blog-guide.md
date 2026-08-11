@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, assembly integration, publishing documentation without a release, the declared roster and project retirement, the canonical blog URL, and the portfolio canonical."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, release-generated posts, revision tracking, assembly integration, publishing documentation without a release, the declared roster and project retirement, the canonical blog URL, the portfolio canonical, and the verification every deploy has to pass before it publishes anything."
 nav_group: "Guides"
 nav_order: 19
 ---
@@ -305,6 +305,50 @@ selfblog pin is the *running* selfblog, which in a checkout is an editable
 install sitting ahead of the registry -- writing that pin would produce a
 workflow whose `pip install` cannot resolve, and the failure would surface on
 the assembly repository at the next dispatch instead of here.
+
+### Verification before the deploy
+
+The deploy reads the tree it assembled before it commits or pushes any of
+it. `selfblog assembly integrate` runs the verification itself, after the
+search index and before the commit, so a tree that fails is a tree that
+never reaches the site. There is no flag that turns it off.
+
+What it asserts, each failure naming its offender:
+
+| Property | What a failure means |
+|---|---|
+| Roster, `site/` subtrees and `manifests/` name the same projects | An undeclared subtree, a declared project with nothing to serve, or an orphan manifest of any kind |
+| Each manifest describes the tree beside it | Its slug names another directory, its version disagrees with the pages, or its current version is sitting in the archive tree |
+| Every page and post a manifest lists was emitted | A listing, feed or sitemap row that leads to a 404 |
+| The shared artifacts exist and parse | A missing or malformed front page, project listing, blog index, `nav.json`, sitemap, feed, `robots.txt`, root 404, or an empty search index |
+| Every reference resolves | An internal link, canonical, sitemap entry or feed link naming a file the assembly did not write |
+| Every page is addressable | A page with no title, or a canonical that is not under the site's canonical base |
+| Nothing half-built or per-project leaked in | An unresolved directive marker, or a project's own `_headers`, `_redirects`, `_worker.js` or pre-compressed copies |
+| Cross-project links land somewhere | A link from one project's page into a page no other project publishes |
+
+`selfblog assembly verify --assembly-dir <checkout> --canonical-base <url>`
+runs the same assertions by hand against a checkout. It is read-only.
+
+#### Outbound links
+
+External links are checked only on pages the assembly declares, in a
+committed `outbound.toml` at the assembly root:
+
+```toml
+cache_days = 7
+
+[[page]]
+path = "index.html"
+
+[[page]]
+path = "blog/index.html"
+```
+
+Both keys are required and unknown keys are refused. Results are stored by
+address in `outbound-cache.json` and trusted for `cache_days`, so a deploy
+that changes nothing sends no requests. **With no `outbound.toml` there is
+no outbound check**, and every run says so on stderr rather than passing
+quietly.
 
 ### Posts-only vs full builds
 
