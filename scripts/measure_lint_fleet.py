@@ -18,72 +18,16 @@ Usage:
     python scripts/measure_lint_fleet.py [PROJECTS_ROOT]
 """
 
-import json
 import os
 import shutil
 import sys
 import tempfile
 
-
-# Keys the config schema has retired but fleet configs still carry.  A project
-# whose only load failure is one of these is measured from a sanitized copy of
-# its config -- the copy is written to a scratch directory, never to the
-# project -- and the summary says so.
-RETIRED_VERSION_KEYS = ("indexed",)
-
-
-def _load_config_tolerantly(project_dir, scratch_dir):
-    """Load a project's config, retrying once without retired schema keys.
-
-    Returns:
-        ``(config, sanitized)`` where *sanitized* is True when the config only
-        loaded after retired keys were dropped.
-    """
-    from selfdoc_core.config import ConfigError, load_config
-
-    try:
-        return load_config(project_dir), False
-    except ConfigError:
-        pass
-
-    with open(os.path.join(project_dir, "selfdoc.json"), encoding="utf-8") as f:
-        raw = json.load(f)
-    dropped = False
-    for entry in raw.get("versions") or []:
-        for key in RETIRED_VERSION_KEYS:
-            if isinstance(entry, dict) and key in entry:
-                del entry[key]
-                dropped = True
-    if not dropped:
-        # Nothing retired to blame -- re-raise the original diagnosis.
-        return load_config(project_dir), False
-
-    shadow = os.path.join(scratch_dir, os.path.basename(project_dir.rstrip("/")))
-    os.makedirs(shadow, exist_ok=True)
-    with open(os.path.join(shadow, "selfdoc.json"), "w", encoding="utf-8") as f:
-        json.dump(raw, f)
-    return load_config(shadow), True
-
-
-def _load_docs(docs_dir):
-    """Return {rel_path: (metadata, "", body, fm_line_count)} for a docs tree."""
-    from selfdoc.docs import parse_frontmatter
-
-    all_docs = {}
-    for root, _dirs, files in os.walk(docs_dir):
-        if "_build" in root.split(os.sep):
-            continue
-        for fname in sorted(files):
-            if not fname.endswith(".md") or fname.startswith("_"):
-                continue
-            full_path = os.path.join(root, fname)
-            rel_path = os.path.relpath(full_path, docs_dir)
-            with open(full_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            metadata, body = parse_frontmatter(content)
-            fm_line_count = len(content.split("\n")) - len(body.split("\n"))
-            all_docs[rel_path] = (metadata, "", body, fm_line_count)
-    return all_docs
+from selfdoc_core.fleet import (
+    load_docs_bodies,
+    load_project_config,
+    project_dirs,
+)
 
 
 def _was_seo007_exempt(all_docs, rel_path):
@@ -108,14 +52,14 @@ def measure_project(project_dir, scratch_dir):
     """
     import selfdoc.check as check_mod
 
-    config, sanitized = _load_config_tolerantly(project_dir, scratch_dir)
+    config, sanitized = load_project_config(project_dir, scratch_dir)
     if config is None:
         raise RuntimeError("no selfdoc.json")
     docs_dir = os.path.join(project_dir, config.get("docs", "docs/"))
     if not os.path.isdir(docs_dir):
         raise RuntimeError(f"docs directory not found: {docs_dir}")
 
-    all_docs = _load_docs(docs_dir)
+    all_docs = load_docs_bodies(docs_dir)
     if not all_docs:
         raise RuntimeError("no markdown templates")
 
@@ -153,11 +97,7 @@ def measure_project(project_dir, scratch_dir):
 def main(argv):
     """Measure every project under the given root and print a summary table."""
     root = argv[1] if len(argv) > 1 else os.path.expanduser("~/Projects")
-    projects = sorted(
-        name for name in os.listdir(root)
-        if not name.startswith(".")
-        and os.path.isfile(os.path.join(root, name, "selfdoc.json"))
-    )
+    projects = [os.path.basename(path) for path in project_dirs(root)]
 
     scratch_dir = tempfile.mkdtemp(prefix="selfdoc-fleet-measure-")
     measured = []
