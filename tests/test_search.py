@@ -31,51 +31,46 @@ def project_dir(tmp_path):
     return tmp_path
 
 
-def test_website_jsonld_has_search_action(project_dir):
-    """WebSite JSON-LD on homepage includes potentialAction with SearchAction."""
+def _website_lds(index_html):
+    """Every WebSite JSON-LD block on a built homepage, parsed."""
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        index_html,
+        re.DOTALL,
+    )
+    return [json.loads(b) for b in ld_blocks if '"WebSite"' in b]
+
+
+def test_website_jsonld_survives(project_dir):
+    """The homepage still declares one WebSite node, with name and url."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
 
-    # Extract all JSON-LD blocks
-    ld_blocks = re.findall(
-        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
-        index_html,
-        re.DOTALL,
-    )
-    website_lds = [json.loads(b) for b in ld_blocks if '"WebSite"' in b]
+    website_lds = _website_lds(index_html)
     assert len(website_lds) == 1, "Expected exactly one WebSite JSON-LD block"
-
-    website_ld = website_lds[0]
-    assert website_ld["@type"] == "WebSite"
-    assert "potentialAction" in website_ld
-
-    action = website_ld["potentialAction"]
-    assert action["@type"] == "SearchAction"
-    assert "query-input" in action
-    assert action["query-input"] == "required name=search_term_string"
+    assert website_lds[0]["@type"] == "WebSite"
+    assert website_lds[0]["url"] == "https://example.com/"
+    assert website_lds[0]["name"]
 
 
-def test_search_action_target_uses_base_url(project_dir):
-    """SearchAction target URL uses the configured base_url."""
+def test_website_jsonld_has_no_search_action(project_dir):
+    """The SearchAction is gone: it advertised a ?q= duplicate-content URL.
+
+    The pattern told crawlers that every search term had its own address,
+    while the site serves one client-side-searched page for all of them.
+    """
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
 
-    ld_blocks = re.findall(
-        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
-        index_html,
-        re.DOTALL,
-    )
-    website_lds = [json.loads(b) for b in ld_blocks if '"WebSite"' in b]
-    assert len(website_lds) == 1
-
-    action = website_lds[0]["potentialAction"]
-    assert action["target"] == "https://example.com/?q={search_term_string}"
+    assert "potentialAction" not in _website_lds(index_html)[0]
+    assert '"SearchAction"' not in index_html
+    assert "search_term_string" not in index_html
 
 
 def test_search_js_has_url_parameter_handling(project_dir):

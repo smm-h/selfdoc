@@ -501,11 +501,11 @@ def test_website_on_index_only(project_dir):
 
     output_dir = os.path.join(project_dir, "docs", "_build")
 
-    # Index page should have WebSite with SearchAction
+    # Index page should have WebSite -- and no SearchAction on it.
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_html = f.read()
     assert '"WebSite"' in index_html
-    assert '"SearchAction"' in index_html
+    assert '"SearchAction"' not in index_html
     assert "https://example.com/" in index_html
 
     # Non-index page should NOT have WebSite
@@ -4368,8 +4368,12 @@ def test_breadcrumb_no_broken_links(project_dir):
     assert '<a href="../../guides/index.html">' not in content
 
 
-def test_search_action_in_jsonld(project_dir):
-    """WebSite JSON-LD contains SearchAction with ?q= target."""
+def test_no_search_action_in_jsonld(project_dir):
+    """The WebSite JSON-LD advertises no ?q= search URL pattern.
+
+    Every query rendered the same page, so the pattern published a
+    duplicate-content address per search term.
+    """
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -4384,9 +4388,9 @@ def test_search_action_in_jsonld(project_dir):
         index_html = f.read()
 
     assert '"WebSite"' in index_html
-    assert '"SearchAction"' in index_html
-    assert "search_term_string" in index_html
-    assert "potentialAction" in index_html
+    assert '"SearchAction"' not in index_html
+    assert "search_term_string" not in index_html
+    assert "potentialAction" not in index_html
 
 
 def test_heading_id_deduplication():
