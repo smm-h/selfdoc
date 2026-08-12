@@ -85,8 +85,8 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "f7d7aa6dda48d30982f96b79b633cedd536fb6565e3aecd9a15e84fea2d85a32",
-    "description": "ef0c2e5133fc95360707dbd7e95c1f44bda97c845e2c84aeceb69aba61f82f4a"
+    "content": "f2c7255443a481a8036f50220ff33632e8c704a312067552e196810db00deb3a",
+    "description": "e813013591ebc93b6f8f273f0cd10dddb7dce4d960116576393e268b1913faec"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
     "content": "c25c2417c6524d0e16a73c7a1655ef888c96902c9751d25dec542bb4159c3309",
@@ -176,8 +176,8 @@
     "description": "e1d263c411830edc0641532859bb6f200d6c5f996f7a8e820013940513d3bcf2"
   },
   "en/custom-directives.md": {
-    "content": "bfd7b282e19dd1d917a1df789c6d6ffb987ec743b9fd818dd95691e98dbe08b2",
-    "description": "0db46005f2b87af95d45ef7ce47a689feebfb42999570a2c5f1092b4b35266d0"
+    "content": "6b89a2fb9e10eb7b88a1942575ddfed05015e26017d4ccc20f02d59ad9b095d4",
+    "description": "00455c48e6bb86ca8547c70c7e3e8c270905959987e71beca067d82564b8dd47"
   },
   "en/deployment.md": {
     "content": "b929a42314fa39673a3d461796c199c3bee303e40d3d64e39a339e425b9fba06",
@@ -216,8 +216,8 @@
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
-    "content": "e92d6bb96d04d4ad4ad17ccf61f50cf03f660fbc340c9dfccab0b9a94f62cc82",
-    "description": "fde99a135ff41825e1968e68c673c9dd3fda338d7fdf0152dda32aa517203df2"
+    "content": "4848ac90bfa5a6cfa12f699b604b98b0d0b54b96e8cdf194409d47098db4ef66",
+    "description": "569cfc0e18516b909e82c95a48088c40064ec4f54d403bcad583907fcb4999d3"
   },
   "en/internals.md": {
     "content": "bd509f84dc50a35fd2aa7ca61a4d2325483827c06f2b75b63ef523b1f89e304c",
@@ -228,8 +228,8 @@
     "description": "4638a0a53bc8a5833eeeff4112a7f9a5422488e12860b3735a9a16c3d79ba300"
   },
   "en/monorepo-conversion.md": {
-    "content": "6d135324ea886e0efce21d30950e609b08042b74b3f8cd905e154b16260fa90b",
-    "description": "4da853cfdfa494c9f2d09991ef2defc3243ff678f6aefd9ea252be694c79b095"
+    "content": "a66e4b5813e46bc1d507d6ef869efcf54092b5788a9baaef24f614a4262f2180",
+    "description": "0bd07afdb77347b3851c73ada6b0596fe0db55751aa6f19bc01b7727c216e468"
   },
   "en/multi-language.md": {
     "content": "66c0d79a10010080662dac56a5254bef642e616fc6ef513abb6965eec4db05f1",
@@ -442,8 +442,8 @@
     "source_docstring": "878a8caa74c228e469b5a7ec4f769308f83ba4b2b21b568fcb6c38756d17b8e1"
   },
   "en/seo.md": {
-    "content": "641c7ae7beb84e848d9a76bda532ff2751a9238447852967818dc703e61a1e9b",
-    "description": "7085b4b5fbdb1dcd20c51bb98f8023783d9e4d2740ef34cc39ab8c708451bd32"
+    "content": "a144210a4da3e6a1025a5ce51dd81c2f5f4b037c46b0b36a605ab5957dd62c9a",
+    "description": "459bf62cb188c627f8b79d9e10f3a47c9304420ad6fdd0464dcdb2541d19df25"
   },
   "en/staleness.md": {
     "content": "e269011b77f78863e432f9f0c6828beeeb5e8872f25737c3da67b44a7fdb50f6",
