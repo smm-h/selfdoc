@@ -119,8 +119,22 @@ def assembly(tmp_path):
     _write(str(site / "beta" / "index.html"),
            _page("Beta", f"{CANONICAL_BASE}/beta/", version="2.0.0"))
 
-    # The search index, as pagefind leaves it.
-    _write(str(site / "pagefind" / "pagefind.js"), "// index")
+    # The search index, as pagefind leaves it: the runtime's own files, the
+    # entry the runtime fetches to find its index, and a fragment per
+    # indexed page. Only the last two say anything about whether the site
+    # can answer a search -- pagefind writes its JS whether or not it
+    # indexed a thing.
+    _write(str(site / "pagefind" / "pagefind.js"), "// runtime")
+    _write(str(site / "pagefind" / "pagefind-ui.js"), "// ui")
+    _write(str(site / "pagefind" / "pagefind-entry.json"), json.dumps({
+        "version": "1.3.0",
+        "languages": {"en": {"hash": "en_abc123", "wasm": "en",
+                             "page_count": 4}},
+    }))
+    _write(str(site / "pagefind" / "index" / "en_abc123.pf_index"), "index")
+    for name in ("f1", "f2", "f3", "f4"):
+        _write(str(site / "pagefind" / "fragment" / f"en_{name}.pf_fragment"),
+               "fragment")
 
     generate_shared_files(
         str(site), str(manifests), CANONICAL_BASE, docs_base=CANONICAL_BASE,
@@ -314,11 +328,61 @@ def test_an_unparsable_nav_json_fails(assembly):
     assert any("nav.json" in m and "does not parse" in m for m in messages)
 
 
-def test_an_empty_search_index_fails(assembly):
-    os.remove(str(assembly / "site" / "pagefind" / "pagefind.js"))
+# The search index used to be asserted by existence alone -- any file at all
+# under pagefind/ counted as one. pagefind writes its runtime JS whether or
+# not it indexed anything, so a directory holding only that passed while the
+# site answered no searches. What the runtime actually loads is asserted now.
+
+
+def test_a_search_index_of_runtime_files_only_fails(assembly):
+    """pagefind's JS is present, its index is not: the site answers nothing."""
+    index = assembly / "site" / "pagefind"
+    os.remove(str(index / "pagefind-entry.json"))
+    for name in os.listdir(str(index / "fragment")):
+        os.remove(str(index / "fragment" / name))
     report = _verify(assembly)
     messages = [str(f) for f in report.failures_of("shared-artifacts")]
-    assert any("pagefind" in m for m in messages)
+    assert any("pagefind-entry.json" in m for m in messages)
+    assert any("fragment" in m for m in messages)
+
+
+def test_an_unparsable_search_index_entry_fails(assembly):
+    _write(str(assembly / "site" / "pagefind" / "pagefind-entry.json"),
+           "{not json")
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("pagefind-entry.json" in m and "does not parse" in m
+               for m in messages)
+
+
+def test_a_search_index_declaring_no_language_fails(assembly):
+    _write(str(assembly / "site" / "pagefind" / "pagefind-entry.json"),
+           json.dumps({"version": "1.3.0", "languages": {}}))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("pagefind-entry.json" in m for m in messages)
+
+
+def test_a_search_index_that_indexed_no_pages_fails(assembly):
+    _write(str(assembly / "site" / "pagefind" / "pagefind-entry.json"),
+           json.dumps({
+               "version": "1.3.0",
+               "languages": {"en": {"hash": "en_abc123", "wasm": "en",
+                                    "page_count": 0}},
+           }))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("indexed page" in m for m in messages)
+
+
+def test_a_search_index_with_no_fragments_fails(assembly):
+    """A match with no fragment has no page record to render a result from."""
+    fragments = assembly / "site" / "pagefind" / "fragment"
+    for name in os.listdir(str(fragments)):
+        os.remove(str(fragments / name))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("fragment" in m for m in messages)
 
 
 def test_a_portfolio_moves_the_listing_and_the_listing_is_checked(assembly):

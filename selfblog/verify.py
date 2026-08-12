@@ -475,12 +475,77 @@ def check_shared_artifacts(tree: AssemblyTree) -> list[Failure]:
         except json.JSONDecodeError as exc:
             _unparsable("nav.json", exc)
 
-    index_files = [p for p in tree.emitted if p.startswith("pagefind/")]
-    if not index_files:
+    failures.extend(_search_index_failures(tree))
+    return failures
+
+
+def _indexed_pages(language: object) -> int:
+    """Return the page count a pagefind language block reports, or 0."""
+    if not isinstance(language, dict):
+        return 0
+    count = language.get("page_count")
+    if isinstance(count, bool) or not isinstance(count, int):
+        return 0
+    return count
+
+
+def _search_index_failures(tree: AssemblyTree) -> list[Failure]:
+    """The search index answers searches, asserted on what the runtime loads.
+
+    This used to be "any file at all under ``pagefind/``", which is not a
+    statement about the index: pagefind writes its runtime JS and CSS whether
+    or not it indexed a single page, so a directory holding only those passed
+    while the site answered nothing.  Three honest properties instead --
+    ``pagefind-entry.json`` is the file the runtime fetches to discover its
+    index, it parses, it reports at least one indexed page, and at least one
+    per-page fragment exists to render a result from.
+    """
+    failures: list[Failure] = []
+    entry_rel = "pagefind/pagefind-entry.json"
+
+    if entry_rel not in tree.emitted:
         failures.append(Failure(
-            "shared-artifacts", "site/pagefind",
-            "the search index is empty or was never built, so the site "
-            "answers no searches.",
+            "shared-artifacts", f"site/{entry_rel}",
+            "is missing, so the search runtime has nothing to load and the "
+            "site answers no searches. It is written by the pagefind pass "
+            "over the assembled tree.",
+        ))
+    else:
+        try:
+            entry = json.loads(tree.read(entry_rel))
+        except json.JSONDecodeError as exc:
+            failures.append(Failure(
+                "shared-artifacts", f"site/{entry_rel}",
+                f"does not parse: {exc}",
+            ))
+            entry = None
+        if entry is not None:
+            languages = entry.get("languages") if isinstance(entry, dict) else None
+            if not isinstance(languages, dict) or not languages:
+                failures.append(Failure(
+                    "shared-artifacts", f"site/{entry_rel}",
+                    "declares no indexed language, so the search runtime "
+                    "loads it and finds no index behind it.",
+                ))
+            else:
+                indexed = sum(_indexed_pages(v) for v in languages.values())
+                if indexed < 1:
+                    failures.append(Failure(
+                        "shared-artifacts", f"site/{entry_rel}",
+                        f"reports no indexed page across "
+                        f"{len(languages)} declared language(s), so every "
+                        f"search returns nothing.",
+                    ))
+
+    fragments = [
+        rel for rel in tree.emitted
+        if rel.startswith("pagefind/fragment/") and rel.endswith(".pf_fragment")
+    ]
+    if not fragments:
+        failures.append(Failure(
+            "shared-artifacts", "site/pagefind/fragment",
+            "holds no fragment, so a search that matches has no page record "
+            "to render a result from.",
         ))
     return failures
 

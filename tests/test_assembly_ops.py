@@ -181,3 +181,88 @@ def test_assembly_status_help():
 def test_assembly_rebuild_help():
     result = app.test(["assembly", "rebuild", "--help"])
     assert result.exit_code == 0
+
+
+# -- reading projects.json off the assembly ----------------------------------
+#
+# `assembly rebuild` decoded and parsed the membership record under
+# `except (json.JSONDecodeError, Exception)`, whose first clause could never
+# be reached: `Exception` already covers it, so the two-clause tuple only
+# looked like it distinguished a malformed document from anything else. It
+# reads through the same helper every other remote read uses now, and its
+# own handler names the one thing it is left to catch.
+
+
+def _rebuild_project(tmp_path, monkeypatch, repo="owner/assembly"):
+    _setup_project(tmp_path, {"assembly": {"repo": repo}})
+    monkeypatch.chdir(tmp_path)
+
+
+def _contents_reply(payload, *, returncode=0, stderr=""):
+    def run(cmd, **kwargs):
+        joined = " ".join(str(c) for c in cmd)
+        if "/contents/" in joined:
+            return subprocess.CompletedProcess(
+                args=list(cmd), returncode=returncode,
+                stdout=payload, stderr=stderr,
+            )
+        return subprocess.CompletedProcess(args=list(cmd), returncode=0,
+                                           stdout="", stderr="")
+    return run
+
+
+def _encoded(text):
+    return base64.b64encode(text.encode()).decode()
+
+
+def test_rebuild_reports_a_malformed_membership_record(tmp_path, monkeypatch,
+                                                       capsys):
+    _rebuild_project(tmp_path, monkeypatch)
+    monkeypatch.setattr("selfblog.cli.effects.run",
+                        _contents_reply(_encoded("{not json")))
+    monkeypatch.setattr("selfblog.assembly.effects.run",
+                        _contents_reply(_encoded("{not json")))
+    with pytest.raises(SystemExit):
+        _cmd_assembly_rebuild(None)
+    assert "projects.json" in capsys.readouterr().err
+
+
+def test_rebuild_reports_a_failed_read(tmp_path, monkeypatch, capsys):
+    """A rate limit is not an assembly with no projects."""
+    _rebuild_project(tmp_path, monkeypatch)
+    reply = _contents_reply("", returncode=1,
+                            stderr="gh: API rate limit exceeded (HTTP 403)")
+    monkeypatch.setattr("selfblog.cli.effects.run", reply)
+    monkeypatch.setattr("selfblog.assembly.effects.run", reply)
+    with pytest.raises(SystemExit):
+        _cmd_assembly_rebuild(None)
+    err = capsys.readouterr().err
+    assert "rate limit" in err
+    assert "No projects configured" not in err
+
+
+def test_rebuild_reports_an_absent_membership_record(tmp_path, monkeypatch,
+                                                     capsys):
+    _rebuild_project(tmp_path, monkeypatch)
+    reply = _contents_reply("", returncode=1,
+                            stderr="gh: Not Found (HTTP 404)")
+    monkeypatch.setattr("selfblog.cli.effects.run", reply)
+    monkeypatch.setattr("selfblog.assembly.effects.run", reply)
+    with pytest.raises(SystemExit):
+        _cmd_assembly_rebuild(None)
+    assert "projects.json" in capsys.readouterr().err
+
+
+def test_rebuild_dispatches_for_every_registered_project(tmp_path, monkeypatch,
+                                                         capsys):
+    _rebuild_project(tmp_path, monkeypatch)
+    payload = _encoded(json.dumps({
+        "alpha": {"repo": "owner/alpha", "ref": "v1.0.0", "version": "1.0.0"},
+        "beta": {"repo": "owner/beta", "ref": "v2.0.0", "version": "2.0.0"},
+    }))
+    monkeypatch.setattr("selfblog.cli.effects.run", _contents_reply(payload))
+    monkeypatch.setattr("selfblog.assembly.effects.run",
+                        _contents_reply(payload))
+    assert _cmd_assembly_rebuild(None) == 0
+    out = capsys.readouterr().out
+    assert "Dispatched 2 rebuild(s)." in out
