@@ -1,6 +1,6 @@
 ---
 title: Search
-description: "Configure Pagefind search in selfdoc: the required search_engine declaration, the UI modes, the Cmd/Ctrl+K shortcut, and the seven filters every page carries."
+description: "Configure Pagefind search in selfdoc: the required search_engine key, the UI modes, the Cmd/Ctrl+K shortcut, and the seven filters pages carry."
 nav_group: "Guides"
 nav_order: 6
 ---
