@@ -81,7 +81,7 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/architecture.md": {
-    "content": "8313b546753d6da51d8e6a9789a4d85009bf6558c20b3ed0e3f1ef559ce47793",
+    "content": "ed26186eadf7cddc8a28b9312c2d7a06a562cfd743824474331ad753e5d8586a",
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
@@ -89,7 +89,7 @@
     "description": "ef0c2e5133fc95360707dbd7e95c1f44bda97c845e2c84aeceb69aba61f82f4a"
   },
   "en/check-guide.md": {
-    "content": "650931562b25556fdc2621a200253fa61ae20ee181e565ab41b77c4f02efc99a",
+    "content": "4adb87aa608cf521809242292bb64443c8b72ee4569980ab3bcad62c02a263cd",
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
@@ -164,11 +164,11 @@
     "description": "c72baf77a34e19edde9974604cb642710a27b736071f5ff8cb24b1d1049ead17"
   },
   "en/comparisons.md": {
-    "content": "874c5fdc484585b605d8ec2e01ecd3f8a93720393ba50029a195c7c6cd0a492a",
+    "content": "dfa2b3ec6461592cdddeb8a3d421da6fb50ddf66379fa6328ddc34b8246496d6",
     "description": "b54f7343fd127542f1a22fd1fbf5d9ddf2a00c7f244026f00a0b32f74fa47567"
   },
   "en/configuration.md": {
-    "content": "07e68b5773d256b8cd91f616e38c47772f114607b26a02598efbba5c788ca893",
+    "content": "73a19e4b7255e76c5d6a5c2c4b673ff1e08213b42f9da33784483e485e1335c4",
     "description": "e1d263c411830edc0641532859bb6f200d6c5f996f7a8e820013940513d3bcf2"
   },
   "en/custom-directives.md": {
@@ -208,7 +208,7 @@
     "description": "e161074813c97a1265b507b5f3ba2cbe3cb7eaff0bee99722e01f8874ad77fab"
   },
   "en/glossary-terms.md": {
-    "content": "b917db73c17194d7cc246a274a0f4884f0fc150905788a1c14e155fa242db051",
+    "content": "96f87e6f1437315a2a7b8ac6064e33ca885251037321dabd466da0ee8ffc1329",
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
