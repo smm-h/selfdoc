@@ -247,7 +247,7 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
 
     push_calls = []
 
-    def mock_push(repo, files, message, branch="main"):
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "commit_sha"
 
@@ -386,7 +386,7 @@ def test_assembly_repo_from_assembly_config(tmp_path, monkeypatch, capsys):
 
     push_calls = []
 
-    def mock_push(repo, files, message, branch="main"):
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
         push_calls.append(repo)
         return "sha"
 
@@ -433,7 +433,7 @@ def test_posts_repo_push_when_configured(tmp_path, monkeypatch, capsys):
 
     push_calls = []
 
-    def mock_push(repo, files, message, branch="main"):
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "sha"
 
@@ -469,7 +469,7 @@ def test_no_posts_repo_only_assembly_push(tmp_path, monkeypatch, capsys):
 
     push_calls = []
 
-    def mock_push(repo, files, message, branch="main"):
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "sha"
 
@@ -497,7 +497,7 @@ def test_posts_repo_pushes_resolved_markdown(tmp_path, monkeypatch, capsys):
 
     push_calls = []
 
-    def mock_push(repo, files, message, branch="main"):
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
         push_calls.append({"repo": repo, "files": files, "message": message})
         return "sha"
 
@@ -533,3 +533,170 @@ def test_posts_repo_pushes_resolved_markdown(tmp_path, monkeypatch, capsys):
         # Verify it's not HTML
         assert "<html" not in content
         assert "</html>" not in content
+
+
+# -- The publish records what it published ----------------------------------
+#
+# `post publish` pushed post HTML into the assembly and recorded nothing, so
+# those posts were unclaimed: no owner accounted for them, the prune model
+# could not protect them from another publisher, retirement did not take them
+# along, and the cross-project write refusal -- which reads the records --
+# could not see them at all. It now updates the posts owner's entry through
+# the same helper the documentation publisher uses.
+
+
+def _publish_with_output(tmp_path, monkeypatch, *, remote_record="",
+                         post_slug="hello"):
+    """Run a post publish over a fake build output; return the pushed files.
+
+    Returns ``(files, delete_paths)`` from the assembly push.
+    """
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / "docs" / "_build"
+    posts_out = output_dir / "blog" / post_slug
+    posts_out.mkdir(parents=True)
+    (posts_out / "index.html").write_text("<html>post</html>")
+    (output_dir / "blog" / "index.html").write_text("<html>listing</html>")
+
+    def mock_build(*a, **kw):
+        return {
+            str(posts_out / "index.html"): True,
+            str(output_dir / "blog" / "index.html"): True,
+        }
+
+    pushes = []
+
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
+        pushes.append({
+            "repo": repo, "files": files, "message": message,
+            "delete_paths": delete_paths or [],
+        })
+        return "commit_sha"
+
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", mock_build)
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        "selfblog.assembly.fetch_remote_text",
+        lambda repo, path, missing_ok=False: remote_record,
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish(None)
+
+    assembly_push = [p for p in pushes if p["repo"] == "owner/docs-assembly"]
+    assert len(assembly_push) == 1
+    return assembly_push[0]["files"], assembly_push[0]["delete_paths"]
+
+
+def test_publish_records_the_posts_it_published(tmp_path, monkeypatch):
+    """The pushed commit carries the posts owner's claim on the post paths."""
+    files, _deleted = _publish_with_output(tmp_path, monkeypatch)
+
+    assert "manifests/myproject-files.json" in files
+    record = json.loads(files["manifests/myproject-files.json"])
+    assert record["schema_version"] == 2
+    assert record["slug"] == "myproject"
+    assert record["owners"]["posts"] == ["blog/hello/index.html"]
+    # The project's own listing page is not published, so it is not claimed.
+    assert "blog/index.html" not in record["owners"]["posts"]
+
+
+def test_recorded_posts_are_visible_to_the_write_refusal(tmp_path, monkeypatch):
+    """Another project's publish is now refused from overwriting the post.
+
+    The refusal reads the published-file records, so a post that no record
+    named could be silently overwritten by a project that reused its slug.
+    """
+    from selfblog.assembly import foreign_post_claims
+
+    files, _deleted = _publish_with_output(tmp_path, monkeypatch)
+
+    manifests = tmp_path / "assembly" / "manifests"
+    manifests.mkdir(parents=True)
+    (manifests / "myproject-files.json").write_text(
+        files["manifests/myproject-files.json"]
+    )
+
+    claims = foreign_post_claims(str(manifests), "otherproject")
+    assert claims == {"blog/hello/index.html": "myproject"}
+
+
+def test_publish_prunes_the_posts_it_no_longer_publishes(tmp_path, monkeypatch):
+    """A post the publisher claimed before and does not produce now is deleted."""
+    remote = json.dumps({
+        "schema_version": 2,
+        "slug": "myproject",
+        "owners": {
+            "posts": ["blog/hello/index.html", "blog/gone/index.html"],
+            "release": ["myproject/index.html"],
+        },
+    })
+
+    files, deleted = _publish_with_output(tmp_path, monkeypatch,
+                                          remote_record=remote)
+
+    record = json.loads(files["manifests/myproject-files.json"])
+    assert record["owners"]["posts"] == ["blog/hello/index.html"]
+    assert deleted == ["site/blog/gone/index.html"]
+    # Another owner's paths are neither claimed nor removed.
+    assert record["owners"]["release"] == ["myproject/index.html"]
+
+
+def test_publish_goes_through_the_shared_record_helper(tmp_path, monkeypatch):
+    """The command calls the helper rather than carrying its own copy.
+
+    ``docs publish`` records its paths through the same function; a second
+    implementation here is how the two publishers drift apart.
+    """
+    calls = []
+
+    def fake_stage(repo, slug, owner, produced, files):
+        calls.append((repo, slug, owner, sorted(produced)))
+        files[f"manifests/{slug}-files.json"] = "{}"
+        return []
+
+    monkeypatch.setattr("selfblog.assembly.stage_published_record", fake_stage)
+    _publish_with_output(tmp_path, monkeypatch)
+
+    assert calls == [
+        ("owner/docs-assembly", "myproject", "posts", ["blog/hello/index.html"]),
+    ]
+
+
+def test_publish_that_produced_no_posts_records_nothing(tmp_path, monkeypatch,
+                                                        capsys):
+    """A build that emitted no post pages does not release earlier claims.
+
+    Same protection the posts-scope integrate has: an empty build is not an
+    instruction to unpublish, so the record is left exactly as it is.
+    """
+    _setup_project(tmp_path)
+    _create_post(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    pushes = []
+
+    def mock_push(repo, files, message, branch="main", *, delete_paths=None):
+        pushes.append({"files": files, "delete_paths": delete_paths or []})
+        return "sha"
+
+    monkeypatch.setattr("selfdoc_core.build._build_posts_only", lambda *a, **kw: {})
+    monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    _cmd_post_publish(None)
+
+    assert pushes
+    for push in pushes:
+        assert "manifests/myproject-files.json" not in push["files"]
+        assert push["delete_paths"] == []
+    assert "no post pages" in capsys.readouterr().err

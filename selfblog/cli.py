@@ -366,10 +366,12 @@ def _cmd_post_publish(ctx):
         for abs_path in written
     }
     files = {}
+    produced = set()
     for build_rel, site_rel in split_build_output(build_rels, slug).items():
         with open(os.path.join(output_dir, *build_rel.split("/")),
                   "r", encoding="utf-8") as f:
             files[f"site/{site_rel}"] = f.read()
+        produced.add(site_rel)
 
     # Read post-manifest and map to assembly path
     post_manifest_path = os.path.join(".selfdoc", "post-manifest.json")
@@ -382,8 +384,31 @@ def _cmd_post_publish(ctx):
         with open(revisions_path, "r", encoding="utf-8") as f:
             files[f"manifests/{slug}-revisions.json"] = f.read()
 
+    # Record the posts this publish owns, in the same commit that carries
+    # them: an unrecorded post is unclaimed, so nothing accounts for it,
+    # another project's publish may overwrite it, and retirement leaves it
+    # behind on the blog. This is the helper `docs publish` records through.
+    delete_paths = []
+    if produced:
+        from selfblog.assembly import stage_published_record
+
+        delete_paths = stage_published_record(
+            repo, slug, "posts", produced, files,
+        )
+    else:
+        # The same protection the posts-scope integrate has: a build that
+        # emitted no post pages is not an instruction to unpublish the posts
+        # already on the site, so the record is left exactly as it is.
+        print(
+            f"posts publish for {slug!r}: the build produced no post pages, "
+            f"so nothing was claimed and nothing was removed. Posts already "
+            f"published stay.",
+            file=sys.stderr,
+        )
+
     # Push files to assembly repo via Git Data API
-    push_files_to_repo(repo, files, f"posts: {slug}")
+    push_files_to_repo(repo, files, f"posts: {slug}",
+                       delete_paths=delete_paths)
 
     # Dispatch shared-only rebuild to regenerate cross-project elements
     dispatch_payload = json.dumps({

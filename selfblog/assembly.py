@@ -1130,6 +1130,37 @@ def render_files_manifest(slug: str, owners: dict[str, list[str]]) -> str:
     ) + "\n"
 
 
+def stage_published_record(
+    repo: str,
+    slug: str,
+    owner: str,
+    produced,
+    files: dict,
+) -> list[str]:
+    """Record what *owner* now publishes for *slug*; return what it deletes.
+
+    The one path by which a publisher that writes through the Git Data API
+    -- ``docs publish`` and ``post publish`` -- keeps the published-file
+    record honest.  It reads the record on *repo*, prunes *owner*'s entry
+    against *produced* (site-relative paths), and stages the rewritten
+    record in *files* alongside whatever else that publisher is pushing, so
+    the record and the content it describes land in the same commit.
+
+    Without this, a publish leaves its files unclaimed: nothing accounts
+    for them, the ownership-prune model cannot protect them from another
+    publisher, retirement does not take them along, and the cross-project
+    write refusal (:func:`foreign_post_claims`) cannot see them at all.
+
+    Returns the repo-relative paths to delete in that same commit.
+    """
+    record_path = f"manifests/{slug}-files.json"
+    raw_record = fetch_remote_text(repo, record_path, missing_ok=True)
+    owners = parse_files_manifest(raw_record, source=f"{repo}:{record_path}")
+    removed, owners = prune_plan(owners, owner, set(produced))
+    files[record_path] = render_files_manifest(slug, owners)
+    return [f"site/{rel}" for rel in removed]
+
+
 def prune_plan(
     owners: dict[str, list[str]],
     owner: str,
@@ -2329,11 +2360,7 @@ def publish_project_docs(
     produced = set(split_build_output(build_output_paths(output_dir), slug).values())
     files: dict[str, str | bytes] = dict(collect_site_files(output_dir, slug))
 
-    record_path = f"manifests/{slug}-files.json"
-    raw_record = fetch_remote_text(repo, record_path, missing_ok=True)
-    owners = parse_files_manifest(raw_record, source=f"{repo}:{record_path}")
-    removed, owners = prune_plan(owners, "docs", produced)
-    files[record_path] = render_files_manifest(slug, owners)
+    delete_paths = stage_published_record(repo, slug, "docs", produced, files)
 
     if manifest_path and os.path.isfile(manifest_path):
         with open(manifest_path, "r", encoding="utf-8") as f:
@@ -2359,7 +2386,6 @@ def publish_project_docs(
     membership[slug] = entry
     files[PROJECTS_PATH] = render_projects_json(membership)
 
-    delete_paths = [f"site/{rel}" for rel in removed]
     push = push_files_to_repo(
         repo, files, f"docs: {slug} {version}".strip(), branch,
         delete_paths=delete_paths,
