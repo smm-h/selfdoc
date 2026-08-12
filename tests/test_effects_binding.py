@@ -98,6 +98,15 @@ SELFBLOG_EFFECTS = {
     "assembly.verify": "read_only",
     # commits the regenerated deploy workflow to the assembly repo
     "assembly.sync-workflow": "mutating",
+    # reads the editor registry and prints one line per entry
+    "editor.list-repos": "read_only",
+    # serves the authoring app on loopback, whose PUT writes an edited post
+    # into the registered repository's working tree. Previews write nothing --
+    # they go through the in-memory render path -- so the save is the whole of
+    # the mutation, and it is deliberately not consequential: a save is an
+    # interactive act the author has just performed, not something to
+    # interrupt them for at launch.
+    "editor.serve": "mutating",
     # rewrites the content-hash store and auto-commits it
     "check": "mutating",
     # writes the built output tree and auto-commits the hash store
