@@ -145,7 +145,11 @@ The assembly workflow at `.github/workflows/deploy.yml` in the assembly repo nee
 
 ```yaml
 - name: Generate shared elements
-  run: selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/ --docs-base '' $PORTFOLIO_FLAG
+  run: >
+    selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/
+    --docs-base '' --canonical-base "$DOCS_BASE" --home-slug "$HOME_SLUG"
 ```
+
+When this plan was written the step also carried a `--portfolio-file` flag holding a hand-written HTML front page. That flag is gone: the site's front page is the roster's declared `home` project, named by `--home-slug`, whose own pages are emitted at the site root. `--canonical-base` is required and has no default.
 
 Full project builds stay `selfdoc`. Posts-only builds and `generate-shared` move to `selfblog`.
