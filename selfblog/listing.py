@@ -35,7 +35,9 @@ CATEGORY_KEYS = ("name", "project")
 #: (a project with no docs section), and ``name`` is required for exactly
 #: those -- an entry the assembly does serve takes its name from its manifest,
 #: so declaring one here would be a second source for the same fact.
-PROJECT_KEYS = ("slug", "blurb", "url", "name")
+#: ``repo`` is the project's repository, rendered as a second link on the
+#: card beside the one the title carries.
+PROJECT_KEYS = ("slug", "blurb", "url", "name", "repo")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -45,13 +47,15 @@ class ListingProject:
     ``url`` empty means the entry names a project the assembly serves: its
     display name and version come from its manifest and its address is its
     section on this site.  ``url`` set means an external project with no docs
-    section here, which therefore carries its own ``name``.
+    section here, which therefore carries its own ``name``.  ``repo`` is the
+    project's repository, which a card links to beside its documentation.
     """
 
     slug: str
     blurb: str
     url: str = ""
     name: str = ""
+    repo: str = ""
 
     @property
     def external(self) -> bool:
@@ -181,6 +185,14 @@ def parse_listing(text: str, *, source: str = LISTING_SOURCE) -> Listing:
                     f"this site serves takes its name from its manifest, so "
                     f"declaring one here would be a second source for it."
                 )
+            repo = str(item.get("repo") or "").strip()
+            if repo and repo == url:
+                raise RuntimeError(
+                    f"{spot} ({slug}) declares the same address as 'url' and "
+                    f"'repo', so the card would print two links to one place. "
+                    f"An entry whose only address is its repository needs "
+                    f"'url' alone."
+                )
             if slug in seen_slugs:
                 raise RuntimeError(
                     f"{spot} repeats the slug {slug!r}, already listed under "
@@ -189,6 +201,7 @@ def parse_listing(text: str, *, source: str = LISTING_SOURCE) -> Listing:
             seen_slugs[slug] = name
             projects.append(ListingProject(
                 slug=slug, blurb=blurb.strip(), url=url, name=entry_name,
+                repo=repo,
             ))
 
         categories.append(ListingCategory(name=name, projects=tuple(projects)))
@@ -253,6 +266,7 @@ def parse_listing_sidecar(text: str, *, source: str) -> Listing:
                     blurb=str(p.get("blurb") or ""),
                     url=str(p.get("url") or ""),
                     name=str(p.get("name") or ""),
+                    repo=str(p.get("repo") or ""),
                 )
                 for p in category.get("projects") or []
             ),
@@ -338,6 +352,11 @@ def render_listing_html(listing: Listing, manifests, docs_base: str, *,
             if project.external:
                 parts.append('      <span class="external-badge">external</span>')
             parts.append(f"      <p>{html.escape(project.blurb)}</p>")
+            if project.repo:
+                parts.append(
+                    f'      <a class="project-repo" '
+                    f'href="{html.escape(project.repo)}">Repository</a>'
+                )
             parts.append("    </article>")
         parts.append("  </section>")
     parts.append("</section>")
