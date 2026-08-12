@@ -1713,7 +1713,7 @@ def _cleanup_injected_posts(injected_files, docs_dir):
 
 
 def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
-                      docs_dir, include_drafts):
+                      docs_dir, include_drafts, default_locale_code):
     """Build only post pages, skipping versioned docs and auxiliary files.
 
     Injects posts into ``docs/blog/``, runs them through ``build_single``
@@ -1724,6 +1724,13 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
     The mount is empty here and the post pages are site-level in the full
     build too, so a post is at ``blog/<slug>/`` either way -- the two
     builds cannot disagree about where a post lives.
+
+    The arguments handed to ``build_single`` are the ones the full build's
+    site-level pass uses, and for the same reason: a post is one page, so
+    the two targets have to produce one page.  The assembly rebuilds posts
+    alone when only a post changed and grafts the result beside the full
+    build's output, so any disagreement would make the last build to run
+    decide what the site serves.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -1760,12 +1767,19 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
             os.path.relpath(p, docs_dir) for p in injected_paths
         }
 
+        site_config = dict(config)
+        site_config["docs"] = docs_dir_name
         result = build_single(
             dir_path=dir_path,
-            config=config,
+            config=site_config,
             mount_locale="",
             mount_version="",
             version_override="",
+            locale_override=default_locale_code,
+            available_locales=None,
+            current_version="",
+            current_locale=default_locale_code,
+            is_latest=True,
             page_filter=page_filter,
         )
 
@@ -1905,7 +1919,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
     if target == "posts":
         return _build_posts_only(
             dir_path, config, output_dir, docs_dir_name,
-            latest_docs_dir, include_drafts,
+            latest_docs_dir, include_drafts, default_locale_code,
         )
 
     # --- Partition pages into versioned, unversioned and site-level ---

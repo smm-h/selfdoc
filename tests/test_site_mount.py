@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 
 import pytest
 
@@ -175,3 +176,28 @@ def test_the_project_pages_keep_the_slug(mounted):
     assert _canonical(html) == f"{DOCS_BASE}/{SLUG}/guide/"
     sitemap = _read(mounted, "sitemap.xml")
     assert f"<loc>{DOCS_BASE}/{SLUG}/guide/</loc>" in sitemap
+
+
+# -- the two build targets agree -----------------------------------------------
+
+
+@pytest.mark.parametrize("is_mounted", [True, False], ids=["mounted", "standalone"])
+def test_a_posts_only_build_addresses_the_post_the_same_way(tmp_path, is_mounted):
+    """A post is one page, so it has one address whichever build wrote it.
+
+    The assembly rebuilds posts on their own (``target="posts"``) when only
+    a post changed, and grafts that output beside the full build's.  If the
+    two targets disagreed about where a post lives, which one ran last
+    would decide the site's addresses.
+    """
+    name = "mounted" if is_mounted else "standalone"
+    project = _project(tmp_path / name, mounted=is_mounted)
+
+    build(project)
+    from_full = _read(project, "blog", "hello-world", "index.html")
+
+    shutil.rmtree(_out(project))
+    build(project, target="posts")
+    from_posts = _read(project, "blog", "hello-world", "index.html")
+
+    assert from_posts == from_full
