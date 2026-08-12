@@ -188,9 +188,16 @@ def _cmd_init(ctx, base_url, auto_commit=True):
 @effects.handler
 def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
-    from selfdoc.config import load_config
+    from selfdoc.config import ConfigError, load_config
 
-    config = load_config(".")
+    # A present-but-invalid selfdoc.json is a user error like any other:
+    # it prints the message and exits 1, rather than ending the process on
+    # an uncaught ConfigError and a traceback.
+    try:
+        config = load_config(".")
+    except ConfigError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Unified sites and posts-only builds moved to selfblog.
     if config and config.get("unified"):
@@ -218,7 +225,7 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
             include_drafts=drafts,
             target=target,
         )
-    except RuntimeError as e:
+    except (ConfigError, RuntimeError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -535,14 +542,15 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
         serialize_check_result,
     )
     from selfdoc.config import load_config
-    from selfdoc_core.lints import UnknownLintCode, parse_ignore_codes
+    from selfdoc_core.lints import LintSuppressionError, parse_ignore_codes
 
     # Validated before any work is done: a mistyped code suppresses nothing,
-    # and a check run that silently ignored the typo would report lints the
-    # caller believes it silenced.
+    # a check run that silently ignored the typo would report lints the
+    # caller believes it silenced, and an error-severity code is not
+    # suppressible at all.
     try:
         flag_ignore_codes = parse_ignore_codes(ignore)
-    except UnknownLintCode as exc:
+    except LintSuppressionError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
