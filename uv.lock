@@ -822,7 +822,7 @@ dev = [
 
 [[package]]
 name = "selfdoc-core"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "selfdoc_core" }
 dependencies = [
     { name = "strictcli" },
