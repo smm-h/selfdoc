@@ -878,6 +878,48 @@ def test_the_sites_own_absolute_urls_are_not_outbound(assembly):
     assert report.ok, report.error_text()
 
 
+def test_a_resource_hint_is_not_an_outbound_link(assembly):
+    """A preconnect names an origin to warm, not a page anyone can open.
+
+    The page carries both shapes: two resource hints at bare origins, which
+    answer 404 to a GET and are not navigation, and one real dead link.
+    Only the real one is fetched, and only the real one fails.
+    """
+    _with_outbound(
+        assembly, OUTBOUND_DECL,
+        page_body=(
+            '  <link rel="preconnect" href="https://fonts.example.net">\n'
+            '  <link rel="dns-prefetch" href="https://cdn.example.net">\n'
+            '  <a href="https://dead.example.net/x">x</a>'
+        ),
+    )
+    fetch = FetchRecorder(dead={
+        "https://dead.example.net/x",
+        "https://fonts.example.net",
+        "https://cdn.example.net",
+    })
+    report = _verify(assembly, fetch=fetch, now=1000.0)
+
+    assert fetch.asked == ["https://dead.example.net/x"]
+    messages = [str(f) for f in report.failures_of("outbound-links")]
+    assert len(messages) == 1
+    assert "dead.example.net" in messages[0]
+
+
+def test_a_preloaded_resource_is_still_an_outbound_link(assembly):
+    """Only the origin-only hints are exempt: a preload names a real file."""
+    _with_outbound(
+        assembly, OUTBOUND_DECL,
+        page_body='  <link rel="preload" as="font" '
+                  'href="https://cdn.example.net/f.woff2">',
+    )
+    fetch = FetchRecorder(dead={"https://cdn.example.net/f.woff2"})
+    report = _verify(assembly, fetch=fetch, now=1000.0)
+
+    assert fetch.asked == ["https://cdn.example.net/f.woff2"]
+    assert report.failures_of("outbound-links")
+
+
 def test_a_declared_page_that_was_not_emitted_fails(assembly):
     _write(str(assembly / OUTBOUND_PATH),
            'cache_days = 7\n\n[[page]]\npath = "ghost/index.html"\n')
