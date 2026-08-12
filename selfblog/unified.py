@@ -7,8 +7,6 @@ docs-site's config provides the unified orchestration via its
 ``unified`` section.
 """
 
-import dataclasses
-import json
 import os
 import re
 
@@ -26,6 +24,7 @@ from selfdoc_core.build import (
     _minify_css,
     _minify_html,
     _partition_pages,
+    _run_pagefind,
     build_single,
 )
 from selfdoc_core.config import ConfigError, load_config
@@ -413,7 +412,6 @@ def _build_unified_body(
     post-injection cleanup.
     """
     written = {}
-    all_search_entries = []
     projects_info = []
 
     # The build owns the ``v/`` and ``blog/`` segments at the top of every
@@ -490,17 +488,9 @@ def _build_unified_body(
                     unversioned_frontmatter=proj_uv_fm if proj_uv_pages else None,
                 )
                 html_files = result.html_files
-                search_entries = result.search_entries
                 proj_docs_dir = result.docs_dir
                 other_files = result.other_files
                 config_description = result.config_description
-
-                # Override the project field in search entries
-                patched_entries = []
-                for entry in search_entries:
-                    patched = dataclasses.replace(entry, project=slug)
-                    patched_entries.append(patched)
-                all_search_entries.extend(patched_entries)
 
                 # Write HTML files
                 for rel_path, html_content in html_files.items():
@@ -562,12 +552,6 @@ def _build_unified_body(
                 page_filter=proj_uv_pages,
             )
 
-            patched_entries = []
-            for entry in uv_result.search_entries:
-                patched = dataclasses.replace(entry, project=slug)
-                patched_entries.append(patched)
-            all_search_entries.extend(patched_entries)
-
             for rel_path, html_content in uv_result.html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
                 effects.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -610,16 +594,8 @@ def _build_unified_body(
             unversioned_frontmatter=ds_uv_frontmatter if ds_unversioned else None,
         )
         html_files = result.html_files
-        search_entries = result.search_entries
         common_docs_dir = result.docs_dir
         other_files = result.other_files
-
-        # Mark common search entries
-        patched_entries = []
-        for entry in search_entries:
-            patched = dataclasses.replace(entry, project="common")
-            patched_entries.append(patched)
-        all_search_entries.extend(patched_entries)
 
         # Write HTML files
         for rel_path, html_content in html_files.items():
@@ -678,12 +654,6 @@ def _build_unified_body(
                 is_latest=True,
                 page_filter=ds_unversioned,
             )
-
-            patched_entries = []
-            for entry in uv_result.search_entries:
-                patched = dataclasses.replace(entry, project="common")
-                patched_entries.append(patched)
-            all_search_entries.extend(patched_entries)
 
             for rel_path, html_content in uv_result.html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
@@ -753,8 +723,6 @@ def _build_unified_body(
             is_latest=True,
             page_filter=post_pages,
         )
-        for entry in site_result.search_entries:
-            all_search_entries.append(dataclasses.replace(entry, project=owner))
         for rel_path, html_content in site_result.html_files.items():
             out_path = os.path.join(output_dir, rel_path)
             effects.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -811,23 +779,6 @@ def _build_unified_body(
     with effects.open_write(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
-
-    # --- Search index ---
-    search_index_path = os.path.join(output_dir, "search-index.json")
-    with effects.open_write(search_index_path, "w", encoding="utf-8") as f:
-        json.dump(
-            [dataclasses.asdict(entry) for entry in all_search_entries],
-            f, ensure_ascii=False,
-        )
-    written[search_index_path] = True
-
-    # --- Search JS ---
-    from selfdoc_core.html import _generate_search_js, _minify_js
-    search_engine = config.get("search_engine") or "builtin"
-    search_js_path = os.path.join(output_dir, "search.js")
-    with effects.open_write(search_js_path, "w", encoding="utf-8") as f:
-        f.write(_minify_js(_generate_search_js(engine=search_engine)))
-    written[search_js_path] = True
 
     # --- Custom CSS ---
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
@@ -926,6 +877,12 @@ def _build_unified_body(
     with effects.open_write(redirects_path, "w", encoding="utf-8") as f:
         f.write(redirects_content)
     written[redirects_path] = True
+
+    # Pagefind indexes the whole unified site -- every project's pages under
+    # one index at the output root, which is the same place every page's
+    # asset hop points at.  Runs after the last HTML file and before
+    # compression, exactly as the single-project build does.
+    _run_pagefind(output_dir)
 
     # --- Pre-compress ---
     compress_count, has_brotli = _compress_output(output_dir)

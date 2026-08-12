@@ -9,7 +9,6 @@ from selfdoc_core.build import *  # noqa: F401,F403
 from selfdoc_core.build import (  # noqa: F401
     _add_image_dimensions,
     _build_posts_only,
-    _build_search_index,
     _cleanup_injected_posts,
     _compress_output,
     _extract_critical_css,

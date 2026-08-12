@@ -177,7 +177,7 @@ description = "A configured source entry names a language selfdoc has no extract
 [[lints]]
 code = "SEARCH001"
 severity = "error"
-description = "`search_engine` is set to `pagefind` but pagefind is not installed."
+description = "pagefind is not installed, so the build cannot index the site."
 
 # -- Version consistency ------------------------------------------------------
 

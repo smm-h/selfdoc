@@ -13,6 +13,7 @@ from datetime import datetime
 
 from selfdoc_core.address import page_address
 from selfdoc_core.icons import get_icon
+from selfdoc_core.identity import person_entity
 from selfdoc_core.prose import first_sentence
 from selfdoc_core.themes import get_theme, get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder
@@ -508,6 +509,12 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Page type from frontmatter (e.g. "post", "tutorial") for layout/SEO
         page_type = page_meta.get("type")
 
+        # The search facet type, which every page has -- see
+        # :func:`derive_page_type`.
+        facet_type = derive_page_type(
+            md_path, page_meta, page_group.get(md_path, ""),
+        )
+
         # Page tags from frontmatter for SEO keywords
         _tags_val = page_meta.get("tags", [])
         if isinstance(_tags_val, str):
@@ -602,6 +609,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "page_type": page_type,
             "page_tags": page_tags,
             "nav_group": page_group.get(md_path, ""),
+            "facet_type": facet_type,
             "page_number": page_idx + 1,
             "total_pages": len(flat_nav),
             "has_hero": has_hero,
@@ -732,6 +740,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "page_type": "glossary",
             "page_tags": [],
             "nav_group": "",
+            "facet_type": "glossary",
         })
 
     # --- Pass 2: Wrap pages ---
@@ -773,6 +782,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             feedback=feedback,
             branch=branch,
             nav_group=pd.get("nav_group", ""),
+            facet_type=pd.get("facet_type", ""),
             site_terms=site_terms,
             page_number=pd.get("page_number"),
             total_pages=pd.get("total_pages"),
@@ -2272,16 +2282,11 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
 
     # TechArticle JSON-LD -- emitted when page_path is set
     if page_path:
-        # Build author object for TechArticle
-        if author and author.get("name"):
-            author_obj = {
-                "@type": author.get("type") or "Organization",
-                "name": author["name"],
-            }
-            if author.get("url"):
-                author_obj["url"] = author["url"]
-        else:
-            author_obj = {"@type": "Organization", "name": project_name}
+        # One Person across the whole site, from the declared author block.
+        # There is no inferred author: a config with no block is refused at
+        # load, so reaching here without one is a wiring mistake and says so
+        # rather than minting an entity out of the project's directory name.
+        author_obj = person_entity(author)
 
         # Resolve schema.org @type from page type via schema_types mapping
         _default_schema_types = {
@@ -2309,14 +2314,9 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             ld_obj["dateModified"] = date_modified
             ld_obj["datePublished"] = date_published or date_modified
 
-        # Publisher must always be an Organization per Google's spec
-        if author and author.get("type") == "Organization":
-            ld_obj["publisher"] = author_obj
-        else:
-            ld_obj["publisher"] = {
-                "@type": "Organization",
-                "name": project_name,
-            }
+        # The declared author publishes their own site: one identity, stated
+        # in both roles, rather than a second entity invented for the slot.
+        ld_obj["publisher"] = author_obj
 
         ld_obj["inLanguage"] = lang
 
@@ -2404,41 +2404,13 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             f'\n</script>'
         )
 
-    # Standalone Organization/Person JSON-LD on homepage
+    # The standalone entity on the homepage: the same declared Person the
+    # articles name, emitted once as its own document so a crawler can read
+    # the identity without an article around it.
     if page_path == "index.html":
-        # Use Person schema when author.type is "Person"
-        entity_type = "Organization"
-        if author and author.get("type") == "Person":
-            entity_type = "Person"
-
-        entity_name = project_name
-        if entity_type == "Person" and author and author.get("name"):
-            entity_name = author["name"]
-
-        org_ld = {
-            "@context": "https://schema.org",
-            "@type": entity_type,
-            "name": entity_name,
-        }
-        # Determine URL: prefer author URL, fall back to base_url
-        if author and author.get("url"):
-            org_ld["url"] = author["url"]
-        else:
-            org_ld["url"] = url_builder.base() if url_builder else base_url
-
-        # sameAs: collect social profile URLs
-        same_as = []
-        if author:
-            twitter_handle = author.get("twitter")
-            if twitter_handle:
-                handle = twitter_handle.lstrip("@")
-                same_as.append(f"https://twitter.com/{handle}")
-        if same_as:
-            org_ld["sameAs"] = same_as
-
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
-            f'{json.dumps(org_ld)}'
+            f'{json.dumps(person_entity(author, context=True))}'
             f'\n</script>'
         )
 
@@ -3042,6 +3014,32 @@ def pagefind_facets_html(*, version="", locale="", group="", page_type="",
     return "".join(parts)
 
 
+def derive_page_type(md_path, page_meta, nav_group=""):
+    """Return the ``type`` facet for a page.
+
+    Explicit frontmatter wins; otherwise the type is read off what the page
+    is -- a generated reference page in an API or CLI nav group, a
+    changelog, a glossary, or an ordinary guide.  Distinct from the
+    frontmatter-only ``page_type`` the layout and the structured data use:
+    every page has a facet type, while only a page that declares one gets
+    special layout.
+    """
+    declared = page_meta.get("type")
+    if declared:
+        return declared
+    base_name = md_path.replace(".md", "").lower()
+    generated = page_meta.get("generated") is True
+    if generated and "API" in nav_group:
+        return "api"
+    if generated and "CLI" in nav_group:
+        return "cli"
+    if "changelog" in base_name:
+        return "changelog"
+    if "glossary" in base_name:
+        return "glossary"
+    return "guide"
+
+
 def pagefind_meta_html(*, project="", page_type="", date=""):
     """Return the hidden elements carrying Pagefind result metadata.
 
@@ -3420,7 +3418,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                feed_url=None, summary=None, critical_css=None,
                schema=None, page_type=None, schema_types=None,
                page_tags=None, twitter_site=None, search=None,
-               feedback=None, branch="main", nav_group="",
+               feedback=None, branch="main", nav_group="", facet_type="",
                site_terms=None, page_number=None, total_pages=None,
                theme_meta=None, has_hero=False, deploy_target=None,
                page_nav=True, page_progress=True,
@@ -3586,14 +3584,14 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             version=version,
             locale=current_locale or mount_locale,
             group=nav_group or "",
-            page_type=page_type or "",
+            page_type=facet_type or page_type or "",
             target=deploy_target or "",
             project=project_name,
             tags=page_tags,
         )
         + pagefind_meta_html(
             project=project_name,
-            page_type=page_type or "",
+            page_type=facet_type or page_type or "",
             date=date_published or "",
         )
     )

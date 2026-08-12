@@ -582,33 +582,34 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
         resolved_directives,
     )
 
-    # SEARCH001: pagefind availability check
-    if config.get("search_engine") == "pagefind":
-        _pagefind_available = False
-        for _cmd in (
-            [sys.executable, "-m", "pagefind", "--version"],
-            ["pagefind", "--version"],
-        ):
-            try:
-                _proc = effects.run(
-                    _cmd, capture_output=True, text=True, timeout=10,
-                    read=True,
-                )
-                if _proc.returncode == 0:
-                    _pagefind_available = True
-                    break
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                continue
-        if not _pagefind_available:
-            result.lints.append(LintResult(
-                file="selfdoc.json",
-                line=None,
-                code="SEARCH001",
-                message=(
-                    "search_engine is 'pagefind' but pagefind is not installed. "
-                    "Install with: uv add pagefind"
-                ),
-            ))
+    # SEARCH001: the indexer every build runs has to be on this machine.
+    # Pagefind is the engine, so the check is unconditional -- a build with
+    # no indexer produces a site whose search dialog answers nothing.
+    _pagefind_available = False
+    for _cmd in (
+        [sys.executable, "-m", "pagefind", "--version"],
+        ["pagefind", "--version"],
+    ):
+        try:
+            _proc = effects.run(
+                _cmd, capture_output=True, text=True, timeout=10,
+                read=True,
+            )
+            if _proc.returncode == 0:
+                _pagefind_available = True
+                break
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    if not _pagefind_available:
+        result.lints.append(LintResult(
+            file="selfdoc.json",
+            line=None,
+            code="SEARCH001",
+            message=(
+                "pagefind is not installed, so the build cannot index this "
+                "site. Install with: uv add 'pagefind[bin]'"
+            ),
+        ))
 
     # XREF002: directive path validation -- verify resolved directive
     # source files actually exist on disk.

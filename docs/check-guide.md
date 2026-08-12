@@ -104,7 +104,7 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | CLI001 | warning | strictcli project: a CLI reference page is missing for a command, or a flag in the schema is not documented on its page. |
 | CLI002 | warning | strictcli project: a command, group, or flag help text is shorter than 50 characters. |
 | LANG001 | error | A configured source entry names a language selfdoc has no extractor for. |
-| SEARCH001 | error | `search_engine` is set to `pagefind` but pagefind is not installed. |
+| SEARCH001 | error | pagefind is not installed, so the build cannot index the site. |
 | VER001 | error | A version listed in `versions` could not be extracted from its git tag, so it could not be validated. |
 | VER002 | error | `version` in selfdoc.json does not match the version detected from the project manifest (pyproject.toml, package.json, or a `VERSION` file). |
 | VER003 | error | The last entry of the `versions` array does not match `version` in selfdoc.json. |

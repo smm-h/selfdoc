@@ -1,10 +1,8 @@
 """Build pipeline for selfdoc: template scanning, directive resolution, HTML output."""
 
-import dataclasses
 from dataclasses import dataclass
 import gzip
 import io
-import json
 import os
 import posixpath
 import re
@@ -20,19 +18,12 @@ from selfdoc_core import require_post_provider
 from selfdoc_core.config import load_config, ConfigError
 from selfdoc_core.address import ARCHIVE_PREFIX, locale_segment, page_address
 from selfdoc_core.prose import first_paragraph
-from selfdoc_core.context import SearchEntry
 from selfdoc_core.docs import resolve_all_docs
 from selfdoc_core.utils import detect_project_version, parse_frontmatter
 from selfdoc_core.html import (
     generate_html, generate_404_page, get_css, generate_pygments_css,
-    _md_to_html_path, _html_path_to_url, _html_to_md_path,
+    _md_to_html_path, _html_to_md_path,
     _extract_title, _escape_html, _build_nav,
-    _generate_search_js, _minify_js,
-    assign_heading_anchors,
-)
-from selfdoc_core.tokenizer import (
-    tokenize as tokenize_md,
-    Heading as TokHeading,
 )
 from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
@@ -83,7 +74,6 @@ class BuildResult:
     frontmatter: dict
     page_dates: dict
     nav_items: list
-    search_entries: list
     project_name: str
     version: str
     config: dict
@@ -484,140 +474,6 @@ def _run_pagefind(output_dir):
         "Pagefind is not installed. Install it with: uv add pagefind\n"
         "Or install the standalone binary: npm install -g pagefind"
     )
-
-
-def _build_search_index(
-    markdown_files,
-    version="",
-    locale="",
-    target="",
-    project="",
-    frontmatter=None,
-    nav_items=None,
-    mount_locale="",
-    mount_project="",
-    mount_version="",
-    mount_archived=False,
-):
-    """Build a search index from markdown files.
-
-    Splits each file by headings and creates one entry per section.
-    Returns a list of SearchEntry dataclasses with title, path, body,
-    and metadata fields (version, locale, group, type, tags, etc.).
-
-    Entry paths are output-root relative (mount included), because the
-    search dialog resolves them against the output root -- not against
-    the page the reader happens to be on.  ``version``/``locale`` remain
-    the search *facets* and are independent of the mount coordinates.
-    """
-    if frontmatter is None:
-        frontmatter = {}
-    if nav_items is None:
-        nav_items = []
-
-    # Build md_path -> nav group name lookup from nav_items
-    _page_group = {}
-    for nav_item in nav_items:
-        if "group" in nav_item:
-            group_name = nav_item["group"]
-            for sub_item in nav_item.get("items", []):
-                _page_group[sub_item.get("md_path", "")] = group_name
-
-    entries = []
-    for md_path, content in markdown_files.items():
-        url_path = page_address(
-            _md_to_html_path(md_path),
-            locale=mount_locale,
-            project=mount_project,
-            version=mount_version,
-            archived=mount_archived,
-        ).url
-        lines = content.split("\n")
-        tokens = tokenize_md(content)
-        current_title = None
-        current_anchor = None
-        current_body = []
-
-        # Derive per-page metadata
-        nav_group = _page_group.get(md_path, "")
-        page_meta = frontmatter.get(md_path, {})
-        tags_val = page_meta.get("tags", [])
-        # tags may be a string (no comma in frontmatter) -- wrap in list
-        if isinstance(tags_val, str):
-            tags_val = [tags_val] if tags_val else []
-        page_tags = list(tags_val)
-
-        # Derive page type: explicit frontmatter overrides heuristic
-        if page_meta.get("type"):
-            page_type = page_meta["type"]
-        else:
-            base_name = md_path.replace(".md", "").lower()
-            if page_meta.get("generated") is True and "API" in nav_group:
-                page_type = "api"
-            elif page_meta.get("generated") is True and "CLI" in nav_group:
-                page_type = "cli"
-            elif "changelog" in base_name:
-                page_type = "changelog"
-            elif "glossary" in base_name:
-                page_type = "glossary"
-            else:
-                page_type = "guide"
-
-        def _flush():
-            if current_title is not None:
-                body_text = " ".join(current_body).strip()
-                # Strip markdown formatting for plain text
-                body_text = re.sub(r"\*\*(.+?)\*\*", r"\1", body_text)
-                body_text = re.sub(r"\*(.+?)\*", r"\1", body_text)
-                body_text = re.sub(r"`([^`]+)`", r"\1", body_text)
-                body_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", body_text)
-                path = url_path
-                if current_anchor:
-                    path = f"{url_path}#{current_anchor}"
-                entries.append(SearchEntry(
-                    title=current_title,
-                    path=path,
-                    body=body_text[:500],
-                    version=version,
-                    locale=locale,
-                    target=target,
-                    project=project,
-                    group=nav_group,
-                    type=page_type,
-                    tags=page_tags,
-                ))
-
-        # Sections come from the same heading scan the renderer uses, so
-        # every anchor emitted here is an id that exists on the page --
-        # including the second `## Setup`, which is `setup-1` in both.
-        # Walking tokens (not lines) also means a `#` line inside a fenced
-        # code block stays code instead of becoming a phantom section.
-        page_title = page_meta.get("title") or _extract_title(content, project)
-        heading_anchors = {
-            ha.index: ha
-            for ha in assign_heading_anchors(tokens, page_title=page_title)
-        }
-
-        for token_idx, token in enumerate(tokens):
-            if isinstance(token, TokHeading):
-                _flush()
-                current_title = token.text
-                current_anchor = heading_anchors[token_idx].anchor
-                current_body = []
-                continue
-            for line in lines[token.start - 1:token.end]:
-                if line.startswith("```"):
-                    # Skip code fence markers
-                    continue
-                if line.startswith(">"):
-                    # Strip blockquote prefix
-                    current_body.append(re.sub(r"^>\s?", "", line))
-                elif line.strip():
-                    current_body.append(line.strip())
-
-        _flush()
-
-    return entries
 
 
 def _generate_og_svg(project_name, page_title, accent_color="#0969da"):
@@ -1348,7 +1204,6 @@ def build_single(dir_path=".", config=None,
                 frontmatter={},
                 page_dates={},
                 nav_items=[],
-                search_entries=[],
                 project_name=os.path.basename(os.path.abspath(dir_path)),
                 version=version_override if version_override is not None else "",
                 config=config,
@@ -1444,7 +1299,6 @@ def build_single(dir_path=".", config=None,
         search=config.get("search"),
         feedback=config.get("feedback"),
         branch=branch,
-        search_engine=config.get("search_engine"),
         branding=config.get("branding"),
         config_description=config_description,
         auto_detect=config.get("auto_detect"),
@@ -1493,28 +1347,12 @@ def build_single(dir_path=".", config=None,
         unversioned_frontmatter=unversioned_frontmatter,
     )
 
-    # Build search index entries (returned to caller for accumulation)
-    search_entries = _build_search_index(
-        markdown_files,
-        version=version,
-        locale=locale_override or "",
-        target="",
-        project=project_name,
-        frontmatter=frontmatter,
-        nav_items=nav_items,
-        mount_locale=mount_locale,
-        mount_project=mount_project,
-        mount_version=mount_version,
-        mount_archived=mount_archived,
-    )
-
     return BuildResult(
         html_files=html_files,
         markdown_files=markdown_files,
         frontmatter=frontmatter,
         page_dates=page_dates,
         nav_items=nav_items,
-        search_entries=search_entries,
         project_name=project_name,
         version=version,
         config=config,
@@ -2139,7 +1977,6 @@ def _build_body(
     """
     written = {}
     content_pages = 0
-    all_search_entries = []
     latest_build = None
     # Track per-locale stable HTML paths for the sitemaps.  Archived
     # versions are excluded: they canonicalize to the stable address, so
@@ -2217,7 +2054,6 @@ def _build_body(
             markdown_files = result.markdown_files
             frontmatter = result.frontmatter
             page_dates = result.page_dates
-            search_entries = result.search_entries
             project_name = result.project_name
             version = result.version
             docs_dir = result.docs_dir
@@ -2230,8 +2066,6 @@ def _build_body(
             base_url = result.base_url
             feed_url = result.feed_url
             lang = result.lang
-
-            all_search_entries.extend(search_entries)
 
             for rel_path, html_content in html_files.items():
                 out_path = os.path.join(output_dir, rel_path)
@@ -2350,8 +2184,6 @@ def _build_body(
             page_filter=unversioned_pages,
         )
 
-        all_search_entries.extend(uv_result.search_entries)
-
         for rel_path, html_content in uv_result.html_files.items():
             out_path = os.path.join(output_dir, rel_path)
             effects.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -2408,7 +2240,6 @@ def _build_body(
             is_latest=True,
             page_filter=site_pages,
         )
-        all_search_entries.extend(site_result.search_entries)
         for rel_path, html_content in site_result.html_files.items():
             out_path = os.path.join(output_dir, rel_path)
             effects.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -2474,27 +2305,6 @@ def _build_body(
     with effects.open_write(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
-
-    # Combined search index from ALL versions and locales
-    search_index_path = os.path.join(output_dir, "search-index.json")
-    with effects.open_write(search_index_path, "w", encoding="utf-8") as f:
-        json.dump(
-            [dataclasses.asdict(entry) for entry in all_search_entries],
-            f, ensure_ascii=False,
-        )
-    written[search_index_path] = True
-
-    # Search JS (not needed for pagefind -- it provides its own)
-    search_engine = config.get("search_engine") or "builtin"
-    if search_engine != "pagefind":
-        search_js_path = os.path.join(output_dir, "search.js")
-        with effects.open_write(search_js_path, "w", encoding="utf-8") as f:
-            f.write(_minify_js(_generate_search_js(engine=search_engine)))
-        written[search_js_path] = True
-
-    # Pagefind indexing
-    if search_engine == "pagefind":
-        _run_pagefind(output_dir)
 
     # Custom CSS
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
@@ -2671,6 +2481,13 @@ def _build_body(
         if redirect_count:
             print(f"Generated {redirect_count} redirect(s)")
 
+    # Pagefind indexes the pages this build just wrote and emits both the
+    # index and the UI bundle every page references into pagefind/ at the
+    # output root.  It runs after the last HTML file -- including the 404
+    # page and the redirect stubs -- and before compression, so the index
+    # covers the whole site and its own assets get compressed with it.
+    _run_pagefind(output_dir)
+
     # Pre-compress
     compress_count, has_brotli = _compress_output(output_dir)
     if has_brotli:
@@ -2827,38 +2644,16 @@ def _generate_auxiliary_files(
 def _generate_robots_txt(output_dir, base_url, url_builder, has_sitemap_index=False):
     """Generate robots.txt allowing all crawlers including AI bots.
 
+    The crawler policy itself is declared in :mod:`selfdoc_core.robots`, so
+    this file and the assembly's site-wide robots.txt cannot drift apart.
+
     When ``has_sitemap_index`` is True, references ``sitemap-index.xml``
     instead of ``sitemap.xml``.
     """
+    from selfdoc_core.robots import render_robots_txt
+
     sitemap_file = "sitemap-index.xml" if has_sitemap_index else "sitemap.xml"
-    lines = [
-        "User-agent: *",
-        "Allow: /",
-        "",
-        "User-agent: GPTBot",
-        "Allow: /",
-        "",
-        "User-agent: ChatGPT-User",
-        "Allow: /",
-        "",
-        "User-agent: Google-Extended",
-        "Allow: /",
-        "",
-        "User-agent: PerplexityBot",
-        "Allow: /",
-        "",
-        "User-agent: ClaudeBot",
-        "Allow: /",
-        "",
-        "User-agent: Googlebot",
-        "Allow: /",
-        "",
-        "User-agent: OAI-SearchBot",
-        "Allow: /",
-        "",
-        f"Sitemap: {url_builder.asset_url(sitemap_file)}",
-    ]
-    content = "\n".join(lines) + "\n"
+    content = render_robots_txt(url_builder.asset_url(sitemap_file))
     path = os.path.join(output_dir, "robots.txt")
     with effects.open_write(path, "w", encoding="utf-8") as f:
         f.write(content)
