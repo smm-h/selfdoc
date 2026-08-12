@@ -38,7 +38,29 @@ _POST = (
     "hello.md",
     "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
     "tags: [release]\ndraft: false\ndirectives: false\n---\n"
-    "This is the post content.\n",
+    "This is the post content.\n"
+    "\n"
+    "## Chained revision\n"
+    "\n"
+    "Chained revision is a recorded edge between two schema states.\n"
+    "\n"
+    "The widget catalog is described at length in the guide.\n",
+)
+
+# A project page that defines a term of its own and mentions the term the
+# post defines, so the build writes a cross-page term link in each
+# direction.  Under a mount those two links cross the mount boundary in
+# opposite directions, which is the whole point of the fixture.
+_GUIDE = (
+    "# Guide\n"
+    "\n"
+    "How to.\n"
+    "\n"
+    "## Widget catalog\n"
+    "\n"
+    "Widget catalog is a list of every widget this project ships.\n"
+    "\n"
+    "See the notes on chained revision for the history model.\n"
 )
 
 
@@ -61,7 +83,7 @@ def _project(tmp_path, *, mounted, with_post=True):
     with open(os.path.join(docs_dir, "index.md"), "w") as f:
         f.write("# Test Project\n\nWelcome.\n")
     with open(os.path.join(docs_dir, "guide.md"), "w") as f:
-        f.write("# Guide\n\nHow to.\n")
+        f.write(_GUIDE)
 
     if with_post:
         posts_dir = os.path.join(tmp_path, ".selfdoc", "posts")
@@ -156,6 +178,54 @@ def test_a_standalone_project_page_links_the_post_relatively(standalone):
     """No mount, so the project's own output root serves the post too."""
     html = _read(standalone, "guide", "index.html")
     assert "../blog/hello-world/" in _hrefs(html)
+
+
+def test_a_mounted_project_pages_term_link_names_the_site_address(mounted):
+    """A cross-page term link crosses the boundary a sidebar link does."""
+    html = _read(mounted, "guide", "index.html")
+    assert any(h.startswith(f"{DOCS_BASE}/blog/hello-world/#") for h in _hrefs(html))
+    assert not [h for h in _hrefs(html) if h.startswith("../blog/")]
+
+
+def test_a_mounted_glossarys_source_link_names_the_site_address(mounted):
+    html = _read(mounted, "glossary", "index.html")
+    assert f"{DOCS_BASE}/blog/hello-world/" in _hrefs(html)
+    assert not [h for h in _hrefs(html) if h.startswith("../blog/")]
+
+
+def test_a_standalone_glossarys_source_link_stays_relative(standalone):
+    html = _read(standalone, "glossary", "index.html")
+    assert "../blog/hello-world/" in _hrefs(html)
+
+
+# -- the mirror direction: a post reaching back into the project ---------------
+
+
+def test_a_mounted_posts_sidebar_names_the_project_mount(mounted):
+    """A relative hop out of a post reaches the site root, not the subtree.
+
+    The glossary is the project page a post's sidebar carries: the
+    site-level pass builds the mountless pages, so the sidebar it renders
+    holds the site's own items plus the mount-free ones.  Whichever they
+    are, they are the project's and are served under its slug.
+    """
+    html = _read(mounted, "blog", "hello-world", "index.html")
+    assert f"{DOCS_BASE}/{SLUG}/glossary/" in _hrefs(html)
+    assert "../../glossary/" not in _hrefs(html)
+
+
+def test_a_mounted_posts_breadcrumb_stays_at_the_site_level(mounted):
+    """A post's ancestors are site-level too, so they keep the site hop."""
+    html = _read(mounted, "blog", "hello-world", "index.html")
+    assert not [
+        h for h in _hrefs(html) if h == f"{DOCS_BASE}/{SLUG}/blog/"
+    ]
+
+
+def test_a_standalone_posts_sidebar_stays_relative(standalone):
+    """No mount: the project's own output root serves both roots."""
+    html = _read(standalone, "blog", "hello-world", "index.html")
+    assert "../../glossary/" in _hrefs(html)
 
 
 def test_a_mounted_sitemap_lists_the_post_at_the_site_address(mounted):

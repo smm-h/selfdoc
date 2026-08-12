@@ -92,7 +92,17 @@ def _build_alpha(source):
     with open(os.path.join(docs, "index.md"), "w") as f:
         f.write("# Alpha\n\nWelcome.\n")
     with open(os.path.join(docs, "guide.md"), "w") as f:
-        f.write("# Guide\n\nHow to.\n")
+        # The guide defines a term of its own and mentions the one the post
+        # defines.  That makes the build write a cross-page term link in
+        # each direction, and under a mount the two cross the boundary
+        # between the project's subtree and the site level in opposite
+        # directions -- the references this file exists to resolve.
+        f.write(
+            "# Guide\n\nHow to.\n\n"
+            "## Widget catalog\n\n"
+            "Widget catalog is a list of every widget this project ships.\n\n"
+            "See the notes on chained revision for the history model.\n"
+        )
 
     posts = os.path.join(source, ".selfdoc", "posts")
     os.makedirs(posts)
@@ -100,7 +110,10 @@ def _build_alpha(source):
         f.write(
             "---\ntitle: Hello World\ndate: 2024-06-01\n"
             f"slug: {POST_SLUG}\ntags: []\ndraft: false\ndirectives: false\n"
-            "---\nThe post body.\n"
+            "---\nThe post body.\n\n"
+            "## Chained revision\n\n"
+            "Chained revision is a recorded edge between two schema states.\n\n"
+            "The widget catalog is described at length in the guide.\n"
         )
 
     build(source)
@@ -147,6 +160,31 @@ def test_the_post_is_served_at_the_site_level(grafted):
 def test_a_project_page_links_the_post_where_the_assembly_serves_it(grafted):
     guide = _read(grafted, "alpha", "guide", "index.html")
     assert f'href="{CANONICAL_BASE}/blog/{POST_SLUG}/"' in guide
+
+
+def test_a_project_pages_term_link_reaches_the_post_at_the_site_level(grafted):
+    """A term-link crosses the same boundary a sidebar link does."""
+    guide = _read(grafted, "alpha", "guide", "index.html")
+    assert f'{CANONICAL_BASE}/blog/{POST_SLUG}/#' in guide
+    assert 'href="../blog/' not in guide
+
+
+def test_the_glossarys_source_link_reaches_the_post_at_the_site_level(grafted):
+    glossary = _read(grafted, "alpha", "glossary", "index.html")
+    assert f'href="{CANONICAL_BASE}/blog/{POST_SLUG}/"' in glossary
+    assert 'href="../blog/' not in glossary
+
+
+def test_the_post_reaches_the_projects_pages_at_the_project_mount(grafted):
+    """The mirror direction: out of the site level, into the subtree.
+
+    The post is served from the site root, so a relative hop out of it
+    reaches the site root and never the project's own subtree.  Only the
+    project's own base crosses back in.
+    """
+    post = _read(grafted, "blog", POST_SLUG, "index.html")
+    assert f'href="{CANONICAL_BASE}/alpha/glossary/"' in post
+    assert 'href="../../glossary/"' not in post
 
 
 def test_the_posts_canonical_is_its_site_level_address(grafted):

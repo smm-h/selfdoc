@@ -419,11 +419,16 @@ def generate_html(markdown_files, project_name=None, version=None,
             version=mount_version,
             archived=mount_archived,
         )
-        prefix = addr.to_mount_root
+        # A page at the site level is served from a different root than the
+        # project's own pages, so both project hops go through
+        # _project_hop -- see there.
+        prefix = _project_hop(url_builder, addr, addr.to_mount_root)
         asset_prefix = addr.to_site_root
         # Pages marked `versioned: false` are built at the version-free
         # mount, one level shallower than this page's own.
-        unversioned_prefix = addr.to_stable_mount_root
+        unversioned_prefix = _project_hop(
+            url_builder, addr, addr.to_stable_mount_root,
+        )
         # Posts are mountless site citizens -- see _site_level_hop.
         site_prefix = _site_level_hop(url_builder, addr)
         home_href = _home_href(addr, all_html_paths)
@@ -478,7 +483,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         if html_path != "index.html":
             breadcrumbs = _build_breadcrumbs(html_path, title, prefix,
                                              all_html_paths,
-                                             home_href=home_href)
+                                             home_href=home_href,
+                                             site_prefix=site_prefix)
 
         # Extract TOC from the body HTML (Feature 2)
         toc_html = _build_toc(body_html)
@@ -620,6 +626,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             version=mount_version,
             archived=mount_archived,
         )
+        glossary_site_prefix = _site_level_hop(url_builder, glossary_addr)
         # Build glossary body HTML
         sorted_terms = sorted(site_terms.values(), key=lambda t: t["term"].lower())
         glossary_dl_items = []
@@ -628,11 +635,16 @@ def generate_html(markdown_files, project_name=None, version=None,
             term_name = _escape_html(info["term"])
             definition = info["definition"]
             source_page = info["page"]
-            # _html_path_to_url gives the URL relative to the mount, and the
-            # glossary page sits a level inside it, so the hop back is what
-            # makes a "Source" link land on the page that defined the term.
+            # _html_path_to_url gives the URL relative to the root the
+            # source page is served from, and the glossary page sits a
+            # level inside the project's mount, so the hop back is what
+            # makes a "Source" link land on the page that defined the
+            # term.  A term defined in a post is served from the site
+            # level instead, which under a mount is a different root.
             source_url = (
-                glossary_addr.to_mount_root + _html_path_to_url(source_page)
+                _path_hop(source_page, glossary_addr.to_mount_root,
+                          glossary_site_prefix)
+                + _html_path_to_url(source_page)
             )
             glossary_dl_items.append(
                 f'<dt id="{anchor}"><dfn>{term_name}</dfn></dt>'
@@ -718,6 +730,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                 "glossary/index.html", "Glossary",
                 glossary_addr.to_mount_root, all_html_paths,
                 home_href=_home_href(glossary_addr, all_html_paths),
+                site_prefix=glossary_site_prefix,
             ),
             "prev_page": None,
             "next_page": None,
@@ -1743,7 +1756,8 @@ def _inline_format_prose(seg):
     return formatted
 
 
-def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
+def _apply_cross_page_terms(body_html, site_terms, current_page, prefix,
+                            site_prefix=None):
     """Link the first occurrence of each cross-page term in body HTML.
 
     For every term defined on a DIFFERENT page, finds the first occurrence
@@ -1752,9 +1766,16 @@ def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
     ``<a class="term-link">`` pointing to the definition page.
 
     Only the first match per term is linked to avoid link spam.
+
+    A term can be defined on either side of the mount boundary, so the
+    hop is chosen per target: *prefix* reaches the project's own pages
+    and *site_prefix* the site level, and under a mount those are two
+    different roots.
     """
     if not site_terms:
         return body_html
+    if site_prefix is None:
+        site_prefix = prefix
 
     # Tags whose content must be skipped
     _SKIP_TAGS = {"a", "code", "pre", "dfn", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
@@ -1773,9 +1794,10 @@ def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
         anchor = info["anchor"]
 
         # Both current_page and target_page are mount-relative html_paths,
-        # so the target is reached through this page's own hop to the
-        # mount root -- which the caller already has from the address.
-        href = f"{prefix}{_html_path_to_url(target_page)}#{anchor}"
+        # so the target is reached through the hop the page rendering the
+        # link has to whichever root the target belongs to.
+        hop = _path_hop(target_page, prefix, site_prefix)
+        href = f"{hop}{_html_path_to_url(target_page)}#{anchor}"
 
         # Page title for the tooltip: derive from target_page filename
         target_slug = _html_to_md_path(target_page).replace(".md", "")
@@ -2205,6 +2227,37 @@ def _site_level_hop(url_builder, addr):
     return addr.to_site_root
 
 
+def _project_hop(url_builder, addr, relative):
+    """Where the project's own pages are reached from *addr*.
+
+    The mirror of :func:`_site_level_hop`, and it exists for the same
+    reason read the other way round.  A page at the site level -- a post
+    -- is served from the site root, so a relative hop out of it reaches
+    the site root and never the project's subtree, where the assembly
+    puts the project's documentation.  Only the project's own declared
+    base crosses back in.
+
+    Off the site level, or with no mount at all, the page and the target
+    share a served root and *relative* is the hop that reaches it: the
+    caller passes whichever of the page's relative hops the target
+    belongs to (its own mount, or the version-free mount).
+    """
+    if (url_builder is not None and url_builder.mounted()
+            and is_site_level(addr.page_path)):
+        return f"{url_builder.base()}/"
+    return relative
+
+
+def _path_hop(path, prefix, site_prefix):
+    """The hop that reaches *path* from the page rendering the reference.
+
+    The two-root form of :func:`_nav_hop`, for the references that carry
+    a bare target path and no unversioned marker: cross-page term links,
+    breadcrumb ancestors, the glossary's source links.
+    """
+    return site_prefix if is_site_level(path) else prefix
+
+
 def _nav_hop(item, prefix, unversioned_prefix, site_prefix):
     """The hop that reaches one sidebar item from the page rendering it."""
     if is_site_level(item["path"]):
@@ -2334,7 +2387,7 @@ def _build_toc(body_html):
 
 
 def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
-                       *, home_href):
+                       *, home_href, site_prefix=None):
     """Build breadcrumb HTML for a non-index page.
 
     For flat pages like ``guide.html``, produces ``Home / Guide``.
@@ -2348,17 +2401,24 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
         html_path: The current page's html path (e.g. "guide.html"
             or "api/endpoints.html").
         page_title: The page title extracted from the first heading.
-        prefix: Relative hop to this page's own mount root, used for the
+        prefix: Hop to this page's own mount root, used for the
             intermediate directory crumbs (which are pages of this mount).
         existing_pages: Optional set of HTML paths that actually exist.
         home_href: Href for the "Home" crumb, from :func:`_home_href` --
             not every mount has an index page of its own.
+        site_prefix: Hop to the site level, for an ancestor that lives
+            there -- a post's ancestor is ``blog/``, which under a mount
+            is served from the site root rather than the project's
+            subtree.  Defaults to *prefix*, which is the same hop
+            wherever the two roots coincide.
 
     Returns:
         Breadcrumb HTML string.
     """
     if existing_pages is None:
         existing_pages = set()
+    if site_prefix is None:
+        site_prefix = prefix
     # With directory-index URLs, html_path is e.g. "guide/index.html" or
     # "api/endpoints/index.html".  Strip the trailing /index.html to get
     # the logical path segments for breadcrumb construction.
@@ -2373,7 +2433,8 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
         label = _escape_html(dir_name.capitalize())
         target = f'{dir_path}/index.html'
         if target in existing_pages:
-            crumbs.append(f'<a href="{prefix}{_html_path_to_url(target)}">{label}</a>')
+            hop = _path_hop(target, prefix, site_prefix)
+            crumbs.append(f'<a href="{hop}{_html_path_to_url(target)}">{label}</a>')
         else:
             crumbs.append(f'<span>{label}</span>')
     # Final segment is the current page (no link)
@@ -3304,7 +3365,7 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     # other pages in <a class="term-link"> before template wrapping.
     if site_terms and page_path:
         body_html = _apply_cross_page_terms(
-            body_html, site_terms, page_path, prefix,
+            body_html, site_terms, page_path, prefix, site_prefix,
         )
 
     version_badge = (
