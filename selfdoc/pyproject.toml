@@ -56,6 +56,10 @@ dev = [
     # be declared here -- inheriting it from the workspace root's dev group
     # only works for root-rooted runs.
     "stricttest",
+    # The indexer every build shells out to, declared here for the same reason
+    # as stricttest: this member's testpaths runs the root suite, which builds
+    # real sites, and a member-rooted sync never sees the root's dev group.
+    "pagefind[bin]>=1.4.0",
 ]
 
 [tool.pytest.ini_options]

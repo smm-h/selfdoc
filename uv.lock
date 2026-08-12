@@ -756,6 +756,7 @@ perf = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pagefind", extra = ["bin"] },
     { name = "pygments" },
     { name = "pytest" },
     { name = "pytest-playwright" },
@@ -772,6 +773,7 @@ provides-extras = ["perf"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pagefind", extras = ["bin"], specifier = ">=1.4.0" },
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
@@ -797,6 +799,7 @@ perf = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pagefind", extra = ["bin"] },
     { name = "pygments" },
     { name = "pytest" },
     { name = "pytest-playwright" },
@@ -814,6 +817,7 @@ provides-extras = ["perf", "og"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pagefind", extras = ["bin"], specifier = ">=1.4.0" },
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
