@@ -118,6 +118,57 @@ def test_selfdoc_package_does_not_package_js():
     )
 
 
+# -- Theme assets live in exactly one package ------------------------------
+
+
+def test_no_theme_assets_outside_core():
+    """selfdoc ships no theme CSS or JSON of its own; core's are the ones read.
+
+    ``selfdoc/themes/__init__.py`` is a re-export shim that points
+    ``__file__`` at ``selfdoc_core/themes``, so every reader resolves there.
+    The copies that sat beside the shim were packaged and drifted 58 lines
+    behind core's -- and the contrast lint read the drifted copy.
+    """
+    import selfdoc
+
+    themes_dir = os.path.join(os.path.dirname(selfdoc.__file__), "themes")
+    strays = sorted(
+        name for name in os.listdir(themes_dir)
+        if name.endswith((".css", ".json"))
+    ) if os.path.isdir(themes_dir) else []
+    assert strays == [], (
+        f"selfdoc/themes carries theme assets {strays}; they belong to "
+        f"selfdoc_core, which every reader resolves to through the shim"
+    )
+
+
+def test_selfdoc_package_does_not_package_themes():
+    """The selfdoc wheel and sdist declare no theme asset include pattern."""
+    import selfdoc
+
+    manifest = os.path.join(os.path.dirname(selfdoc.__file__), "pyproject.toml")
+    with open(manifest, encoding="utf-8") as f:
+        text = f.read()
+    assert "themes/*.css" not in text and "themes/*.json" not in text, (
+        "selfdoc/pyproject.toml still packages theme assets; they live in "
+        "selfdoc_core"
+    )
+
+
+def test_contrast_lint_reads_the_core_theme_css():
+    """The contrast lint resolves its CSS through the theme registry.
+
+    It used to build the path from ``selfdoc/check.py``'s own directory,
+    which reached the packaged mirror rather than the stylesheet the build
+    emits.
+    """
+    import selfdoc_core.themes as core_themes
+    from selfdoc.check import theme_css_path
+
+    core_dir = os.path.dirname(core_themes.__file__)
+    assert theme_css_path("minimal") == os.path.join(core_dir, "minimal.css")
+
+
 # -- Post provider registration --------------------------------------------
 
 

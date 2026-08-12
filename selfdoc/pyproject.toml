@@ -31,9 +31,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# No JS include pattern: the JS assets are selfdoc_core's, and the loader
-# reads them from there. A copy here would be packaged and never loaded.
-include = ["*.py", "themes/*.css", "themes/*.json"]
+# No JS or theme include patterns: those assets are selfdoc_core's, and the
+# loader and the themes shim read them from there. A copy here would be
+# packaged and never loaded, which is how the theme CSS drifted 58 lines.
+include = ["*.py"]
 exclude = ["pyproject.toml"]
 dev-mode-dirs = [".."]
 
@@ -41,7 +42,7 @@ dev-mode-dirs = [".."]
 "" = "selfdoc"
 
 [tool.hatch.build.targets.sdist]
-include = ["*.py", "themes/*.css", "themes/*.json", "README.md", "LICENSE"]
+include = ["*.py", "README.md", "LICENSE"]
 
 [tool.uv.sources]
 selfdoc-core = { workspace = true }

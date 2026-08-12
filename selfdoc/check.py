@@ -1982,6 +1982,21 @@ def _extract_css_vars(css_block):
     return props
 
 
+def theme_css_path(theme_name):
+    """Return the path of the stylesheet the build emits for *theme_name*.
+
+    Resolved through the theme registry rather than built from this
+    module's own directory: the themes live in ``selfdoc_core`` and the
+    ``selfdoc.themes`` shim points at them, so this is the one file the
+    build reads and therefore the one the contrast lint must measure.
+    """
+    import selfdoc_core.themes as core_themes
+
+    return os.path.join(
+        os.path.dirname(core_themes.__file__), f"{theme_name}.css",
+    )
+
+
 def _check_contrast(lints, config, base_dir):
     """Check WCAG 2.1 contrast ratios for theme colors (SEO012).
 
@@ -1990,9 +2005,7 @@ def _check_contrast(lints, config, base_dir):
     """
     theme_name = config.get("theme", "minimal")
 
-    # Locate theme CSS using the same path as selfdoc.themes
-    themes_dir = os.path.join(os.path.dirname(__file__), "themes")
-    css_path = os.path.join(themes_dir, f"{theme_name}.css")
+    css_path = theme_css_path(theme_name)
     if not os.path.isfile(css_path):
         return
 

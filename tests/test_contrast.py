@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-THEMES_DIR = Path(__file__).resolve().parent.parent / "selfdoc" / "themes"
+THEMES_DIR = Path(__file__).resolve().parent.parent / "selfdoc_core" / "themes"
 
 
 # ---------------------------------------------------------------------------
