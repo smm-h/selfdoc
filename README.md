@@ -236,6 +236,7 @@ Custom directives take priority over built-in names.
 | `check` | Check documentation coverage, directive resolution, and lint rules |
 | `gen` | Auto-generate documentation pages from project structure |
 | `gen-data` | Generate data files by running sandboxed scripts via bwrap |
+| `spell-corpus` | Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits |
 | `quality` | Show documentation quality tier and metrics for the current project |
 | **baseline** | Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check |
 | `baseline accept` | Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description. |

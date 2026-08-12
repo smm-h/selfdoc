@@ -153,6 +153,11 @@
     "description": "764bb3e3e5a1599a9fba9de3ab6d0beecdfc58cd56e59c85e6adb4c3df3a5892",
     "schema_hash": "be460c6b1e8079380716f20be2ac1392a5037e827c6d8077604722183556038d"
   },
+  "en/cli-spell-corpus.md": {
+    "content": "f3487a41f37ba24dcf7210305f1eba615399eae6234f448ee04116a257673ea9",
+    "description": "0c733b57b542d2d309233fed2f6e4d6b55e7310ad071622f055130bfd761a998",
+    "seed_hash": "0c733b57b542d2d309233fed2f6e4d6b55e7310ad071622f055130bfd761a998"
+  },
   "en/code-blocks.md": {
     "content": "f593e446a647e55ad318401b6e85d9fd452003e4c71bad5479a0a25d9120d823",
     "description": "c72baf77a34e19edde9974604cb642710a27b736071f5ff8cb24b1d1049ead17"

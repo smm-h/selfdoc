@@ -479,6 +479,23 @@
       ]
     },
     {
+      "path": "cli-spell-corpus.md",
+      "title": "selfdoc spell-corpus",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc spell-corpus",
+          "anchor": "selfdoc-spell-corpus"
+        },
+        {
+          "level": 2,
+          "text": "Flags",
+          "anchor": "flags"
+        }
+      ]
+    },
+    {
       "path": "code-blocks.md",
       "title": "Code Blocks",
       "type": "doc",
@@ -3296,5 +3313,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T01:24:40.529348+00:00"
+  "last_gen": "2026-08-12T01:26:03.896783+00:00"
 }

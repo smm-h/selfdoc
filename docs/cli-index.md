@@ -23,6 +23,7 @@ Version: :-: var key="project.version"
 - [check](../cli-check/) -- Check documentation coverage, directive resolution, and lint rules
 - [gen](../cli-gen/) -- Auto-generate documentation pages from project structure
 - [gen-data](../cli-gen-data/) -- Generate data files by running sandboxed scripts via bwrap
+- [spell-corpus](../cli-spell-corpus/) -- Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits
 - [quality](../cli-quality/) -- Show documentation quality tier and metrics for the current project
 
 ## Command Groups
