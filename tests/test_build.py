@@ -5958,6 +5958,37 @@ def test_github_pages_security_meta_tags(tmp_path):
     assert '<meta http-equiv="Content-Security-Policy"' in content
 
 
+def test_github_pages_csp_allows_no_script_cdn(tmp_path):
+    """The policy allows only the origins the page actually loads from.
+
+    The build inlines its own JS and CSS and loads no library from a CDN,
+    so two script CDNs stood in the policy allowing what nothing used --
+    a standing permission for an injected script to fetch from.
+    """
+    config = default_config(
+        docs="docs/", output="docs/_build/",
+        deploy={"provider": "github-pages"},
+    )
+    with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f)
+    docs_dir = os.path.join(tmp_path, "docs")
+    os.makedirs(docs_dir)
+    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+        f.write("# Test\n\nContent.\n")
+
+    build(str(tmp_path))
+    output_dir = os.path.join(tmp_path, "docs", "_build")
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "cdnjs.cloudflare.com" not in content
+    assert "cdn.jsdelivr.net" not in content
+    # The font origins stay: the theme's fonts_url really loads from them.
+    assert "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;" in content
+    assert "font-src 'self' https://fonts.gstatic.com;" in content
+    assert "script-src 'self' 'unsafe-inline';" in content
+
+
 def test_cloudflare_pages_no_security_meta_tags(tmp_path):
     """Cloudflare Pages builds do NOT include security meta http-equiv tags."""
     config = default_config(
