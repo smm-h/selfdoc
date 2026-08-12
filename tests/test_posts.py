@@ -349,7 +349,6 @@ def test_discover_posts_optional_fields(tmp_path):
             "title: Release Notes",
             "date: 2025-06-01",
             "locale: en",
-            "project: mylib",
             "version: 2.0.0",
             "prev_version: 1.9.0",
             "bump_type: major",
@@ -360,7 +359,6 @@ def test_discover_posts_optional_fields(tmp_path):
     result = discover_posts(str(posts_dir))
     post = result[0]
     assert post["locale"] == "en"
-    assert post["project"] == "mylib"
     assert post["version"] == "2.0.0"
     assert post["prev_version"] == "1.9.0"
     assert post["bump_type"] == "major"

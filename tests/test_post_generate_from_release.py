@@ -105,7 +105,7 @@ def test_all_flags_provided(tmp_path, monkeypatch):
     assert fm["date"] == today
     assert fm["slug"] == "release-v2.0.0"
     assert fm["draft"] is False
-    assert fm["project"] == "myproject"
+    assert "project" not in fm
     assert fm["version"] == "2.0.0"
     assert fm["prev_version"] == "1.0.0"
     assert fm["bump_type"] == "major"
@@ -326,8 +326,8 @@ def test_no_config(tmp_path, monkeypatch):
 # ------------------------------------------------------------------
 
 
-def test_project_from_topology(tmp_path, monkeypatch):
-    """Project slug comes from topology.slug when present in config."""
+def test_generated_post_carries_no_project_field(tmp_path, monkeypatch):
+    """A release post declares no 'project' key -- nothing ever read one."""
     _setup_project(tmp_path, config_overrides={
         "topology": {"slug": "my-cool-project"},
     })
@@ -337,11 +337,11 @@ def test_project_from_topology(tmp_path, monkeypatch):
 
     today = datetime.date.today().isoformat()
     content = _read_post(tmp_path, f"{today}-release-v1.0.0.md")
-    assert "project: my-cool-project\n" in content
+    assert "project:" not in content
 
 
-def test_project_from_flag(tmp_path, monkeypatch):
-    """project_name flag is used for title and kebab-cased for project slug."""
+def test_project_name_flag_titles_the_post(tmp_path, monkeypatch):
+    """project_name is the post's title, and nothing else."""
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
@@ -357,4 +357,4 @@ def test_project_from_flag(tmp_path, monkeypatch):
     fm, _body = _parse_post(content)
 
     assert fm["title"] == "My Awesome Project v2.0.0"
-    assert fm["project"] == "my-awesome-project"
+    assert "project" not in fm

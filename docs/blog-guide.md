@@ -60,7 +60,6 @@ slug: my-first-post
 tags: []
 draft: true
 directives: false
-project: myproject
 ---
 ```
 

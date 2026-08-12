@@ -221,7 +221,6 @@ def parse_post(
         "type": "post",
         "versioned": False,
         "locale": frontmatter.get("locale"),
-        "project": frontmatter.get("project"),
         "version": frontmatter.get("version"),
         "prev_version": frontmatter.get("prev_version"),
         "bump_type": frontmatter.get("bump_type"),

@@ -100,40 +100,28 @@ def test_post_new_frontmatter_content(tmp_path, monkeypatch):
     assert "slug: frontmatter-check\n" in content
     assert "tags: []\n" in content
     assert "draft: true\n" in content
-    assert "project: " in content
     # Ends with closing frontmatter fence and a blank line
     assert content.endswith("---\n\n")
 
 
-def test_post_new_project_from_topology(tmp_path, monkeypatch):
-    """project field comes from topology.slug when present."""
+def test_post_new_writes_no_project_field(tmp_path, monkeypatch):
+    """The scaffold emits no 'project' key: nothing ever read it.
+
+    A post's owning project is the repository the post lives in, and the
+    assembly learns it from the manifest the deploy copies -- never from a
+    line in the post's own frontmatter that no reader consulted.
+    """
     _setup_project(tmp_path, config_overrides={
         "topology": {"slug": "my-cool-project"},
     })
     monkeypatch.chdir(tmp_path)
 
-    _cmd_post_new(None, title="Topology Test")
+    _cmd_post_new(None, title="No Project Key")
 
     today = datetime.date.today().isoformat()
-    filepath = tmp_path / ".selfdoc" / "posts" / f"{today}-topology-test.md"
+    filepath = tmp_path / ".selfdoc" / "posts" / f"{today}-no-project-key.md"
     content = filepath.read_text(encoding="utf-8")
-    assert "project: my-cool-project\n" in content
-
-
-def test_post_new_project_from_dirname(tmp_path, monkeypatch):
-    """project field falls back to kebab-cased directory name when no topology.slug."""
-    # Create the project in a subdirectory with a meaningful name
-    project_dir = tmp_path / "My Cool Project"
-    project_dir.mkdir()
-    _setup_project(project_dir)
-    monkeypatch.chdir(project_dir)
-
-    _cmd_post_new(None, title="Name Fallback")
-
-    today = datetime.date.today().isoformat()
-    filepath = project_dir / ".selfdoc" / "posts" / f"{today}-name-fallback.md"
-    content = filepath.read_text(encoding="utf-8")
-    assert "project: my-cool-project\n" in content
+    assert "project:" not in content
 
 
 # ------------------------------------------------------------------

@@ -6,7 +6,19 @@ import subprocess
 
 import pytest
 
+from selfblog.assembly import RosterEntry, render_roster
 from selfblog.cli import _cmd_post_publish
+
+# The publish reads the assembly's roster before it writes, so it can check
+# its post paths against the other declared projects' claims.
+ROSTER_TEXT = render_roster([RosterEntry("myproject", "owner/myproject")])
+
+
+def _fake_fetch(contents):
+    """Stand in for the assembly's Contents API: path -> text, absent is ''."""
+    def fetch(repo, path, *, missing_ok=False, operation=""):
+        return contents.get(path, "")
+    return fetch
 
 
 def _setup_project(tmp_path, config_overrides=None):
@@ -43,7 +55,6 @@ def _create_post(tmp_path, filename="2026-06-01-hello.md", draft=False):
         "slug: hello\n"
         f"draft: {draft_str}\n"
         "directives: false\n"
-        "project: myproject\n"
         "tags: []\n"
         "---\n"
         "\n"
@@ -254,6 +265,8 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr("selfdoc_core.build._build_posts_only", mock_build)
     monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
+    monkeypatch.setattr("selfblog.assembly.fetch_remote_text",
+                        _fake_fetch({"roster.toml": ROSTER_TEXT}))
     monkeypatch.setattr(
         subprocess, "run",
         lambda cmd, **kw: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
@@ -581,7 +594,10 @@ def _publish_with_output(tmp_path, monkeypatch, *, remote_record="",
     monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
         "selfblog.assembly.fetch_remote_text",
-        lambda repo, path, missing_ok=False, operation="": remote_record,
+        _fake_fetch({
+            "roster.toml": ROSTER_TEXT,
+            "manifests/myproject-files.json": remote_record,
+        }),
     )
     monkeypatch.setattr(
         subprocess, "run",

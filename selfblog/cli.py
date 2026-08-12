@@ -53,12 +53,6 @@ def _cmd_post_new(ctx, title=""):
     today = datetime.date.today().isoformat()
     filename = f"{today}-{slug}.md"
 
-    # Determine project slug for the post frontmatter
-    project_slug = (config.get("topology") or {}).get("slug")
-    if not project_slug:
-        name = config.get("name") or os.path.basename(os.path.abspath("."))
-        project_slug = _to_kebab(name)
-
     filepath = os.path.join(posts_dir, filename)
 
     if os.path.isfile(filepath):
@@ -75,7 +69,6 @@ def _cmd_post_new(ctx, title=""):
         f"tags: []\n"
         f"draft: true\n"
         f"directives: false\n"
-        f"project: {project_slug}\n"
         f"---\n"
         f"\n"
     )
@@ -145,7 +138,7 @@ def _cmd_post_generate(
 ):
     """Generate a blog post from release metadata."""
     from selfdoc_core.config import load_config
-    from selfdoc_core.manifest import _to_kebab, generate_manifest, load_manifest
+    from selfdoc_core.manifest import generate_manifest, load_manifest
     from selfdoc_core.utils import atomic_write
 
     if not from_release:
@@ -175,15 +168,6 @@ def _cmd_post_generate(
         with open(body_file, "r", encoding="utf-8") as f:
             body_content = f.read().strip()
 
-    # Determine project name
-    if not project_name:
-        project_slug = (config.get("topology") or {}).get("slug")
-        if not project_slug:
-            name = config.get("name") or os.path.basename(os.path.abspath("."))
-            project_slug = _to_kebab(name)
-    else:
-        project_slug = _to_kebab(project_name)
-
     # Build slug and filename
     today = datetime.date.today().isoformat()
     slug = f"release-v{version}"
@@ -207,7 +191,6 @@ def _cmd_post_generate(
         # post, so the scaffold states it rather than leaving the author a
         # file its own discovery would refuse.
         "directives: false",
-        f"project: {project_slug}",
         f"version: {version}",
     ]
     if prev_version:
@@ -396,7 +379,25 @@ def _cmd_post_publish(ctx):
     # behind on the blog. This is the helper `docs publish` records through.
     delete_paths = []
     if produced:
-        from selfblog.assembly import stage_published_record
+        from selfblog.assembly import (
+            load_remote_roster,
+            refuse_foreign_post_overwrite,
+            remote_post_claims,
+            stage_published_record,
+        )
+
+        # The site-level blog is one namespace shared by every project, so a
+        # post slug another project already claims is refused before anything
+        # is written -- the same refusal the integrate graft makes, against
+        # the records on the assembly instead of a local clone.
+        try:
+            roster = load_remote_roster(repo)
+            refuse_foreign_post_overwrite(
+                slug, produced, remote_post_claims(repo, slug, roster),
+            )
+        except RuntimeError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
 
         delete_paths = stage_published_record(
             repo, slug, "posts", produced, files,
