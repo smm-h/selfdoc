@@ -827,6 +827,24 @@ def _cmd_gen_data(ctx, auto_commit=True):
     return 0
 
 
+@app.command("spell-corpus", help="Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits", effect="read_only")
+@strictcli.flag("root", type=str, default="", help="Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings")
+@strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format: text (table plus per-project word lists) or json (machine-readable)")
+@strictcli.flag("detail", type=bool, default=True, help="List each project's unknown words with a first location and any suggestion, after the summary table")
+@effects.handler
+def _cmd_spell_corpus(ctx, root="", format="text", detail=True):
+    """Run the spelling engine across every sibling selfdoc project."""
+    from selfdoc_core.spelling import AcceptListError
+    from selfdoc.spell_corpus import run_spell_corpus
+
+    target = root or os.path.dirname(os.path.abspath("."))
+    try:
+        return run_spell_corpus(target, format=format, detail=detail)
+    except AcceptListError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
 @app.command("quality", help="Show documentation quality tier and metrics for the current project", effect="read_only")
 @strictcli.flag("format", type=str, default="text", help="Output format: text or json")
 @effects.handler

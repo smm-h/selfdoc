@@ -51,6 +51,8 @@ SELFDOC_EFFECTS = {
     "gen": "mutating",
     # runs the configured scripts under bwrap and writes their data outputs
     "gen-data": "mutating",
+    # reads every sibling project's docs tree and prints the spelling findings
+    "spell-corpus": "read_only",
     # reads the tree and prints metrics
     "quality": "read_only",
 }
