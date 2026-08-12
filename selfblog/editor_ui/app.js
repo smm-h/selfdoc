@@ -236,9 +236,13 @@ function repoView(repo) {
   // -- assistance ----------------------------------------------------------
 
   // The token carries its "](" prefix (see LINK_TOKEN), so the query is what
-  // follows it and the accepted text has to put the whole thing back.
+  // follows it and the accepted text has to put the whole thing back. The
+  // closing paren is written only when there is not one already at the caret:
+  // a textarea pairs nothing on its own, so "[label](" is the usual state,
+  // but a link whose parens were typed in full must not gain a second one.
   async function linkCompletions(ctx) {
     const query = ctx.token.slice(2);
+    const closed = ctx.value[ctx.caret] === ")";
     const body = await getJSON(
       `/api/link-targets?q=${encodeURIComponent(query)}`,
     );
@@ -247,7 +251,7 @@ function repoView(repo) {
         ? `${target.page_title} › ${target.title}`
         : target.title,
       hint: `${target.repo} · ${target.address}`,
-      value: `](${target.href})`,
+      value: `](${target.href}${closed ? "" : ")"}`,
     }));
   }
 
