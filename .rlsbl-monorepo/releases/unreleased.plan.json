@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "base_version": "0.4.3",
+      "bump": "patch",
+      "name": "selfblog",
+      "registry": "npm",
+      "tag": "selfblog@v0.4.4",
+      "target_version": "0.4.4"
+    }
+  ],
+  "section_type": "releasables"
+}
