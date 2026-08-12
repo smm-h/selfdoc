@@ -1301,7 +1301,8 @@ def counts_as_statistic(word):
 
     Returns:
         True for genuine quantities (``42``, ``3.5``, ``87%``, ``12ms``),
-        False for digitless tokens, version-shaped tokens and bare years.
+        False for tokens carrying no digit, version-shaped tokens and
+        bare years.
     """
     if not any(c.isdigit() for c in word):
         return False
@@ -1313,6 +1314,128 @@ def counts_as_statistic(word):
     if _BARE_YEAR.match(core) and 1900 <= int(core) <= 2099:
         return False
     return True
+
+
+def _authored_data_documents(docs_dir, output_dir):
+    """Every authored data document in the docs tree, as absolute paths.
+
+    A page whose whole body is a directive -- the CV, the curated project
+    listing -- keeps its prose in a TOML document beside the templates.
+    Those documents are where a reader edits, so they are where a
+    misspelling in the rendered page is reported.  Found by walking rather
+    than asked of the directive, because a directive that reads a fixed
+    document (``projects-cards``) declares no attributes at all.
+
+    The build output is skipped: it holds copies of the same documents,
+    and reporting a word at its line in a generated copy would send a
+    reader to a file the next build overwrites.
+    """
+    skip = os.path.abspath(output_dir)
+    found = []
+    for root, _dirs, files in os.walk(docs_dir):
+        absolute_root = os.path.abspath(root)
+        if absolute_root == skip or absolute_root.startswith(skip + os.sep):
+            continue
+        for name in sorted(files):
+            if name.endswith(".toml"):
+                found.append(os.path.join(absolute_root, name))
+    return found
+
+
+def _directive_data_files(page_directives, docs_documents, project_root):
+    """Documents the content rendered onto one page could have come out of.
+
+    The documents in the docs tree, plus any existing file a directive on
+    the page names in ``path``.  A ``path`` that names a module or a
+    directory (``ref``, ``list-tree``) is not a document and contributes
+    nothing.  Every entry is absolute, so a document reached both ways is
+    held once and never reported twice.
+    """
+    files = list(docs_documents)
+    for rd in page_directives:
+        declared = (rd.attrs or {}).get("path", "")
+        if not declared:
+            continue
+        full = os.path.abspath(os.path.join(project_root, declared))
+        if full not in files and os.path.isfile(full):
+            files.append(full)
+    return files
+
+
+def _locate_word(word, data_files, project_root):
+    """Every ``(file, line, column)`` *word* occupies in *data_files*.
+
+    Whole-word matches only, so ``ok`` inside ``token`` is not one.  The
+    paths come back relative to the project root, which is how every other
+    diagnostic names a file.
+    """
+    pattern = re.compile(rf"(?<![^\W\d_]){re.escape(word)}(?![^\W\d_])")
+    hits = []
+    for full in data_files:
+        try:
+            with open(full, encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            continue
+        rel = os.path.relpath(full, project_root).replace(os.sep, "/")
+        for lineno, line in enumerate(text.split("\n"), start=1):
+            for match in pattern.finditer(line):
+                hits.append((rel, lineno, match.start() + 1))
+    return hits
+
+
+def _spell_rendered_directives(
+    rel_path, body_content, resolved, raw_misspellings, page_directives,
+    docs_documents, project_root, vocab, accepted,
+):
+    """SPELL001 over prose a directive rendered out of an authored document.
+
+    A page's own prose is scanned from the raw body, where every reported
+    column is a real column in the file.  Prose a directive rendered has no
+    position in that file at all -- a marker stands in for it -- so the
+    resolved body is scanned instead and each finding is reported against
+    the document it was written in, at the word's own line and column
+    there.
+
+    A word the resolved body carries but no authored document holds came
+    out of source code: a module name, a symbol, a type.  Identifiers are
+    not prose, and the file to fix would be code rather than a document,
+    so those are not this check's findings.
+    """
+    if not resolved or resolved == body_content:
+        return []
+    already = {miss.word for miss in raw_misspellings}
+    data_files = _directive_data_files(
+        page_directives, docs_documents, project_root,
+    )
+    if not data_files:
+        return []
+
+    results = []
+    seen = set()
+    for miss in spelling.check_text(
+        resolved, file=rel_path, vocab=vocab, accepted=accepted,
+    ):
+        if miss.word in already or miss.word in seen:
+            continue
+        seen.add(miss.word)
+        for source_file, line, column in _locate_word(
+            miss.word, data_files, project_root,
+        ):
+            suffix = (
+                f"; did you mean {', '.join(miss.suggestions)}?"
+                if miss.suggestions else ""
+            )
+            results.append(LintResult(
+                file=source_file,
+                line=line,
+                code="SPELL001",
+                message=(
+                    f"Unrecognized word '{miss.word}' (col {column})"
+                    f"{suffix} -- rendered into {rel_path}"
+                ),
+            ))
+    return results
 
 
 def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
@@ -1368,6 +1491,12 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
     # misspellings a fixed list would have accepted.
     _spell_vocab = spelling.load_wordlist()
     _spell_accepted = spelling.load_accept_list()
+    # The authored documents a directive can render prose out of, walked
+    # once for the whole run rather than once per page.
+    _spell_documents = _authored_data_documents(
+        docs_dir,
+        os.path.join(project_root, config.get("output", "docs/_build/")),
+    )
 
     # DQ001 helpers -- strip common suffixes and normalize for comparison
     _DQ_SUFFIXES = {
@@ -1874,19 +2003,38 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         # ``selfdoc spell-corpus``: this surface only turns its findings
         # into lints.  Posts are in ``all_docs`` by the time the rules run,
         # so they are checked on the same terms as documentation pages.
-        for miss in spelling.check_text(
+        raw_misspellings = spelling.check_text(
             body_content,
             file=rel_path,
             vocab=_spell_vocab,
             accepted=_spell_accepted,
             line_offset=fm_offset,
-        ):
+        )
+        for miss in raw_misspellings:
             results.append(LintResult(
                 file=rel_path,
                 line=miss.line,
                 code="SPELL001",
                 message=miss.describe(),
             ))
+
+        # SPELL001 over what a directive rendered.  The raw body carries a
+        # marker where the reader sees text, so prose that came out of a
+        # data file -- a CV declared in TOML, a curated listing's blurbs --
+        # was never scanned at all and shipped its typos.  The resolved
+        # body is scanned too, and anything the raw scan already reported
+        # is dropped so a page's own prose is never reported twice.
+        results.extend(_spell_rendered_directives(
+            rel_path,
+            body_content,
+            _resolved,
+            raw_misspellings,
+            page_directives.get(rel_path, ()),
+            _spell_documents,
+            project_root,
+            _spell_vocab,
+            _spell_accepted,
+        ))
 
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)

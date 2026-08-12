@@ -157,6 +157,171 @@ def test_posts_are_spell_checked_too(tmp_path):
     assert spell[0].file.endswith("2026-01-01-hello.md")
 
 
+# -- Content a directive rendered ---------------------------------------------
+
+
+CV_DOCUMENT = """
+format_version = 1
+
+[identity]
+name = "Ada Lovelace"
+headline = "Analyst"
+location = "London, England"
+email = "ada@example.org"
+summary = "I write notes about engines."
+
+[[skills]]
+category = "Languages"
+items = ["French"]
+
+[[projects]]
+name = "Note G"
+notes = ["The first published algorithm"]
+
+[[interests]]
+title = "Poetical science"
+body = "Imagination is the discovering faculty."
+
+[[education]]
+degree = "Private tuition in mathematics"
+years = "1833 - 1840"
+institute = "University of London"
+location = "London, England"
+
+[[experience]]
+role = "Translator"
+period = "1842"
+company = "Scientific Memoirs"
+location = "London, England"
+
+[[languages]]
+name = "English"
+level = "Native"
+
+[contact]
+body = "Write to ada@example.org."
+"""
+
+_CV_PAGE = (
+    "---\ntitle: CV\ntype: cv\ndescription: "
+    "The curriculum vitae of Ada Lovelace, analyst, with her skills, "
+    "projects, interests, education, work and languages.\n---\n\n"
+    ':-: cv path="docs/cv.toml"\n'
+)
+
+
+def _cv_project(tmp_path, document):
+    project = _project(tmp_path, {"cv.md": _CV_PAGE})
+    with open(project / "docs" / "cv.toml", "w", encoding="utf-8") as f:
+        f.write(document)
+    return project
+
+
+def test_a_misspelling_in_the_cv_document_is_reported(tmp_path):
+    """CV prose lives in TOML, and TOML is where the typo has to be named.
+
+    The page carries a directive marker where the reader sees a whole CV,
+    so nothing on the page was ever scanned and the document behind it was
+    never reached at all.
+    """
+    document = CV_DOCUMENT.replace(
+        "Imagination is the discovering faculty.",
+        "Imagination is the discovring faculty.",
+    )
+    project = _cv_project(tmp_path, document)
+    result = check_docs(str(project))
+    spell = [lint for lint in result.lints if lint.code == "SPELL001"]
+    assert len(spell) == 1
+    assert "discovring" in spell[0].message
+
+
+def test_the_cv_misspelling_is_located_in_the_source_document(tmp_path):
+    """The diagnostic names cv.toml and the line the word is written on."""
+    document = CV_DOCUMENT.replace(
+        "Imagination is the discovering faculty.",
+        "Imagination is the discovring faculty.",
+    )
+    project = _cv_project(tmp_path, document)
+    result = check_docs(str(project))
+    spell = [lint for lint in result.lints if lint.code == "SPELL001"][0]
+    assert spell.file == "docs/cv.toml"
+    with open(project / "docs" / "cv.toml", encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    assert "discovring" in lines[spell.line - 1]
+    assert "cv.md" in spell.message
+
+
+def test_a_misspelling_in_the_cv_document_fails_the_check(tmp_path):
+    document = CV_DOCUMENT.replace("Analyst", "Analsyt")
+    project = _cv_project(tmp_path, document)
+    result = check_docs(str(project))
+    assert check_result_exit_code(result) == 1
+
+
+def test_a_clean_cv_document_produces_no_spelling_lint(tmp_path):
+    project = _cv_project(tmp_path, CV_DOCUMENT)
+    result = check_docs(str(project))
+    assert [lint for lint in result.lints if lint.code == "SPELL001"] == []
+
+
+def test_a_document_is_reported_once_however_it_was_found(tmp_path):
+    """The docs walk and the directive's own `path` name the same file."""
+    document = CV_DOCUMENT.replace("Analyst", "Analsyt")
+    project = _cv_project(tmp_path, document)
+    result = check_docs(str(project))
+    spell = [lint for lint in result.lints if lint.code == "SPELL001"]
+    assert len(spell) == 1
+
+
+def test_a_copy_of_the_document_in_the_build_output_is_not_reported(tmp_path):
+    """A generated copy is overwritten by the next build; it is not a source."""
+    document = CV_DOCUMENT.replace("Analyst", "Analsyt")
+    project = _cv_project(tmp_path, document)
+    build_dir = project / "docs" / "_build"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    with open(build_dir / "cv.toml", "w", encoding="utf-8") as f:
+        f.write(document)
+
+    result = check_docs(str(project))
+    spell = [lint for lint in result.lints if lint.code == "SPELL001"]
+    assert [lint.file for lint in spell] == ["docs/cv.toml"]
+
+
+def test_a_symbol_name_a_directive_extracted_is_not_a_misspelling(tmp_path):
+    """A `ref` renders identifiers out of source; those are not prose.
+
+    The file to fix would be code, and the word is a name rather than
+    something anyone spelled wrong, so it is not this check's finding.
+    """
+    page = (
+        "---\ntitle: API\ndescription: "
+        "The API reference for this project's one example package, listing "
+        "every public symbol it exports for callers to use.\n---\n\n"
+        "# API\n\n"
+        ':-: ref path="src"\n'
+    )
+    project = _project(tmp_path, {"api.md": page})
+    with open(project / "docs" / "notes.toml", "w", encoding="utf-8") as f:
+        f.write('# an authored document that holds none of those names\n')
+    result = check_docs(str(project))
+    assert [lint for lint in result.lints if lint.code == "SPELL001"] == []
+
+
+def test_the_pages_own_prose_is_not_reported_twice(tmp_path):
+    """A word the raw scan already found is not re-reported from the render."""
+    page = _CV_PAGE.replace(
+        ':-: cv path="docs/cv.toml"',
+        'The page says recieve.\n\n:-: cv path="docs/cv.toml"',
+    )
+    project = _project(tmp_path, {"cv.md": page})
+    with open(project / "docs" / "cv.toml", "w", encoding="utf-8") as f:
+        f.write(CV_DOCUMENT)
+    result = check_docs(str(project))
+    spell = [lint for lint in result.lints if lint.code == "SPELL001"]
+    assert len(spell) == 1
+    assert spell[0].file == "cv.md"
+
+
 # -- The corpus sweep ---------------------------------------------------------
 
 
