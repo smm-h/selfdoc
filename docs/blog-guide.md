@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, assembly integration, publishing documentation without a release, the declared roster and project retirement, the canonical blog URL, and the verification every deploy has to pass before it publishes anything."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, assembly integration, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing and site-level directives, project retirement, the canonical blog URL, and the verification every deploy has to pass."
 nav_group: "Guides"
 nav_order: 19
 ---
@@ -109,7 +109,6 @@ Documentation pages carry no such key. The whole `docs/` tree is directive terri
 | `slug` | string | derived from title | URL-safe identifier. Auto-generated from the title using kebab-case if omitted. |
 | `tags` | list | `[]` | List of tag strings for categorization and search filtering. |
 | `draft` | boolean | `false` | When `true`, the post is excluded from publishing and the unified site. |
-| `project` | string | from config | Project slug for attribution in the unified site. |
 | `locale` | string | none | Locale code for localized posts. |
 
 ### Release-specific fields
@@ -268,12 +267,6 @@ The shared homepage and blog index also carry a `rel="canonical"` link pointing 
 
 Set `topology.posts_base` to the same canonical blog URL. It is a path on the docs site, not a separate host.
 
-### The portfolio canonical
-
-An assembly may serve a hand-authored portfolio page as its site root (`portfolio/index.html` in the assembly repo; `integrate` picks it up when it exists, and `generate-shared` takes it as `--portfolio-file`). That page is the *apex*, not a docs page, so its canonical is **not** `topology.docs_base` -- the same bytes are served on every host bound to the Pages project, and one of them has to be named.
-
-Set `assembly.portfolio_canonical` to that apex URL. The generated deploy workflow passes it as `--portfolio-canonical`, and the shared-element generator splices a `rel="canonical"` link into the portfolio's `<head>` (rewriting one that is already there). There is no default: supplying a portfolio file without `--portfolio-canonical` is a hard error, as is a portfolio document with no `<head>` to splice into.
-
 #### Operator steps (outside selfblog)
 
 Two pieces of this topology live on platform dashboards and are not automated:
@@ -416,6 +409,12 @@ An absent record means nobody has published anything for that project yet, so no
 The projects the unified site serves are declared in `roster.toml`, hand-edited and committed in the assembly repository:
 
 ```toml
+home = "mysite"
+
+[[project]]
+slug = "mysite"
+repo = "owner/mysite"
+
 [[project]]
 slug = "myproject"
 repo = "owner/myproject"
@@ -426,6 +425,62 @@ repo = "owner/otherproject"
 ```
 
 `slug` and `repo` are both required, unknown keys are a hard error, a duplicate slug is a hard error, and a slug that collides with one of the assembly's own directories (`blog`, `projects`, `pagefind`) is a hard error. A missing file is a hard error too: membership has no empty default, because a deploy that guessed at it would be accumulating membership again.
+
+`home` is required as well, and names exactly one of the declared projects -- see below.
+
+### The home project
+
+One declared project is the site's front page. `home = "<slug>"` says which, and there is no default: a roster with no `home`, or a `home` naming a slug no `[[project]]` block declares, is a hard error. A site needs a front page, and selfblog will not pick one.
+
+The home project is an ordinary project -- a real repository that dispatches its own deploys like any other. Being home changes four things:
+
+* **Its pages are emitted at the site root.** `index.md` becomes `/`, `cv.md` becomes `/cv/`. No project segment, no locale segment, no version segment, and no archives.
+* **It is left out of the generated listing and out of `nav.json`.** The front page does not list itself.
+* **The addresses the assembly owns are refused to it.** A page that would land on `blog/`, `projects/`, `v/` or `pagefind/` is a hard error at the graft and again in `assembly verify`, which also refuses a leftover `site/<home>/` subtree and a home directory that shadows another project's slug.
+* **It cannot be retired.** Retiring the front page would leave the site without one; name another project home first.
+
+The site-wide artifacts the home project's own build writes for standalone hosting -- `sitemap.xml`, `robots.txt`, `404.html`, `feed.xml`, `llms.txt`, `nav.json`, the routing files and the compressed variants -- are dropped on the way in. The assembly writes the ones the site serves.
+
+#### The curated listing
+
+The home project declares which projects the site shows, and how, in `docs/projects.toml`:
+
+```toml
+[[category]]
+name = "Frameworks"
+
+  [[category.project]]
+  slug = "myproject"
+  blurb = "One line about it."
+
+[[category]]
+name = "Elsewhere"
+
+  [[category.project]]
+  slug = "thing"
+  name = "Thing"
+  blurb = "A project with no docs section here."
+  url = "https://example.org/thing"
+```
+
+The listing is content, so it lives with the content. An entry without `url` names a project the site serves: its display name and version come from that project's manifest, which is why declaring a `name` for one is refused -- there would be two sources for the same fact. An entry with `url` is external and therefore carries its own `name`.
+
+Validation is strict: unknown keys, a missing or empty `blurb`, a category with no entries, a duplicate slug, and a listed slug the assembly has no manifest for are each a hard error naming the offender. A roster project the listing leaves out is legal -- curation is selection.
+
+The deploy copies the file in beside the manifests, and both renderings read it: the generated `/projects/` page and the front page's cards.
+
+#### Site-level directives
+
+Two directives are available to the home project's pages:
+
+| Directive | Renders |
+| --- | --- |
+| `:-: projects-cards` | the curated listing, with each project's live version |
+| `:-: blog-highlights limit="N"` | the N most recent posts across every project |
+
+They resolve twice, from the same code. Once at build time -- which is why the home project builds through `selfblog build --target home --site-manifests <dir> --docs-base <url>` rather than through `selfdoc build`: a version badge is read from the assembly's manifests, and no project's own repository holds them. Without that context the command refuses to build at all, naming what is missing; a plain `selfdoc build` refuses too, on the unknown directive. Neither ever emits an empty region.
+
+Then again on **every** deploy, including deploys the home project has nothing to do with. Each resolved region is left in the emitted HTML inside a `<selfblog-region>` element, and the shared-element generator rewrites its contents from the current manifests. That is what keeps a front-page version badge current when the project it names releases: the prose and the design stay authored, the mechanical parts cannot go stale.
 
 `projects.json` beside it is **derived** state, rewritten by every deploy: it records what each declared project last deployed (`repo`, `ref`, `version`) and is what `selfblog assembly rebuild` replays. It cannot gain a key on its own -- a dispatch for a slug the roster does not declare is refused, and a slug the roster declares under a different repository is refused too.
 
