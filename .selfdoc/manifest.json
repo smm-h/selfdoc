@@ -2052,6 +2052,26 @@
         },
         {
           "level": 3,
+          "text": "_authored_data_documents",
+          "anchor": "_authored_data_documents"
+        },
+        {
+          "level": 3,
+          "text": "_directive_data_files",
+          "anchor": "_directive_data_files"
+        },
+        {
+          "level": 3,
+          "text": "_locate_word",
+          "anchor": "_locate_word"
+        },
+        {
+          "level": 3,
+          "text": "_spell_rendered_directives",
+          "anchor": "_spell_rendered_directives"
+        },
+        {
+          "level": 3,
           "text": "_run_lints",
           "anchor": "_run_lints"
         },
@@ -2074,6 +2094,11 @@
           "level": 3,
           "text": "_extract_css_vars",
           "anchor": "_extract_css_vars"
+        },
+        {
+          "level": 3,
+          "text": "theme_css_path",
+          "anchor": "theme_css_path"
         },
         {
           "level": 3,
@@ -2136,6 +2161,16 @@
           "level": 2,
           "text": "selfdoc.cli",
           "anchor": "selfdoccli"
+        },
+        {
+          "level": 3,
+          "text": "_fail",
+          "anchor": "_fail"
+        },
+        {
+          "level": 3,
+          "text": "_load_config_or_fail",
+          "anchor": "_load_config_or_fail"
         },
         {
           "level": 3,
@@ -3306,5 +3341,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T03:26:08.733799+00:00"
+  "last_gen": "2026-08-12T04:28:18.839626+00:00"
 }
