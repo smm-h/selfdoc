@@ -85,11 +85,11 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "6f61d9c19bf7ab25c5380fa4aebe6409a970b5bddcea8b490e2b2a437cfc6766",
+    "content": "0b105d4f81800c1e72752a52bc46b012d089bb38461c50a1de55a1b12caab706",
     "description": "1200b0e7bf9910dda5f86c612271811f38786315cc9bf5e6caef0f59d8cc6883"
   },
   "en/check-guide.md": {
-    "content": "f18cc41d3ca3ad45fc5705303a77a422403d6c521933b66e93b1a856828c0d0c",
+    "content": "9eadf7780b54c5c16b971bcc117ab44b994829c90a6a40abf5e3dfc165b4cf22",
     "description": "54a9446f7f242af15dc77d09eaffb0c61b76199c500f8272509c055ae800a045"
   },
   "en/cli-assembly.md": {
@@ -395,6 +395,11 @@
     "content": "91635523120955ce527527e5b8c20f20fb7c6bddffeac20ca5da2267f1f50e60",
     "description": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a",
     "source_docstring": "720b2d908f26a86141d4cae05ba44f096669d4429ef19e17587936ede87d7f2a"
+  },
+  "en/selfdoc-spell_corpus.md": {
+    "content": "1b8e01cbba10db965b8ad27f755994abc2e8c7060fbf55aa2ea56913a173cf64",
+    "description": "2788b79b17215a10bf5fd5987184787ca3edb7cb5932949456aad37e9fbf4060",
+    "seed_hash": "2788b79b17215a10bf5fd5987184787ca3edb7cb5932949456aad37e9fbf4060"
   },
   "en/selfdoc-strictcli_support.md": {
     "content": "83ac2ad5b42f5ba15a7e26505568edc2992fcec3291573ecf683dc1a9e55093a",

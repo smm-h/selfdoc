@@ -35,6 +35,7 @@ order: 90
 - [selfdoc.ownership](../selfdoc-ownership/)
 - [selfdoc.quality](../selfdoc-quality/)
 - [selfdoc.resolver](../selfdoc-resolver/)
+- [selfdoc.spell_corpus](../selfdoc-spell_corpus/)
 - [selfdoc.strictcli_support](../selfdoc-strictcli_support/)
 - [selfdoc.tables](../selfdoc-tables/)
 - [selfdoc.tokenizer](../selfdoc-tokenizer/)

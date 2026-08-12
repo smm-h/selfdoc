@@ -2000,11 +2000,6 @@
         },
         {
           "level": 3,
-          "text": "_token_text_lines",
-          "anchor": "_token_text_lines"
-        },
-        {
-          "level": 3,
           "text": "_check_version_consistency",
           "anchor": "_check_version_consistency"
         },
@@ -2164,6 +2159,11 @@
           "level": 3,
           "text": "_cmd_gen_data",
           "anchor": "_cmd_gen_data"
+        },
+        {
+          "level": 3,
+          "text": "_cmd_spell_corpus",
+          "anchor": "_cmd_spell_corpus"
         },
         {
           "level": 3,
@@ -2803,6 +2803,43 @@
       ]
     },
     {
+      "path": "selfdoc-spell_corpus.md",
+      "title": "selfdoc.spell_corpus",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.spell_corpus",
+          "anchor": "selfdocspell_corpus"
+        },
+        {
+          "level": 2,
+          "text": "selfdoc.spell_corpus",
+          "anchor": "selfdocspell_corpus"
+        },
+        {
+          "level": 3,
+          "text": "ProjectSpellReport",
+          "anchor": "projectspellreport"
+        },
+        {
+          "level": 4,
+          "text": "unique_words",
+          "anchor": "unique_words"
+        },
+        {
+          "level": 3,
+          "text": "scan_project",
+          "anchor": "scan_project"
+        },
+        {
+          "level": 3,
+          "text": "run_spell_corpus",
+          "anchor": "run_spell_corpus"
+        }
+      ]
+    },
+    {
       "path": "selfdoc-strictcli_support.md",
       "title": "selfdoc.strictcli_support",
       "type": "doc",
@@ -3259,5 +3296,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T00:48:51.267549+00:00"
+  "last_gen": "2026-08-12T01:24:40.529348+00:00"
 }
