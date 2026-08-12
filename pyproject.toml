@@ -12,6 +12,10 @@ members = ["selfdoc", "selfdoc_core", "selfblog"]
 
 [dependency-groups]
 dev = [
+    # The indexer the build shells out to.  Search is Pagefind, so the suite
+    # runs the real binary over built output rather than asserting attributes
+    # nothing ever reads.
+    "pagefind[bin]>=1.4.0",
     "pygments>=2.20.0",
     "pytest>=9.0.3",
     "pytest-playwright>=0.7.2",

@@ -1,4 +1,4 @@
-"""Tests for search URL parameter handling and SearchAction JSON-LD."""
+"""Tests for the WebSite JSON-LD a search-capable site does and does not emit."""
 
 import json
 import os
@@ -7,7 +7,6 @@ import re
 import pytest
 
 from selfdoc.build import build
-from selfdoc.html import _generate_search_js
 from conftest import default_config, DEFAULT_PREFIX
 
 
@@ -73,19 +72,6 @@ def test_website_jsonld_has_no_search_action(project_dir):
     assert "search_term_string" not in index_html
 
 
-def test_search_js_has_url_parameter_handling(project_dir):
-    """Generated HTML includes URLSearchParams handling for ?q= parameter."""
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    search_js_path = os.path.join(output_dir, "search.js")
-    with open(search_js_path, "r", encoding="utf-8") as f:
-        search_js = f.read()
-
-    assert "URLSearchParams" in search_js
-    assert "openSearch(urlQ)" in search_js or "openSearch(urlQ)" in search_js.replace(" ", "")
-
-
 def test_non_homepage_no_website_jsonld(project_dir):
     """Non-homepage pages do NOT have WebSite JSON-LD."""
     build(str(project_dir))
@@ -96,16 +82,3 @@ def test_non_homepage_no_website_jsonld(project_dir):
 
     assert '"WebSite"' not in guide_html
     assert '"SearchAction"' not in guide_html
-
-
-def test_search_js_clears_url_param_on_close():
-    """Search JS closeSearch function clears ?q= from the URL."""
-    js = _generate_search_js()
-    assert "searchParams.delete" in js or "searchParams.delete" in js.replace(" ", "")
-    assert "replaceState" in js
-
-
-def test_search_js_open_accepts_initial_query():
-    """openSearch accepts an initial query parameter."""
-    js = _generate_search_js()
-    assert "openSearch(initialQuery)" in js or "function openSearch(initialQuery)" in js

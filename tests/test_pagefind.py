@@ -1,7 +1,6 @@
-"""Tests for Pagefind search engine option (Phase 8.1)."""
+"""The search_engine declaration, the indexer subprocess, and SEARCH001."""
 
 import json
-import os
 import subprocess
 from unittest.mock import patch, MagicMock
 
@@ -10,57 +9,72 @@ import pytest
 from conftest import default_config
 
 
-class TestPagefindConfigValidation:
-    """Test that 'pagefind' is accepted as a valid search_engine value."""
+def _project(tmp_path, **overrides):
+    """Write a minimal project whose config carries *overrides*."""
+    config = default_config(**overrides)
+    (tmp_path / "selfdoc.json").write_text(json.dumps(config))
+    src_dir = tmp_path / "src"
+    src_dir.mkdir(exist_ok=True)
+    (src_dir / "__init__.py").write_text('"""pkg."""\n')
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir(exist_ok=True)
+    (docs_dir / "index.md").write_text("# Test\n")
+    return tmp_path
 
-    def test_pagefind_in_valid_search_engines(self):
-        """The VALID_SEARCH_ENGINES constant includes 'pagefind'."""
+
+class TestSearchEngineDeclaration:
+    """The engine is declared in the config, never inferred."""
+
+    def test_pagefind_is_the_valid_set(self):
         from selfdoc.config import VALID_SEARCH_ENGINES
-        assert "pagefind" in VALID_SEARCH_ENGINES
+        assert VALID_SEARCH_ENGINES == ("pagefind",)
 
-    def test_pagefind_accepted_in_config(self, tmp_path):
-        """Loading a config with search_engine='pagefind' succeeds."""
+    def test_pagefind_accepted(self, tmp_path):
         from selfdoc.config import load_config
 
-        config = default_config(search_engine="pagefind")
-        config_path = tmp_path / "selfdoc.json"
-        config_path.write_text(json.dumps(config))
+        _project(tmp_path, search_engine="pagefind")
+        assert load_config(str(tmp_path))["search_engine"] == "pagefind"
 
-        # Create minimal project structure
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "__init__.py").write_text('"""pkg."""\n')
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir()
-        (docs_dir / "index.md").write_text("# Test\n")
-
-        loaded = load_config(str(tmp_path))
-        assert loaded["search_engine"] == "pagefind"
-
-    def test_invalid_search_engine_rejected(self, tmp_path):
-        """Loading a config with an invalid search_engine raises an error."""
+    def test_missing_declaration_is_an_error(self, tmp_path):
+        """Absent is refused, and the message names the key and the value."""
         from selfdoc.config import load_config, ConfigError
 
-        config = default_config(search_engine="nonexistent")
-        config_path = tmp_path / "selfdoc.json"
-        config_path.write_text(json.dumps(config))
+        config = default_config()
+        del config["search_engine"]
+        (tmp_path / "selfdoc.json").write_text(json.dumps(config))
 
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "__init__.py").write_text('"""pkg."""\n')
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir()
-        (docs_dir / "index.md").write_text("# Test\n")
+        with pytest.raises(ConfigError) as exc:
+            load_config(str(tmp_path))
+        assert "search_engine" in str(exc.value)
+        assert "pagefind" in str(exc.value)
 
+    def test_null_declaration_is_an_error(self, tmp_path):
+        from selfdoc.config import load_config, ConfigError
+
+        _project(tmp_path, search_engine=None)
+        with pytest.raises(ConfigError, match="search_engine"):
+            load_config(str(tmp_path))
+
+    def test_deleted_engines_are_rejected(self, tmp_path):
+        from selfdoc.config import load_config, ConfigError
+
+        for dead in ("builtin", "fuse", "minisearch"):
+            _project(tmp_path, search_engine=dead)
+            with pytest.raises(ConfigError):
+                load_config(str(tmp_path))
+
+    def test_unknown_engine_rejected(self, tmp_path):
+        from selfdoc.config import load_config, ConfigError
+
+        _project(tmp_path, search_engine="nonexistent")
         with pytest.raises(ConfigError):
             load_config(str(tmp_path))
 
 
 class TestPagefindBinaryDetection:
-    """Test pagefind availability detection and error handling."""
+    """Pagefind availability detection and error handling."""
 
     def test_missing_pagefind_raises_error(self):
-        """When pagefind is not available, _run_pagefind raises RuntimeError."""
         from selfdoc.build import _run_pagefind
 
         with patch("subprocess.run", side_effect=FileNotFoundError):
@@ -68,7 +82,6 @@ class TestPagefindBinaryDetection:
                 _run_pagefind("/fake/output")
 
     def test_pagefind_subprocess_constructed_correctly(self):
-        """The pagefind subprocess call uses --site with the output dir."""
         from selfdoc.build import _run_pagefind
         import sys
 
@@ -78,13 +91,10 @@ class TestPagefindBinaryDetection:
         with patch("subprocess.run", return_value=mock_result) as mock_run:
             _run_pagefind("/my/output/dir")
 
-        # Should have been called with the Python module form first
-        call_args = mock_run.call_args_list[0]
-        cmd = call_args[0][0]
+        cmd = mock_run.call_args_list[0][0][0]
         assert cmd == [sys.executable, "-m", "pagefind", "--site", "/my/output/dir"]
 
     def test_pagefind_failure_reports_stderr(self):
-        """When pagefind exits non-zero, the error includes stderr."""
         from selfdoc.build import _run_pagefind
 
         mock_result = MagicMock()
@@ -96,20 +106,19 @@ class TestPagefindBinaryDetection:
                 _run_pagefind("/fake/output")
 
     def test_pagefind_timeout_raises_error(self):
-        """When pagefind times out, a clear error is raised."""
         from selfdoc.build import _run_pagefind
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("pagefind", 120)):
+        with patch("subprocess.run",
+                   side_effect=subprocess.TimeoutExpired("pagefind", 120)):
             with pytest.raises(RuntimeError, match="timed out"):
                 _run_pagefind("/fake/output")
 
     def test_pagefind_falls_back_to_binary(self):
-        """If Python module fails with FileNotFoundError, tries standalone binary."""
+        """If the Python module is absent, the standalone binary is tried."""
         from selfdoc.build import _run_pagefind
 
         mock_result = MagicMock()
         mock_result.returncode = 0
-
         call_count = 0
 
         def side_effect(cmd, **kwargs):
@@ -123,77 +132,33 @@ class TestPagefindBinaryDetection:
             _run_pagefind("/my/output")
 
         assert call_count == 2
-        # Second call should be the standalone binary
-        second_call = mock_run.call_args_list[1]
-        cmd = second_call[0][0]
-        assert cmd == ["pagefind", "--site", "/my/output"]
+        assert mock_run.call_args_list[1][0][0] == [
+            "pagefind", "--site", "/my/output",
+        ]
 
 
 class TestPagefindCheck:
-    """Test that selfdoc check reports missing pagefind."""
+    """SEARCH001 is unconditional: every build needs the indexer."""
 
-    def test_check_warns_when_pagefind_missing(self, tmp_path):
-        """selfdoc check emits SEARCH001 when pagefind is configured but missing."""
+    def test_check_reports_missing_pagefind(self, tmp_path):
         from selfdoc.check import check_docs
 
-        config = default_config(search_engine="pagefind")
-        config_path = tmp_path / "selfdoc.json"
-        config_path.write_text(json.dumps(config))
-
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "__init__.py").write_text('"""pkg."""\n')
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir()
-        (docs_dir / "index.md").write_text("# Test\n")
-
+        _project(tmp_path)
         with patch("subprocess.run", side_effect=FileNotFoundError):
             result = check_docs(str(tmp_path))
 
-        search_lints = [l for l in result.lints if l.code == "SEARCH001"]
+        search_lints = [ln for ln in result.lints if ln.code == "SEARCH001"]
         assert len(search_lints) == 1
         assert "not installed" in search_lints[0].message
 
-    def test_check_no_warning_when_pagefind_available(self, tmp_path):
-        """selfdoc check does NOT emit SEARCH001 when pagefind is available."""
+    def test_check_silent_when_pagefind_available(self, tmp_path):
         from selfdoc.check import check_docs
 
-        config = default_config(search_engine="pagefind")
-        config_path = tmp_path / "selfdoc.json"
-        config_path.write_text(json.dumps(config))
-
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "__init__.py").write_text('"""pkg."""\n')
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir()
-        (docs_dir / "index.md").write_text("# Test\n")
-
+        _project(tmp_path)
         mock_result = MagicMock()
         mock_result.returncode = 0
 
         with patch("selfdoc.check.subprocess.run", return_value=mock_result):
             result = check_docs(str(tmp_path))
 
-        search_lints = [l for l in result.lints if l.code == "SEARCH001"]
-        assert len(search_lints) == 0
-
-    def test_check_no_warning_for_builtin_engine(self, tmp_path):
-        """selfdoc check does NOT emit SEARCH001 for builtin search engine."""
-        from selfdoc.check import check_docs
-
-        config = default_config()  # no search_engine = defaults to builtin
-        config_path = tmp_path / "selfdoc.json"
-        config_path.write_text(json.dumps(config))
-
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        (src_dir / "__init__.py").write_text('"""pkg."""\n')
-        docs_dir = tmp_path / "docs"
-        docs_dir.mkdir()
-        (docs_dir / "index.md").write_text("# Test\n")
-
-        result = check_docs(str(tmp_path))
-
-        search_lints = [l for l in result.lints if l.code == "SEARCH001"]
-        assert len(search_lints) == 0
+        assert [ln for ln in result.lints if ln.code == "SEARCH001"] == []

@@ -1,132 +1,73 @@
-"""Tests for Pagefind search UI integration (Phase 8.2)."""
+"""The Pagefind search UI every generated page ships."""
 
-import pytest
+from selfdoc.html import _wrap_page
+
+
+def _page(**kwargs):
+    return _wrap_page(
+        "<p>test</p>", "", "Test", "Project", "1.0.0",
+        prefix="", **kwargs,
+    )
 
 
 class TestPagefindUI:
-    """Test Pagefind UI rendering in HTML output."""
+    """The UI bundle, the dialog, and the shortcut that opens it."""
 
     def test_pagefind_css_loaded(self):
-        """Pagefind CSS is included when search_engine is 'pagefind'."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert "pagefind/pagefind-ui.css" in html
+        assert "pagefind/pagefind-ui.css" in _page()
 
     def test_pagefind_js_loaded(self):
-        """Pagefind JS is included when search_engine is 'pagefind'."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert "pagefind/pagefind-ui.js" in html
+        assert "pagefind/pagefind-ui.js" in _page()
 
-    def test_builtin_js_not_loaded_for_pagefind(self):
-        """search.js is NOT included when pagefind is selected."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert 'src="search.js"' not in html
+    def test_no_builtin_search_js(self):
+        """Nothing references the deleted builtin bundle."""
+        assert "search.js" not in _page()
 
-    def test_fuse_cdn_not_loaded_for_pagefind(self):
-        """Fuse.js CDN is NOT loaded when pagefind is selected."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert "fuse.js" not in html
-        assert "fuse.min.js" not in html
-
-    def test_minisearch_cdn_not_loaded_for_pagefind(self):
-        """MiniSearch CDN is NOT loaded when pagefind is selected."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
+    def test_no_cdn_assets(self):
+        """The UI is served from the indexer's own output, never a CDN."""
+        html = _page()
+        assert "cdn.jsdelivr.net" not in html
+        assert "fuse" not in html.lower()
         assert "minisearch" not in html.lower()
-        assert "pagefind" in html
 
     def test_cmd_k_shortcut_present(self):
-        """Cmd+K keyboard shortcut handler is present for pagefind."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert "metaKey" in html or "ctrlKey" in html
-        assert '"k"' in html or "'k'" in html
+        html = _page()
+        assert "metaKey" in html and "ctrlKey" in html
+        assert '"k"' in html
+
+    def test_shortcut_focuses_the_pagefind_input(self):
+        """The focus call names the class the Pagefind UI actually renders."""
+        assert "pagefind-ui__search-input" in _page()
 
     def test_pagefind_container_present(self):
-        """Pagefind UI container div is present in the dialog."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert 'id="pagefind-container"' in html
+        assert 'id="pagefind-container"' in _page()
 
     def test_pagefind_ui_initialized(self):
-        """Pagefind UI is initialized with the correct container."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
+        html = _page()
         assert "PagefindUI" in html
         assert "#pagefind-container" in html
 
-    def test_builtin_search_dialog_unchanged(self):
-        """Builtin search engine still uses the original dialog with input."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine=None,
-        )
-        assert 'class="search-input"' in html
-        assert 'id="search-results"' in html
-        assert 'id="pagefind-container"' not in html
+    def test_search_dialog_is_a_dialog(self):
+        assert '<dialog class="search-dialog"' in _page()
 
-    def test_fuse_search_dialog_unchanged(self):
-        """Fuse search engine still uses the original dialog."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="fuse",
-        )
-        assert 'class="search-input"' in html
-        assert 'id="pagefind-container"' not in html
+    def test_close_button_present(self):
+        assert 'class="search-close"' in _page()
 
-    def test_search_dialog_still_a_dialog(self):
-        """Pagefind search still uses a dialog element."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert '<dialog class="search-dialog"' in html
+    def test_no_builtin_dialog_leftovers(self):
+        """The builtin input, results list and index base attribute are gone."""
+        html = _page()
+        assert 'class="search-input"' not in html
+        assert 'id="search-results"' not in html
+        assert "data-search-base" not in html
+        assert "search-index.json" not in html
 
-    def test_close_button_present_for_pagefind(self):
-        """Close button is present in the pagefind search dialog."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", search_engine="pagefind",
-        )
-        assert 'class="search-close"' in html
+    def test_asset_paths_use_the_page_hop(self):
+        """Assets and the bundle path resolve from the page's own address."""
+        html = _page(asset_prefix="../../")
+        assert "../../pagefind/pagefind-ui.css" in html
+        assert "../../pagefind/pagefind-ui.js" in html
+        assert 'bundlePath: "../../pagefind/"' in html
 
-    def test_pagefind_prefix_paths(self):
-        """Pagefind assets use the correct prefix path."""
-        from selfdoc.html import _wrap_page
-        html = _wrap_page(
-            "<p>test</p>", "", "Test", "Project", "1.0.0",
-            prefix="", asset_prefix="../../", search_engine="pagefind",
-        )
-        assert '../../pagefind/pagefind-ui.css' in html
-        assert '../../pagefind/pagefind-ui.js' in html
+    def test_bundle_path_at_the_output_root(self):
+        """A page at the output root addresses pagefind/ relatively."""
+        assert 'bundlePath: "pagefind/"' in _page(asset_prefix="")

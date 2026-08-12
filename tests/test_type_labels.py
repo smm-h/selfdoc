@@ -1,6 +1,6 @@
 """Tests for type-aware labeling (Phase 1, Task 1.4)."""
 
-from selfdoc.html import _wrap_page, _render_search_dialog
+from selfdoc.html import _wrap_page
 
 
 def _render_archived_page(page_type=None, archived=True):
@@ -79,15 +79,3 @@ class TestSupersededNotice:
             available_versions=[{"version": "0.9.0"}, {"version": "1.0.0"}],
         )
         assert 'class="version-notice"' not in html
-
-
-class TestSearchPlaceholder:
-    """Search placeholder uses generic text."""
-
-    def test_search_placeholder_is_generic(self):
-        dialog_html = _render_search_dialog("")
-        assert 'placeholder="Search... (Cmd+K)"' in dialog_html
-
-    def test_search_placeholder_not_docs_specific(self):
-        dialog_html = _render_search_dialog("")
-        assert "Search docs" not in dialog_html
