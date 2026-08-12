@@ -1,6 +1,6 @@
 ---
 title: Editor Guide
-description: "Run the local authoring app for blog posts: the hand-written registry of repositories it opens, the loopback server it binds, the tinymoon editor component it mounts, and the preview that is byte-for-byte the page publishing would produce."
+description: "Run the local authoring app for blog posts: its registry, its byte-exact preview, its spelling and lint marks, and its publish consent dialog."
 nav_group: "Guides"
 nav_order: 20
 ---
@@ -168,9 +168,45 @@ The consequence is worth knowing: **if the repository has never been built, the 
 
 A draft is the one case with no published counterpart. A buffer declaring `draft: true` is rendered the way a drafts build renders it, which is the only way to see a draft at all. The decision is read off the buffer every time, never off a mode the server carries.
 
-### Decorations
+## Inline assistance
 
-The editor mounts with an empty decoration set and an empty gutter. Spelling and lint decorations are the next piece of this work and arrive through the same two calls the component already exposes; nothing about the mount changes to accept them.
+A second request rides the same pause in typing, 450 milliseconds after the last keystroke. It is a sibling of the preview rather than a passenger on it, and the reason is worth stating: a buffer that cannot render is exactly the buffer whose diagnostics are worth the most, so a missing date costs you the preview and never the findings.
+
+### Spelling
+
+Unrecognized words are marked in the text itself. The engine is the one `selfdoc check` runs for SPELL001 and `selfdoc spell-corpus` runs over every sibling project: the same vendored word list, the same machine-local accept list, the same masks that keep code spans, fenced blocks, link targets and directive markers out of the prose. A word accepted anywhere is accepted here.
+
+### Lint marks
+
+Lint findings appear twice. Once in the gutter, as a marker on the line, coloured by the severity the lint registry assigns the code. And once in a **Findings** list below the editor, as a button per finding that moves the caret to what it describes.
+
+The pairing is deliberate, not decoration: the gutter lane is hidden from assistive technology and nothing in it can take focus, so a surface that shows diagnostics there owes them somewhere a keyboard can reach.
+
+The rules are the project's own. The buffer is overlaid on the saved post set exactly as the renderer overlays it, and the check's real rules run over the result, so a mark on screen is a finding `selfdoc check` will report, worded identically. Two differences, both deliberate: a draft is judged, because a draft is what you are writing; and a buffer the post rules reject comes back as the POST code the check would give it rather than as an exception.
+
+### Cross-project links
+
+Type `](` inside a Markdown link and a completion popup offers every page and every section heading of every repository the registry declares, read from each one's `.selfdoc/manifest.json`. Up and down move, Enter accepts, Escape dismisses.
+
+What is inserted is the address that resolves **from a post**. Posts are site citizens, served from `blog/<slug>/` at the site root, while a project's documentation is served under that project's own slug -- so a link to a project page is the project-mounted address reached from two directories down, and a section link carries the anchor the manifest recorded:
+
+```markdown
+See [the guide](../../alpha/guide/#getting-started).
+```
+
+Both the address and the hop come from the same functions the sitemap, the feed and the deploy's reference check use, so an inserted link cannot disagree with where the assembly serves the page.
+
+One case the editor cannot know about: the roster names one project served at the site root instead of under its slug, and that roster lives in the assembly repository, which the editor never contacts. Targets are therefore always offered at the project-mounted address.
+
+## Publishing
+
+The **Publish repository…** button is the only action in the whole app that reaches the world, and it never fires from a keystroke. Everything else the editor does stops at this machine: a preview is rendered in memory, an analysis reads the buffer, and a save writes one file into a working tree you already have.
+
+Pressing it asks the server what `selfblog post publish` declares itself to be and renders that declaration: its effect classification, that it is consequential, the grants it holds, and the list of posts -- computed from the project's own discovery -- that this publish will make public, with the drafts that will not. The scope sentence is the command's, not the button's: **it publishes every non-draft post in the repository, not the post open in the editor**, and a published post cannot be unpublished from the reader's side.
+
+Confirming sends the consent you just gave, and the command runs through strictcli's programmatic path carrying it. A call that carries no consent is refused by the framework itself -- not by a condition in the editor -- and the refusal is shown to you word for word, as is everything the publish prints.
+
+Nothing about that answer is remembered. There is no don't-ask-again and no stored consent: every publish asks.
 
 ## Errors
 
