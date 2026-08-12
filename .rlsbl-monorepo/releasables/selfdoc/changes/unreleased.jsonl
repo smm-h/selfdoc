@@ -55,3 +55,4 @@
 {"format_version":1,"id":"18caecfe1f9c8ef2b557d258c6f54e30811d841697e82729","commits":["8a07a1290cd742babfe8a3a5bf94115e3d1c692f"],"user_facing":false,"packages":["selfdoc"]}
 {"format_version":1,"id":"18caed4d59b6fedee174fae5956d4cdbb36496a23a82b4b8","commits":["a5375018fa9ce8bad4d352ac8f3164b0400c2d7b"],"user_facing":false,"packages":["selfdoc"]}
 {"format_version":1,"id":"18caef693a11c5d5e04fe60dffd0450da05a6c10f77b981e","commits":["09d96a36e4b1e7e17b7e9710e5a88742f5407ff6"],"user_facing":true,"description":"**`selfdoc init` requires `--author-name` and `--author-url`.** The scaffolded config declares the author alongside the base URL, because nothing about a person is inferable from a directory.","type":"breaking","packages":["selfdoc"]}
+{"format_version":1,"id":"18caef6944ac4074f55f5c29849c46c4b832bab341ee4f5e","commits":["919fe4d0800d4f087c823742b23d2c67c289db2b"],"user_facing":false,"packages":["selfdoc"]}
