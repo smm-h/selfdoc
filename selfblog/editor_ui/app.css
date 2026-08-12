@@ -1,0 +1,141 @@
+/* selfblog editor — the app's own layout, on top of tinymoon's frame.
+ *
+ * Every colour, radius, gap and font here is a tinymoon token. Nothing
+ * restates a palette value: the editor inherits light/dark and every theme
+ * the framework ships, and a token change reaches it without an edit. */
+
+.ed-wrap {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: var(--gap, 1rem);
+  align-items: stretch;
+  min-height: 0;
+  height: 100%;
+}
+
+.ed-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm, 0.5rem);
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  padding-right: var(--gap-sm, 0.5rem);
+}
+
+.ed-side-title {
+  font-size: var(--fs-sm, 0.85rem);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.ed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ed-post {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius, 8px);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+}
+
+.ed-post:hover {
+  background: var(--surface-2, var(--surface));
+}
+
+.ed-post[aria-current="true"] {
+  background: var(--surface-2, var(--surface));
+  border-color: var(--accent);
+}
+
+.ed-post-title {
+  font-weight: 600;
+}
+
+.ed-post-meta {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: var(--fs-sm, 0.8rem);
+  color: var(--muted);
+}
+
+.ed-post-draft {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ed-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm, 0.5rem);
+  min-width: 0;
+  min-height: 0;
+}
+
+.ed-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm, 0.5rem);
+}
+
+.ed-status {
+  font-size: var(--fs-sm, 0.85rem);
+  color: var(--muted);
+}
+
+.ed-status[data-kind="dirty"] {
+  color: var(--warn, var(--accent));
+}
+
+.ed-status[data-kind="error"] {
+  color: var(--danger, var(--accent));
+}
+
+.ed-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--gap, 1rem);
+  min-height: 0;
+  flex: 1;
+}
+
+.ed-editor,
+.ed-preview {
+  min-width: 0;
+  min-height: 24rem;
+}
+
+.ed-preview {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  background: var(--surface);
+}
+
+@media (max-width: 900px) {
+  .ed-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ed-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

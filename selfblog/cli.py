@@ -24,6 +24,7 @@ app = strictcli.App(
 post_group = app.group("post", help="Manage blog posts and chronological content for the documentation site")
 docs_group = app.group("docs", help="Publish this project's documentation to the unified assembly without a release")
 assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
+editor_group = app.group("editor", help="Run and inspect the local authoring app for blog posts")
 
 
 #: What a command can raise that is the *project's* fault rather than
@@ -1327,6 +1328,98 @@ def _cmd_assembly_sync_workflow(ctx, pin_version="", pin_selfdoc="", pin_pagefin
             f"({label}); nothing pushed."
         )
     return 0
+
+
+# -- editor commands ---------------------------------------------------------
+
+
+def _load_registry_or_fail(registry):
+    """Read the editor registry, or refuse with the file's own message."""
+    from selfblog.editor_registry import RegistryError, load_registry
+
+    try:
+        return load_registry(registry or None)
+    except RegistryError as exc:
+        _fail(exc)
+
+
+@editor_group.command("list-repos", help="List every repository the editor registry declares, with its kind and where it points. Reads the hand-written registry TOML, validates every entry in full, and prints one line per entry -- a local entry's working tree, or a remote entry's repository, ref and whether it declares that rendering runs against a checkout.", effect="read_only")
+@strictcli.flag("registry", type=str, default="", help="Path to the editor registry TOML. Defaults to the machine-local registry at ~/Projects/ark/selfblog-registry.toml.")
+@effects.handler
+def _cmd_editor_list_repos(ctx, registry=""):
+    """Enumerate the registry's entries."""
+    parsed = _load_registry_or_fail(registry)
+
+    if not parsed.entries:
+        print(f"No repositories in {parsed.path}.")
+        return 0
+
+    for entry in parsed:
+        if entry.kind == "local":
+            print(f"{entry.name}  local   {entry.path}")
+        else:
+            rendered = "render" if entry.render else "no-render"
+            print(
+                f"{entry.name}  remote  {entry.repo}@{entry.ref} "
+                f"[{rendered}, not served yet]"
+            )
+
+    print(f"\n{len(parsed)} repository(ies) in {parsed.path}.")
+    return 0
+
+
+@editor_group.command("serve", help="Run the local authoring app: a browser UI over the registry's repositories, with the tinymoon editor component on the left and a live preview on the right. The preview is the publish renderer over the unsaved buffer, so what you approve is byte-for-byte what publishing produces, and rendering a preview writes nothing. Saving writes the buffer into the repository's working tree. Binds 127.0.0.1 only.", effect="mutating",
+    # Not consequential: nothing here reaches the world, and the only writes
+    # are the ones the author asks for by pressing save. A confirmation prompt
+    # at launch would be answering for edits that have not been made yet.
+    #
+    # It also cannot honestly preview, and it should say so at parse time with
+    # dry_run_supported=False plus a reason -- but strictcli exposes those two
+    # parameters on App.command only, not on Group.command, in the version this
+    # project's floor allows (a todo is already filed against strictcli for
+    # this; `assembly integrate` carries the same note). Until the floor moves,
+    # the refusal below does the same job one step later: the handler's first
+    # act is to refuse a preview with the reason, so a --dry-run run never
+    # reaches a bind and never lies about what the editor would write. It has
+    # to be a refusal rather than a recorded run, because the saves happen on
+    # request threads that carry none of the dispatch context -- they would
+    # execute for real under a preview that claimed to record them.
+)
+@strictcli.flag("port", type=int, help="Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits.")
+@strictcli.flag("registry", type=str, default="", help="Path to the editor registry TOML. Defaults to the machine-local registry at ~/Projects/ark/selfblog-registry.toml.")
+@strictcli.flag("tinymoon-assets", type=str, default="", help="Path to a tinymoon checkout's 'assets' directory. Empty means the installed tinymoon package. The editor tier (js/editor.js, js/completion.js, css/editor.css) is newer than the released package, so a checkout is currently the only complete source.")
+@effects.handler
+def _cmd_editor_serve(ctx, port=0, registry="", tinymoon_assets=""):
+    """Serve the authoring app on loopback."""
+    from selfblog.editor_assets import AssetsError, resolve_tinymoon_assets
+    from selfblog.editor_server import HOST, EditorState, serve
+
+    if effects.previewing():
+        print(
+            "Error: 'editor serve' cannot be previewed. It is an interactive "
+            "server: its writes are the saves you make at the keyboard while "
+            "it runs, so at launch there is nothing to record. Run it without "
+            "--dry-run, and preview a save by not pressing save.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    parsed = _load_registry_or_fail(registry)
+
+    try:
+        assets_dir, assets_source = resolve_tinymoon_assets(tinymoon_assets)
+    except AssetsError as exc:
+        _fail(exc)
+
+    state = EditorState(parsed, assets_dir)
+
+    print(f"Registry: {parsed.path} ({len(parsed)} repository(ies))")
+    print(f"tinymoon assets: {assets_source}")
+
+    def _ready(bound_port):
+        print(f"Editor: http://{HOST}:{bound_port}/  (Ctrl-C to stop)")
+
+    return serve(state, port, on_ready=_ready)
 
 
 # -- check command -----------------------------------------------------------

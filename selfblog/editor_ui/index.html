@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>selfblog editor</title>
+<!-- tinymoon's THEME_BOOT_SNIPPET, verbatim. It resolves the stored theme
+     (including "system") and sets <html data-theme> before the first paint,
+     so there is no light/dark flash. Copied rather than imported because the
+     editor serves tinymoon's assets without importing its Python package. -->
+<script>(function(){try{var s=JSON.parse(localStorage.getItem("tm-settings")||"{}");var t=s.theme||"system";if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+<link rel="stylesheet" href="/tinymoon/css/tokens.css">
+<link rel="stylesheet" href="/tinymoon/css/base.css">
+<link rel="stylesheet" href="/tinymoon/css/shell.css">
+<link rel="stylesheet" href="/tinymoon/css/primitives.css">
+<link rel="stylesheet" href="/tinymoon/css/widgets.css">
+<link rel="stylesheet" href="/tinymoon/css/editor.css">
+<link rel="stylesheet" href="/ui/app.css">
+</head>
+<body>
+<script type="module" src="/ui/app.js"></script>
+</body>
+</html>
