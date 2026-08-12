@@ -76,6 +76,48 @@ def test_posts_module_lives_only_in_selfblog():
     assert importlib.util.find_spec("selfdoc.posts") is None
 
 
+# -- JS assets live in exactly one package ---------------------------------
+
+
+def test_no_js_assets_outside_core():
+    """selfdoc ships no .js of its own; the loader reads selfdoc_core's.
+
+    A copy under ``selfdoc/js/`` was packaged and never loaded, and it had
+    drifted: its ``pickers.js`` was still the retired path-arithmetic
+    version picker that rebuilt ``/{locale}/{version}/`` URLs, while the
+    loaded one computes links from each page's own address.
+    """
+    import selfdoc
+
+    pkg_dir = os.path.dirname(selfdoc.__file__)
+    strays = []
+    for root, dirs, files in os.walk(pkg_dir):
+        dirs[:] = [d for d in dirs if d not in ("__pycache__", "dist", "node_modules")]
+        strays.extend(
+            os.path.relpath(os.path.join(root, name), pkg_dir)
+            for name in files if name.endswith(".js")
+        )
+    # bin/cli.js is the npm wrapper, not a docs-site asset.
+    strays = [rel for rel in strays if not rel.startswith("bin" + os.sep)]
+    assert strays == [], (
+        f"selfdoc carries JS assets {strays}; they belong to selfdoc_core, "
+        f"whose loader is the only thing that reads them"
+    )
+
+
+def test_selfdoc_package_does_not_package_js():
+    """The selfdoc wheel and sdist declare no JS include pattern."""
+    import selfdoc
+
+    manifest = os.path.join(os.path.dirname(selfdoc.__file__), "pyproject.toml")
+    with open(manifest, encoding="utf-8") as f:
+        text = f.read()
+    assert "js/*.js" not in text, (
+        "selfdoc/pyproject.toml still packages js/*.js; the assets live in "
+        "selfdoc_core"
+    )
+
+
 # -- Post provider registration --------------------------------------------
 
 
