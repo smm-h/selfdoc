@@ -1095,6 +1095,93 @@
       ]
     },
     {
+      "path": "editor-guide.md",
+      "title": "Editor Guide",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Editor Guide",
+          "anchor": "editor-guide"
+        },
+        {
+          "level": 2,
+          "text": "Scope",
+          "anchor": "scope"
+        },
+        {
+          "level": 2,
+          "text": "The registry",
+          "anchor": "the-registry"
+        },
+        {
+          "level": 3,
+          "text": "Format",
+          "anchor": "format"
+        },
+        {
+          "level": 3,
+          "text": "Every malformed shape refuses",
+          "anchor": "every-malformed-shape-refuses"
+        },
+        {
+          "level": 2,
+          "text": "Listing what is registered",
+          "anchor": "listing-what-is-registered"
+        },
+        {
+          "level": 2,
+          "text": "Running the app",
+          "anchor": "running-the-app"
+        },
+        {
+          "level": 3,
+          "text": "Where the front-end comes from",
+          "anchor": "where-the-front-end-comes-from"
+        },
+        {
+          "level": 2,
+          "text": "Authoring",
+          "anchor": "authoring"
+        },
+        {
+          "level": 3,
+          "text": "What the preview shows",
+          "anchor": "what-the-preview-shows"
+        },
+        {
+          "level": 2,
+          "text": "Inline assistance",
+          "anchor": "inline-assistance"
+        },
+        {
+          "level": 3,
+          "text": "Spelling",
+          "anchor": "spelling"
+        },
+        {
+          "level": 3,
+          "text": "Lint marks",
+          "anchor": "lint-marks"
+        },
+        {
+          "level": 3,
+          "text": "Cross-project links",
+          "anchor": "cross-project-links"
+        },
+        {
+          "level": 2,
+          "text": "Publishing",
+          "anchor": "publishing"
+        },
+        {
+          "level": 2,
+          "text": "Errors",
+          "anchor": "errors"
+        }
+      ]
+    },
+    {
       "path": "feeds.md",
       "title": "Atom Feeds",
       "type": "doc",
@@ -2004,6 +2091,11 @@
           "level": 3,
           "text": "`_post_lint_docs`",
           "anchor": "_post_lint_docs"
+        },
+        {
+          "level": 3,
+          "text": "`lint_post_buffer`",
+          "anchor": "lint_post_buffer"
         },
         {
           "level": 3,
@@ -3361,5 +3453,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T15:40:33.028961+00:00"
+  "last_gen": "2026-08-12T20:38:16.329497+00:00"
 }
