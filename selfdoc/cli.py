@@ -22,6 +22,41 @@ app = strictcli.App(
 baseline_group = app.group("baseline", help="Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check")
 
 
+#: Everything a command can raise that is the *project's* fault rather than
+#: selfdoc's: an unusable config, a suppression list naming a code that is
+#: unknown or not suppressible, a directive no extractor answers, and the
+#: RuntimeErrors the build and check raise for a defect they name.  All of
+#: them are user errors, so all of them print one line and exit 1 -- a
+#: traceback is what selfdoc owes for its own bugs, not for a bad file.
+def _user_errors():
+    from selfdoc_core.config import ConfigError
+    from selfdoc_core.directives import DirectiveError
+
+    return (ConfigError, DirectiveError, RuntimeError)
+
+
+def _fail(exc):
+    """Print *exc* as a refusal and exit 1."""
+    print(f"Error: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _load_config_or_fail(dir_path="."):
+    """Load the project config, or refuse cleanly.
+
+    Every command reads the config, and a present-but-unusable one is a
+    user error at each of them.  Loading through here is what keeps a
+    command from ending on a ConfigError traceback because it forgot the
+    handler that its neighbour remembered.
+    """
+    from selfdoc.config import load_config
+
+    try:
+        return load_config(dir_path)
+    except _user_errors() as exc:
+        _fail(exc)
+
+
 def _detect_source_entries(language):
     """Detect source entries for a given language.
 
@@ -209,16 +244,10 @@ def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
 @effects.handler
 def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target=""):
     """Build the documentation site."""
-    from selfdoc.config import ConfigError, load_config
-
     # A present-but-invalid selfdoc.json is a user error like any other:
     # it prints the message and exits 1, rather than ending the process on
     # an uncaught ConfigError and a traceback.
-    try:
-        config = load_config(".")
-    except ConfigError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    config = _load_config_or_fail()
 
     # Unified sites and posts-only builds moved to selfblog.
     if config and config.get("unified"):
@@ -246,9 +275,8 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
             include_drafts=drafts,
             target=target,
         )
-    except (ConfigError, RuntimeError) as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    except _user_errors() as e:
+        _fail(e)
 
     from selfdoc.check import check_docs, check_exit_code, filter_lints
 
@@ -270,8 +298,11 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
         ignore_codes.update(config.get("lint_ignore", []))
 
     # Run lint checks after build completes
-    check_result = check_docs(".", version_filter=version or None)
-    lints = filter_lints(check_result.lints, ignore_codes)
+    try:
+        check_result = check_docs(".", version_filter=version or None)
+        lints = filter_lints(check_result.lints, ignore_codes)
+    except _user_errors() as e:
+        _fail(e)
     warn_count = 0
     error_count = 0
     for lint in lints:
@@ -303,9 +334,7 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
 @effects.handler
 def _cmd_serve(ctx, port=8000, drafts=False):
     """Serve the documentation site locally with SSE-based live reload."""
-    from selfdoc.config import load_config
-
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
@@ -489,14 +518,13 @@ def _cmd_serve(ctx, port=8000, drafts=False):
 @effects.handler
 def _cmd_deploy(ctx):
     """Deploy the documentation site."""
-    from selfdoc.config import load_config
     from selfdoc.deploy import (
         DeployError,
         deploy_cloudflare_pages,
         deploy_github_pages,
     )
 
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
@@ -562,7 +590,6 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
         print_results,
         serialize_check_result,
     )
-    from selfdoc.config import load_config
     from selfdoc_core.lints import LintSuppressionError, parse_ignore_codes
 
     # Validated before any work is done: a mistyped code suppresses nothing,
@@ -572,10 +599,9 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
     try:
         flag_ignore_codes = parse_ignore_codes(ignore)
     except LintSuppressionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        _fail(exc)
 
-    config = load_config(".")
+    config = _load_config_or_fail()
 
     if config and config.get("unified"):
         print(
@@ -593,9 +619,8 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
         result = check_docs(
             ".", version_override=version_override or None,
         )
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    except _user_errors() as e:
+        _fail(e)
 
     if auto_commit:
         from selfdoc.git import auto_commit as _auto_commit
@@ -648,9 +673,8 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
 def _cmd_baseline_accept(ctx, page, auto_commit=True):
     """Accept reviewed staleness/drift for the named pages."""
     from selfdoc.check import AcceptError, accept_baselines
-    from selfdoc.config import load_config
 
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
@@ -689,11 +713,10 @@ def _cmd_baseline_accept(ctx, page, auto_commit=True):
 @effects.handler
 def _cmd_gen(ctx, auto_commit=True, version_override=""):
     """Auto-generate documentation pages from project structure."""
-    from selfdoc.config import load_config
     from selfdoc.gen import GenResult, generate_docs, generate_root_files
     from selfdoc_core.content import VERSION_OVERRIDE_KEY
 
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
@@ -815,10 +838,9 @@ def _cmd_gen(ctx, auto_commit=True, version_override=""):
 @effects.handler
 def _cmd_gen_data(ctx, auto_commit=True):
     """Generate data files by running sandboxed scripts."""
-    from selfdoc.config import load_config
     from selfdoc.gendata import GenDataError, generate_data
 
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)

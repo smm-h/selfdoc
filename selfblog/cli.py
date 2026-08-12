@@ -26,6 +26,34 @@ docs_group = app.group("docs", help="Publish this project's documentation to the
 assembly_group = app.group("assembly", help="Manage the unified multi-project documentation assembly and deployment")
 
 
+#: What a command can raise that is the *project's* fault rather than
+#: selfblog's: an unusable config, a suppression list naming a code that is
+#: unknown or not suppressible, a directive nothing answers, and the
+#: RuntimeErrors the build and check raise for a defect they name. All print
+#: one line and exit 1; a traceback is what selfblog owes for its own bugs.
+def _user_errors():
+    from selfdoc_core.config import ConfigError
+    from selfdoc_core.directives import DirectiveError
+
+    return (ConfigError, DirectiveError, RuntimeError)
+
+
+def _fail(exc):
+    """Print *exc* as a refusal and exit 1."""
+    print(f"Error: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _load_config_or_fail(dir_path="."):
+    """Load the project config, or refuse cleanly."""
+    from selfdoc_core.config import load_config
+
+    try:
+        return load_config(dir_path)
+    except _user_errors() as exc:
+        _fail(exc)
+
+
 # -- post commands -----------------------------------------------------------
 
 
@@ -1310,7 +1338,6 @@ def _cmd_assembly_sync_workflow(ctx, pin_version="", pin_selfdoc="", pin_pagefin
 @effects.handler
 def _cmd_check(ctx, ignore="", auto_commit=True):
     """Check unified projects and blog posts."""
-    from selfdoc_core.config import load_config
     from selfdoc_core.lints import (
         DEFAULT_COVERAGE_THRESHOLD,
         LintSuppressionError,
@@ -1326,10 +1353,9 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
     try:
         ignore_codes = parse_ignore_codes(ignore)
     except LintSuppressionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        _fail(exc)
 
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
@@ -1431,9 +1457,7 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
                site_manifests="", docs_base=""):
     """Build blog posts, the unified site, or the home project."""
-    from selfdoc_core.config import load_config
-
-    config = load_config(".")
+    config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
@@ -1446,9 +1470,8 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
                 ".", config, site_manifests=site_manifests,
                 docs_base=docs_base, include_drafts=drafts,
             )
-        except RuntimeError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
+        except _user_errors() as e:
+            _fail(e)
 
         print(f"Built {len(written)} file(s) (home)")
         return 0
@@ -1458,9 +1481,8 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
 
         try:
             written = build_unified(dir_path=".", include_drafts=drafts)
-        except RuntimeError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
+        except _user_errors() as e:
+            _fail(e)
 
         print(f"Built {len(written)} file(s) (unified)")
         return 0
