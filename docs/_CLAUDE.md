@@ -51,7 +51,7 @@ Parallel `docs/<locale>/` directories with per-locale templates. Generates hrefl
 
 ### Search filters
 
-Faceted search with key=value syntax across 7 dimensions. Chip-based filter UI with auto-injected version default. Pages declare search metadata via frontmatter tags using bracket syntax: `tags: [a, b, c]`.
+Pagefind indexes the built HTML and ships its own UI. Pages emit filter attributes for 7 facets -- version, locale, group, type, target, project and tags -- so the dialog offers each as a filter group. Pages declare tags via frontmatter using bracket syntax: `tags: [a, b, c]`.
 
 ### Directives
 

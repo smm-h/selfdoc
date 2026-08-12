@@ -66,7 +66,7 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
   "lang": "en",
   "theme": "minimal",
   "search": "bar",
-  "search_engine": "minisearch",
+  "search_engine": "pagefind",
   "min_coverage": 80,
   "author": {
     "name": "Jane Doe",

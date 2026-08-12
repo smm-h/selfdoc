@@ -65,7 +65,7 @@ After the main HTML pipeline completes, the build generates 6 categories of comp
 
 - **Sitemap** (`sitemap.xml`) -- standard sitemap with page URLs and last-modified dates
 - **Atom feed** (`feed.xml`) -- for RSS readers, respects per-page `feed: false` frontmatter
-- **Search index** (`search-index.json`) -- JSON index for client-side full-text search
+- **Search index** (`pagefind/`) -- the Pagefind index and search UI, built from the finished HTML
 - **OG images** -- OpenGraph card PNGs for social sharing
 - **`llms.txt`** -- structured plain-text index for LLM consumption, plus `llms-full.txt` with all content
 - **Compressed companions** -- gzip (and brotli if available) pre-compressed versions for efficient serving

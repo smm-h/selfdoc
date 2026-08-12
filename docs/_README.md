@@ -66,7 +66,7 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
 - **Faceted search** -- key=value filter syntax, 7 dimensions, chip UI, auto-injected version default
 - **Sandboxed data generation** -- run scripts in bubblewrap isolation (`selfdoc gen-data`)
 - **Theming** -- dark mode, accent colors, custom CSS overrides
-- **Search engines** -- builtin, Fuse.js, or MiniSearch
+- **Search** -- Pagefind, indexed at build time, no network at read time
 - **SEO** -- 15+ lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
 - **Coverage tracking** -- per-symbol documentation coverage with configurable thresholds
 - **Syntax highlighting** -- build-time Pygments, code tabs, sortable tables

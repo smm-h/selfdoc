@@ -19,7 +19,7 @@ Here is how it stacks up against the popular alternatives.
 | Source code extraction | Directive-based, multi-language | Autodoc (Python only) | None (plugin-based) | None | None | Built-in | Built-in | Built-in |
 | Markdown-native | Yes | RST (Markdown via plugin) | Yes | MDX | Yes | No (doc comments) | No (doc comments) | No |
 | Zero config | Near-zero (`selfdoc init`) | No (conf.py required) | Minimal (mkdocs.yml) | No (Node project) | Minimal | Zero for Rust | Zero for Go | Minimal |
-| Built-in search | 3 engines (builtin, fuse, minisearch) | Yes | Yes (lunr.js) | Yes (Algolia/local) | Yes (local) | Yes | No | Yes |
+| Built-in search | Pagefind, indexed at build time | Yes | Yes (lunr.js) | Yes (Algolia/local) | Yes (local) | Yes | No | Yes |
 | Theming | 2 themes + CSS properties | Many themes | Many themes | Many themes | Customizable | One | One | Themes |
 | Versioning | Built-in multi-version builds | Via extensions | mike plugin | Built-in | Via config | Per crate | Per module | No |
 | i18n | Built-in multi-locale builds | Sphinx-intl | i18n plugin | Built-in | Built-in | No | No | No |

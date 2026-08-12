@@ -187,6 +187,17 @@ def test_the_home_build_drops_its_own_search_index():
     assert produced == {"index.html": "index.html"}
 
 
+def test_a_home_page_under_the_index_directory_is_still_refused():
+    """A page called pagefind.md claims the site-wide index's address."""
+    produced = split_build_output(
+        ["pagefind/index.html", "pagefind/pagefind-entry.json"],
+        "home", home=True,
+    )
+    assert produced == {"pagefind/index.html": "pagefind/index.html"}
+    with pytest.raises(RuntimeError, match="pagefind/"):
+        check_home_collisions(list(produced.values()), slug="home")
+
+
 def test_another_project_keeps_its_own_search_index():
     """Its pages address the index inside their own subtree."""
     produced = split_build_output(

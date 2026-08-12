@@ -1,35 +1,37 @@
 ---
 title: Search
-description: "Configure search engines, UI modes, keyboard shortcuts, filters, and tags in selfdoc to help users find content across your documentation site."
+description: "Configure Pagefind search in selfdoc: the required search_engine declaration, the UI modes, the Cmd/Ctrl+K shortcut, and the seven filters every page carries."
 nav_group: "Guides"
 nav_order: 6
 ---
 
 # Search
 
-Every selfdoc site ships with full-text search out of the box. No external services, no API keys -- just a static JSON index that gets built alongside your HTML pages. Users can search from any page via the keyboard shortcut or the UI widget.
+Every selfdoc site ships with full-text search out of the box. No external services, no API keys, no CDN: the build runs [Pagefind](https://pagefind.app/) over the pages it just wrote, and Pagefind emits both the index and the search UI into `pagefind/` at the output root. Users search from any page via the keyboard shortcut or the UI widget.
 
-## Search Engines
+## Declaring the engine
 
-selfdoc offers 3 search engine backends with different tradeoffs between simplicity, fuzzy matching, and relevance scoring. All three use the same JSON index file and the same search dialog UI, so you can switch engines without rebuilding content or changing templates. Set `search_engine` in your `selfdoc.json` to pick one:
+`search_engine` is required in `selfdoc.json`. There is no default and nothing is inferred -- every site builds a search UI, so the engine behind it is declared:
 
 ```json
 {
-  "search_engine": "builtin"
+  "search_engine": "pagefind"
 }
 ```
 
-| Engine | Description | Best for |
-| ------ | ----------- | -------- |
-| `builtin` | Simple scoring based on title and body matches. No dependencies. | Small to medium sites where fuzzy matching is not needed |
-| `fuse` | Fuzzy matching via Fuse.js. Tolerates typos and partial matches. | Sites where users might not know exact terminology |
-| `minisearch` | Full-text search with TF-IDF scoring via MiniSearch. | Larger sites that need relevance-ranked results |
+`pagefind` is the only valid value. The key is the extension point: a second engine would be a new value here, not a new mechanism, and an absent key is a hard error at config load rather than a silent choice.
 
-The default is `builtin`. All three engines use the same `search-index.json` file and the same UI -- switching engines does not require rebuilding your content.
+Pagefind itself has to be installed for the build to index anything:
+
+```bash
+uv add 'pagefind[bin]'
+```
+
+`selfdoc check` reports `SEARCH001` when it is missing, and `selfdoc build` stops rather than writing a site whose search dialog answers nothing.
 
 ## UI Modes
 
-The search widget has 3 display modes that control how users access search on your site. All modes support the Cmd/Ctrl+K keyboard shortcut and open the same full-screen dialog with real-time results as you type. The only difference is the visible entry point in the topbar. Set the mode with the `search` config key:
+The search widget has 3 display modes that control how users reach search on your site. All modes support the Cmd/Ctrl+K keyboard shortcut and open the same dialog. The only difference is the visible entry point in the topbar. Set the mode with the `search` config key:
 
 ```json
 {
@@ -42,56 +44,41 @@ The search widget has 3 display modes that control how users access search on yo
 - **`hidden`** -- no visible widget. Search is still accessible via the Cmd/Ctrl+K keyboard shortcut.
 
 > [!TIP]
-> The keyboard shortcut **Cmd+K** (macOS) or **Ctrl+K** (Windows/Linux) works in all three modes. It opens a full-screen search dialog with real-time results as you type.
+> The keyboard shortcut **Cmd+K** (macOS) or **Ctrl+K** (Windows/Linux) works in all three modes. It opens the dialog and focuses the input; Escape closes it.
 
-## How the Index Works
+## How the index works
 
-During `selfdoc build`, the build pipeline splits each page into sections based on headings. Each section becomes one entry in `search-index.json`, enabling sub-page search granularity so users land directly on the relevant heading rather than the top of the page. Each entry includes:
+`selfdoc build` writes every page, then runs Pagefind over the finished output directory. Pagefind reads the pages themselves -- there is no separate JSON index to keep in step with the HTML -- and writes:
 
-- **title** -- the heading text
-- **path** -- the URL path including an anchor fragment (e.g., `/getting-started/#installation`)
-- **body** -- the first 500 characters of section content (stripped of Markdown formatting)
-- **metadata** -- version, locale, nav group, page type, project name, and tags
+- the index it queries at search time,
+- one fragment per indexed page, with that page's headings as sub-results, so a result can land on the relevant section rather than the top of the page,
+- the search UI's own JavaScript and CSS, which is what each page loads.
 
-The search dialog fetches this index on first open and runs queries entirely client-side. No server round-trips, no loading spinners for repeat searches.
+Each page marks its indexed region with `data-pagefind-body` on the `<article>` element, so navigation, the topbar and the footer never pollute results.
 
-## Search Filters
+Every page addresses `pagefind/` through its own relative hop back to the output root, so a built site searches correctly under any mount point -- an origin root, a subpath, or a project subtree of the unified assembly site.
 
-The search box supports structured filters across 7 dimensions using `key=value` syntax, giving users precise control over which pages appear in results. Filters can be combined with free-text queries, negated with a dash prefix, and combined using OR within a single key using the pipe character. Type a filter alongside your search terms to narrow results:
+## Search filters
 
-```
-build key=value config type=guide
-```
+Pages carry structured filter attributes across 7 dimensions, and the search dialog offers each of them as a filter group:
 
-### Available filter dimensions
+| Filter | Values | Where it comes from |
+| ------ | ------ | ------------------- |
+| `version` | version strings (e.g., `1.0.0`) | the version being built |
+| `locale` | locale codes (e.g., `en`, `pt-BR`) | the locale being built |
+| `group` | nav group names (e.g., `Guides`) | the page's section in the sidebar |
+| `type` | `guide`, `api`, `cli`, `changelog`, `glossary`, or your own | page frontmatter `type`, or derived from what the page is |
+| `target` | deploy target identifiers | the configured deploy provider |
+| `project` | project names | the project the page belongs to (unified sites carry several) |
+| `tags` | tag strings | page frontmatter `tags` |
 
-| Key | Values | Description |
-| --- | ------ | ----------- |
-| `version` | version strings (e.g., `1.0.0`) | Filter by documentation version |
-| `locale` | locale codes (e.g., `en`, `pt-BR`) | Filter by language/locale |
-| `group` | nav group names (e.g., `Guides`, `API Reference`) | Filter by navigation section |
-| `type` | `guide`, `api`, `cli`, `changelog`, `glossary` | Filter by page type |
-| `target` | target identifiers | Filter by deploy target |
-| `project` | project names | Filter by project (in unified/monorepo builds) |
-| `tags` | tag strings | Filter by page tags |
+Selecting values from more than one group narrows results to pages matching all of them; selecting several values within one group widens to any of them.
 
-### Filter syntax
+Results also carry the page's project, type and publication date as metadata, which is what the result list displays.
 
-- **AND** between different keys: `type=guide group=Guides` returns only guide pages in the Guides nav group.
-- **OR** within a key using `|`: `type=guide|api` returns guide or API pages.
-- **NOT** with a `-` prefix: `-type=changelog` excludes changelog pages.
+## Adding tags to pages
 
-### Auto-injected version filter
-
-When your site has versioned documentation, the search dialog automatically injects a `version=<latest>` filter so users see results from the current version by default. To search across all versions, explicitly set `version=` with the desired value, or remove the version chip from the filter bar.
-
-### Filter chips
-
-Active filters appear as removable chips below the search input, providing a visual summary of the current filter state. Click any chip to remove that filter from the query and update results immediately. The version filter chip is visually distinguished from user-added chips since it was auto-injected by the search dialog to scope results to the latest documentation version.
-
-## Adding Tags to Pages
-
-Add a `tags` field to your page frontmatter to make pages discoverable via the `tags=` filter in the search dialog. Tags are indexed into `search-index.json` alongside title, body, and metadata, so users can filter results by topic, category, or any grouping you define. Use arrays for multiple tags per page:
+Add a `tags` field to your page frontmatter to make pages selectable under the `tags` filter. Use arrays for multiple tags per page:
 
 ```markdown
 ---
@@ -101,6 +88,6 @@ tags: [deploy, cloudflare, hosting]
 ---
 ```
 
-Tags are indexed in `search-index.json` and can be filtered with `tags=deploy` or `tags=deploy|hosting` in the search box.
+Each tag becomes its own filter value, so a page tagged `[deploy, hosting]` appears under both.
 
 Next: [SEO](../seo/) -->

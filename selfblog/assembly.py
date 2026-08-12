@@ -1492,12 +1492,18 @@ HOME_DROPPED_ARTIFACTS = (
     *DEPLOY_ARTIFACT_NAMES,
 )
 
-#: Directories at the home project's output root the assembly writes itself.
-#: The home project's pages sit at the site root, so its own Pagefind index
-#: lands exactly where the site-wide one belongs -- and the site-wide one,
-#: written by :func:`index_site` over the whole assembled tree, is the index
-#: those pages must answer from.  Every other project keeps its own index
-#: inside its subtree, which is what its pages address.
+#: Directories at the home project's output root whose *machine-written*
+#: contents the assembly writes itself.  The home project's pages sit at the
+#: site root, so its own Pagefind index lands exactly where the site-wide one
+#: belongs -- and the site-wide one, written by :func:`index_site` over the
+#: whole assembled tree, is the index those pages must answer from.  Every
+#: other project keeps its own index inside its subtree, which is what its
+#: pages address.
+#:
+#: Only the indexer's own files are dropped.  An ``.html`` page under one of
+#: these directories is content -- a home page called ``pagefind.md`` builds
+#: to ``pagefind/index.html`` -- and stays a refused collision rather than
+#: disappearing quietly.
 HOME_DROPPED_DIRS = ("pagefind",)
 
 
@@ -1583,7 +1589,7 @@ def split_build_output(build_rels, slug: str, *, home: bool = False) -> dict[str
         elif home:
             if rel in HOME_DROPPED_ARTIFACTS:
                 continue
-            if segments[0] in HOME_DROPPED_DIRS:
+            if segments[0] in HOME_DROPPED_DIRS and not rel.endswith(".html"):
                 continue
             if rel.endswith(DEPLOY_ARTIFACT_SUFFIXES):
                 continue

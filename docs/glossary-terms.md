@@ -30,7 +30,7 @@ This page defines 23 key terms used throughout the selfdoc documentation.
 ::: **Build pipeline**: The seven-stage process that transforms Markdown templates into a static HTML site: scan, resolve, tokenize, render, post-process, generate HTML, auxiliary output.
 ::: **Nav group**: A frontmatter field (`nav_group`) that controls which section of the sidebar navigation a page appears in. Pages with the same nav group are grouped together.
 ::: **Slug**: The URL-friendly identifier derived from a page's filename. For example, `getting-started.md` becomes the slug `getting-started`, served at `/getting-started/`.
-::: **Search index**: A JSON file (`search-index.json`) built from page headings and content, powering the client-side full-text search feature in the rendered site.
+::: **Search index**: The Pagefind index under `pagefind/`, built from the finished HTML pages, powering the client-side full-text search in the rendered site.
 ::: **Post-processor**: A regex-based transform that runs after block rendering to detect cross-block patterns like consecutive code blocks (code tabs) or ordered lists after tutorial headings (step guides).
 ::: **Custom directive**: A project-specific directive defined in `selfdoc.json` that points to a Python script implementing `resolve(attrs, config, body)`. Takes priority over built-in directives.
 ::: **Content directive**: A directive that transforms body content into styled HTML without needing source code access. Includes callouts and `list-glossary`.
