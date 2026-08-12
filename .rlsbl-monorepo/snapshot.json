@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-12T14:02:19Z",
+  "generated_at": "2026-08-12T15:40:19Z",
   "package_count": 3,
   "packages": {
     "selfdoc-core": {
@@ -7,7 +7,7 @@
       "targets": [
         "pypi"
       ],
-      "version": "0.9.1",
+      "version": "0.9.2",
       "description": null,
       "deps": [],
       "rdeps": [
