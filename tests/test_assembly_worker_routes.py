@@ -269,6 +269,34 @@ def test_a_historical_path_on_a_foreign_host_is_one_hop(tmp_path):
 
 
 @needs_node
+def test_a_nested_historical_path_resolves_in_one_hop(tmp_path):
+    """A path whose target is itself historical still answers in one 301.
+
+    ``/alpha/en/1.0/en/1.0/deep/`` matches the retired locale+version shape,
+    and so does what one pass of the mapping produces from it. Applying the
+    mapping once would emit a redirect to an address that redirects again.
+    """
+    _routes(tmp_path, {
+        f"{CANONICAL_BASE}/alpha/en/1.0/en/1.0/deep/":
+            f"{CANONICAL_BASE}/alpha/deep/",
+        f"{CANONICAL_BASE}/alpha/en/1.0/en/2.0/en/3.0/deep/":
+            f"{CANONICAL_BASE}/alpha/deep/",
+        # The last pass lands on a post address, which is a second shape.
+        f"{CANONICAL_BASE}/alpha/en/1.0/posts/hello/":
+            f"{CANONICAL_BASE}/blog/hello/",
+    })
+
+
+@needs_node
+def test_a_deeply_nested_hostile_path_terminates_and_answers_in_one_hop(tmp_path):
+    """A path built to make the mapping loop resolves, once, and stops."""
+    nested = "".join("en/1.0/" for _ in range(60))
+    _routes(tmp_path, {
+        f"{CANONICAL_BASE}/alpha/{nested}deep/": f"{CANONICAL_BASE}/alpha/deep/",
+    })
+
+
+@needs_node
 def test_no_route_output_is_itself_routed_again(tmp_path):
     """Every redirect target is a final address: routing it returns null."""
     sources = [
@@ -276,6 +304,11 @@ def test_no_route_output_is_itself_routed_again(tmp_path):
         "https://blog.example.com/hello/",
         f"{CANONICAL_BASE}/alpha/en/1.0.0/guide/",
         f"{CANONICAL_BASE}/alpha/posts/hello/",
+        # Nested and hostile shapes: their targets must be final too.
+        f"{CANONICAL_BASE}/alpha/en/1.0/en/1.0/deep/",
+        f"{CANONICAL_BASE}/alpha/en/1.0/posts/hello/",
+        "https://blog.example.com/../alpha/en/1.0/en/1.0/x/",
+        f"{CANONICAL_BASE}/alpha/{''.join('en/1.0/' for _ in range(40))}deep/",
     ]
     targets = _route(tmp_path, sources)
     assert all(t is not None for t in targets)
