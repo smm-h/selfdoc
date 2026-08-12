@@ -532,6 +532,48 @@ def test_a_sitemap_entry_with_no_page_fails(assembly):
     assert any("ghost" in m for m in messages)
 
 
+def test_a_sitemap_entry_under_a_foreign_base_fails(assembly):
+    """A <loc> that is not this site's is an entry nothing here can serve.
+
+    The resolution pass measures absolute URLs against the canonical base
+    and has nothing to say about somebody else's -- which let an entry on a
+    stale or wrong host pass verification silently, the one place a sitemap
+    entry is checked at all.
+    """
+    sitemap = assembly / "site" / "sitemap.xml"
+    text = sitemap.read_text().replace(
+        "</urlset>",
+        "  <url><loc>https://old.example.net/alpha/</loc></url>\n</urlset>",
+    )
+    _write(str(sitemap), text)
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("sitemap-entries")]
+    assert any("https://old.example.net/alpha/" in m for m in messages), (
+        report.error_text() or "no sitemap-entries failure was reported"
+    )
+
+
+def test_a_sitemap_index_entry_under_a_foreign_base_fails(assembly):
+    """The same holds for a sitemap index naming a sitemap elsewhere."""
+    sitemap = assembly / "site" / "sitemap.xml"
+    text = sitemap.read_text().replace(
+        "</urlset>",
+        "  <url><loc>https://old.example.net/sitemap.xml</loc></url>\n</urlset>",
+    )
+    _write(str(sitemap), text)
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("sitemap-entries")]
+    assert any("https://old.example.net/sitemap.xml" in m for m in messages), (
+        report.error_text() or "no sitemap-entries failure was reported"
+    )
+
+
+def test_every_sitemap_entry_of_a_clean_tree_passes(assembly):
+    """The fixture's own sitemap names only addresses under the base."""
+    report = _verify(assembly)
+    assert not report.failures_of("sitemap-entries"), report.error_text()
+
+
 def test_a_feed_link_with_no_page_fails(assembly):
     feed = assembly / "site" / "feed.xml"
     text = feed.read_text().replace(

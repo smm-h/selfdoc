@@ -50,6 +50,7 @@ between runs.
 from __future__ import annotations
 
 import dataclasses
+import html
 import json
 import os
 import re
@@ -137,6 +138,8 @@ _VERSION_ATTR_RE = re.compile(r'data-default-version="([^"]*)"')
 _CODE_BLOCK_RE = re.compile(
     r"<pre\b.*?</pre>|<code\b.*?</code>", re.IGNORECASE | re.DOTALL,
 )
+#: A sitemap entry's address.
+_LOC_RE = re.compile(r"<loc>([^<]*)</loc>")
 #: The visible marker the build leaves where a directive did not resolve,
 #: and the raw markers a template carries before one is parsed at all.
 _STUB_MARKER_RE = re.compile(r"\[selfdoc:[^\]]*not yet resolved\]")
@@ -768,6 +771,39 @@ def check_references(tree: AssemblyTree) -> list[Failure]:
         else:
             check = "internal-references"
         failures.append(Failure(check, f"site/{where}", lint.message))
+    failures.extend(_foreign_sitemap_entries(tree))
+    return failures
+
+
+def _foreign_sitemap_entries(tree: AssemblyTree) -> list[Failure]:
+    """Every ``<loc>`` in every sitemap is an address on this site.
+
+    The resolution pass measures absolute URLs against the canonical base
+    and says nothing about a URL that is not under it -- an external link on
+    a page is not its business.  A sitemap entry is different: a sitemap
+    declares this site's own pages, so an entry on another host is either a
+    stale address the site no longer answers or a page belonging to somebody
+    else, and either way it is submitted to crawlers as ours.  Verification
+    is the only place a sitemap entry is checked at all, so an entry the
+    resolution pass skips is an entry nothing checks.
+    """
+    failures = []
+    for rel in sorted(tree.emitted):
+        if not (rel.endswith(".xml") and "sitemap" in os.path.basename(rel)):
+            continue
+        for loc in _LOC_RE.findall(tree.read(rel)):
+            loc = html.unescape(loc.strip())
+            if not loc:
+                continue
+            if site_relative_path(loc, tree.canonical_base) is not None:
+                continue
+            failures.append(Failure(
+                "sitemap-entries", f"site/{rel}",
+                f"lists {loc}, which is not under the site's canonical base "
+                f"{tree.canonical_base}. A sitemap declares this site's own "
+                f"pages, so an entry on another host submits an address this "
+                f"site does not serve.",
+            ))
     return failures
 
 
