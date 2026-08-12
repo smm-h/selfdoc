@@ -291,7 +291,7 @@ def test_a_rendered_roster_round_trips():
 def test_a_roster_with_no_home_is_refused():
     """A site needs a front page, and no project is picked by default."""
     entries = [RosterEntry("alpha", "owner/alpha")]
-    with pytest.raises(RuntimeError, match="declares no home project"):
+    with pytest.raises(RuntimeError, match="carries no top-level 'home' key"):
         parse_roster(render_roster(entries))
 
 
@@ -304,7 +304,7 @@ def test_a_home_naming_an_undeclared_slug_is_refused():
 
 def test_an_empty_roster_declares_nobody_and_is_therefore_homeless():
     """An assembly with no projects cannot name one of them home."""
-    with pytest.raises(RuntimeError, match="declares no home project"):
+    with pytest.raises(RuntimeError, match="carries no top-level 'home' key"):
         parse_roster(render_roster([]))
 
 
@@ -366,7 +366,7 @@ def test_the_assembly_scaffold_ships_a_roster():
     # projects, so there is nothing to name, and reading it says exactly
     # that rather than picking one.
     assert 'home = "<slug>"' in files[ROSTER_PATH]
-    with pytest.raises(RuntimeError, match="declares no home project"):
+    with pytest.raises(RuntimeError, match="carries no top-level 'home' key"):
         parse_roster(files[ROSTER_PATH])
 
 

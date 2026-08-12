@@ -114,22 +114,46 @@ def test_a_roster_declares_exactly_one_home():
     assert sorted(roster) == ["alpha", "home"]
 
 
-def test_a_roster_with_no_home_is_refused():
-    with pytest.raises(RuntimeError, match="declares no home project"):
+def test_a_roster_with_no_home_key_is_refused():
+    """No key at all: the fix is to add one, and the message says so."""
+    with pytest.raises(RuntimeError) as excinfo:
         parse_roster('[[project]]\nslug = "alpha"\nrepo = "o/alpha"\n')
+    message = str(excinfo.value)
+    assert "carries no top-level 'home' key" in message
+    assert 'home = "<slug>"' in message
+    assert "alpha" in message
 
 
 def test_an_empty_home_is_refused():
-    with pytest.raises(RuntimeError, match="declares no home project"):
+    """The key is there and says nothing, which is a different mistake.
+
+    An empty value reads as a deliberate 'no home', and the message must
+    not send the author off to add a key that is already in the file.
+    """
+    with pytest.raises(RuntimeError) as excinfo:
         parse_roster(
             'home = "  "\n[[project]]\nslug = "alpha"\nrepo = "o/alpha"\n'
         )
+    message = str(excinfo.value)
+    assert "declares an empty home" in message
+    assert "carries no top-level 'home' key" not in message
+    assert "alpha" in message
 
 
 def test_a_home_that_is_not_a_declared_project_is_refused():
-    with pytest.raises(RuntimeError, match="no \\[\\[project\\]\\] block declares it"):
+    with pytest.raises(RuntimeError) as excinfo:
         parse_roster(
             'home = "ghost"\n[[project]]\nslug = "alpha"\nrepo = "o/alpha"\n'
+        )
+    message = str(excinfo.value)
+    assert "no [[project]] block declares it" in message
+    assert "ghost" in message
+
+
+def test_a_home_that_is_not_a_string_is_refused():
+    with pytest.raises(RuntimeError, match="must be a slug string"):
+        parse_roster(
+            "home = 3\n[[project]]\nslug = \"alpha\"\nrepo = \"o/alpha\"\n"
         )
 
 

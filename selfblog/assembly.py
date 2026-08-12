@@ -294,23 +294,34 @@ def parse_roster(text: str, *, source: str = ROSTER_PATH) -> Roster:
             )
         entries[slug] = RosterEntry(slug=slug, repo=str(item["repo"]))
 
+    # Three ways the home declaration goes wrong, three messages: the key is
+    # absent, the key is present and says nothing, or it names a slug no
+    # block declares.  They are different mistakes with different fixes, and
+    # one shared message sent an author to add a key already in the file.
+    declared = ", ".join(sorted(entries)) or "(none)"
     home = data.get("home")
-    if home is None or (isinstance(home, str) and not home.strip()):
-        declared = ", ".join(sorted(entries)) or "(none)"
+    if home is None:
         raise RuntimeError(
-            f"{source} declares no home project. Exactly one declared project "
-            f"is the site's front page: its pages are emitted at the site "
-            f"root instead of under site/<slug>/. There is no default -- add "
-            f'a top-level home = "<slug>" naming one of the declared '
-            f"projects. Declared projects: {declared}."
+            f"{source} carries no top-level 'home' key. Exactly one declared "
+            f"project is the site's front page: its pages are emitted at the "
+            f"site root instead of under site/<slug>/. There is no default -- "
+            f'add home = "<slug>" naming one of the declared projects. '
+            f"Declared projects: {declared}."
         )
     if not isinstance(home, str):
         raise RuntimeError(
             f"{source}: home must be a slug string, got {home!r}."
         )
+    if not home.strip():
+        raise RuntimeError(
+            f"{source} declares an empty home ({home!r}). The key is there, "
+            f"so this is not a roster that forgot one -- it is a roster that "
+            f"names no project as the site's front page, and a site needs "
+            f"one. Give home the slug of a declared project. Declared "
+            f"projects: {declared}."
+        )
     home = home.strip()
     if home not in entries:
-        declared = ", ".join(sorted(entries)) or "(none)"
         raise RuntimeError(
             f"{source} names {home!r} as the home project, but no [[project]] "
             f"block declares it. The home project is an ordinary declared "
