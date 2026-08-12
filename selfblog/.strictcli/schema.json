@@ -201,6 +201,25 @@
         }
       }
     },
+    "docs": {
+      "name": "docs",
+      "help": "Publish this project's documentation to the unified assembly without a release",
+      "commands": {
+        "publish": {
+          "name": "publish",
+          "help": "Publish this project's documentation to the assembly without a release. Builds the docs locally, pushes the built site, its manifest and its membership record into the assembly repo via the Git Data API -- deleting the pages this project published before and no longer produces -- then dispatches a shared-only workflow to regenerate cross-project elements.",
+          "effect": "mutating",
+          "consequential": true,
+          "grants": [
+            {
+              "name": "assembly-dispatch",
+              "reason": "triggers a GitHub Actions workflow on the assembly repository, which rebuilds and republishes the live documentation site",
+              "kind": "proc_mutate"
+            }
+          ]
+        }
+      }
+    },
     "assembly": {
       "name": "assembly",
       "help": "Manage the unified multi-project documentation assembly and deployment",
@@ -257,6 +276,32 @@
             }
           ]
         },
+        "retire": {
+          "name": "retire",
+          "help": "Retire a project from the unified assembly: remove its [[project]] block from the roster and, in the same commit, delete its whole site subtree, all of its manifests and its membership record, then dispatch a shared-only rebuild so the listing, feed, sitemap and search index stop naming it.",
+          "effect": "mutating",
+          "consequential": true,
+          "flags": [
+            {
+              "name": "slug",
+              "type": "str",
+              "help": "Slug of the project to retire; it is removed from the roster and every path it owns in the assembly is deleted",
+              "default": ""
+            }
+          ],
+          "grants": [
+            {
+              "name": "assembly-commit",
+              "reason": "deletes a project's published documentation from the assembly repository's deploy branch through the GitHub Git Data API",
+              "kind": "proc_mutate"
+            },
+            {
+              "name": "assembly-dispatch",
+              "reason": "triggers a GitHub Actions workflow on the assembly repository, which rebuilds and republishes the live documentation site",
+              "kind": "proc_mutate"
+            }
+          ]
+        },
         "redirects": {
           "name": "redirects",
           "help": "Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.",
@@ -276,7 +321,7 @@
         },
         "generate-shared": {
           "name": "generate-shared",
-          "help": "Generate 6 shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, and security headers file in the site output directory.",
+          "help": "Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, root 404 page, security headers file and redirect worker in the site output directory.",
           "effect": "mutating",
           "flags": [
             {
@@ -348,7 +393,7 @@
             {
               "name": "scope",
               "type": "str",
-              "help": "What this dispatch replaces: 'full' (the whole project subtree), 'posts' (only site/<slug>/posts/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.",
+              "help": "What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.",
               "default": ""
             },
             {
@@ -402,6 +447,25 @@
             }
           ]
         },
+        "verify": {
+          "name": "verify",
+          "help": "Assert every property a built assembly tree has to have before it is deployed: that the roster, the site subtrees and the manifests name the same projects, that each manifest's pages and posts were actually emitted, that the shared cross-project artifacts exist and parse, that every internal reference, sitemap entry, feed link and cross-project link resolves, that every page has a title and a canonical, and that no unresolved directive or per-project routing file survived. The deploy runs this itself before it pushes; this command is how you run the same assertions by hand against a checkout.",
+          "effect": "read_only",
+          "flags": [
+            {
+              "name": "assembly-dir",
+              "type": "str",
+              "help": "Path to the assembly repository checkout to verify",
+              "default": "."
+            },
+            {
+              "name": "canonical-base",
+              "type": "str",
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is what tells this site's absolute URLs from everybody else's, and without it half the assertions would pass by not looking.",
+              "default": ""
+            }
+          ]
+        },
         "sync-workflow": {
           "name": "sync-workflow",
           "help": "Regenerate the assembly repository's deploy workflow from this project's configuration and push it. The deployed workflow is a generated artifact like any other: without this it stays frozen at whatever the template said when 'assembly init' ran. Pushes only when the content actually differs.",
@@ -411,6 +475,18 @@
               "name": "pin-version",
               "type": "str",
               "help": "selfblog version the regenerated workflow pins its toolchain install to. Defaults to the running selfblog's version, which is what the release path wants: the workflow names the selfblog that generated it.",
+              "default": ""
+            },
+            {
+              "name": "pin-selfdoc",
+              "type": "str",
+              "help": "selfdoc version the regenerated workflow pins its toolchain install to. Defaults to the selfdoc installed in this environment; selfdoc missing here is a hard error, never an unpinned install.",
+              "default": ""
+            },
+            {
+              "name": "pin-pagefind",
+              "type": "str",
+              "help": "pagefind version the regenerated workflow pins its toolchain install to. Defaults to PyPI's current release: pagefind is a CI-only tool nothing here installs, so there is no local version to read.",
               "default": ""
             }
           ],
