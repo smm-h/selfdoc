@@ -14,11 +14,17 @@ authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
-dependencies = ["strictcli", "selfdoc-core"]
+# Floors, not pins -- upper bounds stay banned. selfdoc-core>=0.9.0 because the
+# search-engine switch in 0.9.0 removed symbols selfdoc imports; a consumer that
+# resolved an older core against this selfdoc would break at import.
+# strictcli>=0.36.0 because cli.py registers a command with `consequential=True`,
+# which strictcli only accepts from 0.36.0 (before that, confirmation keyed on
+# `mutating` and the kwarg did not exist).
+dependencies = ["strictcli>=0.36.0", "selfdoc-core>=0.9.0"]
 
 [project.optional-dependencies]
-perf = ["selfdoc-core[perf]"]
-og = ["selfdoc-core[og]"]
+perf = ["selfdoc-core[perf]>=0.9.0"]
+og = ["selfdoc-core[og]>=0.9.0"]
 
 [project.urls]
 Repository = "https://github.com/smm-h/selfdoc"

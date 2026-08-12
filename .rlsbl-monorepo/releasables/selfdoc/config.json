@@ -1,3 +1,9 @@
 {
-  "changelog_format_version_enforced": true
+  "changelog_format_version_enforced": true,
+  "internal_dep_floors": [
+    "strictcli",
+    "strictspec",
+    "selfdoc-core",
+    "predraw"
+  ]
 }
