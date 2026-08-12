@@ -9,8 +9,11 @@ that are genuine get added once, for everyone.
 Strictly read-only over the projects it visits.  Directives are not
 resolved -- resolution runs a project's extractors over its source, and a
 survey has no business doing that in someone else's repository -- so what
-is scanned is the raw Markdown body of every docs template.  A project
-whose config cannot be loaded is reported and skipped, never fatal.
+is scanned is the raw Markdown body of every docs template and every post.
+Posts are read straight off disk rather than through selfblog's discovery,
+which means drafts are surveyed too: a draft's prose is still prose, and a
+term it introduces belongs on the accept list before the draft ships.  A
+project whose config cannot be loaded is reported and skipped, never fatal.
 """
 
 from __future__ import annotations
@@ -42,7 +45,7 @@ class ProjectSpellReport:
 
 
 def scan_project(project, vocab, accepted) -> ProjectSpellReport:
-    """Spell-check one project's docs tree.
+    """Spell-check one project's docs tree and its posts.
 
     Args:
         project: A :class:`selfdoc_core.fleet.FleetProject`.
@@ -67,19 +70,31 @@ def scan_project(project, vocab, accepted) -> ProjectSpellReport:
             error=f"docs directory not found: {docs_dir}",
         )
 
+    posts_rel = (project.config.get("posts") or {}).get(
+        "dir", ".selfdoc/posts/",
+    )
+    posts_dir = os.path.join(project.path, posts_rel) if posts_rel else ""
+
     try:
         bodies = load_docs_bodies(docs_dir)
+        posts = load_docs_bodies(posts_dir) if posts_dir else {}
     except OSError as exc:
         return ProjectSpellReport(
             name=project.name, path=project.path,
             error=f"{type(exc).__name__}: {exc}",
         )
 
+    # Posts are keyed by their own path from the project root, matching what
+    # ``selfdoc check`` reports, so a finding names a file a reader can open.
+    slice_ = dict(bodies)
+    for rel_path, payload in posts.items():
+        slice_[os.path.join(posts_rel.rstrip("/"), rel_path)] = payload
+
     report = ProjectSpellReport(
-        name=project.name, path=project.path, pages=len(bodies),
+        name=project.name, path=project.path, pages=len(slice_),
     )
-    for rel_path in sorted(bodies):
-        _metadata, _resolved, body, fm_offset = bodies[rel_path]
+    for rel_path in sorted(slice_):
+        _metadata, _resolved, body, fm_offset = slice_[rel_path]
         report.misspellings.extend(spelling.check_text(
             body,
             file=rel_path,
