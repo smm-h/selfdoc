@@ -136,6 +136,8 @@ selfdoc check --ignore SEO007,SEO008
 
 Both sources are combined -- CLI flags and config are merged.
 
+Suppression reaches warning-severity codes only. Naming an error-severity code -- in `lint_ignore` or in `--ignore` -- is a hard error that names the code and its severity, and the run stops before any checking happens. An error says the build is wrong: a broken emitted reference, a missing description, a post whose slug moved. Silencing it hides the defect instead of resolving it, which is how a genuinely broken build once passed its own check. Fix the defect, or change the rule's severity in the registry if the rule itself is wrong.
+
 ## Staleness Detection
 
 selfdoc tracks SHA-256 hashes of each page's resolved content and frontmatter description. When the content changes but the description stays the same, it raises a STALE001 error. This catches the common case where you update a page's content but forget to revise the description that feeds into meta tags and search results.

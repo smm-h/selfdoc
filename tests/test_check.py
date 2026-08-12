@@ -2230,7 +2230,9 @@ def test_coverage_threshold_low_fails(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
-        "lint_ignore": ["SEO006", "SEO009", "SEO013"],
+        # Suppression reaches warnings only; the error codes these pages
+        # would emit are not silenced, they are simply not asserted here.
+        "lint_ignore": ["SEO007", "SEO009"],
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2388,7 +2390,9 @@ def test_coverage_threshold_not_met_fails(tmp_path):
         "output": "docs/_build/",
         "base_url": "https://example.com",
         "coverage_threshold": 0.5,
-        "lint_ignore": ["SEO006", "SEO009", "SEO013"],
+        # Suppression reaches warnings only; the error codes these pages
+        # would emit are not silenced, they are simply not asserted here.
+        "lint_ignore": ["SEO007", "SEO009"],
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)

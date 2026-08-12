@@ -1286,7 +1286,7 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
     from selfdoc_core.config import load_config
     from selfdoc_core.lints import (
         DEFAULT_COVERAGE_THRESHOLD,
-        UnknownLintCode,
+        LintSuppressionError,
         check_exit_code,
         coverage_below_threshold,
         parse_ignore_codes,
@@ -1294,10 +1294,11 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 
     from selfblog.check import check_posts, check_unified
 
-    # Validated before any work is done: a mistyped code suppresses nothing.
+    # Validated before any work is done: a mistyped code suppresses nothing,
+    # and an error-severity code is not suppressible at all.
     try:
         ignore_codes = parse_ignore_codes(ignore)
-    except UnknownLintCode as exc:
+    except LintSuppressionError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 

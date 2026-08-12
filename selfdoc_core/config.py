@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable
 
-from selfdoc_core.lints import UnknownLintCode, validate_lint_codes
+from selfdoc_core.lints import LintSuppressionError, validate_lint_codes
 
 class FieldType(Enum):
     """Supported field types for config validation."""
@@ -270,9 +270,9 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
             name="<item>",
             type=_S,
             pattern=r"^[A-Z]+\d+$",
-            description="Lint rule ID to ignore (e.g. SEO007, STALE001, VER002).",
+            description="Warning-severity lint rule ID to ignore (e.g. SEO007, SEO008, XREF001).",
         ),
-        description="List of lint rule IDs to suppress (e.g. 'SEO007', 'STALE001').",
+        description="List of warning-severity lint rule IDs to suppress (e.g. 'SEO007', 'SEO008'). Error-severity codes cannot be suppressed and are refused at load.",
     ),
     FieldSpec(
         name="root_files",
@@ -994,14 +994,15 @@ def _post_validate(config: dict) -> dict:
                 )
             seen_versions.add(v)
 
-    # lint_ignore validation: every suppressed code must be a real one.  A
-    # mistyped code suppresses nothing, so it is refused at load rather than
-    # sitting in the config looking effective.
+    # lint_ignore validation: every suppressed code must be a real one, and
+    # must be suppressible at all.  A mistyped code suppresses nothing and an
+    # error-severity code may not be silenced, so both are refused at load
+    # rather than sitting in the config looking effective.
     lint_ignore = config.get("lint_ignore")
     if lint_ignore:
         try:
             validate_lint_codes(lint_ignore, source="'lint_ignore'")
-        except UnknownLintCode as exc:
+        except LintSuppressionError as exc:
             raise ConfigError(str(exc)) from exc
 
     # Unified validation: unique project slugs (explicit or derived from path)

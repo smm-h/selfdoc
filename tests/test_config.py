@@ -1143,6 +1143,21 @@ def test_lint_ignore_unregistered_code_is_a_hard_error(config_dir):
     assert "lint_ignore" in str(excinfo.value)
 
 
+def test_lint_ignore_error_severity_code_is_a_hard_error(config_dir):
+    """Suppression reaches warnings only: an error code cannot be silenced."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "lint_ignore": ["SEO007", "LINK001"],
+    })
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(str(config_dir))
+    message = str(excinfo.value)
+    assert "LINK001" in message
+    assert "error" in message
+    assert "lint_ignore" in message
+
+
 # -- cross-project config validation --
 
 _CROSS_PROJECT_CONFIGS = [

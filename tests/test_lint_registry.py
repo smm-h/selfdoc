@@ -21,7 +21,9 @@ import pytest
 from selfdoc_core.lints import (
     LINT_REGISTRY,
     LintResult,
+    LintSuppressionError,
     UnknownLintCode,
+    UnsuppressableLintCode,
     lint_severity,
     parse_ignore_codes,
     render_lint_table,
@@ -151,9 +153,59 @@ def test_validate_lint_codes_names_the_source_and_every_bad_code():
     assert "NOPE002" in message
 
 
-def test_validate_lint_codes_passes_registered_codes():
-    """Every registered code is accepted, whatever the source."""
-    validate_lint_codes(sorted(LINT_REGISTRY), source="--ignore")
+def test_validate_lint_codes_passes_registered_warning_codes():
+    """Every warning-severity code is accepted, whatever the source."""
+    warnings = sorted(
+        code for code, spec in LINT_REGISTRY.items()
+        if spec.severity == "warning"
+    )
+    validate_lint_codes(warnings, source="--ignore")
+
+
+# -- Suppression reaches warnings only ----------------------------------------
+
+
+def test_validate_lint_codes_refuses_an_error_severity_code():
+    """An error is a broken build, not a preference -- it cannot be silenced."""
+    with pytest.raises(UnsuppressableLintCode) as excinfo:
+        validate_lint_codes(["LINK001"], source="'lint_ignore'")
+    message = str(excinfo.value)
+    assert "LINK001" in message
+    assert "error" in message
+    assert "lint_ignore" in message
+
+
+def test_validate_lint_codes_names_every_error_severity_code():
+    """The refusal names all of the error codes, not just the first."""
+    with pytest.raises(UnsuppressableLintCode) as excinfo:
+        validate_lint_codes(
+            ["SEO007", "LINK001", "STALE001"], source="--ignore",
+        )
+    message = str(excinfo.value)
+    assert "LINK001 (severity: error)" in message
+    assert "STALE001 (severity: error)" in message
+    # The accepted warning is not among the refused codes (it does appear in
+    # the trailing list of what IS suppressible).
+    assert "SEO007 (severity" not in message
+
+
+def test_parse_ignore_codes_refuses_an_error_severity_code():
+    """The flag surface refuses error codes exactly as the config does."""
+    with pytest.raises(UnsuppressableLintCode) as excinfo:
+        parse_ignore_codes("SEO007,LINK001")
+    assert "LINK001" in str(excinfo.value)
+
+
+def test_unknown_and_unsuppressable_share_one_base():
+    """One except clause covers both refusals at every call site."""
+    assert issubclass(UnknownLintCode, LintSuppressionError)
+    assert issubclass(UnsuppressableLintCode, LintSuppressionError)
+
+
+def test_unregistered_codes_are_reported_before_severity():
+    """A typo is refused as a typo, not as an unsuppressable code."""
+    with pytest.raises(UnknownLintCode):
+        validate_lint_codes(["NOPE001", "LINK001"], source="--ignore")
 
 
 # -- The documentation table is derived ---------------------------------------

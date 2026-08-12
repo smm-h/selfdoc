@@ -48,13 +48,35 @@ class LintRegistryError(RuntimeError):
     """
 
 
-class UnknownLintCode(RuntimeError):
+class LintSuppressionError(RuntimeError):
+    """Base for every refusal of a suppression-list entry.
+
+    A suppression list is refused for one of two reasons -- the code is not
+    in the registry, or the code is error-severity and therefore not
+    suppressible.  Both are the same event to a caller (the list is bad,
+    say so and stop), so one ``except`` clause covers them.
+    """
+
+
+class UnknownLintCode(LintSuppressionError):
     """Raised when a lint is constructed with a code the registry does not carry.
 
     Every emittable code is declared in ``lints.toml``.  An undeclared code
     would carry no severity, would be rejected by the JSON output schema, and
     would be invisible to the documentation table -- so it is refused at the
     construction site instead.
+    """
+
+
+class UnsuppressableLintCode(LintSuppressionError):
+    """Raised when a suppression list names an error-severity code.
+
+    Suppression reaches warning-severity codes only.  An error says the
+    build is wrong -- a broken emitted reference, a missing description, a
+    post whose slug moved -- and silencing it hides the defect rather than
+    resolving it, which is exactly how a genuinely broken build once passed
+    its own check.  The registry is the severity authority, so the refusal
+    is decided there and nowhere else.
     """
 
 
@@ -113,12 +135,16 @@ def lint_severity(code: str) -> str:
 
 
 def validate_lint_codes(codes, *, source: str) -> None:
-    """Refuse any code in *codes* that the registry does not carry.
+    """Refuse any code in *codes* the registry rejects for suppression.
 
-    A suppression list is only meaningful against the registry: a mistyped
-    code suppresses nothing and hides the fact that it suppresses nothing.
-    So an unregistered code is a hard error where the list is read, not a
-    silently inert entry.
+    Two refusals, both decided by the registry:
+
+    - An unregistered code suppresses nothing and hides the fact that it
+      suppresses nothing, so it is a hard error where the list is read
+      rather than a silently inert entry.
+    - A registered *error*-severity code is not suppressible at all.
+      Suppression reaches warnings only; an error means the build is
+      wrong, and silencing it hides the defect.
 
     Args:
         codes: The lint codes to check, in the order the user wrote them.
@@ -127,17 +153,36 @@ def validate_lint_codes(codes, *, source: str) -> None:
 
     Raises:
         UnknownLintCode: Naming every unregistered code, not just the first.
+        UnsuppressableLintCode: Naming every error-severity code, with its
+            severity.  Checked after the unregistered codes, so a typo is
+            reported as a typo.
     """
     unknown = [code for code in codes if code not in LINT_REGISTRY]
-    if not unknown:
-        return
-    listed = ", ".join(repr(code) for code in unknown)
-    raise UnknownLintCode(
-        f"{source} names lint code(s) the registry does not carry: {listed}. "
-        f"Every suppressible code is declared in selfdoc_core/"
-        f"{_REGISTRY_DOCUMENT}; known codes are: "
-        f"{', '.join(sorted(LINT_REGISTRY))}."
-    )
+    if unknown:
+        listed = ", ".join(repr(code) for code in unknown)
+        raise UnknownLintCode(
+            f"{source} names lint code(s) the registry does not carry: "
+            f"{listed}. Every suppressible code is declared in selfdoc_core/"
+            f"{_REGISTRY_DOCUMENT}; known codes are: "
+            f"{', '.join(sorted(LINT_REGISTRY))}."
+        )
+
+    errors = [code for code in codes if LINT_REGISTRY[code].severity == "error"]
+    if errors:
+        listed = ", ".join(
+            f"{code} (severity: {LINT_REGISTRY[code].severity})"
+            for code in errors
+        )
+        suppressible = sorted(
+            code for code, spec in LINT_REGISTRY.items()
+            if spec.severity == "warning"
+        )
+        raise UnsuppressableLintCode(
+            f"{source} names error-severity lint code(s), which cannot be "
+            f"suppressed: {listed}. An error says the build is wrong -- fix "
+            f"the defect it reports. Suppression reaches warning-severity "
+            f"codes only: {', '.join(suppressible)}."
+        )
 
 
 def parse_ignore_codes(raw, *, source: str = "--ignore") -> set[str]:
@@ -153,6 +198,7 @@ def parse_ignore_codes(raw, *, source: str = "--ignore") -> set[str]:
 
     Raises:
         UnknownLintCode: When any code is not in the registry.
+        UnsuppressableLintCode: When any code is error-severity.
     """
     if not raw:
         return set()

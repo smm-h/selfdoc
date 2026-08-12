@@ -185,8 +185,9 @@ SCHEMA = [
         "required": False,
         "category": "SEO",
         "description": (
-            "List of SEO lint codes to suppress (e.g. `[\"SEO007\"]`). "
-            "Each entry must match the pattern `SEO` followed by digits."
+            "List of warning-severity lint codes to suppress (e.g. "
+            "`[\"SEO007\"]`). Error-severity codes are refused at load: "
+            "an error means the build is wrong, so it cannot be silenced."
         ),
     },
     # Deploy
