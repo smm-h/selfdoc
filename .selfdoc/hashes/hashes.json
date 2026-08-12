@@ -244,8 +244,8 @@
     "description": "27906c1fb66a36671ec921a5b08d53c07c286db66c013b74611288a09814662e"
   },
   "en/search.md": {
-    "content": "47aad498c8babe06d9bdb0531e938c3122f1220f82f2667c2ec18b46ffaa7e25",
-    "description": "4e7593f45a6a74d8e4183d84516e95a51d777434decc20232f71563fe815d40e"
+    "content": "8fbb0a804cabcaa2b8bf4b8ad27ac93b434afb40a91b5fa649a26676438c5ba4",
+    "description": "7991d1214e79c1613a10286610948b12ed1dd651b73dcde28cdaa4a51c9a02d9"
   },
   "en/selfdoc-__main__.md": {
     "content": "c9cb39fec8b1d1cd9124b942a427a9e00a28ed5cbee7b87f81f3ef570efe650a",
@@ -405,7 +405,6 @@
   "en/selfdoc-spell_corpus.md": {
     "content": "1b8e01cbba10db965b8ad27f755994abc2e8c7060fbf55aa2ea56913a173cf64",
     "description": "9394ed58736d26caffd7a5718f049dec851d49449294d3994014458397a5acd5",
-    "seed_hash": "2788b79b17215a10bf5fd5987184787ca3edb7cb5932949456aad37e9fbf4060",
     "source_docstring": "5b77e383265b4fe6869e9fa511a676ce468e103f69bf9fdbdb6d040ff44f162e"
   },
   "en/selfdoc-strictcli_support.md": {

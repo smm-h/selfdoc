@@ -50,7 +50,7 @@ Parallel `docs/<locale>/` directories with per-locale templates. Generates hrefl
 
 ### Search filters
 
-Faceted search with key=value syntax across 7 dimensions. Chip-based filter UI with auto-injected version default. Pages declare search metadata via frontmatter tags using bracket syntax: `tags: [a, b, c]`.
+Pagefind indexes the built HTML and ships its own UI. Pages emit filter attributes for 7 facets -- version, locale, group, type, target, project and tags -- so the dialog offers each as a filter group. Pages declare tags via frontmatter using bracket syntax: `tags: [a, b, c]`.
 
 ### Directives
 
@@ -108,7 +108,6 @@ uv run pytest
 - **selfdoc.cli** (`selfdoc/cli.py`): CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for all commands.
 - **selfdoc.config** (`selfdoc/config.py`): Config loader for selfdoc.json -- reads project settings, validates required fields, and resolves paths for the build pipeline.
 - **selfdoc.content** (`selfdoc/content.py`): Content directives -- re-export shim + table-commands registration.
-- **selfdoc.context** (`selfdoc/context.py`): The search index entry dataclass, the one build record that outlives a single build.
 - **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites -- supports Cloudflare Pages and GitHub Pages with atomic uploads and cache invalidation.
 - **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax -- tokenizes the 6 marker types into typed directive objects for resolution.
 - **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates -- walks the docs directory, parses frontmatter, and resolves all directives.

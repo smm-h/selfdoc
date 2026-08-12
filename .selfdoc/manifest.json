@@ -151,18 +151,23 @@
         },
         {
           "level": 3,
-          "text": "The canonical blog URL",
-          "anchor": "the-canonical-blog-url"
+          "text": "One hostname",
+          "anchor": "one-hostname"
         },
         {
-          "level": 3,
-          "text": "The portfolio canonical",
-          "anchor": "the-portfolio-canonical"
+          "level": 4,
+          "text": "Historical addresses",
+          "anchor": "historical-addresses"
         },
         {
           "level": 4,
           "text": "Operator steps (outside selfblog)",
           "anchor": "operator-steps-outside-selfblog"
+        },
+        {
+          "level": 3,
+          "text": "The machine-readable files at the site root",
+          "anchor": "the-machine-readable-files-at-the-site-root"
         },
         {
           "level": 3,
@@ -198,6 +203,21 @@
           "level": 2,
           "text": "Membership: the Roster",
           "anchor": "membership-the-roster"
+        },
+        {
+          "level": 3,
+          "text": "The home project",
+          "anchor": "the-home-project"
+        },
+        {
+          "level": 4,
+          "text": "The curated listing",
+          "anchor": "the-curated-listing"
+        },
+        {
+          "level": 4,
+          "text": "Site-level directives",
+          "anchor": "site-level-directives"
         },
         {
           "level": 3,
@@ -250,6 +270,11 @@
           "level": 2,
           "text": "Lint Rules",
           "anchor": "lint-rules"
+        },
+        {
+          "level": 3,
+          "text": "Spelling (SPELL001)",
+          "anchor": "spelling-spell001"
         },
         {
           "level": 3,
@@ -1819,8 +1844,8 @@
         },
         {
           "level": 2,
-          "text": "Search Engines",
-          "anchor": "search-engines"
+          "text": "Declaring the engine",
+          "anchor": "declaring-the-engine"
         },
         {
           "level": 2,
@@ -1829,37 +1854,17 @@
         },
         {
           "level": 2,
-          "text": "How the Index Works",
+          "text": "How the index works",
           "anchor": "how-the-index-works"
         },
         {
           "level": 2,
-          "text": "Search Filters",
+          "text": "Search filters",
           "anchor": "search-filters"
         },
         {
-          "level": 3,
-          "text": "Available filter dimensions",
-          "anchor": "available-filter-dimensions"
-        },
-        {
-          "level": 3,
-          "text": "Filter syntax",
-          "anchor": "filter-syntax"
-        },
-        {
-          "level": 3,
-          "text": "Auto-injected version filter",
-          "anchor": "auto-injected-version-filter"
-        },
-        {
-          "level": 3,
-          "text": "Filter chips",
-          "anchor": "filter-chips"
-        },
-        {
           "level": 2,
-          "text": "Adding Tags to Pages",
+          "text": "Adding tags to pages",
           "anchor": "adding-tags-to-pages"
         }
       ]
@@ -2203,23 +2208,6 @@
           "level": 2,
           "text": "selfdoc.config",
           "anchor": "selfdocconfig"
-        }
-      ]
-    },
-    {
-      "path": "selfdoc-context.md",
-      "title": "selfdoc.context",
-      "type": "doc",
-      "headings": [
-        {
-          "level": 1,
-          "text": "selfdoc.context",
-          "anchor": "selfdoccontext"
-        },
-        {
-          "level": 2,
-          "text": "selfdoc.context",
-          "anchor": "selfdoccontext"
         }
       ]
     },
@@ -3115,8 +3103,8 @@
         },
         {
           "level": 3,
-          "text": "Top-level twitter config",
-          "anchor": "top-level-twitter-config"
+          "text": "Twitter handle",
+          "anchor": "twitter-handle"
         },
         {
           "level": 3,
@@ -3313,5 +3301,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T01:26:03.896783+00:00"
+  "last_gen": "2026-08-12T03:14:18.669690+00:00"
 }

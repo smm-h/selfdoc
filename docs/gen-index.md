@@ -13,7 +13,6 @@ order: 90
 - [selfdoc](../selfdoc/)
 - [selfdoc.__main__](../selfdoc-__main__/)
 - [selfdoc._version](../selfdoc-_version/)
-- [selfdoc.context](../selfdoc-context/)
 - [selfdoc.deploy](../selfdoc-deploy/)
 - [selfdoc.docs](../selfdoc-docs/)
 - [selfdoc.extractors](../selfdoc-extractors/)

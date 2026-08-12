@@ -65,7 +65,7 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
 - **Faceted search** -- key=value filter syntax, 7 dimensions, chip UI, auto-injected version default
 - **Sandboxed data generation** -- run scripts in bubblewrap isolation (`selfdoc gen-data`)
 - **Theming** -- dark mode, accent colors, custom CSS overrides
-- **Search engines** -- builtin, Fuse.js, or MiniSearch
+- **Search** -- Pagefind, indexed at build time, no network at read time
 - **SEO** -- 15+ lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
 - **Coverage tracking** -- per-symbol documentation coverage with configurable thresholds
 - **Syntax highlighting** -- build-time Pygments, code tabs, sortable tables
@@ -96,6 +96,7 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 | `callout-warning` | Styled warning callout block |
 | `code-help` | Extract CLI help/usage text and flag definitions |
 | `code-test` | Embed test source code (whole file or specific function) |
+| `cv` | Render a curriculum vitae declared in a TOML document, plus the Person it states |
 | `list-glossary` | Definition list from **Term**: Definition lines |
 | `list-modules` | List source modules with file paths and docstring summaries |
 | `list-tree` | File/directory tree listing |
@@ -194,7 +195,7 @@ Custom directives take priority over built-in names.
 | `description` | no | Short description of the project, used in meta tags and SEO. |
 | `branch` | no | Git branch used for source links in the generated site. |
 | `search` | no | Search UI mode: icon button, full bar, or hidden. |
-| `search_engine` | no | Client-side search engine implementation to use. |
+| `search_engine` | yes | Search engine that answers this site's search UI. Required and never inferred: every site builds a search UI, so the engine behind it is declared, not defaulted. |
 | `code_icons` | no | Style of language icons shown on code blocks. |
 | `line_numbers` | no | Show line numbers in code blocks. |
 | `run_button` | no | Show a run button on code blocks for supported languages. |
@@ -209,7 +210,8 @@ Custom directives take priority over built-in names.
 | `deploy` | no | Deployment configuration for publishing the generated site. |
 | `directives` | no | Custom directive mappings from directive name to source file path. |
 | `examples` | no | Validator command templates keyed by code-block language, used by 'selfdoc check' to execute fenced blocks marked 'validate'. Each template must contain the '{file}' placeholder. Absent means example validation is off. |
-| `author` | no | Author information for meta tags and structured data. |
+| `author` | yes | The site's author: one Person, named in every page's structured data. Required -- there is no inferred author. |
+| `twitter` | no | Twitter/X handle (starts with @) for the twitter:site meta tag. |
 | `feedback` | no | Feedback collection configuration (at least one of webhook or ga required). |
 | `branding` | no | Landing page branding and call-to-action configuration. |
 | `auto_detect` | no | Automatic content detection settings for step guides and API entries. |
