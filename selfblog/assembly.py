@@ -1874,7 +1874,7 @@ def _manifest_owner(stem: str, declared) -> str | None:
     return None
 
 
-def reconcile_membership(assembly_dir: str, roster: dict[str, RosterEntry]) -> dict:
+def reconcile_membership(assembly_dir: str, roster: Roster) -> dict:
     """Remove every trace of a project the roster no longer declares.
 
     A project drops out of the assembly by leaving the roster, and this is
@@ -1882,12 +1882,29 @@ def reconcile_membership(assembly_dir: str, roster: dict[str, RosterEntry]) -> d
     kinds, its derived membership record, and -- because the search index is
     rebuilt from scratch whenever anything went -- its entries in the index.
 
+    Takes the whole :class:`Roster` rather than the mapping alone, because
+    which project is *home* decides which directories under ``site/`` are
+    project subtrees at all -- see below.  A bare mapping would leave that
+    unanswerable and the home project's own pages would be swept.
+
     Returns a summary naming the retired slugs and every path removed.
     """
+    if not isinstance(roster, Roster):
+        raise TypeError(
+            "reconcile_membership needs the Roster, not the mapping alone: "
+            "the home project's pages sit at the site root, so telling its "
+            "directories from a project subtree needs to know which project "
+            "is home. Pass load_roster(assembly_dir)."
+        )
     site_dir = os.path.join(assembly_dir, "site")
     manifests_dir = os.path.join(assembly_dir, "manifests")
     projects_json = os.path.join(assembly_dir, PROJECTS_PATH)
     declared = set(roster)
+    # The site root IS the home project's content root, so a page of its at
+    # cv/index.html emits at site/cv/ -- one level up from where every other
+    # project's pages sit, and indistinguishable from a project subtree by
+    # position alone.  Its published-file record is what tells them apart.
+    home_dirs = home_owned_root_names(manifests_dir, roster.home)
 
     retired: set[str] = set()
     removed: list[str] = []
@@ -1898,6 +1915,8 @@ def reconcile_membership(assembly_dir: str, roster: dict[str, RosterEntry]) -> d
             if not os.path.isdir(path):
                 continue
             if name in declared or name in SITE_RESERVED_DIRS:
+                continue
+            if name in home_dirs:
                 continue
             retired.add(name)
 

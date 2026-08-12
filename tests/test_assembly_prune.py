@@ -23,6 +23,7 @@ import pytest
 
 from selfblog.assembly import (
     PUBLISH_OWNERS,
+    Roster,
     RosterEntry,
     apply_project_files,
     build_output_paths,
@@ -40,6 +41,7 @@ from selfblog.assembly import (
 
 from tests.test_assembly_integrate import (  # noqa: F401  (fixtures)
     CANONICAL_BASE,
+    HOME,
     ROSTER,
     RunRecorder,
     _manifest,
@@ -374,7 +376,9 @@ def test_the_assembly_scaffold_ships_a_roster():
 
 
 def test_an_undeclared_project_loses_its_subtree(assembly_tree):
-    reconcile_membership(str(assembly_tree), {"alpha": ROSTER["alpha"]})
+    reconcile_membership(
+        str(assembly_tree), Roster({"alpha": ROSTER["alpha"]}, home=HOME),
+    )
     assert not (assembly_tree / "site" / "beta").exists()
     assert (assembly_tree / "site" / "alpha").exists()
 
@@ -385,7 +389,9 @@ def test_an_undeclared_project_loses_every_manifest_kind(assembly_tree):
     _write(str(assembly_tree / "manifests" / "beta-revisions.json"), "{}")
     _write(str(assembly_tree / "manifests" / "beta-files.json"),
            json.dumps({"schema_version": 2, "slug": "beta", "owners": {}}))
-    reconcile_membership(str(assembly_tree), {"alpha": ROSTER["alpha"]})
+    reconcile_membership(
+        str(assembly_tree), Roster({"alpha": ROSTER["alpha"]}, home=HOME),
+    )
     left = os.listdir(assembly_tree / "manifests")
     assert not [name for name in left if name.startswith("beta")]
     assert "alpha.json" in left
@@ -394,7 +400,7 @@ def test_an_undeclared_project_loses_every_manifest_kind(assembly_tree):
 def test_an_undeclared_project_loses_its_membership_record(assembly_tree):
     reconcile_membership(
         str(assembly_tree),
-        {"alpha": ROSTER["alpha"], "home": ROSTER["home"]},
+        Roster({"alpha": ROSTER["alpha"], HOME: ROSTER[HOME]}, home=HOME),
     )
     assert list(_read_json(str(assembly_tree / "projects.json"))) == [
         "alpha", "home",
@@ -404,7 +410,7 @@ def test_an_undeclared_project_loses_its_membership_record(assembly_tree):
 def test_reconciliation_reports_what_it_retired(assembly_tree):
     summary = reconcile_membership(
         str(assembly_tree),
-        {"alpha": ROSTER["alpha"], "home": ROSTER["home"]},
+        Roster({"alpha": ROSTER["alpha"], HOME: ROSTER[HOME]}, home=HOME),
     )
     assert summary["retired"] == ["beta"]
     assert any("site" in path and path.endswith("beta") for path in summary["removed"])
@@ -413,20 +419,62 @@ def test_reconciliation_reports_what_it_retired(assembly_tree):
 def test_reconciliation_drops_the_stale_search_index(assembly_tree):
     """pagefind keys fragments by hash, so a removed page can linger in it."""
     _write(str(assembly_tree / "site" / "pagefind" / "pagefind.js"), "// index")
-    reconcile_membership(str(assembly_tree), {"alpha": ROSTER["alpha"]})
+    reconcile_membership(
+        str(assembly_tree), Roster({"alpha": ROSTER["alpha"]}, home=HOME),
+    )
     assert not (assembly_tree / "site" / "pagefind").exists()
 
 
 def test_reconciliation_keeps_the_index_when_nothing_was_retired(assembly_tree):
     _write(str(assembly_tree / "site" / "pagefind" / "pagefind.js"), "// index")
-    reconcile_membership(str(assembly_tree), ROSTER)
+    reconcile_membership(str(assembly_tree), Roster(ROSTER, home=HOME))
     assert (assembly_tree / "site" / "pagefind").exists()
+
+
+def test_reconciliation_never_mistakes_a_home_directory_for_a_project(assembly_tree):
+    """The home project's own directories sit beside the project subtrees.
+
+    The site root IS the home project's content root, so a page of its at
+    ``cv/index.html`` emits at ``site/cv/``, one level up from where every
+    other project's pages sit.  A sweep that reads every directory under
+    ``site/`` as a project subtree finds ``cv``, declares it a project the
+    roster does not carry, and deletes the home project's own page.  Its
+    published-file record is what tells the two apart.
+    """
+    _write(str(assembly_tree / "site" / "cv" / "index.html"),
+           _page("CV", "cv/", marker="home cv"))
+    _write(str(assembly_tree / "manifests" / "home-files.json"), json.dumps({
+        "schema_version": 2, "slug": HOME,
+        "owners": {"release": ["index.html", "cv/index.html"]},
+    }))
+    summary = reconcile_membership(
+        str(assembly_tree), Roster(ROSTER, home=HOME),
+    )
+    assert (assembly_tree / "site" / "cv" / "index.html").exists()
+    assert "cv" not in summary["retired"]
+
+
+def test_reconciliation_still_retires_a_project_beside_a_home_directory(assembly_tree):
+    """Protecting the home project's directories protects nothing else."""
+    _write(str(assembly_tree / "site" / "cv" / "index.html"),
+           _page("CV", "cv/", marker="home cv"))
+    _write(str(assembly_tree / "manifests" / "home-files.json"), json.dumps({
+        "schema_version": 2, "slug": HOME,
+        "owners": {"release": ["index.html", "cv/index.html"]},
+    }))
+    summary = reconcile_membership(
+        str(assembly_tree),
+        Roster({"alpha": ROSTER["alpha"], HOME: ROSTER[HOME]}, home=HOME),
+    )
+    assert summary["retired"] == ["beta"]
+    assert not (assembly_tree / "site" / "beta").exists()
+    assert (assembly_tree / "site" / "cv" / "index.html").exists()
 
 
 def test_reconciliation_never_mistakes_a_shared_directory_for_a_project(assembly_tree):
     _write(str(assembly_tree / "site" / "blog" / "index.html"), "<html>blog</html>")
     _write(str(assembly_tree / "site" / "projects" / "index.html"), "<html>list</html>")
-    reconcile_membership(str(assembly_tree), ROSTER)
+    reconcile_membership(str(assembly_tree), Roster(ROSTER, home=HOME))
     assert (assembly_tree / "site" / "blog" / "index.html").exists()
     assert (assembly_tree / "site" / "projects" / "index.html").exists()
 
@@ -434,13 +482,13 @@ def test_reconciliation_never_mistakes_a_shared_directory_for_a_project(assembly
 def test_reconciliation_removes_a_manifest_no_declared_project_owns(assembly_tree):
     _write(str(assembly_tree / "manifests" / "ghost.json"),
            json.dumps(_manifest("ghost", "Ghost", "1.0.0")))
-    reconcile_membership(str(assembly_tree), ROSTER)
+    reconcile_membership(str(assembly_tree), Roster(ROSTER, home=HOME))
     assert not (assembly_tree / "manifests" / "ghost.json").exists()
 
 
 def test_reconciliation_is_a_no_op_when_everything_is_declared(assembly_tree):
     before = sorted(os.listdir(assembly_tree / "manifests"))
-    summary = reconcile_membership(str(assembly_tree), ROSTER)
+    summary = reconcile_membership(str(assembly_tree), Roster(ROSTER, home=HOME))
     assert summary["retired"] == []
     assert sorted(os.listdir(assembly_tree / "manifests")) == before
 
