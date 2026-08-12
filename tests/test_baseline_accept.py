@@ -24,6 +24,8 @@ def _setup_project(tmp_path, *, locales=None):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
     }
     if locales is not None:

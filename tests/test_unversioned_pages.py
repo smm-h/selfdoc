@@ -263,4 +263,3 @@ def test_page_filter_empty_set(tmp_path):
     assert result.markdown_files == {}
     assert result.frontmatter == {}
     assert result.nav_items == []
-    assert result.search_entries == []

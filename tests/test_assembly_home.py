@@ -73,6 +73,7 @@ def _manifest(slug, name, version, pages=None, posts=()):
         "description": f"{name} docs",
         "language": "python",
         "base_url": f"{CANONICAL_BASE}/{slug}",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": pages if pages is not None else [
             {"path": "index.md", "title": "Home"},
         ],
@@ -648,6 +649,8 @@ def test_a_home_build_resolves_the_directives_into_sentinel_regions(tmp_path):
     config = {
         "name": "Home",
         "base_url": CANONICAL_BASE,
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "docs": "docs/",
         "output": "docs/_build/",
         "version": "0.1.0",

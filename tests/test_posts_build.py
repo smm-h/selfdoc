@@ -222,20 +222,20 @@ def test_build_posts_search_index(tmp_path):
 
     build(str(project))
 
-    search_index_path = os.path.join(
-        project, "docs", "_build", "search-index.json",
+    from test_pagefind_index import _fragments
+
+    output_dir = os.path.join(project, "docs", "_build")
+    assert os.path.isfile(
+        os.path.join(output_dir, "pagefind", "pagefind-entry.json"),
     )
-    assert os.path.isfile(search_index_path)
 
-    with open(search_index_path) as f:
-        entries = json.load(f)
-
-    # At least one entry should reference the post
-    post_entries = [
-        e for e in entries
-        if "hello-world" in e.get("path", "") or "Hello World" in e.get("title", "")
+    # At least one indexed page is the post
+    post_fragments = [
+        f for f in _fragments(output_dir)
+        if "hello-world" in f["url"]
+        or "Hello World" in f["meta"].get("title", "")
     ]
-    assert len(post_entries) > 0
+    assert len(post_fragments) > 0
 
 
 def test_build_posts_draft_excluded_by_default(tmp_path):

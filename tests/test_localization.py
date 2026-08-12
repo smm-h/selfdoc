@@ -143,13 +143,14 @@ class TestMultiLocaleBuild:
         project_dir = make_localized_project(locales)
         build(str(project_dir))
 
-        output_dir = os.path.join(str(project_dir), "docs", "_build")
-        search_path = os.path.join(output_dir, "search-index.json")
-        assert os.path.isfile(search_path)
-        with open(search_path, "r", encoding="utf-8") as f:
-            entries = json.load(f)
+        from test_pagefind_index import _fragments
 
-        locales_in_index = {e["locale"] for e in entries}
+        output_dir = os.path.join(str(project_dir), "docs", "_build")
+        locales_in_index = {
+            value
+            for fragment in _fragments(output_dir)
+            for value in fragment["filters"].get("locale", [])
+        }
         assert "en" in locales_in_index
         assert "fa" in locales_in_index
 

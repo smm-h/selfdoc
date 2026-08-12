@@ -69,17 +69,18 @@ class TestMultiVersionBuild:
         assert "0.1.0" in old_html
 
     def test_search_index_contains_both_versions(self, make_versioned_project):
-        """Search index should contain entries from all built versions."""
+        """Every built version is indexed, under its own version filter."""
+        from test_pagefind_index import _fragments
+
         project_dir = make_versioned_project(["0.1.0", "0.2.0"])
         build(str(project_dir))
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
-        search_path = os.path.join(output_dir, "search-index.json")
-        assert os.path.isfile(search_path)
-        with open(search_path, "r", encoding="utf-8") as f:
-            entries = json.load(f)
-
-        versions_in_index = {e["version"] for e in entries}
+        versions_in_index = {
+            value
+            for fragment in _fragments(output_dir)
+            for value in fragment["filters"].get("version", [])
+        }
         assert "0.1.0" in versions_in_index
         assert "0.2.0" in versions_in_index
 

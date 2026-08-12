@@ -45,6 +45,7 @@ def _manifest(slug, name):
         "schema_version": 1, "name": name, "slug": slug, "version": "1.0.0",
         "description": f"{name} docs", "language": "python",
         "base_url": f"https://docs.example.com/{slug}",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [{"path": "index.md", "title": "Home"}],
         "posts": [{"slug": "hello", "title": f"{name} says hello",
                    "date": "2024-06-01"}],
@@ -256,6 +257,8 @@ def _project(tmp_path, monkeypatch):
     (tmp_path / "selfdoc.json").write_text(json.dumps({
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "output": "docs/_build/", "docs": "docs/",

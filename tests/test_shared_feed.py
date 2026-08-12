@@ -13,6 +13,7 @@ def _make_manifest(name, slug, posts=None):
         "description": "",
         "language": "python",
         "base_url": f"https://example.com/{slug}",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [],
         "posts": posts or [],
         "last_gen": "2024-01-01T00:00:00+00:00",

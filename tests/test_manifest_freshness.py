@@ -17,6 +17,7 @@ def _write_manifest(path, pages, posts=None):
         "description": "",
         "language": "python",
         "base_url": "",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": pages,
         "posts": posts or [],
         "last_gen": "",

@@ -172,18 +172,24 @@ def test_build_unified_search_index(make_unified_project):
 
     build_unified(str(docs_site_dir))
 
+    from test_pagefind_index import _fragments
+
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
-    search_path = os.path.join(output_dir, "search-index.json")
-    assert os.path.isfile(search_path)
+    assert os.path.isfile(
+        os.path.join(output_dir, "pagefind", "pagefind-entry.json"),
+    )
 
-    with open(search_path, "r") as f:
-        entries = json.load(f)
-
-    # Should have entries from core, cli, and common
-    project_names = {e["project"] for e in entries}
+    # One index over the whole site, with every constituent in it.  The
+    # docs-site's own cross-cutting pages carry the docs-site's name --
+    # the project facet is the project each page belongs to.
+    project_names = {
+        value
+        for fragment in _fragments(output_dir)
+        for value in fragment["filters"].get("project", [])
+    }
     assert "core" in project_names
     assert "cli" in project_names
-    assert "common" in project_names
+    assert "docs-site" in project_names
 
 
 def test_build_unified_root_redirect(make_unified_project):
@@ -313,8 +319,12 @@ def test_build_unified_shared_assets(make_unified_project):
 
     output_dir = os.path.join(str(docs_site_dir), "docs", "_build")
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
-    assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
-    assert os.path.isfile(os.path.join(output_dir, "search.js"))
+    assert os.path.isfile(
+        os.path.join(output_dir, "pagefind", "pagefind-entry.json"),
+    )
+    assert os.path.isfile(
+        os.path.join(output_dir, "pagefind", "pagefind-ui.js"),
+    )
 
 
 def test_single_project_build_still_works(make_project):

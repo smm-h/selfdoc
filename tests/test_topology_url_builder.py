@@ -103,6 +103,7 @@ class TestMakeUrlBuilder:
         from selfdoc.build import _make_url_builder
         config = {
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
             "topology": {
                 "docs_base": "https://docs.smmh.dev",
                 "slug": "selfdoc",
@@ -125,6 +126,7 @@ class TestMakeUrlBuilder:
         from selfdoc.urls import SimpleURLBuilder
         config = {
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
             "topology": {"slug": "selfdoc"},
         }
         builder = _make_url_builder(config)
@@ -135,6 +137,7 @@ class TestMakeUrlBuilder:
         from selfdoc.urls import SimpleURLBuilder
         config = {
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
             "topology": {"docs_base": "https://docs.smmh.dev"},
         }
         builder = _make_url_builder(config)
@@ -150,6 +153,7 @@ class TestMakeUrlBuilder:
         from selfdoc.build import _make_url_builder
         config = {
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
             "topology": {
                 "docs_base": "https://docs.smmh.dev",
                 "slug": "selfdoc",

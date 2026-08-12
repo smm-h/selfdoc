@@ -28,6 +28,7 @@ def _write_manifest(manifests_dir, slug="alpha"):
         "description": "",
         "language": "python",
         "base_url": f"{CANONICAL_BASE}/{slug}",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [{"path": "index.md", "title": "Home"}],
         "posts": [],
         "last_gen": "2024-01-01T00:00:00+00:00",

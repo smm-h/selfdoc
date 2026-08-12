@@ -50,6 +50,7 @@ def _manifest(slug, name, description="", pages=(), posts=()):
         "description": description,
         "language": "python",
         "base_url": f"{CANONICAL_BASE}/{slug}",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": list(pages) or [{"path": "index.md", "title": "Home"}],
         "posts": list(posts),
         "last_gen": "2024-01-01T00:00:00+00:00",

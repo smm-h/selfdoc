@@ -52,6 +52,8 @@ def lowered_threshold_projects(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com/lib",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "coverage_threshold": 0.4,
     })
     _write_text(str(lib / "mylib" / "alpha.py"),
@@ -75,6 +77,8 @@ def lowered_threshold_projects(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "coverage_threshold": 0.4,
         "unified": {"projects": [{"path": "../lib"}]},
     })

@@ -70,6 +70,7 @@ def _manifest(slug, name, version, pages, posts=()):
         "description": f"{name} docs",
         "language": "python",
         "base_url": f"{CANONICAL_BASE}/{slug}",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": list(pages),
         "posts": list(posts),
         "last_gen": "2024-01-01T00:00:00+00:00",

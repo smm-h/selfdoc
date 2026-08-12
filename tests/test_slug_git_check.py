@@ -55,6 +55,7 @@ def _write_manifest(dir_path: str, posts: list[dict]) -> str:
         "description": "",
         "language": "python",
         "base_url": "",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [],
         "posts": posts,
         "last_gen": "2025-01-01T00:00:00+00:00",
