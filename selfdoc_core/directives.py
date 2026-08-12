@@ -302,6 +302,20 @@ def _mask_backtick_spans(line: str) -> tuple[str, list[str]]:
     return masked, placeholders
 
 
+def blank_backtick_spans(line: str) -> str:
+    """Replace backtick code spans with spaces, preserving every column.
+
+    The placeholder masking above is for rewriting a line: it substitutes a
+    shorter token and hands back the originals so the line can be restored.
+    A rule that reports a *column* cannot use it -- the substitution shifts
+    every position after the span.  This variant keeps the line's length and
+    every character offset exactly, so a match found in the result sits at
+    the same column in the original line.  What is inside a code span is
+    code, and no prose rule should read it.
+    """
+    return _BACKTICK_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+
+
 def _unmask_backtick_spans(line: str, placeholders: list[str]) -> str:
     """Restore backtick span placeholders to their original text."""
     for i, original in enumerate(placeholders):
