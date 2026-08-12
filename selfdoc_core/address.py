@@ -56,7 +56,9 @@ from dataclasses import dataclass
 
 __all__ = [
     "ARCHIVE_PREFIX",
+    "POSTS_PREFIX",
     "PageAddress",
+    "is_site_level",
     "locale_segment",
     "page_address",
     "root_page_link",
@@ -64,6 +66,31 @@ __all__ = [
 
 #: URL segment every archived (superseded) version is emitted under.
 ARCHIVE_PREFIX = "v"
+
+#: Site-level URL segment every post is emitted under: ``blog/<slug>/``.
+#: Fixed, and the same in a standalone build and on the unified site.
+POSTS_PREFIX = "blog"
+
+
+def is_site_level(path: str) -> bool:
+    """Whether *path* addresses the site level rather than a project mount.
+
+    Posts are site citizens: they carry no locale, project or version
+    segment, and on an assembled site they are served from the site root
+    at ``blog/<post-slug>/`` while the project that wrote them is served
+    under its own slug.  Every surface that has to tell the two apart --
+    the URL builder deciding whether to write the slug, the sidebar
+    deciding which hop reaches an item -- asks here.
+
+    Accepts either form the build speaks: an output path
+    (``blog/hello/index.html``) or a URL path (``blog/hello/``, ``blog/``).
+    """
+    first = path.lstrip("/").split("/", 1)[0]
+    if first.endswith(".md"):
+        first = first[: -len(".md")]
+    elif first.endswith(".html"):
+        first = first[: -len(".html")]
+    return first == POSTS_PREFIX
 
 
 @dataclass(frozen=True, slots=True)

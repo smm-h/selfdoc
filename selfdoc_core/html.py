@@ -12,7 +12,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 
-from selfdoc_core.address import page_address
+from selfdoc_core.address import is_site_level, page_address
 from selfdoc_core.cv import extract_cv_person
 from selfdoc_core.icons import get_icon
 from selfdoc_core.identity import person_entity
@@ -423,6 +423,8 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Pages marked `versioned: false` are built at the version-free
         # mount, one level shallower than this page's own.
         unversioned_prefix = addr.to_stable_mount_root
+        # Posts are mountless site citizens -- see _site_level_hop.
+        site_prefix = _site_level_hop(url_builder, addr)
         home_href = _home_href(addr, all_html_paths)
         md_config = {}
         if auto_detect:
@@ -444,6 +446,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         nav_html = _render_nav(
             nav_items, prefix, current_path=html_path,
             unversioned_prefix=unversioned_prefix,
+            site_prefix=site_prefix,
         )
 
         # Use frontmatter title if available, else extract from content
@@ -587,6 +590,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "next_page": next_page,
             "prefix": prefix,
             "unversioned_prefix": unversioned_prefix,
+            "site_prefix": site_prefix,
             "home_href": home_href,
             "source_path": source_path,
             "date_published": date_published,
@@ -680,6 +684,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             nav_items, prefix=glossary_addr.to_mount_root,
             current_path="glossary/index.html",
             unversioned_prefix=glossary_addr.to_stable_mount_root,
+            site_prefix=_site_level_hop(url_builder, glossary_addr),
         )
 
         # Update nav_html for all previously collected page_data entries
@@ -688,6 +693,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                 nav_items, prefix=pd["prefix"],
                 current_path=pd["html_path"],
                 unversioned_prefix=pd["unversioned_prefix"],
+                site_prefix=pd["site_prefix"],
             )
 
         # Build page_data entry for the glossary page
@@ -716,6 +722,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "next_page": None,
             "prefix": glossary_addr.to_mount_root,
             "unversioned_prefix": glossary_addr.to_stable_mount_root,
+            "site_prefix": _site_level_hop(url_builder, glossary_addr),
             "home_href": _home_href(glossary_addr, all_html_paths),
             "source_path": None,
             "date_published": None,
@@ -745,6 +752,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             next_page=pd["next_page"],
             prefix=pd["prefix"],
             unversioned_prefix=pd["unversioned_prefix"],
+            site_prefix=pd["site_prefix"],
             home_href=pd["home_href"],
             asset_prefix=pd["asset_prefix"],
             repo=repo,
@@ -828,10 +836,14 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     mount_prefix = root_addr.stable
     unversioned_prefix = mount_prefix
 
-    # Render sidebar navigation from nav_items
+    # Render sidebar navigation from nav_items.  The 404 sits at the output
+    # root, which for the project that emits one is the served root -- only
+    # an unmounted project emits one at all -- so the site level is right
+    # here and the empty hop reaches it.
     nav_html = _render_nav(nav_items, prefix=mount_prefix,
                            current_path="404.html",
-                           unversioned_prefix=unversioned_prefix)
+                           unversioned_prefix=unversioned_prefix,
+                           site_prefix="")
 
     # Search prompt button
     search_html = (
@@ -879,6 +891,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
         custom_css_href="custom.css" if has_custom_css else None,
         prefix=mount_prefix,
         unversioned_prefix=unversioned_prefix,
+        site_prefix="",
         asset_prefix="",
         base_url=base_url,
         url_builder=url_builder,
@@ -2146,7 +2159,39 @@ def _flatten_nav(nav_items):
     return flat
 
 
-def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix):
+def _site_level_hop(url_builder, addr):
+    """Where a site-level page (a post) is reached from *addr*.
+
+    Posts carry no mount: they are emitted at ``blog/<post-slug>/`` under
+    the output root, and on an assembled site they are served from the
+    *site* root while the project that wrote them is served under its
+    slug.  Those are two different directories, so which hop is correct
+    depends on whether this build is mounted:
+
+    * Not mounted -- the project's output root is the served root, the
+      posts are inside it, and the document-relative hop back to the
+      output root reaches them.
+    * Mounted -- the hop back to the output root reaches the project's own
+      subtree, where the assembly does not put posts.  Only an absolute
+      URL crosses out of the subtree, and a mounted project has one: its
+      declared site base.
+    """
+    if url_builder is not None and url_builder.mounted():
+        return url_builder.site_root()
+    return addr.to_site_root
+
+
+def _nav_hop(item, prefix, unversioned_prefix, site_prefix):
+    """The hop that reaches one sidebar item from the page rendering it."""
+    if is_site_level(item["path"]):
+        return site_prefix
+    if item.get("unversioned"):
+        return unversioned_prefix
+    return prefix
+
+
+def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix,
+                site_prefix):
     """Render the sidebar navigation HTML.
 
     Ungrouped items render as flat ``<li><a>`` elements.  Grouped items
@@ -2157,12 +2202,15 @@ def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix):
     Link hrefs use clean directory URLs (e.g. ``guide/`` instead of
     ``guide/index.html``).
 
-    Two hops, because the sidebar spans two mounts: *prefix* reaches the
-    rendering page's own mount, and *unversioned_prefix* reaches the
+    Three hops, because the sidebar spans three roots: *prefix* reaches
+    the rendering page's own mount, *unversioned_prefix* reaches the
     version-free mount where every item carrying the ``unversioned``
-    marker was built.  Inside a version those differ by one level, and
+    marker was built, and *site_prefix* reaches the site level, where the
+    posts are.  Inside a version the first two differ by one level, and
     addressing an unversioned page with the versioned hop names a file
-    no build ever writes.
+    no build ever writes.  The third is not always a hop at all: under a
+    site mount the posts are outside this project's output entirely, and
+    :func:`_site_level_hop` answers with an absolute URL.
     """
     items_html = []
     for item in nav_items:
@@ -2174,8 +2222,8 @@ def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix):
             open_attr = " open" if is_active_group else ""
             sub_items = []
             for sub in item["items"]:
-                sub_prefix = (
-                    unversioned_prefix if sub.get("unversioned") else prefix
+                sub_prefix = _nav_hop(
+                    sub, prefix, unversioned_prefix, site_prefix,
                 )
                 href = sub_prefix + _html_path_to_url(sub["path"])
                 active_cls = (
@@ -2197,8 +2245,8 @@ def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix):
                 f'</li>'
             )
         else:
-            item_prefix = (
-                unversioned_prefix if item.get("unversioned") else prefix
+            item_prefix = _nav_hop(
+                item, prefix, unversioned_prefix, site_prefix,
             )
             href = item_prefix + _html_path_to_url(item["path"])
             active_cls = (
@@ -3206,6 +3254,7 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                      site_terms, has_custom_css_href, version, project_name,
                      description, has_hero, custom_css_href, theme_meta,
                      asset_prefix="", unversioned_prefix=None,
+                     site_prefix=None,
                      mount_locale="", mount_project="", mount_version="",
                      available_versions=None, available_locales=None,
                      current_version="", current_locale="",
@@ -3221,6 +3270,11 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     """
     if unversioned_prefix is None:
         unversioned_prefix = prefix
+    if site_prefix is None:
+        # No caller said where the site level is, so it is wherever the
+        # output root is -- which is the answer for every build that is
+        # not mounted under a shared site.
+        site_prefix = asset_prefix
 
     # Cross-page term linking: wrap first occurrence of terms defined on
     # other pages in <a class="term-link"> before template wrapping.
@@ -3320,9 +3374,11 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         next_link = ""
         if prev_page:
             # A neighbour marked unversioned lives at the version-free
-            # mount, one level up from this page's own.
-            prev_hop = (
-                unversioned_prefix if prev_page.get("unversioned") else prefix
+            # mount, one level up from this page's own; a site-level one
+            # lives outside every mount.  Same three roots the sidebar
+            # spans, so the same rule decides the hop.
+            prev_hop = _nav_hop(
+                prev_page, prefix, unversioned_prefix, site_prefix,
             )
             prev_href = prev_hop + _html_path_to_url(prev_page["path"])
             prev_label = _escape_html(prev_page["label"])
@@ -3340,8 +3396,8 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
                 f'Page {page_number} of {total_pages}</span>'
             )
         if next_page:
-            next_hop = (
-                unversioned_prefix if next_page.get("unversioned") else prefix
+            next_hop = _nav_hop(
+                next_page, prefix, unversioned_prefix, site_prefix,
             )
             next_href = next_hop + _html_path_to_url(next_page["path"])
             next_label = _escape_html(next_page["label"])
@@ -3499,7 +3555,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                css_href="style.css", custom_css_href=None,
                toc_html="", breadcrumbs=None, prev_page=None,
                next_page=None, prefix="", asset_prefix="",
-               unversioned_prefix=None, home_href=None,
+               unversioned_prefix=None, site_prefix=None, home_href=None,
                repo=None, source_path=None,
                base_url=None, url_builder=None, page_path=None, description="",
                lang="en", date_published=None, date_modified=None, author=None,
@@ -3579,6 +3635,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         theme_meta=theme_meta,
         asset_prefix=asset_prefix,
         unversioned_prefix=unversioned_prefix,
+        site_prefix=site_prefix,
         mount_locale=mount_locale,
         mount_project=mount_project,
         mount_version=mount_version,

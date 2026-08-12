@@ -114,6 +114,12 @@ class TestURLBuilderProtocol:
             def base(self) -> str:
                 return "custom"
 
+            def mounted(self) -> bool:
+                return False
+
+            def site_root(self) -> str:
+                return "custom/"
+
         assert isinstance(CustomBuilder(), URLBuilder)
 
 

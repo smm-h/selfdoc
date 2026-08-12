@@ -27,6 +27,43 @@ class TestTopologyURLBuilderPageUrl:
         assert b.page_url("guide/") == "https://docs.smmh.dev/selfdoc/guide/"
 
 
+class TestTopologyURLBuilderSiteLevelPaths:
+    """Posts are the site's, not the project's, and drop the slug.
+
+    The assembly serves every project's posts from one shared ``blog/``
+    at the site root.  A URL carrying the slug names an address the site
+    does not serve, which is what a project page's link to its own post
+    used to be.
+    """
+
+    def test_a_post_drops_the_slug(self):
+        b = TopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
+        assert b.page_url("blog/hello/") == "https://docs.smmh.dev/blog/hello/"
+
+    def test_the_blog_index_drops_the_slug(self):
+        b = TopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
+        assert b.page_url("blog/") == "https://docs.smmh.dev/blog/"
+
+    def test_a_page_merely_starting_with_blog_keeps_the_slug(self):
+        """``blog-guide/`` is documentation about blogging, not a post."""
+        b = TopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
+        assert b.page_url("blog-guide/") == (
+            "https://docs.smmh.dev/selfdoc/blog-guide/"
+        )
+
+    def test_assets_keep_the_slug(self):
+        """A post's OG card is the project's file, in the project's subtree."""
+        b = TopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
+        assert b.asset_url("og-blog-hello.png") == (
+            "https://docs.smmh.dev/selfdoc/og-blog-hello.png"
+        )
+
+    def test_a_topology_project_is_mounted(self):
+        b = TopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
+        assert b.mounted() is True
+        assert b.site_root() == "https://docs.smmh.dev/"
+
+
 class TestTopologyURLBuilderAssetUrl:
     """Test TopologyURLBuilder.asset_url()."""
 

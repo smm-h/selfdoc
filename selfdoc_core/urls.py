@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from selfdoc_core.address import is_site_level
+
 
 @runtime_checkable
 class URLBuilder(Protocol):
@@ -30,6 +32,26 @@ class URLBuilder(Protocol):
 
     def base(self) -> str:
         """Return the base URL string (no trailing slash)."""
+        ...
+
+    def mounted(self) -> bool:
+        """Whether this project is served under a shared site's mount.
+
+        A mounted project's own output root is not the served root: the
+        site serves it under its slug, and serves the site-level pages
+        (posts) from the site root instead.  The two roots are different
+        directories, so a reference crossing between them cannot be a
+        relative hop and has to be an absolute URL.  Every surface that
+        writes such a reference asks here rather than sniffing config.
+        """
+        ...
+
+    def site_root(self) -> str:
+        """Return the URL of the served site's root, with a trailing slash.
+
+        For a standalone project that is its own base; for a mounted one
+        it is the shared site's base, above this project's slug.
+        """
         ...
 
 
@@ -65,6 +87,14 @@ class SimpleURLBuilder:
         """Return the base URL string (no trailing slash)."""
         return self._base_url
 
+    def mounted(self) -> bool:
+        """A standalone project is not mounted: its output root is served."""
+        return False
+
+    def site_root(self) -> str:
+        """The served root, which for a standalone project is its own base."""
+        return f"{self._base_url}/"
+
 
 class TopologyURLBuilder:
     """URLBuilder for topology-aware multi-project deployments.
@@ -72,6 +102,14 @@ class TopologyURLBuilder:
     Generates URLs incorporating the project slug under a shared docs base.
     For example, with docs_base="https://docs.smmh.dev" and slug="selfdoc",
     page_url("guide/") returns "https://docs.smmh.dev/selfdoc/guide/".
+
+    Site-level pages are the exception, and the reason this class rather
+    than its callers decides: a post is a citizen of the site, not of the
+    project that wrote it.  The site serves every project's posts from one
+    shared ``blog/`` at the site root, so ``page_url("blog/hello/")``
+    returns "https://docs.smmh.dev/blog/hello/" with no slug segment.
+    Assets keep the slug -- a post's OG card, stylesheet and search index
+    are the project's own files and stay in the project's subtree.
     """
 
     def __init__(
@@ -85,10 +123,16 @@ class TopologyURLBuilder:
         self._projects = projects or {}
 
     def page_url(self, path: str) -> str:
-        """Return the absolute URL for a page path under this project's slug."""
+        """Return the absolute URL for a page path.
+
+        Under this project's slug, unless the path is site-level -- see
+        the class docstring.
+        """
         path = path.lstrip("/")
         if not path:
             return f"{self._docs_base}/{self._slug}/"
+        if is_site_level(path):
+            return f"{self._docs_base}/{path}"
         return f"{self._docs_base}/{self._slug}/{path}"
 
     def asset_url(self, path: str) -> str:
@@ -105,6 +149,14 @@ class TopologyURLBuilder:
     def base(self) -> str:
         """Return the base URL string (docs_base/slug, no trailing slash)."""
         return f"{self._docs_base}/{self._slug}"
+
+    def mounted(self) -> bool:
+        """A topology project is mounted: the site serves it under its slug."""
+        return True
+
+    def site_root(self) -> str:
+        """The shared site's root, above this project's slug."""
+        return f"{self._docs_base}/"
 
     def cross_project_url(self, project_slug: str, path: str = "") -> str:
         """Generate a URL to another project's content using the projects dict.
