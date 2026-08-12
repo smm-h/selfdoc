@@ -276,9 +276,17 @@ def parse_directives(content: str, valid_names: set[str] | None = None) -> list[
     return directives
 
 
-# Backtick code span: matches `...`, ``...``, ```...```, etc. per CommonMark rules.
-# Uses a backreference so the closing delimiter has the same number of backticks.
-_BACKTICK_SPAN_RE = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
+#: Backtick code span: matches `...`, ``...``, ```...```, etc. per CommonMark
+#: rules.  A backreference makes the closing delimiter the same length as the
+#: opening one, so a span holding a backtick is read as one span.
+#:
+#: Shared, and deliberately so: the directive scanner skips what is inside a
+#: span, the spell mask refuses to read it, and the renderer marks it as code.
+#: Three readers, one definition of where a span begins and ends -- otherwise
+#: one of them decides a stretch of text is code while another decides it is
+#: prose, which is how ``x`` came to be masked from the spell checker and
+#: still rendered as unmarked prose.
+BACKTICK_SPAN_RE = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 
 
 def _mask_backtick_spans(line: str) -> tuple[str, list[str]]:
@@ -288,7 +296,7 @@ def _mask_backtick_spans(line: str) -> tuple[str, list[str]]:
     text for placeholder i. Handles any backtick-span length (`, ``, ```, etc.)
     per CommonMark rules.
     """
-    spans = list(_BACKTICK_SPAN_RE.finditer(line))
+    spans = list(BACKTICK_SPAN_RE.finditer(line))
     if not spans:
         return line, []
 
@@ -313,7 +321,7 @@ def blank_backtick_spans(line: str) -> str:
     the same column in the original line.  What is inside a code span is
     code, and no prose rule should read it.
     """
-    return _BACKTICK_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+    return BACKTICK_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
 
 
 def _unmask_backtick_spans(line: str, placeholders: list[str]) -> str:

@@ -14,6 +14,7 @@ from datetime import datetime
 
 from selfdoc_core.address import is_site_level, page_address
 from selfdoc_core.cv import extract_cv_person
+from selfdoc_core.directives import BACKTICK_SPAN_RE
 from selfdoc_core.icons import get_icon
 from selfdoc_core.identity import person_entity
 from selfdoc_core.prose import first_sentence
@@ -1681,42 +1682,65 @@ def _render_diff_lines(code_lines):
     return "\n".join(parts)
 
 
+def _code_span_content(raw):
+    """The text of a code span, with CommonMark's edge-space rule applied.
+
+    A span that both begins and ends with a space drops one from each end,
+    unless it is spaces all the way through.  That rule is what lets a span
+    hold a literal backtick at an edge: ``` `` ` `` ``` is one tick, not a
+    tick with spaces around it.
+    """
+    if len(raw) >= 2 and raw[0] == " " and raw[-1] == " " and raw.strip():
+        return raw[1:-1]
+    return raw
+
+
 def _inline_format(text):
-    """Apply inline formatting: links, bold, italic, inline code."""
-    # Inline code first (protect from other transformations)
+    """Apply inline formatting: links, bold, italic, inline code.
+
+    Code spans are found first and left untouched by everything else.  They
+    are matched by the shared :data:`BACKTICK_SPAN_RE`, the same pattern the
+    directive scanner and the spell mask use, so a span delimited by a run
+    of backticks -- ``` ``x`` ```, the form a writer needs when the code
+    itself contains a backtick -- is one span here exactly as it is there.
+    """
     parts = []
-    segments = text.split("`")
-    for idx, seg in enumerate(segments):
-        if idx % 2 == 1:
-            # Inside backticks -- render as code, no further processing
-            parts.append(f"<code>{_escape_html(seg)}</code>")
-        else:
-            # Outside backticks -- apply other inline formatting
-            formatted = seg
-            # Images: ![alt](src) -- must come before links
-            formatted = re.sub(
-                r"!\[([^\]]*)\]\(([^)]+)\)",
-                r'<img src="\2" alt="\1" loading="lazy">',
-                formatted,
-            )
-            # Links: [text](url)
-            formatted = re.sub(
-                r"\[([^\]]+)\]\(([^)]+)\)",
-                r'<a href="\2">\1</a>',
-                formatted,
-            )
-            # Inline stat/data markup: ==value== -> <data value="value">value</data>
-            formatted = re.sub(
-                r"==([^=]+?)==",
-                r'<data value="\1">\1</data>',
-                formatted,
-            )
-            # Bold: **text**
-            formatted = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", formatted)
-            # Italic: *text*
-            formatted = re.sub(r"\*(.+?)\*", r"<em>\1</em>", formatted)
-            parts.append(formatted)
+    pos = 0
+    for match in BACKTICK_SPAN_RE.finditer(text):
+        parts.append(_inline_format_prose(text[pos:match.start()]))
+        content = _escape_html(_code_span_content(match.group(2)))
+        parts.append(f"<code>{content}</code>")
+        pos = match.end()
+    parts.append(_inline_format_prose(text[pos:]))
     return "".join(parts)
+
+
+def _inline_format_prose(seg):
+    """Apply every inline rule except code spans to one run of prose."""
+    formatted = seg
+    # Images: ![alt](src) -- must come before links
+    formatted = re.sub(
+        r"!\[([^\]]*)\]\(([^)]+)\)",
+        r'<img src="\2" alt="\1" loading="lazy">',
+        formatted,
+    )
+    # Links: [text](url)
+    formatted = re.sub(
+        r"\[([^\]]+)\]\(([^)]+)\)",
+        r'<a href="\2">\1</a>',
+        formatted,
+    )
+    # Inline stat/data markup: ==value== -> <data value="value">value</data>
+    formatted = re.sub(
+        r"==([^=]+?)==",
+        r'<data value="\1">\1</data>',
+        formatted,
+    )
+    # Bold: **text**
+    formatted = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", formatted)
+    # Italic: *text*
+    formatted = re.sub(r"\*(.+?)\*", r"<em>\1</em>", formatted)
+    return formatted
 
 
 def _apply_cross_page_terms(body_html, site_terms, current_page, prefix):
