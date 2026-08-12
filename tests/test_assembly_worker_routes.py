@@ -138,7 +138,7 @@ def test_without_a_legacy_blog_host_nothing_is_prefixed(tmp_path):
         CANONICAL_BASE, "",
         project_slugs=PROJECT_SLUGS, post_slugs=POST_SLUGS,
     )
-    assert "HOST_PREFIXES = {}" in js_no_legacy
+    assert "HOST_PREFIXES = new Map([])" in js_no_legacy
     assert LEGACY_BLOG_HOST in js
     _routes(tmp_path, {
         "https://blog.example.com/hello/": f"{CANONICAL_BASE}/hello/",
@@ -293,7 +293,7 @@ def test_worker_embeds_the_address_space_as_data():
 
 def test_worker_declares_the_legacy_host_prefix():
     js = _worker()
-    assert f'"{LEGACY_BLOG_HOST}": "/blog"' in js
+    assert f'["{LEGACY_BLOG_HOST}", "/blog"]' in js
 
 
 def test_worker_exports_its_routing_for_testing():

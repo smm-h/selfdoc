@@ -47,7 +47,7 @@ def test_worker_targets_the_canonical_base():
 def test_worker_legacy_host_redirect_is_single_hop():
     """The retired subdomain goes straight to the canonical blog URL."""
     js = generate_worker_js(CANONICAL_BASE, LEGACY_BLOG_HOST)
-    assert f'"{LEGACY_BLOG_HOST}": "/blog"' in js
+    assert f'["{LEGACY_BLOG_HOST}", "/blog"]' in js
     # No intermediate apex hop.
     assert "smmh.dev" not in js
 
@@ -63,7 +63,7 @@ def test_worker_consolidates_every_path_on_non_canonical_hosts():
 
 def test_worker_omits_legacy_prefix_when_no_legacy_host():
     js = generate_worker_js(CANONICAL_BASE, "")
-    assert "HOST_PREFIXES = {}" in js
+    assert "HOST_PREFIXES = new Map([])" in js
     assert "url.hostname !== CANONICAL_HOST" in js
 
 
