@@ -63,7 +63,7 @@ class TestDefaultSchemaTypeMapping:
         assert ld["@type"] == "WebPage"
 
     def test_unknown_type_resolves_to_article(self):
-        ld = _render_with_page_type("essay")
+        ld = _render_with_page_type("fieldnote")
         assert ld["@type"] == "Article"
 
     def test_none_type_defaults_to_guide_then_tech_article(self):
