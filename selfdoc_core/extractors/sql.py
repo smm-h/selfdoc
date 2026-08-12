@@ -12,9 +12,12 @@ import re
 
 from selfdoc_core.extractors.base import (
     BaseExtractor,
+    demote_doc_headings,
     format_error,
     handle_table_config,
     read_source,
+    symbol_heading,
+    symbol_span,
 )
 from selfdoc_core.tables import render_markdown_table
 
@@ -1001,6 +1004,22 @@ def _extract_comment_string(text):
 # ---------------------------------------------------------------------------
 
 
+def _type_label(t):
+    """One-line shape of a user-defined type: its variants or its fields.
+
+    Every name in it -- an enum's labels, a composite's field names and
+    their SQL types -- was read out of the DDL, so each is set as a code
+    span rather than run together into a sentence.
+    """
+    if t["kind"] == "enum":
+        vals = ", ".join(symbol_span(v) for v in t["values"])
+        return f"ENUM: {vals}"
+    fields_str = ", ".join(
+        symbol_span(f"{f['name']} {f['type']}") for f in t["fields"]
+    )
+    return f"COMPOSITE: {fields_str}"
+
+
 def _handle_ref(path, target, body, source_paths, base_dir, attrs):
     """List all CREATE objects with their COMMENT ON descriptions, grouped by type.
 
@@ -1033,40 +1052,32 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
             if t["name"] == target:
                 desc = _lookup_comment(comments, "table", t["name"], t["schema"])
                 if desc:
-                    return f"### {t['name']}\n\n{desc}"
-                return f"### {t['name']}"
+                    return f"{symbol_heading(3, t['name'])}\n\n{demote_doc_headings(desc, 3)}"
+                return symbol_heading(3, t["name"])
         for v in views:
             if v["name"] == target:
                 desc = _lookup_comment(comments, "view", v["name"], v["schema"])
                 if desc:
-                    return f"### {v['name']}\n\n{desc}"
-                return f"### {v['name']}"
+                    return f"{symbol_heading(3, v['name'])}\n\n{demote_doc_headings(desc, 3)}"
+                return symbol_heading(3, v["name"])
         for t in types:
             if t["name"] == target:
                 desc = _lookup_comment(comments, "type", t["name"], t["schema"])
-                if t["kind"] == "enum":
-                    vals = ", ".join(t["values"])
-                    label = f"ENUM: {vals}"
-                else:
-                    fields_str = ", ".join(
-                        f"{f['name']} {f['type']}" for f in t["fields"]
-                    )
-                    label = f"COMPOSITE: {fields_str}"
-                parts_t = [f"### {t['name']}", "", label]
+                parts_t = [symbol_heading(3, t["name"]), "", _type_label(t)]
                 if desc:
                     parts_t.append("")
-                    parts_t.append(desc)
+                    parts_t.append(demote_doc_headings(desc, 3))
                 return "\n".join(parts_t)
         for f in functions:
             if f["name"] == target:
                 desc = _lookup_comment(comments, "function", f["name"], f["schema"])
                 if desc:
-                    return f"### {f['name']}\n\n{desc}"
-                return f"### {f['name']}"
+                    return f"{symbol_heading(3, f['name'])}\n\n{demote_doc_headings(desc, 3)}"
+                return symbol_heading(3, f["name"])
         return format_error(f"symbol '{target}' not found in '{path}'")
 
     parts = []
-    parts.append(f"## {os.path.basename(resolved)}")
+    parts.append(symbol_heading(2, os.path.basename(resolved)))
 
     # Tables
     if tables:
@@ -1076,9 +1087,9 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         for t in tables:
             desc = _lookup_comment(comments, "table", t["name"], t["schema"])
             if desc:
-                parts.append(f"- **{t['name']}** -- {desc}")
+                parts.append(f"- {symbol_span(t['name'])} -- {desc}")
             else:
-                parts.append(f"- **{t['name']}**")
+                parts.append(f"- {symbol_span(t['name'])}")
 
     # Views
     if views:
@@ -1088,9 +1099,9 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         for v in views:
             desc = _lookup_comment(comments, "view", v["name"], v["schema"])
             if desc:
-                parts.append(f"- **{v['name']}** -- {desc}")
+                parts.append(f"- {symbol_span(v['name'])} -- {desc}")
             else:
-                parts.append(f"- **{v['name']}**")
+                parts.append(f"- {symbol_span(v['name'])}")
 
     # Types
     if types:
@@ -1099,18 +1110,11 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         parts.append("")
         for t in types:
             desc = _lookup_comment(comments, "type", t["name"], t["schema"])
-            if t["kind"] == "enum":
-                vals = ", ".join(t["values"])
-                label = f"ENUM: {vals}"
-            else:
-                fields_str = ", ".join(
-                    f"{f['name']} {f['type']}" for f in t["fields"]
-                )
-                label = f"COMPOSITE: {fields_str}"
+            label = _type_label(t)
             if desc:
-                parts.append(f"- **{t['name']}** -- {label} -- {desc}")
+                parts.append(f"- {symbol_span(t['name'])} -- {label} -- {desc}")
             else:
-                parts.append(f"- **{t['name']}** -- {label}")
+                parts.append(f"- {symbol_span(t['name'])} -- {label}")
 
     # Functions
     if functions:
@@ -1120,9 +1124,9 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         for f in functions:
             desc = _lookup_comment(comments, "function", f["name"], f["schema"])
             if desc:
-                parts.append(f"- **{f['name']}** -- {desc}")
+                parts.append(f"- {symbol_span(f['name'])} -- {desc}")
             else:
-                parts.append(f"- **{f['name']}**")
+                parts.append(f"- {symbol_span(f['name'])}")
 
     return "\n".join(parts)
 
@@ -1224,7 +1228,7 @@ def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     # Multiple tables -- show all
     results = []
     for t in tables:
-        results.append(f"### {t['name']}")
+        results.append(symbol_heading(3, t["name"]))
         results.append("")
         results.append(_format_table_schema(t))
     return "\n".join(results)

@@ -10,6 +10,7 @@ LanguageExtractor methods.
 
 import json
 import os
+import re
 
 from selfdoc_core.prose import join_wrapped_lines
 from selfdoc_core.tables import render_markdown_table
@@ -19,6 +20,125 @@ from selfdoc_core.utils import resolve_directive_path
 def format_error(message):
     """Format a selfdoc error message for display in markdown output."""
     return f"> *[selfdoc: {message}]*"
+
+
+def symbol_heading(level, name):
+    """A heading naming something the extractor read out of source.
+
+    A class, a function, a struct field, a table, a module path -- every
+    one of them is a token the generator copied from code, and it is
+    emitted as a code span so the page says so.
+
+    That is a claim about what the text *is*, and two readers act on it.
+    A human sees a symbol set in the page's code face rather than a word
+    in its prose face.  The spell checker sees a code span and does not
+    read it: it masks inline code, so an identifier it cannot recognize as
+    English -- ``JSONResponse``, ``returncode`` -- stops being a
+    misspelling the moment the generator marks it as what it is.  What
+    remains flagged is docstring prose, which is the author's writing and
+    the author's to fix; an identifier written into a sentence is
+    backticked by whoever wrote the sentence.
+
+    The heading's anchor is unaffected: anchors are slugified from the
+    *rendered* inline form, and rendering a code span leaves the same
+    text, so ``#jsonresponse`` still addresses the same heading.
+    """
+    return f"{'#' * level} `{name}`"
+
+
+def symbol_span(name):
+    """A token the extractor read out of source, inline in generated prose.
+
+    The heading form of the same claim is :func:`symbol_heading`; this is
+    what a generated list item, a table cell or a rendered label uses.  A
+    name that came from code is set in the code face and skipped by the
+    spell checker, whichever generated structure it appears in.
+    """
+    return f"`{name}`"
+
+
+def symbol_heading_pattern(name):
+    """Match a heading that names *name*, wherever the heading came from.
+
+    The coverage measurement asks one question of a page -- does any
+    heading on it name this symbol -- and pages come from two writers.
+    :func:`symbol_heading` writes the code-span form; an author writing a
+    reference page by hand writes whichever form reads well to them.  The
+    optional qualifier admits a method named by its owner
+    (``Pipeline.Execute``).
+    """
+    return re.compile(
+        r"^#{2,4}\s+`?(?:\w+\.)?" + re.escape(name) + r"`?\s*$",
+        re.MULTILINE,
+    )
+
+
+#: An ATX heading, unindented.  CommonMark allows up to three leading
+#: spaces, but a doc comment that indents a ``#`` is far more likely to be
+#: showing a shell prompt or a comment character than writing a heading, so
+#: only column zero counts here.
+_ATX_HEADING = re.compile(r"^(#{1,6})(\s.*)?$")
+
+#: A fenced code block's delimiter.  Headings inside one are content.
+_CODE_FENCE = re.compile(r"^\s*(```|~~~)")
+
+
+def demote_doc_headings(text, base_level):
+    """Renest the headings a doc comment wrote, under the one above them.
+
+    A doc comment is written as if it owned a document -- Go's own
+    convention is ``# Usage``, and a KDoc, docstring or JSDoc block can
+    carry any markdown -- but on a generated reference page it is a
+    subsection of a symbol, and the page already has exactly one H1: its
+    title.  Emitted verbatim, a package doc with headings puts a second H1
+    on the page, which is a hard error, and the symbol the doc belongs to
+    stops being its parent in the outline.
+
+    *base_level* is the level of the heading the text sits under: the
+    symbol's own heading, or 1 -- the page title -- for a directive that
+    emits the doc alone.  Every heading shifts by the same amount, so the
+    doc's internal structure survives; the shallowest one becomes the
+    direct child of *base_level*.  Nothing shifts when the doc is already
+    nested deeply enough, and nothing goes past H6, markdown's floor.
+    """
+    if not text:
+        return text
+    lines = text.split("\n")
+
+    in_fence = False
+    shallowest = None
+    for line in lines:
+        if _CODE_FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        match = _ATX_HEADING.match(line)
+        if match:
+            level = len(match.group(1))
+            if shallowest is None or level < shallowest:
+                shallowest = level
+
+    if shallowest is None:
+        return text
+    delta = (base_level + 1) - shallowest
+    if delta <= 0:
+        return text
+
+    in_fence = False
+    out = []
+    for line in lines:
+        if _CODE_FENCE.match(line):
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        match = _ATX_HEADING.match(line) if not in_fence else None
+        if match:
+            level = min(len(match.group(1)) + delta, 6)
+            out.append("#" * level + (match.group(2) or ""))
+        else:
+            out.append(line)
+    return "\n".join(out)
 
 
 def parse_comma_set(value: str) -> set[str]:
@@ -446,7 +566,7 @@ def parse_docstring_sections(text: str) -> dict:
     }
 
 
-def _format_docstring(docstring):
+def _format_docstring(docstring, base_level):
     """Transform Google-style docstring sections into markdown.
 
     Detects section headers like ``Args:``, ``Returns:``, ``Raises:``
@@ -459,7 +579,16 @@ def _format_docstring(docstring):
     sentence becomes one line; blank-line paragraph breaks, indented
     preformatted blocks, fenced code, list items, and doctest lines are
     left verbatim.
+
+    Args:
+        base_level: The level of the heading this text is emitted under,
+            or 1 for the page title when it is emitted alone.  Headings
+            the doc comment wrote are renested beneath it; see
+            :func:`demote_doc_headings`.  It has no default, because
+            every caller knows where it is putting the text and a wrong
+            guess puts a second H1 on the page.
     """
+    docstring = demote_doc_headings(docstring, base_level)
     docstring = join_wrapped_lines(docstring)
     lines = docstring.split("\n")
     out = []

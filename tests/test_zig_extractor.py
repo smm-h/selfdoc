@@ -130,13 +130,13 @@ class TestRef:
         assert "Audio system: 16-channel mixing" in result
         assert "Self-contained SDL3 audio module" in result
         # Pub declarations should be present
-        assert "### NUM_CHANNELS" in result
-        assert "### MUSIC_CHANNEL" in result
-        assert "### init" in result
-        assert "### deinit" in result
-        assert "### cacheSoundEntry" in result
-        assert "### lookupSoundCache" in result
-        assert "### sound_cache_count" in result
+        assert "### `NUM_CHANNELS`" in result
+        assert "### `MUSIC_CHANNEL`" in result
+        assert "### `init`" in result
+        assert "### `deinit`" in result
+        assert "### `cacheSoundEntry`" in result
+        assert "### `lookupSoundCache`" in result
+        assert "### `sound_cache_count`" in result
         # Private declarations should NOT be present
         assert "privateHelper" not in result
         assert "AudioChannel" not in result
@@ -177,7 +177,7 @@ class TestRef:
             [],
             str(tmp_path),
         )
-        assert "### deinit" in result
+        assert "### `deinit`" in result
         assert "Shuts down" in result
         assert "init" not in result.split("deinit")[0]  # "init" shouldn't appear before "deinit"
 
@@ -208,7 +208,7 @@ class TestProseDesc:
         assert "Audio system" in result
         assert "Self-contained SDL3 audio module" in result
         # Declarations should NOT be present
-        assert "### init" not in result
+        assert "### `init`" not in result
         assert "pub fn" not in result
 
     def test_prose_desc_no_module_doc(self, zig_project):
@@ -252,8 +252,8 @@ class TestTableSchema:
             [],
             str(zig_project),
         )
-        assert "### QueueEntry" in result
-        assert "### WriterConfig" in result
+        assert "### `QueueEntry`" in result
+        assert "### `WriterConfig`" in result
         assert "`batch_size`" in result
         assert "`conninfo`" in result
 

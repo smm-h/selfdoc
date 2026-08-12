@@ -16,9 +16,12 @@ from selfdoc_core.tables import render_markdown_table
 from selfdoc_core.extractors.base import (
     BaseExtractor,
     _format_docstring,
+    demote_doc_headings,
     format_error,
     handle_table_config,
     read_source,
+    symbol_heading,
+    symbol_span,
 )
 
 # Patterns for exported Go symbols (used by GoExtractor.public_symbols)
@@ -478,11 +481,11 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
     package_name, package_doc = _extract_package_doc(file_contents)
 
     parts = []
-    parts.append(f"## {path}")
+    parts.append(symbol_heading(2, path))
 
     if package_doc:
         parts.append("")
-        parts.append(_format_docstring(package_doc))
+        parts.append(_format_docstring(package_doc, 2))
 
     # Extract exported declarations from all files
     declarations = []
@@ -496,12 +499,12 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
             return format_error(f"symbol '{target}' not found in '{path}'")
         decl = matched[0]
         parts_t = []
-        parts_t.append(f"### {decl['name']}")
+        parts_t.append(symbol_heading(3, decl["name"]))
         parts_t.append("")
         parts_t.append(f"```go\n{decl['signature']}\n```")
         if decl["doc"]:
             parts_t.append("")
-            parts_t.append(_format_docstring(decl["doc"]))
+            parts_t.append(_format_docstring(decl["doc"], 3))
         return "\n".join(parts_t)
 
     # Group by kind for cleaner output
@@ -514,12 +517,12 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
 
         for decl in kind_decls:
             parts.append("")
-            parts.append(f"### {decl['name']}")
+            parts.append(symbol_heading(3, decl["name"]))
             parts.append("")
             parts.append(f"```go\n{decl['signature']}\n```")
             if decl["doc"]:
                 parts.append("")
-                parts.append(_format_docstring(decl["doc"]))
+                parts.append(_format_docstring(decl["doc"], 3))
 
     return "\n".join(parts)
 
@@ -961,10 +964,10 @@ def _handle_schema(path, target, body, source_paths, base_dir, attrs):
     # No type specified: format all exported structs
     results = []
     for s in structs:
-        results.append(f"### {s['name']}")
+        results.append(symbol_heading(3, s["name"]))
         results.append("")
         if s["doc"]:
-            results.append(s["doc"])
+            results.append(demote_doc_headings(s["doc"], 3))
             results.append("")
         results.append(_format_struct_table(s))
     return "\n".join(results)
@@ -1115,7 +1118,7 @@ def _handle_cli(path, target, body, source_paths, base_dir, attrs):
     usage_text = _extract_usage_constants(source)
     if usage_text:
         for name, text in usage_text:
-            parts.append(f"**{name}:**")
+            parts.append(f"**{symbol_span(name)}:**")
             parts.append("")
             parts.append(f"```\n{text.strip()}\n```")
 
@@ -1133,9 +1136,9 @@ def _handle_cli(path, target, body, source_paths, base_dir, attrs):
         flag_rows = []
         for flag in flags:
             flag_rows.append([
-                f"`{flag['name']}`",
-                flag["type"],
-                flag["default"],
+                symbol_span(flag["name"]),
+                symbol_span(flag["type"]) if flag["type"] else "",
+                symbol_span(flag["default"]) if flag["default"] else "",
                 flag["desc"],
             ])
         parts.append(render_markdown_table(
@@ -1151,7 +1154,7 @@ def _handle_cli(path, target, body, source_paths, base_dir, attrs):
         parts.append("")
         cmd_rows = []
         for cmd in commands:
-            cmd_rows.append([f"`{cmd['name']}`", cmd["desc"]])
+            cmd_rows.append([symbol_span(cmd["name"]), cmd["desc"]])
         parts.append(render_markdown_table(
             ["Command", "Description"],
             cmd_rows,
@@ -1367,7 +1370,7 @@ def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     if not package_doc:
         return format_error(f"no package doc comment found in '{path}'")
 
-    return _format_docstring(package_doc)
+    return _format_docstring(package_doc, 1)
 
 
 GoExtractor._HANDLERS = {

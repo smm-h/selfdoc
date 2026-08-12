@@ -108,7 +108,7 @@ class TestFormatDocstringNormalization:
             "    run()\n"
             "    done()\n"
         )
-        out = _format_docstring(raw)
+        out = _format_docstring(raw, 2)
         assert (
             "Manages configuration loading for the whole application, "
             "resolving defaults and env overrides." in out
@@ -117,6 +117,39 @@ class TestFormatDocstringNormalization:
 
     def test_blank_line_paragraph_breaks_preserved(self):
         raw = "First paragraph\nwrapped line.\n\nSecond paragraph\nwrapped."
-        out = _format_docstring(raw)
+        out = _format_docstring(raw, 2)
         assert "First paragraph wrapped line." in out
         assert "Second paragraph wrapped." in out
+
+    def test_a_heading_is_not_joined_into_the_line_below_it(self):
+        """A heading ends the paragraph above and opens nothing.
+
+        Joined to the sentence under it, the sentence becomes part of the
+        heading -- and Go's doc convention writes exactly that shape when
+        a section has no blank line after its title.
+        """
+        out = _format_docstring("# Usage\nCall it.\n", 2)
+        assert "### Usage" in out
+        assert "### Usage Call it." not in out
+
+    def test_headings_are_renested_under_the_emitting_heading(self):
+        """A doc comment writes as if it owned the document; on a reference
+        page it is a subsection, and the page already has its one H1."""
+        raw = "Intro.\n\n# Usage\n\nHow.\n\n## Detail\n\nMore.\n"
+        out = _format_docstring(raw, 3)
+        assert "#### Usage" in out
+        assert "##### Detail" in out
+        assert "\n# " not in out
+        assert not out.startswith("# ")
+
+    def test_a_heading_inside_a_fence_is_content(self):
+        raw = "Intro.\n\n```\n# not a heading\n```\n\n# Usage\n\nHow.\n"
+        out = _format_docstring(raw, 2)
+        assert "# not a heading" in out
+        assert "### Usage" in out
+
+    def test_a_doc_already_nested_deeply_enough_is_left_alone(self):
+        raw = "Intro.\n\n#### Deep\n\nText.\n"
+        out = _format_docstring(raw, 2)
+        assert "#### Deep" in out
+        assert "##### Deep" not in out

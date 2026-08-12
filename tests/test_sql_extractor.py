@@ -705,9 +705,9 @@ class TestRefHandler:
             [],
             str(sql_project),
         )
-        assert "**users**" in result
+        assert "`users`" in result
         assert "Registered user accounts" in result
-        assert "**posts**" in result
+        assert "`posts`" in result
         assert "User-created blog posts" in result
 
     def test_ref_lists_views(self, sql_project):
@@ -719,8 +719,8 @@ class TestRefHandler:
             [],
             str(sql_project),
         )
-        assert "**active_users**" in result
-        assert "**recent_posts**" in result
+        assert "`active_users`" in result
+        assert "`recent_posts`" in result
 
     def test_ref_lists_enum_type_with_values(self, sql_project):
         ext = SqlExtractor()
@@ -731,11 +731,11 @@ class TestRefHandler:
             [],
             str(sql_project),
         )
-        assert "**status_type**" in result
+        assert "`status_type`" in result
         assert "ENUM:" in result
-        assert "draft" in result
-        assert "published" in result
-        assert "archived" in result
+        assert "`draft`" in result
+        assert "`published`" in result
+        assert "`archived`" in result
 
     def test_ref_lists_composite_type(self, sql_project):
         ext = SqlExtractor()
@@ -746,9 +746,9 @@ class TestRefHandler:
             [],
             str(sql_project),
         )
-        assert "**address**" in result
+        assert "`address`" in result
         assert "COMPOSITE:" in result
-        assert "street text" in result
+        assert "`street text`" in result
 
     def test_ref_lists_functions(self, sql_project):
         ext = SqlExtractor()
@@ -759,8 +759,8 @@ class TestRefHandler:
             [],
             str(sql_project),
         )
-        assert "**update_timestamp**" in result
-        assert "**soft_delete**" in result
+        assert "`update_timestamp`" in result
+        assert "`soft_delete`" in result
         assert "Auto-update timestamp trigger function" in result
 
     def test_ref_no_arg_errors(self):
@@ -948,8 +948,8 @@ class TestTableSchemaHandler:
             str(sql_project),
         )
         # Both table names should appear as headings
-        assert "### users" in result
-        assert "### posts" in result
+        assert "### `users`" in result
+        assert "### `posts`" in result
 
     def test_table_schema_table_not_found(self, sql_project):
         ext = SqlExtractor()

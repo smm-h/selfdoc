@@ -85,7 +85,7 @@ class TestModuleDirective:
         result = PythonExtractor().extract(
             "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
-        assert "## core" in result
+        assert "## `core`" in result
         assert "Core module for mylib." in result
         assert "Provides essential utilities." in result
 
@@ -93,7 +93,7 @@ class TestModuleDirective:
         result = PythonExtractor().extract(
             "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
-        assert "### greet" in result
+        assert "### `greet`" in result
         assert "def greet(name: str, loud: bool=False) -> str" in result
         assert "Say hello to someone." in result
 
@@ -101,9 +101,9 @@ class TestModuleDirective:
         result = PythonExtractor().extract(
             "ref", {"path": "core"}, [], source_paths, str(sample_project)
         )
-        assert "### Processor" in result
+        assert "### `Processor`" in result
         assert "Processes items in a pipeline." in result
-        assert "#### run" in result
+        assert "#### `run`" in result
         assert "Run the pipeline on items." in result
 
     def test_skips_private_without_docstring(self, sample_project, source_paths):
@@ -157,7 +157,7 @@ class TestModuleDirective:
         # When source_paths is ["mylib/"], "mylib.core" would look for
         # mylib/mylib/core.py which won't exist. But direct resolution
         # against base_dir should find it.
-        assert "## mylib.core" in result
+        assert "## `mylib.core`" in result
         assert "Core module for mylib." in result
 
     def test_empty_arg_error(self, sample_project, source_paths):
@@ -187,7 +187,7 @@ class Settings:
         result = PythonExtractor().extract(
             "ref", {"path": "settings"}, [], source_paths, str(sample_project)
         )
-        assert "### Settings" in result
+        assert "### `Settings`" in result
         assert "| Field | Type | Default |" in result
         assert "| --- | --- | --- |" in result
         assert "| `host` | `str` | `'localhost'` |" in result
@@ -215,7 +215,7 @@ class Settings:
             [],
             str(tmp_path),
         )
-        assert "### bar" in result
+        assert "### `bar`" in result
         assert "Bar doc" in result
         assert "foo" not in result
         assert "Module docstring" not in result
@@ -855,7 +855,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg"}, [], [], str(tmp_path)
         )
-        assert "### Foo" in result
+        assert "### `Foo`" in result
         assert "from ._impl import Foo" in result
 
     def test_reexport_with_alias(self, tmp_path):
@@ -871,7 +871,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg"}, [], [], str(tmp_path)
         )
-        assert "### Bar" in result
+        assert "### `Bar`" in result
         assert "Foo as Bar" in result
 
     def test_reexport_nested_in_try_block(self, tmp_path):
@@ -890,7 +890,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg"}, [], [], str(tmp_path)
         )
-        assert "### Fast" in result
+        assert "### `Fast`" in result
 
     def test_reexport_nested_in_type_checking_block(self, tmp_path):
         """A re-export inside `if TYPE_CHECKING:` is still emitted."""
@@ -907,7 +907,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg"}, [], [], str(tmp_path)
         )
-        assert "### Spec" in result
+        assert "### `Spec`" in result
 
     def test_version_constant_appears_in_ref_output(self, tmp_path):
         """A module-level `__version__ = "..."` constant listed in __all__ appears."""
@@ -921,7 +921,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg"}, [], [], str(tmp_path)
         )
-        assert "### __version__" in result
+        assert "### `__version__`" in result
         assert "__version__ = " in result
         assert "1.2.3" in result
 
@@ -939,7 +939,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg"}, [], [], str(tmp_path)
         )
-        assert "### os" not in result
+        assert "### `os`" not in result
         assert "import os" not in result
 
     def test_target_resolves_reexport(self, tmp_path):
@@ -955,7 +955,7 @@ class TestReexportInRefOutput:
         result = PythonExtractor().extract(
             "ref", {"path": "pkg", "target": "Foo"}, [], [], str(tmp_path)
         )
-        assert "### Foo" in result
+        assert "### `Foo`" in result
         assert "from ._impl import Foo" in result
         assert "not found" not in result
 
@@ -979,7 +979,7 @@ class TestDocstringlessPublicClasses:
         result = PythonExtractor().extract(
             "ref", {"path": "models.py"}, [], [], str(tmp_path)
         )
-        assert "### Params" in result
+        assert "### `Params`" in result
         assert "| Field | Type | Default |" in result
         assert "`name`" in result
         assert "`count`" in result
@@ -995,7 +995,7 @@ class TestDocstringlessPublicClasses:
         result = PythonExtractor().extract(
             "ref", {"path": "plain.py"}, [], [], str(tmp_path)
         )
-        assert "### Plain" in result
+        assert "### `Plain`" in result
         assert "class Plain" in result
 
     def test_existing_dataclass_rendering_unchanged(self, tmp_path):
@@ -1012,7 +1012,7 @@ class TestDocstringlessPublicClasses:
         result = PythonExtractor().extract(
             "ref", {"path": "dc.py"}, [], [], str(tmp_path)
         )
-        assert "### Point" in result
+        assert "### `Point`" in result
         assert "| Field | Type | Default |" in result
         assert "`x`" in result
         assert "`y`" in result
@@ -1031,9 +1031,9 @@ class TestDocstringlessPublicClasses:
         result = PythonExtractor().extract(
             "ref", {"path": "doc.py"}, [], [], str(tmp_path)
         )
-        assert "### Documented" in result
+        assert "### `Documented`" in result
         assert "A documented class." in result
-        assert "#### run" in result
+        assert "#### `run`" in result
         # No spurious raw class-signature fallback block should be added
         # when a docstring is already present.
-        assert result.count("### Documented") == 1
+        assert result.count("### `Documented`") == 1

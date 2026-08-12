@@ -12,9 +12,11 @@ import re
 
 from selfdoc_core.extractors.base import (
     BaseExtractor,
+    demote_doc_headings,
     format_error,
     handle_table_config,
     read_source,
+    symbol_heading,
 )
 from selfdoc_core.extractors.typescript import _parse_jsdoc_text
 from selfdoc_core.tables import render_markdown_table
@@ -622,7 +624,7 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         for prop in props:
             if prop["name"] == target:
                 parts_t = []
-                parts_t.append(f"### {prop['name']}")
+                parts_t.append(symbol_heading(3, prop["name"]))
                 parts_t.append("")
                 row = [
                     f"`{prop['name']}`",
@@ -637,14 +639,14 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         for exp in inst_exports:
             if exp["name"] == target:
                 parts_t = []
-                parts_t.append(f"### {exp['name']}")
+                parts_t.append(symbol_heading(3, exp["name"]))
                 parts_t.append("")
                 parts_t.append(f"```typescript\n{exp['signature']}\n```")
                 return "\n".join(parts_t)
         for exp in mod_exports:
             if exp["name"] == target:
                 parts_t = []
-                parts_t.append(f"### {exp['name']}")
+                parts_t.append(symbol_heading(3, exp["name"]))
                 parts_t.append("")
                 parts_t.append(f"```typescript\n{exp['signature']}\n```")
                 return "\n".join(parts_t)
@@ -652,11 +654,11 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
 
     # Full component reference rendering
     parts = []
-    parts.append(f"## {component_name}")
+    parts.append(symbol_heading(2, component_name))
 
     if comp_doc:
         parts.append("")
-        parts.append(comp_doc)
+        parts.append(demote_doc_headings(comp_doc, 2))
 
     if props:
         parts.append("")
@@ -680,7 +682,7 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         parts.append("### Instance Exports")
         for exp in inst_exports:
             parts.append("")
-            parts.append(f"#### {exp['name']}")
+            parts.append(symbol_heading(4, exp["name"]))
             parts.append("")
             parts.append(f"```typescript\n{exp['signature']}\n```")
 
@@ -689,7 +691,7 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         parts.append("### Module Exports")
         for exp in mod_exports:
             parts.append("")
-            parts.append(f"#### {exp['name']}")
+            parts.append(symbol_heading(4, exp["name"]))
             parts.append("")
             parts.append(f"```typescript\n{exp['signature']}\n```")
 

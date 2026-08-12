@@ -398,21 +398,21 @@ class TestRef:
         assert "Supports incremental parsing and error recovery" in result
 
         # ## heading for the file
-        assert "## src/main/kotlin/Parser.kt" in result
+        assert "## `src/main/kotlin/Parser.kt`" in result
 
         # ### headings for public symbols
-        assert "### Parser" in result
-        assert "### ASTNode" in result
-        assert "### ParseResult" in result
-        assert "### ParserFactory" in result
-        assert "### EmptyNode" in result
-        assert "### Parseable" in result
-        assert "### TokenType" in result
-        assert "### parseSource" in result
-        assert "### maxParseDepth" in result
-        assert "### parserVersion" in result
-        assert "### ParseCallback" in result
-        assert "### publishedApiHelper" in result
+        assert "### `Parser`" in result
+        assert "### `ASTNode`" in result
+        assert "### `ParseResult`" in result
+        assert "### `ParserFactory`" in result
+        assert "### `EmptyNode`" in result
+        assert "### `Parseable`" in result
+        assert "### `TokenType`" in result
+        assert "### `parseSource`" in result
+        assert "### `maxParseDepth`" in result
+        assert "### `parserVersion`" in result
+        assert "### `ParseCallback`" in result
+        assert "### `publishedApiHelper`" in result
 
         # Code blocks with kotlin syntax
         assert "```kotlin" in result
@@ -443,7 +443,7 @@ class TestRef:
             [],
             str(tmp_path),
         )
-        assert "### format" in result
+        assert "### `format`" in result
         assert "Formats output" in result
         assert "parse" not in result
 
@@ -474,7 +474,7 @@ class TestProseDesc:
         assert "Parser module" in result
         assert "Supports incremental parsing and error recovery" in result
         # Declaration-level comments should NOT be present
-        assert "### Parser" not in result
+        assert "### `Parser`" not in result
         assert "A source code parser with incremental support" not in result
 
 

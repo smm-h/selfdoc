@@ -315,7 +315,7 @@ class Greeting {}
         ext = DartExtractor()
         result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
         assert "A widget that displays a greeting" in result
-        assert "### Greeting" in result
+        assert "### `Greeting`" in result
 
     def test_doc_comment_cross_reference(self, tmp_path):
         dart_file = tmp_path / "pubspec.yaml"
@@ -389,20 +389,20 @@ class Foo {}
         result = ext.extract("ref", {"path": "lib.dart"}, [], [], str(tmp_path))
         assert "The main library" in result
         assert "Provides utilities for testing" in result
-        assert "### Foo" in result
+        assert "### `Foo`" in result
 
     def test_ref_extracts_declarations(self, dart_project):
         ext = DartExtractor()
         result = ext.extract(
             "ref", {"path": "lib/my_package.dart"}, [], [], str(dart_project)
         )
-        assert "### Animal" in result
-        assert "### Dog" in result
-        assert "### greet" in result
-        assert "### fetchNumbers" in result
-        assert "### Color" in result
-        assert "### Meters" in result
-        assert "### StringCallback" in result
+        assert "### `Animal`" in result
+        assert "### `Dog`" in result
+        assert "### `greet`" in result
+        assert "### `fetchNumbers`" in result
+        assert "### `Color`" in result
+        assert "### `Meters`" in result
+        assert "### `StringCallback`" in result
         assert "```dart" in result
         # Private symbols should not appear
         assert "_privateHelper" not in result
@@ -426,7 +426,7 @@ class Foo {}
         ext = DartExtractor()
         result = ext.extract("ref", {"path": "lib"}, [], [], str(dart_project))
         # Should include declarations from dart files in the directory
-        assert "## lib" in result
+        assert "## `lib`" in result
 
     def test_ref_with_target(self, tmp_path):
         """ref directive with target renders only the specified symbol."""
@@ -445,7 +445,7 @@ class Foo {}
             [],
             str(tmp_path),
         )
-        assert "### process" in result
+        assert "### `process`" in result
         assert "Processes the input" in result
         assert "initialize" not in result
 
@@ -479,7 +479,7 @@ class Foo {}
         )
         assert "The main library" in result
         assert "Provides utilities for testing" in result
-        assert "### Foo" not in result
+        assert "### `Foo`" not in result
 
     def test_prose_desc_no_doc(self, tmp_path):
         (tmp_path / "pubspec.yaml").write_text("name: test\n")
@@ -546,8 +546,8 @@ class Size {
         result = ext.extract(
             "table-schema", {"path": "models.dart"}, [], [], str(tmp_path)
         )
-        assert "### Point" in result
-        assert "### Size" in result
+        assert "### `Point`" in result
+        assert "### `Size`" in result
         assert "`x`" in result
         assert "`width`" in result
 
@@ -748,8 +748,8 @@ class PartClass {}
 
         ext = DartExtractor()
         result = ext.extract("ref", {"path": "lib/mylib.dart"}, [], [], str(tmp_path))
-        assert "### MainClass" in result
-        assert "### PartClass" in result
+        assert "### `MainClass`" in result
+        assert "### `PartClass`" in result
         assert "A utility class from part file" in result
 
     def test_missing_part_file_skipped(self, tmp_path):
@@ -979,8 +979,8 @@ class Product {}
         ext = DartExtractor()
         result = ext.extract("ref", {"path": "lib/test.dart"}, [], [], str(tmp_path))
         # Should have User (local) and Product (exported)
-        assert "### User" in result
-        assert "### Product" in result
+        assert "### `User`" in result
+        assert "### `Product`" in result
         # The local User's doc should win (shadow)
         assert "Local override" in result
 
@@ -1018,7 +1018,7 @@ class MyWidget {}
 
         ext = DartExtractor()
         result = ext.extract("ref", {"path": "lib/test.dart"}, [], [], str(tmp_path))
-        assert "### MyWidget" in result
+        assert "### `MyWidget`" in result
         assert "A custom widget" in result
 
     def test_show_combinator_multiple_names(self, tmp_path):
@@ -1124,10 +1124,10 @@ class CartItem {
         # Test ref handler
         result = ext.extract("ref", {"path": "lib/marketplace.dart"}, [], [], str(tmp_path))
         assert "The marketplace library" in result
-        assert "### Product" in result
-        assert "### Category" in result
-        assert "### Cart" in result
-        assert "### CartItem" not in result  # Hidden by show combinator
+        assert "### `Product`" in result
+        assert "### `Category`" in result
+        assert "### `Cart`" in result
+        assert "### `CartItem`" not in result  # Hidden by show combinator
         assert "A product in the marketplace" in result
         assert "A category for organizing" in result
         assert "A shopping cart" in result

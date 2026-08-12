@@ -157,6 +157,93 @@ def test_posts_are_spell_checked_too(tmp_path):
     assert spell[0].file.endswith("2026-01-01-hello.md")
 
 
+# -- Generated reference pages -------------------------------------------------
+#
+# A reference page is two kinds of text at once, and SPELL001 has to tell
+# them apart.  The symbol names, signatures and field tables are the
+# generator's own emission, read straight out of the source tree: they are
+# code, they are emitted as code, and a spell checker has no business
+# reading them.  The docstring prose around them is the author's writing,
+# held to the same standard as any other page -- an identifier mentioned
+# there is backticked by the author, or it is flagged.
+
+
+_REF_PAGE = (
+    "---\ntitle: Reference\ndescription: "
+    "The generated reference for the example package, with every public "
+    "symbol it exports and what each one is for.\n---\n\n"
+    ':-: ref path="src/__init__.py"\n'
+)
+
+
+def _ref_project(tmp_path, module_source, name="refproj"):
+    """A project whose only page is a generated Python reference."""
+    project = _project(tmp_path, {"reference.md": _REF_PAGE}, name=name)
+    with open(project / "src" / "__init__.py", "w", encoding="utf-8") as f:
+        f.write(module_source)
+    return project
+
+
+def _spell_words(result):
+    return [
+        lint.message.split("'")[1]
+        for lint in result.lints if lint.code == "SPELL001"
+    ]
+
+
+def test_a_generated_symbol_heading_is_not_prose(tmp_path):
+    """``JSONResponse`` is a class name the generator wrote, not a word.
+
+    It reached the page because the extractor emitted the class's name as
+    a bare heading, outside any code span, so the mask that covers every
+    other code-derived token on the page did not cover it.
+    """
+    project = _ref_project(tmp_path, (
+        '"""Responses for the example package."""\n\n\n'
+        "class JSONResponse:\n"
+        '    """Return a body as JSON."""\n'
+    ))
+    result = check_docs(str(project))
+    assert "JSONResponse" not in _spell_words(result)
+
+
+def test_a_generated_function_heading_is_not_prose(tmp_path):
+    project = _ref_project(tmp_path, (
+        '"""Helpers for the example package."""\n\n\n'
+        "def unhashd(value):\n"
+        '    """Return the value unchanged."""\n'
+        "    return value\n"
+    ))
+    result = check_docs(str(project))
+    assert "unhashd" not in _spell_words(result)
+
+
+def test_docstring_prose_is_still_the_authors_to_spell(tmp_path):
+    """The other half of the boundary, and the half that must keep failing.
+
+    An identifier written into docstring prose without backticks is a
+    writing defect: the author names it, so the author backticks it.
+    """
+    project = _ref_project(tmp_path, (
+        '"""Helpers for the example package."""\n\n\n'
+        "class Runner:\n"
+        '    """Reap the child, which consumes the returncode."""\n'
+    ))
+    result = check_docs(str(project))
+    assert "returncode" in _spell_words(result)
+
+
+def test_a_backticked_identifier_in_docstring_prose_is_accepted(tmp_path):
+    """Which is what the author is being asked to do about it."""
+    project = _ref_project(tmp_path, (
+        '"""Helpers for the example package."""\n\n\n'
+        "class Runner:\n"
+        '    """Reap the child, which consumes the ``returncode``."""\n'
+    ))
+    result = check_docs(str(project))
+    assert "returncode" not in _spell_words(result)
+
+
 # -- Content a directive rendered ---------------------------------------------
 
 

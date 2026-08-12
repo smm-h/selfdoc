@@ -15,9 +15,11 @@ from selfdoc_core.extractors.base import (
     _extract_brace_block,
     _format_docstring,
     collect_comment_lines_above,
+    demote_doc_headings,
     format_error,
     handle_table_config,
     read_source,
+    symbol_heading,
 )
 from selfdoc_core.tables import render_markdown_table
 
@@ -548,16 +550,19 @@ def _resolve_and_extract_export_declarations(export_path, file_dir, base_dir, vi
 # ---------------------------------------------------------------------------
 
 
-def _parse_dart_doc(text):
+def _parse_dart_doc(text, base_level):
     """Process Dart-specific doc comment features.
 
     Converts [ClassName] cross-references to inline code.
     Passes {@macro}, {@template}, {@example} tags through.
+
+    *base_level* is the heading this text is emitted under; see
+    :func:`selfdoc_core.extractors.base.demote_doc_headings`.
     """
     # Convert [Name] cross-references to `Name` inline code.
     # Don't convert markdown links: [text](url)
     text = re.sub(r"\[(\w+)\](?!\()", r"`\1`", text)
-    return _format_docstring(text)
+    return _format_docstring(text, base_level)
 
 
 def _extract_library_doc(source):
@@ -1266,14 +1271,14 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         file_contents = {os.path.basename(resolved): content}
 
     parts = []
-    parts.append(f"## {path}")
+    parts.append(symbol_heading(2, path))
 
     # Extract library doc from the first file that has one
     for _filename, source in file_contents.items():
         lib_doc = _extract_library_doc(source)
         if lib_doc:
             parts.append("")
-            parts.append(_parse_dart_doc(lib_doc))
+            parts.append(_parse_dart_doc(lib_doc, 2))
             break
 
     # Extract declarations from all files
@@ -1305,12 +1310,12 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
             return format_error(f"symbol '{target}' not found in '{path}'")
         decl = matched[0]
         parts_t = []
-        parts_t.append(f"### {decl['name']}")
+        parts_t.append(symbol_heading(3, decl["name"]))
         parts_t.append("")
         parts_t.append(f"```dart\n{decl['signature']}\n```")
         if decl["doc"]:
             parts_t.append("")
-            parts_t.append(_parse_dart_doc(decl["doc"]))
+            parts_t.append(_parse_dart_doc(decl["doc"], 3))
         return "\n".join(parts_t)
 
     # Group by kind
@@ -1319,12 +1324,12 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         kind_decls = [d for d in declarations if d["kind"] == kind]
         for decl in kind_decls:
             parts.append("")
-            parts.append(f"### {decl['name']}")
+            parts.append(symbol_heading(3, decl["name"]))
             parts.append("")
             parts.append(f"```dart\n{decl['signature']}\n```")
             if decl["doc"]:
                 parts.append("")
-                parts.append(_parse_dart_doc(decl["doc"]))
+                parts.append(_parse_dart_doc(decl["doc"], 3))
 
     return "\n".join(parts)
 
@@ -1348,7 +1353,7 @@ def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
             if content:
                 doc = _extract_library_doc(content)
                 if doc:
-                    return _parse_dart_doc(doc)
+                    return _parse_dart_doc(doc, 1)
         return format_error(f"no library doc comment found in '{path}'")
     else:
         content, err = read_source(resolved)
@@ -1357,7 +1362,7 @@ def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
         doc = _extract_library_doc(content)
         if not doc:
             return format_error(f"no library doc comment found in '{path}'")
-        return _parse_dart_doc(doc)
+        return _parse_dart_doc(doc, 1)
 
 
 def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
@@ -1390,10 +1395,10 @@ def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
 
     results = []
     for c in classes:
-        results.append(f"### {c['name']}")
+        results.append(symbol_heading(3, c["name"]))
         results.append("")
         if c["doc"]:
-            results.append(c["doc"])
+            results.append(demote_doc_headings(c["doc"], 3))
             results.append("")
         results.append(_format_class_table(c))
     return "\n".join(results)

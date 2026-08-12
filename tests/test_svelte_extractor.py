@@ -447,7 +447,7 @@ class TestRef:
             str(svelte_project),
         )
         # Component heading
-        assert "## Counter" in result
+        assert "## `Counter`" in result
         # Component-level JSDoc
         assert "A counter component" in result
         # Props section
@@ -459,8 +459,8 @@ class TestRef:
         assert "Yes" in result
         # Instance exports section
         assert "### Instance Exports" in result
-        assert "#### reset" in result
-        assert "#### defaultCount" in result
+        assert "#### `reset`" in result
+        assert "#### `defaultCount`" in result
         # Code block
         assert "```typescript" in result
 
@@ -474,8 +474,8 @@ class TestRef:
             str(svelte_project),
         )
         assert "### Module Exports" in result
-        assert "#### pauseAll" in result
-        assert "#### VERSION" in result
+        assert "#### `pauseAll`" in result
+        assert "#### `VERSION`" in result
 
     def test_ref_not_found(self):
         ext = SvelteExtractor()
@@ -512,7 +512,7 @@ class TestRef:
             [],
             str(tmp_path),
         )
-        assert "### label" in result or "label" in result
+        assert "### `label`" in result or "label" in result
         assert "disabled" not in result
 
     def test_ref_with_target_not_found(self, tmp_path):

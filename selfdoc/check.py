@@ -32,6 +32,7 @@ from selfdoc.catalog import validate_directive_attrs
 from selfdoc.config import load_config
 from selfdoc.directives import parse_directives, validate_directive_names
 from selfdoc.extractors import SourceEntry
+from selfdoc_core.extractors.base import symbol_heading_pattern
 from selfdoc.resolver import make_resolver, Resolver
 from selfdoc.strictcli_support import SchemaDiscoveryError
 from selfdoc.staleness import (
@@ -2407,7 +2408,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                 )
                 if os.path.abspath(file_dir).startswith(dir_abs):
                     for sym in syms:
-                        if re.search(r'^#{2,4}\s+(?:\w+\.)?' + re.escape(sym) + r'\s*$', rd.content, re.MULTILINE):
+                        if symbol_heading_pattern(sym).search(rd.content):
                             qualified = f"{rel_path}:{sym}"
                             referenced_set.add(qualified)
                             if not is_skeleton:
@@ -2419,7 +2420,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                 # For ref directives, check each symbol against content
                 if rd.name == "ref":
                     for sym in all_symbols[rel_path]:
-                        if re.search(r'^#{2,4}\s+(?:\w+\.)?' + re.escape(sym) + r'\s*$', rd.content, re.MULTILINE):
+                        if symbol_heading_pattern(sym).search(rd.content):
                             qualified = f"{rel_path}:{sym}"
                             referenced_set.add(qualified)
                             if not is_skeleton:
@@ -2436,7 +2437,7 @@ def _compute_coverage(config, base_dir, resolved_directives, source_entries,
                     else:
                         # No target -- check all symbols against content
                         for sym in all_symbols[rel_path]:
-                            if re.search(r'^#{2,4}\s+(?:\w+\.)?' + re.escape(sym) + r'\s*$', rd.content, re.MULTILINE):
+                            if symbol_heading_pattern(sym).search(rd.content):
                                 qualified = f"{rel_path}:{sym}"
                                 referenced_set.add(qualified)
                                 if not is_skeleton:

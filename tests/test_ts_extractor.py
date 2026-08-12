@@ -128,7 +128,7 @@ class TestModuleDirective:
         result = TypeScriptExtractor().extract(
             "ref", {"path": "core.ts"}, [], source_paths, str(ts_project)
         )
-        assert "## core" in result
+        assert "## `core`" in result
         assert "Core module for the widget library." in result
         assert "Provides essential utilities for widget management." in result
 
@@ -136,7 +136,7 @@ class TestModuleDirective:
         result = TypeScriptExtractor().extract(
             "ref", {"path": "core.ts"}, [], source_paths, str(ts_project)
         )
-        assert "### createWidget" in result
+        assert "### `createWidget`" in result
         assert "export function createWidget" in result
         assert "```typescript" in result
 
@@ -159,27 +159,27 @@ class TestModuleDirective:
         result = TypeScriptExtractor().extract(
             "ref", {"path": "core.ts"}, [], source_paths, str(ts_project)
         )
-        assert "### WidgetProcessor" in result
+        assert "### `WidgetProcessor`" in result
         assert "export class WidgetProcessor" in result
 
     def test_extracts_exported_interface(self, ts_project, source_paths):
         result = TypeScriptExtractor().extract(
             "ref", {"path": "core.ts"}, [], source_paths, str(ts_project)
         )
-        assert "### WidgetOptions" in result
+        assert "### `WidgetOptions`" in result
         assert "export interface WidgetOptions" in result
 
     def test_extracts_exported_type(self, ts_project, source_paths):
         result = TypeScriptExtractor().extract(
             "ref", {"path": "core.ts"}, [], source_paths, str(ts_project)
         )
-        assert "### WidgetId" in result
+        assert "### `WidgetId`" in result
 
     def test_extracts_exported_const(self, ts_project, source_paths):
         result = TypeScriptExtractor().extract(
             "ref", {"path": "core.ts"}, [], source_paths, str(ts_project)
         )
-        assert "### DEFAULT_SIZE" in result
+        assert "### `DEFAULT_SIZE`" in result
         assert "export const DEFAULT_SIZE" in result
 
     def test_js_file_uses_javascript_lang(self, js_project):
@@ -187,7 +187,7 @@ class TestModuleDirective:
             "ref", {"path": "utils.js"}, [], ["lib/"], str(js_project)
         )
         assert "```javascript" in result
-        assert "### parseConfig" in result
+        assert "### `parseConfig`" in result
 
     def test_missing_module_error(self, ts_project, source_paths):
         result = TypeScriptExtractor().extract(
@@ -219,7 +219,7 @@ class TestModuleDirective:
             [],
             str(tmp_path),
         )
-        assert "### subtract" in result
+        assert "### `subtract`" in result
         assert "Subtracts" in result
         assert "add" not in result.replace("subtract", "")  # "add" shouldn't appear except in "subtract"
 
@@ -679,13 +679,13 @@ class TestEdgeCases:
         result_ts = TypeScriptExtractor().extract(
             "ref", {"path": "app.ts"}, [], ["src/"], str(tmp_path)
         )
-        assert "### hello" in result_ts
+        assert "### `hello`" in result_ts
         assert "```typescript" in result_ts
 
         result_js = TypeScriptExtractor().extract(
             "ref", {"path": "app.js"}, [], ["src/"], str(tmp_path)
         )
-        assert "### hello" in result_js
+        assert "### `hello`" in result_js
         assert "```javascript" in result_js
 
     def test_file_not_found_returns_error(self, tmp_path):
@@ -714,7 +714,7 @@ export default function main(args: string[]): void {
         result = TypeScriptExtractor().extract(
             "ref", {"path": "main.ts"}, [], ["src/"], str(tmp_path)
         )
-        assert "### main" in result
+        assert "### `main`" in result
         assert "export default function main" in result
         assert "CLI arguments" in result
 
@@ -989,8 +989,8 @@ class TestReexportInRefOutput:
         result = TypeScriptExtractor().extract(
             "ref", {"path": "index.ts"}, [], ["src/"], str(tmp_path)
         )
-        assert "### Foo" in result
-        assert "### Bar" in result
+        assert "### `Foo`" in result
+        assert "### `Bar`" in result
         assert "from './foo'" in result
         assert "from './bar'" in result
 
@@ -1011,7 +1011,7 @@ class TestReexportInRefOutput:
         result = TypeScriptExtractor().extract(
             "ref", {"path": "mod.ts"}, [], ["src/"], str(tmp_path)
         )
-        assert "### Foo" in result
+        assert "### `Foo`" in result
         assert "class Foo" in result
         assert "A widget class." in result
 
@@ -1025,6 +1025,6 @@ class TestReexportInRefOutput:
         result = TypeScriptExtractor().extract(
             "ref", {"path": "aliases.ts"}, [], ["src/"], str(tmp_path)
         )
-        assert "### Bar" in result
+        assert "### `Bar`" in result
         assert "Foo as Bar" in result
         assert "from './foo'" in result

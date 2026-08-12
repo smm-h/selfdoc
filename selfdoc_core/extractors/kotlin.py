@@ -14,9 +14,11 @@ from selfdoc_core.extractors.base import (
     BaseExtractor,
     _extract_brace_block,
     _format_docstring,
+    demote_doc_headings,
     format_error,
     handle_table_config,
     read_source,
+    symbol_heading,
 )
 from selfdoc_core.tables import render_markdown_table
 
@@ -1038,14 +1040,14 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         file_contents = {os.path.basename(resolved): content}
 
     parts = []
-    parts.append(f"## {path}")
+    parts.append(symbol_heading(2, path))
 
     # Extract module doc from the first file that has one
     for _filename, source in file_contents.items():
         module_doc = _extract_module_doc(source)
         if module_doc:
             parts.append("")
-            parts.append(_format_docstring(module_doc))
+            parts.append(_format_docstring(module_doc, 2))
             break
 
     # Extract public declarations from all files
@@ -1060,12 +1062,12 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
             return format_error(f"symbol '{target}' not found in '{path}'")
         decl = matched[0]
         parts_t = []
-        parts_t.append(f"### {decl['name']}")
+        parts_t.append(symbol_heading(3, decl["name"]))
         parts_t.append("")
         parts_t.append(f"```kotlin\n{decl['signature']}\n```")
         if decl["doc"]:
             parts_t.append("")
-            parts_t.append(decl["doc"])
+            parts_t.append(demote_doc_headings(decl["doc"], 3))
         return "\n".join(parts_t)
 
     # Group by kind: types first, then functions, then properties
@@ -1074,12 +1076,12 @@ def _handle_ref(path, target, body, source_paths, base_dir, attrs):
         kind_decls = [d for d in declarations if d["kind"] == kind]
         for decl in kind_decls:
             parts.append("")
-            parts.append(f"### {decl['name']}")
+            parts.append(symbol_heading(3, decl["name"]))
             parts.append("")
             parts.append(f"```kotlin\n{decl['signature']}\n```")
             if decl["doc"]:
                 parts.append("")
-                parts.append(decl["doc"])
+                parts.append(demote_doc_headings(decl["doc"], 3))
 
     return "\n".join(parts)
 
@@ -1107,7 +1109,7 @@ def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
             if content:
                 doc = _extract_module_doc(content)
                 if doc:
-                    return _format_docstring(doc)
+                    return _format_docstring(doc, 1)
         return format_error(f"no module doc comment found in '{path}'")
     else:
         content, err = read_source(resolved)
@@ -1116,7 +1118,7 @@ def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
         doc = _extract_module_doc(content)
         if not doc:
             return format_error(f"no module doc comment found in '{path}'")
-        return _format_docstring(doc)
+        return _format_docstring(doc, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -1162,10 +1164,10 @@ def _handle_table_schema(path, target, body, source_paths, base_dir, attrs):
     # No type specified: format all data classes
     results = []
     for dc in data_classes:
-        results.append(f"### {dc['name']}")
+        results.append(symbol_heading(3, dc["name"]))
         results.append("")
         if dc["doc"]:
-            results.append(dc["doc"])
+            results.append(demote_doc_headings(dc["doc"], 3))
             results.append("")
         results.append(_format_data_class_table(dc))
     return "\n".join(results)

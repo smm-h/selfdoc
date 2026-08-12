@@ -273,20 +273,20 @@ class TestRef:
         assert "Supports incremental parsing and error recovery" in result
 
         # ## heading for the file
-        assert "## Sources/Parser.swift" in result
+        assert "## `Sources/Parser.swift`" in result
 
         # ### headings for public/open symbols
-        assert "### Parser" in result
-        assert "### ASTVisitor" in result
-        assert "### TokenType" in result
-        assert "### Parseable" in result
-        assert "### ParseResult" in result
-        assert "### maxParseDepth" in result
-        assert "### parserVersion" in result
-        assert "### ParseCoordinator" in result
-        assert "### parse" in result
-        assert "### configure" in result
-        assert "### visit" in result
+        assert "### `Parser`" in result
+        assert "### `ASTVisitor`" in result
+        assert "### `TokenType`" in result
+        assert "### `Parseable`" in result
+        assert "### `ParseResult`" in result
+        assert "### `maxParseDepth`" in result
+        assert "### `parserVersion`" in result
+        assert "### `ParseCoordinator`" in result
+        assert "### `parse`" in result
+        assert "### `configure`" in result
+        assert "### `visit`" in result
 
         # Code blocks with swift syntax
         assert "```swift" in result
@@ -318,7 +318,7 @@ class TestRef:
             [],
             str(tmp_path),
         )
-        assert "### parse" in result
+        assert "### `parse`" in result
         assert "Parses the input" in result
         assert "initialize" not in result
 
@@ -349,7 +349,7 @@ class TestProseDesc:
         assert "Parser module" in result
         assert "Supports incremental parsing and error recovery" in result
         # Declaration-level comments should NOT be present
-        assert "### Parser" not in result
+        assert "### `Parser`" not in result
         assert "pub" not in result
         assert "A source code parser with incremental support" not in result
 

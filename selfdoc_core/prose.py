@@ -105,6 +105,17 @@ def _is_list_item(stripped: str) -> bool:
     return i > 0 and stripped[i : i + 2] in (". ", ") ")
 
 
+def _is_atx_heading(stripped: str) -> bool:
+    """Check whether a stripped line is an ATX heading (``#`` .. ``######``)."""
+    hashes = 0
+    while hashes < len(stripped) and stripped[hashes] == "#":
+        hashes += 1
+    if not 1 <= hashes <= 6:
+        return False
+    rest = stripped[hashes:]
+    return rest == "" or rest[0].isspace()
+
+
 def join_wrapped_lines(text: str) -> str:
     """Join soft-wrapped physical lines within paragraphs of *text*.
 
@@ -117,6 +128,8 @@ def join_wrapped_lines(text: str) -> str:
     - indented preformatted blocks (Go doc convention)
     - list items (``-``, ``*``, ``+``, ``1.``)
     - doctest lines (``>>>`` / ``...``)
+    - ATX headings, which end the paragraph above and start nothing: a
+      heading joined to the sentence under it becomes part of the heading
 
     Idempotent: joining already-joined prose is a no-op.
     """
@@ -147,6 +160,11 @@ def join_wrapped_lines(text: str) -> str:
         if not stripped:
             flush()
             out.append("")
+            continue
+
+        if _is_atx_heading(stripped):
+            flush()
+            out.append(line)
             continue
 
         indented = line[:1].isspace()

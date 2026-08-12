@@ -22,6 +22,7 @@ from selfdoc_core.extractors.base import (
     parse_comma_set,
     parse_docstring_sections,
     read_source,
+    symbol_heading,
 )
 from selfdoc_core.tables import render_markdown_table
 
@@ -322,7 +323,7 @@ def _format_reexports(tree, all_names, emitted_names):
         if name not in wanted or name in seen:
             continue
         seen.add(name)
-        entries.append(f"### {name}\n\n```python\n{stub}\n```")
+        entries.append(f"{symbol_heading(3, name)}\n\n```python\n{stub}\n```")
     return entries
 
 
@@ -365,7 +366,7 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
         # (`from ._impl import X`) and module-level constants (`__version__`).
         for name, stub in _iter_reexport_stubs(tree):
             if name == target:
-                return f"### {target}\n\n```python\n{stub}\n```"
+                return f"{symbol_heading(3, target)}\n\n```python\n{stub}\n```"
         return format_error(f"symbol '{target}' not found in '{path}'")
 
     # Determine display name from the dotted path
@@ -376,12 +377,12 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
         module_name = module_name[: -len(".__init__")]
 
     parts = []
-    parts.append(f"## {module_name}")
+    parts.append(symbol_heading(2, module_name))
 
     module_doc = ast.get_docstring(tree)
     if module_doc:
         parts.append("")
-        parts.append(_format_docstring(module_doc))
+        parts.append(_format_docstring(module_doc, 2))
 
     # Extract top-level functions and classes
     emitted_names = set()
@@ -461,14 +462,14 @@ def _format_function(node, heading_level=2):
     prefix = "#" * heading_level
 
     parts = []
-    parts.append(f"{prefix} {node.name}")
+    parts.append(symbol_heading(heading_level, node.name))
     parts.append("")
     keyword = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
     parts.append(f"```python\n{keyword} {node.name}{sig}\n```")
 
     if docstring:
         parts.append("")
-        parts.append(_format_docstring(docstring))
+        parts.append(_format_docstring(docstring, heading_level))
 
     return "\n".join(parts)
 
@@ -590,11 +591,11 @@ def _format_class(node):
         dataclass_fields = _format_dataclass_fields(node)
 
     parts = []
-    parts.append(f"### {node.name}")
+    parts.append(symbol_heading(3, node.name))
 
     if docstring:
         parts.append("")
-        parts.append(_format_docstring(docstring))
+        parts.append(_format_docstring(docstring, 3))
 
     if dataclass_fields:
         parts.append("")
@@ -943,7 +944,7 @@ def _handle_prose_desc(path, target, body, source_paths, base_dir, attrs):
     if not module_doc:
         return format_error(f"no docstring found in '{path}'")
 
-    return _format_docstring(module_doc)
+    return _format_docstring(module_doc, 1)
 
 
 PythonExtractor._HANDLERS = {

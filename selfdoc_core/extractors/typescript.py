@@ -19,10 +19,12 @@ from selfdoc_core.extractors.base import (
     _json_type_name,
     _json_value_repr,
     apply_exclude_keys,
+    demote_doc_headings,
     format_error,
     handle_table_config,
     parse_comma_set,
     read_source,
+    symbol_heading,
 )
 from selfdoc_core.tables import render_markdown_table
 
@@ -583,11 +585,15 @@ def _find_jsdoc_before(source, pos):
     return _parse_jsdoc_text(raw)
 
 
-def _format_jsdoc_as_markdown(jsdoc):
-    """Format a parsed JSDoc dict as markdown text."""
+def _format_jsdoc_as_markdown(jsdoc, base_level):
+    """Format a parsed JSDoc dict as markdown text.
+
+    *base_level* is the heading this text is emitted under; see
+    :func:`selfdoc_core.extractors.base.demote_doc_headings`.
+    """
     parts = []
     if jsdoc["description"]:
-        parts.append(jsdoc["description"])
+        parts.append(demote_doc_headings(jsdoc["description"], base_level))
 
     if jsdoc["params"]:
         parts.append("")
@@ -629,13 +635,13 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
             break
 
     parts = []
-    parts.append(f"## {display_name}")
+    parts.append(symbol_heading(2, display_name))
 
     # Module-level JSDoc: the first /** */ block before any declaration
     module_jsdoc = _extract_module_jsdoc(source)
     if module_jsdoc:
         parts.append("")
-        parts.append(module_jsdoc["description"])
+        parts.append(demote_doc_headings(module_jsdoc["description"], 2))
 
     # Extract all exported declarations with their JSDoc
     exports = _extract_exports(source)
@@ -646,18 +652,18 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
             return format_error(f"symbol '{target}' not found in '{path}'")
         export = matched[0]
         parts_t = []
-        parts_t.append(f"### {export['name']}")
+        parts_t.append(symbol_heading(3, export["name"]))
         parts_t.append("")
         lang = "typescript" if filepath.endswith((".ts", ".tsx")) else "javascript"
         parts_t.append(f"```{lang}\n{export['signature']}\n```")
         if export["jsdoc"]:
             parts_t.append("")
-            parts_t.append(_format_jsdoc_as_markdown(export["jsdoc"]))
+            parts_t.append(_format_jsdoc_as_markdown(export["jsdoc"], 3))
         return "\n".join(parts_t)
 
     for export in exports:
         parts.append("")
-        parts.append(f"### {export['name']}")
+        parts.append(symbol_heading(3, export["name"]))
         parts.append("")
 
         # Show the signature as a code block
@@ -666,7 +672,7 @@ def _handle_module(path, target, body, source_paths, base_dir, attrs):
 
         if export["jsdoc"]:
             parts.append("")
-            parts.append(_format_jsdoc_as_markdown(export["jsdoc"]))
+            parts.append(_format_jsdoc_as_markdown(export["jsdoc"], 3))
 
     return "\n".join(parts)
 
