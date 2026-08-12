@@ -1,6 +1,6 @@
 ---
 title: selfdoc
-description: "Build documentation sites from Markdown and source code. Directives pull live content from your codebase so docs stay in sync automatically."
+description: "Build documentation sites from Markdown and source code. Directives pull live content from your codebase, so init, build and serve keep docs in sync."
 order: 0
 feed: false
 ---

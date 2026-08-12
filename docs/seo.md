@@ -1,6 +1,6 @@
 ---
 title: SEO
-description: "How selfdoc generates meta tags, Open Graph cards, JSON-LD structured data, sitemaps, robots.txt, and llms.txt for search engine and AI discoverability."
+description: "How selfdoc generates meta tags, Open Graph cards, JSON-LD, sitemaps, robots.txt and llms.txt, plus the required author block behind every page's Person."
 nav_group: "Guides"
 nav_order: 7
 ---

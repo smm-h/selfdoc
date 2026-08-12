@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, assembly integration, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing and site-level directives, project retirement, the canonical blog URL, and the verification every deploy has to pass."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the worker redirects every other address to, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, and the verification every deploy has to pass."
 nav_group: "Guides"
 nav_order: 19
 ---

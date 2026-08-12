@@ -1,6 +1,6 @@
 ---
 title: Monorepo Conversion Plan
-description: "Plan for converting selfdoc from a standalone repo to a monorepo with three releasables, covering workspace setup, changelog migration, and CI scaffolding."
+description: "Converting selfdoc into three releasables: workspace setup, changelog migration, CI scaffolding, the rlsbl call-site flip and the assembly workflow update."
 date: 2026-07-06
 ---
 

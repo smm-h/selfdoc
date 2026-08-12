@@ -1,6 +1,6 @@
 ---
 title: Custom Directives
-description: "Write custom directives as Python scripts that generate Markdown content at build time, with access to project config and directive attributes."
+description: "Write custom directives as Python scripts: the resolve(attrs, config, body) interface, registration in selfdoc.json, and two worked examples."
 nav_group: "Guides"
 nav_order: 9
 ---
