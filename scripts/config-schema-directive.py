@@ -114,10 +114,11 @@ SCHEMA = [
     {
         "key": "search_engine",
         "type": "string",
-        "required": False,
+        "required": True,
         "category": "Features",
         "description": (
-            "Search engine backend. One of: `builtin`, `fuse`, `minisearch`."
+            "Search engine that answers the site's search UI. Required, with "
+            "no default: the only valid value is `pagefind`."
         ),
     },
     {
