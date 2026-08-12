@@ -16,6 +16,21 @@ from selfdoc_core.resolver import make_resolver
 from selfdoc_core.utils import parse_frontmatter  # re-export
 
 
+def resolve_markdown(content, resolver, valid_names=None):
+    """Parse and resolve one markdown source into the docs-slice tuple.
+
+    Returns ``(frontmatter_dict, resolved_content, raw_content,
+    fm_line_count)`` -- the same four-tuple :func:`resolve_all_docs` keys
+    each path to.  Every entry in that dict goes through here, whether it
+    came off disk or out of an overlay, and so does any caller that has to
+    resolve a page the walk never sees (the check's post slice).
+    """
+    frontmatter_dict, body = parse_frontmatter(content)
+    fm_line_count = len(content.split('\n')) - len(body.split('\n'))
+    resolved = resolve_directives(body, resolver, valid_names=valid_names)
+    return frontmatter_dict, resolved, body, fm_line_count
+
+
 def resolve_all_docs(config, docs_dir=None, base_dir=".", overlay=None):
     """Walk docs/, parse frontmatter, resolve directives for each .md file.
 
@@ -67,15 +82,9 @@ def resolve_all_docs(config, docs_dir=None, base_dir=".", overlay=None):
             with open(full_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            frontmatter_dict, body = parse_frontmatter(content)
-            fm_line_count = len(content.split('\n')) - len(body.split('\n'))
-            resolved = resolve_directives(body, resolver, valid_names=valid_names)
-            result[rel_path] = (frontmatter_dict, resolved, body, fm_line_count)
+            result[rel_path] = resolve_markdown(content, resolver, valid_names)
 
     for rel_path, content in (overlay or {}).items():
-        frontmatter_dict, body = parse_frontmatter(content)
-        fm_line_count = len(content.split('\n')) - len(body.split('\n'))
-        resolved = resolve_directives(body, resolver, valid_names=valid_names)
-        result[rel_path] = (frontmatter_dict, resolved, body, fm_line_count)
+        result[rel_path] = resolve_markdown(content, resolver, valid_names)
 
     return result

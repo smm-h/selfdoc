@@ -5,6 +5,7 @@ slug: selfdoc-vs-the-competition-documentation-generators-compared
 tags: [comparison, documentation, static-site-generators]
 draft: false
 directives: false
+description: A feature-by-feature comparison of selfdoc with Sphinx, Zensical, Docusaurus, Starlight and VitePress across what technical documentation needs.
 project: selfdoc
 ---
 

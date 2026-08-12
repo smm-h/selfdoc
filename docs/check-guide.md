@@ -1,6 +1,6 @@
 ---
 title: Check Guide
-description: "Run selfdoc check to validate directives, measure coverage, execute marked examples, and apply every registered lint rule with its declared severity."
+description: "Run selfdoc check to validate directives, measure coverage, execute marked examples, lint blog posts alongside documentation pages, and apply every registered lint rule with its declared severity -- suppressing warnings only, never errors."
 nav_group: "Guides"
 nav_order: 10
 ---

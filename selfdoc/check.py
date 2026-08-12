@@ -376,6 +376,95 @@ def _resolve_root_templates(config, base_dir="."):
     return result
 
 
+def _posts_dir(config, dir_path):
+    """Return ``(posts_dir_rel, posts_dir_abs)`` for a project with posts.
+
+    The absolute path is None when the project has no posts directory on
+    disk.  One resolution for both post surfaces of the check -- the
+    validation hook and the lint slice -- so neither can look somewhere the
+    other does not, and both look where the build looks.
+    """
+    posts_dir_rel = (config.get("posts") or {}).get("dir", ".selfdoc/posts/")
+    posts_dir = os.path.join(dir_path, posts_dir_rel)
+    if not posts_dir_rel or not os.path.isdir(posts_dir):
+        return posts_dir_rel, None
+    return posts_dir_rel, posts_dir
+
+
+def _post_lint_docs(config, dir_path, resolver, valid_names):
+    """Resolve the project's published posts into the lint rules' slice.
+
+    A post is a page on the site, so every rule that holds a documentation
+    page to a standard holds a post to it too -- but no path used to reach
+    them.  ``check`` never injected posts into the docs tree, and the
+    build's lint pass runs after the injected files have been removed, so a
+    post could carry any defect and both surfaces reported nothing.
+
+    The conversion is not repeated here: ``post_docs_payloads`` is the one
+    place a post becomes a docs page (the build's injection and the
+    in-memory render path both go through it), and this hands it the same
+    published set the build would.  Two things are then corrected, because
+    a diagnostic has to name something a reader can open:
+
+    - the key is the post's own path, relative to the project root, not the
+      ``blog/<slug>.md`` address the docs tree would hold it at;
+    - the frontmatter line count is the SOURCE file's, not the rebuilt
+      frontmatter's.  The conversion injects, drops and reorders keys, so
+      its line count differs from the file on disk while the body below it
+      is byte-identical -- taking the source's count makes every reported
+      line the post file's real line.
+
+    Drafts are excluded, matching the build: an unpublished draft is not on
+    the site, so the check does not judge it.  The generated listing page
+    is excluded too -- it has no source file, so a diagnostic about it
+    would name nothing anyone can fix.
+
+    Only ever called on a post set that post validation (POST001-POST007)
+    accepted: discovery raises on an invalid post, and the caller reports
+    that as its own lint rather than asking this to resolve a set that
+    does not exist.
+
+    Returns a dict in ``resolve_all_docs`` shape, empty when the project
+    has no posts.
+    """
+    from selfdoc_core import require_post_provider
+    from selfdoc_core.build import post_docs_payloads, POSTS_PREFIX
+    from selfdoc_core.docs import resolve_markdown
+
+    posts_dir_rel, posts_dir = _posts_dir(config, dir_path)
+    if posts_dir is None:
+        return {}
+
+    discover_posts = require_post_provider()
+    manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
+    published = [
+        post
+        for post in discover_posts(posts_dir, manifest_path=manifest_path)
+        if not post["draft"]
+    ]
+    if not published:
+        return {}
+
+    payloads = post_docs_payloads(published)
+
+    result = {}
+    for post in published:
+        payload = payloads[f"{POSTS_PREFIX}/{post['slug']}.md"]
+        frontmatter, resolved, body, _rebuilt_fm_lines = resolve_markdown(
+            payload, resolver, valid_names,
+        )
+
+        source_rel = os.path.join(posts_dir_rel.rstrip("/"), post["path"])
+        with open(os.path.join(dir_path, source_rel), "r", encoding="utf-8") as f:
+            raw = f.read()
+        _source_fm, source_body = parse_frontmatter(raw)
+        fm_line_count = len(raw.split("\n")) - len(source_body.split("\n"))
+
+        result[source_rel] = (frontmatter, resolved, body, fm_line_count)
+
+    return result
+
+
 def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                version_override=None):
     """Validate all directives in docs templates and report coverage.
@@ -463,8 +552,35 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
             config, dir_path, resolved_directives, src_entries, all_docs
         )
 
-    # Run lint checks (SEO and other diagnostics)
-    result.lints = _run_lints(all_docs, docs_dir, resolver, config, resolved_directives)
+    # Post validation (POST001-POST007) -- runs via the post-check hook
+    # registered by selfblog (post checks moved to selfblog).  Skipped when
+    # no posts directory is configured or present; posts present without a
+    # registered hook is a hard error naming selfblog.
+    #
+    # It runs here, before the lint pass, because the lint slice below is
+    # only defined for a post set discovery accepts: an invalid post is
+    # reported by this hook, and nothing then asks the slice to resolve a
+    # set that does not exist.  The diagnostics are appended in their
+    # historical position, after the lint pass.
+    post_check_lints = []
+    if _posts_dir(config, dir_path)[1] is not None:
+        from selfdoc_core import require_post_check_hook
+
+        post_check_lints = list(require_post_check_hook()(config, dir_path))
+
+    # Run lint checks (SEO and other diagnostics).  Posts are pages on the
+    # site, so they are merged into the slice the rules run over -- keyed by
+    # their own path, with their own line numbers.  They are merged here and
+    # not into all_docs above: coverage and the staleness baselines are
+    # keyed by docs-tree page, and a post is not one of those.
+    post_docs = (
+        {} if post_check_lints
+        else _post_lint_docs(config, dir_path, resolver, valid_names)
+    )
+    result.lints = _run_lints(
+        {**all_docs, **post_docs}, docs_dir, resolver, config,
+        resolved_directives,
+    )
 
     # SEARCH001: pagefind availability check
     if config.get("search_engine") == "pagefind":
@@ -703,15 +819,9 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
             message=drift_msg,
         ))
 
-    # Post validation (POST001-POST005) -- runs via the post-check hook
-    # registered by selfblog (post checks moved to selfblog).  Skipped
-    # when no posts directory is configured or present; posts present
-    # without a registered hook is a hard error naming selfblog.
-    posts_dir_rel = (config.get("posts") or {}).get("dir", "")
-    if posts_dir_rel and os.path.isdir(os.path.join(dir_path, posts_dir_rel)):
-        from selfdoc_core import require_post_check_hook
-
-        result.lints.extend(require_post_check_hook()(config, dir_path))
+    # Post validation results, produced above (before the lint pass) so the
+    # post lint slice is only built for a post set discovery accepted.
+    result.lints.extend(post_check_lints)
 
     # Manifest freshness (STALE002)
     result.lints.extend(_check_manifest_freshness(config, dir_path))
