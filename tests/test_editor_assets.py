@@ -144,6 +144,11 @@ class TestTheShellAndTheRequiredListAgree:
         )
 
 
+def _app_source():
+    with open(os.path.join(ui_assets_path(), "app.js"), encoding="utf-8") as f:
+        return f.read()
+
+
 class TestTheEditorsOwnAssets:
     def test_the_packaged_ui_directory_holds_the_app(self):
         root = ui_assets_path()
@@ -151,7 +156,62 @@ class TestTheEditorsOwnAssets:
             assert os.path.isfile(os.path.join(root, name)), name
 
     def test_the_app_mounts_the_tinymoon_editor_component(self):
-        with open(os.path.join(ui_assets_path(), "app.js"), encoding="utf-8") as f:
-            source = f.read()
+        source = _app_source()
         assert "createEditor" in source
         assert "setDecorations" in source
+
+
+class TestTheShellWiresTheAssistanceLanes:
+    """The two decoration lanes and the completion reach the server."""
+
+    def test_the_buffer_is_sent_for_analysis(self):
+        assert "/analysis?path=" in _app_source()
+
+    def test_spelling_goes_into_the_underlay(self):
+        source = _app_source()
+        assert "setDecorations(" in source
+        assert "tm-deco-spell" in source
+
+    def test_lints_go_into_the_gutter(self):
+        source = _app_source()
+        assert "setGutterMarkers(" in source
+        assert "tm-editor-marker-error" in source
+
+    def test_the_findings_also_have_a_keyboard_reachable_control(self):
+        """The gutter lane is aria-hidden; a list of buttons is the pairing."""
+        source = _app_source()
+        assert "renderFindings" in source
+        assert "setSelection(" in source
+
+    def test_completion_asks_the_server_for_link_targets(self):
+        source = _app_source()
+        assert "/api/link-targets?q=" in source
+        assert "onCompletionContext" in source
+
+    def test_the_completion_trigger_is_a_markdown_link_target(self):
+        assert "LINK_TOKEN" in _app_source()
+
+
+class TestThePublishSurfaceIsHonest:
+    def test_the_button_never_claims_to_publish_one_post(self):
+        source = _app_source().lower()
+        assert "publish this post" not in source
+        assert "publish post" not in source
+
+    def test_the_button_names_the_repository(self):
+        assert "Publish repository" in _app_source()
+
+    def test_the_dialog_is_rendered_from_the_descriptor(self):
+        source = _app_source()
+        for field in ("scope_note", "consequential", "effect", "grants"):
+            assert f"descriptor.{field}" in source, field
+
+    def test_the_dialog_lists_what_will_publish(self):
+        assert "plan.publishing" in _app_source()
+
+    def test_consent_is_never_stored(self):
+        """No don't-ask-again: nothing about consent outlives the dialog."""
+        source = _app_source()
+        assert "localStorage" not in source
+        assert "sessionStorage" not in source
+        assert source.count("approve_consequential") == 1
