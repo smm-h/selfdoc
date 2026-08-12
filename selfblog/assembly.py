@@ -1154,7 +1154,13 @@ def stage_published_record(
     Returns the repo-relative paths to delete in that same commit.
     """
     record_path = f"manifests/{slug}-files.json"
-    raw_record = fetch_remote_text(repo, record_path, missing_ok=True)
+    # Absence is the real first-publish state and nothing else is: a failed
+    # read here would prune this owner's entry against a record it never saw
+    # and drop every other owner's claims from the file it rewrites.
+    raw_record = fetch_remote_text(
+        repo, record_path, missing_ok=True,
+        operation=f"record what {owner!r} publishes for {slug!r} on {repo}",
+    )
     owners = parse_files_manifest(raw_record, source=f"{repo}:{record_path}")
     removed, owners = prune_plan(owners, owner, set(produced))
     files[record_path] = render_files_manifest(slug, owners)
@@ -2181,22 +2187,63 @@ def list_remote_paths(repo: str, branch: str = "main") -> list[str]:
     return sorted(_remote_blob_shas(repo, tree_sha))
 
 
-def fetch_remote_text(repo: str, path: str, *, missing_ok: bool = False) -> str:
+class RemoteReadError(RuntimeError):
+    """A read from the assembly repository did not succeed and did not 404.
+
+    Kept distinct from the absent-file outcome because the two used to be the
+    same value.  Every publisher treats an absent published-file record or an
+    absent membership record as the real initial state and writes a fresh one
+    over it; a rate limit, an expired token or a 502 returned that same
+    "nothing there" and the fresh record destroyed whatever the read failed
+    to see.  A failure now stops the operation before anything is written.
+    """
+
+
+# gh reports the HTTP status in its error line -- "gh: Not Found (HTTP 404)",
+# "gh: API rate limit exceeded ... (HTTP 403)".  A failure with no status at
+# all did not reach the API (DNS, timeout, gh missing) and is never absence.
+_GH_HTTP_STATUS_RE = re.compile(r"\(HTTP (\d{3})\)")
+
+
+def _gh_http_status(stderr: str) -> int | None:
+    """Return the HTTP status gh reported, or None if it reported none."""
+    match = _GH_HTTP_STATUS_RE.search(stderr or "")
+    return int(match.group(1)) if match else None
+
+
+def fetch_remote_text(repo: str, path: str, *, missing_ok: bool = False,
+                      operation: str = "") -> str:
     """Return the text of *path* on *repo*'s default branch.
 
-    A missing file raises unless *missing_ok*, in which case it is the empty
-    string -- used only where absence is a real state (no membership record
-    yet), never to paper over a missing declaration.
+    Absence and failure are two outcomes, not one.  Only an explicit HTTP 404
+    means the file is not there, and only then does *missing_ok* turn it into
+    the empty string -- the real initial state of a record nothing has written
+    yet.  Every other outcome raises :class:`RemoteReadError` naming
+    *operation*, the path and what gh said, because a caller that reads "" as
+    "nothing published yet" would then write a record that erases what it
+    could not read.
+
+    *operation* describes what the read is for, so the error says which
+    operation was abandoned rather than only which path was unreadable.
     """
+    what = operation or f"read {path} from {repo}"
     result = effects.run(
         ["gh", "api", f"/repos/{repo}/contents/{path}", "--jq", ".content"],
         check=False, capture_output=True, text=True, timeout=30, read=True,
     )
     if result.returncode != 0:
-        if missing_ok:
-            return ""
-        raise RuntimeError(
-            f"could not read {path} from {repo}: {(result.stderr or '').strip()}"
+        stderr = (result.stderr or "").strip()
+        detail = stderr or f"gh api exited {result.returncode} with no output"
+        if _gh_http_status(stderr) == 404:
+            if missing_ok:
+                return ""
+            raise RemoteReadError(
+                f"{what}: {path} does not exist on {repo} ({detail})."
+            )
+        raise RemoteReadError(
+            f"{what}: reading {path} from {repo} failed, and the failure is "
+            f"not an absent file, so it cannot be read as one: {detail}. "
+            f"Nothing was written. Re-run once the read succeeds."
         )
     encoded = "".join((result.stdout or "").split())
     if not encoded:
@@ -2204,12 +2251,21 @@ def fetch_remote_text(repo: str, path: str, *, missing_ok: bool = False) -> str:
     try:
         return base64.b64decode(encoded).decode()
     except (ValueError, UnicodeDecodeError) as exc:
-        raise RuntimeError(f"could not decode {path} from {repo}: {exc}") from exc
+        raise RemoteReadError(
+            f"{what}: could not decode {path} from {repo}: {exc}"
+        ) from exc
 
 
 def load_remote_roster(repo: str) -> dict[str, RosterEntry]:
-    """Return the roster declared on the assembly repository *repo*."""
-    text = fetch_remote_text(repo, ROSTER_PATH, missing_ok=True)
+    """Return the roster declared on the assembly repository *repo*.
+
+    An absent roster is its own error naming the block that has to exist; a
+    failed read is a :class:`RemoteReadError`, never mistaken for one.
+    """
+    text = fetch_remote_text(
+        repo, ROSTER_PATH, missing_ok=True,
+        operation=f"read the assembly roster on {repo}",
+    )
     if not text.strip():
         raise _missing_roster_error(f"{repo}:{ROSTER_PATH}")
     return parse_roster(text, source=f"{repo}:{ROSTER_PATH}")
@@ -2265,8 +2321,15 @@ def retire_project(repo: str, slug: str, *, branch: str = "main") -> dict:
 
     remaining = [entry for name, entry in roster.items() if name != slug]
     record_path = f"manifests/{slug}-files.json"
+    # A project that published nothing outside its subtree has no record, and
+    # that is a real state.  A failed read is not: retirement would compute an
+    # empty claim set and leave the project's posts on the site-level blog
+    # with nothing left to explain where they came from.
     record = parse_files_manifest(
-        fetch_remote_text(repo, record_path, missing_ok=True),
+        fetch_remote_text(
+            repo, record_path, missing_ok=True,
+            operation=f"retire {slug!r} from {repo}",
+        ),
         source=f"{repo}:{record_path}",
     )
     claimed = {
@@ -2279,7 +2342,12 @@ def retire_project(repo: str, slug: str, *, branch: str = "main") -> dict:
 
     files: dict[str, str | bytes] = {ROSTER_PATH: render_roster(remaining)}
 
-    raw_membership = fetch_remote_text(repo, PROJECTS_PATH, missing_ok=True)
+    # No membership record yet is a real state; a failed read is not, and
+    # would silently leave the retired project's entry behind.
+    raw_membership = fetch_remote_text(
+        repo, PROJECTS_PATH, missing_ok=True,
+        operation=f"retire {slug!r} from {repo}",
+    )
     if raw_membership.strip():
         try:
             membership = json.loads(raw_membership)
@@ -2366,7 +2434,14 @@ def publish_project_docs(
         with open(manifest_path, "r", encoding="utf-8") as f:
             files[f"manifests/{slug}.json"] = f.read()
 
-    raw_membership = fetch_remote_text(repo, PROJECTS_PATH, missing_ok=True)
+    # An assembly with no membership record at all is a real state; a failed
+    # read is not.  This publish rewrites the whole record, so reading a
+    # failure as "empty" would push a file naming only this project and
+    # destroy every other project's entry.
+    raw_membership = fetch_remote_text(
+        repo, PROJECTS_PATH, missing_ok=True,
+        operation=f"publish {slug!r} documentation to {repo}",
+    )
     membership: dict = {}
     if raw_membership.strip():
         try:

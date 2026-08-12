@@ -581,7 +581,7 @@ def _publish_with_output(tmp_path, monkeypatch, *, remote_record="",
     monkeypatch.setattr("selfblog.assembly.push_files_to_repo", mock_push)
     monkeypatch.setattr(
         "selfblog.assembly.fetch_remote_text",
-        lambda repo, path, missing_ok=False: remote_record,
+        lambda repo, path, missing_ok=False, operation="": remote_record,
     )
     monkeypatch.setattr(
         subprocess, "run",
