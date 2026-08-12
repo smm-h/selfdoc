@@ -1886,7 +1886,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.__main__",
+          "text": "`selfdoc.__main__`",
           "anchor": "selfdoc__main__"
         }
       ]
@@ -1903,12 +1903,12 @@
         },
         {
           "level": 2,
-          "text": "selfdoc._version",
+          "text": "`selfdoc._version`",
           "anchor": "selfdoc_version"
         },
         {
           "level": 3,
-          "text": "_detect_version",
+          "text": "`_detect_version`",
           "anchor": "_detect_version"
         }
       ]
@@ -1925,7 +1925,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.build",
+          "text": "`selfdoc.build`",
           "anchor": "selfdocbuild"
         }
       ]
@@ -1942,207 +1942,207 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.check",
+          "text": "`selfdoc.check`",
           "anchor": "selfdoccheck"
         },
         {
           "level": 3,
-          "text": "_machine_owned_keys",
+          "text": "`_machine_owned_keys`",
           "anchor": "_machine_owned_keys"
         },
         {
           "level": 3,
-          "text": "_example_suffix",
+          "text": "`_example_suffix`",
           "anchor": "_example_suffix"
         },
         {
           "level": 3,
-          "text": "_example_output_tail",
+          "text": "`_example_output_tail`",
           "anchor": "_example_output_tail"
         },
         {
           "level": 3,
-          "text": "_validate_example_block",
+          "text": "`_validate_example_block`",
           "anchor": "_validate_example_block"
         },
         {
           "level": 3,
-          "text": "DirectiveResult",
+          "text": "`DirectiveResult`",
           "anchor": "directiveresult"
         },
         {
           "level": 3,
-          "text": "ResolvedDirective",
+          "text": "`ResolvedDirective`",
           "anchor": "resolveddirective"
         },
         {
           "level": 3,
-          "text": "CoverageStats",
+          "text": "`CoverageStats`",
           "anchor": "coveragestats"
         },
         {
           "level": 3,
-          "text": "CheckResult",
+          "text": "`CheckResult`",
           "anchor": "checkresult"
         },
         {
           "level": 3,
-          "text": "_validate_directives",
+          "text": "`_validate_directives`",
           "anchor": "_validate_directives"
         },
         {
           "level": 3,
-          "text": "_resolve_root_templates",
+          "text": "`_resolve_root_templates`",
           "anchor": "_resolve_root_templates"
         },
         {
           "level": 3,
-          "text": "_posts_dir",
+          "text": "`_posts_dir`",
           "anchor": "_posts_dir"
         },
         {
           "level": 3,
-          "text": "_post_lint_docs",
+          "text": "`_post_lint_docs`",
           "anchor": "_post_lint_docs"
         },
         {
           "level": 3,
-          "text": "check_docs",
+          "text": "`check_docs`",
           "anchor": "check_docs"
         },
         {
           "level": 3,
-          "text": "AcceptError",
+          "text": "`AcceptError`",
           "anchor": "accepterror"
         },
         {
           "level": 3,
-          "text": "compute_staleness_state",
+          "text": "`compute_staleness_state`",
           "anchor": "compute_staleness_state"
         },
         {
           "level": 3,
-          "text": "accept_baselines",
+          "text": "`accept_baselines`",
           "anchor": "accept_baselines"
         },
         {
           "level": 3,
-          "text": "_check_version_consistency",
+          "text": "`_check_version_consistency`",
           "anchor": "_check_version_consistency"
         },
         {
           "level": 3,
-          "text": "_check_version_match",
+          "text": "`_check_version_match`",
           "anchor": "_check_version_match"
         },
         {
           "level": 3,
-          "text": "_has_version_var_directive",
+          "text": "`_has_version_var_directive`",
           "anchor": "_has_version_var_directive"
         },
         {
           "level": 3,
-          "text": "_check_manifest_freshness",
+          "text": "`_check_manifest_freshness`",
           "anchor": "_check_manifest_freshness"
         },
         {
           "level": 3,
-          "text": "counts_as_statistic",
+          "text": "`counts_as_statistic`",
           "anchor": "counts_as_statistic"
         },
         {
           "level": 3,
-          "text": "_authored_data_documents",
+          "text": "`_authored_data_documents`",
           "anchor": "_authored_data_documents"
         },
         {
           "level": 3,
-          "text": "_directive_data_files",
+          "text": "`_directive_data_files`",
           "anchor": "_directive_data_files"
         },
         {
           "level": 3,
-          "text": "_locate_word",
+          "text": "`_locate_word`",
           "anchor": "_locate_word"
         },
         {
           "level": 3,
-          "text": "_spell_rendered_directives",
+          "text": "`_spell_rendered_directives`",
           "anchor": "_spell_rendered_directives"
         },
         {
           "level": 3,
-          "text": "_run_lints",
+          "text": "`_run_lints`",
           "anchor": "_run_lints"
         },
         {
           "level": 3,
-          "text": "_parse_hex_color",
+          "text": "`_parse_hex_color`",
           "anchor": "_parse_hex_color"
         },
         {
           "level": 3,
-          "text": "_relative_luminance",
+          "text": "`_relative_luminance`",
           "anchor": "_relative_luminance"
         },
         {
           "level": 3,
-          "text": "_contrast_ratio",
+          "text": "`_contrast_ratio`",
           "anchor": "_contrast_ratio"
         },
         {
           "level": 3,
-          "text": "_extract_css_vars",
+          "text": "`_extract_css_vars`",
           "anchor": "_extract_css_vars"
         },
         {
           "level": 3,
-          "text": "theme_css_path",
+          "text": "`theme_css_path`",
           "anchor": "theme_css_path"
         },
         {
           "level": 3,
-          "text": "_check_contrast",
+          "text": "`_check_contrast`",
           "anchor": "_check_contrast"
         },
         {
           "level": 3,
-          "text": "_check_pairs",
+          "text": "`_check_pairs`",
           "anchor": "_check_pairs"
         },
         {
           "level": 3,
-          "text": "_is_skeleton_page",
+          "text": "`_is_skeleton_page`",
           "anchor": "_is_skeleton_page"
         },
         {
           "level": 3,
-          "text": "_compute_coverage",
+          "text": "`_compute_coverage`",
           "anchor": "_compute_coverage"
         },
         {
           "level": 3,
-          "text": "_color",
+          "text": "`_color`",
           "anchor": "_color"
         },
         {
           "level": 3,
-          "text": "filter_lints",
+          "text": "`filter_lints`",
           "anchor": "filter_lints"
         },
         {
           "level": 3,
-          "text": "check_result_exit_code",
+          "text": "`check_result_exit_code`",
           "anchor": "check_result_exit_code"
         },
         {
           "level": 3,
-          "text": "serialize_check_result",
+          "text": "`serialize_check_result`",
           "anchor": "serialize_check_result"
         },
         {
           "level": 3,
-          "text": "print_results",
+          "text": "`print_results`",
           "anchor": "print_results"
         }
       ]
@@ -2159,77 +2159,77 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.cli",
+          "text": "`selfdoc.cli`",
           "anchor": "selfdoccli"
         },
         {
           "level": 3,
-          "text": "_fail",
+          "text": "`_fail`",
           "anchor": "_fail"
         },
         {
           "level": 3,
-          "text": "_load_config_or_fail",
+          "text": "`_load_config_or_fail`",
           "anchor": "_load_config_or_fail"
         },
         {
           "level": 3,
-          "text": "_detect_source_entries",
+          "text": "`_detect_source_entries`",
           "anchor": "_detect_source_entries"
         },
         {
           "level": 3,
-          "text": "_detect_main_module",
+          "text": "`_detect_main_module`",
           "anchor": "_detect_main_module"
         },
         {
           "level": 3,
-          "text": "_cmd_init",
+          "text": "`_cmd_init`",
           "anchor": "_cmd_init"
         },
         {
           "level": 3,
-          "text": "_cmd_build",
+          "text": "`_cmd_build`",
           "anchor": "_cmd_build"
         },
         {
           "level": 3,
-          "text": "_cmd_serve",
+          "text": "`_cmd_serve`",
           "anchor": "_cmd_serve"
         },
         {
           "level": 3,
-          "text": "_cmd_deploy",
+          "text": "`_cmd_deploy`",
           "anchor": "_cmd_deploy"
         },
         {
           "level": 3,
-          "text": "_cmd_check",
+          "text": "`_cmd_check`",
           "anchor": "_cmd_check"
         },
         {
           "level": 3,
-          "text": "_cmd_baseline_accept",
+          "text": "`_cmd_baseline_accept`",
           "anchor": "_cmd_baseline_accept"
         },
         {
           "level": 3,
-          "text": "_cmd_gen",
+          "text": "`_cmd_gen`",
           "anchor": "_cmd_gen"
         },
         {
           "level": 3,
-          "text": "_cmd_gen_data",
+          "text": "`_cmd_gen_data`",
           "anchor": "_cmd_gen_data"
         },
         {
           "level": 3,
-          "text": "_cmd_spell_corpus",
+          "text": "`_cmd_spell_corpus`",
           "anchor": "_cmd_spell_corpus"
         },
         {
           "level": 3,
-          "text": "run",
+          "text": "`run`",
           "anchor": "run"
         }
       ]
@@ -2246,7 +2246,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.config",
+          "text": "`selfdoc.config`",
           "anchor": "selfdocconfig"
         }
       ]
@@ -2263,7 +2263,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.deploy",
+          "text": "`selfdoc.deploy`",
           "anchor": "selfdocdeploy"
         }
       ]
@@ -2280,7 +2280,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.directives",
+          "text": "`selfdoc.directives`",
           "anchor": "selfdocdirectives"
         }
       ]
@@ -2297,7 +2297,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.docs",
+          "text": "`selfdoc.docs`",
           "anchor": "selfdocdocs"
         }
       ]
@@ -2314,7 +2314,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.dart",
+          "text": "`selfdoc.extractors.dart`",
           "anchor": "selfdocextractorsdart"
         }
       ]
@@ -2331,7 +2331,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.go",
+          "text": "`selfdoc.extractors.go`",
           "anchor": "selfdocextractorsgo"
         }
       ]
@@ -2348,7 +2348,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.kotlin",
+          "text": "`selfdoc.extractors.kotlin`",
           "anchor": "selfdocextractorskotlin"
         }
       ]
@@ -2365,7 +2365,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.python",
+          "text": "`selfdoc.extractors.python`",
           "anchor": "selfdocextractorspython"
         }
       ]
@@ -2382,7 +2382,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.sql",
+          "text": "`selfdoc.extractors.sql`",
           "anchor": "selfdocextractorssql"
         }
       ]
@@ -2399,7 +2399,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.svelte",
+          "text": "`selfdoc.extractors.svelte`",
           "anchor": "selfdocextractorssvelte"
         }
       ]
@@ -2416,7 +2416,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.swift",
+          "text": "`selfdoc.extractors.swift`",
           "anchor": "selfdocextractorsswift"
         }
       ]
@@ -2433,7 +2433,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.typescript",
+          "text": "`selfdoc.extractors.typescript`",
           "anchor": "selfdocextractorstypescript"
         }
       ]
@@ -2450,7 +2450,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors.zig",
+          "text": "`selfdoc.extractors.zig`",
           "anchor": "selfdocextractorszig"
         }
       ]
@@ -2467,8 +2467,18 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.extractors",
+          "text": "`selfdoc.extractors`",
           "anchor": "selfdocextractors"
+        },
+        {
+          "level": 3,
+          "text": "Re-export shim: actual implementation lives in selfdoc_core.extractors.",
+          "anchor": "re-export-shim-actual-implementation-lives-in-selfdoc_coreextractors"
+        },
+        {
+          "level": 3,
+          "text": "This file exists for backward compatibility during the Phase 4 migration.",
+          "anchor": "this-file-exists-for-backward-compatibility-during-the-phase-4-migration"
         }
       ]
     },
@@ -2484,117 +2494,117 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.gen",
+          "text": "`selfdoc.gen`",
           "anchor": "selfdocgen"
         },
         {
           "level": 3,
-          "text": "GenResult",
+          "text": "`GenResult`",
           "anchor": "genresult"
         },
         {
           "level": 3,
-          "text": "_should_skip_dir",
+          "text": "`_should_skip_dir`",
           "anchor": "_should_skip_dir"
         },
         {
           "level": 3,
-          "text": "_has_generated_marker",
+          "text": "`_has_generated_marker`",
           "anchor": "_has_generated_marker"
         },
         {
           "level": 3,
-          "text": "_file_to_module_path",
+          "text": "`_file_to_module_path`",
           "anchor": "_file_to_module_path"
         },
         {
           "level": 3,
-          "text": "_module_to_filename",
+          "text": "`_module_to_filename`",
           "anchor": "_module_to_filename"
         },
         {
           "level": 3,
-          "text": "_staleness_store_key",
+          "text": "`_staleness_store_key`",
           "anchor": "_staleness_store_key"
         },
         {
           "level": 3,
-          "text": "_read_go_module_name",
+          "text": "`_read_go_module_name`",
           "anchor": "_read_go_module_name"
         },
         {
           "level": 3,
-          "text": "_go_root_package_name",
+          "text": "`_go_root_package_name`",
           "anchor": "_go_root_package_name"
         },
         {
           "level": 3,
-          "text": "_collect_go_packages",
+          "text": "`_collect_go_packages`",
           "anchor": "_collect_go_packages"
         },
         {
           "level": 3,
-          "text": "_is_excluded",
+          "text": "`_is_excluded`",
           "anchor": "_is_excluded"
         },
         {
           "level": 3,
-          "text": "_read_existing_description",
+          "text": "`_read_existing_description`",
           "anchor": "_read_existing_description"
         },
         {
           "level": 3,
-          "text": "_generate_page_content",
+          "text": "`_generate_page_content`",
           "anchor": "_generate_page_content"
         },
         {
           "level": 3,
-          "text": "_resolve_project_name",
+          "text": "`_resolve_project_name`",
           "anchor": "_resolve_project_name"
         },
         {
           "level": 3,
-          "text": "_read_existing_index_description",
+          "text": "`_read_existing_index_description`",
           "anchor": "_read_existing_index_description"
         },
         {
           "level": 3,
-          "text": "_generate_index_content",
+          "text": "`_generate_index_content`",
           "anchor": "_generate_index_content"
         },
         {
           "level": 3,
-          "text": "_remove_stale_generated",
+          "text": "`_remove_stale_generated`",
           "anchor": "_remove_stale_generated"
         },
         {
           "level": 3,
-          "text": "_get_locale_docs_dirs",
+          "text": "`_get_locale_docs_dirs`",
           "anchor": "_get_locale_docs_dirs"
         },
         {
           "level": 3,
-          "text": "generate_docs",
+          "text": "`generate_docs`",
           "anchor": "generate_docs"
         },
         {
           "level": 3,
-          "text": "_record_seed_hashes",
+          "text": "`_record_seed_hashes`",
           "anchor": "_record_seed_hashes"
         },
         {
           "level": 3,
-          "text": "_generate_docs_for_dir",
+          "text": "`_generate_docs_for_dir`",
           "anchor": "_generate_docs_for_dir"
         },
         {
           "level": 3,
-          "text": "_make_root_file_header",
+          "text": "`_make_root_file_header`",
           "anchor": "_make_root_file_header"
         },
         {
           "level": 3,
-          "text": "generate_root_files",
+          "text": "`generate_root_files`",
           "anchor": "generate_root_files"
         }
       ]
@@ -2611,7 +2621,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.gendata",
+          "text": "`selfdoc.gendata`",
           "anchor": "selfdocgendata"
         }
       ]
@@ -2628,7 +2638,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.html",
+          "text": "`selfdoc.html`",
           "anchor": "selfdochtml"
         }
       ]
@@ -2645,7 +2655,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.icons",
+          "text": "`selfdoc.icons`",
           "anchor": "selfdocicons"
         }
       ]
@@ -2662,8 +2672,18 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.js.loader",
+          "text": "`selfdoc.js.loader`",
           "anchor": "selfdocjsloader"
+        },
+        {
+          "level": 3,
+          "text": "Re-export shim: actual implementation lives in selfdoc_core.js.loader.",
+          "anchor": "re-export-shim-actual-implementation-lives-in-selfdoc_corejsloader"
+        },
+        {
+          "level": 3,
+          "text": "This file exists for backward compatibility during the Phase 4 migration.",
+          "anchor": "this-file-exists-for-backward-compatibility-during-the-phase-4-migration"
         }
       ]
     },
@@ -2679,7 +2699,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.js",
+          "text": "`selfdoc.js`",
           "anchor": "selfdocjs"
         }
       ]
@@ -2696,7 +2716,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.manifest",
+          "text": "`selfdoc.manifest`",
           "anchor": "selfdocmanifest"
         }
       ]
@@ -2713,42 +2733,42 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.ownership",
+          "text": "`selfdoc.ownership`",
           "anchor": "selfdocownership"
         },
         {
           "level": 3,
-          "text": "normalize_description",
+          "text": "`normalize_description`",
           "anchor": "normalize_description"
         },
         {
           "level": 3,
-          "text": "description_seed_hash",
+          "text": "`description_seed_hash`",
           "anchor": "description_seed_hash"
         },
         {
           "level": 3,
-          "text": "is_machine_owned_module_description",
+          "text": "`is_machine_owned_module_description`",
           "anchor": "is_machine_owned_module_description"
         },
         {
           "level": 3,
-          "text": "is_machine_owned_index_description",
+          "text": "`is_machine_owned_index_description`",
           "anchor": "is_machine_owned_index_description"
         },
         {
           "level": 3,
-          "text": "is_machine_owned_cli_description",
+          "text": "`is_machine_owned_cli_description`",
           "anchor": "is_machine_owned_cli_description"
         },
         {
           "level": 3,
-          "text": "_lookup_cli",
+          "text": "`_lookup_cli`",
           "anchor": "_lookup_cli"
         },
         {
           "level": 3,
-          "text": "is_machine_owned",
+          "text": "`is_machine_owned`",
           "anchor": "is_machine_owned"
         }
       ]
@@ -2765,67 +2785,67 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.quality",
+          "text": "`selfdoc.quality`",
           "anchor": "selfdocquality"
         },
         {
           "level": 3,
-          "text": "check_dirstat",
+          "text": "`check_dirstat`",
           "anchor": "check_dirstat"
         },
         {
           "level": 3,
-          "text": "get_submodule_paths",
+          "text": "`get_submodule_paths`",
           "anchor": "get_submodule_paths"
         },
         {
           "level": 3,
-          "text": "get_code_loc",
+          "text": "`get_code_loc`",
           "anchor": "get_code_loc"
         },
         {
           "level": 3,
-          "text": "count_markdown",
+          "text": "`count_markdown`",
           "anchor": "count_markdown"
         },
         {
           "level": 3,
-          "text": "get_selfdoc_info",
+          "text": "`get_selfdoc_info`",
           "anchor": "get_selfdoc_info"
         },
         {
           "level": 3,
-          "text": "compute_tier",
+          "text": "`compute_tier`",
           "anchor": "compute_tier"
         },
         {
           "level": 3,
-          "text": "content_grade",
+          "text": "`content_grade`",
           "anchor": "content_grade"
         },
         {
           "level": 3,
-          "text": "count_test_loc",
+          "text": "`count_test_loc`",
           "anchor": "count_test_loc"
         },
         {
           "level": 3,
-          "text": "score_project",
+          "text": "`score_project`",
           "anchor": "score_project"
         },
         {
           "level": 3,
-          "text": "format_single_text",
+          "text": "`format_single_text`",
           "anchor": "format_single_text"
         },
         {
           "level": 3,
-          "text": "format_json",
+          "text": "`format_json`",
           "anchor": "format_json"
         },
         {
           "level": 3,
-          "text": "run_quality",
+          "text": "`run_quality`",
           "anchor": "run_quality"
         }
       ]
@@ -2842,7 +2862,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.resolver",
+          "text": "`selfdoc.resolver`",
           "anchor": "selfdocresolver"
         }
       ]
@@ -2859,27 +2879,27 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.spell_corpus",
+          "text": "`selfdoc.spell_corpus`",
           "anchor": "selfdocspell_corpus"
         },
         {
           "level": 3,
-          "text": "ProjectSpellReport",
+          "text": "`ProjectSpellReport`",
           "anchor": "projectspellreport"
         },
         {
           "level": 4,
-          "text": "unique_words",
+          "text": "`unique_words`",
           "anchor": "unique_words"
         },
         {
           "level": 3,
-          "text": "scan_project",
+          "text": "`scan_project`",
           "anchor": "scan_project"
         },
         {
           "level": 3,
-          "text": "run_spell_corpus",
+          "text": "`run_spell_corpus`",
           "anchor": "run_spell_corpus"
         }
       ]
@@ -2896,127 +2916,127 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.strictcli_support",
+          "text": "`selfdoc.strictcli_support`",
           "anchor": "selfdocstrictcli_support"
         },
         {
           "level": 3,
-          "text": "_normalize_cli_description",
+          "text": "`_normalize_cli_description`",
           "anchor": "_normalize_cli_description"
         },
         {
           "level": 3,
-          "text": "compute_default_cli_description",
+          "text": "`compute_default_cli_description`",
           "anchor": "compute_default_cli_description"
         },
         {
           "level": 3,
-          "text": "is_default_cli_description",
+          "text": "`is_default_cli_description`",
           "anchor": "is_default_cli_description"
         },
         {
           "level": 3,
-          "text": "uses_strictcli",
+          "text": "`uses_strictcli`",
           "anchor": "uses_strictcli"
         },
         {
           "level": 3,
-          "text": "SchemaDiscoveryError",
+          "text": "`SchemaDiscoveryError`",
           "anchor": "schemadiscoveryerror"
         },
         {
           "level": 3,
-          "text": "discover_schema_dirs",
+          "text": "`discover_schema_dirs`",
           "anchor": "discover_schema_dirs"
         },
         {
           "level": 3,
-          "text": "read_schema_json",
+          "text": "`read_schema_json`",
           "anchor": "read_schema_json"
         },
         {
           "level": 3,
-          "text": "_translate_command",
+          "text": "`_translate_command`",
           "anchor": "_translate_command"
         },
         {
           "level": 3,
-          "text": "_translate_group",
+          "text": "`_translate_group`",
           "anchor": "_translate_group"
         },
         {
           "level": 3,
-          "text": "extract_cli_structure",
+          "text": "`extract_cli_structure`",
           "anchor": "extract_cli_structure"
         },
         {
           "level": 3,
-          "text": "expected_cli_page_filenames",
+          "text": "`expected_cli_page_filenames`",
           "anchor": "expected_cli_page_filenames"
         },
         {
           "level": 3,
-          "text": "_read_existing_cli_description",
+          "text": "`_read_existing_cli_description`",
           "anchor": "_read_existing_cli_description"
         },
         {
           "level": 3,
-          "text": "generate_cli_pages",
+          "text": "`generate_cli_pages`",
           "anchor": "generate_cli_pages"
         },
         {
           "level": 3,
-          "text": "_write_page",
+          "text": "`_write_page`",
           "anchor": "_write_page"
         },
         {
           "level": 3,
-          "text": "_schema_has_effects",
+          "text": "`_schema_has_effects`",
           "anchor": "_schema_has_effects"
         },
         {
           "level": 3,
-          "text": "_fmt_default",
+          "text": "`_fmt_default`",
           "anchor": "_fmt_default"
         },
         {
           "level": 3,
-          "text": "_flag_table",
+          "text": "`_flag_table`",
           "anchor": "_flag_table"
         },
         {
           "level": 3,
-          "text": "_arg_table",
+          "text": "`_arg_table`",
           "anchor": "_arg_table"
         },
         {
           "level": 3,
-          "text": "_command_meta_lines",
+          "text": "`_command_meta_lines`",
           "anchor": "_command_meta_lines"
         },
         {
           "level": 3,
-          "text": "_grants_lines",
+          "text": "`_grants_lines`",
           "anchor": "_grants_lines"
         },
         {
           "level": 3,
-          "text": "_env_table",
+          "text": "`_env_table`",
           "anchor": "_env_table"
         },
         {
           "level": 3,
-          "text": "_render_command_page",
+          "text": "`_render_command_page`",
           "anchor": "_render_command_page"
         },
         {
           "level": 3,
-          "text": "_render_group_page",
+          "text": "`_render_group_page`",
           "anchor": "_render_group_page"
         },
         {
           "level": 3,
-          "text": "_fmt_short",
+          "text": "`_fmt_short`",
           "anchor": "_fmt_short"
         }
       ]
@@ -3033,7 +3053,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.tables",
+          "text": "`selfdoc.tables`",
           "anchor": "selfdoctables"
         }
       ]
@@ -3050,7 +3070,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.tokenizer",
+          "text": "`selfdoc.tokenizer`",
           "anchor": "selfdoctokenizer"
         }
       ]
@@ -3067,7 +3087,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.urls",
+          "text": "`selfdoc.urls`",
           "anchor": "selfdocurls"
         }
       ]
@@ -3084,7 +3104,7 @@
         },
         {
           "level": 2,
-          "text": "selfdoc.utils",
+          "text": "`selfdoc.utils`",
           "anchor": "selfdocutils"
         }
       ]
@@ -3101,12 +3121,12 @@
         },
         {
           "level": 2,
-          "text": "selfdoc",
+          "text": "`selfdoc`",
           "anchor": "selfdoc"
         },
         {
           "level": 3,
-          "text": "main",
+          "text": "`main`",
           "anchor": "main"
         }
       ]
@@ -3341,5 +3361,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T09:47:12.154155+00:00"
+  "last_gen": "2026-08-12T13:53:43.427237+00:00"
 }
