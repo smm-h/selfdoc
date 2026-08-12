@@ -67,6 +67,29 @@ MANIFESTS = [
     _manifest("home", "Home", "The front page."),
 ]
 
+#: What the home project's deploy copies in beside the manifests.
+LISTING_SIDECAR = {
+    "format_version": 1,
+    "slug": "home",
+    "categories": [{
+        "name": "Projects",
+        "projects": [
+            {"slug": "alpha", "blurb": "Does the alpha thing.",
+             "url": "", "name": ""},
+            {"slug": "beta", "blurb": "Does the beta thing.",
+             "url": "", "name": ""},
+        ],
+    }],
+}
+
+#: The same listing, parsed -- what generate_homepage renders from.
+def _listing():
+    from selfblog.listing import parse_listing_sidecar
+
+    return parse_listing_sidecar(
+        json.dumps(LISTING_SIDECAR), source="home-listing.json",
+    )
+
 
 @pytest.fixture()
 def generated(tmp_path):
@@ -78,6 +101,10 @@ def generated(tmp_path):
     for m in MANIFESTS:
         with open(manifests / f"{m['slug']}.json", "w", encoding="utf-8") as f:
             json.dump(m, f)
+    # The home project's curated listing, as its deploy copies it in: a
+    # declared home carries one, and shared generation refuses without it.
+    with open(manifests / "home-listing.json", "w", encoding="utf-8") as f:
+        json.dump(LISTING_SIDECAR, f)
     generate_shared_files(
         str(site), str(manifests), CANONICAL_BASE,
         docs_base=CANONICAL_BASE, home_slug="home",
@@ -128,7 +155,9 @@ def _read_projects_page():
     from selfblog.shared import generate_homepage, wrap_shared_page
 
     return wrap_shared_page(
-        "Projects", generate_homepage(MANIFESTS, CANONICAL_BASE, home_slug="home"),
+        "Projects", generate_homepage(
+            MANIFESTS, CANONICAL_BASE, home_slug="home", listing=_listing(),
+        ),
         canonical_url=f"{CANONICAL_BASE}/projects/",
         search_prefix="../",
     )
@@ -292,6 +321,10 @@ def test_the_sitemap_stays_absolute_when_docs_base_is_relative(tmp_path):
     for m in MANIFESTS:
         with open(manifests / f"{m['slug']}.json", "w", encoding="utf-8") as f:
             json.dump(m, f)
+    # The home project's curated listing, as its deploy copies it in: a
+    # declared home carries one, and shared generation refuses without it.
+    with open(manifests / "home-listing.json", "w", encoding="utf-8") as f:
+        json.dump(LISTING_SIDECAR, f)
     generate_shared_files(
         str(site), str(manifests), CANONICAL_BASE,
         docs_base="", home_slug="home",

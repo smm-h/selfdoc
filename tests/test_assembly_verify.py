@@ -116,6 +116,21 @@ def assembly(tmp_path):
         "schema_version": 2, "slug": "home",
         "owners": {"release": ["index.html", "cv/index.html"]},
     }))
+    # A declared home project declares its curated listing with it: the
+    # deploy copies docs/projects.toml in beside the manifests, and shared
+    # generation refuses without it.
+    _write(str(manifests / "home-listing.json"), json.dumps({
+        "format_version": 1, "slug": "home",
+        "categories": [{
+            "name": "Projects",
+            "projects": [
+                {"slug": "alpha", "blurb": "Does the alpha thing.",
+                 "url": "", "name": ""},
+                {"slug": "beta", "blurb": "Does the beta thing.",
+                 "url": "", "name": ""},
+            ],
+        }],
+    }))
     _write(str(manifests / "alpha-files.json"), json.dumps({
         "schema_version": 2, "slug": "alpha",
         "owners": {"release": ["alpha/index.html", "alpha/guide/index.html",

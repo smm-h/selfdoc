@@ -959,20 +959,35 @@ def listing_sidecar_path(manifests_dir: str, home_slug: str) -> str:
 
 
 def load_listing_for(manifests_dir: str, home_slug: str):
-    """Return the home project's curated listing, or None when it has none.
+    """Return the home project's curated listing.
 
-    The listing is authored in the home project and copied here by its
-    deploy, so it is absent until that deploy has happened once.  Absent is
-    a real state -- an assembly whose home project has never deployed has no
-    listing to render -- and the generated page says so rather than being
-    written from some other source.
+    The listing is authored in the home project as ``docs/projects.toml``
+    and copied here by that project's deploy.  A roster that declares a home
+    declares its listing with it, so the sidecar's absence is not a state to
+    render around -- it means the step that should have pushed the file did
+    not run, and the honest answer is to say which file and which step
+    rather than to publish a listing nobody curated at the curated one's
+    address.
+
+    Returns None only when the tree declares no home project at all, which
+    the deploy path never does: the roster requires one.
     """
-    from selfblog.listing import load_listing_sidecar
+    from selfblog.listing import LISTING_SOURCE, load_listing_sidecar
 
     if not home_slug:
         return None
     path = listing_sidecar_path(manifests_dir, home_slug)
-    return load_listing_sidecar(path) if os.path.isfile(path) else None
+    if not os.path.isfile(path):
+        raise RuntimeError(
+            f"{path} does not exist, so the assembly carries no curated "
+            f"project listing for its home project {home_slug!r}. The listing "
+            f"is authored in that project as {LISTING_SOURCE} and copied here "
+            f"by its deploy ('selfblog assembly integrate' with scope 'full' "
+            f"or 'docs'), which is what should have written this file. Add "
+            f"{LISTING_SOURCE} to {home_slug!r} if it has none, then deploy "
+            f"{home_slug!r} once before generating the shared files."
+        )
+    return load_listing_sidecar(path)
 
 
 def home_page_paths(manifests_dir: str, home_slug: str) -> list[str]:

@@ -459,6 +459,52 @@ def test_an_unclosed_region_on_a_published_page_is_named(home_assembly):
     assert any("never close" in m for m in messages)
 
 
+# -- a declared home carries a curated listing ---------------------------------
+
+
+def test_a_declared_home_whose_listing_never_arrived_is_a_hard_error(
+    home_assembly,
+):
+    """No sidecar, no listing: the deploy stops instead of inventing one.
+
+    The generated page used to fall back to every project in name order --
+    a listing nobody curated, published under the same address as the
+    curated one, with nothing saying which of the two a reader is looking
+    at. The sibling rendering (the front page's cards) already refuses.
+    """
+    os.remove(str(home_assembly / "manifests" / "home-listing.json"))
+    with pytest.raises(RuntimeError) as excinfo:
+        _shared(home_assembly)
+    message = str(excinfo.value)
+    assert "home-listing.json" in message
+    assert "docs/projects.toml" in message
+    assert "assembly integrate" in message
+
+
+def test_generate_homepage_refuses_a_declared_home_with_no_listing():
+    from selfblog.shared import generate_homepage
+
+    with pytest.raises(ValueError, match="curated listing"):
+        generate_homepage(
+            [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+            home_slug="home", listing=None,
+        )
+
+
+def test_an_assembly_with_no_home_project_needs_no_listing(tmp_path):
+    """The uncurated rendering answers exactly one state: no home at all.
+
+    A roster always declares a home, so this is not a deploy-path state --
+    but it is the one case where no curated listing can exist to demand.
+    """
+    from selfblog.shared import generate_homepage
+
+    html = generate_homepage(
+        [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE, listing=None,
+    )
+    assert "Alpha" in html
+
+
 # -- the curated listing -------------------------------------------------------
 
 

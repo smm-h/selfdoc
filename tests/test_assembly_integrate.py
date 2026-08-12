@@ -124,6 +124,18 @@ def assembly_tree(tmp_path):
         "schema_version": 2, "slug": "home",
         "owners": {"release": ["index.html"]},
     }))
+    # A declared home carries its curated listing: its deploy copies it in
+    # beside the manifests, and shared generation refuses without it.
+    # Curation is selection, so listing only alpha is legal -- and it keeps
+    # the fixture usable by the tests that retire beta.
+    _write(str(root / "manifests" / "home-listing.json"), json.dumps({
+        "format_version": 1, "slug": "home",
+        "categories": [{
+            "name": "Projects",
+            "projects": [{"slug": "alpha", "blurb": "Does the alpha thing.",
+                          "url": "", "name": ""}],
+        }],
+    }))
 
     # Membership file with both projects, and the roster that declares them.
     _write(str(root / "projects.json"), json.dumps({

@@ -536,6 +536,16 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
         "schema_version": 2, "slug": "home",
         "owners": {"release": ["index.html"]},
     }))
+    # A declared home carries its curated listing; shared generation, which
+    # this deploy runs, refuses without it.
+    (manifests / "home-listing.json").write_text(json.dumps({
+        "format_version": 1, "slug": "home",
+        "categories": [{
+            "name": "Projects",
+            "projects": [{"slug": "alpha", "blurb": "Does the alpha thing.",
+                          "url": "", "name": ""}],
+        }],
+    }))
     _shape_root_page(assembly / "site" / "index.html")
 
     # 3. The project releases: a full build that knows nothing about hotfix/.

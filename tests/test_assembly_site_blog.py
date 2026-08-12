@@ -112,6 +112,20 @@ def blogging_assembly(tmp_path):
         "schema_version": 2, "slug": "home",
         "owners": {"release": ["index.html"]},
     }))
+    # A declared home carries its curated listing: the deploy copies it in
+    # beside the manifests, and shared generation refuses without it.
+    _write(str(manifests / "home-listing.json"), json.dumps({
+        "format_version": 1, "slug": "home",
+        "categories": [{
+            "name": "Projects",
+            "projects": [
+                {"slug": "alpha", "blurb": "Does the alpha thing.",
+                 "url": "", "name": ""},
+                {"slug": "beta", "blurb": "Does the beta thing.",
+                 "url": "", "name": ""},
+            ],
+        }],
+    }))
 
     # Alpha's clone, built and waiting.
     source = root / "source" / "alpha"

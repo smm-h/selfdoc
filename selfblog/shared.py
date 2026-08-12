@@ -109,12 +109,15 @@ def generate_homepage(manifests: list[dict], docs_base: str, *,
                       home_slug: str = "", listing=None) -> str:
     """Produce the project listing fragment the ``/projects/`` page serves.
 
-    *listing* is the home project's curated listing.  When it is present it
-    is the source: categories, order and blurbs are content the home project
-    authors, and this page is one of its two renderings (the front page's
-    cards directive is the other).  When it is absent -- an assembly whose
-    home project has never deployed -- every served project is listed in
-    name order, which is a listing nobody curated rather than no listing.
+    *listing* is the home project's curated listing, and it is the source:
+    categories, order and blurbs are content the home project authors, and
+    this page is one of its two renderings (the front page's cards directive
+    is the other, which refuses without it too).
+
+    A declared home project declares a listing with it, so ``listing=None``
+    beside a *home_slug* is refused rather than rendered around.  The
+    name-ordered rendering answers exactly one state: a tree that declares
+    no home project at all, where no curated listing can exist.
 
     The home project itself is never in either rendering: it is the page the
     listing is reached from, not one of the projects it lists.
@@ -123,11 +126,24 @@ def generate_homepage(manifests: list[dict], docs_base: str, *,
         manifests: List of loaded manifest dicts.
         docs_base: Base URL for the documentation site.
         home_slug: The roster's home project, left out of the listing.
-        listing: The curated :class:`~selfblog.listing.Listing`, or None.
+        listing: The curated :class:`~selfblog.listing.Listing`.  None only
+            when there is no home project.
 
     Returns:
         HTML fragment with project cards.
+
+    Raises:
+        ValueError: When a home project is declared and *listing* is None.
     """
+    if home_slug and listing is None:
+        raise ValueError(
+            f"the home project {home_slug!r} declares a curated listing, so "
+            f"the /projects/ page is rendered from it; there is no listing "
+            f"here to render. Load it with "
+            f"selfblog.assembly.load_listing_for, which names the file and "
+            f"the deploy step when it is missing."
+        )
+
     if listing is not None:
         from selfblog.listing import render_listing_html
 
