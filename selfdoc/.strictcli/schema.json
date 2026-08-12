@@ -57,6 +57,11 @@
       "effect": "mutating",
       "flags": [
         {
+          "name": "base-url",
+          "type": "str",
+          "help": "Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it"
+        },
+        {
           "name": "auto-commit",
           "type": "bool",
           "help": "Automatically commit the generated selfdoc.json and docs/index.md template files to git",
@@ -208,6 +213,36 @@
           "name": "auto-commit",
           "type": "bool",
           "help": "Automatically commit the generated data output files to git after script execution",
+          "default": true,
+          "negatable": true
+        }
+      ]
+    },
+    "spell-corpus": {
+      "name": "spell-corpus",
+      "help": "Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits",
+      "effect": "read_only",
+      "flags": [
+        {
+          "name": "root",
+          "type": "str",
+          "help": "Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings",
+          "default": ""
+        },
+        {
+          "name": "format",
+          "type": "str",
+          "help": "Output format: text (table plus per-project word lists) or json (machine-readable)",
+          "default": "text",
+          "choices": [
+            "text",
+            "json"
+          ]
+        },
+        {
+          "name": "detail",
+          "type": "bool",
+          "help": "List each project's unknown words with a first location and any suggestion, after the summary table",
           "default": true,
           "negatable": true
         }

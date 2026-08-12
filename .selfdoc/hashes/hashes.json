@@ -89,8 +89,8 @@
     "description": "1200b0e7bf9910dda5f86c612271811f38786315cc9bf5e6caef0f59d8cc6883"
   },
   "en/check-guide.md": {
-    "content": "9eadf7780b54c5c16b971bcc117ab44b994829c90a6a40abf5e3dfc165b4cf22",
-    "description": "54a9446f7f242af15dc77d09eaffb0c61b76199c500f8272509c055ae800a045"
+    "content": "650931562b25556fdc2621a200253fa61ae20ee181e565ab41b77c4f02efc99a",
+    "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
     "content": "173c5588e5caa73cbaecf4c9d6a850cc0e7bbe16ee472709ac8fc83d86b4790f",
@@ -129,13 +129,13 @@
     "schema_hash": "cb722f83e5eb702cef62bfd1b46cdc8e7e06288beefc8a0ef4ae533afb2c6f5a"
   },
   "en/cli-index.md": {
-    "content": "7948edd610cc782fadee26b47a67a28ea9a5968f99c331617b027bfc15c91205",
+    "content": "8cac54562d33b13995062d283a3598c38e23b06120345743f135c7c30678afcb",
     "description": "c30342a2cd66cf7bfb9c53315e71bfff9e51498aaa457679673189ccaff05b1d"
   },
   "en/cli-init.md": {
-    "content": "53239f462acca643b4234076ab4eb603690cbe84ecc18e062de8a54c7e958c6e",
+    "content": "5f8d74b07767bdffa35df6b4564651f1c3f823bf2876b87108a39a5f83f2c3ed",
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb",
-    "schema_hash": "dd64eecb25b1baeff3aea13646ee399a4012027cd4037800bb5b9cbab2bb6b0f"
+    "schema_hash": "3e4cb03d096f6b0ebd747ec6b3815cfe9ef57273ab4518c50792be097e1797ed"
   },
   "en/cli-post.md": {
     "content": "2a90efcd877e9ca2958e70c7e4d4b403e768c6a2c771c341fafc581eb8b00f42",
@@ -156,6 +156,7 @@
   "en/cli-spell-corpus.md": {
     "content": "f3487a41f37ba24dcf7210305f1eba615399eae6234f448ee04116a257673ea9",
     "description": "0c733b57b542d2d309233fed2f6e4d6b55e7310ad071622f055130bfd761a998",
+    "schema_hash": "f5e38e8ed862236aa772747ce4b93463b8b68040ba205d45242f7719c7fbccb8",
     "seed_hash": "0c733b57b542d2d309233fed2f6e4d6b55e7310ad071622f055130bfd761a998"
   },
   "en/code-blocks.md": {
@@ -195,7 +196,7 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "6d116635017642182f8df360a24067bb6db86c20aeac529c5180631c9e6d798b",
+    "content": "71ce1fff38dcbed170d2cfca3f867617afe55a3212414a4f43fbfb9781a01830",
     "description": "62d110073d6baf71fc8b116980d397441d42546e119cb8595bfeeab5f5f77253"
   },
   "en/getting-started.md": {
@@ -403,8 +404,9 @@
   },
   "en/selfdoc-spell_corpus.md": {
     "content": "1b8e01cbba10db965b8ad27f755994abc2e8c7060fbf55aa2ea56913a173cf64",
-    "description": "2788b79b17215a10bf5fd5987184787ca3edb7cb5932949456aad37e9fbf4060",
-    "seed_hash": "2788b79b17215a10bf5fd5987184787ca3edb7cb5932949456aad37e9fbf4060"
+    "description": "9394ed58736d26caffd7a5718f049dec851d49449294d3994014458397a5acd5",
+    "seed_hash": "2788b79b17215a10bf5fd5987184787ca3edb7cb5932949456aad37e9fbf4060",
+    "source_docstring": "5b77e383265b4fe6869e9fa511a676ce468e103f69bf9fdbdb6d040ff44f162e"
   },
   "en/selfdoc-strictcli_support.md": {
     "content": "83ac2ad5b42f5ba15a7e26505568edc2992fcec3291573ecf683dc1a9e55093a",
