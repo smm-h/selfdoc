@@ -196,6 +196,26 @@ def _strings(where: str, block: dict, key: str, *,
     return tuple(out)
 
 
+def _reject_repeat(
+    where: str,
+    seen: set[tuple[str, ...]],
+    key: tuple[str, ...],
+    label: str,
+    kind: str,
+) -> None:
+    """Refuse a section entry that repeats one already declared.
+
+    A CV lists each thing once: a repeated entry renders twice and states
+    the same fact twice, which is a mistake in the document rather than
+    something to render faithfully.  *key* is what identifies the entry --
+    one field where that is enough, several where it is not -- and *label*
+    is how the entry is named back to whoever wrote it.
+    """
+    if key in seen:
+        raise RuntimeError(f"{where} repeats the {kind} {label!r}.")
+    seen.add(key)
+
+
 def _blocks(source: str, data: dict, key: str) -> list[tuple[str, dict]]:
     """Return the ``[[key]]`` blocks, each with the place to name in errors."""
     raw = data.get(key)
@@ -271,27 +291,23 @@ def parse_cv(text: str, *, source: str = CV_SOURCE) -> CV:
     )
 
     skills = []
-    seen_categories: set[str] = set()
+    seen_categories: set[tuple[str, ...]] = set()
     for spot, block in _blocks(source, data, "skills"):
         _reject_unknown(spot, block, SKILL_KEYS)
         category = _text(spot, block, "category")
-        if category in seen_categories:
-            raise RuntimeError(
-                f"{spot} repeats the skill category {category!r}."
-            )
-        seen_categories.add(category)
+        _reject_repeat(
+            spot, seen_categories, (category,), category, "skill category",
+        )
         skills.append(SkillGroup(
             category=category, items=_strings(spot, block, "items"),
         ))
 
     projects = []
-    seen_projects: set[str] = set()
+    seen_projects: set[tuple[str, ...]] = set()
     for spot, block in _blocks(source, data, "projects"):
         _reject_unknown(spot, block, PROJECT_KEYS)
         name = _text(spot, block, "name")
-        if name in seen_projects:
-            raise RuntimeError(f"{spot} repeats the project {name!r}.")
-        seen_projects.add(name)
+        _reject_repeat(spot, seen_projects, (name,), name, "project")
         notes = _strings(spot, block, "notes", required=False)
         technologies = _strings(spot, block, "technologies", required=False)
         if not notes and not technologies:
@@ -304,20 +320,33 @@ def parse_cv(text: str, *, source: str = CV_SOURCE) -> CV:
         ))
 
     interests = []
+    seen_interests: set[tuple[str, ...]] = set()
     for spot, block in _blocks(source, data, "interests"):
         _reject_unknown(spot, block, INTEREST_KEYS)
+        title = _text(spot, block, "title")
+        _reject_repeat(spot, seen_interests, (title,), title, "interest")
         interests.append(Interest(
-            title=_text(spot, block, "title"),
+            title=title,
             body=_text(spot, block, "body"),
         ))
 
     education = []
+    seen_education: set[tuple[str, ...]] = set()
     for spot, block in _blocks(source, data, "education"):
         _reject_unknown(spot, block, EDUCATION_KEYS)
+        degree = _text(spot, block, "degree")
+        institute = _text(spot, block, "institute")
+        # Degree and school together identify the entry: two degrees from
+        # one university, and one degree from two universities, are both
+        # ordinary; the same degree twice at the same place is a mistake.
+        _reject_repeat(
+            spot, seen_education, (degree, institute),
+            f"{degree} at {institute}", "education entry",
+        )
         education.append(Education(
-            degree=_text(spot, block, "degree"),
+            degree=degree,
             years=_text(spot, block, "years"),
-            institute=_text(spot, block, "institute"),
+            institute=institute,
             location=_text(spot, block, "location"),
             institute_url=_text(spot, block, "institute_url", required=False),
             focus=_text(spot, block, "focus", required=False),
@@ -326,22 +355,36 @@ def parse_cv(text: str, *, source: str = CV_SOURCE) -> CV:
         ))
 
     experience = []
+    seen_experience: set[tuple[str, ...]] = set()
     for spot, block in _blocks(source, data, "experience"):
         _reject_unknown(spot, block, EXPERIENCE_KEYS)
+        role = _text(spot, block, "role")
+        company = _text(spot, block, "company")
+        period = _text(spot, block, "period")
+        # Two stints in one role at one employer are a real career shape,
+        # so the period is part of the identity; all three the same is one
+        # post declared twice.
+        _reject_repeat(
+            spot, seen_experience, (role, company, period),
+            f"{role} at {company} ({period})", "post",
+        )
         experience.append(Experience(
-            role=_text(spot, block, "role"),
-            period=_text(spot, block, "period"),
-            company=_text(spot, block, "company"),
+            role=role,
+            period=period,
+            company=company,
             location=_text(spot, block, "location"),
             company_url=_text(spot, block, "company_url", required=False),
             body=_text(spot, block, "body", required=False),
         ))
 
     languages = []
+    seen_languages: set[tuple[str, ...]] = set()
     for spot, block in _blocks(source, data, "languages"):
         _reject_unknown(spot, block, LANGUAGE_KEYS)
+        name = _text(spot, block, "name")
+        _reject_repeat(spot, seen_languages, (name,), name, "language")
         languages.append(Language(
-            name=_text(spot, block, "name"),
+            name=name,
             level=_text(spot, block, "level"),
             url=_text(spot, block, "url", required=False),
         ))

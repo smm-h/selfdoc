@@ -179,6 +179,60 @@ class TestParsing:
         with pytest.raises(RuntimeError, match="repeats"):
             parse_cv(DOCUMENT.replace('name = "Translation"', 'name = "Note G"'))
 
+    def test_a_repeated_interest_is_refused(self):
+        with pytest.raises(RuntimeError, match="Poetical science"):
+            parse_cv(DOCUMENT + (
+                '\n[[interests]]\ntitle = "Poetical science"\n'
+                'body = "Said twice."\n'
+            ))
+
+    def test_a_repeated_education_entry_is_refused(self):
+        """Same degree at the same school, twice -- one of them is a mistake.
+
+        The pair is what identifies the entry: two different degrees from
+        one university, or one degree from two universities, are both
+        ordinary.
+        """
+        with pytest.raises(RuntimeError, match="University of London"):
+            parse_cv(DOCUMENT + (
+                '\n[[education]]\n'
+                'degree = "Private tuition in mathematics"\n'
+                'years = "1841 - 1842"\n'
+                'institute = "University of London"\n'
+                'location = "London, England"\n'
+            ))
+
+    def test_two_degrees_from_one_institute_are_fine(self):
+        cv = parse_cv(DOCUMENT + (
+            '\n[[education]]\n'
+            'degree = "Advanced tuition in mathematics"\n'
+            'years = "1841 - 1842"\n'
+            'institute = "University of London"\n'
+            'location = "London, England"\n'
+        ))
+        assert len(cv.education) == 2
+
+    def test_a_repeated_experience_entry_is_refused(self):
+        """Role, employer and period together identify a post."""
+        with pytest.raises(RuntimeError, match="Correspondent"):
+            parse_cv(DOCUMENT + (
+                '\n[[experience]]\nrole = "Correspondent"\n'
+                'period = "1840"\ncompany = "Self-employed"\n'
+                'location = "England"\n'
+            ))
+
+    def test_two_stints_in_one_role_at_one_company_are_fine(self):
+        cv = parse_cv(DOCUMENT + (
+            '\n[[experience]]\nrole = "Correspondent"\n'
+            'period = "1845"\ncompany = "Self-employed"\n'
+            'location = "England"\n'
+        ))
+        assert len(cv.experience) == 3
+
+    def test_a_repeated_language_is_refused(self):
+        with pytest.raises(RuntimeError, match="English"):
+            parse_cv(DOCUMENT.replace('name = "French"', 'name = "English"'))
+
     def test_a_project_with_nothing_to_say_is_refused(self):
         with pytest.raises(RuntimeError, match="bare heading"):
             parse_cv(DOCUMENT.replace(
