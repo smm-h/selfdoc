@@ -15,9 +15,13 @@ keywords = ["blog", "documentation", "static-site-generator", "selfdoc", "rlsbl"
 # Floors, not pins -- upper bounds stay banned. selfdoc-core>=0.9.2 because
 # selfblog renders every post through the engine, and before 0.9.2 a post
 # built for a mounted project wrote its links back into the project against
-# the wrong root; strictcli>=0.36.0 because cli.py registers four commands
-# with `consequential=True`, a kwarg strictcli only accepts from 0.36.0.
-dependencies = ["selfdoc-core>=0.9.2", "strictcli>=0.36.0"]
+# the wrong root; strictcli>=0.39.0 because the editor's publish surface
+# calls `App.call(..., approve_consequential=...)`, and the keyword-only
+# consent parameter arrived in 0.39.0 -- before it, the name lands in the
+# command's own kwargs and the call fails as an unknown parameter rather
+# than carrying consent. (0.36.0 was the previous floor, for the
+# `consequential=True` registration kwarg the same commands use.)
+dependencies = ["selfdoc-core>=0.9.2", "strictcli>=0.39.0"]
 
 [project.optional-dependencies]
 perf = ["brotli>=1.1"]

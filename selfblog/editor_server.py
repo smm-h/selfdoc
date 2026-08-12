@@ -2,12 +2,27 @@
 
 A single-user, local-only HTTP server on the standard library alone -- no new
 runtime dependency enters selfblog for a command that only ever talks to
-127.0.0.1.  It serves four things:
+127.0.0.1.  It serves seven things:
 
 * the shell (the editor's own page and module, plus tinymoon's asset tree);
 * the registry, and each local entry's posts;
 * document read and write -- a write lands in the working tree, atomically;
-* previews, rendered in memory and pushed down one server-sent-events channel.
+* previews, rendered in memory and pushed down one server-sent-events channel;
+* analysis of an unsaved buffer -- spelling and lint findings, from the
+  engines the check itself runs (:mod:`selfblog.editor_analysis`);
+* link targets across every registered repository, addressed the way a post
+  has to address them (:mod:`selfblog.editor_links`);
+* the publish surface -- the command's own declaration, the list of posts a
+  publish would make public, and the consented invocation
+  (:mod:`selfblog.editor_publish`).
+
+Analysis is a SIBLING of the preview, not a passenger on it.  They fail
+independently and that is the whole reason: a buffer that cannot render --
+no date in its frontmatter, a directive nothing answers -- is exactly the
+buffer whose diagnostics are worth the most, and one endpoint that renders
+and analyses would lose them to the render's refusal.  They also differ in
+what they produce: a preview is one document broadcast to every listener on
+the event stream, while analysis answers the request that asked for it.
 
 The preview is the part with a property worth stating.  It goes through
 ``selfdoc_core.render.render_post``, which is the *publish* renderer handed an
@@ -287,12 +302,16 @@ class EditorState:
 
     def __init__(self, registry, tinymoon_dir, ui_dir=None):
         from selfblog.editor_assets import ui_assets_path
+        from selfblog.editor_links import TargetIndex
 
         self.registry = registry
         self.tinymoon_dir = tinymoon_dir
         self.ui_dir = ui_dir or ui_assets_path()
         self.channel = SSEChannel()
         self.stopping = threading.Event()
+        # Link targets across every registered repository, re-read when a
+        # manifest changes rather than on every keystroke.
+        self.targets = TargetIndex(registry)
         # (repo name, published address) -> rendered HTML.  The preview pane
         # loads the document from here by URL rather than through srcdoc, so
         # the page's own relative links -- its stylesheet, its feed, its
@@ -434,9 +453,15 @@ class EditorHandler(BaseHTTPRequestHandler):
         if path == "/api/repos":
             self._send_json(200, {"repos": _repos_payload(self.state.registry)})
             return
+        if path == "/api/link-targets":
+            self._link_targets(query)
+            return
         if path.startswith("/api/repos/"):
             name, _, tail = path[len("/api/repos/"):].partition("/")
             entry = self._entry(name)
+            if tail == "publish":
+                self._publish_surface(entry)
+                return
             if tail == "posts":
                 self._send_json(
                     200, {"repo": name, "posts": repo_posts(entry)},
@@ -476,7 +501,83 @@ class EditorHandler(BaseHTTPRequestHandler):
             if tail == "preview":
                 self._preview(name, entry, _one(query, "path"), body)
                 return
+            if tail == "analysis":
+                self._analysis(name, entry, _one(query, "path"), body)
+                return
+            if tail == "publish":
+                self._publish(entry, body)
+                return
         raise NotFound(f"no route for POST {path}")
+
+    # -- analysis ------------------------------------------------------------
+
+    def _analysis(self, name, entry, rel, content):
+        """Spelling and lint findings for an unsaved buffer."""
+        from selfblog.editor_analysis import analyze_buffer
+
+        require_local(entry)
+        rel = _safe_rel(rel)
+        findings = analyze_buffer(entry, rel, content)
+        self._send_json(200, {"repo": name, "path": rel, **findings})
+
+    # -- link targets --------------------------------------------------------
+
+    def _link_targets(self, query):
+        """Page and section targets across every registered repository."""
+        limit = _one(query, "limit")
+        try:
+            count = int(limit) if limit else 40
+        except ValueError:
+            raise EditorError(f"limit must be a whole number, got {limit!r}") from None
+        if count < 1:
+            raise EditorError(f"limit must be at least 1, got {count}")
+        targets = self.state.targets.search(_one(query, "q"), limit=count)
+        self._send_json(200, {"targets": targets})
+
+    # -- publish -------------------------------------------------------------
+
+    def _publish_surface(self, entry):
+        """What the consent dialog is rendered from: declaration plus plan."""
+        from selfblog.editor_publish import publish_descriptor, publish_plan
+
+        require_local(entry)
+        self._send_json(200, {
+            "descriptor": publish_descriptor(),
+            "plan": publish_plan(entry),
+        })
+
+    def _publish(self, entry, body):
+        """Run the publish, carrying whatever consent the request states.
+
+        The consent is passed through to strictcli untouched.  Nothing here
+        decides whether the call is allowed: a request that states no
+        consent reaches the framework's refusal, which is the only place
+        that decision is made.
+        """
+        from selfblog.editor_publish import run_publish
+
+        require_local(entry)
+        if body.strip():
+            try:
+                payload = json.loads(body)
+            except json.JSONDecodeError as exc:
+                raise EditorError(f"publish body is not JSON: {exc}") from None
+        else:
+            payload = {}
+        if not isinstance(payload, dict):
+            raise EditorError(
+                f"publish body must be a JSON object, got "
+                f"{type(payload).__name__}"
+            )
+
+        consent = payload.get("approve_consequential", False)
+        if not isinstance(consent, bool):
+            raise EditorError(
+                f"approve_consequential must be true or false, got "
+                f"{consent!r}"
+            )
+
+        self._send_json(200, run_publish(entry, consent))
 
     # -- preview -------------------------------------------------------------
 

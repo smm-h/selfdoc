@@ -58,6 +58,7 @@ TINYMOON_REQUIRED = (
     "js/view.js",
     "js/states.js",
     "js/toast.js",
+    "js/modal.js",
     "js/settings.js",
     "js/editor.js",
     "js/completion.js",

@@ -108,6 +108,12 @@
   color: var(--danger, var(--accent));
 }
 
+.ed-actions {
+  display: flex;
+  gap: var(--gap-sm, 0.5rem);
+  align-items: center;
+}
+
 .ed-panes {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -116,10 +122,124 @@
   flex: 1;
 }
 
+.ed-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm, 0.5rem);
+  min-width: 0;
+  min-height: 0;
+}
+
 .ed-editor,
 .ed-preview {
   min-width: 0;
   min-height: 24rem;
+}
+
+/* The findings list is the keyboard-reachable half of the diagnostics: the
+ * gutter lane beside the text is aria-hidden and holds nothing focusable. */
+.ed-findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm, 0.5rem);
+  border-top: 1px solid var(--border);
+  padding-top: var(--gap-sm, 0.5rem);
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.ed-findings-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-sm, 0.5rem);
+}
+
+.ed-findings-title {
+  margin: 0;
+  font-size: var(--fs-sm, 0.85rem);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.ed-findings-count,
+.ed-finding-note {
+  font-size: var(--fs-sm, 0.85rem);
+  color: var(--muted);
+}
+
+.ed-finding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.ed-finding {
+  text-align: left;
+  font-size: var(--fs-sm, 0.85rem);
+}
+
+.ed-finding[data-severity="error"] {
+  border-color: var(--red, var(--danger, var(--accent)));
+}
+
+.ed-finding[data-severity="warning"] {
+  border-color: var(--gold, var(--warn, var(--accent)));
+}
+
+.ed-finding[data-severity="spelling"] {
+  border-color: var(--accent);
+}
+
+.ed-consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm, 0.5rem);
+  max-width: 44rem;
+}
+
+.ed-consent-scope {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ed-consent-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.15rem 0.75rem;
+  margin: 0;
+}
+
+.ed-consent-facts dt {
+  color: var(--muted);
+  font-size: var(--fs-sm, 0.85rem);
+}
+
+.ed-consent-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ed-consent-note,
+.ed-consent-grant {
+  margin: 0;
+  font-size: var(--fs-sm, 0.85rem);
+  color: var(--muted);
+}
+
+.ed-consent-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.ed-result {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--fs-sm, 0.85rem);
 }
 
 .ed-preview {

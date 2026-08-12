@@ -18,6 +18,47 @@ import os
 from selfblog.posts import PostError, discover_posts
 
 
+def post_error_lint(exc, posts_dir_rel):
+    """Turn one :class:`~selfblog.posts.PostError` into its lint diagnostic.
+
+    The mapping from a refusal to its POST code lives here and nowhere
+    else, so every surface that reports post validation -- the check, and
+    the editor judging an unsaved buffer -- says the same thing under the
+    same code.
+
+    The coordinates come off the error, not out of the message: the
+    detection site knew the post's path (and, for a stray marker, its
+    line), and everything downstream that positions a diagnostic reads the
+    structured fields rather than parsing prose.
+    """
+    from selfdoc_core.lints import LintResult
+
+    msg = str(exc)
+    if "'title' is required" in msg:
+        code = "POST002"
+    elif "'date' is required" in msg:
+        code = "POST001"
+    elif "must be YYYY-MM-DD" in msg:
+        code = "POST003"
+    elif "Duplicate slug" in msg:
+        code = "POST004"
+    elif "Slug immutability violation" in msg:
+        code = "POST005"
+    elif "'directives' is required" in msg or "'directives' must be" in msg:
+        code = "POST006"
+    elif "declares 'directives: false'" in msg:
+        code = "POST007"
+    else:
+        code = "POST001"  # fallback
+
+    return LintResult(
+        file=os.path.join(posts_dir_rel, *exc.path.split(os.sep)),
+        line=exc.line,
+        code=code,
+        message=msg,
+    )
+
+
 def check_posts(config, dir_path):
     """Check blog posts for validation errors (POST001-POST007).
 
@@ -30,8 +71,6 @@ def check_posts(config, dir_path):
     to the project, and its line where the defect has one -- taken from the
     :class:`~selfblog.posts.PostError` the detection site raised.
     """
-    from selfdoc_core.lints import LintResult
-
     posts_config = config.get("posts") or {}
     posts_dir_rel = posts_config.get("dir", "")
     if not posts_dir_rel:
@@ -46,33 +85,7 @@ def check_posts(config, dir_path):
     try:
         discover_posts(posts_dir, manifest_path=manifest_path)
     except PostError as exc:
-        msg = str(exc)
-        if "'title' is required" in msg:
-            code = "POST002"
-        elif "'date' is required" in msg:
-            code = "POST001"
-        elif "must be YYYY-MM-DD" in msg:
-            code = "POST003"
-        elif "Duplicate slug" in msg:
-            code = "POST004"
-        elif "Slug immutability violation" in msg:
-            code = "POST005"
-        elif "'directives' is required" in msg or "'directives' must be" in msg:
-            code = "POST006"
-        elif "declares 'directives: false'" in msg:
-            code = "POST007"
-        else:
-            code = "POST001"  # fallback
-        # The coordinates come off the error, not out of the message: the
-        # detection site knew the post's path (and, for a stray marker, its
-        # line), and everything downstream that positions a diagnostic reads
-        # the structured fields rather than parsing prose.
-        return [LintResult(
-            file=os.path.join(posts_dir_rel, *exc.path.split(os.sep)),
-            line=exc.line,
-            code=code,
-            message=msg,
-        )]
+        return [post_error_lint(exc, posts_dir_rel)]
 
     return []
 
