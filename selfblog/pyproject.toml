@@ -40,6 +40,7 @@ include = ["*.py", "README.md", "LICENSE"]
 
 [tool.uv.sources]
 selfdoc-core = { workspace = true }
+selfdoc = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -54,6 +55,12 @@ dev = [
     # as stricttest: this member's testpaths runs the root suite, which builds
     # real sites, and a member-rooted sync never sees the root's dev group.
     "pagefind[bin]>=1.4.0",
+    # `assembly sync-workflow` pins the selfdoc INSTALLED beside it, and the
+    # root suite tests that behavior, so this member's CI environment has to
+    # have selfdoc installed -- importable from the repository is not enough,
+    # the pin is read from distribution metadata. Dev-only, and not a cycle:
+    # selfdoc does not depend on selfblog in either direction.
+    "selfdoc",
 ]
 
 [tool.pytest.ini_options]

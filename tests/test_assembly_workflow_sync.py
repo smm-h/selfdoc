@@ -16,7 +16,7 @@ import os
 import subprocess
 
 import pytest
-from conftest import StubPyPI
+from conftest import PINNED_PAGEFIND, PINNED_SELFDOC, StubPyPI
 
 from selfblog.assembly import (
     WORKFLOW_PATH,
@@ -29,9 +29,8 @@ from selfblog.cli import _cmd_assembly_sync_workflow
 PAGES_PROJECT = "unified-site"
 CANONICAL_BASE = "https://docs.example.com"
 
-# The three versions the stub registry below claims are published.
-PINNED_SELFDOC = "0.36.0"
-PINNED_PAGEFIND = "1.4.0"
+# PINNED_SELFDOC and PINNED_PAGEFIND come from conftest, beside the stub
+# registry that claims them published -- see the note there.
 PINS = ToolchainPins(
     selfblog="1.2.3", selfdoc=PINNED_SELFDOC, pagefind=PINNED_PAGEFIND,
 )

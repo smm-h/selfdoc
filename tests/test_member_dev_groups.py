@@ -24,10 +24,12 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # This suite's own directory name, as a member's testpaths would spell it.
 _SHARED_SUITE = "../tests"
 
-# Tools the shared suite cannot run without, as dev-group requirement
-# prefixes.  A member's entry may carry extras or a version floor
-# ("pagefind[bin]>=1.4.0"), so matching is on the distribution name.
-_REQUIRED_TOOLS = ("pagefind", "pytest", "stricttest")
+# Distributions the shared suite cannot run without.  A member's entry may
+# carry extras or a version floor ("pagefind[bin]>=1.4.0"), so matching is on
+# the distribution name.  ``selfdoc`` is here because the suite tests that
+# `assembly sync-workflow` pins the selfdoc INSTALLED beside it, which reads
+# distribution metadata -- importable from the repository is not enough.
+_REQUIRED_TOOLS = ("pagefind", "pytest", "selfdoc", "stricttest")
 
 
 def _members():
@@ -71,7 +73,10 @@ def test_some_member_runs_the_shared_suite():
 @pytest.mark.parametrize("member", _members_running_the_shared_suite())
 @pytest.mark.parametrize("tool", _REQUIRED_TOOLS)
 def test_member_declares_the_tools_the_shared_suite_needs(member, tool):
-    dev = _manifest(member).get("dependency-groups", {}).get("dev", [])
+    manifest = _manifest(member)
+    if manifest.get("project", {}).get("name", "").lower() == tool:
+        pytest.skip(f"{member} IS {tool}; its own sync installs it")
+    dev = manifest.get("dependency-groups", {}).get("dev", [])
     declared = {_distribution_name(req) for req in dev}
     assert tool in declared, (
         f"{member}/pyproject.toml runs this suite (testpaths = "

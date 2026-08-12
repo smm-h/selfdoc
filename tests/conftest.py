@@ -53,21 +53,36 @@ class StubPyPI:
         }
 
 
+# The versions the workflow-sync tests pin explicitly.  They live here, beside
+# the stub registry that has to claim them as published, because the two are
+# one decision: a pin the stub does not serve is an unpublished pin and the
+# check under test refuses it.  Keeping the constant in the test module while
+# the stub derived its list from the INSTALLED selfdoc made the pair agree only
+# while the release under development happened to be the installed one -- every
+# version bump then broke five tests until someone edited the literal.
+PINNED_SELFDOC = "0.36.0"
+PINNED_PAGEFIND = "1.4.0"
+
+
 def _published_by_default():
     """Versions the stub registry serves unless a test says otherwise.
 
-    The running selfblog and the installed selfdoc are in here because
-    that is what the pin resolver reads off this environment; the rest are
-    the fixed versions the workflow-sync tests pin explicitly.
-    """
-    from importlib.metadata import version as dist_version
+    The running selfblog and selfdoc are in here because that is what the pin
+    resolver reads off this environment; the rest are the fixed versions the
+    workflow-sync tests pin explicitly.
 
+    Both siblings are read through their own ``__version__``, never through
+    installed distribution metadata: a member-rooted CI job installs only its
+    own package, so ``importlib.metadata`` has no entry for the other one even
+    though the suite imports it from the repository just fine.
+    """
     from selfblog import __version__ as selfblog_version
+    from selfdoc import __version__ as selfdoc_version
 
     return {
         "selfblog": ["1.2.2", "1.2.3", "1.2.4", selfblog_version],
-        "selfdoc": ["0.35.0", dist_version("selfdoc")],
-        "pagefind": ["1.3.0", "1.4.0"],
+        "selfdoc": ["0.35.0", PINNED_SELFDOC, selfdoc_version],
+        "pagefind": ["1.3.0", PINNED_PAGEFIND],
     }
 
 
