@@ -303,7 +303,7 @@ def _cmd_post_generate(
 def _cmd_post_publish(ctx):
     """Publish blog posts to the assembly without a software release."""
 
-    from selfblog.assembly import push_files_to_repo
+    from selfblog.assembly import push_files_to_repo, split_build_output
     from selfdoc_core.build import _build_posts_only
     from selfdoc_core.config import load_config
     from selfblog.posts import discover_posts
@@ -356,13 +356,20 @@ def _cmd_post_publish(ctx):
         ".", config, output_dir, docs_dir_name, docs_dir, include_drafts=False,
     )
 
-    # Read built HTML files and map to assembly paths
+    # Read built HTML files and map to assembly paths. A post is site-level
+    # -- `blog/<post-slug>/`, under no project slug -- and the listing page
+    # the build renders for the project's own standalone site is dropped:
+    # the assembled site's blog index lists every project's posts and is
+    # written by the shared-only rebuild dispatched below.
+    build_rels = {
+        os.path.relpath(abs_path, output_dir).replace(os.sep, "/")
+        for abs_path in written
+    }
     files = {}
-    for abs_path in written:
-        rel_in_output = os.path.relpath(abs_path, output_dir)
-        assembly_path = f"site/{slug}/{rel_in_output}"
-        with open(abs_path, "r", encoding="utf-8") as f:
-            files[assembly_path] = f.read()
+    for build_rel, site_rel in split_build_output(build_rels, slug).items():
+        with open(os.path.join(output_dir, *build_rel.split("/")),
+                  "r", encoding="utf-8") as f:
+            files[f"site/{site_rel}"] = f.read()
 
     # Read post-manifest and map to assembly path
     post_manifest_path = os.path.join(".selfdoc", "post-manifest.json")
@@ -1072,7 +1079,7 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
 @strictcli.flag("version", type=str, default="", help="Version of the project being integrated, recorded in projects.json and the commit message")
 @strictcli.flag("ref", type=str, default="", help="Git ref (tag) the source project was cloned at, recorded in projects.json")
 @strictcli.flag("source-repo", type=str, default="", help="Source project repository (owner/name), recorded in projects.json")
-@strictcli.flag("scope", type=str, default="", help="What this dispatch replaces: 'full' (the whole project subtree), 'posts' (only site/<slug>/posts/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.")
+@strictcli.flag("scope", type=str, default="", help="What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.")
 @strictcli.flag("canonical-base", type=str, default="", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.")
 @strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
 @strictcli.flag("portfolio-canonical", type=str, default="", help="Absolute canonical URL of the portfolio page, required whenever the assembly checkout has a portfolio/index.html")

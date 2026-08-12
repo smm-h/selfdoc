@@ -102,8 +102,9 @@ def assembly(tmp_path):
         pages=[{"path": "index.md", "title": "Home"}],
     )))
     _write(str(manifests / "alpha-files.json"), json.dumps({
-        "schema_version": 1, "slug": "alpha",
-        "owners": {"release": ["index.html", "guide/index.html"]},
+        "schema_version": 2, "slug": "alpha",
+        "owners": {"release": ["alpha/index.html", "alpha/guide/index.html",
+                               "blog/hello/index.html"]},
     }))
 
     _write(str(site / "alpha" / "index.html"),
@@ -112,9 +113,9 @@ def assembly(tmp_path):
     _write(str(site / "alpha" / "guide" / "index.html"),
            _page("Alpha Guide", f"{CANONICAL_BASE}/alpha/guide/",
                  body='  <a href="../../beta/">Beta</a>', version="1.0.0"))
-    _write(str(site / "alpha" / "posts" / "hello" / "index.html"),
-           _page("Hello", f"{CANONICAL_BASE}/alpha/posts/hello/",
-                 version="1.0.0"))
+    # A post is site-level: blog/<post-slug>/, under no project slug.
+    _write(str(site / "blog" / "hello" / "index.html"),
+           _page("Hello", f"{CANONICAL_BASE}/blog/hello/", version="1.0.0"))
     _write(str(site / "beta" / "index.html"),
            _page("Beta", f"{CANONICAL_BASE}/beta/", version="2.0.0"))
 
@@ -250,10 +251,21 @@ def test_a_listed_page_that_was_not_emitted_fails(assembly):
 
 
 def test_a_listed_post_that_was_not_emitted_fails(assembly):
-    os.remove(str(assembly / "site" / "alpha" / "posts" / "hello" / "index.html"))
+    os.remove(str(assembly / "site" / "blog" / "hello" / "index.html"))
     report = _verify(assembly)
     messages = [str(f) for f in report.failures_of("manifest-posts-emitted")]
     assert any("hello" in m for m in messages)
+    assert any("site/blog/hello/index.html" in m for m in messages)
+
+
+def test_a_post_emitted_under_its_project_slug_is_not_the_address_checked(assembly):
+    """Moving the post back to the old address fails: nothing serves it there."""
+    import shutil
+
+    shutil.move(str(assembly / "site" / "blog" / "hello"),
+                str(assembly / "site" / "alpha" / "posts"))
+    report = _verify(assembly)
+    assert report.failures_of("manifest-posts-emitted")
 
 
 def test_a_post_overlay_is_verified_too(assembly):
@@ -355,7 +367,7 @@ def test_a_feed_link_with_no_page_fails(assembly):
     feed = assembly / "site" / "feed.xml"
     text = feed.read_text().replace(
         "</feed>",
-        f'  <entry><link href="{CANONICAL_BASE}/alpha/posts/ghost/"/></entry>\n</feed>',
+        f'  <entry><link href="{CANONICAL_BASE}/blog/ghost/"/></entry>\n</feed>',
     )
     _write(str(feed), text)
     report = _verify(assembly)
@@ -468,13 +480,25 @@ def test_a_cross_project_link_to_a_page_nobody_publishes_fails(assembly):
     assert any("beta/ghost/" in m for m in messages)
 
 
-def test_a_cross_project_link_to_a_published_post_resolves(assembly):
+def test_a_link_to_a_published_post_resolves(assembly):
+    """A post is addressed at the site level from every project's pages."""
+    _write(str(assembly / "site" / "beta" / "index.html"),
+           _page("Beta", f"{CANONICAL_BASE}/beta/",
+                 body='  <a href="../blog/hello/">Hello</a>',
+                 version="2.0.0"))
+    report = _verify(assembly)
+    assert report.failures_of("cross-project-links") == []
+    assert report.failures_of("internal-references") == []
+
+
+def test_a_link_to_a_post_under_a_project_slug_is_a_dead_link(assembly):
+    """The old address is not served: nothing is emitted under <slug>/posts/."""
     _write(str(assembly / "site" / "beta" / "index.html"),
            _page("Beta", f"{CANONICAL_BASE}/beta/",
                  body='  <a href="../alpha/posts/hello/">Hello</a>',
                  version="2.0.0"))
     report = _verify(assembly)
-    assert report.failures_of("cross-project-links") == []
+    assert report.failures_of("internal-references")
 
 
 # -- outbound links ------------------------------------------------------------

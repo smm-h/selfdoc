@@ -41,7 +41,7 @@ def test_feed_entry_reuse():
     feed = generate_unified_feed([manifest], docs_base)
 
     # Call _make_feed_entry directly with the same data the feed would use
-    expected_url = f"{docs_base}/proj/posts/hello-world/"
+    expected_url = f"{docs_base}/blog/hello-world/"
     _, entry_xml = _make_feed_entry(
         title="Hello World",
         url=expected_url,
@@ -51,14 +51,15 @@ def test_feed_entry_reuse():
 
 
 def test_feed_entry_has_correct_url():
-    """Entry link href uses {docs_base}/{slug}/posts/{post_slug}/ pattern."""
+    """Entry link href uses the site-level {docs_base}/blog/{post_slug}/."""
     post = _make_post("My Post", "2024-02-20", "my-post")
     manifest = _make_manifest("alpha", "alpha", posts=[post])
     docs_base = "https://docs.example.com"
 
     feed = generate_unified_feed([manifest], docs_base)
 
-    assert '<link href="https://docs.example.com/alpha/posts/my-post/"/>' in feed
+    assert '<link href="https://docs.example.com/blog/my-post/"/>' in feed
+    assert "alpha/posts" not in feed
 
 
 def test_feed_entry_title_escaped():

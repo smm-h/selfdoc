@@ -394,8 +394,8 @@ def test_blog_urls_not_broken_without_docs_base(tmp_path):
     Regression test: previously, docs_base was derived from manifest base_url by
     stripping the last path segment. For URLs like 'https://selfdoc.smmh.dev'
     (no path segment), rsplit('/') produced 'https:' as docs_base, resulting in
-    href="https:/rlsbl/posts/..." which browsers normalize to
-    href="https://rlsbl/posts/..." (slug treated as hostname).
+    href="https:/blog/..." which browsers normalize to
+    href="https://blog/..." (the first segment treated as a hostname).
     """
     site_dir = str(tmp_path / "site")
     manifests_dir = str(tmp_path / "manifests")
@@ -429,10 +429,10 @@ def test_blog_urls_not_broken_without_docs_base(tmp_path):
         blog_html = f.read()
 
     # The URL must be root-relative (no docs_base provided)
-    assert 'href="/rlsbl/posts/first/"' in blog_html
+    assert 'href="/blog/first/"' in blog_html
     # Must NOT have broken protocol-only URL
-    assert "https:/rlsbl" not in blog_html
-    assert "://rlsbl" not in blog_html
+    assert "https:/blog" not in blog_html
+    assert "://blog" not in blog_html
 
 
 def test_blog_urls_correct_with_docs_base(tmp_path):
@@ -470,4 +470,4 @@ def test_blog_urls_correct_with_docs_base(tmp_path):
               encoding="utf-8") as f:
         blog_html = f.read()
 
-    assert 'href="https://docs.smmh.dev/rlsbl/posts/first/"' in blog_html
+    assert 'href="https://docs.smmh.dev/blog/first/"' in blog_html

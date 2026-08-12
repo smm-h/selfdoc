@@ -57,12 +57,18 @@ BLOBS = {
     "site/keeper/index.html": b"<html>keeper</html>",
     "site/goner/index.html": b"<html>goner</html>",
     "site/goner/guide/index.html": b"<html>goner guide</html>",
-    "site/goner/posts/hello/index.html": b"<html>goner post</html>",
+    # A post is site-level, so it is outside the subtree retirement removes:
+    # what says it was goner's is goner's published-file record.
+    "site/blog/goner-hello/index.html": b"<html>goner post</html>",
     "manifests/keeper.json": _manifest("keeper", "Keeper").encode(),
     "manifests/goner.json": _manifest("goner", "Goner").encode(),
     "manifests/goner-posts.json": _manifest("goner", "Goner").encode(),
     "manifests/goner-revisions.json": b"{}",
-    "manifests/goner-files.json": b'{"schema_version": 1, "slug": "goner", "owners": {}}',
+    "manifests/goner-files.json": json.dumps({
+        "schema_version": 2, "slug": "goner",
+        "owners": {"release": ["goner/index.html", "goner/guide/index.html",
+                               "blog/goner-hello/index.html"]},
+    }).encode(),
 }
 
 
@@ -100,6 +106,20 @@ def test_a_project_owns_every_manifest_kind():
     }
 
 
+def test_a_project_owns_the_posts_its_record_claims():
+    """They sit at the site level, so the subtree prefix does not reach them."""
+    record = json.loads(BLOBS["manifests/goner-files.json"])
+    claimed = {p for paths in record["owners"].values() for p in paths
+               if not p.startswith("goner/")}
+    owned = project_paths(list(BLOBS), "goner", claimed)
+    assert "site/blog/goner-hello/index.html" in owned
+
+
+def test_a_project_owns_no_post_it_never_claimed():
+    owned = project_paths(list(BLOBS), "goner")
+    assert "site/blog/goner-hello/index.html" not in owned
+
+
 def test_a_project_owns_nothing_of_another_projects():
     owned = project_paths(list(BLOBS), "goner")
     assert not [p for p in owned if "keeper" in p]
@@ -128,6 +148,16 @@ def test_retirement_deletes_every_manifest_kind():
         "manifests/goner.json", "manifests/goner-posts.json",
         "manifests/goner-revisions.json", "manifests/goner-files.json",
     }
+
+
+def test_retirement_takes_the_projects_posts_off_the_blog():
+    """A retired project's posts are not in its subtree; they still go."""
+    remote = _remote(contents={
+        "manifests/goner-files.json":
+            BLOBS["manifests/goner-files.json"].decode(),
+    })
+    _retire(remote)
+    assert "site/blog/goner-hello/index.html" in remote.deleted
 
 
 def test_retirement_leaves_the_other_project_alone():

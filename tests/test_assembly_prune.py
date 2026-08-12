@@ -72,15 +72,20 @@ def _integrate(root, **overrides):
 
 
 def _publish_a_post_out_of_band(root, slug="alpha", post="fresh"):
-    """Do to the fixture tree what `post publish` does to the assembly repo."""
-    _write(str(root / "site" / slug / "posts" / post / "index.html"),
-           _page(post.title(), f"{slug}/posts/{post}/", marker=post))
+    """Do to the fixture tree what `post publish` does to the assembly repo.
+
+    A post lands at the site level, at ``blog/<post-slug>/``, under no
+    project slug -- which is why a release of the project that wrote it can
+    reach it at all, and why the claim is what keeps it.
+    """
+    _write(str(root / "site" / "blog" / post / "index.html"),
+           _page(post.title(), f"blog/{post}/", marker=post))
     record = root / "manifests" / f"{slug}-files.json"
     data = _read_json(str(record)) if record.exists() else {
-        "schema_version": 1, "slug": slug, "owners": {},
+        "schema_version": 2, "slug": slug, "owners": {},
     }
     owners = data.setdefault("owners", {})
-    owners.setdefault("posts", []).append(f"posts/{post}/index.html")
+    owners.setdefault("posts", []).append(f"blog/{post}/index.html")
     _write(str(record), json.dumps(data))
     _write(str(root / "manifests" / f"{slug}-posts.json"),
            json.dumps(_manifest(slug, slug.title(), "0.9.0", posts=[
@@ -126,7 +131,7 @@ def test_a_path_nobody_recorded_is_never_pruned():
 
 
 def test_another_publishers_current_path_is_never_pruned():
-    owners = {"release": ["posts/x/index.html"], "posts": ["posts/x/index.html"]}
+    owners = {"release": ["blog/x/index.html"], "posts": ["blog/x/index.html"]}
     removed, _ = prune_plan(owners, "release", set())
     assert removed == []
 
@@ -163,7 +168,9 @@ def test_a_corrupt_record_is_a_hard_error(tmp_path):
 
 def test_a_record_naming_an_unknown_publisher_is_a_hard_error(tmp_path):
     path = str(tmp_path / "alpha-files.json")
-    _write(path, json.dumps({"owners": {"whoever": ["a.html"]}}))
+    _write(path, json.dumps({
+        "schema_version": 2, "owners": {"whoever": ["a.html"]},
+    }))
     with pytest.raises(RuntimeError, match="unknown publisher"):
         load_files_manifest(path)
 
@@ -187,7 +194,7 @@ def test_a_post_published_out_of_band_survives_a_full_build(assembly_tree):
     _publish_a_post_out_of_band(assembly_tree)
     apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
                         "alpha", "full")
-    survivor = assembly_tree / "site" / "alpha" / "posts" / "fresh" / "index.html"
+    survivor = assembly_tree / "site" / "blog" / "fresh" / "index.html"
     assert survivor.exists()
     with open(survivor, encoding="utf-8") as f:
         assert "fresh" in f.read()
@@ -198,7 +205,7 @@ def test_a_post_published_out_of_band_keeps_its_claim_after_a_full_build(assembl
     apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
                         "alpha", "full")
     owners = load_files_manifest(str(assembly_tree / "manifests" / "alpha-files.json"))
-    assert owners["posts"] == ["posts/fresh/index.html"]
+    assert owners["posts"] == ["blog/fresh/index.html"]
 
 
 def test_a_page_the_new_build_dropped_is_pruned(assembly_tree):
@@ -224,7 +231,7 @@ def test_a_full_build_still_refreshes_the_pages_it_produces(assembly_tree):
 def test_a_full_integrate_leaves_an_out_of_band_post_alone(assembly_tree, runner):
     _publish_a_post_out_of_band(assembly_tree)
     _integrate(assembly_tree)
-    assert (assembly_tree / "site" / "alpha" / "posts" / "fresh" / "index.html").exists()
+    assert (assembly_tree / "site" / "blog" / "fresh" / "index.html").exists()
 
 
 def test_an_out_of_band_post_still_reaches_the_blog_index(assembly_tree, runner):
@@ -353,7 +360,7 @@ def test_an_undeclared_project_loses_every_manifest_kind(assembly_tree):
            json.dumps(_manifest("beta", "Beta", "2.0.0")))
     _write(str(assembly_tree / "manifests" / "beta-revisions.json"), "{}")
     _write(str(assembly_tree / "manifests" / "beta-files.json"),
-           json.dumps({"schema_version": 1, "slug": "beta", "owners": {}}))
+           json.dumps({"schema_version": 2, "slug": "beta", "owners": {}}))
     reconcile_membership(str(assembly_tree), {"alpha": ROSTER["alpha"]})
     left = os.listdir(assembly_tree / "manifests")
     assert not [name for name in left if name.startswith("beta")]

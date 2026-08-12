@@ -7,10 +7,18 @@ import json
 import re
 from datetime import datetime
 
-from selfdoc_core.build import _make_feed_entry, check_post_slug_uniqueness
+from selfdoc_core.build import (
+    POSTS_PREFIX,
+    _make_feed_entry,
+    check_post_slug_uniqueness,
+)
 
-#: The segment a project's posts sit under inside its own site subtree.
-POSTS_SEGMENT = "posts"
+#: The site-level directory every post is served from: ``blog/<post-slug>/``,
+#: at the assembly root and never under a project slug.  It is the build's
+#: own ``POSTS_PREFIX`` because the two cannot be allowed to disagree: what
+#: a project's build emits under ``blog/`` is what the assembly serves at
+#: ``blog/``, moved across unchanged.
+POSTS_SEGMENT = POSTS_PREFIX
 
 # Matches a <link rel=canonical ...> element with any attribute order and
 # any quoting style.  Hand-authored HTML is not normalized, so the pattern
@@ -152,7 +160,7 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
         date = html.escape(post["date"])
         project_name = html.escape(post["project_name"])
         title = html.escape(post["title"])
-        href = f"{docs_base}/{post_target(post['manifest_slug'], post['slug'])}/"
+        href = f"{docs_base}/{post_target(post['slug'])}/"
         parts.append('  <article class="blog-entry">')
         parts.append(f"    <time>{date}</time>")
         parts.append(f'    <span class="project-name">{project_name}</span>')
@@ -205,7 +213,7 @@ def generate_unified_feed(
 
     entries = []
     for post in merge_project_posts(manifests):
-        post_url = f"{docs_base}/{post_target(post['manifest_slug'], post['slug'])}/"
+        post_url = f"{docs_base}/{post_target(post['slug'])}/"
         entries.append(_make_feed_entry(
             title=post["title"],
             url=post_url,
@@ -258,9 +266,7 @@ def generate_sitemap(manifests: list[dict], docs_base: str) -> str:
                 url += "/"
             urls.append(url)
     for post in merge_project_posts(manifests):
-        urls.append(
-            f"{docs_base}/{post_target(post['manifest_slug'], post['slug'])}/"
-        )
+        urls.append(f"{docs_base}/{post_target(post['slug'])}/")
 
     urls.sort()
 
@@ -353,9 +359,15 @@ def page_target(project_slug: str, page_path: str) -> str:
     return f"{project_slug}/{_page_path_to_url_segment(page_path)}"
 
 
-def post_target(project_slug: str, post_slug: str) -> str:
-    """Site-relative address of a project's post (``alpha/posts/hello``)."""
-    return f"{project_slug}/{POSTS_SEGMENT}/{post_slug}"
+def post_target(post_slug: str) -> str:
+    """Site-relative address of a post (``blog/hello``).
+
+    A post has no project segment: the blog is the site's, one slug
+    namespace shared by every project, and ``blog/<post-slug>/`` is where
+    the build emits a post and where the assembly serves it.  Which project
+    wrote it is metadata the blog index prints, not part of its address.
+    """
+    return f"{POSTS_SEGMENT}/{post_slug}"
 
 
 def target_output_path(target: str) -> str:
@@ -382,7 +394,7 @@ def output_path_target(rel_output: str) -> str:
     elif path == "index.html":
         path = ""
     segments = path.split("/")
-    if len(segments) > 2 and segments[1] == POSTS_SEGMENT:
+    if len(segments) == 2 and segments[0] == POSTS_SEGMENT:
         return path
     return f"{path}/" if path else ""
 
@@ -442,8 +454,8 @@ def validate_cross_project_links(
             known.add(page_target(manifest_slug, page.get("path") or ""))
         for post in m.get("posts") or []:
             known.add(post.get("path") or "")
-            # Also add the slug-based post path
-            known.add(post_target(manifest_slug, post.get("slug") or ""))
+            # Also add the site-level post address
+            known.add(post_target(post.get("slug") or ""))
 
     errors = []
     for source, targets in sorted(link_registry.items()):

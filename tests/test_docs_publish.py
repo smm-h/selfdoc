@@ -139,6 +139,21 @@ def test_collect_site_files_addresses_the_projects_subtree(tmp_path):
     assert sorted(files) == ["site/alpha/guide/index.html", "site/alpha/index.html"]
 
 
+def test_collect_site_files_sends_a_post_to_the_site_level_blog(tmp_path):
+    """A locally built post is site-level, exactly as a deployed one is."""
+    output = _build(tmp_path, pages=("index.html", "blog/hello/index.html"))
+    files = collect_site_files(output, "alpha")
+    assert sorted(files) == ["site/alpha/index.html", "site/blog/hello/index.html"]
+
+
+def test_collect_site_files_drops_the_projects_own_blog_listing(tmp_path):
+    """The site's blog index is the assembly's, listing every project's posts."""
+    output = _build(tmp_path, pages=("blog/index.html", "blog/hello/index.html"))
+    assert sorted(collect_site_files(output, "alpha")) == [
+        "site/blog/hello/index.html",
+    ]
+
+
 def test_collect_site_files_reads_content_as_bytes(tmp_path):
     output = _build(tmp_path)
     (tmp_path / "docs" / "_build" / "logo.png").write_bytes(PNG_BYTES)
@@ -186,7 +201,9 @@ def test_the_published_file_record_names_this_publisher(tmp_path):
     remote = _remote()
     _publish(remote, REPO, "alpha", _build(tmp_path), version="1.0.0")
     record = json.loads(remote.pushed["manifests/alpha-files.json"])
-    assert record["owners"]["docs"] == ["guide/index.html", "index.html"]
+    assert record["owners"]["docs"] == [
+        "alpha/guide/index.html", "alpha/index.html",
+    ]
 
 
 def test_the_membership_record_is_refreshed(tmp_path):
@@ -242,8 +259,8 @@ def test_a_page_removed_locally_disappears_remotely(tmp_path):
     remote = _remote(
         blobs={"site/alpha/guide/index.html": b"<html>guide/index.html</html>"},
         record=json.dumps({
-            "schema_version": 1, "slug": "alpha",
-            "owners": {"docs": ["index.html", "guide/index.html"]},
+            "schema_version": 2, "slug": "alpha",
+            "owners": {"docs": ["alpha/index.html", "alpha/guide/index.html"]},
         }),
     )
     _publish(remote, REPO, "alpha", _build(tmp_path, pages=("index.html",)),
@@ -253,13 +270,13 @@ def test_a_page_removed_locally_disappears_remotely(tmp_path):
 
 def test_a_deletion_drops_out_of_the_published_file_record(tmp_path):
     remote = _remote(record=json.dumps({
-        "schema_version": 1, "slug": "alpha",
-        "owners": {"docs": ["index.html", "guide/index.html"]},
+        "schema_version": 2, "slug": "alpha",
+        "owners": {"docs": ["alpha/index.html", "alpha/guide/index.html"]},
     }))
     _publish(remote, REPO, "alpha", _build(tmp_path, pages=("index.html",)),
              version="1.0.0")
     record = json.loads(remote.pushed["manifests/alpha-files.json"])
-    assert record["owners"]["docs"] == ["index.html"]
+    assert record["owners"]["docs"] == ["alpha/index.html"]
 
 
 def test_a_documentation_publish_never_deletes_a_release_page(tmp_path):
@@ -267,8 +284,8 @@ def test_a_documentation_publish_never_deletes_a_release_page(tmp_path):
     remote = _remote(
         blobs={"site/alpha/reference/index.html": b"released"},
         record=json.dumps({
-            "schema_version": 1, "slug": "alpha",
-            "owners": {"release": ["reference/index.html"], "docs": []},
+            "schema_version": 2, "slug": "alpha",
+            "owners": {"release": ["alpha/reference/index.html"], "docs": []},
         }),
     )
     _publish(remote, REPO, "alpha", _build(tmp_path), version="1.0.0")
@@ -277,11 +294,11 @@ def test_a_documentation_publish_never_deletes_a_release_page(tmp_path):
 
 def test_a_documentation_publish_never_deletes_a_post(tmp_path):
     remote = _remote(
-        blobs={"site/alpha/posts/hello/index.html": b"a post"},
+        blobs={"site/blog/hello/index.html": b"a post"},
         record=json.dumps({
-            "schema_version": 1, "slug": "alpha",
-            "owners": {"posts": ["posts/hello/index.html"],
-                       "docs": ["posts/hello/index.html"]},
+            "schema_version": 2, "slug": "alpha",
+            "owners": {"posts": ["blog/hello/index.html"],
+                       "docs": ["blog/hello/index.html"]},
         }),
     )
     _publish(remote, REPO, "alpha", _build(tmp_path), version="1.0.0")

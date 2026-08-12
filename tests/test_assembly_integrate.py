@@ -93,12 +93,11 @@ def assembly_tree(tmp_path):
            _page("Alpha Guide", "alpha/guide/", marker="old guide"))
     _write(str(root / "site" / "alpha" / "retired" / "index.html"),
            _page("Retired", "alpha/retired/", marker="gone upstream"))
-    _write(str(root / "site" / "alpha" / "posts" / "index.html"),
-           _page("Alpha Posts", "alpha/posts/", marker="old posts"))
-    # A post published between releases: nobody's build produced it, so no
-    # publisher is entitled to prune it and it outlives a full build.
-    _write(str(root / "site" / "alpha" / "posts" / "old-post" / "index.html"),
-           _page("Old", "alpha/posts/old-post/", marker="old post"))
+    # A post published between releases, at the site-level address every
+    # post has: nobody's build produced it, so no publisher is entitled to
+    # prune it and it outlives a full build.
+    _write(str(root / "site" / "blog" / "old-post" / "index.html"),
+           _page("Old", "blog/old-post/", marker="old post"))
     _write(str(root / "site" / "beta" / "index.html"),
            _page("Beta", "beta/", marker="beta", version="2.0.0"))
 
@@ -120,13 +119,14 @@ def assembly_tree(tmp_path):
     _write(str(root / "roster.toml"), render_roster(ROSTER.values()))
 
     # What the last release published for alpha, which is what a prune is
-    # entitled to remove. The out-of-band post below is deliberately absent.
+    # entitled to remove. Every path is site-relative, and the out-of-band
+    # post is deliberately absent.
     _write(str(root / "manifests" / "alpha-files.json"), json.dumps({
-        "schema_version": 1,
+        "schema_version": 2,
         "slug": "alpha",
         "owners": {"release": [
-            "index.html", "guide/index.html", "retired/index.html",
-            "posts/index.html",
+            "alpha/index.html", "alpha/guide/index.html",
+            "alpha/retired/index.html",
         ]},
     }))
 
@@ -142,12 +142,14 @@ def assembly_tree(tmp_path):
     _write(str(build / "guide" / "index.html"),
            _page("Alpha Guide", "alpha/guide/", marker="new guide",
                  version="1.0.0"))
-    _write(str(build / "posts" / "index.html"),
-           _page("Alpha Posts", "alpha/posts/", marker="new posts",
+    # The listing page the build renders for the project's own standalone
+    # site. It is not grafted: the assembled site's blog index is written by
+    # generate_shared_files and lists every project's posts.
+    _write(str(build / "blog" / "index.html"),
+           _page("Alpha Posts", "blog/", marker="standalone listing",
                  version="1.0.0"))
-    _write(str(build / "posts" / "hello" / "index.html"),
-           _page("Hello", "alpha/posts/hello/", marker="hello",
-                 version="1.0.0"))
+    _write(str(build / "blog" / "hello" / "index.html"),
+           _page("Hello", "blog/hello/", marker="hello", version="1.0.0"))
     # Per-project deploy artifacts the assembly must not inherit.
     _write(str(build / "_headers"), "/*\\n  X-Frame-Options: DENY\\n")
     _write(str(build / "_redirects"), "/* /index.html 200\\n")
@@ -314,10 +316,29 @@ def test_apply_project_files_full_scope(assembly_tree):
                         "alpha", "full")
     site = assembly_tree / "site" / "alpha"
     assert not (site / "retired").exists()
-    assert (site / "posts" / "hello" / "index.html").exists()
+    assert (assembly_tree / "site" / "blog" / "hello" / "index.html").exists()
     assert not (site / "_headers").exists()
     assert not (site / "index.html.gz").exists()
     assert _read_json(str(assembly_tree / "manifests" / "alpha.json"))["version"] == "1.0.0"
+
+
+def test_a_grafted_post_lands_at_the_site_level_and_nowhere_else(assembly_tree):
+    """The whole contract: `blog/<post-slug>/`, never under a project slug."""
+    apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+                        "alpha", "full")
+    assert (assembly_tree / "site" / "blog" / "hello" / "index.html").exists()
+    assert not (assembly_tree / "site" / "alpha" / "blog").exists()
+    assert not (assembly_tree / "site" / "alpha" / "posts").exists()
+
+
+def test_the_projects_own_blog_listing_is_not_grafted(assembly_tree):
+    """A project's standalone listing would claim the whole site's blog index."""
+    apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+                        "alpha", "full")
+    index = assembly_tree / "site" / "blog" / "index.html"
+    if index.exists():
+        with open(index, encoding="utf-8") as f:
+            assert "standalone listing" not in f.read()
 
 
 def test_apply_project_files_records_what_the_release_published(assembly_tree):
@@ -325,8 +346,7 @@ def test_apply_project_files_records_what_the_release_published(assembly_tree):
                         "alpha", "full")
     owners = load_files_manifest(str(assembly_tree / "manifests" / "alpha-files.json"))
     assert set(owners["release"]) == {
-        "index.html", "guide/index.html", "posts/index.html",
-        "posts/hello/index.html",
+        "alpha/index.html", "alpha/guide/index.html", "blog/hello/index.html",
     }
 
 
@@ -343,10 +363,72 @@ def test_apply_project_files_posts_scope_touches_only_posts(assembly_tree):
     site = assembly_tree / "site" / "alpha"
     with open(site / "index.html", encoding="utf-8") as f:
         assert "old alpha" in f.read(), "posts scope must not touch project pages"
-    with open(site / "posts" / "index.html", encoding="utf-8") as f:
-        assert "new posts" in f.read()
+    with open(assembly_tree / "site" / "blog" / "hello" / "index.html",
+              encoding="utf-8") as f:
+        assert "hello" in f.read()
     overlay = _read_json(str(assembly_tree / "manifests" / "alpha-posts.json"))
     assert overlay["posts"][0]["slug"] == "hello"
+
+
+def test_the_posts_scope_claims_the_site_level_paths_it_wrote(assembly_tree):
+    apply_project_files(str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+                        "alpha", "posts")
+    owners = load_files_manifest(str(assembly_tree / "manifests" / "alpha-files.json"))
+    assert owners["posts"] == ["blog/hello/index.html"]
+
+
+def test_a_posts_scope_publish_with_no_posts_publishes_nothing(
+    assembly_tree, capsys,
+):
+    """A build that emitted no posts is not an instruction to unpublish."""
+    import shutil
+
+    shutil.rmtree(assembly_tree / "source" / "alpha" / "docs" / "_build" / "blog")
+    record = assembly_tree / "manifests" / "alpha-files.json"
+    _write(str(record), json.dumps({
+        "schema_version": 2, "slug": "alpha",
+        "owners": {"posts": ["blog/old-post/index.html"]},
+    }))
+
+    touched = apply_project_files(
+        str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+        "alpha", "posts",
+    )
+
+    assert touched == []
+    assert (assembly_tree / "site" / "blog" / "old-post" / "index.html").exists()
+    assert _read_json(str(record))["owners"]["posts"] == [
+        "blog/old-post/index.html",
+    ]
+    assert "nothing to publish" in capsys.readouterr().err
+
+
+def test_a_graft_refuses_to_overwrite_another_projects_post(assembly_tree):
+    """Two projects, one post slug: the write is refused, naming both."""
+    _write(str(assembly_tree / "manifests" / "beta-files.json"), json.dumps({
+        "schema_version": 2, "slug": "beta",
+        "owners": {"release": ["beta/index.html", "blog/hello/index.html"]},
+    }))
+    with pytest.raises(RuntimeError, match="claimed by 'beta'"):
+        apply_project_files(
+            str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+            "alpha", "full",
+        )
+
+
+def test_a_refused_graft_writes_nothing(assembly_tree):
+    _write(str(assembly_tree / "manifests" / "beta-files.json"), json.dumps({
+        "schema_version": 2, "slug": "beta",
+        "owners": {"release": ["beta/index.html", "blog/hello/index.html"]},
+    }))
+    with pytest.raises(RuntimeError):
+        apply_project_files(
+            str(assembly_tree), str(assembly_tree / "source" / "alpha"),
+            "alpha", "full",
+        )
+    assert not (assembly_tree / "site" / "blog" / "hello").exists()
+    with open(assembly_tree / "site" / "alpha" / "index.html", encoding="utf-8") as f:
+        assert "old alpha" in f.read()
 
 
 # -- the full integrate run ---------------------------------------------------
@@ -444,7 +526,7 @@ def test_posts_scope_replaces_only_the_posts_subtree(assembly_tree, runner):
     _integrate(assembly_tree, scope="posts", build=False)
     with open(assembly_tree / "site" / "alpha" / "index.html", encoding="utf-8") as f:
         assert "old alpha" in f.read()
-    assert (assembly_tree / "site" / "alpha" / "posts" / "hello").exists()
+    assert (assembly_tree / "site" / "blog" / "hello").exists()
 
 
 def test_shared_only_scope_touches_no_project_files(assembly_tree, runner):

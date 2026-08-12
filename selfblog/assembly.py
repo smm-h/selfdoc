@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 
+from selfblog.shared import POSTS_SEGMENT
 from selfblog.verify import OUTBOUND_CACHE_PATH
 from selfdoc_core import effects
 
@@ -35,6 +36,14 @@ DEPLOY_ARTIFACT_SUFFIXES = (".gz", ".br")
 # page belongs to another owner, so a release that does not carry it leaves
 # it alone.
 PUBLISH_OWNERS = ("release", "docs", "posts")
+
+# The published-file record's format.  Version 2 addresses every path from
+# site/ rather than from the project's own subtree, because posts stopped
+# living inside it: they are site-level, at blog/<post-slug>/, so one record
+# now names paths in two different places and a single namespace is the only
+# way they cannot be confused.  A version-1 record is refused, never
+# reinterpreted -- see :func:`parse_files_manifest`.
+FILES_RECORD_VERSION = 2
 
 # Sidecars under manifests/ that are not project manifests and must not be
 # loaded as one.
@@ -1031,34 +1040,48 @@ def files_manifest_path(manifests_dir: str, slug: str) -> str:
     return os.path.join(manifests_dir, f"{slug}-files.json")
 
 
-def load_files_manifest(path: str) -> dict[str, list[str]]:
-    """Return owner -> published paths from the record at *path*.
+def parse_files_manifest(raw: str, *, source: str) -> dict[str, list[str]]:
+    """Return owner -> published paths from the record text *raw*.
 
-    An absent record is an empty mapping, which is not a fallback but the
-    real initial state: nothing has published anything for this project yet,
-    so there is nothing anybody is entitled to remove.  A malformed record
-    is a hard error -- rewriting it would hand every path back to whichever
-    publisher ran next.
+    Empty text is an empty mapping: nothing has published anything yet, so
+    there is nothing anybody is entitled to remove.  Everything else is
+    strict, because a record read wrong hands paths to the wrong publisher:
+    malformed JSON, an unknown publisher and a path list that is not a list
+    of strings are each a hard error, and so is a record written in the
+    version-1 format, whose paths meant something else.
     """
-    if not os.path.isfile(path):
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        raw = f.read()
     if not raw.strip():
         return {}
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{path} is not valid JSON: {exc}") from exc
+        raise RuntimeError(f"{source} is not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
-        raise RuntimeError(f"{path} must contain a JSON object")
+        raise RuntimeError(f"{source} must contain a JSON object")
+    version = data.get("schema_version")
+    if version != FILES_RECORD_VERSION:
+        raise RuntimeError(
+            f"{source} is a version {version!r} published-file record; this "
+            f"selfblog writes and reads version {FILES_RECORD_VERSION}. "
+            f"Version 1 addressed every path from the project's own subtree "
+            f"and put posts at '<slug>/posts/...'; version 2 addresses every "
+            f"path from site/ and posts are site-level, at "
+            f"'blog/<post-slug>/...'. The two cannot be told apart by "
+            f"reading them, so this one is refused rather than "
+            f"reinterpreted. Either rewrite it -- prefix every documentation "
+            f"path with '<slug>/' and re-address every post as "
+            f"'blog/<post-slug>/...' -- or delete it together with the stale "
+            f"site/<slug>/posts/ tree it describes, in which case the next "
+            f"publish records what it produces and until then no publisher "
+            f"is entitled to remove anything."
+        )
     owners = data.get("owners") or {}
     if not isinstance(owners, dict):
-        raise RuntimeError(f"{path}: 'owners' must be a JSON object")
+        raise RuntimeError(f"{source}: 'owners' must be a JSON object")
     unknown = sorted(set(owners) - set(PUBLISH_OWNERS))
     if unknown:
         raise RuntimeError(
-            f"{path} records paths under unknown publisher(s) "
+            f"{source} records paths under unknown publisher(s) "
             f"{', '.join(repr(o) for o in unknown)}; known publishers are "
             f"{', '.join(PUBLISH_OWNERS)}."
         )
@@ -1066,18 +1089,35 @@ def load_files_manifest(path: str) -> dict[str, list[str]]:
     for owner, paths in owners.items():
         if not isinstance(paths, list) or any(not isinstance(p, str) for p in paths):
             raise RuntimeError(
-                f"{path}: the paths recorded for {owner!r} must be a list of "
-                f"strings."
+                f"{source}: the paths recorded for {owner!r} must be a list "
+                f"of strings."
             )
         result[owner] = sorted(paths)
     return result
 
 
+def load_files_manifest(path: str) -> dict[str, list[str]]:
+    """Return owner -> published paths from the record at *path*.
+
+    An absent record is an empty mapping, which is not a fallback but the
+    real initial state: nothing has published anything for this project yet.
+    """
+    if not os.path.isfile(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        return parse_files_manifest(f.read(), source=path)
+
+
 def render_files_manifest(slug: str, owners: dict[str, list[str]]) -> str:
-    """Return the JSON text of *slug*'s published-file record."""
+    """Return the JSON text of *slug*'s published-file record.
+
+    Every path is relative to ``site/``: the project's own pages are under
+    ``<slug>/`` and its posts are at ``blog/<post-slug>/``, in one namespace
+    so a claim can be compared against any other project's.
+    """
     return json.dumps(
         {
-            "schema_version": 1,
+            "schema_version": FILES_RECORD_VERSION,
             "slug": slug,
             "owners": {
                 owner: sorted(owners.get(owner, []))
@@ -1122,27 +1162,107 @@ def prune_plan(
     return removed, updated
 
 
+def split_build_output(build_rels, slug: str) -> dict[str, str]:
+    """Map each file a build produced to where the assembly serves it.
+
+    A project's build output lands in two places, and this is the rule that
+    decides which:
+
+    * ``blog/<post-slug>/...`` -- two or more segments under ``blog/`` -- is
+      one of the project's **posts**.  Posts are site-level: the file keeps
+      its address exactly, at ``site/blog/<post-slug>/...``, under no
+      project slug.
+    * A file **directly** under ``blog/`` -- in practice ``blog/index.html``,
+      the listing page the build renders so the project's own standalone
+      site has a blog page -- is not grafted at all.  The assembled site's
+      blog index lists every project's posts and is written by
+      :func:`generate_shared_files`; a single project's copy would claim the
+      same address and serve one project's posts as the whole site's.
+    * Everything else is the project's documentation, and lands under its
+      own subtree at ``site/<slug>/...``.
+
+    Returns build-relative path -> site-relative path, with the skipped
+    standalone blog index simply absent.
+    """
+    mapping: dict[str, str] = {}
+    for rel in build_rels:
+        segments = rel.split("/")
+        if segments[0] == POSTS_SEGMENT:
+            if len(segments) < 3:
+                continue
+            mapping[rel] = rel
+        else:
+            mapping[rel] = f"{slug}/{rel}"
+    return mapping
+
+
 def graft_subtree(
     dest: str,
     src: str,
-    produced,
+    produced: dict[str, str],
     removed,
 ) -> None:
     """Copy *produced* out of *src* into *dest* and delete *removed* from it.
 
-    Both path sets are ``/``-joined relative paths, so the caller can graft a
-    sub-portion of a build (the posts subtree, say) with the same relative
-    addressing the record uses.
+    *produced* maps a source-relative path to the destination-relative path
+    it lands at, because a build's output no longer lands in one place: its
+    posts go to the site-level blog and everything else to the project's own
+    subtree.  *removed* is destination-relative, in the same addressing the
+    published-file record uses.
     """
     effects.makedirs(dest, exist_ok=True)
-    for rel in sorted(produced):
-        target = os.path.join(dest, *rel.split("/"))
+    for src_rel, dest_rel in sorted(produced.items()):
+        target = os.path.join(dest, *dest_rel.split("/"))
         effects.makedirs(os.path.dirname(target) or dest, exist_ok=True)
-        effects.copy_file(os.path.join(src, *rel.split("/")), target)
+        effects.copy_file(os.path.join(src, *src_rel.split("/")), target)
     for rel in sorted(removed):
         target = os.path.join(dest, *rel.split("/"))
         if os.path.isfile(target):
             effects.remove(target)
+
+
+def claimed_site_paths(manifests_dir: str, slug: str) -> list[str]:
+    """Return the paths *slug* published outside its own subtree.
+
+    Its documentation goes with ``site/<slug>/`` when that directory is
+    removed; its posts do not, because they are site-level.  Retirement and
+    reconciliation read this to take them with it, so a project that leaves
+    the assembly does not leave its posts behind on the blog.
+    """
+    record = load_files_manifest(files_manifest_path(manifests_dir, slug))
+    prefix = f"{slug}/"
+    return sorted({
+        path
+        for paths in record.values()
+        for path in paths
+        if not path.startswith(prefix)
+    })
+
+
+def foreign_post_claims(manifests_dir: str, slug: str) -> dict[str, str]:
+    """Map every site-level post path other projects claim to its claimant.
+
+    The merge refuses two projects publishing the same post slug, but that
+    refusal reads manifests; this one reads the published-file records, so
+    the write itself can be refused too.  Both are needed: a graft happens
+    before the manifests are merged, and it is the graft that would
+    overwrite the other project's file.
+    """
+    claims: dict[str, str] = {}
+    if not os.path.isdir(manifests_dir):
+        return claims
+    for name in sorted(os.listdir(manifests_dir)):
+        if not name.endswith("-files.json"):
+            continue
+        other = name[: -len("-files.json")]
+        if other == slug:
+            continue
+        record = load_files_manifest(os.path.join(manifests_dir, name))
+        for paths in record.values():
+            for path in paths:
+                if path.split("/")[0] == POSTS_SEGMENT:
+                    claims.setdefault(path, other)
+    return claims
 
 
 def load_projects_json(path: str) -> dict:
@@ -1266,9 +1386,19 @@ def reconcile_membership(assembly_dir: str, roster: dict[str, RosterEntry]) -> d
         if os.path.isdir(subtree):
             effects.rmtree(subtree)
             removed.append(subtree)
+        # A retired project's posts are not in its subtree -- they are
+        # site-level, at blog/<post-slug>/ -- so the record is what says
+        # which of them were its. Read it before it is deleted below.
+        for path in claimed_site_paths(manifests_dir, slug):
+            target = os.path.join(site_dir, *path.split("/"))
+            if os.path.isfile(target):
+                effects.remove(target)
+                removed.append(target)
         for path in manifest_files_for(manifests_dir, slug):
             effects.remove(path)
             removed.append(path)
+    if retired:
+        prune_empty_dirs(os.path.join(site_dir, POSTS_SEGMENT))
 
     # A manifest whose stem matches no declared project at all is stale even
     # when no subtree or record named it -- a hand-dropped file, or a kind
@@ -1344,45 +1474,92 @@ def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
 
     The graft prunes rather than wipes: what the build produces is what the
     build owns, and only paths this publisher produced *before* and does not
-    produce now are removed.  Everything else in the subtree -- a post or a
-    documentation page published between releases -- is somebody else's and
-    survives.  The published-file record at ``manifests/<slug>-files.json``
-    is what makes that distinction possible.
+    produce now are removed.  Everything else -- a post or a documentation
+    page published between releases -- is somebody else's and survives.  The
+    published-file record at ``manifests/<slug>-files.json`` is what makes
+    that distinction possible.
+
+    The build's output lands in two places, by the rule
+    :func:`split_build_output` states: the project's documentation under
+    ``site/<slug>/``, its posts at the site level under ``site/blog/``.
     """
     build_root = os.path.join(source_dir, "docs", "_build")
-    site_slug_dir = os.path.join(assembly_dir, "site", slug)
+    site_dir = os.path.join(assembly_dir, "site")
+    site_slug_dir = os.path.join(site_dir, slug)
     manifests_dir = os.path.join(assembly_dir, "manifests")
     effects.makedirs(manifests_dir, exist_ok=True)
     touched: list[str] = []
 
     if scope == "posts":
-        # Posts-only: the posts subtree is this publisher's whole world, so
-        # its produced set is addressed under the same "posts/" prefix the
-        # record uses for the project as a whole.
+        # Posts-only: this publisher's whole world is the build's post
+        # output, so anything the clone happens to carry outside blog/ is
+        # not its business and is not grafted.
         owner = "posts"
-        produced = {
-            f"posts/{rel}"
-            for rel in build_output_paths(os.path.join(build_root, "posts"))
+        outputs = {
+            rel for rel in build_output_paths(build_root)
+            if rel.split("/")[0] == POSTS_SEGMENT
         }
         src_manifest = os.path.join(source_dir, ".selfdoc", "post-manifest.json")
         dest_manifest = os.path.join(manifests_dir, f"{slug}-posts.json")
     else:
         owner = "release"
-        produced = build_output_paths(build_root)
+        outputs = build_output_paths(build_root)
         src_manifest = os.path.join(source_dir, ".selfdoc", "manifest.json")
         dest_manifest = os.path.join(manifests_dir, f"{slug}.json")
 
+    produced = split_build_output(outputs, slug)
+
+    if scope == "posts" and not produced:
+        # A build that produced no posts is not an instruction to unpublish
+        # the ones already on the site: the pruning publisher would remove
+        # every path it claimed, and a posts build emits nothing when the
+        # source's posts directory is empty or absent for any reason at all.
+        print(
+            f"posts scope for {slug!r}: the build produced no post pages, so "
+            f"there is nothing to publish. Nothing was written and nothing "
+            f"was removed -- posts already published stay. To unpublish a "
+            f"post, delete it at the source and run a full release, which "
+            f"republishes this project's whole post set.",
+            file=sys.stderr,
+        )
+        return touched
+
     record_path = files_manifest_path(manifests_dir, slug)
     owners = load_files_manifest(record_path)
-    removed, owners = prune_plan(owners, owner, produced)
+    removed, owners = prune_plan(owners, owner, set(produced.values()))
 
-    graft_subtree(site_slug_dir, build_root, produced, removed)
+    # The site-level blog is one namespace shared by every project, so the
+    # write itself is checked, not only the merge that reads the manifests
+    # afterwards: a post path another project's record claims is refused
+    # before anything is copied over it.
+    foreign = foreign_post_claims(manifests_dir, slug)
+    stolen = sorted(
+        (dest_rel, foreign[dest_rel])
+        for dest_rel in produced.values()
+        if dest_rel in foreign
+    )
+    if stolen:
+        detail = "; ".join(
+            f"site/{path} is claimed by {other!r}" for path, other in stolen
+        )
+        raise RuntimeError(
+            f"{slug!r} would overwrite {len(stolen)} post file(s) another "
+            f"project published: {detail}. Posts are emitted at "
+            f"'{POSTS_SEGMENT}/<post-slug>/' with no project segment, so a "
+            f"post slug is unique across the whole site. Rename the post's "
+            f"slug in the project that claims it later."
+        )
+
+    graft_subtree(site_dir, build_root, produced, removed)
     # An artifact already in the tree from an older deploy is removed on
     # sight: the assembly serves one set of headers, redirects and worker for
     # the whole site, and a project's own copies fight them wherever they sit.
     prune_deploy_artifacts(site_slug_dir)
     prune_empty_dirs(site_slug_dir)
+    prune_empty_dirs(os.path.join(site_dir, POSTS_SEGMENT))
     touched.append(site_slug_dir)
+    if any(rel.split("/")[0] == POSTS_SEGMENT for rel in produced.values()):
+        touched.append(os.path.join(site_dir, POSTS_SEGMENT))
 
     effects.write_text(record_path, render_files_manifest(slug, owners))
     touched.append(record_path)
@@ -2007,19 +2184,25 @@ def load_remote_roster(repo: str) -> dict[str, RosterEntry]:
     return parse_roster(text, source=f"{repo}:{ROSTER_PATH}")
 
 
-def project_paths(paths, slug: str) -> list[str]:
+def project_paths(paths, slug: str, claimed=()) -> list[str]:
     """Return every assembly path that belongs to *slug*.
 
-    That is its whole site subtree plus every one of its manifest kinds --
+    That is its whole site subtree, plus every one of its manifest kinds --
     the base manifest, the posts overlay, the revisions sidecar and the
-    published-file record.
+    published-file record -- plus *claimed*, the site-relative paths its
+    published-file record names outside that subtree.  Its posts are all of
+    the last kind: they sit at the site level under ``blog/``, so removing
+    the subtree alone would leave them on the blog with nothing left to
+    explain where they came from.
     """
     site_prefix = f"site/{slug}/"
     manifest_prefix = f"manifests/{slug}-"
     base_manifest = f"manifests/{slug}.json"
+    outside = {f"site/{rel}" for rel in claimed}
     owned = [
         path for path in paths
         if path.startswith(site_prefix)
+        or path in outside
         or path == base_manifest
         or (path.startswith(manifest_prefix) and path.endswith(".json"))
     ]
@@ -2050,7 +2233,18 @@ def retire_project(repo: str, slug: str, *, branch: str = "main") -> dict:
         )
 
     remaining = [entry for name, entry in roster.items() if name != slug]
-    deleted = project_paths(list_remote_paths(repo, branch), slug)
+    record_path = f"manifests/{slug}-files.json"
+    record = parse_files_manifest(
+        fetch_remote_text(repo, record_path, missing_ok=True),
+        source=f"{repo}:{record_path}",
+    )
+    claimed = {
+        path
+        for paths in record.values()
+        for path in paths
+        if not path.startswith(f"{slug}/")
+    }
+    deleted = project_paths(list_remote_paths(repo, branch), slug, claimed)
 
     files: dict[str, str | bytes] = {ROSTER_PATH: render_roster(remaining)}
 
@@ -2084,12 +2278,16 @@ def collect_site_files(output_dir: str, slug: str) -> dict[str, bytes]:
     fonts, favicons and screenshots go through the same commit as the HTML,
     and decoding them as UTF-8 on the way past would destroy them.  The same
     per-project deploy artifacts the deploy filters out are filtered here --
-    see :func:`build_output_paths`.
+    see :func:`build_output_paths` -- and the output is split the same way a
+    deploy splits it, so a locally built post lands on the site-level blog
+    rather than inside the project's subtree.  See
+    :func:`split_build_output`.
     """
     files: dict[str, bytes] = {}
-    for rel in sorted(build_output_paths(output_dir)):
-        with open(os.path.join(output_dir, *rel.split("/")), "rb") as f:
-            files[f"site/{slug}/{rel}"] = f.read()
+    produced = split_build_output(build_output_paths(output_dir), slug)
+    for build_rel, site_rel in sorted(produced.items()):
+        with open(os.path.join(output_dir, *build_rel.split("/")), "rb") as f:
+            files[f"site/{site_rel}"] = f.read()
     return files
 
 
@@ -2128,21 +2326,12 @@ def publish_project_docs(
             f"slug = {slug!r} and its repo. Declared projects: {declared}."
         )
 
-    produced = build_output_paths(output_dir)
+    produced = set(split_build_output(build_output_paths(output_dir), slug).values())
     files: dict[str, str | bytes] = dict(collect_site_files(output_dir, slug))
 
     record_path = f"manifests/{slug}-files.json"
     raw_record = fetch_remote_text(repo, record_path, missing_ok=True)
-    owners: dict[str, list[str]] = {}
-    if raw_record.strip():
-        try:
-            data = json.loads(raw_record)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(f"{repo}:{record_path} is not valid JSON: {exc}") from exc
-        owners = {
-            owner: sorted(paths)
-            for owner, paths in (data.get("owners") or {}).items()
-        }
+    owners = parse_files_manifest(raw_record, source=f"{repo}:{record_path}")
     removed, owners = prune_plan(owners, "docs", produced)
     files[record_path] = render_files_manifest(slug, owners)
 
@@ -2170,7 +2359,7 @@ def publish_project_docs(
     membership[slug] = entry
     files[PROJECTS_PATH] = render_projects_json(membership)
 
-    delete_paths = [f"site/{slug}/{rel}" for rel in removed]
+    delete_paths = [f"site/{rel}" for rel in removed]
     push = push_files_to_repo(
         repo, files, f"docs: {slug} {version}".strip(), branch,
         delete_paths=delete_paths,

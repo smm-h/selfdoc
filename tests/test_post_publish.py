@@ -224,11 +224,14 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
     _create_post(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    # Create fake build output
+    # Create fake build output, as `selfblog build --target posts` leaves
+    # it: each post at blog/<post-slug>/, plus the listing page the
+    # project's own standalone site serves at blog/.
     output_dir = tmp_path / "docs" / "_build"
-    posts_out = output_dir / "posts" / "hello"
+    posts_out = output_dir / "blog" / "hello"
     posts_out.mkdir(parents=True)
     (posts_out / "index.html").write_text("<html>post</html>")
+    (output_dir / "blog" / "index.html").write_text("<html>listing</html>")
 
     # Create fake post-manifest
     selfdoc_dir = tmp_path / ".selfdoc"
@@ -237,7 +240,10 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
     (selfdoc_dir / "post-manifest.json").write_text(json.dumps(manifest_data))
 
     def mock_build(dir_path, config, output_dir_arg, docs_dir_name, docs_dir, include_drafts):
-        return {str(posts_out / "index.html"): True}
+        return {
+            str(posts_out / "index.html"): True,
+            str(output_dir / "blog" / "index.html"): True,
+        }
 
     push_calls = []
 
@@ -259,9 +265,13 @@ def test_pushes_correct_file_mappings(tmp_path, monkeypatch, capsys):
     assert push["repo"] == "owner/docs-assembly"
     assert push["message"] == "posts: myproject"
 
-    # Check file mappings
-    assert "site/myproject/posts/hello/index.html" in push["files"]
-    assert push["files"]["site/myproject/posts/hello/index.html"] == "<html>post</html>"
+    # Check file mappings: a post is site-level, at blog/<post-slug>/, and
+    # the project's own listing page is not pushed at all -- the assembled
+    # site's blog index lists every project's posts.
+    assert "site/blog/hello/index.html" in push["files"]
+    assert push["files"]["site/blog/hello/index.html"] == "<html>post</html>"
+    assert "site/blog/index.html" not in push["files"]
+    assert not [p for p in push["files"] if p.startswith("site/myproject/")]
     assert "manifests/myproject-posts.json" in push["files"]
     assert json.loads(push["files"]["manifests/myproject-posts.json"]) == manifest_data
 

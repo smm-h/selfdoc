@@ -133,14 +133,15 @@ def test_blog_index_no_posts():
 
 
 def test_blog_index_link_structure():
-    """Post links follow {docs_base}/{slug}/posts/{post_slug}/ pattern."""
+    """Post links follow {docs_base}/blog/{post_slug}/ -- no project segment."""
     manifests = [
         _make_manifest("MyProj", "my-proj", "1.0.0", posts=[
             {"title": "Hello", "slug": "hello-world", "date": "2024-01-01"},
         ]),
     ]
     result = generate_blog_index(manifests, "https://docs.example.com")
-    assert 'href="https://docs.example.com/my-proj/posts/hello-world/"' in result
+    assert 'href="https://docs.example.com/blog/hello-world/"' in result
+    assert "my-proj/posts" not in result
 
 
 def test_blog_index_shows_project_name():
@@ -163,10 +164,10 @@ def test_blog_index_root_relative_urls():
         ]),
     ]
     result = generate_blog_index(manifests, "")
-    # Must be root-relative: /my-proj/posts/hello-world/
-    assert 'href="/my-proj/posts/hello-world/"' in result
-    # Must NOT treat slug as hostname (e.g. href="https://my-proj/posts/...")
-    assert "://my-proj" not in result
+    # Must be root-relative: /blog/hello-world/
+    assert 'href="/blog/hello-world/"' in result
+    # Must NOT treat the blog segment as a hostname
+    assert "://blog" not in result
 
 
 def test_blog_index_no_protocol_only_docs_base():
@@ -178,11 +179,11 @@ def test_blog_index_no_protocol_only_docs_base():
     ]
     # A proper docs_base produces proper URLs
     result = generate_blog_index(manifests, "https://docs.smmh.dev")
-    assert 'href="https://docs.smmh.dev/rlsbl/posts/first/"' in result
-    # A broken docs_base like "https:" would produce "https:/rlsbl/posts/first/"
-    # which browsers normalize to "https://rlsbl/posts/first/" (slug as hostname)
+    assert 'href="https://docs.smmh.dev/blog/first/"' in result
+    # A broken docs_base like "https:" would produce "https:/blog/first/", which
+    # browsers normalize to "https://blog/first/" (the segment as a hostname)
     broken_result = generate_blog_index(manifests, "https:")
-    assert 'href="https:/rlsbl/' in broken_result  # this is what the bug produced
+    assert 'href="https:/blog/' in broken_result  # this is what the bug produced
 
 
 # -- generate_nav_json --------------------------------------------------------
@@ -331,7 +332,7 @@ def test_sitemap_all_posts():
         ]),
     ]
     result = generate_sitemap(manifests, "https://docs.example.com")
-    assert "https://docs.example.com/proj/posts/my-post/" in result
+    assert "https://docs.example.com/blog/my-post/" in result
 
 
 def test_sitemap_page_path_conversion():
@@ -385,7 +386,7 @@ def test_cross_links_all_valid():
         ]),
     ]
     link_registry = {
-        "index.md": ["guide.md", "proj/posts/hello"],
+        "index.md": ["guide.md", "blog/hello"],
     }
     errors = validate_cross_project_links(manifests, link_registry)
     assert errors == []
@@ -415,7 +416,7 @@ def test_cross_links_empty_registry():
 
 
 def test_cross_links_slug_based_paths():
-    """{slug}/posts/{post_slug} paths are recognized as valid targets."""
+    """blog/{post_slug} paths are recognized as valid targets."""
     manifests = [
         _make_manifest("MyProj", "myproj", "1.0.0", posts=[
             {"path": "posts/update.md", "slug": "big-update",
@@ -423,7 +424,7 @@ def test_cross_links_slug_based_paths():
         ]),
     ]
     link_registry = {
-        "overview.md": ["myproj/posts/big-update"],
+        "overview.md": ["blog/big-update"],
     }
     errors = validate_cross_project_links(manifests, link_registry)
     assert errors == []
@@ -632,7 +633,18 @@ def test_index_page_target_is_the_project_root():
 
 
 def test_post_target_and_output_path_round_trip():
-    target = post_target("alpha", "hello")
-    assert target == "alpha/posts/hello"
-    assert target_output_path(target) == "alpha/posts/hello/index.html"
-    assert output_path_target("alpha/posts/hello/index.html") == target
+    target = post_target("hello")
+    assert target == "blog/hello"
+    assert target_output_path(target) == "blog/hello/index.html"
+    assert output_path_target("blog/hello/index.html") == target
+
+
+def test_a_post_address_carries_no_project_segment():
+    """Two projects address the same post identically: the blog is the site's."""
+    assert post_target("hello") == post_target("hello")
+    assert not post_target("hello").startswith("alpha/")
+
+
+def test_the_blog_index_is_addressed_as_a_page_not_a_post():
+    """`blog/index.html` is the listing, and keeps its trailing slash."""
+    assert output_path_target("blog/index.html") == "blog/"

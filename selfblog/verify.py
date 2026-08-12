@@ -53,7 +53,6 @@ import time
 import xml.etree.ElementTree as ET
 
 from selfblog.shared import (
-    POSTS_SEGMENT,
     output_path_target,
     page_target,
     post_target,
@@ -381,12 +380,11 @@ def check_manifest_identity(tree: AssemblyTree) -> list[Failure]:
                 continue
             if page_rel.startswith(f"{slug}/v/"):
                 continue
-            if page_rel.startswith(f"{slug}/{POSTS_SEGMENT}/"):
-                # A post is published between releases, from a working tree
-                # the manifest's released version knows nothing about. Its
-                # version disagreeing with the manifest's is the normal
-                # state, not a stale deploy.
-                continue
+            # Posts are not under this prefix at all: they are site-level,
+            # at blog/<post-slug>/. Their version disagreeing with the
+            # manifest's is the normal state -- a post published between
+            # releases comes from a working tree the released version knows
+            # nothing about -- and no project subtree check sees them.
             found = _VERSION_ATTR_RE.findall(tree.read(page_rel))
             for declared_version in sorted(set(found)):
                 if declared_version != version:
@@ -423,7 +421,7 @@ def check_manifest_posts_emitted(tree: AssemblyTree) -> list[Failure]:
         slug = str(manifest.get("slug") or "")
         for post in manifest.get("posts") or []:
             post_slug = str(post.get("slug") or "")
-            target = target_output_path(post_target(slug, post_slug))
+            target = target_output_path(post_target(post_slug))
             if target not in tree.emitted:
                 failures.append(Failure(
                     "manifest-posts-emitted", f"{slug}:{post_slug}",
