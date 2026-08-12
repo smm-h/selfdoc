@@ -14,11 +14,22 @@ def config_dir(tmp_path):
     return tmp_path
 
 
+#: The declared facts every config carries, filled in by the writer below
+#: when a test does not name them.  A test about one field should not have to
+#: restate the required ones -- and a test about a required field states it
+#: itself, which overrides these.
+_REQUIRED = {
+    "search_engine": "pagefind",
+    "author": {"name": "Test Author", "url": "https://author.example"},
+}
+
+
 def _write_config(directory, data):
-    """Write *data* as selfdoc.json inside *directory*."""
+    """Write *data* as selfdoc.json inside *directory*, required keys filled."""
     path = os.path.join(directory, "selfdoc.json")
+    payload = {**_REQUIRED, **data}
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
+        json.dump(payload, f)
 
 
 # -- happy path --
@@ -224,19 +235,27 @@ def test_all_new_fields_present(config_dir):
         "base_url": "https://example.com",
         "version": "1.0.0",
         "lang": "en",
-        "author": {"name": "Jane Doe", "url": "https://jane.dev", "type": "Person"},
+        "author": {
+            "name": "Jane Doe",
+            "url": "https://jane.dev",
+            "same_as": ["https://github.com/janedoe"],
+        },
         "description": "A great project",
     })
     cfg = load_config(str(config_dir))
     assert cfg["lang"] == "en"
     assert cfg["author"]["name"] == "Jane Doe"
     assert cfg["author"]["url"] == "https://jane.dev"
-    assert cfg["author"]["type"] == "Person"
+    assert cfg["author"]["same_as"] == ["https://github.com/janedoe"]
     assert cfg["description"] == "A great project"
 
 
-def test_new_fields_absent_backward_compat(config_dir):
-    """Config without lang, author, description still loads (all None)."""
+def test_optional_fields_absent_load_as_none(config_dir):
+    """Config without lang and description still loads (both None).
+
+    The author is not among them: it is required, so there is no absent case
+    to load.
+    """
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
@@ -244,7 +263,6 @@ def test_new_fields_absent_backward_compat(config_dir):
     })
     cfg = load_config(str(config_dir))
     assert cfg["lang"] is None
-    assert cfg["author"] is None
     assert cfg["description"] is None
 
 
@@ -278,13 +296,16 @@ def test_author_missing_name(config_dir):
         load_config(str(config_dir))
 
 
-def test_author_invalid_type(config_dir):
+def test_author_type_key_is_no_longer_a_key(config_dir):
+    """A site's author is a Person; there is no type to choose."""
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
-        "author": {"name": "Jane", "type": "Bot"},
+        "author": {
+            "name": "Jane", "url": "https://jane.dev", "type": "Person",
+        },
     })
-    with pytest.raises(ConfigError, match="invalid author.type"):
+    with pytest.raises(ConfigError, match="invalid author key 'type'"):
         load_config(str(config_dir))
 
 
@@ -298,31 +319,19 @@ def test_invalid_description_empty_string(config_dir):
         load_config(str(config_dir))
 
 
-def test_author_name_only(config_dir):
-    """Author with only name (no url/type) loads correctly."""
+def test_author_name_and_url_only(config_dir):
+    """Author with no same_as loads as declared."""
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "author": {"name": "Jane Doe"},
+        "author": {"name": "Jane Doe", "url": "https://jane.dev"},
     })
     cfg = load_config(str(config_dir))
-    assert cfg["author"] == {"name": "Jane Doe"}
+    assert cfg["author"] == {"name": "Jane Doe", "url": "https://jane.dev"}
 
 
 # -- twitter field --
-
-
-def test_twitter_in_author(config_dir):
-    """Twitter handle in author section is returned in config."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version": "1.0.0",
-        "author": {"name": "Test", "twitter": "@test"},
-    })
-    cfg = load_config(str(config_dir))
-    assert cfg["twitter"] == "@test"
 
 
 def test_twitter_top_level(config_dir):
@@ -337,17 +346,19 @@ def test_twitter_top_level(config_dir):
     assert cfg["twitter"] == "@test"
 
 
-def test_twitter_author_takes_precedence(config_dir):
-    """author.twitter takes precedence over top-level twitter."""
+def test_twitter_is_not_an_author_key(config_dir):
+    """The handle is a meta tag's value, not part of the author's identity."""
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "author": {"name": "Test", "twitter": "@author_handle"},
-        "twitter": "@top_handle",
+        "author": {
+            "name": "Test", "url": "https://test.example",
+            "twitter": "@author_handle",
+        },
     })
-    cfg = load_config(str(config_dir))
-    assert cfg["twitter"] == "@author_handle"
+    with pytest.raises(ConfigError, match="invalid author key 'twitter'"):
+        load_config(str(config_dir))
 
 
 def test_twitter_invalid(config_dir):
@@ -607,17 +618,28 @@ def test_branch_non_string(config_dir):
 # -- search_engine field --
 
 
-@pytest.mark.parametrize("value", ["builtin", "fuse", "minisearch"])
-def test_search_engine_valid_values(config_dir, value):
-    """Each valid search_engine value is accepted."""
+def test_search_engine_valid_value(config_dir):
+    """The one valid engine is accepted."""
     _write_config(config_dir, {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
         "version": "1.0.0",
-        "search_engine": value,
+        "search_engine": "pagefind",
     })
     cfg = load_config(str(config_dir))
-    assert cfg["search_engine"] == value
+    assert cfg["search_engine"] == "pagefind"
+
+
+@pytest.mark.parametrize("value", ["builtin", "fuse", "minisearch"])
+def test_deleted_engines_rejected(config_dir, value):
+    """The engines that were deleted are not values a config may carry."""
+    _write_config(config_dir, {
+        "source": [{"path": "src/", "language": "python"}],
+        "base_url": "https://example.com",
+        "search_engine": value,
+    })
+    with pytest.raises(ConfigError, match="invalid search_engine value"):
+        load_config(str(config_dir))
 
 
 def test_search_engine_invalid_value(config_dir):
@@ -631,15 +653,18 @@ def test_search_engine_invalid_value(config_dir):
         load_config(str(config_dir))
 
 
-def test_search_engine_default_none(config_dir):
-    """Missing search_engine defaults to None."""
-    _write_config(config_dir, {
-        "source": [{"path": "src/", "language": "python"}],
-        "base_url": "https://example.com",
-        "version": "1.0.0",
-    })
-    cfg = load_config(str(config_dir))
-    assert cfg["search_engine"] is None
+def test_search_engine_is_required(config_dir):
+    """There is no default: an undeclared engine is refused."""
+    path = os.path.join(str(config_dir), "selfdoc.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({
+            "source": [{"path": "src/", "language": "python"}],
+            "base_url": "https://example.com",
+            "version": "1.0.0",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+        }, f)
+    with pytest.raises(ConfigError, match="search_engine"):
+        load_config(str(config_dir))
 
 
 # -- branding field --

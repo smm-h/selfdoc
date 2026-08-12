@@ -90,6 +90,8 @@ class TestServeDraftsRebuild:
             "output": "docs/_build/",
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
 
         with (
@@ -120,6 +122,8 @@ class TestServeDraftsRebuild:
             "output": "docs/_build/",
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "unified": {"projects": [{"path": "../core"}]},
         }
 
@@ -144,6 +148,8 @@ class TestServeDraftsRebuild:
             "output": "docs/_build/",
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
 
         with (

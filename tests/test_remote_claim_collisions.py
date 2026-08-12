@@ -161,6 +161,8 @@ def _post_project(tmp_path, slug="alpha", post_slug="hello"):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],

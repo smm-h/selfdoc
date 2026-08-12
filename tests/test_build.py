@@ -19,7 +19,7 @@ from selfdoc.config import ConfigError
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, generate_404_page, _minify_js, md_to_html
 from selfdoc.themes import get_theme_meta
-from conftest import default_config, DEFAULT_PREFIX, page_addresses_for
+from conftest import default_config, DEFAULT_PREFIX, TEST_AUTHOR, page_addresses_for
 
 
 @pytest.fixture()
@@ -120,13 +120,14 @@ def test_build_multiple_files(project_dir):
     assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"))
     assert os.path.isfile(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"))
     # 2 HTML (at the stable mount, which is the output root here) +
-    # 1 style.css + 1 search-index.json + 1 search.js + 2 OG PNGs +
-    # 2 llms files + 1 404.html + 1 favicon.svg + 1 robots.txt +
-    # 1 sitemap.xml + 1 feed.xml + 1 _redirects.  No root redirect stub:
-    # the home page is itself the root index.
-    assert len(written) == 15
+    # 1 style.css + 2 OG PNGs + 2 llms files + 1 404.html +
+    # 1 favicon.svg + 1 robots.txt + 1 sitemap.xml + 1 feed.xml +
+    # 1 _redirects.  No root redirect stub: the home page is itself the
+    # root index.  The pagefind/ tree is written by the indexer, which
+    # runs outside the recorded-write bookkeeping.
+    assert len(written) == 13
     assert os.path.isfile(os.path.join(output_dir, "style.css"))
-    assert os.path.isfile(os.path.join(output_dir, "search-index.json"))
+    assert os.path.isdir(os.path.join(output_dir, "pagefind"))
     assert os.path.isfile(os.path.join(output_dir, "og-index.png"))
     assert os.path.isfile(os.path.join(output_dir, "og-guide.png"))
     # Verify PNG magic bytes
@@ -252,7 +253,7 @@ def test_html_article_tag_present(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert "<article>" in content
+    assert "<article data-pagefind-body>" in content
     assert "</article>" in content
 
 
@@ -520,7 +521,7 @@ def test_author_from_config_in_json_ld(project_dir):
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
     config["base_url"] = "https://example.com"
-    config["author"] = {"name": "Jane Doe", "type": "Person", "url": "https://jane.dev"}
+    config["author"] = {"name": "Jane Doe", "url": "https://jane.dev"}
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
 
@@ -535,24 +536,18 @@ def test_author_from_config_in_json_ld(project_dir):
     assert '"https://jane.dev"' in content
 
 
-def test_default_author_when_no_config_author(project_dir):
-    """Default author (project name as Organization) when no config author."""
+def test_a_config_with_no_author_is_refused(project_dir):
+    """There is no default author: the build stops before writing a page."""
     config_path = os.path.join(project_dir, "selfdoc.json")
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
     config["base_url"] = "https://example.com"
-    # No "author" key in config
+    del config["author"]
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f)
 
-    build(str(project_dir))
-
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Should use project name as Organization
-    assert '"Organization"' in content
+    with pytest.raises(ConfigError, match="author"):
+        build(str(project_dir))
 
 
 def test_software_source_code_on_pages_with_code(project_dir):
@@ -589,6 +584,7 @@ def test_software_source_code_has_name():
     html_files = generate_html(
         {"index.md": "# API Reference\n\n```python\nprint('hi')\n```\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -1858,29 +1854,6 @@ def test_code_tabs_aria_tab_ids():
     assert 'id="tab-go"' in result
 
 
-def test_search_dialog_aria_listbox():
-    """Search results list has role='listbox' and id='search-results'."""
-    html_files = generate_html(
-        {"index.md": "# Test\n\nContent.\n"},
-        project_name="Test",
-    )
-    content = html_files["index.html"]
-
-    assert 'role="listbox"' in content
-    assert 'id="search-results"' in content
-
-
-def test_search_input_aria_controls():
-    """Search input has aria-controls='search-results'."""
-    html_files = generate_html(
-        {"index.md": "# Test\n\nContent.\n"},
-        project_name="Test",
-    )
-    content = html_files["index.html"]
-
-    assert 'aria-controls="search-results"' in content
-
-
 # --- ItemList JSON-LD via frontmatter schema flag ---
 
 
@@ -2376,6 +2349,7 @@ def test_itemlist_extracts_urls_from_links():
         )},
         project_name="Test",
         frontmatter={"index.md": {"schema": "itemlist"}},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2410,6 +2384,7 @@ def test_itemlist_no_urls_without_links():
         )},
         project_name="Test",
         frontmatter={"index.md": {"schema": "itemlist"}},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2488,8 +2463,8 @@ def test_tech_article_has_date_published(project_dir):
     assert tech_article["datePublished"] == "2025-01-15"
 
 
-def test_tech_article_has_publisher_organization(project_dir):
-    """TechArticle JSON-LD includes publisher with @type Organization."""
+def test_tech_article_has_a_publisher(project_dir):
+    """TechArticle JSON-LD names a publisher: the declared Person."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
@@ -2510,7 +2485,8 @@ def test_tech_article_has_publisher_organization(project_dir):
 
     assert tech_article is not None, "TechArticle JSON-LD not found"
     assert "publisher" in tech_article
-    assert tech_article["publisher"]["@type"] == "Organization"
+    assert tech_article["publisher"]["@type"] == "Person"
+    assert tech_article["publisher"]["name"] == TEST_AUTHOR["name"]
 
 
 def test_tech_article_has_in_language(project_dir):
@@ -2605,8 +2581,8 @@ def test_twitter_card_summary_large_image_with_base_url(project_dir):
     assert '<meta name="twitter:card" content="summary_large_image">' in content
 
 
-def test_organization_schema_on_index_page(project_dir):
-    """Organization JSON-LD schema is present on the index page."""
+def test_the_homepage_carries_the_declared_person(project_dir):
+    """The standalone entity on the front page is the declared author."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
@@ -2618,18 +2594,21 @@ def test_organization_schema_on_index_page(project_dir):
         content,
         re.DOTALL,
     )
-    org_data = None
+    person = None
     for block in ld_blocks:
         data = json.loads(block)
-        if data.get("@type") == "Organization":
-            org_data = data
+        if data.get("@type") == "Person":
+            person = data
             break
 
-    assert org_data is not None, "Organization JSON-LD not found on index page"
+    assert person is not None, "Person JSON-LD not found on index page"
+    assert person["name"] == TEST_AUTHOR["name"]
+    assert person["url"] == TEST_AUTHOR["url"]
+    assert person["sameAs"] == TEST_AUTHOR["same_as"]
 
 
-def test_organization_schema_absent_on_non_index(project_dir):
-    """Organization JSON-LD schema is absent on non-index pages."""
+def test_the_standalone_person_is_absent_on_non_index_pages(project_dir):
+    """An inner page names its author inside the article, not on its own."""
     docs_dir = os.path.join(project_dir, "docs")
     with open(os.path.join(docs_dir, "guide.md"), "w", encoding="utf-8") as f:
         f.write("# Guide\n\nContent.\n")
@@ -2647,46 +2626,72 @@ def test_organization_schema_absent_on_non_index(project_dir):
     )
     for block in ld_blocks:
         data = json.loads(block)
-        assert data.get("@type") != "Organization", \
-            "Organization JSON-LD should not appear on non-index pages"
+        assert data.get("@type") != "Person", \
+            "the standalone Person belongs on the front page only"
 
 
-def test_organization_schema_has_correct_name(project_dir):
-    """Organization JSON-LD has the correct project name."""
+def test_no_entity_is_named_after_the_project(project_dir):
+    """A project directory name is not an identity -- nothing is minted from it."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    # project_name is derived from directory name
     project_name = os.path.basename(str(project_dir))
+    ld_blocks = re.findall(
+        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
+        content,
+        re.DOTALL,
+    )
+    for block in ld_blocks:
+        data = json.loads(block)
+        assert data.get("@type") != "Organization"
+        for role in ("author", "publisher"):
+            entity = data.get(role)
+            if isinstance(entity, dict):
+                assert entity.get("name") != project_name
+
+
+# --- The declared author, on every page that names one ---
+
+
+def test_the_article_author_and_publisher_are_the_same_person(project_dir):
+    """One identity fills both roles; neither is invented for its slot."""
+    build(str(project_dir))
+
+    output_dir = os.path.join(project_dir, "docs", "_build")
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
+        content = f.read()
 
     ld_blocks = re.findall(
         r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
         content,
         re.DOTALL,
     )
-    org_data = None
+    article = None
     for block in ld_blocks:
         data = json.loads(block)
-        if data.get("@type") == "Organization":
-            org_data = data
+        if data.get("@type") == "TechArticle":
+            article = data
             break
 
-    assert org_data is not None, "Organization JSON-LD not found"
-    assert org_data["name"] == project_name
+    assert article is not None, "TechArticle JSON-LD not found"
+    assert article["author"]["@type"] == "Person"
+    assert article["author"]["name"] == TEST_AUTHOR["name"]
+    assert article["publisher"] == article["author"]
 
 
-# --- Phase 2B: Person schema and sameAs on homepage ---
-
-
-def test_person_schema_on_homepage_with_person_author():
-    """Config with author.type: 'Person' produces @type: Person on homepage."""
+def test_same_as_comes_from_the_declared_profiles():
+    """sameAs is the author's declared external identities, in order."""
     html_files = generate_html(
         {"index.md": "# Test\n\nContent.\n"},
         project_name="Test",
-        author={"name": "Jane Doe", "type": "Person", "url": "https://jane.dev"},
+        author={
+            "name": "Jane Doe",
+            "url": "https://jane.dev",
+            "same_as": ["https://github.com/janedoe", "https://jane.example/@jane"],
+        },
     )
     content = html_files["index.html"]
 
@@ -2695,24 +2700,24 @@ def test_person_schema_on_homepage_with_person_author():
         content,
         re.DOTALL,
     )
-    entity = None
+    person = None
     for block in ld_blocks:
         data = json.loads(block)
-        if data.get("@type") in ("Person", "Organization") and "potentialAction" not in data:
-            entity = data
+        if data.get("@type") == "Person":
+            person = data
             break
 
-    assert entity is not None, "Person/Organization JSON-LD not found"
-    assert entity["@type"] == "Person"
-    assert entity["name"] == "Jane Doe"
+    assert person is not None, "Person JSON-LD not found"
+    assert person["sameAs"] == [
+        "https://github.com/janedoe", "https://jane.example/@jane",
+    ]
 
 
-def test_same_as_twitter_on_homepage():
-    """Config with author.twitter produces sameAs with twitter URL."""
+def test_an_author_with_no_profiles_emits_no_same_as():
     html_files = generate_html(
         {"index.md": "# Test\n\nContent.\n"},
         project_name="Test",
-        author={"name": "Jane Doe", "type": "Person", "twitter": "@janedoe"},
+        author={"name": "Jane Doe", "url": "https://jane.dev"},
     )
     content = html_files["index.html"]
 
@@ -2721,41 +2726,11 @@ def test_same_as_twitter_on_homepage():
         content,
         re.DOTALL,
     )
-    entity = None
-    for block in ld_blocks:
-        data = json.loads(block)
-        if data.get("@type") in ("Person", "Organization") and "potentialAction" not in data:
-            entity = data
-            break
-
-    assert entity is not None, "Person/Organization JSON-LD not found"
-    assert "sameAs" in entity
-    assert "https://twitter.com/janedoe" in entity["sameAs"]
-
-
-def test_organization_schema_still_works_on_homepage():
-    """Config with author.type: 'Organization' still produces @type: Organization (regression)."""
-    html_files = generate_html(
-        {"index.md": "# Test\n\nContent.\n"},
-        project_name="Test",
-        author={"name": "Acme Corp", "type": "Organization", "url": "https://acme.com"},
+    person = next(
+        json.loads(b) for b in ld_blocks
+        if json.loads(b).get("@type") == "Person"
     )
-    content = html_files["index.html"]
-
-    ld_blocks = re.findall(
-        r'<script type="application/ld\+json">\s*(.*?)\s*</script>',
-        content,
-        re.DOTALL,
-    )
-    entity = None
-    for block in ld_blocks:
-        data = json.loads(block)
-        if data.get("@type") in ("Person", "Organization") and "potentialAction" not in data:
-            entity = data
-            break
-
-    assert entity is not None, "Organization JSON-LD not found"
-    assert entity["@type"] == "Organization"
+    assert "sameAs" not in person
 
 
 # --- Phase 4B: CSS preload hint ---
@@ -2766,6 +2741,7 @@ def test_css_preload_hint():
     html_files = generate_html(
         {"index.md": "# Test\n\nContent.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2785,6 +2761,7 @@ def test_code_tabs_keyboard_navigation():
     html_files = generate_html(
         {"index.md": md},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2847,6 +2824,7 @@ def test_conditional_js_excludes_copy_and_tabs_when_not_needed():
     html_files = generate_html(
         {"index.md": "# Hello\n\nJust text, no code.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2868,6 +2846,7 @@ def test_conditional_js_includes_all_when_needed():
         {"index.md": md},
         project_name="Test",
         run_button=True,
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2940,6 +2919,7 @@ def test_inline_dfn_produces_defined_term_jsonld():
             "Selfdoc is a static site generator.\n"
         )},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -2975,6 +2955,7 @@ def test_glossary_and_inline_dfn_no_duplicates():
             ": Tokenizes raw text\n"
         )},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -3397,6 +3378,7 @@ def test_generate_html_independent_date_published():
         project_name="Test",
         base_url="https://example.com",
         page_dates={"index.md": ("2024-06-01", "2026-03-15")},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -3449,6 +3431,7 @@ def test_google_fonts_deferred_loading():
     html_files = generate_html(
         {"index.md": "# Test\n\nContent.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -3495,6 +3478,7 @@ def test_long_frontmatter_description_emitted_verbatim_in_meta():
         {"index.md": "# Test\n\nSome content here.\n"},
         project_name="Test",
         frontmatter={"index.md": {"description": long_desc}},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -3515,6 +3499,7 @@ def test_short_frontmatter_description_unchanged_in_meta():
         {"index.md": "# Test\n\nSome content here.\n"},
         project_name="Test",
         frontmatter={"index.md": {"description": short_desc}},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -3617,44 +3602,6 @@ def test_og_image_alt_falls_back_to_title(project_dir):
         content = f.read()
 
     assert '<meta property="og:image:alt" content="My Page Title">' in content
-
-
-# --- Externalized search JS ---
-
-
-def test_search_js_file_generated(project_dir):
-    """search.js exists in the output directory with correct contents."""
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-
-    search_js_path = os.path.join(output_dir, "search.js")
-    assert os.path.isfile(search_js_path)
-
-    with open(search_js_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Must contain the fetch URL for the search index
-    assert "search-index.json" in content
-    # Must read search base from data attribute
-    assert "search-base" in content or "searchBase" in content
-
-
-def test_search_js_deferred(project_dir):
-    """HTML references search.js via a deferred script tag, not inline."""
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-
-    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # External deferred script tag must point to search.js at the site root
-    assert '<script defer src="search.js">' in content
-
-    # The inline <script> block must NOT contain search index logic
-    inline_match = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
-    assert inline_match is not None
-    inline_js = inline_match.group(1)
-    assert "search-index" not in inline_js
 
 
 # --- Subdirectory-based nested nav groups ---
@@ -3793,7 +3740,6 @@ def test_nav_groups_sorted_alphabetically(project_dir):
     guides_pos = content.find('>Guides<')
     assert api_pos < guides_pos, "Api group should appear before Guides group"
 
-
 # --- Bug fixes: meta separator, sticky header, search no-results, search close ---
 
 
@@ -3804,6 +3750,7 @@ def test_page_meta_has_flex_layout():
         project_name="Test",
         repo="https://github.com/test/repo",
         page_dates={"index.md": ("2025-01-01", "2025-06-15")},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
 
@@ -3835,33 +3782,6 @@ def test_sticky_thead_offset(project_dir):
     # Should NOT have top:0 for thead
     # Find the thead rule and check it uses 52px
     assert "top:0" not in css.split("thead")[1].split("}")[0] if "thead" in css else True
-
-
-def test_search_no_results_element(project_dir):
-    """search.js contains search-no-results class for empty results."""
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    search_js_path = os.path.join(output_dir, "search.js")
-    with open(search_js_path, "r", encoding="utf-8") as f:
-        js = f.read()
-
-    assert "search-no-results" in js
-    assert "No results for" in js
-
-
-def test_search_closes_on_click(project_dir):
-    """search.js contains closeSearch call within result rendering."""
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    search_js_path = os.path.join(output_dir, "search.js")
-    with open(search_js_path, "r", encoding="utf-8") as f:
-        js = f.read()
-
-    # The closeSearch() call should appear in the result link click handler
-    assert "closeSearch()" in js
-    # Specifically, there should be an addEventListener('click'... closeSearch pattern
-    assert "addEventListener" in js
-    assert "closeSearch" in js
 
 
 # --- OG PNG predraw integration ---
@@ -3918,7 +3838,6 @@ def test_og_png_rich_when_predraw_available(project_dir):
 
 
 # === Search trigger tests ===
-
 
 def test_search_trigger_icon_default(project_dir):
     """Build without search config renders the icon trigger by default."""
@@ -3985,7 +3904,7 @@ def test_search_trigger_hidden(project_dir):
 
 
 def test_search_cmd_k_always_works(project_dir):
-    """Search dialog HTML and search.js are always present regardless of search config."""
+    """The search dialog is present regardless of the search UI mode."""
     for search_val in [None, "icon", "bar", "hidden"]:
         config_path = os.path.join(project_dir, "selfdoc.json")
         with open(config_path, "r", encoding="utf-8") as f:
@@ -4002,8 +3921,7 @@ def test_search_cmd_k_always_works(project_dir):
         with open(index_html, "r", encoding="utf-8") as f:
             content = f.read()
         assert 'id="search-dialog"' in content, f"search dialog missing for search={search_val}"
-        search_js = os.path.join(output_dir, "search.js")
-        assert os.path.isfile(search_js), f"search.js missing for search={search_val}"
+        assert "PagefindUI" in content, f"pagefind UI missing for search={search_val}"
 
 
 # --- Feedback widget: webhook POST and Google Analytics ---
@@ -4014,6 +3932,7 @@ def test_feedback_hidden_without_config():
     html_files = generate_html(
         {"index.md": "# Hello\n\nWorld.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="feedback"' not in content
@@ -4025,6 +3944,7 @@ def test_feedback_rendered_with_webhook():
         {"index.md": "# Hello\n\nWorld.\n"},
         project_name="Test",
         feedback={"webhook": "https://example.com/hook"},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="feedback"' in content
@@ -4037,6 +3957,7 @@ def test_feedback_rendered_with_ga():
         {"index.md": "# Hello\n\nWorld.\n"},
         project_name="Test",
         feedback={"ga": "G-XXXXX"},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="feedback"' in content
@@ -4050,6 +3971,7 @@ def test_feedback_rendered_with_both():
         {"index.md": "# Hello\n\nWorld.\n"},
         project_name="Test",
         feedback={"webhook": "https://example.com/hook", "ga": "G-XXXXX"},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="feedback"' in content
@@ -4064,6 +3986,7 @@ def test_feedback_js_has_fetch():
         {"index.md": "# Hello\n\nWorld.\n"},
         project_name="Test",
         feedback={"webhook": "https://example.com/hook"},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "fetch(" in content
@@ -4077,6 +4000,7 @@ def test_edit_link_uses_config_branch():
         repo="https://github.com/user/repo",
         docs_dir_name="docs",
         branch="develop",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "/edit/develop/" in content
@@ -4089,6 +4013,7 @@ def test_edit_link_default_branch():
         project_name="Test",
         repo="https://github.com/user/repo",
         docs_dir_name="docs",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "/edit/main/" in content
@@ -4101,6 +4026,7 @@ def test_edit_link_top_and_bottom():
         project_name="Test",
         repo="https://github.com/user/repo",
         docs_dir_name="docs",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'edit-link-top' in content
@@ -4120,6 +4046,7 @@ def test_content_header_flex():
         project_name="Test",
         repo="https://github.com/user/repo",
         docs_dir_name="docs",
+        author=TEST_AUTHOR,
     )
     content = html_files["guide/index.html"]
     assert 'class="content-header"' in content
@@ -4135,6 +4062,7 @@ def test_sidebar_nav_aria_label():
     html_files = generate_html(
         {"index.md": "# Home\n\nWelcome.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'aria-label="Site navigation"' in content
@@ -4148,6 +4076,7 @@ def test_toc_nav_aria_label():
     html_files = generate_html(
         {"index.md": md},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert '<nav class="toc-nav" aria-label="Table of contents">' in content
@@ -4158,6 +4087,7 @@ def test_search_dialog_aria_label():
     html_files = generate_html(
         {"index.md": "# Home\n\nWelcome.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'aria-label="Search documentation"' in content
@@ -4169,6 +4099,7 @@ def test_theme_toggle_dynamic_aria():
     html_files = generate_html(
         {"index.md": "# Home\n\nWelcome.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "Theme: system. Click for light mode" in content
@@ -4187,6 +4118,7 @@ def test_code_tabs_roving_tabindex():
     html_files = generate_html(
         {"index.md": md},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     # The code tabs JS should contain tabindex management
@@ -4194,19 +4126,17 @@ def test_code_tabs_roving_tabindex():
     assert "setAttribute" in content
 
 
-def test_search_input_no_autofocus():
-    """Search input does NOT have autofocus attribute."""
+def test_search_dialog_does_not_autofocus():
+    """Opening a page must not steal focus into the search dialog."""
     html_files = generate_html(
         {"index.md": "# Home\n\nWelcome.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
-    # The search input should exist but without autofocus
-    assert 'class="search-input"' in content
-    # Find the search input tag and verify no autofocus
-    search_input_match = re.search(r'<input[^>]*class="search-input"[^>]*>', content)
-    assert search_input_match is not None
-    assert "autofocus" not in search_input_match.group(0)
+    # The dialog opens on Cmd/Ctrl+K and focuses the input then, not at load.
+    assert "autofocus" not in content
+    assert "showModal" in content
 
 
 def test_copy_button_hidden_until_hover():
@@ -4461,59 +4391,7 @@ def test_sidebar_escape_handler():
     assert "Escape" in source
 
 
-# --- Pluggable search engine tests ---
-
-
-def test_search_engine_builtin_default(project_dir):
-    """Build with no search_engine config uses builtin engine in search.js."""
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    search_js = os.path.join(output_dir, "search.js")
-    assert os.path.isfile(search_js)
-    with open(search_js, "r", encoding="utf-8") as f:
-        content = f.read()
-    # Builtin engine uses word-boundary scoring
-    assert "initSearchEngine" in content
-    assert "searchEntries" in content
-
-
-def test_search_engine_fuse_config(project_dir):
-    """Build with search_engine=fuse includes Fuse.js CDN tag in HTML head."""
-    config_path = os.path.join(project_dir, "selfdoc.json")
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-    config["search_engine"] = "fuse"
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
-    with open(index_html, "r", encoding="utf-8") as f:
-        content = f.read()
-    assert "cdn.jsdelivr.net/npm/fuse.js@7.0.0" in content
-
-
-def test_search_engine_minisearch_config(project_dir):
-    """Build with search_engine=minisearch includes MiniSearch CDN tag in HTML head."""
-    config_path = os.path.join(project_dir, "selfdoc.json")
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-    config["search_engine"] = "minisearch"
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f)
-    build(str(project_dir))
-    output_dir = os.path.join(project_dir, "docs", "_build")
-    index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
-    with open(index_html, "r", encoding="utf-8") as f:
-        content = f.read()
-    assert "cdn.jsdelivr.net/npm/minisearch@7.1.1" in content
-
-
-def test_search_loading_indicator():
-    """Search JS contains a loading indicator element."""
-    from selfdoc.html import _generate_search_js
-    js = _generate_search_js()
-    assert "Loading..." in js
+# --- The search UI the page ships ---
 
 
 def test_search_close_button():
@@ -4527,29 +4405,14 @@ def test_search_close_button():
     assert ">X</button>" in html
 
 
-def test_search_aria_live():
-    """Search results list has aria-live=polite for screen readers."""
+def test_search_dialog_labelled():
+    """The dialog names itself for screen readers."""
     from selfdoc.html import _wrap_page
     html = _wrap_page(
         "<p>test</p>", "", "Test", "Project", "",
         prefix="",
     )
-    assert 'aria-live="polite"' in html
-
-
-def test_search_no_results_guidance():
-    """Search JS contains guidance text for empty results."""
-    from selfdoc.html import _generate_search_js
-    js = _generate_search_js()
-    assert "Try different terms or browse the sidebar" in js
-
-
-def test_search_platform_detection():
-    """Search JS contains platform detection for keyboard shortcut labels."""
-    from selfdoc.html import _generate_search_js
-    js = _generate_search_js()
-    assert "navigator.platform" in js or "navigator.userAgentData" in js
-    assert "Cmd+K" in js
+    assert 'aria-label="Search documentation"' in html
 
 
 # === Landing page tests ===
@@ -4777,6 +4640,7 @@ def test_pre_has_aria_label_with_language():
     html_files = generate_html(
         {"index.md": "# Test\n\n```python\nprint('hi')\n```\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'aria-label="Code: python"' in content
@@ -4787,6 +4651,7 @@ def test_pre_has_aria_label_without_language():
     html_files = generate_html(
         {"index.md": "# Test\n\n```\nplain code\n```\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'aria-label="Code block"' in content
@@ -4799,6 +4664,7 @@ def test_edit_link_target_blank():
         project_name="Test",
         repo="https://github.com/user/repo",
         docs_dir_name="docs",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'target="_blank"' in content
@@ -4813,6 +4679,7 @@ def test_prev_next_labels():
             "guide.md": "# Guide\n\nA guide.\n",
         },
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["guide/index.html"]
     assert 'class="page-nav-label"' in content
@@ -4827,6 +4694,7 @@ def test_og_description_fallback():
         {"index.md": "# Title\n\nThis is the first paragraph.\n"},
         project_name="Test",
         base_url="https://example.com",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'og:description' in content
@@ -4839,6 +4707,7 @@ def test_content_header_date():
         {"index.md": "# Test\n\nContent.\n"},
         project_name="Test",
         page_dates={"index.md": ("2025-01-01", "2026-05-01")},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'content-date' in content
@@ -4854,6 +4723,7 @@ def test_topbar_page_title():
             "guide.md": "# My Guide\n\nA guide.\n",
         },
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     guide_content = html_files["guide/index.html"]
     assert 'topbar-page-title' in guide_content
@@ -4869,6 +4739,7 @@ def test_scrollspy_uses_scroll_event():
     html_files = generate_html(
         {"index.md": "# Title\n\n## Section One\n\nText.\n\n## Section Two\n\nMore text.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "addEventListener('scroll'" in content or 'addEventListener("scroll"' in content
@@ -4880,6 +4751,7 @@ def test_heading_copy_toast_js():
     html_files = generate_html(
         {"index.md": "# Title\n\n## Section\n\nContent.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "copy-toast" in content
@@ -4890,6 +4762,7 @@ def test_smooth_scroll_disabled_initially():
     html_files = generate_html(
         {"index.md": "# Title\n\nContent.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "scrollBehavior" in content
@@ -4904,7 +4777,7 @@ def test_step_guide_with_intervening_paragraph():
         "1. First step\n"
         "2. Second step\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert '<ol class="steps">' in content
 
@@ -4917,7 +4790,7 @@ def test_step_guide_heading_at_start_triggers():
         "1. First step\n"
         "2. Second step\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert '<ol class="steps">' in content
 
@@ -4930,7 +4803,7 @@ def test_step_guide_heading_next_steps_no_trigger():
         "1. First item\n"
         "2. Second item\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert '<ol class="steps">' not in content
 
@@ -4943,7 +4816,7 @@ def test_step_guide_heading_troubleshooting_steps_no_trigger():
         "1. Check logs\n"
         "2. Restart service\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert '<ol class="steps">' not in content
 
@@ -4956,7 +4829,7 @@ def test_step_guide_heading_tutorial_at_start_triggers():
         "1. Install the tool\n"
         "2. Run the demo\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert '<ol class="steps">' in content
 
@@ -4971,7 +4844,7 @@ def test_step_guide_explicit_class_always_works():
         "<li>Do that</li>\n"
         "</ol>\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert 'class="steps"' in content
 
@@ -4987,6 +4860,7 @@ def test_api_entry_with_whitespace():
     html_files = generate_html(
         {"index.md": md}, project_name="Test",
         auto_detect={"api_entries": True},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
@@ -5003,6 +4877,7 @@ def test_api_entry_single_line_signature_wraps():
     html_files = generate_html(
         {"index.md": md}, project_name="Test",
         auto_detect={"api_entries": True},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
@@ -5022,7 +4897,7 @@ def test_api_entry_multi_line_code_no_wrap():
         "```\n\n"
         "Extract directives from text.\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert 'class="api-entry"' not in content
 
@@ -5035,7 +4910,7 @@ def test_api_entry_natural_language_heading_no_wrap():
         "```python\nconfig = load_config()\n```\n\n"
         "This shows how to configure the system.\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert 'class="api-entry"' not in content
 
@@ -5050,7 +4925,7 @@ def test_api_entry_explicit_wrapper_always_works():
         "Description here.\n\n"
         "</div>\n"
     )
-    html_files = generate_html({"index.md": md}, project_name="Test")
+    html_files = generate_html({"index.md": md}, project_name="Test", author=TEST_AUTHOR)
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
 
@@ -5066,6 +4941,7 @@ def test_api_entry_dotted_method_name_wraps():
     html_files = generate_html(
         {"index.md": md}, project_name="Test",
         auto_detect={"api_entries": True},
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'class="api-entry"' in content
@@ -5604,6 +5480,7 @@ def test_page_progress_indicator():
             "api.md": "# API\n\nReference.\n",
         },
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     # Pages are ordered alphabetically: index=1, api=2, guide=3
     api_content = html_files["api/index.html"]
@@ -5616,6 +5493,7 @@ def test_reading_progress_bar():
     html_files = generate_html(
         {"index.md": "# Home\n\nWelcome.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert 'id="reading-progress"' in content
@@ -5627,6 +5505,7 @@ def test_single_page_no_progress():
     html_files = generate_html(
         {"index.md": "# Home\n\nWelcome.\n"},
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
     assert "page-progress" not in content
@@ -5997,6 +5876,7 @@ def test_directory_index_internal_links_use_dir_paths():
             "guide.md": "# Guide\n\nContent.\n",
         },
         project_name="Test",
+        author=TEST_AUTHOR,
     )
     index_content = html_files["index.html"]
     assert 'href="guide/"' in index_content
@@ -6131,6 +6011,8 @@ def test_build_missing_versions_raises(tmp_path):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "locales": [{"code": "en", "label": "English", "default": True}],
     }
@@ -6181,6 +6063,8 @@ def test_build_missing_locales_raises(tmp_path):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
     }

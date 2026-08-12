@@ -1116,6 +1116,8 @@ class TestGenerateDocsPreservesCliDescriptions:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
 
         # First gen creates the CLI page with the default chelp[:155] description
@@ -1563,6 +1565,8 @@ class TestCheckIntegration:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.0.0",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
@@ -1602,6 +1606,8 @@ class TestCheckIntegration:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.0.0",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
@@ -1640,6 +1646,8 @@ class TestCheckIntegration:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.0.0",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:

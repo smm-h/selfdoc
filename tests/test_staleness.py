@@ -230,6 +230,8 @@ def test_staleness_integration_with_check(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
@@ -286,6 +288,8 @@ def test_staleness_no_error_when_description_updated(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
@@ -470,6 +474,8 @@ def _setup_project(tmp_path, *, locales=None, page_content=None):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
     }
     if locales is not None:

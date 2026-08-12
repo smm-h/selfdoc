@@ -14,11 +14,22 @@ def config_dir(tmp_path):
     return tmp_path
 
 
+#: The declared facts every config carries, filled in by the writer below
+#: when a test does not name them.  A test about one field should not have to
+#: restate the required ones -- and a test about a required field states it
+#: itself, which overrides these.
+_REQUIRED = {
+    "search_engine": "pagefind",
+    "author": {"name": "Test Author", "url": "https://author.example"},
+}
+
+
 def _write_config(directory, data):
-    """Write *data* as selfdoc.json inside *directory*."""
+    """Write *data* as selfdoc.json inside *directory*, required keys filled."""
     path = os.path.join(directory, "selfdoc.json")
+    payload = {**_REQUIRED, **data}
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
+        json.dump(payload, f)
 
 
 _BASE = {

@@ -86,6 +86,8 @@ def test_cli_deploy_passes_an_explicit_target(tmp_path, monkeypatch):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],

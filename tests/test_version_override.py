@@ -44,6 +44,8 @@ def _make_project(tmp_path, version="1.0.0", root_files=None):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": version}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }

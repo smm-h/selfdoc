@@ -276,6 +276,7 @@ def _make_fixture(root, config_extra, locale_codes=("en",)):
     versions = ["0.1.0", "0.2.0"]
     config = {
         "source": [{"path": "src/", "language": "python"}],
+        "search_engine": "pagefind",
         "version": versions[-1],
         "versions": [{"version": v} for v in versions],
         "locales": [
@@ -322,6 +323,7 @@ def _make_fixture(root, config_extra, locale_codes=("en",)):
 ORIGIN_ROOT_CONFIG = {"base_url": "https://example.com"}
 SLUG_PREFIX_CONFIG = {
     "base_url": "https://docs.example.com/fixture",
+    "author": {"name": "Test Author", "url": "https://author.example"},
     "topology": {"docs_base": "https://docs.example.com", "slug": "fixture"},
 }
 

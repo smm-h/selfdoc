@@ -24,6 +24,8 @@ def _write_config(directory, data):
 _BASE = {
     "source": [{"path": "src/", "language": "python"}],
     "base_url": "https://example.com",
+    "author": {"name": "Test Author", "url": "https://author.example"},
+    "search_engine": "pagefind",
 }
 
 

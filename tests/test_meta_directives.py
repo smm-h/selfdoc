@@ -27,6 +27,8 @@ _PKG_DIR = os.path.join(_PROJECT_DIR, "selfdoc")
 _SELFDOC_CONFIG = {
     "source": [{"path": "selfdoc/", "language": "python"}],
     "base_url": "https://selfdoc.pages.dev",
+    "author": {"name": "Test Author", "url": "https://author.example"},
+    "search_engine": "pagefind",
     "description": "Code-aware static site generator.",
 }
 
@@ -520,6 +522,8 @@ class TestVar:
         config_no_desc = {
             "source": [{"path": "selfdoc/", "language": "python"}],
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
         result = resolve_var(
             {"key": "project.description"},

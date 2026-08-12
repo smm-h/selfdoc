@@ -37,6 +37,8 @@ def _make_multiversion_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "0.2.0",
         "versions": [
             {"version": "0.1.0"},

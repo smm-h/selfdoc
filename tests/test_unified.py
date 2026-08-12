@@ -475,6 +475,8 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
     core_config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com/core",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
     }
     _write_json(str(core_dir / "selfdoc.json"), core_config)
@@ -507,6 +509,8 @@ def test_version_pinning_uses_old_constituent_content(tmp_path):
     docs_site_config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "unified": {
             "projects": [{"path": "../core"}],
         },

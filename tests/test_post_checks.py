@@ -31,6 +31,7 @@ def _write_manifest(path, posts):
         "description": "",
         "language": "python",
         "base_url": "",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [],
         "posts": posts,
         "last_gen": "",
@@ -171,6 +172,8 @@ def test_check_docs_runs_post_checks_via_hook(tmp_path):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
@@ -205,6 +208,8 @@ def test_check_docs_posts_present_without_hook_hard_errors(
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
@@ -238,6 +243,8 @@ def test_selfblog_check_command_reports_post_errors(
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
@@ -267,6 +274,8 @@ def test_selfblog_check_command_passes_on_valid_posts(
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],

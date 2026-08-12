@@ -346,6 +346,8 @@ def _project(tmp_path, monkeypatch):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
@@ -369,6 +371,8 @@ def test_the_command_requires_an_assembly_repo(tmp_path, monkeypatch, capsys):
     (tmp_path / "selfdoc.json").write_text(json.dumps({
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "output": "docs/_build/", "docs": "docs/",
@@ -386,6 +390,8 @@ def test_the_command_requires_a_slug(tmp_path, monkeypatch, capsys):
     (tmp_path / "selfdoc.json").write_text(json.dumps({
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "output": "docs/_build/", "docs": "docs/",
@@ -511,6 +517,7 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
         "schema_version": 1, "name": "Alpha", "slug": "alpha",
         "version": "1.0.0", "description": "Alpha docs", "language": "python",
         "base_url": "https://docs.example.com/alpha",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [{"path": "index.md", "title": "Home"}], "posts": [],
         "last_gen": "2024-01-01T00:00:00+00:00",
     }))
@@ -519,6 +526,7 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
         "schema_version": 1, "name": "Home", "slug": "home",
         "version": "0.1.0", "description": "Home", "language": "python",
         "base_url": "https://docs.example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "pages": [{"path": "index.md", "title": "Front page"}], "posts": [],
         "last_gen": "2024-01-01T00:00:00+00:00",
     }))

@@ -26,6 +26,8 @@ def python_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -567,6 +569,8 @@ def go_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -865,6 +869,8 @@ def multi_language_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -1007,6 +1013,8 @@ def multi_go_source_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -1153,6 +1161,8 @@ class TestDirectoryPruning:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
             json.dump(config, f)
@@ -1200,6 +1210,8 @@ class TestDirectoryPruning:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
             json.dump(config, f)

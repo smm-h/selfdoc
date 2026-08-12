@@ -56,6 +56,8 @@ class TestGenerateManifest:
         return {
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.0.0",
         }
 
@@ -191,6 +193,7 @@ class TestLoadManifest:
             "description": "A test",
             "language": "python",
             "base_url": "https://test.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
             "pages": [{"path": "index.md", "title": "Home", "type": "doc"}],
             "posts": [],
             "last_gen": "2026-01-01T00:00:00+00:00",

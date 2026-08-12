@@ -60,6 +60,8 @@ def test_emitted_drift001_lint_carries_the_hint(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
     }), encoding="utf-8")

@@ -15,6 +15,7 @@ import pytest
 from selfdoc.check import _run_lints
 from selfdoc.docs import parse_frontmatter as _parse_frontmatter
 from selfdoc.html import generate_html, _extract_title
+from conftest import TEST_AUTHOR
 
 
 def _build_all_docs(docs_dir):
@@ -43,6 +44,8 @@ def lint_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     return tmp_path, docs_dir, config
 
@@ -109,6 +112,7 @@ def test_generate_html_h1_in_code_block_ignored():
             "```\n"
         )},
         project_name="TestProject",
+        author=TEST_AUTHOR,
     )
     assert "index.html" in html_files
 
@@ -124,6 +128,7 @@ def test_generate_html_only_code_block_h1_no_title():
                 "```\n"
             )},
             project_name="TestProject",
+            author=TEST_AUTHOR,
         )
 
 

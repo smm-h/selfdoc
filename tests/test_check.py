@@ -28,6 +28,8 @@ def python_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -313,6 +315,8 @@ def test_no_docs_dir_raises(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -498,6 +502,8 @@ def lint_project(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     return tmp_path, docs_dir, config
 
@@ -1925,6 +1931,8 @@ def test_skeleton_only_symbols_printed(tmp_path, capsys):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2047,6 +2055,8 @@ def test_coverage_per_symbol(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2128,6 +2138,8 @@ def test_coverage_multi_directive(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2192,6 +2204,8 @@ def test_coverage_threshold_partial_fails(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2230,6 +2244,8 @@ def test_coverage_threshold_low_fails(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         # Suppression reaches warnings only; the error codes these pages
         # would emit are not silenced, they are simply not asserted here.
         "lint_ignore": ["SEO007", "SEO009"],
@@ -2273,6 +2289,8 @@ def test_coverage_100_percent_passes(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2315,6 +2333,8 @@ def test_coverage_zero_symbols_passes(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2349,6 +2369,8 @@ def test_coverage_threshold_met_passes(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "coverage_threshold": 0.7,
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
@@ -2389,6 +2411,8 @@ def test_coverage_threshold_not_met_fails(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "coverage_threshold": 0.5,
         # Suppression reaches warnings only; the error codes these pages
         # would emit are not silenced, they are simply not asserted here.
@@ -2435,6 +2459,8 @@ def test_coverage_threshold_default_requires_100(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2454,6 +2480,8 @@ def test_exit_code_0_when_only_warnings(tmp_path, capsys):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2496,6 +2524,8 @@ def test_exit_code_1_when_errors_exist(tmp_path, capsys):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -2536,6 +2566,8 @@ def test_go_coverage_basic(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -2602,6 +2634,8 @@ def test_ts_coverage_basic(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")
     with open(config_path, "w", encoding="utf-8") as f:
@@ -2820,6 +2854,8 @@ class TestVersionConsistencyLints:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "2.0.0",
         }
         self._make_project(tmp_path, config, pyproject_version="1.5.0")
@@ -2838,6 +2874,8 @@ class TestVersionConsistencyLints:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.5.0",
         }
         self._make_project(tmp_path, config, pyproject_version="1.5.0")
@@ -2853,6 +2891,8 @@ class TestVersionConsistencyLints:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.0.0",
         }
         # No pyproject.toml, no package.json, no VERSION
@@ -2869,6 +2909,8 @@ class TestVersionConsistencyLints:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "2.0.0",
             "versions": [
                 {"version": "1.0.0"},
@@ -2892,6 +2934,8 @@ class TestVersionConsistencyLints:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "2.0.0",
             "versions": [
                 {"version": "1.0.0"},
@@ -2911,6 +2955,8 @@ class TestVersionConsistencyLints:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
             "version": "1.0.0",
         }
         self._make_project(tmp_path, config, pyproject_version="1.0.0")
@@ -3061,6 +3107,8 @@ class TestTwoTierCoverage:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
             json.dump(config, f)
@@ -3231,6 +3279,8 @@ class TestTwoTierCoverage:
             "docs": "docs/",
             "output": "docs/_build/",
             "base_url": "https://example.com",
+            "author": {"name": "Test Author", "url": "https://author.example"},
+            "search_engine": "pagefind",
         }
         with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
             json.dump(config, f)
@@ -3371,6 +3421,8 @@ def test_multi_language_coverage(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3431,6 +3483,8 @@ def test_multi_language_100_percent_enforcement(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3491,6 +3545,8 @@ def test_single_language_coverage_unchanged(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3551,6 +3607,8 @@ def test_lang001_for_unsupported_language(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3592,6 +3650,8 @@ def test_coverage_excludes_python_test_files(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3655,6 +3715,8 @@ def test_coverage_excludes_tests_directory(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -3709,6 +3771,8 @@ def test_coverage_excludes_test_and__tests__directories(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4044,6 +4108,8 @@ def test_cli001_missing_page(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4093,6 +4159,8 @@ def test_cli001_missing_flag(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4151,6 +4219,8 @@ def test_cli001_complete(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4206,6 +4276,8 @@ def test_cli001_no_strictcli(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4236,6 +4308,8 @@ def test_cli002_short_command_help(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4288,6 +4362,8 @@ def test_cli002_adequate_command_help(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4337,6 +4413,8 @@ def test_cli002_short_flag_help(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4394,6 +4472,8 @@ def test_cli002_no_strictcli(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w") as f:
         json.dump(config, f)
@@ -4779,6 +4859,8 @@ def _make_drift_project(tmp_path, docstring="My library module.", description="D
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4832,6 +4914,8 @@ def _make_dual_drift_project(tmp_path, doc1, doc2):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -4915,6 +4999,8 @@ def test_drift001_no_ref_directives(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5303,6 +5389,8 @@ def test_coverage_substring_no_false_positive(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5349,6 +5437,8 @@ def test_coverage_heading_match(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5384,6 +5474,8 @@ def test_coverage_dotted_heading_match(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     with open(os.path.join(tmp_path, "selfdoc.json"), "w", encoding="utf-8") as f:
         json.dump(config, f)
@@ -5469,6 +5561,8 @@ def _make_root_template_project(tmp_path, *, site_docs=None, root_templates=None
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
     }
     if template_paths:
         config["root_files"] = template_paths
@@ -5636,6 +5730,8 @@ def test_go_coverage_respects_package_level_gen_exclude(tmp_path):
         "docs": "docs/",
         "output": "docs/_build/",
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "gen": {"exclude": ["pkg/vendored"]},
     }
     config_path = os.path.join(tmp_path, "selfdoc.json")

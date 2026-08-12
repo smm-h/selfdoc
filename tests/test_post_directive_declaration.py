@@ -225,6 +225,8 @@ def test_post_new_scaffold_emits_the_declaration(tmp_path, monkeypatch):
     (tmp_path / "selfdoc.json").write_text(json.dumps({
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": "0.1.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "posts": {"dir": "posts/"},
@@ -255,6 +257,8 @@ def test_release_post_scaffold_emits_the_declaration(tmp_path):
     (tmp_path / "selfdoc.json").write_text(json.dumps({
         "source": [{"path": "src/", "language": "python"}],
         "base_url": "https://example.com",
+        "author": {"name": "Test Author", "url": "https://author.example"},
+        "search_engine": "pagefind",
         "versions": [{"version": "0.1.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
         "posts": {"dir": "posts/"},

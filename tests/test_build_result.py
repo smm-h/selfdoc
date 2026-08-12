@@ -13,7 +13,6 @@ def _make_build_result(**overrides):
         "frontmatter": {},
         "page_dates": {},
         "nav_items": [],
-        "search_entries": [],
         "project_name": "test-project",
         "version": "1.0.0",
         "config": {},
@@ -25,6 +24,7 @@ def _make_build_result(**overrides):
         "critical_css": "",
         "config_description": "",
         "base_url": None,
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "feed_url": "",
         "lang": "en",
     }
@@ -42,7 +42,6 @@ class TestBuildResultConstruction:
             frontmatter={"index.md": {"title": "Hi"}},
             page_dates={"index.md": "2024-01-01"},
             nav_items=[{"title": "Home", "url": "/"}],
-            search_entries=[{"title": "Home", "body": "Hi"}],
             project_name="my-project",
             version="2.5.0",
             config={"name": "my-project"},
@@ -62,7 +61,6 @@ class TestBuildResultConstruction:
         assert result.frontmatter == {"index.md": {"title": "Hi"}}
         assert result.page_dates == {"index.md": "2024-01-01"}
         assert result.nav_items == [{"title": "Home", "url": "/"}]
-        assert result.search_entries == [{"title": "Home", "body": "Hi"}]
         assert result.project_name == "my-project"
         assert result.version == "2.5.0"
         assert result.config == {"name": "my-project"}
@@ -132,7 +130,7 @@ class TestBuildResultFieldCount:
     def test_has_20_fields(self):
         import dataclasses
         fields = dataclasses.fields(BuildResult)
-        assert len(fields) == 20
+        assert len(fields) == 19
 
     def test_field_names(self):
         import dataclasses
@@ -143,7 +141,6 @@ class TestBuildResultFieldCount:
             "frontmatter",
             "page_dates",
             "nav_items",
-            "search_entries",
             "project_name",
             "version",
             "config",
