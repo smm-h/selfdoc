@@ -6,6 +6,7 @@ Syntax highlighting uses Pygments when available (optional dependency).
 """
 
 import json
+import posixpath
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -437,23 +438,8 @@ def generate_html(markdown_files, project_name=None, version=None,
             metadata=page_meta,
             config=md_config or None,
         )
-        # Rewrite internal .md links to directory-style URLs.
-        # index.md links stay as index.html; others become dir/ paths.
-        body_html = re.sub(
-            r'(?<!\w)index\.md"', 'index.html"', body_html,
-        )
-        body_html = re.sub(
-            r'(\w[\w/.-]*)\.md"',
-            lambda m: m.group(1) + '/"',
-            body_html,
-        )
-        body_html = re.sub(
-            r'(?<!\w)index\.md\)', 'index.html)', body_html,
-        )
-        body_html = re.sub(
-            r'(\w[\w/.-]*)\.md\)',
-            lambda m: m.group(1) + '/)',
-            body_html,
+        body_html = rewrite_internal_links(
+            body_html, md_path, legacy_html_links=mount_archived,
         )
         nav_html = _render_nav(
             nav_items, prefix, current_path=html_path,
@@ -1831,6 +1817,85 @@ def _escape_html(text):
     )
 
 
+# A reference attribute whose value names a page of this docs tree.  Only
+# `href`/`src` values are rewritten: a `.md` path written anywhere else in
+# the body is displayed text (a code sample, a filename in prose) and
+# rewriting it would corrupt what the page says.
+_PAGE_REF_RE = re.compile(r'\b(href|src)="([^"]*)"')
+
+_OFFSITE_REF_PREFIXES = (
+    "http://", "https://", "//", "mailto:", "data:", "javascript:", "tel:",
+    "#", "/",
+)
+
+
+def _page_ref_target(source_md, ref_path, page_dir):
+    """Where *ref_path*, written on *source_md*, is emitted -- as an href.
+
+    *ref_path* is relative to the *source* page's directory in ``docs/``;
+    the built page sits one level deeper than its source did (``guide.md``
+    is emitted at ``guide/index.html``), so the answer is expressed
+    relative to *page_dir*, the emitted page's own directory.  Returns None
+    when the reference names something outside the docs tree, which is not
+    this build's page to address.
+    """
+    target_md = posixpath.normpath(
+        posixpath.join(posixpath.dirname(source_md), ref_path),
+    )
+    if target_md == ".." or target_md.startswith("../"):
+        return None
+    target_url = _html_path_to_url(_md_to_html_path(target_md))
+    rel = posixpath.relpath(target_url, page_dir or ".")
+    if target_url.endswith("/"):
+        rel = "./" if rel == "." else rel + "/"
+    return rel
+
+
+def rewrite_internal_links(body_html, md_path, *, legacy_html_links=False):
+    """Rewrite the page references *body_html* wrote to their emitted addresses.
+
+    An author writes ``[checks](checks.md)`` -- a path relative to the
+    source file's own directory in ``docs/``.  Under directory addressing
+    the page writing that link is emitted at ``<page>/index.html``, one
+    level deeper than its source, so the sibling is reached at
+    ``../checks/``.  Every reference is therefore resolved back to a source
+    path, mapped through :func:`_md_to_html_path`, and re-expressed
+    relative to the emitted page's directory: siblings, subdirectory pages,
+    parent pages and the root index all come out right from the one rule.
+
+    Fragments survive the rewrite (``checks.md#detail`` becomes
+    ``../checks/#detail``); a bare ``#anchor`` addresses the page itself
+    and is left exactly as written.
+
+    ``legacy_html_links`` additionally treats a relative ``*.html``
+    reference as naming the same page's Markdown source.  It is set only
+    for archive builds, whose content comes from an immutable git tag and
+    can predate this addressing -- links there cannot be fixed at source.
+    A build of the working tree never gets that tolerance: source under
+    edit must name pages the way the build emits them, and a stale
+    ``.html`` link there is a defect ``LINK001`` reports.
+    """
+    page_dir = posixpath.dirname(_md_to_html_path(md_path))
+
+    def _rewrite(match):
+        attr, ref = match.group(1), match.group(2)
+        if not ref or ref.startswith(_OFFSITE_REF_PREFIXES):
+            return match.group(0)
+        path, sep, fragment = ref.partition("#")
+        if path.endswith(".md"):
+            source_ref = path
+        elif legacy_html_links and path.endswith(".html"):
+            source_ref = path[: -len(".html")] + ".md"
+        else:
+            return match.group(0)
+        target = _page_ref_target(md_path, source_ref, page_dir)
+        if target is None:
+            return match.group(0)
+        return f'{attr}="{target}{sep}{fragment}"'
+
+    return _PAGE_REF_RE.sub(_rewrite, body_html)
+
+
 def _md_to_html_path(md_path):
     """Convert a .md path to a directory-index HTML path.
 
@@ -2661,8 +2726,13 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             '\n<meta http-equiv="X-Frame-Options" content="DENY">'
             '\n<meta http-equiv="Content-Security-Policy" content="'
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+            # Only the origins a page really loads from: the build inlines
+            # its own JS and CSS and pulls no library from a CDN, so the two
+            # script CDNs that used to stand here allowed nothing the site
+            # uses and everything an injected script would want.  The font
+            # origins stay -- the theme's fonts_url loads from them.
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https:; "
             "connect-src 'self'"
