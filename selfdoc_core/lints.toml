@@ -201,6 +201,13 @@ code = "VER004"
 severity = "error"
 description = "A generated root file that embeds `project.version` does not contain the expected version. Regenerate with `selfdoc gen --version-override <v>`."
 
+# -- Spelling -----------------------------------------------------------------
+
+[[lints]]
+code = "SPELL001"
+severity = "error"
+description = "A word in page prose is in neither the vendored English word list nor the accept list. Fix the misspelling, or add the term to ~/Projects/ark/spelling-accept.txt if it is genuine."
+
 # -- Blog posts (selfblog) ----------------------------------------------------
 
 [[lints]]

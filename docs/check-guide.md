@@ -109,6 +109,7 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | VER002 | error | `version` in selfdoc.json does not match the version detected from the project manifest (pyproject.toml, package.json, or a `VERSION` file). |
 | VER003 | error | The last entry of the `versions` array does not match `version` in selfdoc.json. |
 | VER004 | error | A generated root file that embeds `project.version` does not contain the expected version. Regenerate with `selfdoc gen --version-override <v>`. |
+| SPELL001 | error | A word in page prose is in neither the vendored English word list nor the accept list. Fix the misspelling, or add the term to ~/Projects/ark/spelling-accept.txt if it is genuine. |
 | POST001 | error | A post is missing the required `date` field in its frontmatter. |
 | POST002 | error | A post is missing the required `title` field in its frontmatter. |
 | POST003 | error | A post's `date` is not written as YYYY-MM-DD. |

@@ -26,7 +26,7 @@ from selfdoc.catalog import ALL_BUILTIN_DIRECTIVES
 from selfdoc.tokenizer import (
     tokenize, Heading, Paragraph, BlankLine, CodeBlock,
     UnorderedList, OrderedList, Blockquote, DefinitionList,
-    Directive,
+    Directive, TEXT_BEARING, token_text_lines,
 )
 from selfdoc.catalog import validate_directive_attrs
 from selfdoc.config import load_config
@@ -43,7 +43,7 @@ from selfdoc.staleness import (
 )
 from selfdoc.ownership import is_machine_owned
 
-from selfdoc_core import effects
+from selfdoc_core import effects, spelling
 # Re-exported: the lint registry owns LintResult (severity is derived from the
 # registered code, never passed in) and the shared check-verdict rules.
 from selfdoc_core.lints import (  # noqa: F401
@@ -1066,25 +1066,6 @@ def accept_baselines(pages, dir_path=".", config=None):
     return accepted
 
 
-def _token_text_lines(tok):
-    """Extract text lines from a content-bearing token.
-
-    Returns a list of strings (one per source line) so the caller can
-    compute per-line offsets from ``tok.start``.
-    """
-    if isinstance(tok, (Paragraph, Blockquote)):
-        return tok.lines
-    if isinstance(tok, (UnorderedList, OrderedList)):
-        return tok.items
-    if isinstance(tok, DefinitionList):
-        lines = []
-        for term, defs in tok.entries:
-            lines.append(term)
-            lines.extend(defs)
-        return lines
-    return []
-
-
 def _check_version_consistency(config, dir_path):
     """Check version consistency between config and project manifest.
 
@@ -1380,6 +1361,13 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
 
     _known_pages = set(all_docs.keys())
 
+    # SPELL001 -- the vocabulary is loaded once for the whole run, not once
+    # per page.  A malformed accept list raises here, before any page is
+    # judged, so the run stops on the bad list rather than reporting
+    # misspellings a fixed list would have accepted.
+    _spell_vocab = spelling.load_wordlist()
+    _spell_accepted = spelling.load_accept_list()
+
     # DQ001 helpers -- strip common suffixes and normalize for comparison
     _DQ_SUFFIXES = {
         "module", "class", "function", "package",
@@ -1402,11 +1390,10 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         heading_tokens = [t for t in tokens if isinstance(t, Heading)]
         h1_tokens = [t for t in heading_tokens if t.level == 1]
 
-        # Token types that carry prose content (not code blocks)
-        _TEXT_TYPES = (
-            Paragraph, UnorderedList, OrderedList, Blockquote,
-            DefinitionList,
-        )
+        # Token types that carry prose content (not code blocks).  Owned by
+        # the tokenizer, which also knows how to read each shape's text --
+        # headings and table cells included.
+        _TEXT_TYPES = TEXT_BEARING
 
         # SEO001 -- Multiple H1 headings in Markdown source
         # SEO013 -- No title source (neither frontmatter title nor # heading)
@@ -1448,7 +1435,7 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
             if not isinstance(tok, _TEXT_TYPES):
                 continue
             # Get text lines from the token
-            tok_lines = _token_text_lines(tok)
+            tok_lines = token_text_lines(tok)
             for offset, line in enumerate(tok_lines):
                 if "![](" in line:
                     results.append(LintResult(
@@ -1660,7 +1647,7 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         for tok in tokens:
             if not isinstance(tok, _TEXT_TYPES):
                 continue
-            tok_lines = _token_text_lines(tok)
+            tok_lines = token_text_lines(tok)
             for offset, line in enumerate(tok_lines):
                 for m in re.finditer(r"!\[([^\]]*)\]\(", line):
                     alt = m.group(1)
@@ -1686,7 +1673,7 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         for tok in tokens:
             if not isinstance(tok, _TEXT_TYPES):
                 continue
-            tok_lines = _token_text_lines(tok)
+            tok_lines = token_text_lines(tok)
             for offset, line in enumerate(tok_lines):
                 for m in re.finditer(r"\[([^\]]+)\]\(", line):
                     text = m.group(1).strip().lower()
@@ -1706,7 +1693,7 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
         for tok in tokens:
             if not isinstance(tok, _TEXT_TYPES):
                 continue
-            tok_lines = _token_text_lines(tok)
+            tok_lines = token_text_lines(tok)
             for offset, line in enumerate(tok_lines):
                 for m in re.finditer(r'\[([^\]]*)\]\(([^)]+)\)', line):
                     target = m.group(2)
@@ -1881,6 +1868,24 @@ def _run_lints(all_docs, docs_dir, resolver, config, resolved_directives=None):
                         code="EXAMPLE001",
                         message=f"JSON syntax error in code block: {e.msg}",
                     ))
+
+        # SPELL001 -- prose spelling.  One engine, shared with
+        # ``selfdoc spell-corpus``: this surface only turns its findings
+        # into lints.  Posts are in ``all_docs`` by the time the rules run,
+        # so they are checked on the same terms as documentation pages.
+        for miss in spelling.check_text(
+            body_content,
+            file=rel_path,
+            vocab=_spell_vocab,
+            accepted=_spell_accepted,
+            line_offset=fm_offset,
+        ):
+            results.append(LintResult(
+                file=rel_path,
+                line=miss.line,
+                code="SPELL001",
+                message=miss.describe(),
+            ))
 
     # SEO012 -- WCAG contrast ratio checks
     _check_contrast(results, config, docs_dir)
