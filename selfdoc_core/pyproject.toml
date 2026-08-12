@@ -12,14 +12,18 @@ authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["documentation", "static-site-generator", "docstring", "selfdoc", "rlsbl"]
+# Floors, not pins -- upper bounds stay banned. effects.py is built on the
+# strictcli effects regime: `strictcli.Unsettled` and the `grant=` keyword on
+# every handle operation arrived in 0.35.0, and the floor sits at 0.36.0, the
+# version this engine is built and tested against.
 dependencies = [
     "strictspec>=0.1.0",
-    "strictcli",
+    "strictcli>=0.36.0",
 ]
 
 [project.optional-dependencies]
 perf = ["brotli>=1.1"]
-og = ["predraw"]
+og = ["predraw>=0.2.1"]
 
 [project.urls]
 Repository = "https://github.com/smm-h/selfdoc"
