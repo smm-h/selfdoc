@@ -392,7 +392,8 @@ def _posts_dir(config, dir_path):
     return posts_dir_rel, posts_dir
 
 
-def _post_lint_docs(config, dir_path, resolver, valid_names):
+def _post_lint_docs(config, dir_path, resolver, valid_names,
+                    overlay=None, include_drafts=False):
     """Resolve the project's published posts into the lint rules' slice.
 
     A post is a page on the site, so every rule that holds a documentation
@@ -425,10 +426,25 @@ def _post_lint_docs(config, dir_path, resolver, valid_names):
     that as its own lint rather than asking this to resolve a set that
     does not exist.
 
+    Args:
+        config: The project configuration.
+        dir_path: Project root directory.
+        resolver: The directive resolver the rules resolve through.
+        valid_names: The directive names parsing accepts.
+        overlay: Post source held in memory, keyed by the post's path
+            relative to the posts directory.  Each entry replaces (or
+            adds to) the post of that path, exactly as the in-memory
+            render path overlays an editor's unsaved buffer -- so the
+            rules judge what is on screen rather than what is saved.
+        include_drafts: Judge drafts too.  The build excludes them
+            because an unpublished draft is not on the site; an editor
+            asks for them because a draft is exactly what is being
+            written.
+
     Returns a dict in ``resolve_all_docs`` shape, empty when the project
     has no posts.
     """
-    from selfdoc_core import require_post_provider
+    from selfdoc_core import require_post_parser, require_post_provider
     from selfdoc_core.build import post_docs_payloads, POSTS_PREFIX
     from selfdoc_core.docs import resolve_markdown
 
@@ -438,10 +454,30 @@ def _post_lint_docs(config, dir_path, resolver, valid_names):
 
     discover_posts = require_post_provider()
     manifest_path = os.path.join(dir_path, ".selfdoc", "manifest.json")
-    published = [
-        post
+    posts = [
+        dict(post)
         for post in discover_posts(posts_dir, manifest_path=manifest_path)
-        if not post["draft"]
+    ]
+
+    # The overlay replaces a post in place, so its neighbours -- and its own
+    # position among them -- are whatever is saved.  Same rule the renderer
+    # follows, for the same reason: only the edited post is unsaved.
+    sources = {}
+    if overlay:
+        parse_post = require_post_parser()
+        for rel, content in overlay.items():
+            edited = parse_post(content, rel)
+            for index, post in enumerate(posts):
+                if post["path"] == rel:
+                    posts[index] = edited
+                    break
+            else:
+                posts.append(edited)
+            sources[rel] = content
+
+    published = [
+        post for post in posts
+        if include_drafts or not post["draft"]
     ]
     if not published:
         return {}
@@ -456,14 +492,87 @@ def _post_lint_docs(config, dir_path, resolver, valid_names):
         )
 
         source_rel = os.path.join(posts_dir_rel.rstrip("/"), post["path"])
-        with open(os.path.join(dir_path, source_rel), "r", encoding="utf-8") as f:
-            raw = f.read()
+        if post["path"] in sources:
+            raw = sources[post["path"]]
+        else:
+            with open(os.path.join(dir_path, source_rel), "r", encoding="utf-8") as f:
+                raw = f.read()
         _source_fm, source_body = parse_frontmatter(raw)
         fm_line_count = len(raw.split("\n")) - len(source_body.split("\n"))
 
         result[source_rel] = (frontmatter, resolved, body, fm_line_count)
 
     return result
+
+
+def lint_post_buffer(dir_path, source_path, content, config=None):
+    """Run the post-applicable lint rules over one in-memory post buffer.
+
+    The editor's diagnostics come from here, and they are the check's own
+    diagnostics: the same slice conversion (:func:`_post_lint_docs`) over
+    the same rules (:func:`_run_lints`), with the buffer overlaid on the
+    saved post set exactly as the renderer overlays it.  Nothing about a
+    rule is restated for the editor, so a finding on screen is a finding
+    ``selfdoc check`` will report, worded identically.
+
+    Two differences from the whole-project run, each deliberate:
+
+    - drafts are judged, because a draft is what is being written (and,
+      as a consequence, a link to a draft post resolves here where the
+      check would call it unknown -- the draft is on disk either way);
+    - only the buffer's own diagnostics are returned, because the rest of
+      the tree is not what the author is looking at.
+
+    The rules run over the post slice alone, not the whole docs tree.  The
+    one cross-page rule, XREF001, resolves a link against the page's own
+    directory, and a post's own directory is the posts directory -- so the
+    docs pages could never have matched a post's link anyway, and the
+    slice is exactly the universe the whole-project run offers a post.
+
+    Args:
+        dir_path: Project root directory.
+        source_path: The post's path relative to the posts directory.
+        content: The buffer, frontmatter included.
+        config: Pre-loaded config (loaded from selfdoc.json when None).
+
+    Returns:
+        A list of ``LintResult`` for this post, in rule order.
+
+    Raises:
+        RuntimeError: No config, or no posts directory to place the buffer
+            in.  The post's own validation errors are raised by the post
+            parser as its ``PostError``.
+    """
+    if config is None:
+        config = load_config(dir_path)
+    if config is None:
+        raise RuntimeError(
+            "No selfdoc.json found. Run 'selfdoc init' to initialize."
+        )
+
+    posts_dir_rel, posts_dir = _posts_dir(config, dir_path)
+    if posts_dir is None:
+        raise RuntimeError(
+            f"{dir_path} has no posts directory at "
+            f"{posts_dir_rel or '(unset)'}, so a post buffer has nowhere to "
+            f"be checked against."
+        )
+
+    resolver = make_resolver(config, dir_path)
+    custom_names = set(config.get("directives", {}).keys())
+    validate_directive_names(custom_names)
+    valid_names = ALL_BUILTIN_DIRECTIVES | custom_names
+
+    post_docs = _post_lint_docs(
+        config, dir_path, resolver, valid_names,
+        overlay={source_path: content}, include_drafts=True,
+    )
+
+    docs_dir = os.path.join(dir_path, config["docs"].rstrip("/"))
+    lints = _run_lints(post_docs, docs_dir, resolver, config)
+
+    key = os.path.join(posts_dir_rel.rstrip("/"), source_path)
+    return [lint for lint in lints if lint.file == key]
 
 
 def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
