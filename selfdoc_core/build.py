@@ -16,7 +16,9 @@ from datetime import datetime
 
 from selfdoc_core import require_post_provider
 from selfdoc_core.config import load_config, ConfigError
-from selfdoc_core.address import ARCHIVE_PREFIX, locale_segment, page_address
+from selfdoc_core.address import (
+    ARCHIVE_PREFIX, POSTS_PREFIX, locale_segment, page_address,
+)
 from selfdoc_core.prose import first_paragraph
 from selfdoc_core.docs import resolve_all_docs
 from selfdoc_core.utils import detect_project_version, parse_frontmatter
@@ -29,10 +31,6 @@ from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
 
 from selfdoc_core import effects
-
-#: Site-level URL segment every post is emitted under: ``blog/<slug>/``.
-#: Fixed, and the same in a standalone build and on the unified site.
-POSTS_PREFIX = "blog"
 
 try:
     from predraw.model import Scene, Element, Font
@@ -2585,37 +2583,45 @@ def _generate_auxiliary_files(
     # Generate 404.html (Feature 39).  The sidebar spans both mounts, so
     # the pages are split the way a page build splits them: an address
     # with no version segment belongs to the version-free mount.
-    versioned_md = {}
-    unversioned_md = {}
-    for md_path, content in markdown_files.items():
-        if page_addresses[md_path].version:
-            versioned_md[md_path] = content
-        else:
-            unversioned_md[md_path] = content
-    nav_items = _build_nav(
-        versioned_md, frontmatter,
-        unversioned_pages=unversioned_md or None,
-        unversioned_frontmatter=frontmatter,
-    )
-    not_found_html = generate_404_page(
-        project_name=project_name,
-        version=version,
-        has_custom_css=has_custom_css,
-        nav_items=nav_items,
-        repo=repo,
-        base_url=base_url,
-        url_builder=url_builder,
-        lang=lang,
-        feed_url=feed_url,
-        critical_css=critical_css,
-        theme_meta=theme_meta,
-        mount_locale=mount_locale,
-        mount_project=mount_project,
-    )
-    not_found_path = os.path.join(output_dir, "404.html")
-    with effects.open_write(not_found_path, "w", encoding="utf-8") as f:
-        f.write(not_found_html)
-    written[not_found_path] = True
+    #
+    # Only for a project serving its own output root.  ``404.html`` is a
+    # hosting-provider convention answered at the root of what is served,
+    # and a mounted project's output root is a subdirectory of somebody
+    # else's site: no request ever reaches a subtree's copy, the site's own
+    # root 404 answers instead, and the buried copy is an unreachable page
+    # that still has to satisfy every assertion made about a page.
+    if url_builder is None or not url_builder.mounted():
+        versioned_md = {}
+        unversioned_md = {}
+        for md_path, content in markdown_files.items():
+            if page_addresses[md_path].version:
+                versioned_md[md_path] = content
+            else:
+                unversioned_md[md_path] = content
+        nav_items = _build_nav(
+            versioned_md, frontmatter,
+            unversioned_pages=unversioned_md or None,
+            unversioned_frontmatter=frontmatter,
+        )
+        not_found_html = generate_404_page(
+            project_name=project_name,
+            version=version,
+            has_custom_css=has_custom_css,
+            nav_items=nav_items,
+            repo=repo,
+            base_url=base_url,
+            url_builder=url_builder,
+            lang=lang,
+            feed_url=feed_url,
+            critical_css=critical_css,
+            theme_meta=theme_meta,
+            mount_locale=mount_locale,
+            mount_project=mount_project,
+        )
+        not_found_path = os.path.join(output_dir, "404.html")
+        with effects.open_write(not_found_path, "w", encoding="utf-8") as f:
+            f.write(not_found_html)
+        written[not_found_path] = True
 
     # Generate favicon.svg from project initials (Feature 40)
     favicon_svg = _generate_favicon_svg(project_name, accent_color)

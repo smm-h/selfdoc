@@ -426,15 +426,22 @@ def generate_llms_txt(manifests: list[dict], canonical_base: str, *,
 def generate_not_found_page(canonical_base: str) -> str:
     """Produce the assembly's root 404 page.
 
-    A project subtree carries its own 404 from its own build, but the site
-    root has no build of its own, so a request that matches no project at
-    all would otherwise be served the hosting provider's default.
+    The only one the site has.  ``404.html`` is answered at the root of
+    what the provider serves, so a copy inside a project's subtree is
+    never reached; the projects stopped emitting one and this page answers
+    every unmatched address on the site.
 
     It is served through the hosting provider's ``404.html`` convention:
     a request matching no asset gets this body with a 404 status.  That is
     why its body has to differ from the front page -- an unknown address
     that renders the front page is a soft 404, and a crawler reads it as a
     duplicate of the home page rather than as a dead link.
+
+    It declares no canonical, deliberately.  A canonical says "this
+    content lives at this address"; an error page is not content and has
+    no address of its own -- it is the answer to every address the site
+    does not serve.  Naming one would hand a crawler a real URL for a page
+    that only ever appears under URLs that do not exist.
     """
     base = canonical_base.rstrip("/")
     body = (
@@ -452,8 +459,7 @@ def generate_not_found_page(canonical_base: str) -> str:
         "</main>"
     )
     return wrap_shared_page(
-        "Page not found", body, canonical_url=f"{base}/404.html",
-        search_prefix="",
+        "Page not found", body, canonical_url="", search_prefix="",
     )
 
 

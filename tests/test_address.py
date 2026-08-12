@@ -556,17 +556,27 @@ def test_every_emitted_reference_resolves_unified(make_unified_project):
     _walk_and_check(os.path.join(str(docs_site), "docs", "_build"))
 
 
-def test_output_tree_is_mount_independent(tmp_path):
-    """The emitted file set does not depend on where the site is mounted."""
+def test_output_tree_is_mount_independent_but_for_the_not_found_page(tmp_path):
+    """The emitted page tree does not depend on where the site is mounted.
+
+    One file does, and only one: ``404.html``.  A hosting provider
+    answers an unmatched address from the root of what it serves, so the
+    not-found page belongs to the served root -- which a mounted project
+    is not.  Everything else is addressed document-relative and is
+    identical under every mount.
+    """
     origin = _make_fixture(tmp_path / "o", ORIGIN_ROOT_CONFIG)
     slug = _make_fixture(tmp_path / "s", SLUG_PREFIX_CONFIG)
     build(str(origin))
     build(str(slug))
-    assert _emitted_files(
+    origin_files = _emitted_files(
         os.path.join(str(origin), "docs", "_build"), include_index=False,
-    ) == _emitted_files(
+    )
+    slug_files = _emitted_files(
         os.path.join(str(slug), "docs", "_build"), include_index=False,
     )
+    assert origin_files - slug_files == {"404.html"}
+    assert slug_files - origin_files == set()
 
 
 def test_search_index_addresses_pages_that_exist(tmp_path):

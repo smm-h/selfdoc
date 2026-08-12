@@ -19,9 +19,16 @@ from selfdoc_core import effects
 
 # Files a per-project selfdoc build emits for its own standalone hosting.
 # They are meaningless (and actively harmful) once the build is grafted into
-# the assembly tree, which serves one set of headers, redirects and worker
-# for the whole site.
-DEPLOY_ARTIFACT_NAMES = ("_headers", "_redirects", "_worker.js")
+# the assembly tree, which serves one set of headers, redirects, worker and
+# not-found page for the whole site.
+#
+# ``404.html`` belongs here for a reason of its own: the provider answers an
+# unmatched address from the root of what it serves, so a copy buried in a
+# project's subtree is never reached by anything. A mounted project stops
+# emitting one; this filter is what keeps the ones already published from
+# surviving into the tree, where they are unreachable pages that still have
+# to satisfy every assertion made about a page.
+DEPLOY_ARTIFACT_NAMES = ("_headers", "_redirects", "_worker.js", "404.html")
 DEPLOY_ARTIFACT_SUFFIXES = (".gz", ".br")
 
 # Who may have written a path inside a project's site subtree.  Every
@@ -1516,10 +1523,12 @@ HOME_RESERVED_DIRS = ("blog", "projects", "v", "pagefind")
 #: Files at the site root the assembly generates for the whole site on every
 #: deploy.  A project's own build writes its own copy of each at its own
 #: output root, for its own standalone hosting; for a project under
-#: ``site/<slug>/`` those copies are buried and harmless, and for the home
+#: ``site/<slug>/`` those copies are dropped on the way in, and for the home
 #: project they would land exactly on top of the site-wide ones.  They are
 #: dropped from the home graft, the same treatment
 #: :func:`prune_deploy_artifacts` gives every other project's routing files.
+#: ``404.html`` reaches this set through :data:`DEPLOY_ARTIFACT_NAMES`, which
+#: drops it for every project rather than only for the home one.
 #: ``index.html`` is deliberately absent: the home project's front page is
 #: exactly what belongs at the site root.
 HOME_DROPPED_ARTIFACTS = (
@@ -1529,7 +1538,6 @@ HOME_DROPPED_ARTIFACTS = (
     "sitemap.xml",
     "sitemap-index.xml",
     "robots.txt",
-    "404.html",
     "feed.xml",
     "llms.txt",
     "llms-full.txt",

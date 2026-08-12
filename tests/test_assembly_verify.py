@@ -622,6 +622,45 @@ def test_a_page_with_no_canonical_fails(assembly):
     assert any("rel=canonical" in m for m in messages)
 
 
+def test_the_root_404_needs_no_canonical(assembly):
+    """The one page whose canonical is required to be absent.
+
+    The shared generator writes it without one, so the clean tree already
+    carries a canonical-less page; this says that is the passing shape
+    rather than an unnoticed hole.
+    """
+    not_found = assembly / "site" / "404.html"
+    assert 'rel="canonical"' not in not_found.read_text(encoding="utf-8")
+    report = _verify(assembly)
+    assert not [f for f in report.failures_of("page-metadata")
+                if "404.html" in f.offender]
+
+
+def test_a_404_declaring_a_canonical_fails(assembly):
+    _write(str(assembly / "site" / "404.html"),
+           _page("Page not found", f"{CANONICAL_BASE}/404.html"))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("page-metadata")]
+    assert any("404.html" in m and "canonical" in m for m in messages)
+
+
+def test_a_404_with_no_title_still_fails(assembly):
+    _write(str(assembly / "site" / "404.html"),
+           "<html><head><title></title></head><body>gone</body></html>")
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("page-metadata")]
+    assert any("404.html" in m and "no title" in m for m in messages)
+
+
+def test_a_project_subtree_404_fails(assembly):
+    """A subtree 404 is never served, so it has no business in the tree."""
+    _write(str(assembly / "site" / "beta" / "404.html"),
+           _page("Page not found", ""))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("routing-artifacts")]
+    assert any("beta/404.html" in m for m in messages)
+
+
 def test_a_canonical_pointing_off_the_site_fails(assembly):
     _write(str(assembly / "site" / "beta" / "index.html"),
            _page("Beta", "https://elsewhere.example.net/beta/", version="2.0.0"))

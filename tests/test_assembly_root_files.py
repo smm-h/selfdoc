@@ -128,7 +128,17 @@ def test_the_root_404_is_a_whole_page_from_the_shared_wrapper(generated):
     html = _read(generated, "404.html")
     assert html.startswith("<!DOCTYPE html>")
     assert "<title>Page not found</title>" in html
-    assert f'<link rel="canonical" href="{CANONICAL_BASE}/404.html">' in html
+
+
+def test_the_root_404_declares_no_canonical(generated):
+    """An error page has no address of its own to call canonical.
+
+    It is the answer to every address the site does not serve, so naming
+    one real URL as its canonical hands a crawler a page that only ever
+    appears under URLs that do not exist.
+    """
+    html = _read(generated, "404.html")
+    assert "rel=\"canonical\"" not in html
 
 
 def test_the_root_404_says_the_page_is_not_there(generated):

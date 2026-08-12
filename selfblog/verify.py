@@ -122,11 +122,16 @@ _SECONDS_PER_DAY = 86400
 
 _OUTBOUND_TIMEOUT = 15
 
+#: The page a hosting provider serves for an address that matches nothing.
+#: One per served root, which on this site means one, at the site root.
+NOT_FOUND_PAGE = "404.html"
+
 #: What the assembly itself is allowed to serve at the site root.  Every
 #: other routing artifact belongs to a single project's own standalone
 #: hosting and fights the site-wide one wherever it lands.
-SHARED_ROUTING_FILES = ("_headers", "_worker.js")
-ROUTING_ARTIFACT_NAMES = ("_headers", "_redirects", "_worker.js")
+SHARED_ROUTING_FILES = ("_headers", "_worker.js", NOT_FOUND_PAGE)
+ROUTING_ARTIFACT_NAMES = ("_headers", "_redirects", "_worker.js",
+                          NOT_FOUND_PAGE)
 ROUTING_ARTIFACT_SUFFIXES = (".gz", ".br")
 
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -808,7 +813,14 @@ def _foreign_sitemap_entries(tree: AssemblyTree) -> list[Failure]:
 
 
 def check_page_metadata(tree: AssemblyTree) -> list[Failure]:
-    """Every page has a title and a canonical under the canonical base."""
+    """Every page has a title and a canonical under the canonical base.
+
+    The 404 is the one page with no canonical, and its absence is the
+    assertion rather than an exemption from one: it is the answer to
+    every address the site does not serve, so it has no address of its
+    own to name.  Its title is still required -- a browser tab and a
+    crawler both read it.
+    """
     failures = []
     for page_rel in tree.pages:
         page_html = tree.read(page_rel)
@@ -819,6 +831,15 @@ def check_page_metadata(tree: AssemblyTree) -> list[Failure]:
                 "has no title, so every listing, tab and search result "
                 "showing it is blank.",
             ))
+        if os.path.basename(page_rel) == NOT_FOUND_PAGE:
+            if _CANONICAL_TAG_RE.search(page_html):
+                failures.append(Failure(
+                    "page-metadata", f"site/{page_rel}",
+                    "declares a rel=canonical. A not-found page is the "
+                    "answer to every address the site does not serve, so "
+                    "it has no address of its own to declare canonical.",
+                ))
+            continue
         canonicals = [
             match.group(1)
             for tag in _CANONICAL_TAG_RE.findall(page_html)
@@ -869,10 +890,18 @@ def check_unresolved_directives(tree: AssemblyTree) -> list[Failure]:
 def check_routing_artifacts(tree: AssemblyTree) -> list[Failure]:
     """No per-project routing file survived the graft.
 
-    The assembly serves one set of headers and one worker for the whole
-    site.  A project's own copies -- and the pre-compressed variants its
-    build emits for its own hosting -- fight them wherever they sit, so
-    the graft filters them out and this is that filter, asserted.
+    The assembly serves one set of headers, one worker and one not-found
+    page for the whole site.  A project's own copies -- and the
+    pre-compressed variants its build emits for its own hosting -- fight
+    them wherever they sit, so the graft filters them out and this is that
+    filter, asserted.
+
+    ``404.html`` is in that set for a sharper reason than a fight: a
+    subtree copy is not served at all.  The provider answers an unmatched
+    address from the root of what it serves, so a project's own 404 is an
+    unreachable page that still has to satisfy every assertion made about
+    a page, and it failed the canonical one on every project that
+    published.
     """
     failures = []
     for rel in sorted(tree.emitted):
