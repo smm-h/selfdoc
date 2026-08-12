@@ -51,6 +51,18 @@ _SKIP_SCHEMES = (
     "http://", "https://", "//", "mailto:", "data:", "javascript:", "tel:",
 )
 
+#: Every ``<link>`` element, so the outbound collector can read its ``rel``.
+_LINK_ELEMENT_RE = re.compile(r"<link\b[^>]*>", re.IGNORECASE)
+_REL_ATTR_RE = re.compile(r'\brel="([^"]*)"', re.IGNORECASE)
+
+#: Link relations whose href is an ORIGIN to warm up rather than a document
+#: to fetch.  A GET at ``https://fonts.googleapis.com`` answers 404 and is
+#: supposed to: nothing is served there, and nothing navigates there.  The
+#: other resource hints -- ``preload``, ``prefetch``, ``modulepreload`` --
+#: name a real file the browser really requests, so a dead one is a genuine
+#: defect and stays collected.
+_ORIGIN_ONLY_RELS = frozenset({"preconnect", "dns-prefetch"})
+
 
 def _emitted_files(output_dir):
     """Every file the build wrote, as posix paths relative to *output_dir*."""
@@ -117,14 +129,37 @@ def page_references(page_html):
         yield attr, ref
 
 
+def _blank_origin_hints(page_html):
+    """Blank every origin-only resource hint, keeping every other offset.
+
+    Blanking the whole element rather than collecting its href into a skip
+    set is what keeps the exemption per-element: a page that both preconnects
+    to an origin and links to it still has the link collected.
+    """
+    def _erase(match):
+        element = match.group(0)
+        rel = _REL_ATTR_RE.search(element)
+        if rel is None:
+            return element
+        tokens = {token.lower() for token in rel.group(1).split()}
+        if tokens & _ORIGIN_ONLY_RELS:
+            return " " * len(element)
+        return element
+
+    return _LINK_ELEMENT_RE.sub(_erase, page_html)
+
+
 def external_references(page_html):
     """Yield every absolute ``http(s)`` URL *page_html* references.
 
     The other half of :func:`page_references`: what this module cannot
     verify against the emitted tree, because it names somebody else's
     server.  Whether those still answer is the outbound check's question.
+
+    Origin-only resource hints are not references in that sense and are
+    dropped before the scan -- see :data:`_ORIGIN_ONLY_RELS`.
     """
-    for _attr, raw in _REF_ATTR_RE.findall(page_html):
+    for _attr, raw in _REF_ATTR_RE.findall(_blank_origin_hints(page_html)):
         ref = html_mod.unescape(raw)
         if ref.startswith(("http://", "https://")):
             yield ref
