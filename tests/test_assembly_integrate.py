@@ -494,8 +494,8 @@ def test_full_integrate_regenerates_the_shared_files(assembly_tree, runner):
         # project's page.
         os.path.join("projects", "index.html"), "index.html",
         os.path.join("blog", "index.html"), "nav.json",
-        "feed.xml", "sitemap.xml", "robots.txt", "404.html", "_headers",
-        "_worker.js",
+        "feed.xml", "sitemap.xml", "robots.txt", "llms.txt", "404.html",
+        "_headers", "_worker.js",
     }
 
 
