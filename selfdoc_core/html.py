@@ -2391,19 +2391,17 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             f'\n</script>'
         )
 
-    # WebSite JSON-LD on the homepage
+    # WebSite JSON-LD on the homepage.  It carries no SearchAction: that
+    # node advertised a ?q= URL pattern which serves the same page for every
+    # query, so it published a duplicate-content address for each search term
+    # and pointed crawlers at it.  The site's search is client-side and has no
+    # crawlable result URL to advertise.
     if page_path == "index.html":
         website_ld = {
             "@context": "https://schema.org",
             "@type": "WebSite",
             "name": project_name,
             "url": url_builder.page_url("") if url_builder else f"{base_url}/",
-            "potentialAction": {
-                "@type": "SearchAction",
-                "target": (url_builder.page_url("?q={search_term_string}") if url_builder
-                           else f"{base_url}/?q={{search_term_string}}"),
-                "query-input": "required name=search_term_string",
-            },
         }
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
