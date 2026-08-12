@@ -1,6 +1,6 @@
 ---
 title: Check Guide
-description: "Run selfdoc check to validate directives, measure coverage, execute marked examples, lint blog posts alongside documentation pages, and apply every registered lint rule with its declared severity -- suppressing warnings only, never errors."
+description: "Run selfdoc check to validate directives, measure coverage, execute marked examples, spell-check page prose against the vendored word list and the shared accept list, lint blog posts alongside documentation pages, and apply every registered lint rule with its declared severity -- suppressing warnings only, never errors."
 nav_group: "Guides"
 nav_order: 10
 ---
@@ -120,6 +120,42 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | LINK001 | error | An emitted reference -- a link, a canonical, a sitemap entry or a feed link -- names a file the build did not write. |
 | UNIFIED001 | error | A project listed in the `unified` section has no selfdoc.json. |
 | UNIFIED002 | error | A constituent project, or the docs-site's own content, could not be checked. |
+
+### Spelling (SPELL001)
+
+Every documentation page and every published post is spell-checked against a
+vendored English word list of about 172,000 words -- a pinned snapshot of the
+English Speller Database at its large size, carrying US, British and Canadian
+spellings, so `colour` and `color` are equally correct. The list ships as
+package data beside upstream's copyright notice, which travels with it as
+redistribution requires.
+
+Structure comes from the block tokenizer, so fenced code blocks and directive
+blocks are never scanned; inline code spans, link destinations, URLs, and
+directive markers are blanked before a line is read. Tokens that look like
+machinery rather than English -- anything carrying a digit, an underscore, a
+slash, a dotted qualified name, or an interior capital such as `parseConfig`
+-- are skipped whole. Hyphenated compounds are checked part by part, and a
+possessive is accepted from its base word. Each finding names the file, the
+line, the column, and an edit-distance-one suggestion when one exists.
+
+Genuine terms the general word list cannot know -- project names, tool names,
+technical vocabulary -- belong on the accept list at
+`~/Projects/ark/spelling-accept.txt`: one lowercase word per line, `#` starts
+a comment, and a word there is accepted in any casing, everywhere. A missing
+file simply means nothing has been accepted yet. A file that exists but holds
+a line that is not a bare word is a hard error, so a malformed list is never
+read as a shorter one.
+
+SPELL001 is error severity and cannot be suppressed. Fixing the prose or
+accepting the term are the two available answers, which is the point: a
+misspelling on a published page is a defect, and the accept list records the
+deliberate decision that a word is not one.
+
+To seed the accept list across a machine, `selfdoc spell-corpus` runs the same
+engine over every selfdoc project sitting beside this one and prints each
+project's unknown words with a first location. It is strictly read-only over
+the projects it visits.
 
 ### Suppressing rules
 

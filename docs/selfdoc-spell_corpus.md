@@ -1,8 +1,7 @@
 ---
 title: selfdoc.spell_corpus
-description: "The corpus-wide spelling run: the same engine, every sibling project."
+description: "Reference for selfdoc.spell_corpus: the read-only sweep that runs the SPELL001 spelling engine over every sibling selfdoc project and reports each one's unknown words."
 generated: true
-seeded: true
 nav_group: "API Reference"
 nav_order: 26
 ---
