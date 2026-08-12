@@ -23,6 +23,7 @@ from selfdoc_core.build import (
     _minify_html,
     build_single,
     post_docs_payloads,
+    site_level_build_args,
 )
 from selfdoc_core.config import load_config
 from selfdoc_core.html import _md_to_html_path
@@ -95,15 +96,16 @@ def render_post(dir_path, source_path, content, config=None,
     payloads = post_docs_payloads(published)
 
     page_md = f"{POSTS_PREFIX}/{edited['slug']}.md"
+    # A post is site-level, so it is rendered with the arguments every
+    # site-level page is built with -- the same ones the full build and
+    # the posts-only target use.  That shared definition is what makes
+    # this byte-identical to what a build would have written.
     result = build_single(
         dir_path=dir_path,
-        config=config,
-        mount_locale="",
-        mount_version="",
-        version_override="",
         page_filter=set(payloads),
         overlay_docs=payloads,
         write_baselines=False,
+        **site_level_build_args(config, config["docs"].rstrip("/")),
     )
 
     output_key = _md_to_html_path(page_md)

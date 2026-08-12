@@ -1698,6 +1698,52 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     return injected
 
 
+def default_locale_of(config):
+    """The locale code a project's site-level pages are written in.
+
+    The declared default if one is marked, else the first declared -- the
+    same rule :func:`build` applies to the versioned tree.
+    """
+    locales = config.get("locales") or []
+    if not locales:
+        return ""
+    for loc in locales:
+        if loc.get("default") is True:
+            return loc["code"]
+    return locales[0]["code"]
+
+
+def site_level_build_args(config, docs_dir_name):
+    """The ``build_single`` arguments every site-level page is built with.
+
+    A post is one page with one address, and three paths produce it: the
+    full build's site-level pass, the posts-only target the assembly runs
+    when nothing but a post changed, and the in-memory renderer an editor
+    previews with.  Whichever ran last decides what the site serves, so
+    they cannot differ -- and the way to guarantee that is for the
+    arguments to have one definition rather than three copies.
+
+    Site-level means no mount and no version segment: the page is served
+    from the site root, not from the project's subtree and not from an
+    archive prefix.  It still carries the project's default locale, which
+    is what puts it in a locale search filter.
+    """
+    site_config = dict(config)
+    site_config["docs"] = docs_dir_name
+    locale_code = default_locale_of(config)
+    return {
+        "config": site_config,
+        "mount_locale": "",
+        "mount_version": "",
+        "version_override": "",
+        "locale_override": locale_code,
+        "available_locales": None,
+        "current_version": "",
+        "current_locale": locale_code,
+        "is_latest": True,
+    }
+
+
 def _cleanup_injected_posts(injected_files, docs_dir):
     """Remove post files injected into docs/ by ``_inject_posts_into_docs``.
 
@@ -1713,7 +1759,7 @@ def _cleanup_injected_posts(injected_files, docs_dir):
 
 
 def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
-                      docs_dir, include_drafts, default_locale_code):
+                      docs_dir, include_drafts):
     """Build only post pages, skipping versioned docs and auxiliary files.
 
     Injects posts into ``docs/blog/``, runs them through ``build_single``
@@ -1767,20 +1813,10 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
             os.path.relpath(p, docs_dir) for p in injected_paths
         }
 
-        site_config = dict(config)
-        site_config["docs"] = docs_dir_name
         result = build_single(
             dir_path=dir_path,
-            config=site_config,
-            mount_locale="",
-            mount_version="",
-            version_override="",
-            locale_override=default_locale_code,
-            available_locales=None,
-            current_version="",
-            current_locale=default_locale_code,
-            is_latest=True,
             page_filter=page_filter,
+            **site_level_build_args(config, docs_dir_name),
         )
 
         written = {}
@@ -1919,7 +1955,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
     if target == "posts":
         return _build_posts_only(
             dir_path, config, output_dir, docs_dir_name,
-            latest_docs_dir, include_drafts, default_locale_code,
+            latest_docs_dir, include_drafts,
         )
 
     # --- Partition pages into versioned, unversioned and site-level ---
@@ -2237,20 +2273,10 @@ def _build_body(
     # by a per-locale partition that never sees them.
     site_latest_build = None
     if site_pages:
-        site_config = dict(config)
-        site_config["docs"] = docs_dir_name
         site_result = build_single(
             dir_path=dir_path,
-            config=site_config,
-            mount_locale="",
-            mount_version="",
-            version_override="",
-            locale_override=default_locale_code,
-            available_locales=None,
-            current_version="",
-            current_locale=default_locale_code,
-            is_latest=True,
             page_filter=site_pages,
+            **site_level_build_args(config, docs_dir_name),
         )
         for rel_path, html_content in site_result.html_files.items():
             out_path = os.path.join(output_dir, rel_path)
