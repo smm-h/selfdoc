@@ -56,7 +56,11 @@ class FieldSpec:
     internal: bool = False
 
 VALID_DEPLOY_PROVIDERS = ("cloudflare-pages", "github-pages")
-VALID_SEARCH_ENGINES = ("builtin", "fuse", "minisearch", "pagefind")
+# The engine that answers a site's search UI.  One member today, and the
+# tuple is still the enumeration a config is checked against: the key is the
+# extension point, so a second engine is a member added here rather than a
+# new mechanism.
+VALID_SEARCH_ENGINES = ("pagefind",)
 
 _S = FieldType.STR
 _B = FieldType.BOOL
@@ -197,9 +201,13 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
     FieldSpec(
         name="search_engine",
         type=_S,
-        default=None,
-        choices=("builtin", "fuse", "minisearch", "pagefind"),
-        description="Client-side search engine implementation to use.",
+        required=True,
+        choices=VALID_SEARCH_ENGINES,
+        description=(
+            "Search engine that answers this site's search UI. Required and "
+            "never inferred: every site builds a search UI, so the engine "
+            "behind it is declared, not defaulted."
+        ),
     ),
     FieldSpec(
         name="code_icons",

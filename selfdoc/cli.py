@@ -119,6 +119,7 @@ def _cmd_init(ctx, base_url, auto_commit=True):
         "output": "docs/_build/",
         "versions": [{"version": detect_project_version(".", "0.1.0")}],
         "locales": [{"code": "en", "label": "English", "default": True}],
+        "search_engine": "pagefind",
     })
 
     # Write selfdoc.json atomically

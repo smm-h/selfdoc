@@ -23,6 +23,7 @@
     }
   ],
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
+  "search_engine": "pagefind",
   "gen": {
     "exclude": [
       "selfdoc.staleness",
