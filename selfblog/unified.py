@@ -416,7 +416,6 @@ def _build_unified_body(
 
     # The build owns the ``v/`` and ``blog/`` segments at the top of every
     # mount; an author page may not take either.
-    version_strs = [v["version"] for v in versions]
     for _slug, (v_pages, uv_pages, _uv_md, _uv_fm) in project_page_partitions.items():
         _check_reserved_page_paths(v_pages | uv_pages)
     _check_reserved_page_paths(ds_versioned | ds_unversioned)
