@@ -1,6 +1,6 @@
 {
   "name": "selfblog",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Blog system for selfdoc-based documentation sites",
   "bin": {
     "selfblog": "bin/cli.js"
