@@ -521,33 +521,46 @@ def test_page_path_to_url_segment_index_in_name():
 
 def test_wrap_shared_page_has_doctype():
     """Output starts with <!DOCTYPE html>."""
-    result = wrap_shared_page("Test", "<p>Hello</p>")
+    result = wrap_shared_page("Test", "<p>Hello</p>", search_prefix="")
     assert "<!DOCTYPE html>" in result
 
 
 def test_wrap_shared_page_title_in_tag():
     """Title appears inside a <title> tag."""
-    result = wrap_shared_page("My Page Title", "<p>body</p>")
+    result = wrap_shared_page(
+        "My Page Title", "<p>body</p>", search_prefix="",
+    )
     assert "<title>My Page Title</title>" in result
 
 
 def test_wrap_shared_page_body_html_present():
     """body_html fragment appears in the output."""
     fragment = '<section class="content"><h1>Welcome</h1></section>'
-    result = wrap_shared_page("Home", fragment)
+    result = wrap_shared_page("Home", fragment, search_prefix="")
     assert fragment in result
 
 
 def test_wrap_shared_page_css_url_produces_link():
     """When css_url is provided, a <link rel="stylesheet"> tag is present."""
-    result = wrap_shared_page("Styled", "<p>text</p>", css_url="/assets/main.css")
+    result = wrap_shared_page(
+        "Styled", "<p>text</p>", css_url="/assets/main.css", search_prefix="",
+    )
     assert '<link rel="stylesheet" href="/assets/main.css">' in result
 
 
 def test_wrap_shared_page_no_link_when_css_empty():
-    """When css_url is empty (default), no <link> tag appears."""
-    result = wrap_shared_page("Plain", "<p>text</p>")
-    assert "<link" not in result
+    """With no css_url, the only <link> is the Pagefind UI stylesheet."""
+    result = wrap_shared_page("Plain", "<p>text</p>", search_prefix="")
+    links = [line for line in result.split("\n") if "<link" in line]
+    assert links == ['<link href="pagefind/pagefind-ui.css" rel="stylesheet">']
+
+
+def test_wrap_shared_page_carries_the_search_dialog():
+    """A shared page answers Cmd/Ctrl+K like every documentation page."""
+    result = wrap_shared_page("Plain", "<p>text</p>", search_prefix="../")
+    assert 'id="pagefind-container"' in result
+    assert 'bundlePath: "../pagefind/"' in result
+    assert '<script src="../pagefind/pagefind-ui.js"></script>' in result
 
 
 # -- cross-project post slug collisions ---------------------------------------

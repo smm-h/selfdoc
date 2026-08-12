@@ -1107,6 +1107,7 @@ def generate_shared_files(
 
     blog_html = wrap_shared_page(
         "Blog", blog_fragment, canonical_url=f"{canonical_base}/blog/",
+        search_prefix="../",
     )
 
     headers_content = (
@@ -1125,6 +1126,7 @@ def generate_shared_files(
     atomic_write(projects_path, wrap_shared_page(
         "Projects", homepage_fragment,
         canonical_url=f"{canonical_base}/projects/",
+        search_prefix="../",
     ))
     written.append(projects_path)
 
@@ -1490,6 +1492,14 @@ HOME_DROPPED_ARTIFACTS = (
     *DEPLOY_ARTIFACT_NAMES,
 )
 
+#: Directories at the home project's output root the assembly writes itself.
+#: The home project's pages sit at the site root, so its own Pagefind index
+#: lands exactly where the site-wide one belongs -- and the site-wide one,
+#: written by :func:`index_site` over the whole assembled tree, is the index
+#: those pages must answer from.  Every other project keeps its own index
+#: inside its subtree, which is what its pages address.
+HOME_DROPPED_DIRS = ("pagefind",)
+
 
 def home_collisions(site_rels) -> list[tuple[str, str]]:
     """Return ``(path, what it collides with)`` for every reserved address.
@@ -1556,8 +1566,9 @@ def split_build_output(build_rels, slug: str, *, home: bool = False) -> dict[str
     ``site/cv/index.html``, beside the generated ``blog/`` and ``projects/``.
     Its posts follow the same site-level rule as everybody else's, and the
     site-wide artifacts its own build wrote for standalone hosting
-    (:data:`HOME_DROPPED_ARTIFACTS`, plus every compressed variant) are left
-    behind -- the assembly writes the ones the site serves.
+    (:data:`HOME_DROPPED_ARTIFACTS` and :data:`HOME_DROPPED_DIRS`, plus every
+    compressed variant) are left behind -- the assembly writes the ones the
+    site serves.
 
     Returns build-relative path -> site-relative path, with the skipped
     standalone blog index simply absent.
@@ -1571,6 +1582,8 @@ def split_build_output(build_rels, slug: str, *, home: bool = False) -> dict[str
             mapping[rel] = rel
         elif home:
             if rel in HOME_DROPPED_ARTIFACTS:
+                continue
+            if segments[0] in HOME_DROPPED_DIRS:
                 continue
             if rel.endswith(DEPLOY_ARTIFACT_SUFFIXES):
                 continue

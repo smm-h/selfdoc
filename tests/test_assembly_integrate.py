@@ -204,6 +204,10 @@ class RunRecorder:
             # nothing.
             site = argv[argv.index("--site") + 1]
             _write(os.path.join(site, "pagefind", "pagefind.js"), "// index")
+            # The UI bundle every page loads, which the indexer emits
+            # alongside the index itself.
+            _write(os.path.join(site, "pagefind", "pagefind-ui.js"), "// ui")
+            _write(os.path.join(site, "pagefind", "pagefind-ui.css"), "/* ui */")
             _write(os.path.join(site, "pagefind", "pagefind-entry.json"),
                    json.dumps({
                        "version": "1.3.0",

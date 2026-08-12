@@ -130,12 +130,16 @@ def _read_projects_page():
     return wrap_shared_page(
         "Projects", generate_homepage(MANIFESTS, CANONICAL_BASE, home_slug="home"),
         canonical_url=f"{CANONICAL_BASE}/projects/",
+        search_prefix="../",
     )
 
 
 def test_the_root_404_escapes_its_base():
     html = generate_not_found_page('https://x/"><script>')
-    assert "<script>" not in html.split("<body>")[1]
+    # The page carries the search UI's own script; what must not appear is
+    # the one the base URL tried to inject.
+    assert '"><script>' not in html
+    assert "&quot;&gt;&lt;script&gt;" in html
 
 
 # -- robots.txt ----------------------------------------------------------------

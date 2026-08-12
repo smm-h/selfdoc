@@ -147,6 +147,7 @@ def assembly(tmp_path):
     # indexed a thing.
     _write(str(site / "pagefind" / "pagefind.js"), "// runtime")
     _write(str(site / "pagefind" / "pagefind-ui.js"), "// ui")
+    _write(str(site / "pagefind" / "pagefind-ui.css"), "/* ui */")
     _write(str(site / "pagefind" / "pagefind-entry.json"), json.dumps({
         "version": "1.3.0",
         "languages": {"en": {"hash": "en_abc123", "wasm": "en",

@@ -174,6 +174,30 @@ def test_the_home_build_drops_the_artifacts_the_assembly_writes():
     assert produced == {"index.html": "index.html"}
 
 
+def test_the_home_build_drops_its_own_search_index():
+    """The site-wide index is the assembly's; the home build's copy is not."""
+    produced = split_build_output(
+        [
+            "index.html",
+            "pagefind/pagefind-entry.json",
+            "pagefind/fragment/en_abc.pf_fragment",
+        ],
+        "home", home=True,
+    )
+    assert produced == {"index.html": "index.html"}
+
+
+def test_another_project_keeps_its_own_search_index():
+    """Its pages address the index inside their own subtree."""
+    produced = split_build_output(
+        ["index.html", "pagefind/pagefind-entry.json"], "alpha",
+    )
+    assert produced == {
+        "index.html": "alpha/index.html",
+        "pagefind/pagefind-entry.json": "alpha/pagefind/pagefind-entry.json",
+    }
+
+
 def test_a_home_page_on_a_reserved_directory_is_refused():
     """A page called projects.md would claim the generated listing's address."""
     with pytest.raises(RuntimeError, match="projects/"):
@@ -302,10 +326,25 @@ def home_assembly(tmp_path):
 
 
 def _shared(root):
-    return generate_shared_files(
+    written = generate_shared_files(
         str(root / "site"), str(root / "manifests"), CANONICAL_BASE,
         docs_base=CANONICAL_BASE, home_slug="home",
     )
+    _index_assets(root)
+    return written
+
+
+def _index_assets(root):
+    """Stand in for the site-wide indexer, which runs before verification.
+
+    Every page the assembly serves references the Pagefind UI bundle at the
+    site root; ``index_site`` writes it there on a real deploy.
+    """
+    pagefind = root / "site" / "pagefind"
+    _write(str(pagefind / "pagefind-ui.js"), "// bundle")
+    _write(str(pagefind / "pagefind-ui.css"), "/* bundle */")
+    _write(str(pagefind / "pagefind-entry.json"),
+           json.dumps({"languages": {"en": {"page_count": 1}}}))
 
 
 def test_the_home_pages_sit_beside_the_generated_pages(home_assembly):
@@ -503,6 +542,76 @@ def test_a_roster_project_the_listing_omits_is_legal():
     )
     assert "Alpha" in html
     assert "Beta" not in html
+
+
+def test_a_card_links_the_declared_repository():
+    """The repository is a second link beside the one the title carries."""
+    listing = parse_listing(
+        '[[category]]\nname = "A"\n'
+        '[[category.project]]\nslug = "alpha"\nblurb = "b"\n'
+        'repo = "https://github.com/someone/alpha"\n'
+    )
+    html = render_listing_html(
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        home_slug="home",
+    )
+    assert 'href="https://github.com/someone/alpha"' in html
+    assert 'class="project-repo"' in html
+
+
+def test_a_card_with_no_declared_repository_links_only_its_docs():
+    listing = parse_listing(
+        '[[category]]\nname = "A"\n'
+        '[[category.project]]\nslug = "alpha"\nblurb = "b"\n'
+    )
+    html = render_listing_html(
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        home_slug="home",
+    )
+    assert "project-repo" not in html
+
+
+def test_an_external_entry_may_also_declare_a_repository():
+    listing = parse_listing(
+        '[[category]]\nname = "A"\n'
+        '[[category.project]]\nslug = "out"\nname = "Out"\nblurb = "b"\n'
+        'url = "https://out.example/"\n'
+        'repo = "https://github.com/someone/out"\n'
+    )
+    html = render_listing_html(
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        home_slug="home",
+    )
+    assert 'href="https://out.example/"' in html
+    assert 'href="https://github.com/someone/out"' in html
+
+
+def test_a_repository_that_repeats_the_url_is_a_hard_error():
+    """Two links to one address is a card printing itself twice."""
+    with pytest.raises(RuntimeError, match="two links to one place"):
+        parse_listing(
+            '[[category]]\nname = "A"\n'
+            '[[category.project]]\nslug = "out"\nname = "Out"\nblurb = "b"\n'
+            'url = "https://github.com/someone/out"\n'
+            'repo = "https://github.com/someone/out"\n'
+        )
+
+
+def test_the_repository_survives_the_sidecar_round_trip():
+    """The deploy writes the listing beside the manifests and reads it back."""
+    from selfblog.listing import parse_listing_sidecar, render_listing_sidecar
+
+    listing = parse_listing(
+        '[[category]]\nname = "A"\n'
+        '[[category.project]]\nslug = "alpha"\nblurb = "b"\n'
+        'repo = "https://github.com/someone/alpha"\n'
+    )
+    restored = parse_listing_sidecar(
+        render_listing_sidecar(listing, "home"), source="home-listing.json",
+    )
+    assert restored.categories[0].projects[0].repo == (
+        "https://github.com/someone/alpha"
+    )
 
 
 def test_an_external_entry_links_out_and_carries_no_version():

@@ -511,6 +511,8 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
                        RosterEntry("home", "owner/home")], home="home"))
     (assembly / "site" / "pagefind").mkdir(parents=True, exist_ok=True)
     (assembly / "site" / "pagefind" / "pagefind.js").write_text("// index")
+    (assembly / "site" / "pagefind" / "pagefind-ui.js").write_text("// ui")
+    (assembly / "site" / "pagefind" / "pagefind-ui.css").write_text("/* ui */")
     manifests = assembly / "manifests"
     manifests.mkdir(exist_ok=True)
     (manifests / "alpha.json").write_text(json.dumps({
@@ -555,6 +557,8 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
             index = pathlib.Path(argv[argv.index("--site") + 1]) / "pagefind"
             (index / "fragment").mkdir(parents=True, exist_ok=True)
             (index / "pagefind.js").write_text("// index")
+            (index / "pagefind-ui.js").write_text("// ui")
+            (index / "pagefind-ui.css").write_text("/* ui */")
             (index / "pagefind-entry.json").write_text(json.dumps({
                 "version": "1.3.0",
                 "languages": {"en": {"hash": "en_abc", "wasm": "en",
