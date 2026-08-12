@@ -92,6 +92,16 @@ def _write_text(path, text):
         f.write(text)
 
 
+# The author every fixture project declares.  The block is required in
+# selfdoc.json and is what every page's structured data names, so a fixture
+# without one is not a project the loader accepts.
+TEST_AUTHOR = {
+    "name": "Test Author",
+    "url": "https://author.example",
+    "same_as": ["https://github.com/testauthor"],
+}
+
+
 def default_config(**overrides):
     """Minimal valid selfdoc config with required versions and locales."""
     config = {
@@ -100,6 +110,8 @@ def default_config(**overrides):
         "version": "1.0.0",
         "versions": [{"version": "1.0.0"}],
         "locales": [{"code": "en", "label": "English", "default": True}],
+        "search_engine": "pagefind",
+        "author": dict(TEST_AUTHOR),
     }
     config.update(overrides)
     return config
@@ -172,6 +184,8 @@ def make_versioned_project(tmp_path):
         config = {
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "search_engine": "pagefind",
+            "author": dict(TEST_AUTHOR),
             "version": versions[-1],
             "versions": versions_config,
             "locales": locales_config,
@@ -232,6 +246,8 @@ def make_localized_project(tmp_path):
         config = {
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "search_engine": "pagefind",
+            "author": dict(TEST_AUTHOR),
             "version": "1.0.0",
             "locales": locales,
             "versions": [{"version": "1.0.0"}],
@@ -286,6 +302,8 @@ def make_unified_project(tmp_path):
             proj_config = {
                 "source": [{"path": "src/", "language": lang}],
                 "base_url": f"https://example.com/{name}",
+                "search_engine": "pagefind",
+                "author": dict(TEST_AUTHOR),
                 "version": "1.0.0",
             }
             proj_dir.mkdir(exist_ok=True)
@@ -314,6 +332,8 @@ def make_unified_project(tmp_path):
         docs_site_config = {
             "source": [{"path": "src/", "language": "python"}],
             "base_url": "https://example.com",
+            "search_engine": "pagefind",
+            "author": dict(TEST_AUTHOR),
             "unified": {"projects": unified_entries},
             "version": "1.0.0",
             "versions": [{"version": "1.0.0"}],

@@ -70,9 +70,10 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
   "min_coverage": 80,
   "author": {
     "name": "Jane Doe",
-    "type": "Person",
-    "twitter": "@janedoe"
+    "url": "https://janedoe.example",
+    "same_as": ["https://github.com/janedoe"]
   },
+  "twitter": "@janedoe",
   "deploy": {
     "provider": "cloudflare-pages",
     "project": "mylib"

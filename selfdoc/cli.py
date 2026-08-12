@@ -74,9 +74,11 @@ def _detect_main_module():
 
 @app.command("init", help="Initialize selfdoc configuration and starter docs template", effect="mutating")
 @strictcli.flag("base-url", type=str, help="Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it")
+@strictcli.flag("author-name", type=str, help="Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent")
+@strictcli.flag("author-url", type=str, help="Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated selfdoc.json and docs/index.md template files to git")
 @effects.handler
-def _cmd_init(ctx, base_url, auto_commit=True):
+def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
     """Initialize selfdoc in the current project."""
     from selfdoc.extractors import detect_languages
     from selfdoc_core.utils import detect_project_version
@@ -87,6 +89,17 @@ def _cmd_init(ctx, base_url, auto_commit=True):
 
     if not base_url.strip():
         print("--base-url must be a non-empty URL.", file=sys.stderr)
+        sys.exit(1)
+
+    # The author is a fact about a person, so it is an input, never a guess.
+    # A scaffolded config that omitted it would emit a site whose structured
+    # data named nobody -- or, as it once did, an organisation invented from
+    # the directory name.
+    if not author_name.strip():
+        print("--author-name must be a non-empty name.", file=sys.stderr)
+        sys.exit(1)
+    if not author_url.strip():
+        print("--author-url must be a non-empty URL.", file=sys.stderr)
         sys.exit(1)
 
     # A project with no detectable language is a codeless project: a
@@ -111,7 +124,13 @@ def _cmd_init(ctx, base_url, auto_commit=True):
     # the emitted config is buildable with no hand-editing.  base_url comes
     # from the caller; the single version and the single default locale are
     # the honest starting point for a new site and are visible in the file.
-    config = {"base_url": base_url.strip().rstrip("/")}
+    config = {
+        "base_url": base_url.strip().rstrip("/"),
+        "author": {
+            "name": author_name.strip(),
+            "url": author_url.strip().rstrip("/"),
+        },
+    }
     if source_entries:
         config["source"] = source_entries
     config.update({
@@ -169,6 +188,7 @@ def _cmd_init(ctx, base_url, auto_commit=True):
     if source_path_strs:
         print(f"  Source:  {', '.join(source_path_strs)}")
     print(f"  Base URL: {config['base_url']}")
+    print(f"  Author:   {config['author']['name']} <{config['author']['url']}>")
     print("\nRun 'selfdoc build' to generate documentation.")
 
     if auto_commit:

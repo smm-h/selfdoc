@@ -1,6 +1,7 @@
 """Tests for version/locale pickers and absolute search base (Phase 1.4/1.5)."""
 
 from selfdoc.html import generate_html
+from conftest import TEST_AUTHOR
 
 
 def _make_html(available_versions=None, available_locales=None,
@@ -22,6 +23,7 @@ def _make_html(available_versions=None, available_locales=None,
         available_locales=available_locales,
         current_version=current_version,
         current_locale=current_locale,
+        author=TEST_AUTHOR,
     )
 
 
@@ -184,20 +186,19 @@ def test_no_locale_picker_when_none():
     assert '<select class="locale-picker"' not in content
 
 
-# --- Search dialog uses data-search-base ---
+# --- The Pagefind bundle path follows the page's own address ---
 
 
-def test_search_dialog_has_data_search_base():
-    """Search dialog carries a document-relative data-search-base."""
+def test_search_bundle_path_at_the_output_root():
+    """An unmounted page addresses pagefind/ beside itself."""
     files = _make_html()
     content = files["index.html"]
-    # Unmounted build: the page is already at the output root.
-    assert 'data-search-base="./"' in content
-    assert "data-search-prefix" not in content
+    assert 'bundlePath: "pagefind/"' in content
+    assert 'href="pagefind/pagefind-ui.css"' in content
 
 
-def test_search_dialog_base_is_never_site_absolute():
-    """A mounted page reaches the search index without leaving the mount."""
+def test_search_bundle_path_is_never_site_absolute():
+    """A mounted page reaches the index without leaving the mount."""
     files = generate_html(
         {"guide.md": "# Guide\n\nHello.\n"},
         project_name="TestProject",
@@ -205,6 +206,8 @@ def test_search_dialog_base_is_never_site_absolute():
         mount_locale="en",
         mount_version="1.0.0",
         mount_archived=True,
+        author=TEST_AUTHOR,
     )
     content = files["en/v/1.0.0/guide/index.html"]
-    assert 'data-search-base="../../../../"' in content
+    assert 'bundlePath: "../../../../pagefind/"' in content
+    assert 'href="../../../../pagefind/pagefind-ui.css"' in content

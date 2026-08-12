@@ -488,9 +488,16 @@ class TestTableConfigSchema:
             raise AssertionError("docs field not found")
 
     def test_internal_fields_excluded(self):
+        """A spec marked internal is documentation the reader never sees."""
+        from selfdoc_core.config import CONFIG_SCHEMA
+
         result = resolve_table_config_schema()
-        # twitter is internal
-        assert "`twitter`" not in result
+        internal = [spec.name for spec in CONFIG_SCHEMA if spec.internal]
+        for name in internal:
+            assert f"`{name}`" not in result
+        # Every other field is in the table, twitter among them: it is a
+        # declared key now, not a value merged in behind the reader's back.
+        assert "`twitter`" in result
 
     def test_via_resolve_content(self):
         result = resolve_content("table-config-schema", {}, [], _PROJECT_DIR)

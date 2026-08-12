@@ -30,7 +30,8 @@ def test_init_creates_config_and_docs(project_dir):
     """selfdoc init creates selfdoc.json and docs/index.md."""
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # selfdoc.json was created
     config_path = project_dir / "selfdoc.json"
@@ -58,7 +59,8 @@ def test_init_index_has_frontmatter(project_dir):
     import datetime
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     index_path = project_dir / "docs" / "index.md"
     content = index_path.read_text()
@@ -87,7 +89,8 @@ def test_init_aborts_if_config_exists(project_dir):
     from selfdoc.cli import _cmd_init
 
     with pytest.raises(SystemExit):
-        _cmd_init(None, base_url="https://example.com")
+        _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
 
 def test_init_detects_multiple_languages(tmp_path, monkeypatch):
@@ -111,7 +114,8 @@ def test_init_detects_multiple_languages(tmp_path, monkeypatch):
 
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     config_path = tmp_path / "selfdoc.json"
     assert config_path.exists()
@@ -138,7 +142,8 @@ def test_build_produces_output(project_dir):
     from selfdoc.cli import _cmd_init, _cmd_build
 
     # First init
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # Build exits non-zero due to SEO lints on the starter template,
     # but the output files are still written before the lint check.
@@ -159,7 +164,8 @@ def test_check_finds_directives(project_dir, capsys):
     """selfdoc check reports directive validation results."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # The starter template has a :::module directive that resolves OK,
     # but check exits 1 due to SEO warnings on the starter template.
@@ -178,7 +184,8 @@ def test_build_shows_seo_warnings(project_dir, capsys):
     """selfdoc build shows warnings but exits 0 when only warnings exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # The starter template triggers SEO warnings (e.g. SEO009 short
     # description) but no errors, so build exits 0.
@@ -197,7 +204,8 @@ def test_build_exits_1_on_errors(project_dir, capsys):
     """selfdoc build exits 1 when lint errors (not just warnings) exist."""
     from selfdoc.cli import _cmd_init, _cmd_build
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # Remove the description from frontmatter to trigger SEO006 (error)
     index_path = project_dir / "docs" / "index.md"
@@ -217,7 +225,8 @@ def test_check_always_runs_seo_lints(project_dir, capsys):
     """selfdoc check always runs SEO lints (no --no-seo flag)."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # SEO warnings appear (e.g. SEO009 short description) but only
     # warnings, so check exits 0.
@@ -231,7 +240,8 @@ def test_check_rejects_an_unregistered_ignore_code(project_dir, capsys):
     """`--ignore SEO0O8` is a typo that would suppress nothing -- refuse it."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     with pytest.raises(SystemExit) as exc_info:
         _cmd_check(None, ignore="SEO0O8")
@@ -245,7 +255,8 @@ def test_check_accepts_a_registered_ignore_code(project_dir, capsys):
     """A registered code passed to --ignore suppresses that rule's output."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     _cmd_check(None, ignore="SEO009")
 
@@ -257,7 +268,8 @@ def test_check_exits_1_on_errors(project_dir, capsys):
     """selfdoc check exits 1 when lint errors exist."""
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     # Remove the description to trigger SEO006 (error severity)
     index_path = project_dir / "docs" / "index.md"
@@ -285,7 +297,8 @@ def test_check_exits_1_on_broken_validated_example(project_dir, capsys):
 
     from selfdoc.cli import _cmd_init, _cmd_check
 
-    _cmd_init(None, base_url="https://example.com")
+    _cmd_init(None, base_url="https://example.com",
+              author_name="Test Author", author_url="https://author.example")
 
     config_path = project_dir / "selfdoc.json"
     with open(config_path, "r", encoding="utf-8") as f:

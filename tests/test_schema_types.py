@@ -4,6 +4,7 @@ import json
 import re
 
 from selfdoc.html import _render_seo_tags
+from conftest import TEST_AUTHOR
 
 
 def _extract_ld_json(seo_tags):
@@ -25,7 +26,7 @@ def _render_with_page_type(page_type, schema_types=None, page_tags=None):
         page_path="test/index.html",
         description="A test page",
         body_html="<p>Hello</p>",
-        author=None,
+        author=TEST_AUTHOR,
         project_name="TestProject",
         repo=None,
         date_published=None,

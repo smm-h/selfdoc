@@ -377,42 +377,58 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
             " means example validation is off."
         ),
     ),
+    # The one identity a site's structured data names.  Required, because
+    # every page carries structured data and an author is one of the facts it
+    # states: an absent block used to mint an Organization named after the
+    # project directory, which stated a legal entity nobody had declared.
+    # There is no schema.org type to choose -- a site has one author and the
+    # emitters render it as a Person.
     FieldSpec(
         name="author",
         type=_D,
-        default=None,
-        strict_keys=False,
+        required=True,
+        strict_keys=True,
         children=(
             FieldSpec(
                 name="name",
                 type=_S,
                 required=True,
-                description="Author display name.",
+                description="The author's display name, as every page's structured data states it.",
             ),
             FieldSpec(
-                name="type",
+                name="url",
                 type=_S,
-                required=False,
-                choices=("Person", "Organization"),
-                description="Schema.org author type.",
+                required=True,
+                description="The author's canonical URL -- the address that identifies them.",
             ),
             FieldSpec(
-                name="twitter",
-                type=_S,
+                name="same_as",
+                type=_L,
                 required=False,
-                pattern=r"^@",
-                description="Author Twitter handle (must start with @).",
+                non_empty=False,
+                item_spec=FieldSpec(
+                    name="<item>",
+                    type=_S,
+                    description="An external URL naming the same author (a profile, a directory entry).",
+                ),
+                description=(
+                    "External identity URLs, emitted as the Person's sameAs."
+                ),
             ),
         ),
-        description="Author information for meta tags and structured data.",
+        description=(
+            "The site's author: one Person, named in every page's structured"
+            " data. Required -- there is no inferred author."
+        ),
     ),
     FieldSpec(
         name="twitter",
         type=_S,
         default=None,
         pattern=r"^@",
-        internal=True,
-        description="Top-level Twitter handle, merged into author in post-validation.",
+        description=(
+            "Twitter/X handle (starts with @) for the twitter:site meta tag."
+        ),
     ),
     FieldSpec(
         name="feedback",
@@ -939,18 +955,9 @@ def _validate_field(spec: FieldSpec, value, path: str) -> Any:
 def _post_validate(config: dict) -> dict:
     """Apply cross-field validation rules after individual field validation.
 
-    Handles twitter merge, feedback at-least-one, and deploy.project conditional.
+    Handles feedback at-least-one and the deploy.project conditional.
     Returns the modified config dict.
     """
-    # Twitter merge: author.twitter takes precedence over top-level twitter
-    twitter = None
-    author = config.get("author")
-    if author and author.get("twitter"):
-        twitter = author["twitter"]
-    elif config.get("twitter"):
-        twitter = config["twitter"]
-    config["twitter"] = twitter
-
     # Feedback at-least-one: if feedback is present, at least one of
     # webhook or ga must be set
     feedback = config.get("feedback")
@@ -1067,6 +1074,35 @@ def load_config(dir_path="."):
     for key in raw:
         if key not in known_keys:
             raise ConfigError(f"unknown config key {key!r}")
+
+    # The engine is declared, never inferred.  Every selfdoc site builds a
+    # search UI -- 'search: "hidden"' still answers Cmd/Ctrl+K -- so the
+    # engine behind it has to be named in the config.  The valid set has one
+    # member, which is still an explicit declaration: the key is the
+    # extension point, and its absence must not silently pick anything.  The
+    # generic "missing required field" message would not name the value, so
+    # the requirement says it here instead.
+    if raw.get("search_engine") is None:
+        raise ConfigError(
+            "missing required field 'search_engine'. Every site builds a "
+            'search UI, so declare the engine that answers it: '
+            '"search_engine": "pagefind" (the only valid value).'
+        )
+
+    # The author is declared, never inferred.  Every page this build writes
+    # carries structured data that states who wrote it; with no block to read,
+    # the emitters used to mint an Organization named after the project
+    # directory, so a site published a legal entity nobody had declared.  The
+    # generic "missing required field" message would not say what to write,
+    # so the requirement says it here instead.
+    if raw.get("author") is None:
+        raise ConfigError(
+            "missing required field 'author'. Every page carries structured "
+            "data naming who wrote it, and there is no inferred author: "
+            '"author": {"name": "Your Name", "url": "https://you.example"} '
+            "-- optionally with "
+            '"same_as": ["https://github.com/you"] for external profiles.'
+        )
 
     # Migration error: source items must be dicts, not strings
     raw_source = raw.get("source")

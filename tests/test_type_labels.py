@@ -1,6 +1,7 @@
 """Tests for type-aware labeling (Phase 1, Task 1.4)."""
 
 from selfdoc.html import _wrap_page
+from conftest import TEST_AUTHOR
 
 
 def _render_archived_page(page_type=None, archived=True):
@@ -24,6 +25,7 @@ def _render_archived_page(page_type=None, archived=True):
         mount_locale="en",
         mount_version="0.9.0" if archived else "1.0.0",
         mount_archived=archived,
+        author=TEST_AUTHOR,
     )
 
 
@@ -77,5 +79,6 @@ class TestSupersededNotice:
             is_latest=False,
             current_version="0.9.0",
             available_versions=[{"version": "0.9.0"}, {"version": "1.0.0"}],
+            author=TEST_AUTHOR,
         )
         assert 'class="version-notice"' not in html

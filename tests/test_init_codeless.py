@@ -13,6 +13,8 @@ import pytest
 
 
 BASE_URL = "https://example.com"
+AUTHOR_NAME = "Test Author"
+AUTHOR_URL = "https://author.example"
 
 
 @pytest.fixture()
@@ -56,7 +58,8 @@ def test_init_accepts_codeless_project(codeless_dir):
     """init no longer refuses a directory with no detectable language."""
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
 
     config = _read_config(codeless_dir)
     # No source declaration at all -- the project has nothing to extract from.
@@ -64,12 +67,46 @@ def test_init_accepts_codeless_project(codeless_dir):
     assert config["base_url"] == BASE_URL
 
 
+def test_init_writes_the_declared_author(codeless_dir):
+    """The scaffolded config carries the author the caller named.
+
+    Nothing about a person is inferable from a directory, so the two facts
+    are inputs and land in the file verbatim.
+    """
+    from selfdoc.cli import _cmd_init
+
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
+
+    config = _read_config(codeless_dir)
+    assert config["author"] == {"name": AUTHOR_NAME, "url": AUTHOR_URL}
+
+
+def test_init_refuses_an_empty_author_name(codeless_dir):
+    from selfdoc.cli import _cmd_init
+
+    with pytest.raises(SystemExit):
+        _cmd_init(None, base_url=BASE_URL, author_name="  ",
+                  author_url=AUTHOR_URL, auto_commit=False)
+    assert not (codeless_dir / "selfdoc.json").exists()
+
+
+def test_init_refuses_an_empty_author_url(codeless_dir):
+    from selfdoc.cli import _cmd_init
+
+    with pytest.raises(SystemExit):
+        _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+                  author_url="", auto_commit=False)
+    assert not (codeless_dir / "selfdoc.json").exists()
+
+
 def test_codeless_init_config_loads(codeless_dir):
     """The emitted config passes load_config with no hand-editing."""
     from selfdoc.cli import _cmd_init
     from selfdoc.config import load_config
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
 
     config = load_config(".")
     assert config is not None
@@ -84,7 +121,8 @@ def test_codeless_init_builds(codeless_dir):
     from selfdoc.cli import _cmd_init
     from selfdoc.build import build
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
 
     build(".")
 
@@ -102,7 +140,8 @@ def test_codeless_starter_has_no_code_directive(codeless_dir):
     """The starter page for a codeless project carries no extraction directive."""
     from selfdoc.cli import _cmd_init
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
 
     index = (codeless_dir / "docs" / "index.md").read_text()
     assert ":-: ref" not in index
@@ -114,7 +153,8 @@ def test_code_directive_in_codeless_project_hard_errors(codeless_dir):
     from selfdoc.cli import _cmd_init
     from selfdoc.build import build
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
     (codeless_dir / "docs" / "api.md").write_text(
         "---\n"
         "title: API\n"
@@ -154,7 +194,8 @@ def test_generate_docs_hard_errors_for_codeless_project(codeless_dir):
     from selfdoc.config import load_config
     from selfdoc.gen import generate_docs
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
 
     with pytest.raises(RuntimeError) as exc_info:
         generate_docs(load_config("."), base_dir=".")
@@ -168,7 +209,8 @@ def test_gen_command_skips_reference_pages_for_codeless_project(
     """`selfdoc gen` says so and writes no API index when there is no source."""
     from selfdoc.cli import _cmd_init, _cmd_gen
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
     capsys.readouterr()
 
     _cmd_gen(None, auto_commit=False)
@@ -184,7 +226,8 @@ def test_init_emits_loadable_config_for_code_project(code_dir):
     from selfdoc.config import load_config
     from selfdoc.build import build
 
-    _cmd_init(None, base_url=BASE_URL, auto_commit=False)
+    _cmd_init(None, base_url=BASE_URL, author_name=AUTHOR_NAME,
+              author_url=AUTHOR_URL, auto_commit=False)
 
     raw = _read_config(code_dir)
     assert raw["base_url"] == BASE_URL

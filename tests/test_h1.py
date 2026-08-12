@@ -16,6 +16,7 @@ import re
 import pytest
 
 from selfdoc.html import generate_html, md_to_html, _extract_title
+from conftest import TEST_AUTHOR
 
 
 class TestH1Extraction:
@@ -35,6 +36,7 @@ class TestH1Extraction:
         html_files = generate_html(
             {"index.md": "# My Page\n\nContent here.\n"},
             project_name="TestProject",
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         # Should have exactly one H1 -- the auto-generated one
@@ -47,6 +49,7 @@ class TestH1Extraction:
         html_files = generate_html(
             {"index.md": "# My Page\n\nContent here.\n"},
             project_name="TestProject",
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         h1_match = re.search(r'<h1 id="([^"]+)">(.*?)</h1>', content)
@@ -63,6 +66,7 @@ class TestH1Extraction:
         html_files = generate_html(
             {"index.md": "# Original Title\n\n## Section\n\nText.\n"},
             project_name="TestProject",
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         # Count H1s -- should be exactly 1 (auto-generated)
@@ -81,6 +85,7 @@ class TestFrontmatterTitle:
             {"index.md": "## Section\n\nContent.\n"},
             project_name="TestProject",
             frontmatter={"index.md": {"title": "From Frontmatter"}},
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         # Should have auto-generated H1 from frontmatter title
@@ -95,6 +100,7 @@ class TestFrontmatterTitle:
             {"index.md": "# Markdown Title\n\nContent.\n"},
             project_name="TestProject",
             frontmatter={"index.md": {"title": "Frontmatter Title"}},
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         # The <title> tag should use frontmatter title
@@ -117,6 +123,7 @@ class TestMultipleH1Error:
             generate_html(
                 {"index.md": "# First\n\nText.\n\n# Second\n\nMore.\n"},
                 project_name="TestProject",
+                author=TEST_AUTHOR,
             )
 
     def test_three_h1_headings_errors(self):
@@ -125,6 +132,7 @@ class TestMultipleH1Error:
             generate_html(
                 {"index.md": "# A\n\n# B\n\n# C\n"},
                 project_name="TestProject",
+                author=TEST_AUTHOR,
             )
 
 
@@ -137,6 +145,7 @@ class TestMissingTitleError:
             generate_html(
                 {"index.md": "## Only H2\n\nContent.\n"},
                 project_name="TestProject",
+                author=TEST_AUTHOR,
             )
 
     def test_no_h1_with_frontmatter_title_ok(self):
@@ -146,6 +155,7 @@ class TestMissingTitleError:
             {"index.md": "## Section\n\nContent.\n"},
             project_name="TestProject",
             frontmatter={"index.md": {"title": "My Title"}},
+            author=TEST_AUTHOR,
         )
         assert "index.html" in html_files
 
@@ -164,6 +174,7 @@ class TestHeroH1:
             {"index.md": "# Welcome\n\nSome intro text.\n"},
             project_name="TestProject",
             branding=branding,
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         h1_matches = re.findall(r"<h1[^>]*>.*?</h1>", content)
@@ -180,6 +191,7 @@ class TestHeroH1:
             {"index.md": "# Welcome\n\nContent.\n"},
             project_name="TestProject",
             branding=branding,
+            author=TEST_AUTHOR,
         )
         content = html_files["index.html"]
         # No auto-generated H1 with heading-link class outside hero
@@ -198,6 +210,7 @@ class TestNonHeroH1:
                 "guide.md": "# Guide\n\n## Section\n\nContent.\n",
             },
             project_name="TestProject",
+            author=TEST_AUTHOR,
         )
         guide_content = html_files["guide/index.html"]
         h1_matches = re.findall(r"<h1[^>]*>.*?</h1>", guide_content)
@@ -213,6 +226,7 @@ class TestNonHeroH1:
             },
             project_name="TestProject",
             frontmatter={"ref.md": {"title": "API Reference"}},
+            author=TEST_AUTHOR,
         )
         ref_content = html_files["ref/index.html"]
         h1_matches = re.findall(r"<h1[^>]*>.*?</h1>", ref_content)

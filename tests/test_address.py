@@ -277,6 +277,7 @@ def _make_fixture(root, config_extra, locale_codes=("en",)):
     config = {
         "source": [{"path": "src/", "language": "python"}],
         "search_engine": "pagefind",
+        "author": {"name": "Test Author", "url": "https://author.example"},
         "version": versions[-1],
         "versions": [{"version": v} for v in versions],
         "locales": [
@@ -333,10 +334,21 @@ _REF_ATTRS = ("href", "src")
 _SKIP_SCHEMES = ("http://", "https://", "//", "mailto:", "data:", "javascript:")
 
 
-def _emitted_files(output_dir):
-    """Every file the build wrote, as posix paths relative to output root."""
+def _emitted_files(output_dir, *, include_index=True):
+    """Every file the build wrote, as posix paths relative to output root.
+
+    ``include_index=False`` drops the ``pagefind/`` tree, whose file names
+    are content hashes: two builds of the same pages at different base URLs
+    index the same content under different names, which says nothing about
+    the page tree.
+    """
     out = set()
     for dirpath, _dirs, files in os.walk(output_dir):
+        if not include_index and (
+            os.path.basename(dirpath) == "pagefind"
+            or f"{os.sep}pagefind{os.sep}" in dirpath + os.sep
+        ):
+            continue
         for name in files:
             if name.endswith((".gz", ".br")):
                 continue
@@ -350,8 +362,6 @@ def _references(page_html):
     for attr in _REF_ATTRS:
         for m in re.finditer(rf'\b{attr}="([^"]*)"', page_html):
             yield attr, html_mod.unescape(m.group(1))
-    for m in re.finditer(r'\bdata-search-base="([^"]*)"', page_html):
-        yield "data-search-base", html_mod.unescape(m.group(1))
 
 
 def _resolve(page_rel, ref):
@@ -553,26 +563,28 @@ def test_output_tree_is_mount_independent(tmp_path):
     build(str(origin))
     build(str(slug))
     assert _emitted_files(
-        os.path.join(str(origin), "docs", "_build"),
-    ) == _emitted_files(os.path.join(str(slug), "docs", "_build"))
+        os.path.join(str(origin), "docs", "_build"), include_index=False,
+    ) == _emitted_files(
+        os.path.join(str(slug), "docs", "_build"), include_index=False,
+    )
 
 
-def test_search_index_paths_are_site_relative(tmp_path):
-    """Search entry paths address pages from the site root, prefix included."""
+def test_search_index_addresses_pages_that_exist(tmp_path):
+    """Every indexed page is a page the build emitted, mount included."""
+    from test_pagefind_index import _fragments
+
     project = _make_fixture(tmp_path / "search", ORIGIN_ROOT_CONFIG)
     build(str(project))
-    index_path = os.path.join(
-        str(project), "docs", "_build", "search-index.json",
-    )
-    with open(index_path, encoding="utf-8") as f:
-        entries = json.load(f)
-    assert entries
-    emitted = _emitted_files(os.path.join(str(project), "docs", "_build"))
-    for entry in entries:
-        path = entry["path"].split("#", 1)[0]
-        assert not path.startswith("/"), entry
-        target = posixpath.normpath(posixpath.join(path, "index.html"))
-        assert target in emitted, f"search entry {entry['path']} -> {target}"
+    output_dir = os.path.join(str(project), "docs", "_build")
+    fragments = _fragments(output_dir)
+    assert fragments
+    emitted = _emitted_files(output_dir)
+    for fragment in fragments:
+        path = fragment["url"].split("#", 1)[0].lstrip("/")
+        if not path.endswith(".html"):
+            path = posixpath.join(path, "index.html")
+        target = posixpath.normpath(path)
+        assert target in emitted, f"indexed page {fragment['url']} -> {target}"
 
 
 # --- The scheme itself, over a built tree ------------------------------

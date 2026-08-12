@@ -39,31 +39,32 @@ If you omit `description`, selfdoc auto-extracts the first sentence from the pag
 
 ### Author metadata
 
-Set the `author` object in `selfdoc.json` to populate the JSON-LD `TechArticle` author field on every page and the homepage Organization or Person entity. This structured data helps search engines attribute your documentation to the correct author and display rich results with author information:
+Every page carries structured data naming who wrote it, so `selfdoc.json` must declare an `author`. It is required: a config without one is refused at load, naming the key. `name` and `url` are both mandatory, and `same_as` optionally lists the author's external identities:
 
 ```json
 {
   "author": {
     "name": "Your Name",
-    "type": "Person",
-    "twitter": "@yourhandle"
+    "url": "https://you.example",
+    "same_as": [
+      "https://github.com/you",
+      "https://fosstodon.org/@you"
+    ]
   }
 }
 ```
 
-If `type` is `"Person"`, the homepage JSON-LD emits a `Person` entity. Otherwise it defaults to `Organization`. The `twitter` field (starting with `@`) sets the `twitter:site` meta tag.
+One `Person` is built from that block and used everywhere an identity is named: the `author` and `publisher` of every page's article, and the standalone entity on the front page. There is no type to choose and no inferred author -- a config with no block used to make the build mint an `Organization` named after the project's directory, publishing a legal entity nobody had declared, which is exactly what the requirement removes.
 
-### Top-level twitter config
+### Twitter handle
 
-Alternatively, set `twitter` at the top level of `selfdoc.json` if you do not need the full author object. This sets the `twitter:site` meta tag on every page, which Twitter/X uses to attribute the content when someone shares a link. The value must start with `@`:
+Set `twitter` at the top level of `selfdoc.json` to fill the `twitter:site` meta tag on every page, which Twitter/X uses to attribute the content when someone shares a link. The value must start with `@`. It is a meta tag's value, not part of the author's identity -- an author's profiles belong in `author.same_as`:
 
 ```json
 {
   "twitter": "@yourhandle"
 }
 ```
-
-If both `author.twitter` and `twitter` are set, `author.twitter` takes precedence.
 
 ### Language tag
 

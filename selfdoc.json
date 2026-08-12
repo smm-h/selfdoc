@@ -10,6 +10,13 @@
   "output": "docs/_build/",
   "changelog": ".rlsbl-monorepo/releasables/selfdoc/CHANGELOG.md",
   "base_url": "https://selfdoc.smmh.dev",
+  "author": {
+    "name": "SMMH",
+    "url": "https://smmh.dev",
+    "same_as": [
+      "https://github.com/smm-h"
+    ]
+  },
   "versions": [
     {
       "version": "0.36.0"

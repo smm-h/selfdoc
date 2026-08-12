@@ -153,12 +153,13 @@ SCHEMA = [
     {
         "key": "author",
         "type": "object",
-        "required": False,
+        "required": True,
         "category": "SEO",
         "description": (
-            "Author metadata. Required sub-key: `name` (string). "
-            "Optional: `type` (`Person` or `Organization`), "
-            "`twitter` (handle starting with `@`)."
+            "The site's author, emitted as one `Person` in every page's "
+            "structured data. Required sub-keys: `name` and `url`. "
+            "Optional: `same_as` (list of external identity URLs). "
+            "There is no inferred author."
         ),
     },
     {
@@ -167,7 +168,7 @@ SCHEMA = [
         "required": False,
         "category": "SEO",
         "description": (
-            "Twitter handle (starts with `@`). Overridden by `author.twitter` if both set."
+            "Twitter/X handle (starts with `@`) for the `twitter:site` meta tag."
         ),
     },
     {
