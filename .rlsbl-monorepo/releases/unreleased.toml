@@ -1,10 +1,42 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "check lints posts, spell-checks prose and resolves every link the build emits; init requires the base URL and the author; lint suppression is validated against the registry and reaches warnings only."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+One program across all three packages: the site's addressing, the assembly that
+serves it, and the authoring checks that keep it honest.
+
+Addressing changed first. A page's current version now lives at a stable,
+unversioned address and superseded versions are archives under v/, declared as
+such in canonicals, sitemaps and feeds. Posts moved to one site-level blog/
+namespace shared by every project. Every link, canonical and sitemap entry the
+build emits is now resolved against the files it actually wrote (LINK001), and
+the assembly worker carries a redirect map generated from the manifests, so the
+retired address schemes still land somewhere real in a single hop.
+
+The assembly stopped being CI shell. The deploy body is a command
+(assembly integrate), the workflow that calls it is a thin generated artifact
+whose tool pins are rewritten and checked against PyPI on every sync, and the
+assembled tree is verified before anything is pushed. Membership is a declared
+roster with a required home project served at the site root, documentation can
+be published without a release, and a project can be retired.
+
+The authoring checks grew a spine: every emittable lint code is declared in a
+registry with its severity, suppression is validated against that registry and
+can no longer silence an error, posts are linted like pages, and prose is
+spell-checked -- including the prose a directive renders out of an authored
+document.
+
+Search switched to Pagefind and the builtin engine was deleted, so
+search_engine is required and names the one valid value. The author block is
+required too: one Person is built from it rather than an Organization invented
+from a directory name.
+
+Breaking changes are minor bumps under the pre-1.0 convention; each is a
+breaking-type entry in the changelog.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
@@ -15,11 +47,43 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Stable unversioned page addresses with superseded versions archived under v/, a declared lint registry with prose spell-checking, Pagefind as the only search engine, and a required author block."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+One program across all three packages: the site's addressing, the assembly that
+serves it, and the authoring checks that keep it honest.
+
+Addressing changed first. A page's current version now lives at a stable,
+unversioned address and superseded versions are archives under v/, declared as
+such in canonicals, sitemaps and feeds. Posts moved to one site-level blog/
+namespace shared by every project. Every link, canonical and sitemap entry the
+build emits is now resolved against the files it actually wrote (LINK001), and
+the assembly worker carries a redirect map generated from the manifests, so the
+retired address schemes still land somewhere real in a single hop.
+
+The assembly stopped being CI shell. The deploy body is a command
+(assembly integrate), the workflow that calls it is a thin generated artifact
+whose tool pins are rewritten and checked against PyPI on every sync, and the
+assembled tree is verified before anything is pushed. Membership is a declared
+roster with a required home project served at the site root, documentation can
+be published without a release, and a project can be retired.
+
+The authoring checks grew a spine: every emittable lint code is declared in a
+registry with its severity, suppression is validated against that registry and
+can no longer silence an error, posts are linted like pages, and prose is
+spell-checked -- including the prose a directive renders out of an authored
+document.
+
+Search switched to Pagefind and the builtin engine was deleted, so
+search_engine is required and names the one valid value. The author block is
+required too: one Person is built from it rather than an Organization invented
+from a directory name.
+
+Breaking changes are minor bumps under the pre-1.0 convention; each is a
+breaking-type entry in the changelog.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
@@ -30,11 +94,43 @@ exclude = []
 
 [releasables.selfblog]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "The assembly deploy is a command behind a thin generated workflow, the site answers on one canonical hostname with a generated redirect map, a declared home project is served at the site root, and every project's posts share one site-level blog/ namespace."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+One program across all three packages: the site's addressing, the assembly that
+serves it, and the authoring checks that keep it honest.
+
+Addressing changed first. A page's current version now lives at a stable,
+unversioned address and superseded versions are archives under v/, declared as
+such in canonicals, sitemaps and feeds. Posts moved to one site-level blog/
+namespace shared by every project. Every link, canonical and sitemap entry the
+build emits is now resolved against the files it actually wrote (LINK001), and
+the assembly worker carries a redirect map generated from the manifests, so the
+retired address schemes still land somewhere real in a single hop.
+
+The assembly stopped being CI shell. The deploy body is a command
+(assembly integrate), the workflow that calls it is a thin generated artifact
+whose tool pins are rewritten and checked against PyPI on every sync, and the
+assembled tree is verified before anything is pushed. Membership is a declared
+roster with a required home project served at the site root, documentation can
+be published without a release, and a project can be retired.
+
+The authoring checks grew a spine: every emittable lint code is declared in a
+registry with its severity, suppression is validated against that registry and
+can no longer silence an error, posts are linted like pages, and prose is
+spell-checked -- including the prose a directive renders out of an authored
+document.
+
+Search switched to Pagefind and the builtin engine was deleted, so
+search_engine is required and names the one valid value. The author block is
+required too: one Person is built from it rather than an Organization invented
+from a directory name.
+
+Breaking changes are minor bumps under the pre-1.0 convention; each is a
+breaking-type entry in the changelog.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
