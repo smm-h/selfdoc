@@ -1,8 +1,8 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "patch"
 # Short description of this release (required)
-description = ""
+description = "Repairs the unified-site deploy: mounted projects address their posts where the site serves them and stop shipping an unreachable 404, generated reference pages mark extracted code as code and renest doc-comment headings, and the wheel declares its dependency floors."
 # Optional context explaining why these changes were made
 context = ""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
@@ -15,9 +15,9 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "patch"
 # Short description of this release (required)
-description = ""
+description = "Repairs the unified-site deploy in the shared engine: mounted-project post addressing, no unreachable per-project 404, reference pages that mark extracted code as code and renest doc-comment headings, and declared dependency floors."
 # Optional context explaining why these changes were made
 context = ""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
@@ -30,9 +30,9 @@ exclude = []
 
 [releasables.selfblog]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "patch"
 # Short description of this release (required)
-description = ""
+description = "Repairs the assembly deploy: no unreachable per-project 404 page and no canonical on the site's own error page, and the wheel declares its dependency floors."
 # Optional context explaining why these changes were made
 context = ""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
