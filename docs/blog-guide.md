@@ -59,6 +59,7 @@ date: 2026-07-29
 slug: my-first-post
 tags: []
 draft: true
+directives: false
 project: myproject
 ---
 ```
@@ -82,7 +83,7 @@ selfblog post generate \
   --registry-url "https://pypi.org/project/myproject/1.2.0/"
 ```
 
-Generated release posts are created with `draft: false` and include release-specific frontmatter fields (`version`, `prev_version`, `bump_type`, `release_url`, `registry_urls`). The command also updates the project manifest with the new post entry.
+Generated release posts are created with `draft: false`, `directives: false`, and release-specific frontmatter fields (`version`, `prev_version`, `bump_type`, `release_url`, `registry_urls`). The command also updates the project manifest with the new post entry.
 
 Use `--dry-run` to preview the generated content without writing files.
 
@@ -96,6 +97,11 @@ Every post requires YAML frontmatter delimited by `---`. Required and optional f
 | --- | --- | --- |
 | `title` | string | Post title. Must be non-empty. |
 | `date` | string | Publication date in `YYYY-MM-DD` format. |
+| `directives` | boolean | Whether the post may carry directive markers. No default: a post that omits the key raises `POST006` at discovery. |
+
+A post is authored content that may or may not embed code-extracted material, and a post *about* directive syntax reads exactly like a post that uses it. So the author declares which it is rather than the reader guessing. Declaring `directives: false` and then writing a marker raises `POST007`, naming the marker and the line it sits on -- markers inside fenced code blocks and backtick code spans are examples of the syntax, not uses of it, and are never counted. Declaring `directives: true` resolves the post's directives exactly as a documentation page's are resolved.
+
+Documentation pages carry no such key. The whole `docs/` tree is directive territory by construction; only posts declare.
 
 ### Optional fields
 

@@ -53,19 +53,19 @@ def _setup_project_with_posts(tmp_path, posts=None, config_overrides=None):
 _POST_HELLO = (
     "hello.md",
     "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
-    "tags: [release]\ndraft: false\n---\nThis is the post content.\n",
+    "tags: [release]\ndraft: false\ndirectives: false\n---\nThis is the post content.\n",
 )
 
 _POST_SECOND = (
     "second.md",
     "---\ntitle: Second Post\ndate: 2024-02-01\nslug: second-post\n"
-    "tags: []\ndraft: false\n---\nSecond post body.\n",
+    "tags: []\ndraft: false\ndirectives: false\n---\nSecond post body.\n",
 )
 
 _POST_WITH_DIRECTIVE = (
     "directive.md",
     "---\ntitle: Directive Post\ndate: 2024-03-01\nslug: directive-post\n"
-    "tags: []\ndraft: false\n---\n# Directive Post\n\n"
+    "tags: []\ndraft: false\ndirectives: true\n---\n# Directive Post\n\n"
     ":-: ref path=\"mymod\"\n",
 )
 

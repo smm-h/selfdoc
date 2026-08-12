@@ -31,6 +31,10 @@ def _write_post(posts_dir, filename, frontmatter_lines, body=""):
     """Write a markdown post file with given frontmatter."""
     path = os.path.join(posts_dir, filename)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    # Every post declares whether it may carry directives; fixtures that do
+    # not care declare the quiet answer.
+    if not any(ln.startswith("directives:") for ln in frontmatter_lines):
+        frontmatter_lines = [*frontmatter_lines, "directives: false"]
     content = "---\n" + "\n".join(frontmatter_lines) + "\n---\n" + body
     with open(path, "w") as f:
         f.write(content)

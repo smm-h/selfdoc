@@ -1,6 +1,6 @@
 """Check helpers for selfblog: post validation and unified project checks.
 
-Post checks (POST001-POST005) and the unified multi-project check moved
+Post checks (POST001-POST007) and the unified multi-project check moved
 here from selfdoc.check.  ``check_posts`` is registered with
 selfdoc_core as the post-check hook, so ``selfdoc check`` can run post
 validation without importing selfblog.
@@ -19,7 +19,7 @@ from selfblog.posts import discover_posts
 
 
 def check_posts(config, dir_path):
-    """Check blog posts for validation errors (POST001-POST005).
+    """Check blog posts for validation errors (POST001-POST007).
 
     Returns a list of ``selfdoc_core.lints.LintResult`` objects (empty when
     posts are absent or valid).  Registered with selfdoc_core as the
@@ -53,6 +53,10 @@ def check_posts(config, dir_path):
             code = "POST004"
         elif "Slug immutability violation" in msg:
             code = "POST005"
+        elif "'directives' is required" in msg or "'directives' must be" in msg:
+            code = "POST006"
+        elif "declares 'directives: false'" in msg:
+            code = "POST007"
         else:
             code = "POST001"  # fallback
         return [LintResult(

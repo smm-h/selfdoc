@@ -60,12 +60,14 @@ def _setup_project_with_posts(tmp_path, posts=None, config_overrides=None):
 _POST_HELLO = (
     "hello.md",
     "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
+    "directives: false\n"
     "tags: [release]\ndraft: false\n---\nThis is the post content.\n",
 )
 
 _POST_DRAFT = (
     "draft.md",
     "---\ntitle: Draft Post\ndate: 2024-01-16\nslug: draft-post\n"
+    "directives: false\n"
     "tags: []\ndraft: true\n---\nDraft content here.\n",
 )
 

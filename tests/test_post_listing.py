@@ -294,12 +294,14 @@ class TestRenderPostListingFrontmatter:
 _POST_ALPHA = (
     "alpha.md",
     "---\ntitle: Alpha Post\ndate: 2024-06-10\nslug: alpha-post\n"
+    "directives: false\n"
     "tags: []\ndraft: false\n---\n# Alpha Post\n\nAlpha content.\n",
 )
 
 _POST_BETA = (
     "beta.md",
     "---\ntitle: Beta Post\ndate: 2024-06-12\nslug: beta-post\n"
+    "directives: false\n"
     "tags: []\ndraft: false\n---\n# Beta Post\n\nBeta content.\n",
 )
 

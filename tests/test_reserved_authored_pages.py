@@ -58,6 +58,7 @@ def _project(tmp_path, *, posts=(), authored=()):
 _POST = (
     "hello.md",
     "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
+    "directives: false\n"
     "tags: []\ndraft: false\n---\nPost body.\n",
 )
 

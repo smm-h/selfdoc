@@ -75,6 +75,7 @@ def _write_post(posts_dir: str, filename: str, title: str, date: str,
     ]
     if slug is not None:
         lines.append(f"slug: {slug}")
+    lines.append("directives: false")
     lines.extend(["---", "", "Post body."])
     with open(os.path.join(posts_dir, filename), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

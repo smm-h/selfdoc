@@ -23,7 +23,7 @@ from conftest import default_config
 _POST_HELLO = (
     "hello.md",
     "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
-    "tags: [release]\ndraft: false\n---\n"
+    "tags: [release]\ndraft: false\ndirectives: false\n---\n"
     "# Hello World\n\nThis is the post content.\n\n"
     "## Setup\n\nFirst.\n\n## Setup\n\nSecond.\n",
 )
@@ -31,13 +31,13 @@ _POST_HELLO = (
 _POST_SECOND = (
     "second.md",
     "---\ntitle: Second Post\ndate: 2024-02-01\nslug: second-post\n"
-    "tags: []\ndraft: false\n---\nSecond post body.\n",
+    "tags: []\ndraft: false\ndirectives: false\n---\nSecond post body.\n",
 )
 
 _POST_DRAFT = (
     "draft.md",
     "---\ntitle: Draft Post\ndate: 2024-03-01\nslug: draft-post\n"
-    "tags: []\ndraft: true\n---\nUnfinished.\n",
+    "tags: []\ndraft: true\ndirectives: false\n---\nUnfinished.\n",
 )
 
 
@@ -208,7 +208,7 @@ class TestUnsavedAndDraftPosts:
         project = _make_project(tmp_path, [_POST_HELLO])
         source = (
             "---\ntitle: Brand New\ndate: 2024-04-01\nslug: brand-new\n"
-            "tags: []\ndraft: false\n---\nNever saved.\n"
+            "tags: []\ndraft: false\ndirectives: false\n---\nNever saved.\n"
         )
 
         before, _ = _tree_fingerprint(project)

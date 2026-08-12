@@ -349,6 +349,63 @@ def find_inline_directives(
     return directives
 
 
+# Any of the six markers standing at the start of a line, and the
+# self-closing marker used inline.  Detection only: no name validation, no
+# attribute parsing, no well-formedness requirement -- the question these
+# answer is "does this markdown carry directive syntax at all?", which must
+# be answerable for a document that was never meant to be resolved.
+_MARKER_LINE_RE = re.compile(r"^(:-:|:<:|:@:|:=:|:::|:>:)(\s|$)")
+_INLINE_MARKER_RE = re.compile(rf':-:\s+{_DIRECTIVE_NAME}')
+
+
+def find_directive_markers(content: str) -> list[tuple[int, str]]:
+    """Find every directive marker in *content*, by line.
+
+    Returns ``(line_number, marker)`` pairs in document order, with 1-based
+    line numbers relative to *content*.  Fenced code blocks and backtick
+    code spans are skipped, so a post that writes ``:-: ref`` as an example
+    of the syntax carries no marker.
+
+    This is the detection counterpart of :func:`parse_directives`: it
+    reports syntax without resolving, validating names, or requiring a
+    block to be closed.  A document that declares it holds no directives is
+    checked with this, because parsing it would fail on the very markers
+    the check exists to report.
+    """
+    markers: list[tuple[int, str]] = []
+    fence_char: str | None = None
+    fence_len = 0
+
+    for line_idx, line in enumerate(content.split("\n") if content else []):
+        stripped = line.strip()
+        fence_match = _FENCE_RE.match(stripped)
+        if fence_match:
+            fence = fence_match.group(1)
+            if fence_char is None:
+                fence_char = fence[0]
+                fence_len = len(fence)
+            elif fence[0] == fence_char and len(fence) >= fence_len:
+                fence_char = None
+                fence_len = 0
+            continue
+        if fence_char is not None:
+            continue
+
+        masked, _placeholders = _mask_backtick_spans(line)
+        line_num = line_idx + 1
+
+        match = _MARKER_LINE_RE.match(masked.strip())
+        if match:
+            markers.append((line_num, match.group(1)))
+            continue
+
+        markers.extend(
+            (line_num, ":-:") for _ in _INLINE_MARKER_RE.finditer(masked)
+        )
+
+    return markers
+
+
 def _resolve_line_inline(line: str, resolver: callable) -> str:
     """Resolve inline :-: directives in a single line, skipping backtick spans."""
     masked, placeholders = _mask_backtick_spans(line)

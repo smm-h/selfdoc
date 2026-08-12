@@ -42,6 +42,7 @@ def _create_post(tmp_path, filename="2026-06-01-hello.md", draft=False):
         "date: 2026-06-01\n"
         "slug: hello\n"
         f"draft: {draft_str}\n"
+        "directives: false\n"
         "project: myproject\n"
         "tags: []\n"
         "---\n"

@@ -216,6 +216,7 @@ def _project_with_post(tmp_path):
     with open(os.path.join(posts_dir, "hello.md"), "w") as f:
         f.write(
             "---\ntitle: Hello\ndate: 2024-01-15\nslug: hello\n"
+            "directives: false\n"
             "tags: []\ndraft: false\n---\nBody.\n"
         )
     return tmp_path

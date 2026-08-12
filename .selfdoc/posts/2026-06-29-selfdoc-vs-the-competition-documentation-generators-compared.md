@@ -4,6 +4,7 @@ date: 2026-06-29
 slug: selfdoc-vs-the-competition-documentation-generators-compared
 tags: [comparison, documentation, static-site-generators]
 draft: false
+directives: false
 project: selfdoc
 ---
 

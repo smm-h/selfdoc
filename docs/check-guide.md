@@ -114,6 +114,8 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | POST003 | error | A post's `date` is not written as YYYY-MM-DD. |
 | POST004 | error | Two posts resolve to the same slug. |
 | POST005 | error | A published post's slug changed, which would break its permalink. |
+| POST006 | error | A post is missing the required `directives` declaration, or declares something other than `true`/`false`. Every post states whether it may carry directive markers; there is no default. |
+| POST007 | error | A post declaring `directives: false` carries a directive marker. The message names the marker and the line it sits on. |
 | LINK001 | error | An emitted reference -- a link, a canonical, a sitemap entry or a feed link -- names a file the build did not write. |
 | UNIFIED001 | error | A project listed in the `unified` section has no selfdoc.json. |
 | UNIFIED002 | error | A constituent project, or the docs-site's own content, could not be checked. |

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 
+from selfdoc_core.directives import find_directive_markers
 from selfdoc_core.manifest import _to_kebab, load_manifest_from_git
 from selfdoc_core.utils import parse_frontmatter
 
@@ -100,8 +101,9 @@ def parse_post(
 ) -> dict:
     """Parse and validate one post's markdown source into a post dict.
 
-    This is the whole of what makes a post a post: field validation, slug
-    derivation, and the injected ``type``/``versioned`` keys.
+    This is the whole of what makes a post a post: field validation, the
+    required ``directives`` declaration, slug derivation, and the injected
+    ``type``/``versioned`` keys.
     ``discover_posts`` calls it per file on disk; the render path calls it
     on an editor buffer that may never be saved, so both agree on what the
     source means.
@@ -141,6 +143,42 @@ def parse_post(
             f"Post {rel_path}: 'date' must be YYYY-MM-DD, got {date!r}"
         )
 
+    # -- The directive declaration -------------------------------------------
+    #
+    # Required, boolean, no default.  A post is authored content that may or
+    # may not carry executable markers, and which of the two it is cannot be
+    # inferred from the file: a post about directive syntax reads exactly
+    # like a post that uses it.  So the author declares, and a post that
+    # declares nothing is refused rather than guessed at.  Documentation
+    # pages carry no such key -- the whole docs tree is directive territory.
+
+    declaration = frontmatter.get("directives")
+    if declaration is None:
+        raise RuntimeError(
+            f"Post {rel_path}: 'directives' is required and has no default. "
+            f"Declare 'directives: true' if the post carries directive "
+            f"markers, or 'directives: false' if it is plain prose."
+        )
+    if not isinstance(declaration, bool):
+        raise RuntimeError(
+            f"Post {rel_path}: 'directives' must be true or false, "
+            f"got {declaration!r}."
+        )
+
+    if not declaration:
+        # Line numbers are the post file's own: the scan runs over the body,
+        # so the frontmatter it sits behind is added back.
+        fm_offset = len(raw.split("\n")) - len(content.split("\n"))
+        found = find_directive_markers(content)
+        if found:
+            body_line, marker = found[0]
+            raise RuntimeError(
+                f"Post {rel_path}: declares 'directives: false' but line "
+                f"{body_line + fm_offset} carries the directive marker "
+                f"'{marker}'. Declare 'directives: true' to have it "
+                f"resolved, or remove the marker."
+            )
+
     # -- Auto-generate slug if missing --------------------------------------
 
     slug = frontmatter.get("slug")
@@ -179,6 +217,7 @@ def parse_post(
         "slug": slug,
         "tags": tags,
         "draft": bool(draft),
+        "directives": declaration,
         "type": "post",
         "versioned": False,
         "locale": frontmatter.get("locale"),

@@ -228,6 +228,16 @@ code = "POST005"
 severity = "error"
 description = "A published post's slug changed, which would break its permalink."
 
+[[lints]]
+code = "POST006"
+severity = "error"
+description = "A post is missing the required `directives` declaration, or declares something other than `true`/`false`. Every post states whether it may carry directive markers; there is no default."
+
+[[lints]]
+code = "POST007"
+severity = "error"
+description = "A post declaring `directives: false` carries a directive marker. The message names the marker and the line it sits on."
+
 # -- Emitted references -------------------------------------------------------
 
 [[lints]]

@@ -74,6 +74,7 @@ def _cmd_post_new(ctx, title=""):
         f"slug: {slug}\n"
         f"tags: []\n"
         f"draft: true\n"
+        f"directives: false\n"
         f"project: {project_slug}\n"
         f"---\n"
         f"\n"
@@ -201,6 +202,11 @@ def _cmd_post_generate(
         f"date: {today}",
         f"slug: {slug}",
         "draft: false",
+        # A generated release post is prose plus a changelog; nothing in it
+        # is meant to be resolved.  The declaration is required on every
+        # post, so the scaffold states it rather than leaving the author a
+        # file its own discovery would refuse.
+        "directives: false",
         f"project: {project_slug}",
         f"version: {version}",
     ]

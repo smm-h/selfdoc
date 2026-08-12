@@ -54,13 +54,13 @@ def _setup_project_with_posts(tmp_path, posts=None, config_overrides=None):
 _POST_HELLO = (
     "hello.md",
     "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
-    "tags: [release]\ndraft: false\n---\nThis is the post content.\n",
+    "tags: [release]\ndraft: false\ndirectives: false\n---\nThis is the post content.\n",
 )
 
 _POST_DRAFT = (
     "draft.md",
     "---\ntitle: Draft Post\ndate: 2024-01-16\nslug: draft-post\n"
-    "tags: []\ndraft: true\n---\nDraft content here.\n",
+    "tags: []\ndraft: true\ndirectives: false\n---\nDraft content here.\n",
 )
 
 
@@ -215,7 +215,7 @@ def test_build_posts_search_index(tmp_path):
     post_with_heading = (
         "hello.md",
         "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n"
-        "tags: [release]\ndraft: false\n---\n# Hello World\n\n"
+        "tags: [release]\ndraft: false\ndirectives: false\n---\n# Hello World\n\n"
         "This is the post content.\n",
     )
     project = _setup_project_with_posts(tmp_path, posts=[post_with_heading])

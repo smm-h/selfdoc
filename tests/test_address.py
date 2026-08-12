@@ -882,6 +882,7 @@ def test_posts_are_at_the_same_blog_address_in_both_builds(tmp_path):
     with open(os.path.join(posts_dir, "2026-01-01-hello.md"), "w") as f:
         f.write(
             "---\ntitle: Hello World\ndate: 2026-01-01\nslug: hello-world\n"
+            "directives: false\n"
             "---\n\nA post body paragraph.\n"
         )
     config_path = os.path.join(str(project), "selfdoc.json")
