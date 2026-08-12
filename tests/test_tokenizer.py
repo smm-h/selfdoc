@@ -12,6 +12,8 @@ from selfdoc.tokenizer import (
     Table,
     ThematicBreak,
     UnorderedList,
+    TEXT_BEARING,
+    token_text_lines,
     tokenize,
 )
 
@@ -475,3 +477,54 @@ class TestLineCoverage:
 
     def test_all_thematic_break_variants(self):
         self._check_coverage("---\n\n***\n\n___")
+
+
+class TestTextBearingTokens:
+    """``TEXT_BEARING`` and ``token_text_lines`` -- the prose surface.
+
+    Every rule that reads prose (empty and meaningless alt text, generic
+    anchor text, broken cross-references, spelling) runs over exactly this
+    set.  Headings and tables were left out originally, which silently
+    exempted page titles and every table cell from all of them.
+    """
+
+    def test_headings_are_text_bearing(self):
+        tok = tokenize("## A heading")[0]
+        assert isinstance(tok, TEXT_BEARING)
+        assert token_text_lines(tok) == ["A heading"]
+
+    def test_tables_are_text_bearing(self):
+        md = "| a | b |\n| --- | --- |\n| c | d |"
+        tok = tokenize(md)[0]
+        assert isinstance(tok, TEXT_BEARING)
+        assert token_text_lines(tok) == [
+            "| a | b |", "| --- | --- |", "| c | d |",
+        ]
+
+    def test_one_entry_per_source_line(self):
+        """The i-th entry belongs on source line ``tok.start + i``."""
+        md = "| a |\n| --- |\n| c |"
+        tok = tokenize(md)[0]
+        lines = token_text_lines(tok)
+        assert len(lines) == tok.end - tok.start + 1
+
+    def test_paragraphs_lists_and_quotes_are_text_bearing(self):
+        for md, expected in [
+            ("plain text", ["plain text"]),
+            ("- item", ["item"]),
+            ("1. item", ["item"]),
+            ("> quoted", ["quoted"]),
+        ]:
+            tok = tokenize(md)[0]
+            assert isinstance(tok, TEXT_BEARING)
+            assert token_text_lines(tok) == expected
+
+    def test_definition_lists_flatten_terms_and_definitions(self):
+        tok = tokenize("Term\n: meaning")[0]
+        assert token_text_lines(tok) == ["Term", "meaning"]
+
+    def test_code_and_directives_are_not_text_bearing(self):
+        for md in ["```py\nx = 1\n```", ":::cli my.mod\n:::", "---", ""]:
+            tok = tokenize(md)[0]
+            assert not isinstance(tok, TEXT_BEARING)
+            assert token_text_lines(tok) == []

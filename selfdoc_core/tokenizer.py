@@ -121,6 +121,58 @@ Block = (
 )
 
 
+# Token types that carry prose a reader sees on the page.  Code blocks,
+# directives, thematic breaks and blank lines are excluded structurally: a
+# rule that reads prose runs over exactly this set and can never reach a
+# fenced example or an unresolved directive marker.
+#
+# Headings and tables are members.  They were left out originally because
+# their text is not stored line-per-line like a paragraph's, which meant
+# every prose rule -- empty alt text, meaningless alt text, generic anchor
+# text, broken cross-references, spelling -- silently skipped page titles
+# and every table cell.  :func:`token_text_lines` handles their shapes, so
+# the exclusion is gone.
+TEXT_BEARING = (
+    Paragraph,
+    Blockquote,
+    UnorderedList,
+    OrderedList,
+    DefinitionList,
+    Heading,
+    Table,
+)
+
+
+def token_text_lines(tok: Block) -> list[str]:
+    """Return the text a content-bearing token contributes, one entry per line.
+
+    The i-th entry corresponds to source line ``tok.start + i``, so a caller
+    holding a token and an index knows the real line a diagnostic belongs on.
+    Non-text tokens return an empty list.
+
+    The text is the token's *parsed* text: list markers, blockquote markers
+    and heading hashes are already stripped, so a column measured against
+    these strings is not a column in the source line.  A caller that needs
+    exact columns should read the raw source lines spanned by the token
+    instead (``tok.start`` through ``tok.end``).
+    """
+    if isinstance(tok, (Paragraph, Blockquote)):
+        return tok.lines
+    if isinstance(tok, (UnorderedList, OrderedList)):
+        return tok.items
+    if isinstance(tok, DefinitionList):
+        lines: list[str] = []
+        for term, defs in tok.entries:
+            lines.append(term)
+            lines.extend(defs)
+        return lines
+    if isinstance(tok, Heading):
+        return [tok.text]
+    if isinstance(tok, Table):
+        return tok.rows
+    return []
+
+
 # ---------------------------------------------------------------------------
 # Regex helpers (compiled once)
 # ---------------------------------------------------------------------------
