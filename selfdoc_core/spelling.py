@@ -216,11 +216,19 @@ _MACHINE_CHUNK_RE = re.compile(
 # a hyphenated compound arrives here already split into its parts.
 _WORD_RE = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*['’]?")
 
-# A capital immediately after a lowercase letter marks camelCase or
-# PascalCase: an identifier spelled into prose without backticks.  Skipped,
-# because the alternative is flagging every unbackticked symbol name in the
-# fleet's documentation.
-_INNER_CAPITAL_RE = re.compile(r"[a-z][A-Z]")
+# An internal case change marks camelCase or PascalCase: an identifier
+# spelled into prose without backticks.  Skipped, because the alternative is
+# flagging every unbackticked symbol name in the fleet's documentation.
+#
+# Two shapes, because a case change has two directions.  A capital after a
+# lowercase letter is the familiar one (``parseFrontmatter``,
+# ``TextResponse``).  The other is a run of capitals ending against a
+# capitalized word -- ``JSONResponse``, ``XMLHttpRequest``, ``IOError`` --
+# where the acronym and the word meet capital-to-capital and there is no
+# lowercase letter before the boundary at all.  Requiring two capitals in
+# the run keeps an ordinary capitalized word out: ``Adress`` starting a
+# sentence is still a misspelling to report.
+_INNER_CAPITAL_RE = re.compile(r"[a-z][A-Z]|[A-Z]{2}[a-z]")
 
 _ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 

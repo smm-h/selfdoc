@@ -247,6 +247,28 @@ def test_camel_case_is_treated_as_an_identifier(vocab):
     assert _words("The LintResult and parseFrontmatter values.\n", vocab) == []
 
 
+@pytest.mark.parametrize("name", [
+    "JSONResponse", "HTMLResponse", "XMLHttpRequest", "IOError", "URLBuilder",
+])
+def test_an_acronym_prefixed_identifier_is_an_identifier_too(vocab, name):
+    """The same rule, on a name whose case change is between two capitals.
+
+    ``TextResponse`` was already skipped because a lowercase letter sits
+    against a capital.  ``JSONResponse`` has no such pair -- the boundary
+    between the acronym and the word is capital-against-capital -- so it
+    was read as one long English word and reported as a misspelling,
+    while its ordinary-word twin passed.
+    """
+    assert _words(f"The {name} value.\n", vocab) == []
+
+
+@pytest.mark.parametrize("word", ["adress", "occured", "teh"])
+def test_a_capitalized_misspelling_is_still_reported(vocab, word):
+    """The acronym rule needs two capitals in a row, so a normal word
+    starting a sentence is untouched by it."""
+    assert _words(f"{word.capitalize()} is wrong.\n", vocab) == [word.capitalize()]
+
+
 def test_headings_are_scanned(vocab):
     """Page titles used to escape every prose rule; they no longer do."""
     assert _words("## A heading with teh typo\n", vocab) == ["teh"]
