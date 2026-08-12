@@ -1,7 +1,5 @@
-{
-  "schema_version": 1,
-  "defaults": {
-    "schema_version": 1,
+/home/m/Projects/selfdoc/selfblog/.strictcli/schema.json
+ion": 1,
     "app": {
       "env_prefix": null,
       "config": false,
@@ -73,13 +71,13 @@
     },
     "build": {
       "name": "build",
-      "help": "Build blog posts or unified documentation site",
+      "help": "Build blog posts, the unified documentation site, or the home project",
       "effect": "mutating",
       "flags": [
         {
           "name": "target",
           "type": "str",
-          "help": "Build target: 'posts' for posts-only build, 'unified' for unified multi-project site",
+          "help": "Build target: 'posts' for posts-only build, 'unified' for unified multi-project site, 'home' for the assembly's home project (the one served at the site root, whose pages carry site-level directives)",
           "default": "posts"
         },
         {
@@ -95,6 +93,18 @@
           "help": "Automatically commit updated content hash tracking files to git after the build",
           "default": true,
           "negatable": true
+        },
+        {
+          "name": "site-manifests",
+          "type": "str",
+          "help": "Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.",
+          "default": ""
+        },
+        {
+          "name": "docs-base",
+          "type": "str",
+          "help": "Base URL of the assembled site, for the absolute links the site-level directives emit. Required by --target home.",
+          "default": ""
         }
       ]
     }
@@ -350,14 +360,10 @@
               "help": "Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists."
             },
             {
-              "name": "portfolio-file",
+              "name": "home-slug",
               "type": "str",
-              "help": "Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html."
-            },
-            {
-              "name": "portfolio-canonical",
-              "type": "str",
-              "help": "Absolute canonical URL of the portfolio page, from assembly.portfolio_canonical (e.g. 'https://smmh.dev/'). The portfolio is the site apex, not a docs page, so this is NOT --canonical-base. Required whenever --portfolio-file names an existing file: the same portfolio bytes are served on every host bound to the Pages project, and one of them has to be named canonical."
+              "help": "The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Empty means the tree carries no home project (which the deploy path never does -- the roster requires one).",
+              "default": ""
             }
           ]
         },
@@ -406,12 +412,6 @@
               "name": "legacy-blog-host",
               "type": "str",
               "help": "Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.",
-              "default": ""
-            },
-            {
-              "name": "portfolio-canonical",
-              "type": "str",
-              "help": "Absolute canonical URL of the portfolio page, required whenever the assembly checkout has a portfolio/index.html",
               "default": ""
             },
             {
