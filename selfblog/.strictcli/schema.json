@@ -1,5 +1,7 @@
-/home/m/Projects/selfdoc/selfblog/.strictcli/schema.json
-ion": 1,
+{
+  "schema_version": 1,
+  "defaults": {
+    "schema_version": 1,
     "app": {
       "env_prefix": null,
       "config": false,
@@ -331,7 +333,7 @@ ion": 1,
         },
         "generate-shared": {
           "name": "generate-shared",
-          "help": "Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, root 404 page, security headers file and redirect worker in the site output directory.",
+          "help": "Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page, a security headers file and the redirect worker in the site output directory.",
           "effect": "mutating",
           "flags": [
             {
@@ -347,12 +349,12 @@ ion": 1,
             {
               "name": "docs-base",
               "type": "str",
-              "help": "Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs."
+              "help": "Base URL used for in-page links in the generated feed, listing and blog index. May be root-relative or empty. The sitemap does not read it: every <loc> is absolute by protocol, so the sitemap is generated from --canonical-base whatever this says."
             },
             {
               "name": "canonical-base",
               "type": "str",
-              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the target of the generated redirect worker and of the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base."
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base."
             },
             {
               "name": "legacy-blog-host",

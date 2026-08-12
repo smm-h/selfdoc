@@ -18,9 +18,13 @@ What is asserted
   its own directory, its version is the version the emitted pages carry
   (and is not sitting in the archive tree as though it were superseded),
   and every page and post it lists resolves to a file that exists.
-* **The shared artifacts exist and parse.**  Front page, blog index,
-  project listing, ``nav.json``, sitemap, feed, search index, robots and
-  the root 404.
+* **The shared artifacts exist, parse, and say what they are for.**  Front
+  page, blog index, project listing, ``nav.json``, sitemap, feed, search
+  index, robots, ``llms.txt`` and the root 404.  Three of those are
+  asserted on their content rather than their existence: the 404 body is
+  not the front page's and offers a way back, ``robots.txt`` names the
+  sitemap the tree actually carries, and ``llms.txt`` references every
+  declared project's own ``llms.txt``.
 * **Every reference resolves.**  Internal links, canonicals, sitemap
   entries and feed links all go through :mod:`selfdoc_core.resolution` --
   the same LINK001 pass a single project's build is checked with, run over
@@ -53,6 +57,7 @@ import time
 import xml.etree.ElementTree as ET
 
 from selfblog.shared import (
+    POSTS_SEGMENT,
     output_path_target,
     page_target,
     post_target,
@@ -557,11 +562,16 @@ def check_shared_artifacts(tree: AssemblyTree) -> list[Failure]:
         ("projects/index.html", "the generated project listing"),
         ("blog/index.html", "the blog index"),
         ("robots.txt", "robots.txt"),
+        ("llms.txt", "the site-wide llms.txt"),
         ("404.html", "the root 404 page"),
     ]
     for rel, what in required:
         if rel not in tree.emitted:
             _missing(rel, what)
+
+    failures.extend(_not_found_failures(tree))
+    failures.extend(_robots_failures(tree))
+    failures.extend(_llms_failures(tree))
 
     for rel, what in (("sitemap.xml", "the sitemap"), ("feed.xml", "the feed")):
         if rel not in tree.emitted:
@@ -581,6 +591,91 @@ def check_shared_artifacts(tree: AssemblyTree) -> list[Failure]:
             _unparsable("nav.json", exc)
 
     failures.extend(_search_index_failures(tree))
+    return failures
+
+
+def _body_text(page_html: str) -> str:
+    """The body of an HTML document with tags and whitespace flattened away."""
+    body = page_html.split("<body>", 1)[-1].split("</body>", 1)[0]
+    return " ".join(re.sub(r"<[^>]*>", " ", body).split())
+
+
+def _not_found_failures(tree: AssemblyTree) -> list[Failure]:
+    """The root 404 is a not-found page, not a second front page.
+
+    The hosting provider serves ``404.html`` with a 404 status for any
+    address that matches no asset.  If its body is the front page's, an
+    unknown address renders the home page: a soft 404 that a crawler
+    indexes as a duplicate of the site root and a reader mistakes for
+    having arrived somewhere.
+    """
+    failures: list[Failure] = []
+    if "404.html" not in tree.emitted:
+        return failures
+    not_found = tree.read("404.html")
+    body = _body_text(not_found)
+    if not body:
+        failures.append(Failure(
+            "shared-artifacts", "site/404.html",
+            "has an empty body, so an unknown address renders a blank page.",
+        ))
+    if "index.html" in tree.emitted and body == _body_text(tree.read("index.html")):
+        failures.append(Failure(
+            "shared-artifacts", "site/404.html",
+            "renders the same body as the front page. An address that does "
+            "not exist would answer with the home page, which reads as a "
+            "page that exists.",
+        ))
+    for rel in ("/", "/projects/", f"/{POSTS_SEGMENT}/"):
+        if f'href="{tree.canonical_base}{rel}"' not in not_found:
+            failures.append(Failure(
+                "shared-artifacts", "site/404.html",
+                f"offers no way back to {rel}: a dead end is what a reader "
+                f"who lands here is left with.",
+            ))
+    return failures
+
+
+def _robots_failures(tree: AssemblyTree) -> list[Failure]:
+    """robots.txt names the sitemap that is actually served, absolutely."""
+    failures: list[Failure] = []
+    if "robots.txt" not in tree.emitted:
+        return failures
+    robots = tree.read("robots.txt")
+    expected = f"Sitemap: {tree.canonical_base}/sitemap.xml"
+    if expected not in robots:
+        failures.append(Failure(
+            "shared-artifacts", "site/robots.txt",
+            f"does not carry {expected!r}. A crawler finds the sitemap by "
+            f"being told where it is, and the site's one sitemap is at the "
+            f"root.",
+        ))
+    if "sitemap.xml" not in tree.emitted:
+        failures.append(Failure(
+            "shared-artifacts", "site/robots.txt",
+            "names a sitemap the tree does not carry at site/sitemap.xml.",
+        ))
+    return failures
+
+
+def _llms_failures(tree: AssemblyTree) -> list[Failure]:
+    """The site-wide llms.txt points at every project's own llms.txt.
+
+    It composes by reference: a project missing from it is a project no
+    model-facing reader is told exists.
+    """
+    failures: list[Failure] = []
+    if "llms.txt" not in tree.emitted:
+        return failures
+    llms = tree.read("llms.txt")
+    for slug in sorted(set(tree.roster) - {tree.home}):
+        reference = f"{tree.canonical_base}/{slug}/llms.txt"
+        if reference not in llms:
+            failures.append(Failure(
+                "shared-artifacts", "site/llms.txt",
+                f"does not reference {reference}, so {slug!r} is invisible "
+                f"to anything reading the site's llms.txt.",
+            ))
     return failures
 
 

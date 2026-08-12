@@ -11,6 +11,27 @@ from selfdoc_core.build import (
     _make_feed_entry,
     check_post_slug_uniqueness,
 )
+from selfdoc_core.robots import ROBOTS_AGENTS, render_robots_txt
+
+__all__ = [
+    "POSTS_SEGMENT",
+    "ROBOTS_AGENTS",
+    "generate_blog_index",
+    "generate_homepage",
+    "generate_llms_txt",
+    "generate_nav_json",
+    "generate_not_found_page",
+    "generate_robots_txt",
+    "generate_sitemap",
+    "generate_unified_feed",
+    "merge_project_posts",
+    "output_path_target",
+    "page_target",
+    "post_target",
+    "target_output_path",
+    "validate_cross_project_links",
+    "wrap_shared_page",
+]
 
 #: The site-level directory every post is served from: ``blog/<post-slug>/``,
 #: at the assembly root and never under a project slug.  It is the build's
@@ -247,13 +268,24 @@ def generate_sitemap(manifests: list[dict], docs_base: str, *,
 
     Args:
         manifests: List of loaded manifest dicts.
-        docs_base: Base URL for the documentation site.
+        docs_base: Absolute base URL for the documentation site.  Required
+            and absolute: the sitemap protocol has no relative ``<loc>``,
+            and a crawler reading ``/alpha/guide/`` where an absolute URL
+            belongs drops the entry.  An empty or root-relative base is a
+            hard error rather than a sitemap that silently indexes nothing.
         home_slug: The roster's home project, whose pages are addressed
             from the site root rather than from a project segment.
 
     Returns:
         Complete sitemap XML string.
     """
+    if not docs_base or not docs_base.startswith(("http://", "https://")):
+        raise ValueError(
+            f"generate_sitemap needs an absolute base URL, got "
+            f"{docs_base!r}. Every <loc> is an absolute URL -- the sitemap "
+            f"protocol has no relative form -- so a root-relative or empty "
+            f"base produces entries every crawler discards."
+        )
     urls = []
     for m in manifests:
         manifest_slug = m.get("slug") or ""
@@ -282,13 +314,13 @@ def generate_sitemap(manifests: list[dict], docs_base: str, *,
     return "\n".join(parts) + "\n"
 
 
-#: Crawlers the assembly's robots.txt names explicitly.  The wildcard rule
-#: already allows them; naming each one is what keeps a future disallow from
-#: being written once and applying to everybody by accident.
-ROBOTS_AGENTS = (
-    "*", "GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-    "ClaudeBot", "Googlebot", "OAI-SearchBot",
-)
+#: The address of the sitemap the site-wide robots.txt names.  The sitemap is
+#: written at the site root by :func:`~selfblog.assembly.generate_shared_files`
+#: and this is the same file, so the two cannot name different documents.
+SITEMAP_PATH = "sitemap.xml"
+
+#: Where the composed, site-wide llms.txt is served from.
+LLMS_PATH = "llms.txt"
 
 
 def generate_robots_txt(canonical_base: str) -> str:
@@ -296,15 +328,68 @@ def generate_robots_txt(canonical_base: str) -> str:
 
     Each constituent project's own build writes a robots.txt at its own
     output root, which ends up buried at ``<slug>/robots.txt`` where no
-    crawler reads it.  The one that is served is this one.
+    crawler reads it.  The one that is served is this one, and it carries
+    the same crawler policy -- :data:`ROBOTS_AGENTS`, read from the build
+    that writes the per-project ones, so the site cannot allow a crawler
+    its projects disallow or the other way round.
     """
-    lines = []
-    for agent in ROBOTS_AGENTS:
-        lines.append(f"User-agent: {agent}")
-        lines.append("Allow: /")
-        lines.append("")
-    lines.append(f"Sitemap: {canonical_base.rstrip('/')}/sitemap.xml")
-    return "\n".join(lines) + "\n"
+    return render_robots_txt(f"{canonical_base.rstrip('/')}/{SITEMAP_PATH}")
+
+
+def generate_llms_txt(manifests: list[dict], canonical_base: str, *,
+                      home_slug: str = "") -> str:
+    """Produce the assembly's llms.txt, composed by reference.
+
+    Every constituent project's build writes its own ``llms.txt`` listing
+    its own pages, and the graft keeps it at ``<slug>/llms.txt``.  The
+    site-wide file links to each of those rather than restating them: an
+    inlined copy would be a second, staler rendering of a document the
+    project already publishes, and it would go out of date on every deploy
+    that is not this one.
+
+    The home project is left out for the same reason it is left out of the
+    listing: it is the site root the file is served from, not one of the
+    projects it points at.
+
+    Args:
+        manifests: Loaded per-project manifests.
+        canonical_base: Absolute base URL of the assembly site.
+        home_slug: The roster's home project, left out of the list.
+    """
+    base = canonical_base.rstrip("/")
+    listed = sorted(
+        (m for m in manifests if (m.get("slug") or "") != home_slug),
+        key=lambda m: (m.get("name") or "").lower(),
+    )
+
+    lines = [
+        "# Documentation",
+        "",
+        "> Every project's documentation is published here. Each entry below "
+        "links to that project's own llms.txt, which lists its pages.",
+        "",
+        "## Projects",
+        "",
+    ]
+    if not listed:
+        lines.append("- No projects are published yet.")
+    for m in listed:
+        name = m.get("name") or m.get("slug") or ""
+        slug = m.get("slug") or ""
+        description = (m.get("description") or "").strip().splitlines()
+        summary = description[0] if description else ""
+        entry = f"- [{name}]({base}/{slug}/{LLMS_PATH})"
+        lines.append(f"{entry}: {summary}" if summary else entry)
+
+    lines.extend([
+        "",
+        "## Blog",
+        "",
+        f"- [Blog]({base}/{POSTS_SEGMENT}/): posts from every project, "
+        f"newest first.",
+        "",
+    ])
+    return "\n".join(lines)
 
 
 def generate_not_found_page(canonical_base: str) -> str:
@@ -313,16 +398,26 @@ def generate_not_found_page(canonical_base: str) -> str:
     A project subtree carries its own 404 from its own build, but the site
     root has no build of its own, so a request that matches no project at
     all would otherwise be served the hosting provider's default.
+
+    It is served through the hosting provider's ``404.html`` convention:
+    a request matching no asset gets this body with a 404 status.  That is
+    why its body has to differ from the front page -- an unknown address
+    that renders the front page is a soft 404, and a crawler reads it as a
+    duplicate of the home page rather than as a dead link.
     """
     base = canonical_base.rstrip("/")
     body = (
         '<main class="not-found">\n'
         "  <h1>Page not found</h1>\n"
-        "  <p>The page you asked for is not on this site.</p>\n"
+        "  <p>There is no page at this address. It may have moved, or the "
+        "link that brought you here may be wrong.</p>\n"
+        "  <p>These three are always here:</p>\n"
         "  <ul>\n"
-        f'    <li><a href="{html.escape(base)}/">Projects</a></li>\n'
-        f'    <li><a href="{html.escape(base)}/blog/">Blog</a></li>\n'
+        f'    <li><a href="{html.escape(base)}/">Home</a></li>\n'
+        f'    <li><a href="{html.escape(base)}/projects/">Projects</a></li>\n'
+        f'    <li><a href="{html.escape(base)}/{POSTS_SEGMENT}/">Blog</a></li>\n'
         "  </ul>\n"
+        "  <p>Or search the whole site from any documentation page.</p>\n"
         "</main>"
     )
     return wrap_shared_page(
