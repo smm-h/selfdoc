@@ -1001,6 +1001,11 @@
           "anchor": "var"
         },
         {
+          "level": 4,
+          "text": "`cv`",
+          "anchor": "cv"
+        },
+        {
           "level": 2,
           "text": "Custom Directives",
           "anchor": "custom-directives"
@@ -3301,5 +3306,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T03:14:18.669690+00:00"
+  "last_gen": "2026-08-12T03:26:08.733799+00:00"
 }
