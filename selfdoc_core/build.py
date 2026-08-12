@@ -1637,33 +1637,74 @@ def _versioned_html_paths(build_dir, docs_dir_name, locale_code, locales,
     return paths
 
 
+#: The top-level segments of a mount that belong to the build rather than
+#: to the author, each mapped to what the build does with it:
+#:
+#: * ``v`` is where superseded versions are emitted
+#:   (``v/<version>/<page>/``), so a page named ``v`` would collide with
+#:   the whole archive tree.
+#: * ``blog`` is where posts are emitted, at the site level -- and where
+#:   post injection *writes*, which is why an authored page there is a
+#:   file the build would overwrite and then delete.
+_RESERVED_TOP_SEGMENTS = {
+    ARCHIVE_PREFIX: (
+        f"superseded versions are emitted at "
+        f"'{ARCHIVE_PREFIX}/<version>/<page>/'"
+    ),
+    POSTS_PREFIX: "posts are emitted at 'blog/<slug>/'",
+}
+
+
 def _check_reserved_page_paths(md_paths):
     """Refuse pages whose top-level segment is a reserved one.
 
-    Two segments at the top of a mount belong to the build rather than to
-    the author:
-
-    * ``v`` is where superseded versions are emitted
-      (``v/<version>/<page>/``), so a page named ``v`` would collide with
-      the whole archive tree.
-    * ``blog`` is where posts are emitted, at the site level.
-
     Raises RuntimeError naming the page and the segment.
     """
-    reserved = {
-        ARCHIVE_PREFIX: (
-            f"superseded versions are emitted at "
-            f"'{ARCHIVE_PREFIX}/<version>/<page>/'"
-        ),
-        POSTS_PREFIX: "posts are emitted at 'blog/<slug>/'",
-    }
     for md_path in sorted(md_paths):
         first = md_path.split("/", 1)[0]
         stem = first[:-3] if first.endswith(".md") else first
-        if stem in reserved:
+        if stem in _RESERVED_TOP_SEGMENTS:
             raise RuntimeError(
                 f"Page '{md_path}' uses the reserved top-level path "
-                f"'{stem}': {reserved[stem]}. Rename the page."
+                f"'{stem}': {_RESERVED_TOP_SEGMENTS[stem]}. Rename the page."
+            )
+
+
+def _check_reserved_authored_pages(docs_dir, base_dir=None):
+    """Refuse authored pages sitting where the build writes its own files.
+
+    ``_check_reserved_page_paths`` runs on the partitioned page sets, and
+    the site-level partition holds exactly the pages injection just wrote,
+    so it can never see an *authored* ``blog.md``: injection had already
+    overwritten it, and cleanup deleted it afterwards.  This reads the tree
+    itself, before anything writes into it, and refuses the file.
+
+    *docs_dir* is a docs tree (a locale's, or the root one injection writes
+    into); *base_dir* is what the reported path is relative to, so the
+    message names the file the way its author does.
+
+    Raises RuntimeError naming the file and the segment.
+    """
+    for stem in sorted(_RESERVED_TOP_SEGMENTS):
+        found = []
+        page = os.path.join(docs_dir, f"{stem}.md")
+        if os.path.isfile(page):
+            found.append(page)
+        subdir = os.path.join(docs_dir, stem)
+        if os.path.isdir(subdir):
+            for root, _dirs, files in os.walk(subdir):
+                found.extend(
+                    os.path.join(root, name)
+                    for name in sorted(files) if name.endswith(".md")
+                )
+        for path in found:
+            rel = os.path.relpath(path, base_dir or docs_dir)
+            raise RuntimeError(
+                f"Authored page '{rel.replace(os.sep, '/')}' sits on the "
+                f"reserved top-level path '{stem}': "
+                f"{_RESERVED_TOP_SEGMENTS[stem]}. The build writes that path "
+                f"itself, so building would overwrite the file and then "
+                f"delete it. Move or rename the page."
             )
 
 
@@ -1785,7 +1826,15 @@ def _inject_posts_into_docs(dir_path, config, docs_dir, include_drafts):
     whichever build produced it.
 
     Returns a list of absolute paths to injected files (for cleanup).
+
+    Refuses first: an authored page on a reserved path is a file this
+    function would overwrite and cleanup would then delete, so no build
+    that could inject may proceed past one.  Checking here rather than at
+    each call site is what makes the destruction structurally impossible --
+    every build path reaches the tree through this function.
     """
+    _check_reserved_authored_pages(docs_dir, dir_path)
+
     posts_config = config.get("posts") or {}
     posts_dir_rel = posts_config.get("dir", ".selfdoc/posts/")
     posts_dir = os.path.join(dir_path, posts_dir_rel)
@@ -1991,6 +2040,22 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
             f"Docs directory '{config['docs']}' not found. "
             "Create it or run 'selfdoc init'."
         )
+
+    # Refuse an authored page on a path the build writes itself, before the
+    # output directory is touched and long before injection runs.  Injection
+    # checks the tree it writes into; these are the locale trees it never
+    # sees, whose pages the partition would still carry.
+    _check_reserved_authored_pages(docs_dir_check, dir_path)
+    for locale in build_locales:
+        try:
+            locale_docs_dir = _resolve_locale_docs_dir(
+                dir_path, docs_dir_name, locale["code"], locales,
+            )
+        except RuntimeError:
+            # A missing locale directory is reported by the build proper,
+            # with its own message; this check has nothing to read.
+            continue
+        _check_reserved_authored_pages(locale_docs_dir, dir_path)
 
     # Clean output directory
     if os.path.exists(output_dir):
