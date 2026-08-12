@@ -228,7 +228,7 @@ Blog posts integrate into the unified multi-project documentation site through t
 
 1. **Per-project build**: `selfblog build --target posts` builds post HTML and generates a `post-manifest.json` containing metadata for all non-draft posts.
 
-2. **Assembly push**: `selfblog post publish` pushes built HTML into `site/{slug}/posts/` in the assembly repo and the post-manifest into `manifests/{slug}-posts.json`.
+2. **Assembly push**: `selfblog post publish` pushes each built post into `site/blog/{post-slug}/` in the assembly repo -- the site level, under no project slug -- and the post-manifest into `manifests/{slug}-posts.json`. The listing page the build renders for the project's own standalone site is not pushed: the assembled site's blog index is generated from every project's manifests.
 
 3. **Shared regeneration**: The assembly workflow runs `selfblog assembly integrate`, which grafts the dispatched build into the assembly tree and then regenerates the shared cross-project elements from all per-project manifests and post overlays:
    - A blog index page listing all posts across all projects, sorted newest-first
@@ -241,7 +241,9 @@ Blog posts integrate into the unified multi-project documentation site through t
 
 ### Post URLs in the unified site
 
-Posts are served at `/{project-slug}/posts/{post-slug}/` in the assembled site. For example, a post with slug `widget-support` in a project with slug `myproject` is available at `/myproject/posts/widget-support/`.
+Posts are served at `/blog/{post-slug}/` in the assembled site, with no project segment. For example, a post with slug `widget-support` is available at `/blog/widget-support/` whichever project wrote it.
+
+The project a post came from is a row on the blog index, not part of its address: the site has one blog, and every project's posts share its slug namespace. Two projects publishing the same post slug is a hard error -- refused when the assembly merges their manifests, and refused again by the graft before it can overwrite the other project's file.
 
 ### The canonical blog URL
 
@@ -381,15 +383,17 @@ Every publisher -- the release-time integrate, `docs publish`, `post publish` --
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "slug": "myproject",
   "owners": {
-    "release": ["index.html", "reference/index.html"],
-    "docs": ["index.html", "hotfix/index.html"],
-    "posts": ["posts/widget-support/index.html"]
+    "release": ["myproject/index.html", "myproject/reference/index.html"],
+    "docs": ["myproject/index.html", "myproject/hotfix/index.html"],
+    "posts": ["blog/widget-support/index.html"]
   }
 }
 ```
+
+Every path is relative to `site/`, so one record names both the project's own pages, under its slug, and its posts, at the site level under `blog/`. That single namespace is also what lets one project's claim be checked against another's: the graft refuses to write over a post path another project's record claims.
 
 A publisher removes a path only when it produced that path before and does not produce it now, and never when another publisher currently claims it. So:
 
@@ -442,4 +446,4 @@ selfblog build --target posts
 selfblog build --target posts --drafts
 ```
 
-Built HTML is written to the configured output directory (typically `docs/_build/posts/`).
+Built HTML is written to the configured output directory: each post at `docs/_build/blog/{post-slug}/`, plus a listing page at `docs/_build/blog/` for the project's own standalone site.
