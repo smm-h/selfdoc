@@ -249,19 +249,35 @@ Posts are served at `/blog/{post-slug}/` in the assembled site, with no project 
 
 The project a post came from is a row on the blog index, not part of its address: the site has one blog, and every project's posts share its slug namespace. Two projects publishing the same post slug is a hard error -- refused when the assembly merges their manifests, and refused again by the graft before it can overwrite the other project's file.
 
-### The canonical blog URL
+### One hostname
 
-A Cloudflare Pages project can carry several custom domains, and all of them serve the same site. Left alone that means the blog index is reachable at more than one address, which splits ranking signals between duplicates. The assembly resolves this to one address.
-
-The canonical blog URL is `<topology.docs_base>/blog/`. Everything else redirects to it:
+A Cloudflare Pages project can carry several custom domains, and all of them serve the same site. Left alone that means every page is reachable at more than one address, which splits ranking signals between duplicates. The assembly resolves this to one hostname: `topology.docs_base`, and nothing else serves content.
 
 | Request | Result |
 | --- | --- |
-| `<docs_base>/blog/` | served (canonical) |
+| canonical host, any path | served |
+| any other host, any path | `301` to the same path on the canonical host |
 | `<topology.legacy_blog_host>/<path>` | `301` to `<docs_base>/blog/<path>` |
-| any other host bound to the project, path under `/blog` | `301` to `<docs_base>/blog...` |
 
-Both redirects are single-hop and are implemented in the `_worker.js` that the shared-element generator writes into the site output (`selfblog assembly integrate` during a deploy, `selfblog assembly generate-shared` when run by hand). The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base` to `integrate`) and its retired-subdomain rule from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
+The retired blog subdomain is the one host that does not map to the same path: its whole document space was the blog, so `blog.example.com/hello/` is `<docs_base>/blog/hello/`. Mapping it to the same path would send every live post link to the site root, where nothing answers.
+
+Every redirect is single-hop and is implemented in the `_worker.js` that the shared-element generator writes into the site output (`selfblog assembly integrate` during a deploy, `selfblog assembly generate-shared` when run by hand). The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base` to `integrate`) and its retired-subdomain prefix from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
+
+#### Historical addresses
+
+The worker also carries the redirect map for the address schemes the site has retired. It is generated as *data* from the manifests at shared-generation time -- the assembly knows every project slug and every post slug -- so a path that merely looks historical without naming a real one is not redirected at all: it falls through to the root 404, which is the honest answer for an address that never existed.
+
+| Retired shape | Result |
+| --- | --- |
+| `/<slug>/<locale>/<version>/<rest>` | `301` to `/<slug>/<rest>` |
+| `/<slug>/posts/<post>/` | `301` to `/blog/<post>/` |
+| `/<slug>/<page>/` | served -- this is the current scheme |
+
+The version segment is **not** preserved: any version collapses to the stable address. Archived versions are still served at `/<slug>/v/<version>/`, but an old deep link is far more likely to want the page as it is now than the page as it was at whatever version happened to be current when the URL was copied.
+
+A historical path arriving on a non-canonical host is resolved together with the host, so it still costs exactly one 301 rather than two.
+
+The map is patterns plus two sets of names, never one entry per page, so the worker's size tracks the number of projects and posts rather than the size of the site.
 
 The shared homepage and blog index also carry a `rel="canonical"` link pointing at the canonical host, so a crawler that reaches them through a non-canonical domain still records the canonical address.
 
@@ -273,6 +289,17 @@ Two pieces of this topology live on platform dashboards and are not automated:
 
 1. **Custom domains.** Every hostname the worker redirects *from* must be attached to the assembly's Cloudflare Pages project, otherwise the worker never runs for it and the request does not reach the redirect. Add them under the Pages project's *Custom domains* tab.
 2. **Search Console.** Register a **Domain property** for the root domain rather than one URL-prefix property per subdomain. A Domain property covers the canonical host, the retired blog subdomain, and the apex in a single property, so the consolidation is visible as redirects instead of appearing as unrelated sites competing with each other.
+
+### The machine-readable files at the site root
+
+Every constituent build writes a `robots.txt`, an `llms.txt`, a `sitemap.xml` and a `404.html` at its own output root, where the graft buries them under `<slug>/` and no crawler reads them. The four the site serves are generated once, for the whole site, by the shared-element generator.
+
+* **`sitemap.xml`** lists every project's pages and every post. Each `<loc>` is absolute under the canonical base -- the sitemap protocol has no relative form, so the generator takes the canonical base for it regardless of what `--docs-base` says, and refuses an empty or root-relative one.
+* **`robots.txt`** names that sitemap by absolute URL, and carries the same crawler policy the per-project template declares. Both read one declaration (`selfdoc_core.build.ROBOTS_AGENTS`), so a crawler the site allows cannot be one its projects disallow.
+* **`llms.txt`** composes the per-project files **by reference**: one line per project, with its name, a link to its own `llms.txt`, and the one-line description from its manifest, plus a link to the blog. It never inlines their contents -- an inlined copy would be a second, staler rendering of a document its owner republishes on its own deploys.
+* **`404.html`** is what Cloudflare Pages serves, with a 404 status, for an address that matches no asset. Its body is deliberately not the front page's: an unknown address that renders the home page is a soft 404, which a crawler indexes as a duplicate of the site root and a reader mistakes for having arrived somewhere. It links home, the project listing and the blog.
+
+The home project is left out of `llms.txt` for the same reason it is left out of the listing: it is the site root the file is served from, not one of the projects it points at.
 
 ### The deploy workflow is a generated artifact
 
@@ -320,7 +347,7 @@ What it asserts, each failure naming its offender:
 | Roster, `site/` subtrees and `manifests/` name the same projects | An undeclared subtree, a declared project with nothing to serve, or an orphan manifest of any kind |
 | Each manifest describes the tree beside it | Its slug names another directory, its version disagrees with the pages, or its current version is sitting in the archive tree |
 | Every page and post a manifest lists was emitted | A listing, feed or sitemap row that leads to a 404 |
-| The shared artifacts exist and parse | A missing or malformed front page, project listing, blog index, `nav.json`, sitemap, feed, `robots.txt`, root 404, or an empty search index |
+| The shared artifacts exist, parse, and say what they are for | A missing or malformed front page, project listing, blog index, `nav.json`, sitemap, feed, `robots.txt`, `llms.txt`, root 404, or an empty search index; a 404 whose body repeats the front page or offers no way back; a `robots.txt` naming no sitemap or one the tree does not carry; an `llms.txt` missing a declared project |
 | Every reference resolves | An internal link, canonical, sitemap entry or feed link naming a file the assembly did not write |
 | Every page is addressable | A page with no title, or a canonical that is not under the site's canonical base |
 | Nothing half-built or per-project leaked in | An unresolved directive marker, or a project's own `_headers`, `_redirects`, `_worker.js` or pre-compressed copies |

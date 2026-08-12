@@ -319,7 +319,8 @@ def test_a_post_overlay_is_verified_too(assembly):
 
 
 @pytest.mark.parametrize("rel", [
-    "index.html", "blog/index.html", "robots.txt", "404.html", "nav.json",
+    "index.html", "blog/index.html", "robots.txt", "llms.txt", "404.html",
+    "nav.json",
 ])
 def test_a_missing_shared_artifact_fails(assembly, rel):
     os.remove(str(assembly / "site" / rel.replace("/", os.sep)))
@@ -422,6 +423,87 @@ def test_the_home_projects_front_page_is_the_site_root(assembly):
     report = _verify(assembly)
     messages = [str(f) for f in report.failures_of("shared-artifacts")]
     assert any("index.html" in m for m in messages)
+
+
+# -- the root 404 is a not-found page, not a second front page -----------------
+
+
+def test_a_404_that_repeats_the_front_page_fails(assembly):
+    """A soft 404: an unknown address renders the home page and reads as one."""
+    front = assembly / "site" / "index.html"
+    with open(str(front), encoding="utf-8") as f:
+        _write(str(assembly / "site" / "404.html"), f.read())
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("404.html" in m and "front page" in m for m in messages)
+
+
+def test_a_404_with_an_empty_body_fails(assembly):
+    _write(str(assembly / "site" / "404.html"),
+           _page("Page not found", f"{CANONICAL_BASE}/404.html"))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("404.html" in m for m in messages)
+
+
+@pytest.mark.parametrize("gone", ["/", "/projects/", "/blog/"])
+def test_a_404_that_is_a_dead_end_fails(assembly, gone):
+    """Every way back is asserted: a 404 with no links out strands a reader."""
+    path = str(assembly / "site" / "404.html")
+    with open(path, encoding="utf-8") as f:
+        html = f.read()
+    _write(path, html.replace(f'href="{CANONICAL_BASE}{gone}"', 'href="#"'))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("404.html" in m and gone in m for m in messages)
+
+
+# -- robots.txt names the sitemap ----------------------------------------------
+
+
+def test_robots_that_names_no_sitemap_fails(assembly):
+    _write(str(assembly / "site" / "robots.txt"), "User-agent: *\nAllow: /\n")
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("robots.txt" in m and "Sitemap" in m for m in messages)
+
+
+def test_robots_that_names_a_relative_sitemap_fails(assembly):
+    _write(str(assembly / "site" / "robots.txt"),
+           "User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml\n")
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("robots.txt" in m for m in messages)
+
+
+def test_robots_naming_a_sitemap_the_tree_lacks_fails(assembly):
+    """robots.txt points at a file the deploy did not write."""
+    os.remove(str(assembly / "site" / "sitemap.xml"))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("robots.txt" in m and "the tree does not carry" in m
+               for m in messages)
+
+
+# -- llms.txt references every declared project --------------------------------
+
+
+def test_llms_txt_missing_a_declared_project_fails(assembly):
+    path = str(assembly / "site" / "llms.txt")
+    with open(path, encoding="utf-8") as f:
+        llms = f.read()
+    _write(path, llms.replace(f"{CANONICAL_BASE}/beta/llms.txt", "#"))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("llms.txt" in m and "beta" in m for m in messages)
+
+
+def test_llms_txt_referencing_every_declared_project_passes(assembly):
+    report = _verify(assembly)
+    assert not [
+        f for f in report.failures_of("shared-artifacts")
+        if "llms.txt" in f.offender
+    ], report.error_text()
 
 
 # -- every reference resolves --------------------------------------------------
