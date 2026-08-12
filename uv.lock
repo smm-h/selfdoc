@@ -742,7 +742,7 @@ wheels = [
 
 [[package]]
 name = "selfblog"
-version = "0.4.3"
+version = "0.4.4"
 source = { editable = "selfblog" }
 dependencies = [
     { name = "selfdoc-core" },
