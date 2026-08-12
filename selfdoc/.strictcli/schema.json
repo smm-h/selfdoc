@@ -48,7 +48,7 @@
   },
   "project_id": "selfdoc",
   "name": "selfdoc",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "help": "Code-aware static site generator with directive-based content extraction",
   "commands": {
     "init": {
@@ -60,6 +60,16 @@
           "name": "base-url",
           "type": "str",
           "help": "Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it"
+        },
+        {
+          "name": "author-name",
+          "type": "str",
+          "help": "Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent"
+        },
+        {
+          "name": "author-url",
+          "type": "str",
+          "help": "Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address"
         },
         {
           "name": "auto-commit",
