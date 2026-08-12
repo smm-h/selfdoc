@@ -50,3 +50,4 @@
 {"format_version":1,"id":"18caeb33f8e23dd6c17dd960618e49db8f07a3d3e9fb9256","commits":["2745f53016ea95cd8857edb18006325945930fdf"],"user_facing":false,"packages":["selfdoc"]}
 {"format_version":1,"id":"18caeb90d748b1422f7174f1e0aa4529bd4a10897a8ec5bd","commits":["5b7f30e04bbc0a5fb348d40e02a1e1a0a9b1a2ce","f4c8b358b141452eb9afafde444d85d11f2b150d","7eb47c32807e4e2ce124f72acc8c7f29c3ac9ed4"],"user_facing":false,"packages":["selfdoc"]}
 {"format_version":1,"id":"18caebb69d74759a0fc3b7c052c249d7be6362e4dbc7b7a9","commits":["06bfe44434d95e8ddb3b873666032058a40679e4"],"user_facing":false,"packages":["selfdoc"]}
+{"format_version":1,"id":"18caec3282535e73c51a1dc97ded4596aecc10725d4bc93c","commits":["c9e433584b1edee04423071fb6b1ae65708c9833"],"user_facing":true,"description":"**SEO doc: no SearchAction.** The structured-data list says the homepage `WebSite` node carries no `SearchAction` and why.","type":"fix","packages":["selfdoc"]}
