@@ -2,6 +2,26 @@
 
 # Changelog
 
+## 0.4.1
+
+Repairs the publish path: the assembly's remote file listing is a GET again, so pushing to the assembly works.
+
+<details>
+<summary>Context</summary>
+
+0.4.0 shipped the Trees-API listing with `gh api -f recursive=1`, which attaches
+a request body and so makes gh send a POST. POST is not a route on that
+endpoint, GitHub answered 404, and every command that reads the assembly before
+writing to it -- `assembly sync-workflow`, `docs publish`, `post publish`,
+`assembly retire` -- failed with `list tree: gh: Not Found`. The request now
+pins `--method GET`.
+
+</details>
+
+### Fixes
+
+- [selfblog] **`assembly sync-workflow` and every remote push reach the assembly again.** The listing that asks which files the assembly already has was sent as a POST, which is not a route on that endpoint, so GitHub answered `404` and the command reported the assembly as missing (`list tree: gh: Not Found`). It is a GET now.
+
 ## 0.4.0
 
 The assembly deploy is a command behind a thin generated workflow, the site answers on one canonical hostname with a generated redirect map, a declared home project is served at the site root, and every project's posts share one site-level blog/ namespace.
