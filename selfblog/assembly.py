@@ -133,6 +133,10 @@ class ToolchainPins:
 #: a membership declaration would otherwise retire a project.
 ROSTER_FIELDS = ("slug", "repo")
 
+#: Every top-level key the roster document may carry.  ``home`` names the one
+#: project whose content root is the site root; see :class:`Roster`.
+ROSTER_TOP_LEVEL_KEYS = ("home", "project")
+
 ROSTER_HEADER = """\
 # The assembly's membership: every project the unified site serves.
 #
@@ -141,6 +145,11 @@ ROSTER_HEADER = """\
 # its manifests, its membership record and its search-index entries removed at
 # the next deploy -- which is what `selfblog assembly retire <slug>` does in
 # one operation.
+#
+# `home` names the one declared project that IS the front page: its pages are
+# emitted at the site root instead of under site/<slug>/, it is left out of the
+# generated project listing, and it is required -- a site needs a front page,
+# so there is no default and no more than one.
 #
 # projects.json next to this file is derived state, rewritten by every deploy.
 # Edit this file, never that one.
@@ -161,8 +170,50 @@ class RosterEntry:
     repo: str
 
 
-def render_roster(entries) -> str:
-    """Return the TOML text for *entries* (an iterable of RosterEntry)."""
+class Roster(Mapping):
+    """The declared membership, plus the one project that is the site root.
+
+    A roster is read as a mapping of slug -> :class:`RosterEntry` everywhere
+    membership is the question, which is most places.  ``home`` is the extra
+    fact only the front page cares about: exactly one declared slug whose
+    content root emits at the site root rather than under ``site/<slug>/``.
+
+    The home project is an ordinary project in every other respect -- a real
+    repository that dispatches its own deploys.  Being home is a flag on it,
+    never a separate kind of thing and never the assembly repository itself.
+    """
+
+    __slots__ = ("_projects", "home")
+
+    def __init__(self, projects, home: str):
+        self._projects = dict(projects)
+        self.home = home
+
+    def __getitem__(self, slug: str) -> RosterEntry:
+        return self._projects[slug]
+
+    def __iter__(self):
+        return iter(self._projects)
+
+    def __len__(self) -> int:
+        return len(self._projects)
+
+    def __repr__(self) -> str:
+        return f"Roster(projects={sorted(self._projects)!r}, home={self.home!r})"
+
+
+def render_roster(entries, home: str = "") -> str:
+    """Return the TOML text for *entries* (an iterable of RosterEntry).
+
+    *home* is written as the top-level ``home`` key.  An empty *home* leaves
+    a commented placeholder instead: a roster with no home is refused when it
+    is read, and a scaffolded file that silently named some project home
+    would be choosing the front page on the author's behalf.
+    """
+    head = (
+        f"home = {json.dumps(home)}\n" if home
+        else '# home = "<slug>"   # required: the project served at the site root\n'
+    )
     blocks = []
     for entry in sorted(entries, key=lambda e: e.slug):
         blocks.append(
@@ -170,10 +221,10 @@ def render_roster(entries) -> str:
             f"slug = {json.dumps(entry.slug)}\n"
             f"repo = {json.dumps(entry.repo)}\n"
         )
-    return ROSTER_HEADER + "\n" + "\n".join(blocks)
+    return ROSTER_HEADER + "\n" + head + "\n" + "\n".join(blocks)
 
 
-def parse_roster(text: str, *, source: str = ROSTER_PATH) -> dict[str, RosterEntry]:
+def parse_roster(text: str, *, source: str = ROSTER_PATH) -> Roster:
     """Return slug -> :class:`RosterEntry` for the roster document *text*.
 
     Validation is strict in every direction: an unknown top-level table, an
@@ -1302,6 +1353,73 @@ def foreign_post_claims(manifests_dir: str, slug: str) -> dict[str, str]:
     return claims
 
 
+def refuse_foreign_post_overwrite(slug: str, produced, claims: dict[str, str]) -> None:
+    """Raise if any of *produced* is a post path *claims* gives to someone else.
+
+    One refusal for every publisher: the integrate graft, which reads the
+    records out of the assembly clone, and the two Git Data API publishers,
+    which read them off the remote.  Sharing the wording is the point --
+    three copies of a refusal are three chances for one of them to be
+    quietly weaker than the others.
+
+    *produced* is site-relative, in the same addressing the published-file
+    record uses, and *claims* maps such a path to the project that claims it.
+    """
+    stolen = sorted(
+        (dest_rel, claims[dest_rel])
+        for dest_rel in set(produced)
+        if dest_rel in claims
+    )
+    if not stolen:
+        return
+    detail = "; ".join(
+        f"site/{path} is claimed by {other!r}" for path, other in stolen
+    )
+    raise RuntimeError(
+        f"{slug!r} would overwrite {len(stolen)} post file(s) another "
+        f"project published: {detail}. Posts are emitted at "
+        f"'{POSTS_SEGMENT}/<post-slug>/' with no project segment, so a "
+        f"post slug is unique across the whole site. Rename the post's "
+        f"slug in the project that claims it later."
+    )
+
+
+def remote_post_claims(repo: str, slug: str, others) -> dict[str, str]:
+    """Map every site-level post path another project claims to its claimant.
+
+    The remote counterpart of :func:`foreign_post_claims`.  A publisher that
+    writes through the Git Data API has no assembly clone to read, so it asks
+    the assembly for one published-file record per declared project other
+    than its own.  That is one API read per project, which is the price of
+    the site-level blog being a single namespace: without it the publish
+    would find out about the collision only after it had already overwritten
+    the other project's post.
+
+    A project with no record yet claims nothing.  A record that cannot be
+    read is a :class:`RemoteReadError`, never an empty claim set.
+    """
+    claims: dict[str, str] = {}
+    for other in sorted(set(others)):
+        if other == slug:
+            continue
+        record_path = f"manifests/{other}-files.json"
+        raw = fetch_remote_text(
+            repo, record_path, missing_ok=True,
+            operation=(
+                f"check {slug!r}'s post paths against {other!r}'s claims "
+                f"on {repo}"
+            ),
+        )
+        if not raw.strip():
+            continue
+        record = parse_files_manifest(raw, source=f"{repo}:{record_path}")
+        for paths in record.values():
+            for path in paths:
+                if path.split("/")[0] == POSTS_SEGMENT:
+                    claims.setdefault(path, other)
+    return claims
+
+
 def load_projects_json(path: str) -> dict:
     """Return the derived membership record at *path*.
 
@@ -1569,23 +1687,9 @@ def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
     # write itself is checked, not only the merge that reads the manifests
     # afterwards: a post path another project's record claims is refused
     # before anything is copied over it.
-    foreign = foreign_post_claims(manifests_dir, slug)
-    stolen = sorted(
-        (dest_rel, foreign[dest_rel])
-        for dest_rel in produced.values()
-        if dest_rel in foreign
+    refuse_foreign_post_overwrite(
+        slug, produced.values(), foreign_post_claims(manifests_dir, slug),
     )
-    if stolen:
-        detail = "; ".join(
-            f"site/{path} is claimed by {other!r}" for path, other in stolen
-        )
-        raise RuntimeError(
-            f"{slug!r} would overwrite {len(stolen)} post file(s) another "
-            f"project published: {detail}. Posts are emitted at "
-            f"'{POSTS_SEGMENT}/<post-slug>/' with no project segment, so a "
-            f"post slug is unique across the whole site. Rename the post's "
-            f"slug in the project that claims it later."
-        )
 
     graft_subtree(site_dir, build_root, produced, removed)
     # An artifact already in the tree from an older deploy is removed on
@@ -2426,6 +2530,15 @@ def publish_project_docs(
         )
 
     produced = set(split_build_output(build_output_paths(output_dir), slug).values())
+
+    # A full documentation build carries the project's posts too, and a post
+    # is site-level: it addresses `blog/<post-slug>/` with no project segment,
+    # in a namespace every project shares. The write is refused before
+    # anything is collected, exactly as the integrate graft refuses it.
+    refuse_foreign_post_overwrite(
+        slug, produced, remote_post_claims(repo, slug, roster),
+    )
+
     files: dict[str, str | bytes] = dict(collect_site_files(output_dir, slug))
 
     delete_paths = stage_published_record(repo, slug, "docs", produced, files)
