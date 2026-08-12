@@ -68,22 +68,6 @@ def _minify_js(js_text):
     return js_text
 
 
-def _generate_search_js(engine="builtin"):
-    """Return the search JS as a standalone IIFE string.
-
-    Composes the search engine implementation (builtin, fuse, or minisearch)
-    with the shared dialog UI code. The engine must implement two functions:
-    ``initSearchEngine(entries)`` and ``searchEntries(query)`` returning
-    ``[{title, path, snippet, score, highlights}]``.
-
-    Args:
-        engine: One of "builtin", "fuse", or "minisearch".
-    """
-    from selfdoc_core.js.loader import load_search_js
-
-    return load_search_js(engine)
-
-
 def _slugify(text):
     """Convert heading text to a URL-friendly slug for deep linking.
 
@@ -304,7 +288,7 @@ def generate_html(markdown_files, project_name=None, version=None,
                    base_url=None, url_builder=None, frontmatter=None, lang="en",
                    page_dates=None, author=None, feed_url=None,
                    critical_css=None, twitter_site=None, search=None,
-                   feedback=None, branch="main", search_engine=None,
+                   feedback=None, branch="main",
                    branding=None, config_description=None,
                    auto_detect=None, theme_meta=None,
                    deploy_target=None, run_button=False,
@@ -373,6 +357,14 @@ def generate_html(markdown_files, project_name=None, version=None,
 
     # Flatten nav_items for page iteration order (prev/next links)
     flat_nav = _flatten_nav(nav_items)
+
+    # md_path -> nav group title.  The sidebar already decides which group a
+    # page belongs to, and that decision is also the ``group`` search facet.
+    page_group = {}
+    for nav_item in nav_items:
+        if "group" in nav_item:
+            for sub_item in nav_item.get("items", []):
+                page_group[sub_item.get("md_path", "")] = nav_item["group"]
 
     # Pre-compute set of all HTML paths for breadcrumb link validation
     all_html_paths = {_md_to_html_path(p) for p in markdown_files}
@@ -609,6 +601,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "schema": schema,
             "page_type": page_type,
             "page_tags": page_tags,
+            "nav_group": page_group.get(md_path, ""),
             "page_number": page_idx + 1,
             "total_pages": len(flat_nav),
             "has_hero": has_hero,
@@ -738,6 +731,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "schema": None,
             "page_type": "glossary",
             "page_tags": [],
+            "nav_group": "",
         })
 
     # --- Pass 2: Wrap pages ---
@@ -778,7 +772,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             search=search,
             feedback=feedback,
             branch=branch,
-            search_engine=search_engine,
+            nav_group=pd.get("nav_group", ""),
             site_terms=site_terms,
             page_number=pd.get("page_number"),
             total_pages=pd.get("total_pages"),
@@ -846,7 +840,8 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
     search_html = (
         '<p>Try searching for what you need:</p>\n'
         '<button onclick="document.getElementById(\'search-dialog\')'
-        '.showModal(); document.querySelector(\'.search-input\').focus();" '
+        '.showModal(); var i=document.querySelector('
+        '\'.pagefind-ui__search-input\'); if(i)i.focus();" '
         'style="padding: 0.5rem 1.5rem; font-size: 1rem; cursor: pointer; '
         'border: 1px solid var(--border); border-radius: 6px; '
         'background: var(--bg-secondary, #f5f5f5); '
@@ -2979,19 +2974,110 @@ def _generate_post_read_indicator_script(last_updated):
     )
 
 
-def _pagefind_init_script():
-    """Return inline script that initializes Pagefind UI and wires Cmd+K."""
+#: The facets the corpus carries, in the order they are emitted.  Every one
+#: is a Pagefind filter, so every one is selectable in the search UI; ``tags``
+#: is last because it is the only multi-valued key.
+PAGEFIND_FACET_KEYS = (
+    "version", "locale", "group", "type", "target", "project", "tags",
+)
+
+
+def pagefind_head_tags(asset_prefix):
+    """Return the <head> tags that load the Pagefind UI bundle.
+
+    The bundle is what the indexer itself wrote into ``pagefind/`` at the
+    output root, never a CDN copy: a built site answers its own searches
+    with no network at all.
+
+    Args:
+        asset_prefix: The hop from this page back to the output root, as
+            :func:`selfdoc_core.address.page_address` computed it.
+    """
+    return (
+        f'<link href="{asset_prefix}pagefind/pagefind-ui.css" rel="stylesheet">\n'
+        f'<script src="{asset_prefix}pagefind/pagefind-ui.js"></script>\n'
+    )
+
+
+def pagefind_facets_html(*, version="", locale="", group="", page_type="",
+                         target="", project="", tags=None):
+    """Return the hidden facet elements Pagefind reads its filters from.
+
+    Pagefind takes one ``data-pagefind-filter`` per element, so each facet
+    value is its own empty element.  That is also the shape multi-valued
+    ``tags`` needs, and it means no value is ever escaped into a
+    comma-separated list where a comma inside a tag or a nav group name
+    would split it in two.
+
+    Empty values are omitted: an empty filter value is a filter group the
+    UI offers and nothing matches.
+
+    The elements must sit inside the ``data-pagefind-body`` region, which
+    is the ``<article>`` -- a filter outside the indexed body is not read.
+    """
+    values = {
+        "version": version,
+        "locale": locale,
+        "group": group,
+        "type": page_type,
+        "target": target,
+        "project": project,
+    }
+    parts = []
+    for key in PAGEFIND_FACET_KEYS:
+        if key == "tags":
+            continue
+        value = values[key]
+        if value:
+            parts.append(
+                f'<span class="pagefind-facet" '
+                f'data-pagefind-filter="{key}:{_escape_html(str(value))}"></span>'
+            )
+    for tag in tags or []:
+        if tag:
+            parts.append(
+                f'<span class="pagefind-facet" '
+                f'data-pagefind-filter="tags:{_escape_html(str(tag))}"></span>'
+            )
+    return "".join(parts)
+
+
+def pagefind_meta_html(*, project="", page_type="", date=""):
+    """Return the hidden elements carrying Pagefind result metadata.
+
+    Metadata is what a result *shows*, as opposed to what it filters by.
+    One element per key for the same reason the facets get one each: an
+    element carries a single ``data-pagefind-meta`` attribute, and the
+    comma-separated form would split a value that contains a comma.
+    """
+    pairs = (("project", project), ("type", page_type), ("date", date))
+    return "".join(
+        f'<span class="pagefind-facet" '
+        f'data-pagefind-meta="{key}:{_escape_html(str(value))}"></span>'
+        for key, value in pairs if value
+    )
+
+
+def pagefind_init_script(asset_prefix):
+    """Return inline script that initializes Pagefind UI and wires Cmd+K.
+
+    ``bundlePath`` is passed explicitly from the page's own hop back to the
+    output root rather than left to the UI's guess, so the dialog finds the
+    index under any mount point.
+    """
+    bundle_path = f"{asset_prefix}pagefind/"
     return (
         '<script>\n'
         'document.addEventListener("DOMContentLoaded", function() {\n'
-        '  new PagefindUI({ element: "#pagefind-container", showSubResults: true });\n'
+        '  new PagefindUI({ element: "#pagefind-container", showSubResults: true, '
+        f'showImages: false, bundlePath: "{bundle_path}" }});\n'
         '  var dialog = document.getElementById("search-dialog");\n'
         '  document.addEventListener("keydown", function(e) {\n'
         '    if ((e.metaKey || e.ctrlKey) && e.key === "k") {\n'
         '      e.preventDefault();\n'
         '      if (dialog.open) { dialog.close(); } else {\n'
         '        dialog.showModal();\n'
-        '        var input = dialog.querySelector(".pagefind-ui--search-input");\n'
+        '        var input = dialog.querySelector(".pagefind-ui__search-input");\n'
         '        if (input) input.focus();\n'
         '      }\n'
         '    }\n'
@@ -3007,51 +3093,23 @@ def _pagefind_init_script():
     )
 
 
-def _render_search_dialog(asset_prefix, current_version="", search_engine=None):
-    """Build the search dialog HTML.
+def pagefind_dialog_html():
+    """Build the search dialog the Pagefind UI mounts into.
 
-    Args:
-        asset_prefix: Relative hop from this page back to the output root,
-            where ``search-index.json`` lives and against which search
-            result paths resolve.  Must not be site-absolute: the built
-            site has to work under any mount point, not just an origin
-            root.
-        current_version: Current version string for the default-version
-            filter attribute (e.g. "1.0.0").
-        search_engine: Search engine name (None, "builtin", "fuse",
-            "minisearch", or "pagefind").
+    The dialog itself is chrome: the input, the results list and the filter
+    controls are all rendered by the Pagefind UI inside
+    ``#pagefind-container``.
     """
-    version_attr = ""
-    if current_version:
-        version_attr = f' data-default-version="{_escape_html(current_version)}"'
-
-    # Document-relative, never "/": search result paths are output-root
-    # relative, and the site may be served from any subpath.
-    search_base = asset_prefix or "./"
-
-    if search_engine == "pagefind":
-        return (
-            f'<dialog class="search-dialog" id="search-dialog" data-search-base="{search_base}"{version_attr} aria-label="Search documentation">\n'
-            f'<div class="search-inner">\n'
-            f'<div class="search-header">\n'
-            f'<span class="search-header-title">Search</span>\n'
-            f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
-            f'</div>\n'
-            f'<div id="pagefind-container"></div>\n'
-            f'</div>\n'
-            f'</dialog>'
-        )
-
     return (
-        f'<dialog class="search-dialog" id="search-dialog" data-search-base="{search_base}"{version_attr} aria-label="Search documentation">\n'
-        f'<div class="search-inner">\n'
-        f'<div class="search-header">\n'
-        f'<input type="search" class="search-input" placeholder="Search... (Cmd+K)" aria-controls="search-results">\n'
-        f'<button class="search-close" aria-label="Close search" type="button">X</button>\n'
-        f'</div>\n'
-        f'<ul class="search-results" id="search-results" role="listbox" aria-live="polite"></ul>\n'
-        f'</div>\n'
-        f'</dialog>'
+        '<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">\n'
+        '<div class="search-inner">\n'
+        '<div class="search-header">\n'
+        '<span class="search-header-title">Search</span>\n'
+        '<button class="search-close" aria-label="Close search" type="button">X</button>\n'
+        '</div>\n'
+        '<div id="pagefind-container"></div>\n'
+        '</div>\n'
+        '</dialog>'
     )
 
 
@@ -3362,7 +3420,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
                feed_url=None, summary=None, critical_css=None,
                schema=None, page_type=None, schema_types=None,
                page_tags=None, twitter_site=None, search=None,
-               feedback=None, branch="main", search_engine=None,
+               feedback=None, branch="main", nav_group="",
                site_terms=None, page_number=None, total_pages=None,
                theme_meta=None, has_hero=False, deploy_target=None,
                page_nav=True, page_progress=True,
@@ -3497,7 +3555,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     )
 
     # Build search dialog
-    search_dialog_html = _render_search_dialog(asset_prefix, current_version=current_version, search_engine=search_engine)
+    search_dialog_html = pagefind_dialog_html()
 
     # Load JS from external files via the loader module
     from selfdoc_core.js.loader import load_js, assemble_body_js
@@ -3520,17 +3578,25 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
             f'<script data-ga-id="{ga_id}">{ga_js}</script>\n'
         )
 
-    # Pagefind metadata attributes for the <article> element
-    if search_engine == "pagefind":
-        pf_attrs = ' data-pagefind-body'
-        pf_attrs += f' data-pagefind-meta="project:{_escape_html(project_name)}"'
-        if page_type:
-            pf_attrs += f' data-pagefind-meta="type:{_escape_html(page_type)}"'
-        if date_published:
-            pf_attrs += f' data-pagefind-meta="date:{_escape_html(date_published)}"'
-        pf_attrs += f' data-pagefind-filter="version:{_escape_html(version)}"'
-    else:
-        pf_attrs = ""
+    # The article is the indexed region; the facet and meta values sit
+    # inside it as their own elements, because one element carries one
+    # data-pagefind-filter and one data-pagefind-meta attribute.
+    pagefind_block = (
+        pagefind_facets_html(
+            version=version,
+            locale=current_locale or mount_locale,
+            group=nav_group or "",
+            page_type=page_type or "",
+            target=deploy_target or "",
+            project=project_name,
+            tags=page_tags,
+        )
+        + pagefind_meta_html(
+            project=project_name,
+            page_type=page_type or "",
+            date=date_published or "",
+        )
+    )
 
     # Post read-indicator script: localStorage-based "Updated" badge
     # and "Last updated" display for post pages.
@@ -3557,9 +3623,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
-        f'{"<link href=\"" + asset_prefix + "pagefind/pagefind-ui.css\" rel=\"stylesheet\">" + chr(10) + "<script src=\"" + asset_prefix + "pagefind/pagefind-ui.js\"></script>" + chr(10) if search_engine == "pagefind" else ""}'
-        f'{"<script src=\"https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js\"></script>" + chr(10) if search_engine == "fuse" else ""}'
-        f'{"<script src=\"https://cdn.jsdelivr.net/npm/minisearch@7.1.1/dist/umd/index.min.js\"></script>" + chr(10) if search_engine == "minisearch" else ""}'
+        f'{pagefind_head_tags(asset_prefix)}'
         f'</head>\n'
         f'<body>\n'
         f'<a class="skip-link" href="#main-content">Skip to content</a>\n'
@@ -3573,7 +3637,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</nav>\n'
         f'<main class="content" id="main-content">\n'
         f'{version_notice_html}\n'
-        f'<article{pf_attrs}>\n'
+        f'<article data-pagefind-body>\n'
+        f'{pagefind_block}\n'
         f'{meta["breadcrumbs_html"]}\n'
         f'{meta["mobile_toc_html"]}\n'
         f'{meta["summary_html"]}\n'
@@ -3592,7 +3657,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
         f'{search_dialog_html}\n'
-        f'{_pagefind_init_script() if search_engine == "pagefind" else "<script defer src=\"" + asset_prefix + "search.js\"></script>"}\n'
+        f'{pagefind_init_script(asset_prefix)}\n'
         f'</body>\n'
         f'</html>\n'
     )

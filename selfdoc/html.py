@@ -9,9 +9,7 @@ from selfdoc_core.html import *  # noqa: F401,F403
 from selfdoc_core.html import (  # noqa: F401
     _extract_title,
     _wrap_page,
-    _generate_search_js,
     _minify_js,
-    _render_search_dialog,
     _render_seo_tags,
     _parse_table,
     _build_nav,

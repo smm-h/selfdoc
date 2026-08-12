@@ -16,26 +16,7 @@ def load_js(name: str) -> str:
     return ref.read_text(encoding="utf-8")
 
 
-def load_search_js(engine: str = "builtin") -> str:
-    """Compose search JS from engine implementation + dialog UI.
-
-    The engine must be one of "builtin", "fuse", or "minisearch".
-    Falls back to "builtin" if the engine name is unrecognized.
-
-    Returns:
-        Combined JS string (engine + dialog).
-    """
-    valid_engines = {"builtin", "fuse", "minisearch"}
-    if engine not in valid_engines:
-        engine = "builtin"
-    engine_js = load_js(f"search-{engine}")
-    filter_js = load_js("search-filter")
-    dialog_js = load_js("search-dialog")
-    return engine_js + "\n" + filter_js + "\n" + dialog_js
-
-
 def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
-                     search_engine: str | None = None,
                      extras_html: str = "") -> str:
     """Assemble the body JS blocks based on page content.
 
@@ -48,7 +29,6 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         body_html: The article body HTML.
         toc_html: The table-of-contents HTML (empty string if none).
         footer_html: The page footer HTML.
-        search_engine: Search engine name (unused here, kept for API).
         extras_html: Template-level HTML the article body does not carry --
             the superseded-version notice and the share control, which the
             page wrapper renders around the body.
