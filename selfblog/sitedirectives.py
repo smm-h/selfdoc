@@ -19,15 +19,20 @@ Two moments, and both are the same code:
   directive.  Neither path ever emits an empty region.
 
 * **Assembly time**, on every deploy, inside ``generate_shared_files``.  Each
-  resolved region is left in the emitted HTML between a pair of sentinel
-  comments, so the assembly can re-render it from the manifests it holds
-  without going back to the source.  This is what keeps the front page's
+  resolved region is left in the emitted HTML inside a wrapper element, so
+  the assembly can re-render it from the manifests it holds without going
+  back to the source.  This is what keeps the front page's
   version badges current when *another* project deploys: the home project's
   own build may be months old, the region is not.
 
-The sentinels are the whole mechanism, and they survive markdown conversion
-because they are HTML comments.  A region whose opening sentinel has no
-closing one is a hard error, never a half-rendered page.
+The region wrapper is the whole mechanism.  It is a custom element,
+``<selfblog-region data-directive="...">``, and not an HTML comment: the
+build minifies its output and strips every comment, so a comment-delimited
+region would survive the markdown conversion and then vanish on the way to
+disk.  A custom element survives both, carries its directive's attributes as
+data attributes so a re-render uses the same ones, and is nothing a browser
+has to be told about.  A region that opens and never closes is a hard error,
+never a half-rendered page.
 """
 
 from __future__ import annotations
@@ -42,22 +47,28 @@ from selfblog.listing import Listing, render_listing_html
 #: and the verifier all name the same set.
 SITE_DIRECTIVES = ("projects-cards", "blog-highlights")
 
-_OPEN = "<!--selfblog:{name}{attrs}-->"
-_CLOSE = "<!--/selfblog:{name}-->"
+#: The element one region is wrapped in, and the attribute naming which
+#: directive wrote it.  A directive's own attributes ride as ``data-arg-*``.
+REGION_TAG = "selfblog-region"
+_NAME_ATTR = "data-directive"
+_ARG_PREFIX = "data-arg-"
+
+_OPEN = '<{tag} {name_attr}="{name}"{attrs}>'
+_CLOSE = "</{tag}>"
 
 #: One rendered region, with the paragraph a markdown converter may have
 #: wrapped around it.  The wrapper is absorbed on re-render: a block element
-#: inside a ``<p>`` is not what any browser would keep.
+#: inside a ``<p>`` is not what any browser would keep.  A region never
+#: contains another, so the non-greedy body is unambiguous.
 _REGION_RE = re.compile(
-    r"(?:<p>\s*)?<!--selfblog:(?P<name>[a-z][a-z0-9-]*)(?P<attrs>[^>]*?)-->"
+    rf"(?:<p>\s*)?<{REGION_TAG}\b(?P<attrs>[^>]*)>"
     r"(?P<body>.*?)"
-    r"<!--/selfblog:(?P=name)-->(?:\s*</p>)?",
+    rf"</{REGION_TAG}>(?:\s*</p>)?",
     re.DOTALL,
 )
 
-#: An opening sentinel, used to find a region whose closing one is missing.
-_OPEN_RE = re.compile(r"<!--selfblog:(?P<name>[a-z][a-z0-9-]*)(?P<attrs>[^>]*?)-->")
-_CLOSE_RE = re.compile(r"<!--/selfblog:(?P<name>[a-z][a-z0-9-]*)-->")
+_OPEN_RE = re.compile(rf"<{REGION_TAG}\b(?P<attrs>[^>]*)>")
+_CLOSE_RE = re.compile(rf"</{REGION_TAG}>")
 
 _ATTR_RE = re.compile(r'([a-z][a-z0-9-]*)="([^"]*)"')
 
@@ -87,13 +98,26 @@ CONTEXT_KEY = "site_directives"
 
 def _render_attrs(attrs: dict[str, str]) -> str:
     return "".join(
-        f' {key}="{html.escape(str(value), quote=True)}"'
+        f' {_ARG_PREFIX}{key}="{html.escape(str(value), quote=True)}"'
         for key, value in sorted(attrs.items())
     )
 
 
 def _parse_attrs(text: str) -> dict[str, str]:
-    return {k: html.unescape(v) for k, v in _ATTR_RE.findall(text or "")}
+    """Return a region's directive attributes, from its ``data-arg-*`` set."""
+    return {
+        key[len(_ARG_PREFIX):]: html.unescape(value)
+        for key, value in _ATTR_RE.findall(text or "")
+        if key.startswith(_ARG_PREFIX)
+    }
+
+
+def _region_name(attrs_text: str) -> str:
+    """Return the directive a region declares, or "" when it declares none."""
+    for key, value in _ATTR_RE.findall(attrs_text or ""):
+        if key == _NAME_ATTR:
+            return html.unescape(value)
+    return ""
 
 
 def render_blog_highlights(manifests, docs_base: str, limit: int) -> str:
@@ -189,9 +213,12 @@ def render_region(name: str, attrs: dict[str, str], context: SiteContext) -> str
     """Return a resolved region: the body between its two sentinels."""
     body = render_directive_body(name, attrs, context)
     return (
-        _OPEN.format(name=name, attrs=_render_attrs(attrs))
+        _OPEN.format(
+            tag=REGION_TAG, name_attr=_NAME_ATTR, name=name,
+            attrs=_render_attrs(attrs),
+        )
         + "\n" + body + "\n"
-        + _CLOSE.format(name=name)
+        + _CLOSE.format(tag=REGION_TAG)
     )
 
 
@@ -280,23 +307,19 @@ def build_home_project(dir_path: str, config, *, site_manifests: str,
 
 
 def find_unclosed_regions(page_html: str) -> list[str]:
-    """Return the directive names whose opening sentinel has no closing one."""
-    opened: dict[str, int] = {}
-    for match in _OPEN_RE.finditer(page_html):
-        name = match.group("name")
-        opened[name] = opened.get(name, 0) + 1
-    closed: dict[str, int] = {}
-    for match in _CLOSE_RE.finditer(page_html):
-        name = match.group("name")
-        closed[name] = closed.get(name, 0) + 1
-    return sorted(
-        name for name, count in opened.items() if closed.get(name, 0) < count
-    )
+    """Return the directives whose region opens and never closes."""
+    opened = [_region_name(m.group("attrs")) for m in _OPEN_RE.finditer(page_html)]
+    closed = len(_CLOSE_RE.findall(page_html))
+    if closed >= len(opened):
+        return []
+    # The unclosed ones are the trailing openings: a region never nests, so
+    # the openings pair with the closings in order.
+    return sorted(set(opened[closed:]))
 
 
 def region_names(page_html: str) -> list[str]:
     """Return every site-level directive region the page carries."""
-    return [m.group("name") for m in _REGION_RE.finditer(page_html)]
+    return [_region_name(m.group("attrs")) for m in _REGION_RE.finditer(page_html)]
 
 
 def refresh_regions(page_html: str, context: SiteContext, *,
@@ -323,7 +346,7 @@ def refresh_regions(page_html: str, context: SiteContext, *,
         )
 
     def _replace(match: re.Match) -> str:
-        name = match.group("name")
+        name = _region_name(match.group("attrs"))
         attrs = _parse_attrs(match.group("attrs"))
         try:
             return render_region(name, attrs, context)

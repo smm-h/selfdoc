@@ -369,7 +369,11 @@ def check_home_project(tree: AssemblyTree) -> list[Failure]:
       does not list itself.
     """
     from selfblog.assembly import home_collisions, home_page_paths
-    from selfblog.sitedirectives import _REGION_RE, find_unclosed_regions
+    from selfblog.sitedirectives import (
+        _REGION_RE,
+        _region_name,
+        find_unclosed_regions,
+    )
 
     failures: list[Failure] = []
     home = tree.home
@@ -420,8 +424,9 @@ def check_home_project(tree: AssemblyTree) -> list[Failure]:
                 failures.append(Failure(
                     "home-project", f"site/{rel}",
                     f"carries an empty site-level region "
-                    f"{match.group('name')!r}: the page was published with a "
-                    f"placeholder where its generated content belongs.",
+                    f"{_region_name(match.group('attrs'))!r}: the page was "
+                    f"published with a placeholder where its generated "
+                    f"content belongs.",
                 ))
 
     if "nav.json" in tree.emitted:
