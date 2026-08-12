@@ -219,6 +219,13 @@ def test_the_graft_copies_the_curated_listing_in(tmp_path):
     assert json.loads(sidecar.read_text())["categories"][0]["name"] == "Frameworks"
     assert (assembly / "site" / "index.html").is_file()
 
+    # The claims are recorded at the addresses the pages actually landed at,
+    # which for the home project means no slug prefix.
+    record = json.loads(
+        (assembly / "manifests" / "home-files.json").read_text()
+    )
+    assert record["owners"]["release"] == ["index.html"]
+
 
 # -- the assembled tree --------------------------------------------------------
 
