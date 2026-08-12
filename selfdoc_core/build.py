@@ -1985,7 +1985,7 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
     if config.get("versions") is None:
         raise ConfigError(
             "selfdoc.json requires 'versions' array. "
-            "Add: \"versions\": [{\"version\": \"1.0.0\", \"indexed\": true}]"
+            "Add: \"versions\": [{\"version\": \"1.0.0\"}]"
         )
     if config.get("locales") is None:
         raise ConfigError(
