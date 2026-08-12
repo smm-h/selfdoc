@@ -6,8 +6,16 @@ on:
     - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_all:
+        description: Run every project's CI jobs, ignoring the paths filter. Use
+          this to make a release candidate's members run their own CI on a 
+          commit whose push window does not touch their paths.
+        type: boolean
+        required: false
+        default: false
 concurrency:
-  group: ${{ github.workflow_ref }}-${{ github.sha }}
+  group: ${{ github.workflow_ref }}-${{ github.sha }}-${{ inputs.run_all }}
   cancel-in-progress: true
 jobs:
   detect:
@@ -25,10 +33,14 @@ jobs:
           selfdoc-core:
             - 'selfdoc_core/**'
             - 'selfdoc_core/**'
+            - 'pyproject.toml'
+            - 'uv.lock'
             - '.rlsbl-monorepo/releasables/selfdoc-core/CHANGELOG.md'
           selfblog:
             - 'selfblog/**'
             - 'selfblog/**'
+            - 'pyproject.toml'
+            - 'uv.lock'
             - '.rlsbl-monorepo/releasables/selfblog/CHANGELOG.md'
           selfdoc:
             - 'selfdoc/**'
@@ -64,7 +76,7 @@ jobs:
     name: selfdoc-core-ci / test
     needs:
     - detect
-    if: needs.detect.outputs.selfdoc-core == 'true'
+    if: (needs.detect.outputs.selfdoc-core == 'true' || inputs.run_all)
   selfblog-ci-pypi-test:
     runs-on: ubuntu-latest
     strategy:
@@ -89,7 +101,7 @@ jobs:
     name: selfblog-ci-pypi / test
     needs:
     - detect
-    if: needs.detect.outputs.selfblog == 'true'
+    if: (needs.detect.outputs.selfblog == 'true' || inputs.run_all)
   selfdoc-ci-pypi-test:
     runs-on: ubuntu-latest
     strategy:
@@ -114,4 +126,4 @@ jobs:
     name: selfdoc-ci-pypi / test
     needs:
     - detect
-    if: needs.detect.outputs.selfdoc == 'true'
+    if: (needs.detect.outputs.selfdoc == 'true' || inputs.run_all)
