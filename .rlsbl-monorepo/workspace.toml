@@ -16,13 +16,19 @@ path = "selfdoc_core"
 name = "selfdoc-core"
 library = true
 releasable = "selfdoc-core"
-watch = ["selfdoc_core/**"]
+# The workspace root's manifest and lockfile define the environment every
+# member's CI builds, so a change to either has to re-run this member's jobs
+# too. Without them a lockfile-only fix leaves this member's job `skipped` on
+# the release candidate, which the publish check refuses.
+watch = ["selfdoc_core/**", "pyproject.toml", "uv.lock"]
 
 [[projects]]
 path = "selfblog"
 name = "selfblog"
 releasable = "selfblog"
-watch = ["selfblog/**"]
+# Same reason as selfdoc-core above: the shared manifest and lockfile decide
+# what this member's CI installs.
+watch = ["selfblog/**", "pyproject.toml", "uv.lock"]
 
 [[projects]]
 path = "selfdoc/"
