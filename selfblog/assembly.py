@@ -2541,9 +2541,18 @@ def git_blob_sha1(data: bytes) -> str:
 
 
 def _remote_blob_shas(repo: str, tree_sha: str) -> dict[str, str]:
-    """Return path -> blob sha for every file in *tree_sha*, recursively."""
+    """Return path -> blob sha for every file in *tree_sha*, recursively.
+
+    The method is pinned to GET on purpose: ``gh api -f`` attaches a request
+    body, which makes gh choose POST, and ``POST`` is not a route on this
+    endpoint -- GitHub answers 404 and the caller reads it as an assembly
+    that is not there.
+    """
     raw = _gh_api(
-        [f"/repos/{repo}/git/trees/{tree_sha}", "-f", "recursive=1"],
+        [
+            "--method", "GET",
+            f"/repos/{repo}/git/trees/{tree_sha}", "-f", "recursive=1",
+        ],
         step="list tree",
         read=True,
     )
