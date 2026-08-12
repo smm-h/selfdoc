@@ -1370,6 +1370,9 @@ HOME_RESERVED_DIRS = ("blog", "projects", "v", "pagefind")
 #: ``index.html`` is deliberately absent: the home project's front page is
 #: exactly what belongs at the site root.
 HOME_DROPPED_ARTIFACTS = (
+    # The curated listing's source document, which the build copies through
+    # as a static asset. The site serves the two renderings of it, not it.
+    "projects.toml",
     "sitemap.xml",
     "sitemap-index.xml",
     "robots.txt",
