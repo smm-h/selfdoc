@@ -171,6 +171,16 @@
         },
         {
           "level": 3,
+          "text": "Verification before the deploy",
+          "anchor": "verification-before-the-deploy"
+        },
+        {
+          "level": 4,
+          "text": "Outbound links",
+          "anchor": "outbound-links"
+        },
+        {
+          "level": 3,
           "text": "Posts-only vs full builds",
           "anchor": "posts-only-vs-full-builds"
         },
@@ -1960,6 +1970,16 @@
         },
         {
           "level": 3,
+          "text": "_posts_dir",
+          "anchor": "_posts_dir"
+        },
+        {
+          "level": 3,
+          "text": "_post_lint_docs",
+          "anchor": "_post_lint_docs"
+        },
+        {
+          "level": 3,
           "text": "check_docs",
           "anchor": "check_docs"
         },
@@ -3239,5 +3259,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-11T23:08:32.447396+00:00"
+  "last_gen": "2026-08-12T00:48:51.267549+00:00"
 }

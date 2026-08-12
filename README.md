@@ -203,7 +203,7 @@ Custom directives take priority over built-in names.
 | `glossary` | no | Auto-generate a glossary page from dfn terms. |
 | `coverage_threshold` | no | Minimum fraction of public symbols that must be documented for selfdoc check to pass (0.0-1.0). Default 1.0 requires 100% coverage. |
 | `feed_max_entries` | no | Maximum number of entries in the Atom feed, sorted by most recent. |
-| `lint_ignore` | no | List of lint rule IDs to suppress (e.g. 'SEO007', 'STALE001'). |
+| `lint_ignore` | no | List of warning-severity lint rule IDs to suppress (e.g. 'SEO007', 'SEO008'). Error-severity codes cannot be suppressed and are refused at load. |
 | `root_files` | no | List of underscore-prefixed template paths in docs/ for root file generation. |
 | `redirects` | no | Page-level redirects expanded across all locale/version combos. |
 | `deploy` | no | Deployment configuration for publishing the generated site. |
