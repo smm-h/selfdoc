@@ -15,7 +15,7 @@ from __future__ import annotations
 import dataclasses
 import os
 
-from selfblog.posts import discover_posts
+from selfblog.posts import PostError, discover_posts
 
 
 def check_posts(config, dir_path):
@@ -25,6 +25,10 @@ def check_posts(config, dir_path):
     posts are absent or valid).  Registered with selfdoc_core as the
     post-check hook.  The POST severities come from the lint registry, so a
     posts-only install never needs the selfdoc package to run this.
+
+    Each diagnostic is positioned at the offending post -- its path relative
+    to the project, and its line where the defect has one -- taken from the
+    :class:`~selfblog.posts.PostError` the detection site raised.
     """
     from selfdoc_core.lints import LintResult
 
@@ -41,7 +45,7 @@ def check_posts(config, dir_path):
 
     try:
         discover_posts(posts_dir, manifest_path=manifest_path)
-    except RuntimeError as exc:
+    except PostError as exc:
         msg = str(exc)
         if "'title' is required" in msg:
             code = "POST002"
@@ -59,9 +63,13 @@ def check_posts(config, dir_path):
             code = "POST007"
         else:
             code = "POST001"  # fallback
+        # The coordinates come off the error, not out of the message: the
+        # detection site knew the post's path (and, for a stray marker, its
+        # line), and everything downstream that positions a diagnostic reads
+        # the structured fields rather than parsing prose.
         return [LintResult(
-            file=posts_dir_rel,
-            line=None,
+            file=os.path.join(posts_dir_rel, *exc.path.split(os.sep)),
+            line=exc.line,
             code=code,
             message=msg,
         )]

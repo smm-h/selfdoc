@@ -157,6 +157,76 @@ def test_post_check_slug_immutability(tmp_path):
     assert "Slug immutability violation" in result[0].message
 
 
+# -- The coordinates are structured, not only prose -------------------------
+#
+# A POST diagnostic used to report file="blog/" (the posts directory) and
+# line=None, with the post's real path buried in the message. Every consumer
+# that reads the structured fields -- the JSON output, an editor, a CI
+# annotation -- was pointed at a directory.
+
+
+def test_a_post_diagnostic_names_the_post_file_not_the_directory(tmp_path):
+    posts_dir = tmp_path / "blog"
+    _write_post(str(posts_dir), "nested/p.md", ["title: No Date"])
+    result = check_posts({"posts": {"dir": "blog"}}, str(tmp_path))
+    assert len(result) == 1
+    assert result[0].file == os.path.join("blog", "nested", "p.md")
+
+
+def test_every_post_field_diagnostic_carries_the_file(tmp_path):
+    """One per code, so no detection site is left reporting the directory."""
+    cases = {
+        "POST002": ["date: 2025-01-01"],
+        "POST001": ["title: No Date"],
+        "POST003": ["title: Bad", "date: Jan 15 2025"],
+        "POST006": ["title: Fine", "date: 2025-01-01", "directives:"],
+    }
+    for code, frontmatter in cases.items():
+        project = tmp_path / code
+        _write_post(str(project / "blog"), "p.md", frontmatter)
+        result = check_posts({"posts": {"dir": "blog"}}, str(project))
+        assert len(result) == 1, (code, result)
+        assert result[0].code == code
+        assert result[0].file == os.path.join("blog", "p.md"), code
+
+
+def test_the_duplicate_slug_diagnostic_names_the_second_post(tmp_path):
+    posts_dir = tmp_path / "blog"
+    _write_post(str(posts_dir), "a.md", ["title: Same", "date: 2025-01-01"])
+    _write_post(str(posts_dir), "b.md", ["title: Same", "date: 2025-02-01"])
+    result = check_posts({"posts": {"dir": "blog"}}, str(tmp_path))
+    assert result[0].code == "POST004"
+    assert result[0].file in (
+        os.path.join("blog", "a.md"), os.path.join("blog", "b.md"),
+    )
+
+
+def test_a_stray_marker_diagnostic_carries_the_line_it_sits_on(tmp_path):
+    """POST007 knows the line: the message already quoted it."""
+    posts_dir = tmp_path / "blog"
+    _write_post(
+        str(posts_dir), "p.md",
+        ["title: Prose", "date: 2025-01-01", "directives: false"],
+        body="First line.\n\nSecond line.\n\n:-: ref path=\"x\"\n",
+    )
+    result = check_posts({"posts": {"dir": "blog"}}, str(tmp_path))
+    assert len(result) == 1
+    assert result[0].code == "POST007"
+    assert result[0].file == os.path.join("blog", "p.md")
+    lines = (posts_dir / "p.md").read_text().split("\n")
+    expected = next(
+        i + 1 for i, line in enumerate(lines) if line.startswith(":-:")
+    )
+    assert result[0].line == expected
+
+
+def test_a_field_diagnostic_reports_no_line_rather_than_a_wrong_one(tmp_path):
+    """A missing frontmatter field sits at no line; None says so."""
+    _write_post(str(tmp_path / "blog"), "p.md", ["title: No Date"])
+    result = check_posts({"posts": {"dir": "blog"}}, str(tmp_path))
+    assert result[0].line is None
+
+
 # -- Post-check hook wiring (selfdoc check <-> selfblog) --------------------
 
 

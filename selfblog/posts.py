@@ -12,6 +12,27 @@ from selfdoc_core.utils import parse_frontmatter
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+class PostError(RuntimeError):
+    """A post is invalid, with the coordinates of where it is invalid.
+
+    The message has always named the post; what it could not do was hand
+    those coordinates to a caller.  The check turns one of these into a
+    POST diagnostic, and a diagnostic's ``file`` and ``line`` are read by
+    editors, CI annotations and the JSON output -- none of which parse
+    prose.  So the detection site, which knows the path and sometimes the
+    line, carries both out with it.
+
+    ``path`` is relative to the posts directory, as the post dicts are.
+    ``line`` is the post file's own line number, or None for a defect that
+    sits at no particular line (a missing frontmatter field).
+    """
+
+    def __init__(self, message: str, path: str, line: int | None = None):
+        super().__init__(message)
+        self.path = path
+        self.line = line
+
+
 def discover_posts(
     posts_dir: str,
     manifest_path: str | None = None,
@@ -81,9 +102,10 @@ def discover_posts(
     for post in posts:
         slug = post["slug"]
         if slug in seen_slugs:
-            raise RuntimeError(
+            raise PostError(
                 f"Duplicate slug {slug!r}: used by both "
-                f"{seen_slugs[slug]!r} and {post['path']!r}"
+                f"{seen_slugs[slug]!r} and {post['path']!r}",
+                path=post["path"],
             )
         seen_slugs[slug] = post["path"]
 
@@ -130,17 +152,21 @@ def parse_post(
 
     title = frontmatter.get("title")
     if not title:
-        raise RuntimeError(
-            f"Post {rel_path}: 'title' is required and must be non-empty"
+        raise PostError(
+            f"Post {rel_path}: 'title' is required and must be non-empty",
+            path=rel_path,
         )
 
     date = frontmatter.get("date")
     if not date:
-        raise RuntimeError(f"Post {rel_path}: 'date' is required")
+        raise PostError(
+            f"Post {rel_path}: 'date' is required", path=rel_path,
+        )
     date = str(date)
     if not _DATE_RE.match(date):
-        raise RuntimeError(
-            f"Post {rel_path}: 'date' must be YYYY-MM-DD, got {date!r}"
+        raise PostError(
+            f"Post {rel_path}: 'date' must be YYYY-MM-DD, got {date!r}",
+            path=rel_path,
         )
 
     # -- The directive declaration -------------------------------------------
@@ -154,15 +180,17 @@ def parse_post(
 
     declaration = frontmatter.get("directives")
     if declaration is None:
-        raise RuntimeError(
+        raise PostError(
             f"Post {rel_path}: 'directives' is required and has no default. "
             f"Declare 'directives: true' if the post carries directive "
-            f"markers, or 'directives: false' if it is plain prose."
+            f"markers, or 'directives: false' if it is plain prose.",
+            path=rel_path,
         )
     if not isinstance(declaration, bool):
-        raise RuntimeError(
+        raise PostError(
             f"Post {rel_path}: 'directives' must be true or false, "
-            f"got {declaration!r}."
+            f"got {declaration!r}.",
+            path=rel_path,
         )
 
     if not declaration:
@@ -172,11 +200,12 @@ def parse_post(
         found = find_directive_markers(content)
         if found:
             body_line, marker = found[0]
-            raise RuntimeError(
+            raise PostError(
                 f"Post {rel_path}: declares 'directives: false' but line "
                 f"{body_line + fm_offset} carries the directive marker "
                 f"'{marker}'. Declare 'directives: true' to have it "
-                f"resolved, or remove the marker."
+                f"resolved, or remove the marker.",
+                path=rel_path, line=body_line + fm_offset,
             )
 
     # -- Auto-generate slug if missing --------------------------------------
@@ -190,10 +219,11 @@ def parse_post(
     # -- Slug immutability check --------------------------------------------
 
     if published_slug is not None and published_slug != slug:
-        raise RuntimeError(
+        raise PostError(
             f"Post {rel_path}: slug changed from "
             f"{published_slug!r} to {slug!r}. Slug immutability "
-            f"violation -- slugs cannot change once published."
+            f"violation -- slugs cannot change once published.",
+            path=rel_path,
         )
 
     # -- Inject type and versioned ------------------------------------------
