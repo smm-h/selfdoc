@@ -1,1 +1,0 @@
-(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();
