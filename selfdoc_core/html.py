@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from selfdoc_core.address import page_address
+from selfdoc_core.cv import extract_cv_person
 from selfdoc_core.icons import get_icon
 from selfdoc_core.identity import person_entity
 from selfdoc_core.prose import first_sentence
@@ -2294,6 +2295,9 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             "tutorial": "TechArticle",
             "post": "BlogPosting",
             "changelog": "WebPage",
+            # A CV page is about a person, and the page's own Person entity
+            # is emitted into its body by the cv directive.
+            "cv": "ProfilePage",
         }
         _merged = dict(_default_schema_types)
         if schema_types:
@@ -2411,6 +2415,20 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
         seo_tags += (
             f'\n<script type="application/ld+json">\n'
             f'{json.dumps(person_entity(author, context=True))}'
+            f'\n</script>'
+        )
+
+    # A CV page states a Person of its own: the same declared identity, plus
+    # what the CV knows about it (the job title, the languages, the schools).
+    # The cv directive puts it on the rendered body as an encoded payload,
+    # because a directive resolves before the Markdown converter and anything
+    # legible would be converted; here it becomes the structured data it
+    # always was.
+    cv_person = extract_cv_person(body_html)
+    if cv_person:
+        seo_tags += (
+            f'\n<script type="application/ld+json">\n'
+            f'{cv_person}'
             f'\n</script>'
         )
 

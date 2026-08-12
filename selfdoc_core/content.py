@@ -933,6 +933,34 @@ def _render_endpoint(ep_path: str, method: str, op: dict, spec: dict) -> str:
     return "\n".join(lines)
 
 
+# -- CV directive --------------------------------------------------------------
+
+
+def resolve_cv(attrs: dict, config: dict | None, base_dir: str) -> str:
+    """Render the CV declared at ``path`` as the page's body.
+
+    Every failure is a hard error naming what is wrong: a missing path, a
+    document that is not there, a malformed declaration, or a build with no
+    author to state the Person from.  A CV page that rendered a placeholder
+    would publish a person's record with holes in it.
+    """
+    from selfdoc_core.cv import load_cv, render_cv_page
+
+    path = attrs.get("path", "")
+    if not path:
+        raise RuntimeError(
+            'directive \'cv\' requires path="<file>": the document that '
+            "declares the curriculum vitae, e.g. docs/cv.toml."
+        )
+    full_path = resolve_directive_path(base_dir, path)
+    if not os.path.isfile(full_path):
+        raise RuntimeError(
+            f"directive 'cv': {path!r} is not a file. The CV is declared in a "
+            f"TOML document at that path, relative to the project root."
+        )
+    return render_cv_page(load_cv(full_path), (config or {}).get("author"))
+
+
 # -- Dispatch -----------------------------------------------------------------
 
 CONTENT_DIRECTIVES: set[str] = {
@@ -940,7 +968,7 @@ CONTENT_DIRECTIVES: set[str] = {
     "callout-danger", "callout-important", "list-glossary",
     "list-tree", "table-dep",
     "list-modules", "table-directives",
-    "table-config-schema", "table-endpoint", "var",
+    "table-config-schema", "table-endpoint", "var", "cv",
 }
 
 
@@ -975,6 +1003,8 @@ def resolve_content(
         if config is None:
             return "> *[selfdoc: var requires project config]*"
         return resolve_var(attrs, config, base_dir)
+    if name == "cv":
+        return resolve_cv(attrs, config, base_dir)
 
     # Check directive registry for externally-registered resolvers
     from selfdoc_core import get_directive_registry

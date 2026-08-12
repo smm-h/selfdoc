@@ -7,7 +7,7 @@ nav_order: 9
 
 # Custom Directives
 
-selfdoc's 20 built-in directives cover common patterns like module references and schema tables, but sometimes you need something project-specific. Custom directives let you write a Python script that generates Markdown content at build time, driven by your own logic.
+selfdoc's 21 built-in directives cover common patterns like module references and schema tables, but sometimes you need something project-specific. Custom directives let you write a Python script that generates Markdown content at build time, driven by your own logic.
 
 ## How It Works
 

@@ -36,7 +36,7 @@ def test_real_directives_document_validates():
     assert list(diags) == [], f"directives.toml is not valid: {[d.code for d in diags]}"
     assert root is not None
     # Every shipped core directive is present.
-    assert len(root.directives) == len(catalog.CORE_DIRECTIVES) == 20
+    assert len(root.directives) == len(catalog.CORE_DIRECTIVES) == 21
 
 
 def test_loaded_catalogue_matches_document_order():

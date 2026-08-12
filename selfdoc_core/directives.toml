@@ -171,3 +171,11 @@ category = "content"
 required_attrs = ["key"]
 optional_attrs = []
 example = ':-: var key="project.name"'
+
+[[directives]]
+name = "cv"
+description = "Render a curriculum vitae declared in a TOML document, plus the Person it states"
+category = "content"
+required_attrs = ["path"]
+optional_attrs = []
+example = ':-: cv path="docs/cv.toml"'

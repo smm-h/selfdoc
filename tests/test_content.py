@@ -13,7 +13,7 @@ def test_content_directives_has_all_entries():
         "callout-danger", "callout-important", "list-glossary",
         "list-tree", "table-dep",
         "list-modules", "table-commands", "table-directives",
-        "table-config-schema", "table-endpoint", "var",
+        "table-config-schema", "table-endpoint", "var", "cv",
     }
     assert CONTENT_DIRECTIVES == expected
 

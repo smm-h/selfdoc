@@ -1,6 +1,6 @@
 ---
 title: Directives Guide
-description: "Guide to selfdoc directives: the 6 marker types, all 20 built-in directives with usage examples, and creating custom directives."
+description: "Guide to selfdoc directives: the 6 marker types, all 21 built-in directives with usage examples, and creating custom directives."
 order: 31
 nav_group: "Guides"
 nav_order: 3
@@ -95,7 +95,7 @@ Attributes are parsed into a `dict[str, str]` and passed to the resolver. Each b
 
 ## Built-in Directives
 
-Selfdoc ships with 20 built-in directives in two categories: **code extraction** directives that read source files, and **content** directives that generate content from project metadata or transform body text.
+Selfdoc ships with 21 built-in directives in two categories: **code extraction** directives that read source files, and **content** directives that generate content from project metadata or transform body text.
 
 ### Code Extraction Directives
 
@@ -434,9 +434,44 @@ Supported keys:
 |-----------|----------|-------------|
 | `key` | yes | Metadata key to interpolate |
 
+#### `cv`
+
+Render a curriculum vitae declared as data. The page is a thin host: the whole body comes from a TOML document, so the CV has one source instead of one page and one set of structured data drifting apart.
+
+```markdown
+---
+title: CV
+type: cv
+description: "Curriculum vitae of ..."
+---
+
+:-: cv path="docs/cv.toml"
+```
+
+The document declares eight sections, all required and non-empty -- an absent one would render as a heading over nothing:
+
+| Section | Shape | Holds |
+|---------|-------|-------|
+| `[identity]` | table | `name`, `headline`, `location`, `email`, `summary` (required); `photo`, `updated`, and `[[identity.profile]]` blocks of `label` + `url` |
+| `[[skills]]` | blocks | `category`, `items` |
+| `[[projects]]` | blocks | `name`, plus `notes` and/or `technologies` |
+| `[[interests]]` | blocks | `title`, `body` |
+| `[[education]]` | blocks | `degree`, `years`, `institute`, `location`; optional `institute_url`, `focus`, `thesis`, `course_url` |
+| `[[experience]]` | blocks | `role`, `period`, `company`, `location`; optional `company_url`, `body` |
+| `[[languages]]` | blocks | `name`, `level`; optional `url` |
+| `[contact]` | table | `body` |
+
+Prose fields (`summary`, an interest's `body`, an experience's `body`, `contact.body`) are Markdown and may carry links. Validation is strict in every direction: an unknown key, a missing or empty required field, a repeated skill category or project name, and a `format_version` other than `1` are each a hard error naming the declaration.
+
+The page also emits a `Person`: the site's declared `author` -- name, url, `sameAs` -- carrying what the CV knows on top of it (`jobTitle`, `description`, `email`, `address`, `knowsLanguage`, `alumniOf`, and any profile the author block did not already list). A page whose frontmatter declares `type: cv` is a `ProfilePage` in its own structured data.
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `path` | yes | The TOML document, relative to the project root |
+
 ## Custom Directives
 
-When the 20 built-in directives do not cover your needs, you can write custom directives as Python scripts that generate Markdown content at build time.
+When the 21 built-in directives do not cover your needs, you can write custom directives as Python scripts that generate Markdown content at build time.
 
 ### The resolve Interface
 

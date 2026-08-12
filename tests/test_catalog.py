@@ -107,6 +107,7 @@ EXPECTED_CORE_NAMES = {
     "table-config-schema",
     "table-endpoint",
     "var",
+    "cv",
 }
 
 
@@ -192,6 +193,7 @@ EXPECTED_ATTRS: dict[str, tuple[set[str], set[str]]] = {
     "table-config-schema": (set(), set()),
     "table-endpoint": ({"path"}, {"endpoint", "method"}),
     "var": ({"key"}, set()),
+    "cv": ({"path"}, set()),
 }
 
 

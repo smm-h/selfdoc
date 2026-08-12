@@ -24,7 +24,6 @@ def _make_build_result(**overrides):
         "critical_css": "",
         "config_description": "",
         "base_url": None,
-        "author": {"name": "Test Author", "url": "https://author.example"},
         "feed_url": "",
         "lang": "en",
     }
