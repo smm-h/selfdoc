@@ -183,8 +183,15 @@ _MASKS = (
     # Reference-style link labels and link-reference definitions.
     re.compile(r"\]\[[^\]\n]*\]"),
     re.compile(r"^\s*\[[^\]\n]+\]:\s*\S+", re.MULTILINE),
-    # HTML tags and autolinks.
-    re.compile(r"<[^<>\s]+>"),
+    # HTML tags, comments and autolinks.  A tag's attributes are inside it,
+    # so the pattern has to admit whitespace -- the earlier form stopped at
+    # the first space and let the element name and every attribute value
+    # through as prose.  The opening character still has to look like the
+    # start of a tag (a name, a closing slash, or a `!` declaration), which
+    # keeps a comparison written in prose ("x < y and z > 0") out of it.  A
+    # tag broken across lines is not covered: the scanner is handed one raw
+    # source line at a time, so the columns it reports stay true.
+    re.compile(r"</?[A-Za-z!][^<>]*>"),
     # Bare URLs and mail addresses left loose in prose.
     re.compile(r"\b[a-z][a-z0-9+.-]*://\S+"),
     re.compile(r"\bmailto:\S+"),

@@ -195,6 +195,34 @@ def test_inline_directive_markers_are_not_scanned(vocab):
 
 
 @pytest.mark.parametrize("text", [
+    # The tag that started this: the element name and every attribute name
+    # and value are markup, and none of them is prose anyone can misspell.
+    '<img src="diagram.png" alt="A recieve diagram">\n',
+    '<a href="/x" title="teh title">visible text</a>\n',
+    '<br class="teh" />\n',
+    "<div>\n",
+    "</div>\n",
+    "<!-- teh recieve -->\n",
+])
+def test_html_tags_with_attributes_are_not_scanned(vocab, text):
+    """A tag is markup whether or not it carries attributes.
+
+    The mask used to require a tag with no whitespace in it, so the moment
+    an attribute appeared the whole tag was scanned as prose and the
+    element name and attribute values were reported as misspellings.
+    """
+    assert _words(text, vocab) == []
+
+
+def test_prose_around_an_attribute_bearing_tag_is_still_scanned(vocab):
+    """Masking the tag must not blank the sentence it sits in."""
+    text = 'Before <img src="x.png" alt="ok"> recieve after.\n'
+    found = check_text(text, file="p.md", vocab=vocab, accepted=frozenset())
+    assert [m.word for m in found] == ["recieve"]
+    assert text.split("\n")[0][found[0].column - 1:].startswith("recieve")
+
+
+@pytest.mark.parametrize("text", [
     "See https://example.com/seperate for more.\n",
     "Mail <someone@example.com> about it.\n",
     "A [link](https://example.com/recieve) here.\n",
