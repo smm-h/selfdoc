@@ -84,6 +84,7 @@ __all__ = [
 #: clean" from "never asked".
 CHECKS = (
     "roster-agreement",
+    "home-project",
     "manifest-identity",
     "manifest-pages-emitted",
     "manifest-posts-emitted",
@@ -211,7 +212,7 @@ class AssemblyTree:
     overlay_files: dict[str, dict]
     emitted: set[str]
     pages: list[str]
-    has_portfolio: bool
+    home: str
 
     def read(self, rel: str) -> str:
         with open(os.path.join(self.site_dir, *rel.split("/")),
@@ -258,20 +259,19 @@ def read_tree(assembly_dir: str, canonical_base: str) -> AssemblyTree:
                 manifest_files[stem] = data
 
     emitted = _emitted_paths(site_dir)
+    roster = load_roster(assembly_dir)
     return AssemblyTree(
         assembly_dir=assembly_dir,
         site_dir=site_dir,
         manifests_dir=manifests_dir,
         canonical_base=canonical_base.rstrip("/"),
-        roster=load_roster(assembly_dir),
+        roster=roster,
         manifests=load_assembly_manifests(manifests_dir),
         manifest_files=manifest_files,
         overlay_files=overlay_files,
         emitted=emitted,
         pages=sorted(p for p in emitted if p.endswith(".html")),
-        has_portfolio=os.path.isfile(
-            os.path.join(assembly_dir, "portfolio", "index.html")
-        ),
+        home=roster.home,
     )
 
 
@@ -284,18 +284,24 @@ def check_roster_agreement(tree: AssemblyTree) -> list[Failure]:
         PROJECTS_PATH,
         SITE_RESERVED_DIRS,
         _manifest_owner,
+        home_owned_root_names,
         load_projects_json,
     )
 
     declared = set(tree.roster)
     failures = []
 
+    # The home project's own directories sit at the site root beside the
+    # project subtrees, so they are named here rather than mistaken for
+    # projects nobody declared.
+    home_dirs = home_owned_root_names(tree.manifests_dir, tree.home)
+
     subtrees = set()
     if os.path.isdir(tree.site_dir):
         for name in sorted(os.listdir(tree.site_dir)):
             if not os.path.isdir(os.path.join(tree.site_dir, name)):
                 continue
-            if name in SITE_RESERVED_DIRS:
+            if name in SITE_RESERVED_DIRS or name in home_dirs:
                 continue
             subtrees.add(name)
 
@@ -306,7 +312,9 @@ def check_roster_agreement(tree: AssemblyTree) -> list[Failure]:
             f"declared, never accumulated: add {name!r} to the roster or "
             f"retire it.",
         ))
-    for slug in sorted(declared - subtrees):
+    # The home project has no subtree by definition: the site root is its
+    # subtree. Its own assertions are check_home_project's.
+    for slug in sorted(declared - subtrees - {tree.home}):
         failures.append(Failure(
             "roster-agreement", slug,
             "declared in the roster but has no site/ subtree, so the site "
@@ -340,6 +348,98 @@ def check_roster_agreement(tree: AssemblyTree) -> list[Failure]:
             "roster-agreement", f"{PROJECTS_PATH}:{slug}",
             "a membership record for a project the roster does not declare.",
         ))
+    return failures
+
+
+def check_home_project(tree: AssemblyTree) -> list[Failure]:
+    """The home project is served at the site root, once, and only there.
+
+    Four properties, each a way the front page could quietly stop being the
+    front page:
+
+    * No ``site/<home>/`` subtree.  The home project's content root is the
+      site root, so a subtree under its own slug is residue from before it
+      was named home -- two copies of the same pages, one of them stale and
+      neither one obviously wrong.
+    * No page of its at an address the assembly owns
+      (:func:`~selfblog.assembly.home_collisions`).
+    * Every site-level directive region it emitted is closed and holds
+      something.  An empty region is a front page that lost its listing.
+    * It is absent from the generated listing and from nav: the front page
+      does not list itself.
+    """
+    from selfblog.assembly import home_collisions, home_page_paths
+    from selfblog.sitedirectives import _REGION_RE, find_unclosed_regions
+
+    failures: list[Failure] = []
+    home = tree.home
+    if not home:
+        return failures
+
+    if os.path.isdir(os.path.join(tree.site_dir, home)):
+        failures.append(Failure(
+            "home-project", f"site/{home}",
+            f"is a subtree for the home project, which is served at the site "
+            f"root and has no subtree of its own. It is residue from before "
+            f"{home!r} was named home, and it serves a second, stale copy of "
+            f"every page the site root already serves.",
+        ))
+
+    from selfblog.assembly import home_owned_root_names
+
+    for name in sorted(home_owned_root_names(tree.manifests_dir, home)):
+        if name in tree.roster:
+            failures.append(Failure(
+                "home-project", f"site/{name}",
+                f"is a directory the home project publishes at the site root, "
+                f"and {name!r} is also a declared project's subtree. One of "
+                f"the two would overwrite the other; rename the home "
+                f"project's page.",
+            ))
+
+    published = home_page_paths(tree.manifests_dir, home)
+    for path, why in home_collisions(published):
+        failures.append(Failure(
+            "home-project", f"site/{path}",
+            f"is published by the home project at an address the assembly "
+            f"owns: {why}.",
+        ))
+
+    for rel in published:
+        if rel not in tree.emitted:
+            continue
+        page_html = tree.read(rel)
+        for name in find_unclosed_regions(page_html):
+            failures.append(Failure(
+                "home-project", f"site/{rel}",
+                f"carries a site-level region {name!r} that opens and never "
+                f"closes, so nothing can re-render it.",
+            ))
+        for match in _REGION_RE.finditer(page_html):
+            if not match.group("body").strip():
+                failures.append(Failure(
+                    "home-project", f"site/{rel}",
+                    f"carries an empty site-level region "
+                    f"{match.group('name')!r}: the page was published with a "
+                    f"placeholder where its generated content belongs.",
+                ))
+
+    if "nav.json" in tree.emitted:
+        try:
+            nav = json.loads(tree.read("nav.json"))
+        except json.JSONDecodeError:
+            nav = None
+        if isinstance(nav, dict):
+            listed = {
+                str(p.get("slug") or "") for p in nav.get("projects") or []
+            }
+            if home in listed:
+                failures.append(Failure(
+                    "home-project", "site/nav.json",
+                    f"lists the home project {home!r} among the projects. The "
+                    f"home project is the site root every nav points back "
+                    f"to, not an entry in the project set.",
+                ))
     return failures
 
 
@@ -402,9 +502,10 @@ def check_manifest_pages_emitted(tree: AssemblyTree) -> list[Failure]:
     failures = []
     for manifest in tree.manifests:
         slug = str(manifest.get("slug") or "")
+        is_home = bool(tree.home) and slug == tree.home
         for page in manifest.get("pages") or []:
             path = str(page.get("path") or "")
-            target = target_output_path(page_target(slug, path))
+            target = target_output_path(page_target(slug, path, home=is_home))
             if target not in tree.emitted:
                 failures.append(Failure(
                     "manifest-pages-emitted", f"{slug}:{path}",
@@ -446,10 +547,9 @@ def check_shared_artifacts(tree: AssemblyTree) -> list[Failure]:
             "shared-artifacts", f"site/{rel}", f"does not parse: {exc}",
         ))
 
-    listing = "projects/index.html" if tree.has_portfolio else "index.html"
     required = [
-        ("index.html", "the front page"),
-        (listing, "the project listing"),
+        ("index.html", "the home project's front page"),
+        ("projects/index.html", "the generated project listing"),
         ("blog/index.html", "the blog index"),
         ("robots.txt", "robots.txt"),
         ("404.html", "the root 404 page"),
@@ -595,12 +695,6 @@ def check_page_metadata(tree: AssemblyTree) -> list[Failure]:
                 "declares no rel=canonical. The site is reachable on more "
                 "than one host, so every page names which one is canonical.",
             ))
-            continue
-        if page_rel == "index.html" and tree.has_portfolio:
-            # The front page is the portfolio, served at the site apex on a
-            # host of its own. Its canonical names that apex deliberately,
-            # so it is the one page whose canonical is not under the docs
-            # base -- see generate_shared_files' portfolio_canonical.
             continue
         for href in canonicals:
             if site_relative_path(href, tree.canonical_base) is None:
@@ -957,6 +1051,7 @@ def verify_assembly(
 
     for check, run in (
         ("roster-agreement", check_roster_agreement),
+        ("home-project", check_home_project),
         ("manifest-identity", check_manifest_identity),
         ("manifest-pages-emitted", check_manifest_pages_emitted),
         ("manifest-posts-emitted", check_manifest_posts_emitted),

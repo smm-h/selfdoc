@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 
 from selfblog.shared import POSTS_SEGMENT
 from selfblog.verify import OUTBOUND_CACHE_PATH
@@ -47,7 +48,7 @@ FILES_RECORD_VERSION = 2
 
 # Sidecars under manifests/ that are not project manifests and must not be
 # loaded as one.
-MANIFEST_SIDECAR_SUFFIXES = ("-revisions.json", "-files.json")
+MANIFEST_SIDECAR_SUFFIXES = ("-revisions.json", "-files.json", "-listing.json")
 
 # Directories under site/ that belong to the assembly itself rather than to
 # any project, so membership reconciliation never mistakes one for a slug.
@@ -225,13 +226,19 @@ def render_roster(entries, home: str = "") -> str:
 
 
 def parse_roster(text: str, *, source: str = ROSTER_PATH) -> Roster:
-    """Return slug -> :class:`RosterEntry` for the roster document *text*.
+    """Return the :class:`Roster` the roster document *text* declares.
 
     Validation is strict in every direction: an unknown top-level table, an
     unknown key on a block, a missing or empty required key, a duplicate
     slug, and a slug that collides with one of the assembly's own directories
     are each a hard error naming the offending declaration.  A roster with no
     ``[[project]]`` block at all is legal and means an empty assembly.
+
+    The ``home`` key is required and names a declared slug.  Both failures
+    are hard errors: a missing key because a site needs a front page and no
+    project may be picked for the author by default, and a key naming an
+    undeclared slug because the front page has to be something the assembly
+    actually serves.
     """
     import tomllib
 
@@ -240,12 +247,12 @@ def parse_roster(text: str, *, source: str = ROSTER_PATH) -> Roster:
     except tomllib.TOMLDecodeError as exc:
         raise RuntimeError(f"{source} is not valid TOML: {exc}") from exc
 
-    unknown_tables = sorted(set(data) - {"project"})
+    unknown_tables = sorted(set(data) - set(ROSTER_TOP_LEVEL_KEYS))
     if unknown_tables:
         raise RuntimeError(
             f"{source} declares unknown top-level key(s) "
             f"{', '.join(repr(k) for k in unknown_tables)}. The roster holds "
-            f"nothing but [[project]] blocks."
+            f"nothing but [[project]] blocks and the 'home' key."
         )
 
     raw = data.get("project", [])
@@ -286,11 +293,37 @@ def parse_roster(text: str, *, source: str = ROSTER_PATH) -> Roster:
                 f"already declares."
             )
         entries[slug] = RosterEntry(slug=slug, repo=str(item["repo"]))
-    return entries
+
+    home = data.get("home")
+    if home is None or (isinstance(home, str) and not home.strip()):
+        declared = ", ".join(sorted(entries)) or "(none)"
+        raise RuntimeError(
+            f"{source} declares no home project. Exactly one declared project "
+            f"is the site's front page: its pages are emitted at the site "
+            f"root instead of under site/<slug>/. There is no default -- add "
+            f'a top-level home = "<slug>" naming one of the declared '
+            f"projects. Declared projects: {declared}."
+        )
+    if not isinstance(home, str):
+        raise RuntimeError(
+            f"{source}: home must be a slug string, got {home!r}."
+        )
+    home = home.strip()
+    if home not in entries:
+        declared = ", ".join(sorted(entries)) or "(none)"
+        raise RuntimeError(
+            f"{source} names {home!r} as the home project, but no [[project]] "
+            f"block declares it. The home project is an ordinary declared "
+            f"project that happens to be served at the site root, never a "
+            f"slug the roster does not carry. Declared projects: {declared}."
+        )
+    return Roster(entries, home)
 
 
 def _missing_roster_error(path: str) -> RuntimeError:
-    example = render_roster([RosterEntry("example", "owner/example")])
+    example = render_roster(
+        [RosterEntry("example", "owner/example")], home="example",
+    )
     return RuntimeError(
         f"{path} does not exist, so the assembly declares no membership. "
         f"Membership is a declared list the deploy reconciles to, never "
@@ -300,7 +333,7 @@ def _missing_roster_error(path: str) -> RuntimeError:
     )
 
 
-def load_roster(assembly_dir: str = ".") -> dict[str, RosterEntry]:
+def load_roster(assembly_dir: str = ".") -> Roster:
     """Return the roster declared in *assembly_dir*, or raise if absent."""
     path = os.path.join(assembly_dir, ROSTER_PATH)
     if not os.path.isfile(path):
@@ -436,7 +469,6 @@ def generate_workflow_yaml(
     pages_project: str,
     canonical_base: str,
     legacy_blog_host: str,
-    portfolio_canonical: str,
     pins: ToolchainPins,
 ) -> str:
     """Return a GitHub Actions workflow YAML for assembly deployment.
@@ -459,10 +491,6 @@ def generate_workflow_yaml(
         from ``topology.docs_base``.  Required.
     legacy_blog_host: hostname of a retired blog subdomain, from
         ``topology.legacy_blog_host``.  Empty when none exists.
-    portfolio_canonical: absolute canonical URL of the portfolio page,
-        from ``assembly.portfolio_canonical``.  Empty when the assembly
-        has no portfolio -- the generated step hard-errors if a portfolio
-        file turns up without it.
     pins: the :class:`ToolchainPins` the install step names.  Required and
         complete: this function renders pins, it never resolves them, so
         it reads neither the environment nor the network.
@@ -534,7 +562,6 @@ jobs:
           --scope '${{ github.event.client_payload.scope }}'
           --canonical-base '@@CANONICAL_BASE@@'
           --legacy-blog-host '@@LEGACY_BLOG_HOST@@'
-          --portfolio-canonical '@@PORTFOLIO_CANONICAL@@'
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy site/ --project-name '@@PAGES_PROJECT@@'
@@ -547,8 +574,6 @@ jobs:
         "@@CANONICAL_BASE@@", canonical_base,
     ).replace(
         "@@LEGACY_BLOG_HOST@@", legacy_blog_host,
-    ).replace(
-        "@@PORTFOLIO_CANONICAL@@", portfolio_canonical,
     ).replace(
         "@@SELFBLOG_VERSION@@", pins.selfblog,
     ).replace(
@@ -563,7 +588,6 @@ def assembly_init(
     pages_project: str,
     canonical_base: str,
     legacy_blog_host: str,
-    portfolio_canonical: str,
     pins: ToolchainPins,
 ) -> dict[str, str]:
     """Return a dict mapping filename to file content for a new assembly repo.
@@ -572,14 +596,11 @@ def assembly_init(
     pages_project: Cloudflare Pages project the workflow deploys to.
     canonical_base: absolute canonical base URL of the assembly site.
     legacy_blog_host: retired blog subdomain, or "" when none exists.
-    portfolio_canonical: absolute canonical URL of the portfolio page,
-        or "" when the assembly has no portfolio.
     pins: the toolchain versions the generated workflow installs.
     """
     return {
         WORKFLOW_PATH: generate_workflow_yaml(
-            pages_project, canonical_base, legacy_blog_host,
-            portfolio_canonical, pins,
+            pages_project, canonical_base, legacy_blog_host, pins,
         ),
         ".gitignore": _gitignore_content(),
         ROSTER_PATH: render_roster([]),
@@ -831,6 +852,102 @@ def load_assembly_manifests(manifests_dir: str) -> list[dict]:
     return base_manifests
 
 
+def listing_sidecar_path(manifests_dir: str, home_slug: str) -> str:
+    """Where the assembly keeps the home project's curated listing."""
+    from selfblog.listing import LISTING_SIDECAR_SUFFIX
+
+    return os.path.join(manifests_dir, f"{home_slug}{LISTING_SIDECAR_SUFFIX}")
+
+
+def load_listing_for(manifests_dir: str, home_slug: str):
+    """Return the home project's curated listing, or None when it has none.
+
+    The listing is authored in the home project and copied here by its
+    deploy, so it is absent until that deploy has happened once.  Absent is
+    a real state -- an assembly whose home project has never deployed has no
+    listing to render -- and the generated page says so rather than being
+    written from some other source.
+    """
+    from selfblog.listing import load_listing_sidecar
+
+    if not home_slug:
+        return None
+    path = listing_sidecar_path(manifests_dir, home_slug)
+    return load_listing_sidecar(path) if os.path.isfile(path) else None
+
+
+def home_page_paths(manifests_dir: str, home_slug: str) -> list[str]:
+    """Return every site-relative HTML page the home project published.
+
+    Read from the published-file record rather than guessed from the tree:
+    the home project's pages sit at the site root beside other projects'
+    directories and the generated artifacts, so "which files are the home
+    project's" is a question only its own record answers.
+    """
+    if not home_slug:
+        return []
+    record = load_files_manifest(files_manifest_path(manifests_dir, home_slug))
+    return sorted({
+        path
+        for paths in record.values()
+        for path in paths
+        if path.endswith(".html") and path.split("/")[0] != POSTS_SEGMENT
+    })
+
+
+def home_owned_root_names(manifests_dir: str, home_slug: str) -> set[str]:
+    """Return the top-level names under ``site/`` the home project published.
+
+    The home project's pages are at the site root, so its directories sit
+    beside the other projects' subtrees.  Membership reconciliation and the
+    roster check both walk those directories looking for projects, and
+    without this they would read the home project's ``cv/`` as an
+    undeclared project and delete it.
+    """
+    if not home_slug:
+        return set()
+    record = load_files_manifest(files_manifest_path(manifests_dir, home_slug))
+    return {
+        path.split("/")[0]
+        for paths in record.values()
+        for path in paths
+        if "/" in path and path.split("/")[0] != POSTS_SEGMENT
+    }
+
+
+def refresh_home_pages(site_dir: str, manifests_dir: str, manifests,
+                       docs_base: str, *, home_slug: str, listing) -> list[str]:
+    """Re-render every site-level directive region the home project emitted.
+
+    This is the second of the two moments a site-level directive resolves
+    (the first is the home project's own build).  It runs on every deploy,
+    including deploys of other projects, which is the point: the front
+    page's curated cards carry each project's live version, and a version
+    changes when *that* project releases, not when the home project does.
+    """
+    from selfblog.sitedirectives import SiteContext, refresh_regions
+    from selfdoc_core.utils import atomic_write
+
+    written: list[str] = []
+    if not home_slug:
+        return written
+    context = SiteContext(
+        manifests=manifests, docs_base=docs_base, listing=listing,
+        home_slug=home_slug,
+    )
+    for rel in home_page_paths(manifests_dir, home_slug):
+        path = os.path.join(site_dir, *rel.split("/"))
+        if not os.path.isfile(path):
+            continue
+        with open(path, "r", encoding="utf-8") as f:
+            page_html = f.read()
+        refreshed = refresh_regions(page_html, context, source=f"site/{rel}")
+        if refreshed != page_html:
+            atomic_write(path, refreshed)
+        written.append(path)
+    return written
+
+
 def generate_shared_files(
     site_dir: str,
     manifests_dir: str,
@@ -838,26 +955,34 @@ def generate_shared_files(
     *,
     docs_base: str = "",
     legacy_blog_host: str = "",
-    portfolio_file: str = "",
-    portfolio_canonical: str = "",
+    home_slug: str = "",
 ) -> list[str]:
     """Write the assembly's shared cross-project files and return their paths.
 
-    The 9 files are the project listing (or portfolio + listing when a
-    portfolio file is supplied), the blog index, ``nav.json``,
-    ``feed.xml``, ``sitemap.xml``, ``robots.txt``, ``404.html``,
-    ``_headers`` and ``_worker.js``.
+    The files are the project listing at ``projects/index.html``, the blog
+    index at ``blog/index.html``, ``nav.json``, ``feed.xml``,
+    ``sitemap.xml``, ``robots.txt``, ``404.html``, ``_headers`` and
+    ``_worker.js``.  Both generated pages sit at fixed, generator-owned
+    addresses; the site root belongs to the home project, whose own pages
+    are grafted there and are never written by this function.
 
     ``robots.txt`` and ``404.html`` are the site's, not any project's:
     every constituent build writes its own pair at its own output root,
     where they end up buried under ``<slug>/`` and serve nobody.
+
+    *home_slug* is the roster's home project.  It is left out of the
+    generated listing and out of nav -- the front page does not list itself
+    -- and its pages are addressed from the site root.  Every site-level
+    directive region in its emitted pages is re-rendered here, on every
+    deploy, so a version badge on the front page is as current as the last
+    deploy of the project it names rather than as the last deploy of the
+    home project.
 
     Raises ValueError when a required input is missing -- the CLI turns
     those into a usage error, the integrate command lets them abort the
     deploy.
     """
     from selfblog.shared import (
-        _ensure_canonical,
         generate_blog_index,
         generate_homepage,
         generate_nav_json,
@@ -882,12 +1007,15 @@ def generate_shared_files(
     docs_base = docs_base.rstrip("/")
 
     manifests = load_assembly_manifests(manifests_dir)
+    listing = load_listing_for(manifests_dir, home_slug)
 
-    homepage_fragment = generate_homepage(manifests, docs_base)
+    homepage_fragment = generate_homepage(
+        manifests, docs_base, home_slug=home_slug, listing=listing,
+    )
     blog_fragment = generate_blog_index(manifests, docs_base)
-    nav_json = generate_nav_json(manifests)
+    nav_json = generate_nav_json(manifests, home_slug=home_slug)
     feed_xml = generate_unified_feed(manifests, docs_base)
-    sitemap_xml = generate_sitemap(manifests, docs_base)
+    sitemap_xml = generate_sitemap(manifests, docs_base, home_slug=home_slug)
 
     blog_html = wrap_shared_page(
         "Blog", blog_fragment, canonical_url=f"{canonical_base}/blog/",
@@ -902,43 +1030,20 @@ def generate_shared_files(
 
     written: list[str] = []
 
-    # When a portfolio file is provided, it becomes the root index.html
-    # and the project listing moves to /projects/index.html
-    if portfolio_file and os.path.isfile(portfolio_file):
-        if not portfolio_canonical:
-            raise ValueError(
-                "portfolio_canonical is required when a portfolio file is "
-                "supplied (set assembly.portfolio_canonical in selfdoc.json "
-                "and regenerate the assembly workflow). The portfolio is the "
-                "site apex, not a docs page, so it has no default canonical."
-            )
-        with open(portfolio_file, "r", encoding="utf-8") as f:
-            portfolio_html = f.read()
-        try:
-            portfolio_html = _ensure_canonical(portfolio_html, portfolio_canonical)
-        except ValueError as exc:
-            raise ValueError(f"{portfolio_file}: {exc}") from exc
-        index_path = os.path.join(site_dir, "index.html")
-        effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
-        atomic_write(index_path, portfolio_html)
-        written.append(index_path)
+    effects.makedirs(site_dir, exist_ok=True)
+    projects_dir = os.path.join(site_dir, "projects")
+    effects.makedirs(projects_dir, exist_ok=True)
+    projects_path = os.path.join(projects_dir, "index.html")
+    atomic_write(projects_path, wrap_shared_page(
+        "Projects", homepage_fragment,
+        canonical_url=f"{canonical_base}/projects/",
+    ))
+    written.append(projects_path)
 
-        projects_dir = os.path.join(site_dir, "projects")
-        effects.makedirs(projects_dir, exist_ok=True)
-        projects_path = os.path.join(projects_dir, "index.html")
-        atomic_write(projects_path, wrap_shared_page(
-            "Projects", homepage_fragment,
-            canonical_url=f"{canonical_base}/projects/",
-        ))
-        written.append(projects_path)
-    else:
-        index_path = os.path.join(site_dir, "index.html")
-        effects.makedirs(os.path.dirname(index_path) or site_dir, exist_ok=True)
-        atomic_write(index_path, wrap_shared_page(
-            "Projects", homepage_fragment,
-            canonical_url=f"{canonical_base}/",
-        ))
-        written.append(index_path)
+    written.extend(refresh_home_pages(
+        site_dir, manifests_dir, manifests, docs_base,
+        home_slug=home_slug, listing=listing,
+    ))
 
     blog_dir = os.path.join(site_dir, "blog")
     effects.makedirs(blog_dir, exist_ok=True)
@@ -1250,7 +1355,74 @@ def prune_plan(
     return removed, updated
 
 
-def split_build_output(build_rels, slug: str) -> dict[str, str]:
+#: Directory names at the site root the generator owns.  A home project page
+#: emitting into one of them would be overwritten by, or would overwrite, the
+#: assembly's own listing, blog or archive space.
+HOME_RESERVED_DIRS = ("blog", "projects", "v", "pagefind")
+
+#: Files at the site root the assembly generates for the whole site on every
+#: deploy.  A project's own build writes its own copy of each at its own
+#: output root, for its own standalone hosting; for a project under
+#: ``site/<slug>/`` those copies are buried and harmless, and for the home
+#: project they would land exactly on top of the site-wide ones.  They are
+#: dropped from the home graft, the same treatment
+#: :func:`prune_deploy_artifacts` gives every other project's routing files.
+#: ``index.html`` is deliberately absent: the home project's front page is
+#: exactly what belongs at the site root.
+HOME_DROPPED_ARTIFACTS = (
+    "sitemap.xml",
+    "sitemap-index.xml",
+    "robots.txt",
+    "404.html",
+    "feed.xml",
+    "llms.txt",
+    "llms-full.txt",
+    "nav.json",
+    *DEPLOY_ARTIFACT_NAMES,
+)
+
+
+def home_collisions(site_rels) -> list[tuple[str, str]]:
+    """Return ``(path, what it collides with)`` for every reserved address.
+
+    The home project emits at the site root, where the assembly's own
+    generated pages live.  A page called ``projects.md`` builds to
+    ``projects/index.html``, which is the generated project listing's
+    address; one of the two would silently win.  Neither does: the collision
+    is refused, at the graft and again at verification.
+
+    Only the reserved directories can be refused this way, and they are the
+    whole rule: a name in :data:`HOME_DROPPED_ARTIFACTS` never reaches a
+    graft to be checked, because every selfdoc build writes those for its
+    own standalone hosting and the assembly writes the ones the site serves.
+    """
+    found: list[tuple[str, str]] = []
+    for rel in sorted(set(site_rels)):
+        head = rel.split("/")[0]
+        if head in HOME_RESERVED_DIRS:
+            found.append((
+                rel,
+                f"{head}/ is the assembly's own directory "
+                f"({', '.join(HOME_RESERVED_DIRS)} are reserved)",
+            ))
+    return found
+
+
+def check_home_collisions(site_rels, *, slug: str) -> None:
+    """Raise when the home project claims an address the assembly owns."""
+    found = home_collisions(site_rels)
+    if not found:
+        return
+    detail = "; ".join(f"site/{path} -- {why}" for path, why in found)
+    raise RuntimeError(
+        f"the home project {slug!r} emits {len(found)} file(s) at addresses "
+        f"the assembly owns: {detail}. The home project's content root is "
+        f"the site root, so it shares that namespace with the generated "
+        f"listing, blog, archives and site-wide artifacts. Rename the page."
+    )
+
+
+def split_build_output(build_rels, slug: str, *, home: bool = False) -> dict[str, str]:
     """Map each file a build produced to where the assembly serves it.
 
     A project's build output lands in two places, and this is the rule that
@@ -1269,6 +1441,15 @@ def split_build_output(build_rels, slug: str) -> dict[str, str]:
     * Everything else is the project's documentation, and lands under its
       own subtree at ``site/<slug>/...``.
 
+    *home* is the one project the roster names ``home``.  Its documentation
+    is not filed under a slug at all: the site root **is** its content root,
+    so ``index.html`` lands at ``site/index.html`` and ``cv/index.html`` at
+    ``site/cv/index.html``, beside the generated ``blog/`` and ``projects/``.
+    Its posts follow the same site-level rule as everybody else's, and the
+    site-wide artifacts its own build wrote for standalone hosting
+    (:data:`HOME_DROPPED_ARTIFACTS`, plus every compressed variant) are left
+    behind -- the assembly writes the ones the site serves.
+
     Returns build-relative path -> site-relative path, with the skipped
     standalone blog index simply absent.
     """
@@ -1277,6 +1458,12 @@ def split_build_output(build_rels, slug: str) -> dict[str, str]:
         segments = rel.split("/")
         if segments[0] == POSTS_SEGMENT:
             if len(segments) < 3:
+                continue
+            mapping[rel] = rel
+        elif home:
+            if rel in HOME_DROPPED_ARTIFACTS:
+                continue
+            if rel.endswith(DEPLOY_ARTIFACT_SUFFIXES):
                 continue
             mapping[rel] = rel
         else:
@@ -1607,10 +1794,25 @@ def _run_step(argv, *, cwd, step, timeout, resource=None, grant=None,
     return result
 
 
-def build_source_project(source_dir: str, scope: str) -> list[str]:
-    """Build the cloned source project and return the argv that was run."""
+def build_source_project(source_dir: str, scope: str, *, home: bool = False,
+                         manifests_dir: str = "",
+                         docs_base: str = "") -> list[str]:
+    """Build the cloned source project and return the argv that was run.
+
+    The home project builds through ``selfblog build --target home``, which
+    is the one build that can resolve a site-level directive: its front page
+    renders the curated listing with every project's live version, and the
+    manifests those versions come from are the assembly's, not its own.
+    """
     if scope == "posts":
         argv = ["selfblog", "build", "--target", "posts", "--no-auto-commit"]
+    elif home:
+        argv = [
+            "selfblog", "build", "--target", "home",
+            "--site-manifests", os.path.abspath(manifests_dir),
+            "--docs-base", docs_base,
+            "--no-auto-commit",
+        ]
     else:
         argv = ["selfdoc", "build", "--no-auto-commit"]
         latest = detect_latest_version(source_dir)
@@ -1624,7 +1826,7 @@ def build_source_project(source_dir: str, scope: str) -> list[str]:
 
 
 def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
-                        scope: str) -> list[str]:
+                        scope: str, *, home: bool = False) -> list[str]:
     """Graft a built project into the assembly tree; return changed paths.
 
     The graft prunes rather than wipes: what the build produces is what the
@@ -1637,6 +1839,11 @@ def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
     The build's output lands in two places, by the rule
     :func:`split_build_output` states: the project's documentation under
     ``site/<slug>/``, its posts at the site level under ``site/blog/``.
+
+    *home* routes the documentation to the site root instead, which is the
+    whole of what being the home project changes about a graft.  Its output
+    is checked against the addresses the assembly owns first, and its
+    curated listing is copied in beside the manifests.
     """
     build_root = os.path.join(source_dir, "docs", "_build")
     site_dir = os.path.join(assembly_dir, "site")
@@ -1662,7 +1869,13 @@ def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
         src_manifest = os.path.join(source_dir, ".selfdoc", "manifest.json")
         dest_manifest = os.path.join(manifests_dir, f"{slug}.json")
 
-    produced = split_build_output(outputs, slug)
+    produced = split_build_output(outputs, slug, home=home)
+    if home:
+        check_home_collisions(
+            [rel for rel in produced.values()
+             if rel.split("/")[0] != POSTS_SEGMENT],
+            slug=slug,
+        )
 
     if scope == "posts" and not produced:
         # A build that produced no posts is not an instruction to unpublish
@@ -1695,10 +1908,13 @@ def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
     # An artifact already in the tree from an older deploy is removed on
     # sight: the assembly serves one set of headers, redirects and worker for
     # the whole site, and a project's own copies fight them wherever they sit.
-    prune_deploy_artifacts(site_slug_dir)
-    prune_empty_dirs(site_slug_dir)
+    # The home project has no subtree of its own to sweep -- its output was
+    # filtered on the way in, by split_build_output.
+    if not home:
+        prune_deploy_artifacts(site_slug_dir)
+        prune_empty_dirs(site_slug_dir)
     prune_empty_dirs(os.path.join(site_dir, POSTS_SEGMENT))
-    touched.append(site_slug_dir)
+    touched.append(site_dir if home else site_slug_dir)
     if any(rel.split("/")[0] == POSTS_SEGMENT for rel in produced.values()):
         touched.append(os.path.join(site_dir, POSTS_SEGMENT))
 
@@ -1709,11 +1925,44 @@ def apply_project_files(assembly_dir: str, source_dir: str, slug: str,
         effects.copy_file(src_manifest, dest_manifest)
         touched.append(dest_manifest)
 
+    if home and scope != "posts":
+        sidecar = copy_home_listing(assembly_dir, source_dir, slug)
+        if sidecar:
+            touched.append(sidecar)
+
     if owner == "release":
         overlay = fold_posts_into_overlay(manifests_dir, slug, src_manifest)
         if overlay:
             touched.append(overlay)
     return touched
+
+
+def copy_home_listing(assembly_dir: str, source_dir: str, slug: str) -> str:
+    """Copy the home project's curated listing into the assembly.
+
+    The listing is authored in the home project (``docs/projects.toml``)
+    because it is content, and it is copied here because both renderings of
+    it -- the front page's cards and the generated ``/projects/`` page --
+    are produced on every deploy, including deploys the home project has
+    nothing to do with.
+
+    A home project that declares no listing is a real state and leaves no
+    sidecar; a malformed one is a hard error naming the file, raised here
+    rather than at the far end where the document is no longer in reach.
+    Returns the sidecar's path, or "" when there was nothing to copy.
+    """
+    from selfblog.listing import (
+        LISTING_SOURCE, load_listing_source, render_listing_sidecar,
+    )
+
+    source = os.path.join(source_dir, *LISTING_SOURCE.split("/"))
+    if not os.path.isfile(source):
+        return ""
+    listing = load_listing_source(source)
+    manifests_dir = os.path.join(assembly_dir, "manifests")
+    path = listing_sidecar_path(manifests_dir, slug)
+    effects.write_text(path, render_listing_sidecar(listing, slug))
+    return path
 
 
 def fold_posts_into_overlay(manifests_dir: str, slug: str,
@@ -1800,7 +2049,6 @@ def integrate_project(
     assembly_dir: str = ".",
     source_dir: str = "",
     legacy_blog_host: str = "",
-    portfolio_canonical: str = "",
     branch: str = "main",
     attempts: int = 3,
     retry_delay: float = 5.0,
@@ -1836,7 +2084,6 @@ def integrate_project(
     site_dir = os.path.join(assembly_dir, "site")
     manifests_dir = os.path.join(assembly_dir, "manifests")
     projects_json = os.path.join(assembly_dir, PROJECTS_PATH)
-    portfolio_file = os.path.join(assembly_dir, "portfolio", "index.html")
 
     summary = {
         "scope": scope,
@@ -1849,8 +2096,19 @@ def integrate_project(
         "committed": False,
     }
 
+    # The roster is read here as well as inside the loop, for one fact the
+    # build itself needs: whether this slug is the home project, which
+    # decides both how it is built and where its output lands. The reading
+    # inside the loop stays authoritative -- it happens after the re-sync,
+    # so a retirement or a change of home landed by another deploy is
+    # honoured there.
+    is_home = slug != "" and slug == load_roster(assembly_dir).home
+
     if scope != "shared-only" and build:
-        build_source_project(source_dir, scope)
+        build_source_project(
+            source_dir, scope, home=is_home,
+            manifests_dir=manifests_dir, docs_base=canonical_base,
+        )
 
     last_push_error = ""
     for attempt in range(1, attempts + 1):
@@ -1884,6 +2142,7 @@ def integrate_project(
         if scope != "shared-only":
             summary["touched"] = apply_project_files(
                 assembly_dir, source_dir, slug, scope,
+                home=slug == roster.home,
             )
             record_membership(
                 projects_json, roster, slug, source_repo, ref, version,
@@ -1893,8 +2152,7 @@ def integrate_project(
             site_dir, manifests_dir, canonical_base,
             docs_base=canonical_base,
             legacy_blog_host=legacy_blog_host,
-            portfolio_file=portfolio_file if os.path.isfile(portfolio_file) else "",
-            portfolio_canonical=portfolio_canonical,
+            home_slug=roster.home,
         )
 
         index_site(site_dir)
@@ -2360,7 +2618,7 @@ def fetch_remote_text(repo: str, path: str, *, missing_ok: bool = False,
         ) from exc
 
 
-def load_remote_roster(repo: str) -> dict[str, RosterEntry]:
+def load_remote_roster(repo: str) -> Roster:
     """Return the roster declared on the assembly repository *repo*.
 
     An absent roster is its own error naming the block that has to exist; a
@@ -2423,6 +2681,15 @@ def retire_project(repo: str, slug: str, *, branch: str = "main") -> dict:
             f"is nothing to retire. Declared projects: {declared}."
         )
 
+    if slug == roster.home:
+        raise RuntimeError(
+            f"{slug!r} is the home project: {ROSTER_PATH} on {repo} names it "
+            f"home, so it is the site's front page and every page it serves "
+            f"is at the site root. Retiring it would leave the site with no "
+            f"front page. Name another declared project home first, then "
+            f"retire this one."
+        )
+
     remaining = [entry for name, entry in roster.items() if name != slug]
     record_path = f"manifests/{slug}-files.json"
     # A project that published nothing outside its subtree has no record, and
@@ -2444,7 +2711,9 @@ def retire_project(repo: str, slug: str, *, branch: str = "main") -> dict:
     }
     deleted = project_paths(list_remote_paths(repo, branch), slug, claimed)
 
-    files: dict[str, str | bytes] = {ROSTER_PATH: render_roster(remaining)}
+    files: dict[str, str | bytes] = {
+        ROSTER_PATH: render_roster(remaining, home=roster.home),
+    }
 
     # No membership record yet is a real state; a failed read is not, and
     # would silently leave the retired project's entry behind.

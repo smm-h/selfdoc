@@ -275,7 +275,7 @@ def test_the_overlay_still_replaces_the_base_post_list_when_read(assembly_tree):
 def test_the_published_file_record_is_not_read_as_a_manifest(assembly_tree):
     """`<slug>-files.json` lives under manifests/ but is not one."""
     slugs = [m["slug"] for m in load_assembly_manifests(str(assembly_tree / "manifests"))]
-    assert sorted(slugs) == ["alpha", "beta"]
+    assert sorted(slugs) == ["alpha", "beta", "home"]
 
 
 # -- the roster ---------------------------------------------------------------
@@ -283,18 +283,36 @@ def test_the_published_file_record_is_not_read_as_a_manifest(assembly_tree):
 
 def test_a_rendered_roster_round_trips():
     entries = [RosterEntry("alpha", "owner/alpha"), RosterEntry("beta", "owner/beta")]
-    assert parse_roster(render_roster(entries)) == {
-        "alpha": entries[0], "beta": entries[1],
-    }
+    roster = parse_roster(render_roster(entries, home="alpha"))
+    assert dict(roster) == {"alpha": entries[0], "beta": entries[1]}
+    assert roster.home == "alpha"
 
 
-def test_an_empty_roster_is_legal_and_declares_nobody():
-    assert parse_roster(render_roster([])) == {}
+def test_a_roster_with_no_home_is_refused():
+    """A site needs a front page, and no project is picked by default."""
+    entries = [RosterEntry("alpha", "owner/alpha")]
+    with pytest.raises(RuntimeError, match="declares no home project"):
+        parse_roster(render_roster(entries))
+
+
+def test_a_home_naming_an_undeclared_slug_is_refused():
+    with pytest.raises(RuntimeError, match="no \\[\\[project\\]\\] block declares it"):
+        parse_roster(
+            'home = "ghost"\n[[project]]\nslug = "a"\nrepo = "o/a"\n'
+        )
+
+
+def test_an_empty_roster_declares_nobody_and_is_therefore_homeless():
+    """An assembly with no projects cannot name one of them home."""
+    with pytest.raises(RuntimeError, match="declares no home project"):
+        parse_roster(render_roster([]))
 
 
 def test_an_unknown_key_on_a_block_is_a_hard_error():
     with pytest.raises(RuntimeError, match="unknown key"):
-        parse_roster('[[project]]\nslug = "a"\nrepo = "o/a"\nrfe = "typo"\n')
+        parse_roster(
+            'home = "a"\n[[project]]\nslug = "a"\nrepo = "o/a"\nrfe = "typo"\n'
+        )
 
 
 def test_an_unknown_top_level_key_is_a_hard_error():
@@ -304,17 +322,18 @@ def test_an_unknown_top_level_key_is_a_hard_error():
 
 def test_a_block_missing_a_required_key_is_a_hard_error():
     with pytest.raises(RuntimeError, match="missing repo"):
-        parse_roster('[[project]]\nslug = "a"\n')
+        parse_roster('home = "a"\n[[project]]\nslug = "a"\n')
 
 
 def test_an_empty_required_value_is_a_hard_error():
     with pytest.raises(RuntimeError, match="missing repo"):
-        parse_roster('[[project]]\nslug = "a"\nrepo = ""\n')
+        parse_roster('home = "a"\n[[project]]\nslug = "a"\nrepo = ""\n')
 
 
 def test_a_duplicate_slug_is_a_hard_error():
     with pytest.raises(RuntimeError, match="repeats the slug"):
         parse_roster(
+            'home = "a"\n'
             '[[project]]\nslug = "a"\nrepo = "o/a"\n'
             '[[project]]\nslug = "a"\nrepo = "o/b"\n'
         )
@@ -322,7 +341,7 @@ def test_a_duplicate_slug_is_a_hard_error():
 
 def test_a_slug_colliding_with_an_assembly_directory_is_a_hard_error():
     with pytest.raises(RuntimeError, match="assembly's own directories"):
-        parse_roster('[[project]]\nslug = "blog"\nrepo = "o/blog"\n')
+        parse_roster('home = "blog"\n[[project]]\nslug = "blog"\nrepo = "o/blog"\n')
 
 
 def test_invalid_toml_is_a_hard_error():
@@ -339,11 +358,16 @@ def test_the_assembly_scaffold_ships_a_roster():
     from selfblog.assembly import ROSTER_PATH, ToolchainPins, assembly_init
 
     files = assembly_init(
-        "owner/assembly", "pages", "https://docs.example.com", "", "",
+        "owner/assembly", "pages", "https://docs.example.com", "",
         ToolchainPins(selfblog="1", selfdoc="2", pagefind="3"),
     )
     assert ROSTER_PATH in files
-    assert parse_roster(files[ROSTER_PATH]) == {}
+    # The scaffolded roster names no home: a fresh assembly declares no
+    # projects, so there is nothing to name, and reading it says exactly
+    # that rather than picking one.
+    assert 'home = "<slug>"' in files[ROSTER_PATH]
+    with pytest.raises(RuntimeError, match="declares no home project"):
+        parse_roster(files[ROSTER_PATH])
 
 
 # -- reconciliation -----------------------------------------------------------
@@ -368,12 +392,20 @@ def test_an_undeclared_project_loses_every_manifest_kind(assembly_tree):
 
 
 def test_an_undeclared_project_loses_its_membership_record(assembly_tree):
-    reconcile_membership(str(assembly_tree), {"alpha": ROSTER["alpha"]})
-    assert list(_read_json(str(assembly_tree / "projects.json"))) == ["alpha"]
+    reconcile_membership(
+        str(assembly_tree),
+        {"alpha": ROSTER["alpha"], "home": ROSTER["home"]},
+    )
+    assert list(_read_json(str(assembly_tree / "projects.json"))) == [
+        "alpha", "home",
+    ]
 
 
 def test_reconciliation_reports_what_it_retired(assembly_tree):
-    summary = reconcile_membership(str(assembly_tree), {"alpha": ROSTER["alpha"]})
+    summary = reconcile_membership(
+        str(assembly_tree),
+        {"alpha": ROSTER["alpha"], "home": ROSTER["home"]},
+    )
     assert summary["retired"] == ["beta"]
     assert any("site" in path and path.endswith("beta") for path in summary["removed"])
 
@@ -420,16 +452,18 @@ def test_an_integrate_removes_every_trace_of_a_project_left_off_the_roster(
     assembly_tree, runner,
 ):
     _write(str(assembly_tree / "roster.toml"),
-           render_roster([ROSTER["alpha"]]))
+           render_roster([ROSTER["alpha"], ROSTER["home"]], home="home"))
     _integrate(assembly_tree)
     assert not (assembly_tree / "site" / "beta").exists()
     assert not (assembly_tree / "manifests" / "beta.json").exists()
-    assert list(_read_json(str(assembly_tree / "projects.json"))) == ["alpha"]
+    assert list(_read_json(str(assembly_tree / "projects.json"))) == [
+        "alpha", "home",
+    ]
 
 
 def test_a_retired_project_loses_its_listing_row(assembly_tree, runner):
     _write(str(assembly_tree / "roster.toml"),
-           render_roster([ROSTER["alpha"]]))
+           render_roster([ROSTER["alpha"], ROSTER["home"]], home="home"))
     _integrate(assembly_tree)
     nav = _read_json(str(assembly_tree / "site" / "nav.json"))
     assert [p["slug"] for p in nav["projects"]] == ["alpha"]
@@ -440,7 +474,7 @@ def test_a_retired_project_loses_its_listing_row(assembly_tree, runner):
 def test_a_retired_project_is_reindexed_out(assembly_tree, runner):
     _write(str(assembly_tree / "site" / "pagefind" / "pagefind.js"), "// index")
     _write(str(assembly_tree / "roster.toml"),
-           render_roster([ROSTER["alpha"]]))
+           render_roster([ROSTER["alpha"], ROSTER["home"]], home="home"))
     _integrate(assembly_tree)
     pagefind = [c for c in runner.calls if "pagefind" in " ".join(c)]
     assert pagefind, "the index has to be rebuilt after a retirement"
@@ -449,14 +483,14 @@ def test_a_retired_project_is_reindexed_out(assembly_tree, runner):
 def test_a_shared_only_dispatch_reconciles_too(assembly_tree, runner):
     """Retirement lands through the shared-only pass `assembly retire` fires."""
     _write(str(assembly_tree / "roster.toml"),
-           render_roster([ROSTER["alpha"]]))
+           render_roster([ROSTER["alpha"], ROSTER["home"]], home="home"))
     _integrate(assembly_tree, scope="shared-only", slug="")
     assert not (assembly_tree / "site" / "beta").exists()
 
 
 def test_an_integrate_of_an_undeclared_project_is_a_hard_error(assembly_tree, runner):
     _write(str(assembly_tree / "roster.toml"),
-           render_roster([ROSTER["beta"]]))
+           render_roster([ROSTER["beta"], ROSTER["home"]], home="home"))
     with pytest.raises(RuntimeError, match="not declared in roster.toml"):
         _integrate(assembly_tree)
 
@@ -470,7 +504,7 @@ def test_an_integrate_without_a_roster_is_a_hard_error(assembly_tree, runner):
 def test_an_undeclared_project_is_not_deleted_before_the_refusal(assembly_tree, runner):
     """The refusal comes first, so a mis-typed dispatch destroys nothing."""
     _write(str(assembly_tree / "roster.toml"),
-           render_roster([ROSTER["beta"]]))
+           render_roster([ROSTER["beta"], ROSTER["home"]], home="home"))
     with pytest.raises(RuntimeError):
         _integrate(assembly_tree)
     assert (assembly_tree / "site" / "alpha" / "index.html").exists()

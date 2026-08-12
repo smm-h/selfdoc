@@ -29,9 +29,13 @@ from selfblog.assembly import (
 CANONICAL_BASE = "https://docs.example.com"
 
 ROSTER = {
+    # Every assembly declares exactly one home project: the one served at
+    # the site root. It is an ordinary declared project in every other way.
+    "home": RosterEntry("home", "owner/home"),
     "alpha": RosterEntry("alpha", "owner/alpha"),
     "beta": RosterEntry("beta", "owner/beta"),
 }
+HOME = "home"
 
 
 def _write(path, content):
@@ -100,6 +104,9 @@ def assembly_tree(tmp_path):
            _page("Old", "blog/old-post/", marker="old post"))
     _write(str(root / "site" / "beta" / "index.html"),
            _page("Beta", "beta/", marker="beta", version="2.0.0"))
+    # The home project's front page, at the site root under no slug.
+    _write(str(root / "site" / "index.html"),
+           _page("Front page", "", marker="home"))
 
     # Manifests, including a stale posts overlay for alpha.
     _write(str(root / "manifests" / "alpha.json"),
@@ -110,13 +117,20 @@ def assembly_tree(tmp_path):
                                         "date": "2024-01-01"}])))
     _write(str(root / "manifests" / "beta.json"),
            json.dumps(_manifest("beta", "Beta", "2.0.0")))
+    _write(str(root / "manifests" / "home.json"),
+           json.dumps(_manifest("home", "Home", "0.1.0")))
+    _write(str(root / "manifests" / "home-files.json"), json.dumps({
+        "schema_version": 2, "slug": "home",
+        "owners": {"release": ["index.html"]},
+    }))
 
     # Membership file with both projects, and the roster that declares them.
     _write(str(root / "projects.json"), json.dumps({
+        "home": {"repo": "owner/home", "ref": "v0.1.0", "version": "0.1.0"},
         "alpha": {"repo": "owner/alpha", "ref": "v0.9.0", "version": "0.9.0"},
         "beta": {"repo": "owner/beta", "ref": "v2.0.0", "version": "2.0.0"},
     }, indent=2) + "\n")
-    _write(str(root / "roster.toml"), render_roster(ROSTER.values()))
+    _write(str(root / "roster.toml"), render_roster(ROSTER.values(), home=HOME))
 
     # What the last release published for alpha, which is what a prune is
     # entitled to remove. Every path is site-relative, and the out-of-band
@@ -182,8 +196,21 @@ class RunRecorder:
         argv = [str(a) for a in argv]
         self.calls.append(argv)
         if "pagefind" in argv and "--site" in argv:
+            # What a real pagefind pass leaves: the runtime, the entry the
+            # runtime fetches to find its index, and a fragment per indexed
+            # page. Verification asserts the last two, so a stub that wrote
+            # only the runtime would stand in for an index that answers
+            # nothing.
             site = argv[argv.index("--site") + 1]
             _write(os.path.join(site, "pagefind", "pagefind.js"), "// index")
+            _write(os.path.join(site, "pagefind", "pagefind-entry.json"),
+                   json.dumps({
+                       "version": "1.3.0",
+                       "languages": {"en": {"hash": "en_abc", "wasm": "en",
+                                            "page_count": 3}},
+                   }))
+            _write(os.path.join(site, "pagefind", "fragment",
+                                "en_abc.pf_fragment"), "fragment")
         returncode = 0
         if argv[:2] == ["git", "push"]:
             self.pushes += 1
@@ -461,7 +488,12 @@ def test_full_integrate_regenerates_the_shared_files(assembly_tree, runner):
     summary = _integrate(assembly_tree, build=False)
     names = {os.path.relpath(p, str(assembly_tree / "site")) for p in summary["shared"]}
     assert names == {
-        "index.html", os.path.join("blog", "index.html"), "nav.json",
+        # The listing at its fixed address, the home project's front page
+        # re-rendered in place, and the rest of the site-wide artifacts.
+        # There is no generated root index.html: the site root is the home
+        # project's page.
+        os.path.join("projects", "index.html"), "index.html",
+        os.path.join("blog", "index.html"), "nav.json",
         "feed.xml", "sitemap.xml", "robots.txt", "404.html", "_headers",
         "_worker.js",
     }
@@ -554,19 +586,21 @@ def test_unknown_scope_is_a_hard_error(assembly_tree, runner):
         _integrate(assembly_tree, scope="everything", build=False)
 
 
-def test_a_portfolio_file_becomes_the_site_root(assembly_tree, runner):
-    _write(str(assembly_tree / "portfolio" / "index.html"),
-           "<html><head><title>Me</title></head><body>portfolio</body></html>")
-    _integrate(assembly_tree, build=False, portfolio_canonical="https://apex.example.com/")
+def test_the_home_projects_page_stays_the_site_root(assembly_tree, runner):
+    """A deploy of another project leaves the front page where it is."""
+    _integrate(assembly_tree, build=False)
     with open(assembly_tree / "site" / "index.html", encoding="utf-8") as f:
-        assert "portfolio" in f.read()
+        assert "home" in f.read()
     assert (assembly_tree / "site" / "projects" / "index.html").exists()
 
 
-def test_a_portfolio_without_a_canonical_aborts_the_deploy(assembly_tree, runner):
-    _write(str(assembly_tree / "portfolio" / "index.html"), "<html>portfolio</html>")
-    with pytest.raises(ValueError, match="portfolio_canonical"):
-        _integrate(assembly_tree, build=False)
+def test_the_generated_listing_leaves_the_home_project_out(assembly_tree, runner):
+    _integrate(assembly_tree, build=False)
+    with open(assembly_tree / "site" / "projects" / "index.html",
+              encoding="utf-8") as f:
+        listing = f.read()
+    assert "Alpha" in listing
+    assert ">Home<" not in listing
 
 
 # -- the retry loop -----------------------------------------------------------

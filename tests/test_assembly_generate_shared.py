@@ -52,7 +52,10 @@ def test_generate_shared_creates_all_files(tmp_path):
         canonical_base=CANONICAL_BASE,
     )
 
-    assert os.path.isfile(os.path.join(site_dir, "index.html"))
+    # The listing is generated at its own fixed address; the site root is
+    # the home project's page and is grafted, never generated here.
+    assert os.path.isfile(os.path.join(site_dir, "projects", "index.html"))
+    assert not os.path.exists(os.path.join(site_dir, "index.html"))
     assert os.path.isfile(os.path.join(site_dir, "blog", "index.html"))
     assert os.path.isfile(os.path.join(site_dir, "nav.json"))
     assert os.path.isfile(os.path.join(site_dir, "feed.xml"))
@@ -64,8 +67,8 @@ def test_generate_shared_creates_all_files(tmp_path):
 # -- index.html is a complete HTML page, not a fragment -----------------------
 
 
-def test_index_html_is_complete_page(tmp_path):
-    """index.html has DOCTYPE, <html>, <head>, <body>."""
+def test_the_listing_page_is_a_complete_page(tmp_path):
+    """projects/index.html has DOCTYPE, <html>, <head>, <body>."""
     site_dir = str(tmp_path / "site")
     manifests_dir = str(tmp_path / "manifests")
     os.makedirs(site_dir)
@@ -78,7 +81,8 @@ def test_index_html_is_complete_page(tmp_path):
         canonical_base=CANONICAL_BASE,
     )
 
-    with open(os.path.join(site_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(site_dir, "projects", "index.html"), "r",
+              encoding="utf-8") as f:
         content = f.read()
 
     assert "<!DOCTYPE html>" in content
@@ -155,15 +159,19 @@ def test_empty_manifests_dir_produces_valid_outputs(tmp_path):
     )
 
     # All files exist
-    assert os.path.isfile(os.path.join(site_dir, "index.html"))
+    # The listing is generated at its own fixed address; the site root is
+    # the home project's page and is grafted, never generated here.
+    assert os.path.isfile(os.path.join(site_dir, "projects", "index.html"))
+    assert not os.path.exists(os.path.join(site_dir, "index.html"))
     assert os.path.isfile(os.path.join(site_dir, "blog", "index.html"))
     assert os.path.isfile(os.path.join(site_dir, "nav.json"))
     assert os.path.isfile(os.path.join(site_dir, "feed.xml"))
     assert os.path.isfile(os.path.join(site_dir, "sitemap.xml"))
     assert os.path.isfile(os.path.join(site_dir, "_headers"))
 
-    # index.html is still a complete page
-    with open(os.path.join(site_dir, "index.html"), "r", encoding="utf-8") as f:
+    # the listing is still a complete page
+    with open(os.path.join(site_dir, "projects", "index.html"), "r",
+              encoding="utf-8") as f:
         content = f.read()
     assert "<!DOCTYPE html>" in content
 

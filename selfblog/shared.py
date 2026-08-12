@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import html
 import json
-import re
 from datetime import datetime
 
 from selfdoc_core.build import (
@@ -19,42 +18,6 @@ from selfdoc_core.build import (
 #: a project's build emits under ``blog/`` is what the assembly serves at
 #: ``blog/``, moved across unchanged.
 POSTS_SEGMENT = POSTS_PREFIX
-
-# Matches a <link rel=canonical ...> element with any attribute order and
-# any quoting style.  Hand-authored HTML is not normalized, so the pattern
-# has to be permissive about how the element was written.
-_CANONICAL_LINK_RE = re.compile(
-    r"""<link\b[^>]*\brel\s*=\s*["']?canonical["']?[^>]*>""",
-    re.IGNORECASE,
-)
-_HEAD_OPEN_RE = re.compile(r"<head\b[^>]*>", re.IGNORECASE)
-
-
-def _ensure_canonical(page_html: str, url: str) -> str:
-    """Return *page_html* carrying exactly one rel=canonical link naming *url*.
-
-    The portfolio is hand-authored HTML that selfblog copies rather than
-    generates, so it may already declare a canonical (possibly the wrong
-    one) or none at all.  An existing link is rewritten in place; otherwise
-    one is spliced in directly after the opening ``<head>`` tag.
-
-    Raises:
-        ValueError: when the document has no ``<head>`` to splice into.
-            A page that cannot declare a canonical is a hard error, not a
-            page served without one.
-    """
-    link = f'<link rel="canonical" href="{html.escape(url)}">'
-    if _CANONICAL_LINK_RE.search(page_html):
-        return _CANONICAL_LINK_RE.sub(lambda _m: link, page_html, count=1)
-    match = _HEAD_OPEN_RE.search(page_html)
-    if match is None:
-        raise ValueError(
-            "cannot declare a canonical URL: the document has no <head> "
-            "element to splice the rel=canonical link into"
-        )
-    insert_at = match.end()
-    return f"{page_html[:insert_at]}\n  {link}{page_html[insert_at:]}"
-
 
 def wrap_shared_page(
     title: str,
@@ -106,17 +69,41 @@ def wrap_shared_page(
     )
 
 
-def generate_homepage(manifests: list[dict], docs_base: str) -> str:
-    """Produce an HTML content fragment listing all projects.
+def generate_homepage(manifests: list[dict], docs_base: str, *,
+                      home_slug: str = "", listing=None) -> str:
+    """Produce the project listing fragment the ``/projects/`` page serves.
+
+    *listing* is the home project's curated listing.  When it is present it
+    is the source: categories, order and blurbs are content the home project
+    authors, and this page is one of its two renderings (the front page's
+    cards directive is the other).  When it is absent -- an assembly whose
+    home project has never deployed -- every served project is listed in
+    name order, which is a listing nobody curated rather than no listing.
+
+    The home project itself is never in either rendering: it is the page the
+    listing is reached from, not one of the projects it lists.
 
     Args:
         manifests: List of loaded manifest dicts.
         docs_base: Base URL for the documentation site.
+        home_slug: The roster's home project, left out of the listing.
+        listing: The curated :class:`~selfblog.listing.Listing`, or None.
 
     Returns:
         HTML fragment with project cards.
     """
-    sorted_manifests = sorted(manifests, key=lambda m: (m.get("name") or "").lower())
+    if listing is not None:
+        from selfblog.listing import render_listing_html
+
+        return render_listing_html(
+            listing, manifests, docs_base,
+            home_slug=home_slug, heading="Projects",
+        )
+
+    sorted_manifests = sorted(
+        (m for m in manifests if (m.get("slug") or "") != home_slug),
+        key=lambda m: (m.get("name") or "").lower(),
+    )
     parts = ['<section class="project-list">', "  <h1>Projects</h1>"]
     for m in sorted_manifests:
         name = html.escape(m.get("name") or "")
@@ -170,17 +157,25 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
     return "\n".join(parts)
 
 
-def generate_nav_json(manifests: list[dict], blog_path: str = "/blog/") -> str:
+def generate_nav_json(manifests: list[dict], blog_path: str = "/blog/", *,
+                      home_slug: str = "") -> str:
     """Produce a JSON string with navigation data for all projects.
+
+    The home project is not one of them: it is the site root every nav
+    already points back to, not an entry in the project set.
 
     Args:
         manifests: List of loaded manifest dicts.
         blog_path: URL path for the blog link in navigation.
+        home_slug: The roster's home project, left out of the project set.
 
     Returns:
         Pretty-printed JSON string.
     """
-    sorted_manifests = sorted(manifests, key=lambda m: (m.get("name") or "").lower())
+    sorted_manifests = sorted(
+        (m for m in manifests if (m.get("slug") or "") != home_slug),
+        key=lambda m: (m.get("name") or "").lower(),
+    )
     projects = [
         {
             "name": m.get("name") or "",
@@ -246,12 +241,15 @@ def generate_unified_feed(
     return feed_xml
 
 
-def generate_sitemap(manifests: list[dict], docs_base: str) -> str:
+def generate_sitemap(manifests: list[dict], docs_base: str, *,
+                     home_slug: str = "") -> str:
     """Produce a sitemap XML listing all pages and posts from all projects.
 
     Args:
         manifests: List of loaded manifest dicts.
         docs_base: Base URL for the documentation site.
+        home_slug: The roster's home project, whose pages are addressed
+            from the site root rather than from a project segment.
 
     Returns:
         Complete sitemap XML string.
@@ -259,8 +257,12 @@ def generate_sitemap(manifests: list[dict], docs_base: str) -> str:
     urls = []
     for m in manifests:
         manifest_slug = m.get("slug") or ""
+        is_home = bool(home_slug) and manifest_slug == home_slug
         for page in m.get("pages") or []:
-            url = f"{docs_base}/{page_target(manifest_slug, page.get('path') or '')}"
+            url = (
+                f"{docs_base}/"
+                f"{page_target(manifest_slug, page.get('path') or '', home=is_home)}"
+            )
             # Ensure trailing slash unless already present
             if not url.endswith("/"):
                 url += "/"
@@ -347,7 +349,7 @@ def _page_path_to_url_segment(path: str) -> str:
     return path + "/"
 
 
-def page_target(project_slug: str, page_path: str) -> str:
+def page_target(project_slug: str, page_path: str, *, home: bool = False) -> str:
     """Site-relative address of a project's page (``alpha/guide/``).
 
     This and :func:`post_target` are the one place that decides where a
@@ -355,7 +357,13 @@ def page_target(project_slug: str, page_path: str) -> str:
     sitemap, the feed, the cross-project link check and the deploy-time
     verifier all address pages through them, so they cannot disagree about
     where a page is.
+
+    *home* is the roster's home project: its content root is the site root,
+    so its pages carry no project segment at all -- ``cv.md`` is at ``cv/``
+    and its ``index.md`` is the site's front page.
     """
+    if home:
+        return _page_path_to_url_segment(page_path)
     return f"{project_slug}/{_page_path_to_url_segment(page_path)}"
 
 

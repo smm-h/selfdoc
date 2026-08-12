@@ -41,7 +41,8 @@ REPO = "owner/assembly"
 ROSTER_TEXT = render_roster([
     RosterEntry("alpha", "owner/alpha"),
     RosterEntry("beta", "owner/beta"),
-])
+    RosterEntry("home", "owner/home"),
+], home="home")
 
 RATE_LIMIT = (
     "gh: API rate limit exceeded for user ID 1234. "
@@ -227,7 +228,7 @@ def test_a_retirement_with_no_record_at_all_still_works():
     remote = _remote(blobs={"site/alpha/index.html": b"<html>doc</html>"})
     summary = _run(remote, retire_project, REPO, "alpha")
     assert summary["deleted"] == ["site/alpha/index.html"]
-    assert summary["remaining"] == ["beta"]
+    assert summary["remaining"] == ["beta", "home"]
 
 
 # -- the decoded payload ------------------------------------------------------

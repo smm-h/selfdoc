@@ -32,7 +32,8 @@ REPO = "owner/assembly"
 ROSTER_TEXT = render_roster([
     RosterEntry("alpha", "owner/alpha"),
     RosterEntry("beta", "owner/beta"),
-])
+    RosterEntry("home", "owner/home"),
+], home="home")
 
 
 def _record(slug, owner, paths):

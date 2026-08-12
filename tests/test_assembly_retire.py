@@ -31,7 +31,8 @@ REPO = "owner/assembly"
 ROSTER_TEXT = render_roster([
     RosterEntry("keeper", "owner/keeper"),
     RosterEntry("goner", "owner/goner"),
-])
+    RosterEntry("home", "owner/home"),
+], home="home")
 
 MEMBERSHIP = json.dumps({
     "keeper": {"repo": "owner/keeper", "ref": "v1.0.0", "version": "1.0.0"},
@@ -169,7 +170,9 @@ def test_retirement_leaves_the_other_project_alone():
 def test_retirement_removes_the_roster_block():
     remote = _remote()
     _retire(remote)
-    assert list(parse_roster(remote.pushed["roster.toml"].decode())) == ["keeper"]
+    assert sorted(parse_roster(remote.pushed["roster.toml"].decode())) == [
+        "home", "keeper",
+    ]
 
 
 def test_retirement_removes_the_membership_record():
@@ -187,7 +190,7 @@ def test_the_whole_retirement_is_one_commit():
 def test_retirement_reports_what_remains():
     remote = _remote()
     summary = _retire(remote)
-    assert summary["remaining"] == ["keeper"]
+    assert summary["remaining"] == ["home", "keeper"]
     assert summary["push"].changed is True
 
 
@@ -199,7 +202,7 @@ def test_retiring_an_undeclared_project_is_a_hard_error():
 
 def test_the_refusal_names_the_projects_that_are_declared():
     remote = _remote()
-    with pytest.raises(RuntimeError, match="goner, keeper"):
+    with pytest.raises(RuntimeError, match="goner, home, keeper"):
         _retire(remote, "never-existed")
 
 
@@ -233,7 +236,7 @@ def test_the_retired_project_loses_its_listing_rows(tmp_path):
     generate_shared_files(str(site), str(manifests), "https://docs.example.com",
                           docs_base="https://docs.example.com")
 
-    listing = (site / "index.html").read_text()
+    listing = (site / "projects" / "index.html").read_text()
     blog = (site / "blog" / "index.html").read_text()
     nav = json.loads((site / "nav.json").read_text())
     feed = (site / "feed.xml").read_text()
@@ -287,7 +290,7 @@ def test_the_command_retires_and_dispatches(tmp_path, monkeypatch, capsys):
     assert payload["client_payload"]["scope"] == "shared-only"
     out = capsys.readouterr().out
     assert "Retired goner" in out
-    assert "Remaining projects: keeper" in out
+    assert "Remaining projects: home, keeper" in out
 
 
 def test_the_command_reports_an_unknown_slug(tmp_path, monkeypatch, capsys):

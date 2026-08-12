@@ -1,0 +1,333 @@
+"""Site-level directives: the generated parts of the home project's authored pages.
+
+The front page is authored -- prose, structure and design belong to whoever
+writes it -- but two of its parts are mechanical: the curated project cards
+with each project's live version, and the recent posts.  Those arrive through
+directives so the authored page can never go stale.
+
+Where resolution happens
+------------------------
+
+Two moments, and both are the same code:
+
+* **Build time**, when the home project is built for the assembly.  The build
+  needs the assembly's manifests to know any project's live version, so it is
+  run as ``selfblog build --target home --site-manifests <dir> --docs-base
+  <url>``.  Without that context the command refuses to build at all, naming
+  what is missing.  A plain ``selfdoc build`` of the home project refuses too:
+  selfdoc's catalogue has no ``projects-cards``, so it stops at an unknown
+  directive.  Neither path ever emits an empty region.
+
+* **Assembly time**, on every deploy, inside ``generate_shared_files``.  Each
+  resolved region is left in the emitted HTML between a pair of sentinel
+  comments, so the assembly can re-render it from the manifests it holds
+  without going back to the source.  This is what keeps the front page's
+  version badges current when *another* project deploys: the home project's
+  own build may be months old, the region is not.
+
+The sentinels are the whole mechanism, and they survive markdown conversion
+because they are HTML comments.  A region whose opening sentinel has no
+closing one is a hard error, never a half-rendered page.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import html
+import re
+
+from selfblog.listing import Listing, render_listing_html
+
+#: The directives this module resolves, in one place so the CLI, the build
+#: and the verifier all name the same set.
+SITE_DIRECTIVES = ("projects-cards", "blog-highlights")
+
+_OPEN = "<!--selfblog:{name}{attrs}-->"
+_CLOSE = "<!--/selfblog:{name}-->"
+
+#: One rendered region, with the paragraph a markdown converter may have
+#: wrapped around it.  The wrapper is absorbed on re-render: a block element
+#: inside a ``<p>`` is not what any browser would keep.
+_REGION_RE = re.compile(
+    r"(?:<p>\s*)?<!--selfblog:(?P<name>[a-z][a-z0-9-]*)(?P<attrs>[^>]*?)-->"
+    r"(?P<body>.*?)"
+    r"<!--/selfblog:(?P=name)-->(?:\s*</p>)?",
+    re.DOTALL,
+)
+
+#: An opening sentinel, used to find a region whose closing one is missing.
+_OPEN_RE = re.compile(r"<!--selfblog:(?P<name>[a-z][a-z0-9-]*)(?P<attrs>[^>]*?)-->")
+_CLOSE_RE = re.compile(r"<!--/selfblog:(?P<name>[a-z][a-z0-9-]*)-->")
+
+_ATTR_RE = re.compile(r'([a-z][a-z0-9-]*)="([^"]*)"')
+
+
+@dataclasses.dataclass(frozen=True)
+class SiteContext:
+    """Everything a site-level directive reads.
+
+    manifests: every project manifest the assembly holds.
+    docs_base: the assembled site's base URL, for absolute links.
+    listing: the home project's curated listing, or None when it declares
+        none -- which ``projects-cards`` refuses, naming the file.
+    home_slug: the home project, which the listing never includes.
+    """
+
+    manifests: list[dict]
+    docs_base: str
+    listing: Listing | None = None
+    home_slug: str = ""
+
+
+#: The config key ``selfblog build --target home`` puts the context under, so
+#: the directive shims can read it.  A build with no context under this key
+#: cannot resolve a site-level directive and says so.
+CONTEXT_KEY = "site_directives"
+
+
+def _render_attrs(attrs: dict[str, str]) -> str:
+    return "".join(
+        f' {key}="{html.escape(str(value), quote=True)}"'
+        for key, value in sorted(attrs.items())
+    )
+
+
+def _parse_attrs(text: str) -> dict[str, str]:
+    return {k: html.unescape(v) for k, v in _ATTR_RE.findall(text or "")}
+
+
+def render_blog_highlights(manifests, docs_base: str, limit: int) -> str:
+    """Return the *limit* most recent posts across every project."""
+    from selfblog.shared import merge_project_posts, post_target
+
+    posts = merge_project_posts(manifests)
+    posts.sort(key=lambda p: (p["date"], p["slug"]), reverse=True)
+    base = docs_base.rstrip("/")
+    parts = ['<section class="blog-highlights">']
+    if not posts:
+        parts.append("  <p>No posts yet.</p>")
+    for post in posts[:limit]:
+        href = f"{base}/{post_target(post['slug'])}/"
+        parts.append('  <article class="blog-entry">')
+        parts.append(f"    <time>{html.escape(post['date'])}</time>")
+        parts.append(
+            f'    <span class="project-name">'
+            f"{html.escape(post['project_name'])}</span>"
+        )
+        parts.append(
+            f'    <a href="{html.escape(href)}">'
+            f"{html.escape(post['title'])}</a>"
+        )
+        parts.append("  </article>")
+    parts.append(f'  <p><a href="{html.escape(base)}/blog/">All posts</a></p>')
+    parts.append("</section>")
+    return "\n".join(parts)
+
+
+def render_directive_body(name: str, attrs: dict[str, str],
+                          context: SiteContext) -> str:
+    """Return the HTML a site-level directive's region holds.
+
+    Raises:
+        RuntimeError: for an unknown name, a missing required attribute, or
+            a context that cannot answer the directive (no curated listing).
+    """
+    if name == "projects-cards":
+        unknown = sorted(set(attrs))
+        if unknown:
+            raise RuntimeError(
+                f"directive 'projects-cards' takes no attributes, got "
+                f"{', '.join(unknown)}. The listing's content is declared in "
+                f"the home project's docs/projects.toml, not on the marker."
+            )
+        if context.listing is None:
+            raise RuntimeError(
+                "directive 'projects-cards' renders the curated project "
+                "listing, which the home project declares in "
+                "docs/projects.toml. This project declares none."
+            )
+        return render_listing_html(
+            context.listing, context.manifests, context.docs_base,
+            home_slug=context.home_slug,
+        )
+
+    if name == "blog-highlights":
+        unknown = sorted(set(attrs) - {"limit"})
+        if unknown:
+            raise RuntimeError(
+                f"directive 'blog-highlights' declares unknown attribute(s) "
+                f"{', '.join(unknown)}. It takes 'limit'."
+            )
+        raw = attrs.get("limit", "")
+        if not raw:
+            raise RuntimeError(
+                "directive 'blog-highlights' requires limit=\"N\": how many "
+                "recent posts the front page shows is an editorial decision "
+                "with no default."
+            )
+        try:
+            limit = int(raw)
+        except ValueError:
+            raise RuntimeError(
+                f"directive 'blog-highlights': limit must be a whole number, "
+                f"got {raw!r}."
+            ) from None
+        if limit < 1:
+            raise RuntimeError(
+                f"directive 'blog-highlights': limit must be at least 1, got "
+                f"{limit}."
+            )
+        return render_blog_highlights(context.manifests, context.docs_base, limit)
+
+    raise RuntimeError(
+        f"unknown site-level directive {name!r}; selfblog resolves "
+        f"{', '.join(SITE_DIRECTIVES)}."
+    )
+
+
+def render_region(name: str, attrs: dict[str, str], context: SiteContext) -> str:
+    """Return a resolved region: the body between its two sentinels."""
+    body = render_directive_body(name, attrs, context)
+    return (
+        _OPEN.format(name=name, attrs=_render_attrs(attrs))
+        + "\n" + body + "\n"
+        + _CLOSE.format(name=name)
+    )
+
+
+def resolve_for_build(name: str, attrs: dict[str, str], config) -> str:
+    """Resolve a site-level directive during a build of the home project.
+
+    This is what the shipped directive shims call.  The context comes from
+    the config the ``--target home`` build injects; a build that never
+    injected one cannot resolve the directive and says which command does.
+    """
+    context = (config or {}).get(CONTEXT_KEY)
+    if not isinstance(context, SiteContext):
+        raise RuntimeError(
+            f"directive '{name}' is site-level: it renders from the "
+            f"assembled site's manifests, which no single project's build "
+            f"can see on its own. Build the home project with "
+            f"`selfblog build --target home --site-manifests <dir> "
+            f"--docs-base <url>`, which supplies them."
+        )
+    return render_region(name, attrs, context)
+
+
+def home_listing_path(dir_path: str, config) -> str:
+    """Return where the home project declares its curated listing."""
+    import os
+
+    docs_dir = (config.get("docs") or "docs/").rstrip("/")
+    return os.path.join(dir_path, docs_dir, "projects.toml")
+
+
+def build_home_project(dir_path: str, config, *, site_manifests: str,
+                       docs_base: str, include_drafts: bool = False):
+    """Build the home project with the assembly's data in scope.
+
+    This is the only build that can resolve a site-level directive, and the
+    refusals below are why: the manifests are what a version badge and a
+    post highlight are read from, and no project's own repository holds
+    them.  A missing context stops the build before a page is written --
+    there is no rendering of an empty region and no placeholder.
+    """
+    import os
+
+    from selfblog.assembly import load_assembly_manifests
+    from selfblog.listing import load_listing_source
+    from selfblog.site_directives import SHIM_SCRIPTS
+    from selfdoc_core.build import build
+
+    if not site_manifests:
+        raise RuntimeError(
+            "--site-manifests is required by --target home: the home "
+            "project's pages carry site-level directives "
+            f"({', '.join(SITE_DIRECTIVES)}) that render from the "
+            "assembly's manifests, and this repository holds none of them. "
+            "Point it at the assembly checkout's manifests/ directory."
+        )
+    if not os.path.isdir(site_manifests):
+        raise RuntimeError(
+            f"--site-manifests names {site_manifests!r}, which is not a "
+            f"directory. It is the assembly checkout's manifests/ directory."
+        )
+    if not docs_base:
+        raise RuntimeError(
+            "--docs-base is required by --target home: the site-level "
+            "directives emit absolute links into the assembled site, and "
+            "there is no default base URL."
+        )
+
+    listing_path = home_listing_path(dir_path, config)
+    listing = (
+        load_listing_source(listing_path)
+        if os.path.isfile(listing_path) else None
+    )
+    home_slug = str((config.get("topology") or {}).get("slug") or "")
+
+    build_config = dict(config)
+    build_config["directives"] = {
+        **(config.get("directives") or {}), **SHIM_SCRIPTS,
+    }
+    build_config[CONTEXT_KEY] = SiteContext(
+        manifests=load_assembly_manifests(site_manifests),
+        docs_base=docs_base,
+        listing=listing,
+        home_slug=home_slug,
+    )
+    return build(dir_path, config=build_config, include_drafts=include_drafts)
+
+
+def find_unclosed_regions(page_html: str) -> list[str]:
+    """Return the directive names whose opening sentinel has no closing one."""
+    opened: dict[str, int] = {}
+    for match in _OPEN_RE.finditer(page_html):
+        name = match.group("name")
+        opened[name] = opened.get(name, 0) + 1
+    closed: dict[str, int] = {}
+    for match in _CLOSE_RE.finditer(page_html):
+        name = match.group("name")
+        closed[name] = closed.get(name, 0) + 1
+    return sorted(
+        name for name, count in opened.items() if closed.get(name, 0) < count
+    )
+
+
+def region_names(page_html: str) -> list[str]:
+    """Return every site-level directive region the page carries."""
+    return [m.group("name") for m in _REGION_RE.finditer(page_html)]
+
+
+def refresh_regions(page_html: str, context: SiteContext, *,
+                    source: str = "") -> str:
+    """Re-render every site-level region in *page_html* from *context*.
+
+    Idempotent by construction: the sentinels stay in the output, so the
+    next deploy finds the same regions and rewrites their bodies again.  A
+    page with no region comes back unchanged.
+
+    Raises:
+        RuntimeError: naming *source* when a region opens and never closes,
+            or when a region cannot be re-rendered.
+    """
+    where = f"{source}: " if source else ""
+    unclosed = find_unclosed_regions(page_html)
+    if unclosed:
+        raise RuntimeError(
+            f"{where}the site-level region(s) "
+            f"{', '.join(repr(n) for n in unclosed)} open and never close. "
+            f"A region is written by selfblog and delimited by a pair of "
+            f"sentinel comments; an unpaired one means the emitted page was "
+            f"edited by hand."
+        )
+
+    def _replace(match: re.Match) -> str:
+        name = match.group("name")
+        attrs = _parse_attrs(match.group("attrs"))
+        try:
+            return render_region(name, attrs, context)
+        except RuntimeError as exc:
+            raise RuntimeError(f"{where}{exc}") from exc
+
+    return _REGION_RE.sub(_replace, page_html)

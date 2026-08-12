@@ -28,9 +28,13 @@ from selfblog.verify import (
 CANONICAL_BASE = "https://docs.example.com"
 
 ROSTER = {
+    # The home project is an ordinary declared project served at the site
+    # root: no subtree of its own, and left out of the listing it renders.
+    "home": RosterEntry("home", "owner/home"),
     "alpha": RosterEntry("alpha", "owner/alpha"),
     "beta": RosterEntry("beta", "owner/beta"),
 }
+HOME = "home"
 
 
 def _write(path, content):
@@ -84,8 +88,9 @@ def assembly(tmp_path):
     site = root / "site"
     manifests = root / "manifests"
 
-    _write(str(root / "roster.toml"), render_roster(ROSTER.values()))
+    _write(str(root / "roster.toml"), render_roster(ROSTER.values(), home=HOME))
     _write(str(root / "projects.json"), json.dumps({
+        "home": {"repo": "owner/home", "ref": "v0.1.0", "version": "0.1.0"},
         "alpha": {"repo": "owner/alpha", "ref": "v1.0.0", "version": "1.0.0"},
         "beta": {"repo": "owner/beta", "ref": "v2.0.0", "version": "2.0.0"},
     }, indent=2) + "\n")
@@ -101,6 +106,15 @@ def assembly(tmp_path):
         "beta", "Beta", "2.0.0",
         pages=[{"path": "index.md", "title": "Home"}],
     )))
+    _write(str(manifests / "home.json"), json.dumps(_manifest(
+        "home", "Home", "0.1.0",
+        pages=[{"path": "index.md", "title": "Front page"},
+               {"path": "cv.md", "title": "CV"}],
+    )))
+    _write(str(manifests / "home-files.json"), json.dumps({
+        "schema_version": 2, "slug": "home",
+        "owners": {"release": ["index.html", "cv/index.html"]},
+    }))
     _write(str(manifests / "alpha-files.json"), json.dumps({
         "schema_version": 2, "slug": "alpha",
         "owners": {"release": ["alpha/index.html", "alpha/guide/index.html",
@@ -118,6 +132,12 @@ def assembly(tmp_path):
            _page("Hello", f"{CANONICAL_BASE}/blog/hello/", version="1.0.0"))
     _write(str(site / "beta" / "index.html"),
            _page("Beta", f"{CANONICAL_BASE}/beta/", version="2.0.0"))
+    # The home project's pages: at the site root, no slug segment.
+    _write(str(site / "index.html"),
+           _page("Front page", f"{CANONICAL_BASE}/",
+                 body='  <a href="cv/">CV</a>'))
+    _write(str(site / "cv" / "index.html"),
+           _page("CV", f"{CANONICAL_BASE}/cv/"))
 
     # The search index, as pagefind leaves it: the runtime's own files, the
     # entry the runtime fetches to find its index, and a fragment per
@@ -138,6 +158,7 @@ def assembly(tmp_path):
 
     generate_shared_files(
         str(site), str(manifests), CANONICAL_BASE, docs_base=CANONICAL_BASE,
+        home_slug=HOME,
     )
     return root
 
@@ -183,7 +204,7 @@ def test_an_undeclared_subtree_fails(assembly):
 def test_a_declared_project_with_no_subtree_fails(assembly):
     roster = dict(ROSTER)
     roster["gamma"] = RosterEntry("gamma", "owner/gamma")
-    _write(str(assembly / "roster.toml"), render_roster(roster.values()))
+    _write(str(assembly / "roster.toml"), render_roster(roster.values(), home=HOME))
     report = _verify(assembly)
     messages = [str(f) for f in report.failures_of("roster-agreement")]
     assert any("gamma" in m and "no site/ subtree" in m for m in messages)
@@ -385,22 +406,22 @@ def test_a_search_index_with_no_fragments_fails(assembly):
     assert any("fragment" in m for m in messages)
 
 
-def test_a_portfolio_moves_the_listing_and_the_listing_is_checked(assembly):
-    """With a portfolio at the apex, the project listing is /projects/."""
-    _write(str(assembly / "portfolio" / "index.html"),
-           "<html><head><title>Me</title></head><body>portfolio</body></html>")
-    generate_shared_files(
-        str(assembly / "site"), str(assembly / "manifests"), CANONICAL_BASE,
-        docs_base=CANONICAL_BASE,
-        portfolio_file=str(assembly / "portfolio" / "index.html"),
-        portfolio_canonical="https://apex.example.com/",
-    )
+def test_the_listing_lives_at_its_fixed_address(assembly):
+    """The generated listing is /projects/, and its absence is a failure."""
     assert _verify(assembly).ok
 
     os.remove(str(assembly / "site" / "projects" / "index.html"))
     report = _verify(assembly)
     messages = [str(f) for f in report.failures_of("shared-artifacts")]
     assert any("projects/index.html" in m for m in messages)
+
+
+def test_the_home_projects_front_page_is_the_site_root(assembly):
+    """The site root is the home project's page, and its absence is a failure."""
+    os.remove(str(assembly / "site" / "index.html"))
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("shared-artifacts")]
+    assert any("index.html" in m for m in messages)
 
 
 # -- every reference resolves --------------------------------------------------

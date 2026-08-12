@@ -11,7 +11,10 @@ from selfblog.cli import _cmd_post_publish
 
 # The publish reads the assembly's roster before it writes, so it can check
 # its post paths against the other declared projects' claims.
-ROSTER_TEXT = render_roster([RosterEntry("myproject", "owner/myproject")])
+ROSTER_TEXT = render_roster([
+    RosterEntry("myproject", "owner/myproject"),
+    RosterEntry("home", "owner/home"),
+], home="home")
 
 
 def _fake_fetch(contents):

@@ -67,8 +67,9 @@ def blogging_assembly(tmp_path):
 
     from selfblog.assembly import render_roster
 
-    _write(str(root / "roster.toml"), render_roster(ROSTER.values()))
+    _write(str(root / "roster.toml"), render_roster(ROSTER.values(), home="home"))
     _write(str(root / "projects.json"), json.dumps({
+        "home": {"repo": "owner/home", "ref": "v0.1.0", "version": "0.1.0"},
         "alpha": {"repo": "owner/alpha", "ref": "v0.9.0", "version": "0.9.0"},
         "beta": {"repo": "owner/beta", "ref": "v2.0.0", "version": "2.0.0"},
     }, indent=2) + "\n")
@@ -78,6 +79,7 @@ def blogging_assembly(tmp_path):
            _page("Alpha", "alpha/", marker="old alpha"))
     _write(str(site / "beta" / "index.html"),
            _page("Beta", "beta/", marker="beta", version="2.0.0"))
+    _write(str(site / "index.html"), _page("Front page", "", marker="home"))
 
     # Two posts already on the site-level blog, from two different projects
     # and two different publishers.
@@ -103,6 +105,12 @@ def blogging_assembly(tmp_path):
     _write(str(manifests / "beta-files.json"), json.dumps({
         "schema_version": 2, "slug": "beta",
         "owners": {"release": ["beta/index.html", "blog/beta-news/index.html"]},
+    }))
+    _write(str(manifests / "home.json"),
+           json.dumps(_manifest("home", "Home", "0.1.0")))
+    _write(str(manifests / "home-files.json"), json.dumps({
+        "schema_version": 2, "slug": "home",
+        "owners": {"release": ["index.html"]},
     }))
 
     # Alpha's clone, built and waiting.

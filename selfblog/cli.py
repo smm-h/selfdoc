@@ -626,7 +626,6 @@ def _cmd_assembly_init(ctx):
         )
         sys.exit(1)
     legacy_blog_host = topology.get("legacy_blog_host") or ""
-    portfolio_canonical = assembly_config.get("portfolio_canonical") or ""
 
     # The workflow init writes pins its toolchain exactly as the one
     # sync-workflow rewrites later, and refuses an unpublishable pin the
@@ -640,8 +639,7 @@ def _cmd_assembly_init(ctx):
         sys.exit(1)
 
     files = assembly_init(
-        repo, pages_project, canonical_base, legacy_blog_host,
-        portfolio_canonical, pins,
+        repo, pages_project, canonical_base, legacy_blog_host, pins,
     )
 
     # Create the private GitHub repo
@@ -884,9 +882,7 @@ def _cmd_assembly_status(ctx):
 @effects.handler
 def _cmd_assembly_rebuild(ctx):
     """Trigger rebuild for all projects in the assembly."""
-    import base64
-
-    from selfblog.assembly import assembly_rebuild
+    from selfblog.assembly import PROJECTS_PATH, assembly_rebuild, fetch_remote_text
     from selfdoc_core.config import load_config
 
     config = load_config(".")
@@ -900,22 +896,26 @@ def _cmd_assembly_rebuild(ctx):
         print("Error: assembly.repo not configured in selfdoc.json.", file=sys.stderr)
         sys.exit(1)
 
-    # Fetch projects.json from the assembly repo
-    result = effects.run(
-        ["gh", "api", f"/repos/{repo}/contents/projects.json",
-         "--jq", ".content"],
-        check=False, capture_output=True, text=True, timeout=30,
-        read=True,
-    )
-    if result.returncode != 0:
-        print(f"Error: Failed to fetch projects.json from {repo}: {result.stderr.strip()}", file=sys.stderr)
+    # The membership record comes through the same reader every other remote
+    # read uses, so an absent record and a failed read are told apart here
+    # too: neither is an assembly with no projects, and both stop the rebuild.
+    try:
+        raw = fetch_remote_text(
+            repo, PROJECTS_PATH,
+            operation=f"dispatch a rebuild for every project on {repo}",
+        )
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    content_b64 = result.stdout.strip()
     try:
-        projects = json.loads(base64.b64decode(content_b64).decode())
-    except (json.JSONDecodeError, Exception) as e:
-        print(f"Error: Failed to parse projects.json: {e}", file=sys.stderr)
+        projects = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        # The only thing left to go wrong: the record was read successfully
+        # and is not a JSON document. Every other failure -- the read itself,
+        # the base64 decode -- is already a RemoteReadError above.
+        print(f"Error: {repo}:{PROJECTS_PATH} is not valid JSON: {exc}",
+              file=sys.stderr)
         sys.exit(1)
 
     if not projects:
@@ -1044,10 +1044,9 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
 @strictcli.flag("docs-base", type=str, help="Base URL of the assembled documentation site (e.g. 'https://docs.smmh.dev'). Used for generating absolute URLs in feeds, sitemaps, and page links. Defaults to empty string for root-relative URLs.")
 @strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the target of the generated redirect worker and of the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
 @strictcli.flag("legacy-blog-host", type=str, help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
-@strictcli.flag("portfolio-file", type=str, help="Path to a portfolio HTML file to use as the site root index.html. When provided and the file exists, the project listing moves to /projects/index.html.")
-@strictcli.flag("portfolio-canonical", type=str, help="Absolute canonical URL of the portfolio page, from assembly.portfolio_canonical (e.g. 'https://smmh.dev/'). The portfolio is the site apex, not a docs page, so this is NOT --canonical-base. Required whenever --portfolio-file names an existing file: the same portfolio bytes are served on every host bound to the Pages project, and one of them has to be named canonical.")
+@strictcli.flag("home-slug", type=str, default="", help="The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Empty means the tree carries no home project (which the deploy path never does -- the roster requires one).")
 @effects.handler
-def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", portfolio_file="", portfolio_canonical=""):
+def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", home_slug=""):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfblog.assembly import generate_shared_files
 
@@ -1070,8 +1069,7 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
             site_dir, manifests_dir, canonical_base,
             docs_base=docs_base,
             legacy_blog_host=legacy_blog_host,
-            portfolio_file=portfolio_file,
-            portfolio_canonical=portfolio_canonical,
+            home_slug=home_slug,
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1114,7 +1112,6 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
 @strictcli.flag("scope", type=str, default="", help="What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.")
 @strictcli.flag("canonical-base", type=str, default="", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.")
 @strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
-@strictcli.flag("portfolio-canonical", type=str, default="", help="Absolute canonical URL of the portfolio page, required whenever the assembly checkout has a portfolio/index.html")
 @strictcli.flag("assembly-dir", type=str, default=".", help="Path to the assembly repository checkout being updated")
 @strictcli.flag("source-dir", type=str, default="", help="Path to the cloned source project. Defaults to <assembly-dir>/source/<slug>, where the deploy workflow clones it.")
 @strictcli.flag("branch", type=str, default="main", help="Assembly repository branch the deploy commits and pushes to")
@@ -1122,7 +1119,7 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
 @effects.handler
 def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
                             scope="", canonical_base="", legacy_blog_host="",
-                            portfolio_canonical="", assembly_dir=".",
+                            assembly_dir=".",
                             source_dir="", branch="main", attempts=3):
     """Integrate a dispatched project into the assembly and push."""
     from selfblog.assembly import integrate_project
@@ -1147,7 +1144,6 @@ def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
             assembly_dir=assembly_dir,
             source_dir=source_dir,
             legacy_blog_host=legacy_blog_host,
-            portfolio_canonical=portfolio_canonical,
             branch=branch,
             attempts=attempts,
         )
@@ -1280,7 +1276,6 @@ def _cmd_assembly_sync_workflow(ctx, pin_version="", pin_selfdoc="", pin_pagefin
         pages_project,
         canonical_base,
         topology.get("legacy_blog_host") or "",
-        assembly_config.get("portfolio_canonical") or "",
         pins,
     )
 
@@ -1426,19 +1421,37 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 # -- build command -----------------------------------------------------------
 
 
-@app.command("build", help="Build blog posts or unified documentation site", effect="mutating")
-@strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site")
+@app.command("build", help="Build blog posts, the unified documentation site, or the home project", effect="mutating")
+@strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site, 'home' for the assembly's home project (the one served at the site root, whose pages carry site-level directives)")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
+@strictcli.flag("site-manifests", type=str, default="", help="Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.")
+@strictcli.flag("docs-base", type=str, default="", help="Base URL of the assembled site, for the absolute links the site-level directives emit. Required by --target home.")
 @effects.handler
-def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True):
-    """Build blog posts or unified site."""
+def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
+               site_manifests="", docs_base=""):
+    """Build blog posts, the unified site, or the home project."""
     from selfdoc_core.config import load_config
 
     config = load_config(".")
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
         sys.exit(1)
+
+    if target == "home":
+        from selfblog.sitedirectives import build_home_project
+
+        try:
+            written = build_home_project(
+                ".", config, site_manifests=site_manifests,
+                docs_base=docs_base, include_drafts=drafts,
+            )
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"Built {len(written)} file(s) (home)")
+        return 0
 
     if target == "unified":
         from selfblog.unified import build_unified
@@ -1480,7 +1493,7 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True):
 
     print(
         f"Error: unknown build target '{target}'. "
-        f"Valid targets: 'posts', 'unified'.",
+        f"Valid targets: 'posts', 'unified', 'home'.",
         file=sys.stderr,
     )
     sys.exit(1)

@@ -25,7 +25,7 @@ PINS = ToolchainPins(selfblog="1.2.3", selfdoc="0.36.0", pagefind="1.4.0")
 
 def test_workflow_yaml_is_valid_yaml():
     """generate_workflow_yaml returns a non-empty string with expected YAML markers."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert isinstance(yaml_str, str)
     assert len(yaml_str) > 0
     # Basic YAML structure markers
@@ -35,13 +35,13 @@ def test_workflow_yaml_is_valid_yaml():
 
 
 def test_workflow_yaml_has_dispatch_trigger():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "repository_dispatch" in yaml_str
     assert "project-updated" in yaml_str
 
 
 def test_workflow_yaml_has_concurrency():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "assembly-deploy" in yaml_str
     assert "cancel-in-progress: false" in yaml_str
     assert "queue: max" in yaml_str
@@ -49,30 +49,30 @@ def test_workflow_yaml_has_concurrency():
 
 def test_workflow_yaml_has_queue_max():
     """queue: max enables FIFO queuing of up to 100 pending workflow runs."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "queue: max" in yaml_str
 
 
 def test_workflow_yaml_has_deploy_job():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "deploy:" in yaml_str
     assert "ubuntu-latest" in yaml_str
 
 
 def test_workflow_yaml_has_checkout_step():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "actions/checkout@v4" in yaml_str
 
 
 def test_workflow_yaml_first_checkout_has_fetch_depth():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     # First checkout uses full clone for push retry support
     assert "fetch-depth: 0" in yaml_str
 
 
 def test_workflow_yaml_has_second_checkout_for_source():
     """Workflow has a second actions/checkout to clone the source project."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     # There should be two occurrences of actions/checkout@v4
     count = yaml_str.count("actions/checkout@v4")
     assert count == 2, f"Expected 2 checkout steps, found {count}"
@@ -81,19 +81,19 @@ def test_workflow_yaml_has_second_checkout_for_source():
 
 
 def test_workflow_yaml_has_python_setup():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "actions/setup-python@v5" in yaml_str
     assert "3.12" in yaml_str
 
 
 def test_workflow_yaml_has_permissions():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "permissions:" in yaml_str
     assert "contents: write" in yaml_str
 
 
 def test_workflow_yaml_installs_the_toolchain():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "pip install 'selfdoc==" in yaml_str
     assert "'pagefind[bin]==" in yaml_str
 
@@ -101,7 +101,7 @@ def test_workflow_yaml_installs_the_toolchain():
 def test_workflow_yaml_pins_the_selfblog_version():
     """The install line names one selfblog version, not 'whatever is newest'."""
     yaml_str = generate_workflow_yaml(
-        "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/",
+        "smmh", "https://docs.smmh.dev", "blog.smmh.dev",
         ToolchainPins(selfblog="9.9.9", selfdoc="0.36.0", pagefind="1.4.0"),
     )
     assert "'selfblog==9.9.9'" in yaml_str
@@ -111,17 +111,17 @@ def test_workflow_yaml_refuses_to_generate_without_pins():
     """The generator renders pins and never invents them."""
     with pytest.raises(ValueError):
         generate_workflow_yaml(
-            "smmh", "https://docs.smmh.dev", "", "", "1.2.3",
+            "smmh", "https://docs.smmh.dev", "", "1.2.3",
         )
 
 
 def test_workflow_yaml_invokes_the_integrate_command():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "selfblog assembly integrate" in yaml_str
 
 
 def test_workflow_yaml_hands_every_payload_field_to_integrate():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     for flag, field in (
         ("--slug", "slug"),
         ("--version", "version"),
@@ -133,15 +133,14 @@ def test_workflow_yaml_hands_every_payload_field_to_integrate():
 
 
 def test_workflow_yaml_hands_the_config_values_to_integrate():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "--canonical-base 'https://docs.smmh.dev'" in yaml_str
     assert "--legacy-blog-host 'blog.smmh.dev'" in yaml_str
-    assert "--portfolio-canonical 'https://smmh.dev/'" in yaml_str
 
 
 def test_workflow_yaml_has_no_inline_interpreter():
     """The deploy body lives in a command, not in embedded interpreters."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     for marker in ("python3 -c", "python -c", "python3 -m", "python -m",
                    "import json", "json.dump", "bash -c", "sh -c"):
         assert marker not in yaml_str, f"workflow still embeds {marker!r}"
@@ -149,14 +148,14 @@ def test_workflow_yaml_has_no_inline_interpreter():
 
 def test_workflow_yaml_has_no_recursive_deletion():
     """Nothing in CI shell may recursively delete a tree any more."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "rm -rf" not in yaml_str
     assert "rm -r " not in yaml_str
     assert "rm -f " not in yaml_str
 
 
 def test_workflow_yaml_has_no_embedded_retry_loop_or_git_plumbing():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     for marker in ("for attempt", "git fetch", "git reset", "git commit",
                    "git push", "git config", "git add", "cp -r", "find "):
         assert marker not in yaml_str, f"workflow still embeds {marker!r}"
@@ -164,19 +163,19 @@ def test_workflow_yaml_has_no_embedded_retry_loop_or_git_plumbing():
 
 def test_workflow_yaml_step_count_is_thin():
     """checkout, setup-python, install, clone, integrate, deploy -- and no more."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     steps = [line for line in yaml_str.splitlines()
              if line.strip().startswith("- name:") or line.strip().startswith("- uses:")]
     assert len(steps) == 6, steps
 
 
 def test_workflow_yaml_has_wrangler_deploy():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "wrangler pages deploy site/ --project-name 'smmh'" in yaml_str
 
 
 def test_workflow_yaml_has_secrets():
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "CF_ACCOUNT_ID" in yaml_str
     assert "CF_PAGES_API_TOKEN" in yaml_str
 
@@ -185,7 +184,7 @@ def test_workflow_yaml_has_secrets():
 
 
 def test_init_returns_four_files():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert sorted(result) == [
         ".github/workflows/deploy.yml", ".gitignore", "projects.json",
         "roster.toml",
@@ -193,39 +192,39 @@ def test_init_returns_four_files():
 
 
 def test_init_has_workflow_file():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert ".github/workflows/deploy.yml" in result
 
 
 def test_init_has_gitignore():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert ".gitignore" in result
 
 
 def test_init_has_projects_json():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "projects.json" in result
 
 
 def test_init_projects_json_is_valid_empty_json():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     parsed = json.loads(result["projects.json"])
     assert parsed == {}
 
 
 def test_init_gitignore_has_node_modules():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "node_modules" in result[".gitignore"]
 
 
 def test_init_gitignore_has_dist():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "dist/" in result[".gitignore"]
 
 
 def test_init_workflow_matches_generator():
-    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
-    assert result[".github/workflows/deploy.yml"] == generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    result = assembly_init("smm-h/docs-assembly", "smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
+    assert result[".github/workflows/deploy.yml"] == generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
 
 
 # -- assembly_push -----------------------------------------------------------
@@ -379,7 +378,7 @@ def test_rebuild_refuses_an_empty_version_string():
 
 def test_workflow_yaml_scope_is_a_command_flag():
     """SCOPE is no longer an env var branched on by shell."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     assert "--scope '${{ github.event.client_payload.scope }}'" in yaml_str
     assert 'SCOPE=' not in yaml_str
     assert '[ "$SCOPE"' not in yaml_str
@@ -511,7 +510,7 @@ def test_push_files_tree_payload_has_correct_paths_and_shas():
 
 def test_workflow_yaml_clone_step_has_shared_only_condition():
     """Clone source project step has if: condition skipping shared-only scope."""
-    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", "https://smmh.dev/", PINS)
+    yaml_str = generate_workflow_yaml("smmh", "https://docs.smmh.dev", "blog.smmh.dev", PINS)
     # Find the clone step and check it has the if: condition before the uses: line
     lines = yaml_str.splitlines()
     for i, line in enumerate(lines):

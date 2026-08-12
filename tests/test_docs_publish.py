@@ -26,7 +26,8 @@ from tests.test_assembly_push_path import PNG_BYTES, FakeRemote
 ROSTER_TEXT = render_roster([
     RosterEntry("alpha", "owner/alpha"),
     RosterEntry("beta", "owner/beta"),
-])
+    RosterEntry("home", "owner/home"),
+], home="home")
 
 REPO = "owner/assembly"
 
@@ -423,7 +424,8 @@ def test_the_command_reports_an_undeclared_slug(tmp_path, monkeypatch, capsys):
     from selfblog.cli import _cmd_docs_publish
 
     _project(tmp_path, monkeypatch)
-    remote = _remote(roster=render_roster([RosterEntry("beta", "owner/beta")]))
+    remote = _remote(roster=render_roster([RosterEntry("beta", "owner/beta"),
+                                RosterEntry("home", "owner/home")], home="home"))
     monkeypatch.setattr(
         "selfblog.assembly.build_source_project",
         lambda source_dir, scope: _build(tmp_path),
@@ -457,6 +459,17 @@ def test_the_command_is_consequential():
 # -- the whole point ----------------------------------------------------------
 
 
+def _shape_root_page(path):
+    """Write the home project's front page, as its build would emit it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+        "  <title>Front page</title>\n"
+        '  <link rel="canonical" href="https://docs.example.com/">\n'
+        "</head>\n<body>\n  <p>home</p>\n</body>\n</html>\n"
+    )
+
+
 def test_a_documentation_edit_survives_the_projects_next_full_deploy(
     tmp_path, monkeypatch,
 ):
@@ -488,7 +501,8 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
     # Only alpha: the assembly declares what it serves, and this checkout
     # serves one project.
     (assembly / "roster.toml").write_text(
-        render_roster([RosterEntry("alpha", "owner/alpha")]))
+        render_roster([RosterEntry("alpha", "owner/alpha"),
+                       RosterEntry("home", "owner/home")], home="home"))
     (assembly / "site" / "pagefind").mkdir(parents=True, exist_ok=True)
     (assembly / "site" / "pagefind" / "pagefind.js").write_text("// index")
     manifests = assembly / "manifests"
@@ -500,6 +514,19 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
         "pages": [{"path": "index.md", "title": "Home"}], "posts": [],
         "last_gen": "2024-01-01T00:00:00+00:00",
     }))
+    # The home project, whose page is the site root the deploy verifies.
+    (manifests / "home.json").write_text(json.dumps({
+        "schema_version": 1, "name": "Home", "slug": "home",
+        "version": "0.1.0", "description": "Home", "language": "python",
+        "base_url": "https://docs.example.com",
+        "pages": [{"path": "index.md", "title": "Front page"}], "posts": [],
+        "last_gen": "2024-01-01T00:00:00+00:00",
+    }))
+    (manifests / "home-files.json").write_text(json.dumps({
+        "schema_version": 2, "slug": "home",
+        "owners": {"release": ["index.html"]},
+    }))
+    _shape_root_page(assembly / "site" / "index.html")
 
     # 3. The project releases: a full build that knows nothing about hotfix/.
     source = assembly / "source" / "alpha"
@@ -518,8 +545,14 @@ def test_a_documentation_edit_survives_the_projects_next_full_deploy(
         argv = [str(a) for a in argv]
         if "pagefind" in argv and "--site" in argv:
             index = pathlib.Path(argv[argv.index("--site") + 1]) / "pagefind"
-            index.mkdir(parents=True, exist_ok=True)
+            (index / "fragment").mkdir(parents=True, exist_ok=True)
             (index / "pagefind.js").write_text("// index")
+            (index / "pagefind-entry.json").write_text(json.dumps({
+                "version": "1.3.0",
+                "languages": {"en": {"hash": "en_abc", "wasm": "en",
+                                     "page_count": 3}},
+            }))
+            (index / "fragment" / "en_abc.pf_fragment").write_text("fragment")
         return subprocess.CompletedProcess(
             args=[str(a) for a in argv], returncode=0,
             stdout="" if kwargs.get("capture_output") else None,
