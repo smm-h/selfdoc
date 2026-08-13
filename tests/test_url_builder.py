@@ -117,6 +117,9 @@ class TestURLBuilderProtocol:
             def mounted(self) -> bool:
                 return False
 
+            def mount_prefix(self) -> str:
+                return ""
+
             def site_root(self) -> str:
                 return "custom/"
 

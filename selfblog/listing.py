@@ -309,7 +309,7 @@ def check_listing_against(listing: Listing, manifests, *, home_slug: str,
         )
 
 
-def render_listing_html(listing: Listing, manifests, docs_base: str, *,
+def render_listing_html(listing: Listing, manifests, site_hop: str, *,
                         home_slug: str = "", heading: str = "") -> str:
     """Return the curated listing as one HTML fragment.
 
@@ -317,10 +317,15 @@ def render_listing_html(listing: Listing, manifests, docs_base: str, *,
     ``/projects/`` page passes a heading, the front page's cards directive
     does not.  Version badges come from the manifests, so a card is as
     current as the last deploy of the project it names.
+
+    *site_hop* is the hop from the page holding the fragment back to the
+    site root, and every card for a project the site serves is addressed
+    through it.  A card for an *external* project keeps the absolute URL
+    the listing declares: that one really does name somebody else's
+    server.
     """
     check_listing_against(listing, manifests, home_slug=home_slug)
     by_slug = {str(m.get("slug") or ""): m for m in manifests}
-    base = docs_base.rstrip("/")
 
     parts = ['<section class="project-list">']
     if heading:
@@ -336,7 +341,7 @@ def render_listing_html(listing: Listing, manifests, docs_base: str, *,
             else:
                 manifest = by_slug[project.slug]
                 name = str(manifest.get("name") or project.slug)
-                href = f"{base}/{project.slug}/"
+                href = f"{site_hop}{project.slug}/"
                 version = str(manifest.get("version") or "")
             parts.append('    <article class="project-card">')
             parts.append(

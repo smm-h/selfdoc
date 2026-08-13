@@ -5,12 +5,22 @@ one runs the actual build -- a project declaring ``topology.docs_base`` and
 ``topology.slug``, with a post -- grafts what it produced the way a deploy
 does, and reads the result with the deploy's own verification.
 
-That is the only way the defect this file covers could be seen at all: the
-build emitted a project page linking ``../blog/<post>/`` and a post
-canonicalized under the project's slug, both of which are correct in the
-project's own output tree and both of which name nothing once the assembly
-has moved the posts to the site level.  Every published project contributed
-its own copies of it.
+That is the only way the defects this file covers could be seen at all.
+
+The first: the build emitted a project page linking ``../blog/<post>/`` and
+a post canonicalized under the project's slug, both of which are correct in
+the project's own output tree and both of which name nothing once the
+assembly has moved the posts to the site level.  Every published project
+contributed its own copies of it.
+
+The second, which the repair for the first introduced: those references
+were made *absolute*, against the site's declared base.  In the assembled
+tree they resolve -- to production, from wherever the tree is actually
+being served.  A preview reads as a preview right up to the first click on
+a post, which silently leaves it; the reader then judges the live site
+believing they are still looking at the preview.  So the assertions here
+are two-sided: every reference must resolve inside the tree, and no
+reference a reader clicks may name the canonical base at all.
 """
 
 from __future__ import annotations
@@ -35,6 +45,7 @@ from tests.test_assembly_integrate import (  # noqa: F401  (fixtures)
     runner,
 )
 from tests.test_assembly_site_blog import blogging_assembly, _post  # noqa: F401
+from tests.test_mount_relative_links import absolute_anchors
 
 from conftest import default_config
 
@@ -158,20 +169,21 @@ def test_the_post_is_served_at_the_site_level(grafted):
 
 
 def test_a_project_page_links_the_post_where_the_assembly_serves_it(grafted):
+    """``site/alpha/guide/`` is two deep, so the site root is ``../../``."""
     guide = _read(grafted, "alpha", "guide", "index.html")
-    assert f'href="{CANONICAL_BASE}/blog/{POST_SLUG}/"' in guide
+    assert f'href="../../blog/{POST_SLUG}/"' in guide
 
 
 def test_a_project_pages_term_link_reaches_the_post_at_the_site_level(grafted):
     """A term-link crosses the same boundary a sidebar link does."""
     guide = _read(grafted, "alpha", "guide", "index.html")
-    assert f'{CANONICAL_BASE}/blog/{POST_SLUG}/#' in guide
+    assert f'../../blog/{POST_SLUG}/#' in guide
     assert 'href="../blog/' not in guide
 
 
 def test_the_glossarys_source_link_reaches_the_post_at_the_site_level(grafted):
     glossary = _read(grafted, "alpha", "glossary", "index.html")
-    assert f'href="{CANONICAL_BASE}/blog/{POST_SLUG}/"' in glossary
+    assert f'href="../../blog/{POST_SLUG}/"' in glossary
     assert 'href="../blog/' not in glossary
 
 
@@ -179,12 +191,19 @@ def test_the_post_reaches_the_projects_pages_at_the_project_mount(grafted):
     """The mirror direction: out of the site level, into the subtree.
 
     The post is served from the site root, so a relative hop out of it
-    reaches the site root and never the project's own subtree.  Only the
-    project's own base crosses back in.
+    reaches the site root and never the project's own subtree.  Descending
+    back through the slug is what crosses in.
     """
     post = _read(grafted, "blog", POST_SLUG, "index.html")
-    assert f'href="{CANONICAL_BASE}/alpha/glossary/"' in post
+    assert 'href="../../alpha/glossary/"' in post
     assert 'href="../../glossary/"' not in post
+
+
+def test_the_posts_topbar_link_reaches_the_projects_own_index(grafted):
+    """Not the site's front page, which belongs to another project."""
+    post = _read(grafted, "blog", POST_SLUG, "index.html")
+    assert 'href="../../alpha/index.html"' in post
+    assert 'href="../../index.html"' not in post
 
 
 def test_the_posts_canonical_is_its_site_level_address(grafted):
@@ -210,6 +229,37 @@ def test_no_reference_into_the_site_level_blog_dangles(grafted):
         if "blog" in (lint.message or "") or "blog" in (lint.file or "")
     ]
     assert dangling == []
+
+
+def test_every_reference_in_the_grafted_tree_resolves(grafted):
+    """Not just the blog ones: the whole tree, both halves of LINK001.
+
+    File existence and mount-independence at once -- a link that names a
+    real page by naming the production host passes the first and fails
+    the second.
+    """
+    tree = read_tree(str(grafted), CANONICAL_BASE)
+    failures = check_output_resolution(tree.site_dir, CANONICAL_BASE)
+    assert [f"{lint.file}: {lint.message}" for lint in failures] == []
+
+
+def test_no_link_a_reader_clicks_names_the_canonical_base(grafted):
+    """The class-level assertion, walked over the assembled tree.
+
+    An ``<a href>`` at the canonical base works on production and nowhere
+    else -- which on a preview means it works by leaving the preview.
+    """
+    site = os.path.join(str(grafted), "site")
+    leaks = absolute_anchors(site, CANONICAL_BASE)
+    assert leaks == [], leaks
+
+
+def test_the_metadata_in_the_grafted_tree_is_still_absolute(grafted):
+    """Only navigation changed: the canonical still names the live address."""
+    guide = _read(grafted, "alpha", "guide", "index.html")
+    assert f'<link rel="canonical" href="{CANONICAL_BASE}/alpha/guide/">' in guide
+    sitemap = _read(grafted, "sitemap.xml")
+    assert f"<loc>{CANONICAL_BASE}/blog/{POST_SLUG}/</loc>" in sitemap
 
 
 def test_the_grafted_tree_verifies_clean(grafted):

@@ -490,13 +490,15 @@ def test_a_404_with_an_empty_body_fails(assembly):
     assert any("404.html" in m for m in messages)
 
 
-@pytest.mark.parametrize("gone", ["/", "/projects/", "/blog/"])
-def test_a_404_that_is_a_dead_end_fails(assembly, gone):
+@pytest.mark.parametrize("gone,href", [
+    ("/", "./"), ("/projects/", "projects/"), ("/blog/", "blog/"),
+])
+def test_a_404_that_is_a_dead_end_fails(assembly, gone, href):
     """Every way back is asserted: a 404 with no links out strands a reader."""
     path = str(assembly / "site" / "404.html")
-    with open(path, encoding="utf-8") as f:
-        html = f.read()
-    _write(path, html.replace(f'href="{CANONICAL_BASE}{gone}"', 'href="#"'))
+    with open(path, encoding="utf-8") as html_file:
+        html = html_file.read()
+    _write(path, html.replace(f'href="{href}"', 'href="#"'))
     report = _verify(assembly)
     messages = [str(f) for f in report.failures_of("shared-artifacts")]
     assert any("404.html" in m and gone in m for m in messages)
@@ -953,12 +955,24 @@ def test_a_cached_failure_still_fails_without_a_request(assembly):
 
 
 def test_the_sites_own_absolute_urls_are_not_outbound(assembly):
+    """Nobody's server is asked -- and the link is still a defect here.
+
+    An absolute URL into this site is not an outbound link, so the
+    outbound check ignores it.  The reference check does not: a link a
+    reader clicks has to be document-relative, or the site resolves on the
+    deployed host alone.
+    """
     _with_outbound(assembly, OUTBOUND_DECL,
                    page_body=f'  <a href="{CANONICAL_BASE}/alpha/">Alpha</a>')
     fetch = FetchRecorder()
     report = _verify(assembly, fetch=fetch, now=1000.0)
     assert fetch.asked == []
-    assert report.ok, report.error_text()
+    assert report.failures_of("outbound-links") == []
+    messages = [str(f) for f in report.failures_of("internal-references")]
+    assert any(
+        "beta/index.html" in m and "absolute against the site's own base" in m
+        for m in messages
+    ), messages
 
 
 def test_a_resource_hint_is_not_an_outbound_link(assembly):

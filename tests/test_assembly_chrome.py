@@ -160,7 +160,7 @@ def test_wrap_shared_page_links_the_stylesheet_it_is_given():
 
 def test_the_not_found_page_carries_a_stylesheet():
     page = generate_not_found_page(
-        CANONICAL_BASE, css_url=f"{CHROME_DIR}/minimal-abc.css",
+        css_url=f"{CHROME_DIR}/minimal-abc.css",
     )
     assert f"{CHROME_DIR}/minimal-abc.css" in _stylesheets(page)
 

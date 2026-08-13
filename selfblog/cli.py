@@ -1070,7 +1070,7 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
 @assembly_group.command("generate-shared", help="Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page, a security headers file and the redirect worker in the site output directory.", effect="mutating")
 @strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
 @strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
-@strictcli.flag("docs-base", type=str, help="Base URL used for in-page links in the generated feed, listing and blog index. May be root-relative or empty. The sitemap does not read it: every <loc> is absolute by protocol, so the sitemap is generated from --canonical-base whatever this says.")
+@strictcli.flag("docs-base", type=str, help="Base URL the Atom feed's entries are written against. Only the feed reads it: every entry there is an absolute URL by protocol. Nothing a reader clicks does -- the generated listing, the blog index and the 404 address the site relative to their own page, so they resolve under any mount. The sitemap does not read it either: it is generated from --canonical-base whatever this says.")
 @strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
 @strictcli.flag("legacy-blog-host", type=str, help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
 @strictcli.flag("home-slug", type=str, default="", help="The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Empty means the tree carries no home project (which the deploy path never does -- the roster requires one).")
@@ -1626,10 +1626,9 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
 @strictcli.flag("site-manifests", type=str, default="", help="Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.")
-@strictcli.flag("docs-base", type=str, default="", help="Base URL of the assembled site, for the absolute links the site-level directives emit. Required by --target home.")
 @effects.handler
 def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
-               site_manifests="", docs_base=""):
+               site_manifests=""):
     """Build blog posts, the unified site, or the home project."""
     config = _load_config_or_fail()
     if config is None:
@@ -1642,7 +1641,7 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
         try:
             written = build_home_project(
                 ".", config, site_manifests=site_manifests,
-                docs_base=docs_base, include_drafts=drafts,
+                include_drafts=drafts,
             )
         except _user_errors() as e:
             _fail(e)

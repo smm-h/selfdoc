@@ -40,9 +40,21 @@ class URLBuilder(Protocol):
         A mounted project's own output root is not the served root: the
         site serves it under its slug, and serves the site-level pages
         (posts) from the site root instead.  The two roots are different
-        directories, so a reference crossing between them cannot be a
-        relative hop and has to be an absolute URL.  Every surface that
-        writes such a reference asks here rather than sniffing config.
+        directories, so a reference crossing between them has to climb out
+        of one and back into the other.  Every surface that writes such a
+        reference asks here rather than sniffing config.
+        """
+        ...
+
+    def mount_prefix(self) -> str:
+        """The path segments the site serves this project under.
+
+        ``""`` for a project that is its own site; ``"<slug>/"`` for one the
+        site mounts.  This is what turns a hop to the *project's* output
+        root into a hop to the *site's* root, and back: a reference crossing
+        the mount boundary is still document-relative, which is what lets
+        the same tree resolve on production, on a local preview and on a
+        mirror.  An absolute URL there resolves on exactly one host.
         """
         ...
 
@@ -50,7 +62,9 @@ class URLBuilder(Protocol):
         """Return the URL of the served site's root, with a trailing slash.
 
         For a standalone project that is its own base; for a mounted one
-        it is the shared site's base, above this project's slug.
+        it is the shared site's base, above this project's slug.  Absolute,
+        so it belongs to metadata -- a visible link crosses the mount with
+        :meth:`mount_prefix` instead.
         """
         ...
 
@@ -90,6 +104,10 @@ class SimpleURLBuilder:
     def mounted(self) -> bool:
         """A standalone project is not mounted: its output root is served."""
         return False
+
+    def mount_prefix(self) -> str:
+        """No mount: the project's output root already is the site root."""
+        return ""
 
     def site_root(self) -> str:
         """The served root, which for a standalone project is its own base."""
@@ -153,6 +171,10 @@ class TopologyURLBuilder:
     def mounted(self) -> bool:
         """A topology project is mounted: the site serves it under its slug."""
         return True
+
+    def mount_prefix(self) -> str:
+        """The slug segment the site serves this project's output under."""
+        return f"{self._slug}/"
 
     def site_root(self) -> str:
         """The shared site's root, above this project's slug."""

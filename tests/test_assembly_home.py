@@ -350,7 +350,7 @@ def home_assembly(tmp_path):
             "<p>Prose the author wrote.</p>\n"
             + render_region("projects-cards", {}, SiteContext(
                 manifests=[_manifest("alpha", "Alpha", "0.9.0")],
-                docs_base=CANONICAL_BASE,
+                site_hop="",
                 listing=Listing((ListingCategory("Frameworks", (
                     ListingProject("alpha", "Does the alpha thing."),
                 )),)),
@@ -517,7 +517,7 @@ def test_generate_homepage_refuses_a_declared_home_with_no_listing():
 
     with pytest.raises(ValueError, match="curated listing"):
         generate_homepage(
-            [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+            [_manifest("alpha", "Alpha", "1.0.0")], "../",
             home_slug="home", listing=None,
         )
 
@@ -531,7 +531,7 @@ def test_an_assembly_with_no_home_project_needs_no_listing(tmp_path):
     from selfblog.shared import generate_homepage
 
     html = generate_homepage(
-        [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE, listing=None,
+        [_manifest("alpha", "Alpha", "1.0.0")], "../", listing=None,
     )
     assert "Alpha" in html
 
@@ -601,7 +601,7 @@ def test_an_empty_category_is_a_hard_error():
 def test_a_listed_slug_with_no_manifest_is_a_hard_error():
     listing = parse_listing(LISTING_TOML)
     with pytest.raises(RuntimeError, match="alpha"):
-        render_listing_html(listing, [], CANONICAL_BASE, home_slug="home")
+        render_listing_html(listing, [], "", home_slug="home")
 
 
 def test_the_home_project_may_not_list_itself():
@@ -611,7 +611,7 @@ def test_the_home_project_may_not_list_itself():
     )
     with pytest.raises(RuntimeError, match="which is the home project"):
         render_listing_html(
-            listing, [_manifest("home", "Home", "0.1.0")], CANONICAL_BASE,
+            listing, [_manifest("home", "Home", "0.1.0")], "",
             home_slug="home",
         )
 
@@ -626,7 +626,7 @@ def test_a_roster_project_the_listing_omits_is_legal():
         listing,
         [_manifest("alpha", "Alpha", "1.0.0"),
          _manifest("beta", "Beta", "2.0.0")],
-        CANONICAL_BASE, home_slug="home",
+        "", home_slug="home",
     )
     assert "Alpha" in html
     assert "Beta" not in html
@@ -640,7 +640,7 @@ def test_a_card_links_the_declared_repository():
         'repo = "https://github.com/someone/alpha"\n'
     )
     html = render_listing_html(
-        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], "",
         home_slug="home",
     )
     assert 'href="https://github.com/someone/alpha"' in html
@@ -653,7 +653,7 @@ def test_a_card_with_no_declared_repository_links_only_its_docs():
         '[[category.project]]\nslug = "alpha"\nblurb = "b"\n'
     )
     html = render_listing_html(
-        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], "",
         home_slug="home",
     )
     assert "project-repo" not in html
@@ -667,7 +667,7 @@ def test_an_external_entry_may_also_declare_a_repository():
         'repo = "https://github.com/someone/out"\n'
     )
     html = render_listing_html(
-        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], "",
         home_slug="home",
     )
     assert 'href="https://out.example/"' in html
@@ -705,7 +705,7 @@ def test_the_repository_survives_the_sidecar_round_trip():
 def test_an_external_entry_links_out_and_carries_no_version():
     listing = parse_listing(LISTING_TOML)
     html = render_listing_html(
-        listing, [_manifest("alpha", "Alpha", "1.0.0")], CANONICAL_BASE,
+        listing, [_manifest("alpha", "Alpha", "1.0.0")], "",
         home_slug="home",
     )
     assert 'href="https://example.org/outside"' in html
@@ -730,7 +730,7 @@ def test_a_region_survives_a_re_render_with_its_attributes():
         manifests=[_manifest("alpha", "Alpha", "1.0.0", posts=[
             {"slug": "hello", "title": "Hello", "date": "2024-06-01"},
         ])],
-        docs_base=CANONICAL_BASE,
+        site_hop="",
     )
     once = render_region("blog-highlights", {"limit": "1"}, context)
     assert region_names(once) == ["blog-highlights"]
@@ -745,7 +745,7 @@ def test_blog_highlights_honours_its_limit():
             {"slug": "one", "title": "One", "date": "2024-06-01"},
             {"slug": "two", "title": "Two", "date": "2024-07-01"},
         ])],
-        docs_base=CANONICAL_BASE,
+        site_hop="",
     )
     html = render_region("blog-highlights", {"limit": "1"}, context)
     assert "Two" in html
@@ -753,19 +753,19 @@ def test_blog_highlights_honours_its_limit():
 
 
 def test_blog_highlights_requires_a_limit():
-    context = SiteContext(manifests=[], docs_base=CANONICAL_BASE)
+    context = SiteContext(manifests=[], site_hop="")
     with pytest.raises(RuntimeError, match="requires limit"):
         render_region("blog-highlights", {}, context)
 
 
 def test_projects_cards_without_a_listing_is_a_hard_error():
-    context = SiteContext(manifests=[], docs_base=CANONICAL_BASE)
+    context = SiteContext(manifests=[], site_hop="")
     with pytest.raises(RuntimeError, match="docs/projects.toml"):
         render_region("projects-cards", {}, context)
 
 
 def test_a_region_that_never_closes_is_a_hard_error():
-    context = SiteContext(manifests=[], docs_base=CANONICAL_BASE)
+    context = SiteContext(manifests=[], site_hop="")
     with pytest.raises(RuntimeError, match="open and never close"):
         refresh_regions(
             '<selfblog-region data-directive="projects-cards">', context,
@@ -777,7 +777,7 @@ def test_a_paragraph_wrapper_around_a_region_is_absorbed():
     """Markdown wraps the emitted region in <p>; a block element is not staying there."""
     context = SiteContext(
         manifests=[_manifest("alpha", "Alpha", "1.0.0")],
-        docs_base=CANONICAL_BASE,
+        site_hop="",
         listing=Listing((ListingCategory("A", (
             ListingProject("alpha", "b"),
         )),)),
@@ -793,7 +793,7 @@ def test_a_paragraph_wrapper_around_a_region_is_absorbed():
 
 
 def test_a_page_with_no_region_is_returned_unchanged():
-    context = SiteContext(manifests=[], docs_base=CANONICAL_BASE)
+    context = SiteContext(manifests=[], site_hop="")
     page = "<html><body><p>nothing to do</p></body></html>"
     assert refresh_regions(page, context) == page
 
@@ -805,20 +805,7 @@ def test_a_home_build_without_the_manifests_refuses(tmp_path):
     config = {"versions": [{"version": "0.1.0"}],
               "locales": [{"code": "en", "label": "English", "default": True}]}
     with pytest.raises(RuntimeError, match="--site-manifests is required"):
-        build_home_project(
-            str(tmp_path), config, site_manifests="", docs_base=CANONICAL_BASE,
-        )
-
-
-def test_a_home_build_without_a_docs_base_refuses(tmp_path):
-    manifests = tmp_path / "manifests"
-    manifests.mkdir()
-    config = {"versions": [{"version": "0.1.0"}],
-              "locales": [{"code": "en", "label": "English", "default": True}]}
-    with pytest.raises(RuntimeError, match="--docs-base is required"):
-        build_home_project(
-            str(tmp_path), config, site_manifests=str(manifests), docs_base="",
-        )
+        build_home_project(str(tmp_path), config, site_manifests="")
 
 
 def test_a_home_build_resolves_the_directives_into_sentinel_regions(tmp_path):
@@ -856,10 +843,7 @@ def test_a_home_build_resolves_the_directives_into_sentinel_regions(tmp_path):
         "topology": {"slug": "home"},
     }
 
-    build_home_project(
-        str(project), config, site_manifests=str(manifests),
-        docs_base=CANONICAL_BASE,
-    )
+    build_home_project(str(project), config, site_manifests=str(manifests))
 
     page = (project / "docs" / "_build" / "index.html").read_text()
     assert "Prose the author wrote." in page

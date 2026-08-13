@@ -12,11 +12,11 @@ Two moments, and both are the same code:
 
 * **Build time**, when the home project is built for the assembly.  The build
   needs the assembly's manifests to know any project's live version, so it is
-  run as ``selfblog build --target home --site-manifests <dir> --docs-base
-  <url>``.  Without that context the command refuses to build at all, naming
-  what is missing.  A plain ``selfdoc build`` of the home project refuses too:
-  selfdoc's catalogue has no ``projects-cards``, so it stops at an unknown
-  directive.  Neither path ever emits an empty region.
+  run as ``selfblog build --target home --site-manifests <dir>``.  Without
+  that context the command refuses to build at all, naming what is missing.
+  A plain ``selfdoc build`` of the home project refuses too: selfdoc's
+  catalogue has no ``projects-cards``, so it stops at an unknown directive.
+  Neither path ever emits an empty region.
 
 * **Assembly time**, on every deploy, inside ``generate_shared_files``.  Each
   resolved region is left in the emitted HTML inside a wrapper element, so
@@ -24,6 +24,15 @@ Two moments, and both are the same code:
   back to the source.  This is what keeps the front page's
   version badges current when *another* project deploys: the home project's
   own build may be months old, the region is not.
+
+Both moments render a region's links against the *rendering page's* hop back
+to the site root, never against the site's base URL.  A region on the front
+page and the same region on a page one level down need different hrefs, and
+an absolute one would need neither -- it would work on the deployed host and
+walk a reader off any preview or mirror.  Directive resolution never learns
+which page it is writing into, so the build resolves regions first and then
+re-addresses them per page; :func:`page_context` is the one place that turns
+a page path into that hop.
 
 The region wrapper is the whole mechanism.  It is a custom element,
 ``<selfblog-region data-directive="...">``, and not an HTML comment: the
@@ -78,14 +87,19 @@ class SiteContext:
     """Everything a site-level directive reads.
 
     manifests: every project manifest the assembly holds.
-    docs_base: the assembled site's base URL, for absolute links.
+    site_hop: the hop from the page being rendered back to the site root
+        (``""`` at the root, ``"../"`` one level in).  Every link a region
+        writes is relative to it, so a region resolves under any mount --
+        the deployed host, a local preview, a mirror -- instead of only
+        under the one base URL the site was configured with.  The refresh
+        pass sets it per page, which is the only place the page is known.
     listing: the home project's curated listing, or None when it declares
         none -- which ``projects-cards`` refuses, naming the file.
     home_slug: the home project, which the listing never includes.
     """
 
     manifests: list[dict]
-    docs_base: str
+    site_hop: str = ""
     listing: Listing | None = None
     home_slug: str = ""
 
@@ -120,18 +134,22 @@ def _region_name(attrs_text: str) -> str:
     return ""
 
 
-def render_blog_highlights(manifests, docs_base: str, limit: int) -> str:
-    """Return the *limit* most recent posts across every project."""
+def render_blog_highlights(manifests, site_hop: str, limit: int) -> str:
+    """Return the *limit* most recent posts across every project.
+
+    *site_hop* is the rendering page's hop back to the site root; every
+    post link is written against it rather than against the site's base
+    URL, so the highlights lead into the tree the reader is on.
+    """
     from selfblog.shared import merge_project_posts, post_target
 
     posts = merge_project_posts(manifests)
     posts.sort(key=lambda p: (p["date"], p["slug"]), reverse=True)
-    base = docs_base.rstrip("/")
     parts = ['<section class="blog-highlights">']
     if not posts:
         parts.append("  <p>No posts yet.</p>")
     for post in posts[:limit]:
-        href = f"{base}/{post_target(post['slug'])}/"
+        href = f"{site_hop}{post_target(post['slug'])}/"
         parts.append('  <article class="blog-entry">')
         parts.append(f"    <time>{html.escape(post['date'])}</time>")
         parts.append(
@@ -143,7 +161,9 @@ def render_blog_highlights(manifests, docs_base: str, limit: int) -> str:
             f"{html.escape(post['title'])}</a>"
         )
         parts.append("  </article>")
-    parts.append(f'  <p><a href="{html.escape(base)}/blog/">All posts</a></p>')
+    parts.append(
+        f'  <p><a href="{html.escape(site_hop)}blog/">All posts</a></p>'
+    )
     parts.append("</section>")
     return "\n".join(parts)
 
@@ -171,7 +191,7 @@ def render_directive_body(name: str, attrs: dict[str, str],
                 "docs/projects.toml. This project declares none."
             )
         return render_listing_html(
-            context.listing, context.manifests, context.docs_base,
+            context.listing, context.manifests, context.site_hop,
             home_slug=context.home_slug,
         )
 
@@ -201,7 +221,7 @@ def render_directive_body(name: str, attrs: dict[str, str],
                 f"directive 'blog-highlights': limit must be at least 1, got "
                 f"{limit}."
             )
-        return render_blog_highlights(context.manifests, context.docs_base, limit)
+        return render_blog_highlights(context.manifests, context.site_hop, limit)
 
     raise RuntimeError(
         f"unknown site-level directive {name!r}; selfblog resolves "
@@ -235,8 +255,8 @@ def resolve_for_build(name: str, attrs: dict[str, str], config) -> str:
             f"directive '{name}' is site-level: it renders from the "
             f"assembled site's manifests, which no single project's build "
             f"can see on its own. Build the home project with "
-            f"`selfblog build --target home --site-manifests <dir> "
-            f"--docs-base <url>`, which supplies them."
+            f"`selfblog build --target home --site-manifests <dir>`, "
+            f"which supplies them."
         )
     return render_region(name, attrs, context)
 
@@ -250,7 +270,7 @@ def home_listing_path(dir_path: str, config) -> str:
 
 
 def build_home_project(dir_path: str, config, *, site_manifests: str,
-                       docs_base: str, include_drafts: bool = False):
+                       include_drafts: bool = False):
     """Build the home project with the assembly's data in scope.
 
     This is the only build that can resolve a site-level directive, and the
@@ -258,6 +278,13 @@ def build_home_project(dir_path: str, config, *, site_manifests: str,
     post highlight are read from, and no project's own repository holds
     them.  A missing context stops the build before a page is written --
     there is no rendering of an empty region and no placeholder.
+
+    Directive resolution happens per markdown source and never learns which
+    emitted page it is writing into, so the regions come out of the build
+    addressed from the output root.  :func:`refresh_output_regions` then
+    re-renders each one against its own page's hop -- the same pass the
+    assembly runs on every deploy, run here so the home project's own build
+    output is correct on its own.
     """
     import os
 
@@ -279,13 +306,6 @@ def build_home_project(dir_path: str, config, *, site_manifests: str,
             f"--site-manifests names {site_manifests!r}, which is not a "
             f"directory. It is the assembly checkout's manifests/ directory."
         )
-    if not docs_base:
-        raise RuntimeError(
-            "--docs-base is required by --target home: the site-level "
-            "directives emit absolute links into the assembled site, and "
-            "there is no default base URL."
-        )
-
     listing_path = home_listing_path(dir_path, config)
     listing = (
         load_listing_source(listing_path)
@@ -297,13 +317,19 @@ def build_home_project(dir_path: str, config, *, site_manifests: str,
     build_config["directives"] = {
         **(config.get("directives") or {}), **SHIM_SCRIPTS,
     }
-    build_config[CONTEXT_KEY] = SiteContext(
+    context = SiteContext(
         manifests=load_assembly_manifests(site_manifests),
-        docs_base=docs_base,
         listing=listing,
         home_slug=home_slug,
     )
-    return build(dir_path, config=build_config, include_drafts=include_drafts)
+    build_config[CONTEXT_KEY] = context
+    written = build(dir_path, config=build_config, include_drafts=include_drafts)
+
+    output_dir = os.path.join(
+        dir_path, (config.get("output") or "docs/_build/").rstrip("/"),
+    )
+    refresh_output_regions(output_dir, context)
+    return written
 
 
 def find_unclosed_regions(page_html: str) -> list[str]:
@@ -354,3 +380,48 @@ def refresh_regions(page_html: str, context: SiteContext, *,
             raise RuntimeError(f"{where}{exc}") from exc
 
     return _REGION_RE.sub(_replace, page_html)
+
+
+def page_context(context: SiteContext, page_rel: str) -> SiteContext:
+    """*context* addressed from the page at *page_rel*.
+
+    ``page_rel`` is the page's path relative to the root it is served
+    from, and the hop back to that root is how many directories deep it
+    sits.  Every caller that renders a region into a known page goes
+    through here, so the build-time pass and the deploy-time pass cannot
+    disagree about where a region's links point.
+    """
+    return dataclasses.replace(
+        context, site_hop="../" * page_rel.count("/"),
+    )
+
+
+def refresh_output_regions(output_dir: str, context: SiteContext) -> list[str]:
+    """Re-render every region in every HTML page under *output_dir*.
+
+    Returns the output-relative paths that changed.  The paths are also
+    the addresses: the home project's output root is the site root, both
+    in its own build and after the graft, so a page's depth in this tree
+    is the hop its links need.
+    """
+    import os
+
+    from selfdoc_core.utils import atomic_write
+
+    changed: list[str] = []
+    for dirpath, dirs, files in os.walk(output_dir):
+        dirs[:] = sorted(dirs)
+        for name in sorted(files):
+            if not name.endswith(".html"):
+                continue
+            path = os.path.join(dirpath, name)
+            rel = os.path.relpath(path, output_dir).replace(os.sep, "/")
+            with open(path, "r", encoding="utf-8") as f:
+                page_html = f.read()
+            refreshed = refresh_regions(
+                page_html, page_context(context, rel), source=rel,
+            )
+            if refreshed != page_html:
+                atomic_write(path, refreshed)
+                changed.append(rel)
+    return changed

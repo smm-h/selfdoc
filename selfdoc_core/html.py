@@ -431,7 +431,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         )
         # Posts are mountless site citizens -- see _site_level_hop.
         site_prefix = _site_level_hop(url_builder, addr)
-        home_href = _home_href(addr, all_html_paths)
+        home_href = _home_href(addr, all_html_paths, url_builder)
         md_config = {}
         if auto_detect:
             md_config["auto_detect"] = auto_detect
@@ -711,7 +711,9 @@ def generate_html(markdown_files, project_name=None, version=None,
             "breadcrumbs": _build_breadcrumbs(
                 "glossary/index.html", "Glossary",
                 glossary_addr.to_mount_root, all_html_paths,
-                home_href=_home_href(glossary_addr, all_html_paths),
+                home_href=_home_href(
+                    glossary_addr, all_html_paths, url_builder,
+                ),
                 site_prefix=glossary_site_prefix,
             ),
             "prev_page": None,
@@ -719,7 +721,9 @@ def generate_html(markdown_files, project_name=None, version=None,
             "prefix": glossary_addr.to_mount_root,
             "unversioned_prefix": glossary_addr.to_stable_mount_root,
             "site_prefix": _site_level_hop(url_builder, glossary_addr),
-            "home_href": _home_href(glossary_addr, all_html_paths),
+            "home_href": _home_href(
+                glossary_addr, all_html_paths, url_builder,
+            ),
             "source_path": None,
             "date_published": None,
             "date_modified": None,
@@ -2093,7 +2097,7 @@ def _html_to_md_path(html_path):
     return html_path.replace(".html", ".md")
 
 
-def _home_href(addr, own_pages):
+def _home_href(addr, own_pages, url_builder=None):
     """Document-relative href to the home page, seen from *addr*'s page.
 
     ``own_pages`` is the set of HTML paths this build emits under the
@@ -2105,13 +2109,23 @@ def _home_href(addr, own_pages):
     * It does not, which is what a build of only the site-level or
       ``versioned: false`` pages looks like.  Home is the current
       version's index at the stable mount, which every build writes.
+
+    Both hops go through :func:`_project_hop`, because the home page is
+    one of the project's own: from a post under a site mount a bare hop
+    out lands on the *site's* front page, which belongs to whichever
+    project the assembly serves at the root -- a link that resolves, to
+    the wrong page.
     """
     if "index.html" in own_pages:
-        return addr.to_mount_root + "index.html"
+        return _project_hop(
+            url_builder, addr, addr.to_mount_root,
+        ) + "index.html"
     stable_home = page_address(
         "index.html", locale=addr.locale, project=addr.project,
     ).stable
-    return addr.to_site_root + stable_home + "index.html"
+    return _project_hop(
+        url_builder, addr, addr.to_site_root,
+    ) + stable_home + "index.html"
 
 
 def _build_nav(markdown_files, frontmatter=None,
@@ -2306,19 +2320,30 @@ def _site_level_hop(url_builder, addr):
     the output root, and on an assembled site they are served from the
     *site* root while the project that wrote them is served under its
     slug.  Those are two different directories, so which hop is correct
-    depends on whether this build is mounted:
+    depends on whether this build is mounted, and on which side of the
+    boundary the rendering page sits:
 
     * Not mounted -- the project's output root is the served root, the
       posts are inside it, and the document-relative hop back to the
       output root reaches them.
-    * Mounted -- the hop back to the output root reaches the project's own
-      subtree, where the assembly does not put posts.  Only an absolute
-      URL crosses out of the subtree, and a mounted project has one: its
-      declared site base.
+    * Mounted, from a project page -- the hop back to the output root
+      reaches the project's own subtree, where the assembly does not put
+      posts.  Climbing the mount as well reaches the site root, where it
+      does: the graft moves the whole output under
+      :meth:`~selfdoc_core.urls.URLBuilder.mount_prefix`, and that is
+      exactly how much further out the site root is.
+    * Mounted, from a post -- the post is already served from the site
+      root, so its own hop out is the site hop unchanged.
+
+    Relative in every case, deliberately.  An absolute URL here resolves
+    on the production host and nowhere else: on a preview or a mirror it
+    still *works*, by leaving the tree the reader is looking at.
     """
-    if url_builder is not None and url_builder.mounted():
-        return url_builder.site_root()
-    return addr.to_site_root
+    if url_builder is None or not url_builder.mounted():
+        return addr.to_site_root
+    if is_site_level(addr.page_path):
+        return addr.to_site_root
+    return addr.to_site_root + "../" * url_builder.mount_prefix().count("/")
 
 
 def _project_hop(url_builder, addr, relative):
@@ -2328,8 +2353,8 @@ def _project_hop(url_builder, addr, relative):
     reason read the other way round.  A page at the site level -- a post
     -- is served from the site root, so a relative hop out of it reaches
     the site root and never the project's subtree, where the assembly
-    puts the project's documentation.  Only the project's own declared
-    base crosses back in.
+    puts the project's documentation.  Descending back through the mount
+    prefix is what crosses in.
 
     Off the site level, or with no mount at all, the page and the target
     share a served root and *relative* is the hop that reaches it: the
@@ -2338,7 +2363,7 @@ def _project_hop(url_builder, addr, relative):
     """
     if (url_builder is not None and url_builder.mounted()
             and is_site_level(addr.page_path)):
-        return f"{url_builder.base()}/"
+        return addr.to_site_root + url_builder.mount_prefix()
     return relative
 
 

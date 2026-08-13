@@ -943,11 +943,19 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
     # internal link, a canonical, a sitemap entry or a feed link that
     # resolves to nothing is a broken site.  A project with no build
     # output has nothing to check.
+    #
+    # A project the site mounts under its slug passes that mount in: its
+    # output root is not the served root, so the references that cross the
+    # boundary in either direction are answered by the assembly's own pass
+    # over the whole tree and not by this one.
+    from selfdoc_core.build import _make_url_builder
     from selfdoc_core.resolution import check_output_resolution
 
+    url_builder = _make_url_builder(config)
     result.lints.extend(check_output_resolution(
         os.path.join(dir_path, config.get("output", "docs/_build/").rstrip("/")),
         base_url=config.get("base_url", ""),
+        mount_prefix=url_builder.mount_prefix() if url_builder else "",
     ))
 
     # Validate old versions when multi-version is configured.

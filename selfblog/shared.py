@@ -128,7 +128,7 @@ def wrap_shared_page(
     )
 
 
-def generate_homepage(manifests: list[dict], docs_base: str, *,
+def generate_homepage(manifests: list[dict], site_hop: str, *,
                       home_slug: str = "", listing=None) -> str:
     """Produce the project listing fragment the ``/projects/`` page serves.
 
@@ -147,7 +147,11 @@ def generate_homepage(manifests: list[dict], docs_base: str, *,
 
     Args:
         manifests: List of loaded manifest dicts.
-        docs_base: Base URL for the documentation site.
+        site_hop: The hop from the page this fragment is rendered into back
+            to the site root (``""`` at the root, ``"../"`` one level in).
+            Every card's link is written against it, so the listing
+            resolves under any mount -- production, a local preview, a
+            mirror -- rather than only under the deployed base.
         home_slug: The roster's home project, left out of the listing.
         listing: The curated :class:`~selfblog.listing.Listing`.  None only
             when there is no home project.
@@ -171,7 +175,7 @@ def generate_homepage(manifests: list[dict], docs_base: str, *,
         from selfblog.listing import render_listing_html
 
         return render_listing_html(
-            listing, manifests, docs_base,
+            listing, manifests, site_hop,
             home_slug=home_slug, heading="Projects",
         )
 
@@ -185,7 +189,7 @@ def generate_homepage(manifests: list[dict], docs_base: str, *,
         slug = html.escape(m.get("slug") or "")
         version = html.escape(m.get("version") or "")
         description = html.escape(m.get("description") or "")
-        href = f"{docs_base}/{slug}/"
+        href = f"{site_hop}{slug}/"
         parts.append('  <article class="project-card">')
         parts.append(f"    <h2><a href=\"{href}\">{name}</a></h2>")
         if version:
@@ -200,12 +204,15 @@ def generate_homepage(manifests: list[dict], docs_base: str, *,
     return "\n".join(parts)
 
 
-def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
+def generate_blog_index(manifests: list[dict], site_hop: str) -> str:
     """Produce an HTML fragment listing all posts across projects, newest first.
 
     Args:
         manifests: List of loaded manifest dicts.
-        docs_base: Base URL for the documentation site.
+        site_hop: The hop from the page this fragment is rendered into back
+            to the site root.  Each entry links a post relative to it, so
+            the index works on every mount rather than on the deployed
+            host alone.
 
     Returns:
         HTML fragment with the blog index.
@@ -222,7 +229,7 @@ def generate_blog_index(manifests: list[dict], docs_base: str) -> str:
         date = html.escape(post["date"])
         project_name = html.escape(post["project_name"])
         title = html.escape(post["title"])
-        href = f"{docs_base}/{post_target(post['slug'])}/"
+        href = f"{site_hop}{post_target(post['slug'])}/"
         parts.append('  <article class="blog-entry">')
         parts.append(f"    <time>{date}</time>")
         parts.append(f'    <span class="project-name">{project_name}</span>')
@@ -446,7 +453,7 @@ def generate_llms_txt(manifests: list[dict], canonical_base: str, *,
     return "\n".join(lines)
 
 
-def generate_not_found_page(canonical_base: str, *, css_url: str) -> str:
+def generate_not_found_page(*, css_url: str, site_hop: str = "") -> str:
     """Produce the assembly's root 404 page.
 
     The only one the site has.  ``404.html`` is answered at the root of
@@ -468,26 +475,29 @@ def generate_not_found_page(canonical_base: str, *, css_url: str) -> str:
 
     *css_url* is the page's reference to the site-level chrome stylesheet.
     The 404 sits at the site root, so it is the one shared page whose hop
-    back to the root is empty.
+    back to the root is empty -- which is why *site_hop* defaults to it,
+    and the three links it offers are written against that hop rather than
+    against the deployed base.  An absolute one would send every reader
+    who hit a dead address on a preview or a mirror to production.
     """
-    base = canonical_base.rstrip("/")
+    hop = html.escape(site_hop)
     body = (
         '<main class="not-found">\n'
         "  <h1>Page not found</h1>\n"
         "  <p>There is no page at this address. It may have moved, or the "
         "link that brought you here may be wrong.</p>\n"
         "  <p>These three are always here:</p>\n"
-        "  <ul>\n"
-        f'    <li><a href="{html.escape(base)}/">Home</a></li>\n'
-        f'    <li><a href="{html.escape(base)}/projects/">Projects</a></li>\n'
-        f'    <li><a href="{html.escape(base)}/{POSTS_SEGMENT}/">Blog</a></li>\n'
+        f'  <ul>\n'
+        f'    <li><a href="{hop or "./"}">Home</a></li>\n'
+        f'    <li><a href="{hop}projects/">Projects</a></li>\n'
+        f'    <li><a href="{hop}{POSTS_SEGMENT}/">Blog</a></li>\n'
         "  </ul>\n"
         "  <p>Or search the whole site from any documentation page.</p>\n"
         "</main>"
     )
     return wrap_shared_page(
         "Page not found", body, canonical_url="",
-        css_url=css_url, search_prefix="",
+        css_url=css_url, search_prefix=site_hop,
     )
 
 

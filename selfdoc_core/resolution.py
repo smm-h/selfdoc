@@ -19,6 +19,22 @@ page this build wrote, and one that points elsewhere is not ours to
 verify.  A share address is a reference like any other -- it is handed to
 a reader to open -- so a control that offers an address the build did not
 write fails here rather than 404ing for whoever it was shared with.
+
+Two rules here are not about existence at all.  A reference that decides
+where a *click* goes -- an ``<a href>`` -- must be document-relative, so
+neither of these is allowed:
+
+* ``/blog/hello/``, origin-absolute, which resolves only when the site is
+  served from an origin root and names nothing under a mount;
+* ``https://<this site's base>/blog/hello/``, absolute against the site's
+  own base, which is worse because it *works*: on a preview, a mirror or
+  any other mount the click silently leaves the tree the reader is
+  looking at and lands on production.  The file-existence half of this
+  module can never see it -- the page it names really is there.
+
+Absolute is right for metadata, which says where a page lives in the
+world: the canonical, the share addresses, sitemap entries and feed
+links, all checked above and none of them somewhere a click goes.
 """
 
 from __future__ import annotations
@@ -28,12 +44,14 @@ import os
 import posixpath
 import re
 
+from selfdoc_core.address import is_site_level
 from selfdoc_core.lints import LintResult
 
 __all__ = [
     "LINT_CODE",
     "check_output_resolution",
     "external_references",
+    "navigation_references",
     "page_references",
     "reference_target",
     "site_relative_path",
@@ -43,6 +61,10 @@ __all__ = [
 LINT_CODE = "LINK001"
 
 _REF_ATTR_RE = re.compile(r'\b(href|src|data-search-base)="([^"]*)"')
+
+#: Every ``<a>`` element's ``href`` -- the references a reader can click,
+#: as opposed to the assets a page loads and the metadata it declares.
+_ANCHOR_HREF_RE = re.compile(r'<a\b[^>]*?\bhref="([^"]*)"', re.IGNORECASE)
 _CANONICAL_RE = re.compile(r'<link rel="canonical" href="([^"]*)"')
 _SHARE_URL_RE = re.compile(r'\bdata-share-url="([^"]*)"')
 _LOC_RE = re.compile(r"<loc>([^<]*)</loc>")
@@ -129,6 +151,20 @@ def page_references(page_html):
         yield attr, ref
 
 
+def navigation_references(page_html):
+    """Yield every ``<a href>`` *page_html* writes, unescaped.
+
+    The references a click follows, which is the set the mount-relative
+    rule governs.  Assets (``src``, stylesheet ``link``) are not here:
+    they are fetched by the page rather than navigated to, and the
+    assembly re-points some of them at site-level files after the graft.
+    """
+    for raw in _ANCHOR_HREF_RE.findall(page_html):
+        ref = html_mod.unescape(raw)
+        if ref:
+            yield ref
+
+
 def _blank_origin_hints(page_html):
     """Blank every origin-only resource hint, keeping every other offset.
 
@@ -165,7 +201,17 @@ def external_references(page_html):
             yield ref
 
 
-def check_output_resolution(output_dir, base_url=""):
+def _escape_depth(target):
+    """How many levels above the output root *target* sits (0 when inside)."""
+    depth = 0
+    for segment in target.split("/"):
+        if segment != "..":
+            break
+        depth += 1
+    return depth
+
+
+def check_output_resolution(output_dir, base_url="", mount_prefix=""):
     """Check every emitted reference in *output_dir* against what was written.
 
     Args:
@@ -174,6 +220,17 @@ def check_output_resolution(output_dir, base_url=""):
         base_url: The site's configured base URL, used to tell this site's
             absolute URLs (canonicals, sitemap entries, feed links) from
             everyone else's.
+        mount_prefix: The path segments the site serves this output under
+            (``"alpha/"``), empty when the output root is the served root.
+            A mounted build's output is one subtree of a site it cannot
+            see: its pages address the site level by climbing out of the
+            output root, and its posts are grafted *out* of the subtree to
+            the site root, so neither side's references resolve within
+            this directory.  Those are left to the assembly's own pass
+            over the whole tree, which is the only place they can be
+            answered.  What still applies here applies everywhere: no
+            reference a reader clicks may be origin-absolute or absolute
+            against the site's base.
 
     Returns:
         A list of ``LintResult`` under :data:`LINT_CODE`, one per
@@ -181,6 +238,7 @@ def check_output_resolution(output_dir, base_url=""):
     """
     if not os.path.isdir(output_dir):
         return []
+    mount_depth = mount_prefix.strip("/").count("/") + 1 if mount_prefix else 0
     emitted = _emitted_files(output_dir)
     pages = sorted(p for p in emitted if p.endswith(".html"))
     if not pages:
@@ -204,6 +262,12 @@ def check_output_resolution(output_dir, base_url=""):
         with open(os.path.join(output_dir, page_rel), encoding="utf-8") as f:
             page_html = f.read()
 
+        # A post in a mounted build is grafted out of this subtree to the
+        # site root, so it addresses its neighbours from an address this
+        # directory does not have.  Nothing here can answer those; the
+        # assembly's pass over the assembled tree does.
+        site_level_page = bool(mount_depth) and is_site_level(page_rel)
+
         for attr, ref in page_references(page_html):
             if ref.startswith("/"):
                 _fail(
@@ -213,17 +277,34 @@ def check_output_resolution(output_dir, base_url=""):
                     f"document-relative",
                 )
                 continue
+            if site_level_page:
+                continue
             target = reference_target(page_rel, ref)
             if target is None:
                 continue
             if target.startswith(".."):
-                _fail(page_rel, f'{attr}="{ref}" escapes the output root')
+                # Climbing out of a mounted build's output root reaches the
+                # site, which this directory is only one subtree of.
+                if _escape_depth(target) > mount_depth:
+                    _fail(page_rel, f'{attr}="{ref}" escapes the output root')
             elif target not in emitted:
                 _fail(
                     page_rel,
                     f'{attr}="{ref}" -> {target}, which this build did '
                     f"not write",
                 )
+
+        for ref in navigation_references(page_html):
+            if site_relative_path(ref, base_url) is None:
+                continue
+            _fail(
+                page_rel,
+                f'<a href="{ref}"> is absolute against the site\'s own '
+                f"base; the site has to resolve under any mount point, so "
+                f"a link a reader clicks is document-relative. An absolute "
+                f"one works on the deployed host and silently leaves a "
+                f"preview or a mirror",
+            )
 
         for canonical in _CANONICAL_RE.findall(page_html):
             _check_absolute(

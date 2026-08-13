@@ -294,10 +294,10 @@ Two pieces of this topology live on platform dashboards and are not automated:
 
 Every constituent build writes a `robots.txt`, an `llms.txt`, a `sitemap.xml` and a `404.html` at its own output root, where the graft buries them under `<slug>/` and no crawler reads them. The four the site serves are generated once, for the whole site, by the shared-element generator.
 
-* **`sitemap.xml`** lists every project's pages and every post. Each `<loc>` is absolute under the canonical base -- the sitemap protocol has no relative form, so the generator takes the canonical base for it regardless of what `--docs-base` says, and refuses an empty or root-relative one.
+* **`sitemap.xml`** lists every project's pages and every post. Each `<loc>` is absolute under the canonical base -- the sitemap protocol has no relative form -- and an empty or root-relative base is refused.
 * **`robots.txt`** names that sitemap by absolute URL, and carries the same crawler policy the per-project template declares. Both read one declaration (`selfdoc_core.build.ROBOTS_AGENTS`), so a crawler the site allows cannot be one its projects disallow.
 * **`llms.txt`** composes the per-project files **by reference**: one line per project, with its name, a link to its own `llms.txt`, and the one-line description from its manifest, plus a link to the blog. It never inlines their contents -- an inlined copy would be a second, staler rendering of a document its owner republishes on its own deploys.
-* **`404.html`** is what Cloudflare Pages serves, with a 404 status, for an address that matches no asset. Its body is deliberately not the front page's: an unknown address that renders the home page is a soft 404, which a crawler indexes as a duplicate of the site root and a reader mistakes for having arrived somewhere. It links home, the project listing and the blog.
+* **`404.html`** is what Cloudflare Pages serves, with a 404 status, for an address that matches no asset. Its body is deliberately not the front page's: an unknown address that renders the home page is a soft 404, which a crawler indexes as a duplicate of the site root and a reader mistakes for having arrived somewhere. It links home, the project listing and the blog -- relatively, like every other link a reader clicks, so a dead address on a preview offers its way back into the preview.
 
 The home project is left out of `llms.txt` for the same reason it is left out of the listing: it is the site root the file is served from, not one of the projects it points at.
 
@@ -572,7 +572,7 @@ Two directives are available to the home project's pages:
 | `:-: projects-cards` | the curated listing, with each project's live version |
 | `:-: blog-highlights limit="N"` | the N most recent posts across every project |
 
-They resolve twice, from the same code. Once at build time -- which is why the home project builds through `selfblog build --target home --site-manifests <dir> --docs-base <url>` rather than through `selfdoc build`: a version badge is read from the assembly's manifests, and no project's own repository holds them. Without that context the command refuses to build at all, naming what is missing; a plain `selfdoc build` refuses too, on the unknown directive. Neither ever emits an empty region.
+They resolve twice, from the same code. Once at build time -- which is why the home project builds through `selfblog build --target home --site-manifests <dir>` rather than through `selfdoc build`: a version badge is read from the assembly's manifests, and no project's own repository holds them. Without that context the command refuses to build at all, naming what is missing; a plain `selfdoc build` refuses too, on the unknown directive. Neither ever emits an empty region.
 
 Then again on **every** deploy, including deploys the home project has nothing to do with. Each resolved region is left in the emitted HTML inside a `<selfblog-region>` element, and the shared-element generator rewrites its contents from the current manifests. That is what keeps a front-page version badge current when the project it names releases: the prose and the design stay authored, the mechanical parts cannot go stale.
 

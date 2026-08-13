@@ -395,17 +395,15 @@ def test_overlay_unknown_slug_ignored(tmp_path):
     assert "Ghost" not in blog_html
 
 
-# -- Blog URLs are correct (regression for slug-as-hostname bug) -------------
+# -- Blog URLs are mount-relative, whatever the base says --------------------
 
 
-def test_blog_urls_not_broken_without_docs_base(tmp_path):
-    """Without --docs-base, blog links are root-relative, not protocol-only broken URLs.
+def test_blog_urls_are_relative_without_docs_base(tmp_path):
+    """The blog index links a post by hopping out of its own directory.
 
-    Regression test: previously, docs_base was derived from manifest base_url by
-    stripping the last path segment. For URLs like 'https://selfdoc.smmh.dev'
-    (no path segment), rsplit('/') produced 'https:' as docs_base, resulting in
-    href="https:/blog/..." which browsers normalize to
-    href="https://blog/..." (the first segment treated as a hostname).
+    It sits at ``blog/index.html``, so every entry is ``../blog/<slug>/``.
+    No base URL reaches these links at all any more, which is what makes
+    the index work on a preview, on a mirror, and under any mount.
     """
     site_dir = str(tmp_path / "site")
     manifests_dir = str(tmp_path / "manifests")
@@ -439,15 +437,15 @@ def test_blog_urls_not_broken_without_docs_base(tmp_path):
               encoding="utf-8") as f:
         blog_html = f.read()
 
-    # The URL must be root-relative (no docs_base provided)
-    assert 'href="/blog/first/"' in blog_html
-    # Must NOT have broken protocol-only URL
-    assert "https:/blog" not in blog_html
+    assert 'href="../blog/first/"' in blog_html
+    # Neither address form survives: origin-absolute names nothing under a
+    # mount, and an absolute one leaves whatever tree the reader is on.
+    assert 'href="/blog' not in blog_html
     assert "://blog" not in blog_html
 
 
-def test_blog_urls_correct_with_docs_base(tmp_path):
-    """With --docs-base, blog links use the provided base URL."""
+def test_blog_urls_stay_relative_even_when_a_docs_base_is_given(tmp_path):
+    """--docs-base does not reach a link a reader clicks."""
     site_dir = str(tmp_path / "site")
     manifests_dir = str(tmp_path / "manifests")
     os.makedirs(site_dir)
@@ -482,4 +480,5 @@ def test_blog_urls_correct_with_docs_base(tmp_path):
               encoding="utf-8") as f:
         blog_html = f.read()
 
-    assert 'href="https://docs.smmh.dev/blog/first/"' in blog_html
+    assert 'href="../blog/first/"' in blog_html
+    assert "https://docs.smmh.dev/blog/first/" not in blog_html

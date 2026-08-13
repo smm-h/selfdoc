@@ -221,7 +221,7 @@ def test_the_blog_index_links_every_post_at_the_site_level(deployed):
     root, _summary = deployed
     blog = _read(str(root / "site" / "blog" / "index.html"))
     for slug in ("hello", "beta-news", "out-of-band"):
-        assert f'href="{CANONICAL_BASE}/blog/{slug}/"' in blog
+        assert f'href="../blog/{slug}/"' in blog
 
 
 def test_the_blog_index_names_the_project_each_post_came_from(deployed):

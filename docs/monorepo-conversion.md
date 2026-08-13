@@ -147,8 +147,10 @@ The assembly workflow at `.github/workflows/deploy.yml` in the assembly repo nee
 - name: Generate shared elements
   run: >
     selfblog assembly generate-shared --site-dir site/ --manifests-dir manifests/
-    --docs-base '' --canonical-base "$DOCS_BASE" --home-slug "$HOME_SLUG"
+    --docs-base "$DOCS_BASE" --canonical-base "$DOCS_BASE" --home-slug "$HOME_SLUG"
 ```
+
+`--docs-base` reaches the Atom feed and nothing else: every entry there is an absolute URL by protocol, like every `<loc>` in the sitemap. No link a reader clicks reads it -- the generated listing, the blog index and the 404 address the site by hopping out of their own directory, so they resolve on a preview and a mirror as well as on the deployed host.
 
 When this plan was written the step also carried a `--portfolio-file` flag holding a hand-written HTML front page. That flag is gone: the site's front page is the roster's declared `home` project, named by `--home-slug`, whose own pages are emitted at the site root. `--canonical-base` is required and has no default.
 

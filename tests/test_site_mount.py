@@ -10,9 +10,12 @@ build has to address both correctly:
   root of what it serves, so a copy buried under ``site/<slug>/`` is
   never reached.
 * Post addresses are site-level.  A post's canonical, its sitemap and
-  feed entries, and every link a project page writes to it name
-  ``<docs_base>/blog/<post-slug>/`` -- not the project's subtree, where
-  the assembly does not put it.
+  feed entries name ``<docs_base>/blog/<post-slug>/`` -- not the
+  project's subtree, where the assembly does not put it.  A *link* to it
+  names the same place by hopping there: out of the page's directory,
+  out of the mount, and back down into ``blog/``.  Absolute is for
+  metadata; a link a reader clicks stays relative so the tree resolves
+  under any mount, including a local preview.
 
 A project with no mount keeps a self-contained blog: it IS its own site,
 so its posts are its own and relative hops reach them.
@@ -112,6 +115,11 @@ def _hrefs(html):
     return re.findall(r'href="([^"]*)"', html)
 
 
+def _anchors(html):
+    """Only the hrefs a click follows -- not the canonical, which is metadata."""
+    return re.findall(r'<a\b[^>]*?\bhref="([^"]*)"', html)
+
+
 @pytest.fixture()
 def mounted(tmp_path):
     project = _project(tmp_path / "mounted", mounted=True)
@@ -158,20 +166,24 @@ def test_a_standalone_posts_canonical_is_its_own_blog_address(standalone):
     assert _canonical(html) == "https://example.com/blog/hello-world/"
 
 
-def test_a_mounted_project_page_links_the_post_at_the_site_address(mounted):
-    """The link has to cross out of the project's subtree, so it is absolute.
+def test_a_mounted_project_page_links_the_post_by_climbing_the_mount(mounted):
+    """The link crosses out of the project's subtree, and stays relative.
 
-    A relative hop resolves inside ``site/<slug>/``, where the assembly
-    does not put posts -- that is the dead reference this fixes.
+    A hop back to the project's own output root resolves inside
+    ``site/<slug>/``, where the assembly does not put posts.  One level
+    further out is the site root, where it does.  ``guide/index.html`` is
+    one deep, so the site root is ``../../`` and the post is
+    ``../../blog/hello-world/``.
     """
     html = _read(mounted, "guide", "index.html")
-    assert f"{DOCS_BASE}/blog/hello-world/" in _hrefs(html)
-    assert not [h for h in _hrefs(html) if h.endswith("../blog/hello-world/")]
+    assert "../../blog/hello-world/" in _hrefs(html)
+    assert not [h for h in _anchors(html) if h.startswith(DOCS_BASE)]
 
 
-def test_a_mounted_project_page_links_the_blog_index_at_the_site_address(mounted):
+def test_a_mounted_project_page_links_the_blog_index_by_climbing_the_mount(
+        mounted):
     html = _read(mounted, "guide", "index.html")
-    assert f"{DOCS_BASE}/blog/" in _hrefs(html)
+    assert "../../blog/" in _hrefs(html)
 
 
 def test_a_standalone_project_page_links_the_post_relatively(standalone):
@@ -180,16 +192,16 @@ def test_a_standalone_project_page_links_the_post_relatively(standalone):
     assert "../blog/hello-world/" in _hrefs(html)
 
 
-def test_a_mounted_project_pages_term_link_names_the_site_address(mounted):
+def test_a_mounted_project_pages_term_link_climbs_the_mount(mounted):
     """A cross-page term link crosses the boundary a sidebar link does."""
     html = _read(mounted, "guide", "index.html")
-    assert any(h.startswith(f"{DOCS_BASE}/blog/hello-world/#") for h in _hrefs(html))
+    assert any(h.startswith("../../blog/hello-world/#") for h in _hrefs(html))
     assert not [h for h in _hrefs(html) if h.startswith("../blog/")]
 
 
-def test_a_mounted_glossarys_source_link_names_the_site_address(mounted):
+def test_a_mounted_glossarys_source_link_climbs_the_mount(mounted):
     html = _read(mounted, "glossary", "index.html")
-    assert f"{DOCS_BASE}/blog/hello-world/" in _hrefs(html)
+    assert "../../blog/hello-world/" in _hrefs(html)
     assert not [h for h in _hrefs(html) if h.startswith("../blog/")]
 
 
@@ -201,25 +213,38 @@ def test_a_standalone_glossarys_source_link_stays_relative(standalone):
 # -- the mirror direction: a post reaching back into the project ---------------
 
 
-def test_a_mounted_posts_sidebar_names_the_project_mount(mounted):
+def test_a_mounted_posts_sidebar_descends_into_the_project_mount(mounted):
     """A relative hop out of a post reaches the site root, not the subtree.
 
     The glossary is the project page a post's sidebar carries: the
     site-level pass builds the mountless pages, so the sidebar it renders
     holds the site's own items plus the mount-free ones.  Whichever they
-    are, they are the project's and are served under its slug.
+    are, they are the project's and are served under its slug -- so the
+    link hops out to the site root and back down through the slug.
     """
     html = _read(mounted, "blog", "hello-world", "index.html")
-    assert f"{DOCS_BASE}/{SLUG}/glossary/" in _hrefs(html)
+    assert f"../../{SLUG}/glossary/" in _hrefs(html)
     assert "../../glossary/" not in _hrefs(html)
+    assert not [h for h in _anchors(html) if h.startswith(DOCS_BASE)]
+
+
+def test_a_mounted_posts_home_link_descends_into_the_project_mount(mounted):
+    """The site name in the topbar is the project's index, not the site's.
+
+    A bare hop out of a post lands on the assembled site's front page,
+    which belongs to whichever project is served at the root: a link that
+    resolves, to somebody else's page.
+    """
+    html = _read(mounted, "blog", "hello-world", "index.html")
+    assert f"../../{SLUG}/index.html" in _hrefs(html)
+    assert "../../index.html" not in _hrefs(html)
 
 
 def test_a_mounted_posts_breadcrumb_stays_at_the_site_level(mounted):
     """A post's ancestors are site-level too, so they keep the site hop."""
     html = _read(mounted, "blog", "hello-world", "index.html")
-    assert not [
-        h for h in _hrefs(html) if h == f"{DOCS_BASE}/{SLUG}/blog/"
-    ]
+    assert "../../blog/" in _hrefs(html)
+    assert not [h for h in _hrefs(html) if h == f"../../{SLUG}/blog/"]
 
 
 def test_a_standalone_posts_sidebar_stays_relative(standalone):

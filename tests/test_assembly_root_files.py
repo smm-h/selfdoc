@@ -147,17 +147,18 @@ def test_the_root_404_says_the_page_is_not_there(generated):
 
 
 def test_the_root_404_links_home_projects_and_blog(generated):
+    """Relatively: it answers every unmatched address on whatever host
+    is serving the tree, so its way back must not name another one."""
     html = _read(generated, "404.html")
-    assert f'href="{CANONICAL_BASE}/"' in html
-    assert f'href="{CANONICAL_BASE}/projects/"' in html
-    assert f'href="{CANONICAL_BASE}/blog/"' in html
+    assert 'href="./"' in html
+    assert 'href="projects/"' in html
+    assert 'href="blog/"' in html
+    assert CANONICAL_BASE not in html
 
 
 def test_the_root_404_is_not_the_front_page():
     """A soft 404 -- the home page under an unknown address -- is the defect."""
-    not_found = generate_not_found_page(
-        CANONICAL_BASE, css_url="_chrome/x.css",
-    )
+    not_found = generate_not_found_page(css_url="_chrome/x.css")
     listing = _read_projects_page()
     assert "Page not found" not in listing
     assert "<h1>Projects</h1>" not in not_found
@@ -168,21 +169,20 @@ def _read_projects_page():
 
     return wrap_shared_page(
         "Projects", generate_homepage(
-            MANIFESTS, CANONICAL_BASE, home_slug="home", listing=_listing(),
+            MANIFESTS, "../", home_slug="home", listing=_listing(),
         ),
         canonical_url=f"{CANONICAL_BASE}/projects/",
         css_url="../_chrome/x.css", search_prefix="../",
     )
 
 
-def test_the_root_404_escapes_its_base():
+def test_the_root_404_escapes_its_hop():
+    """The three ways back are escaped where they are written."""
     html = generate_not_found_page(
-        'https://x/"><script>', css_url="_chrome/x.css",
+        css_url="_chrome/x.css", site_hop='"><script>',
     )
-    # The page carries the search UI's own script; what must not appear is
-    # the one the base URL tried to inject.
-    assert '"><script>' not in html
-    assert "&quot;&gt;&lt;script&gt;" in html
+    assert 'href="&quot;&gt;&lt;script&gt;projects/"' in html
+    assert 'href="&quot;&gt;&lt;script&gt;blog/"' in html
 
 
 # -- robots.txt ----------------------------------------------------------------

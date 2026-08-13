@@ -1049,7 +1049,7 @@ def home_owned_root_names(manifests_dir: str, home_slug: str) -> set[str]:
 
 
 def refresh_home_pages(site_dir: str, manifests_dir: str, manifests,
-                       docs_base: str, *, home_slug: str, listing) -> list[str]:
+                       *, home_slug: str, listing) -> list[str]:
     """Re-render every site-level directive region the home project emitted.
 
     This is the second of the two moments a site-level directive resolves
@@ -1057,16 +1057,19 @@ def refresh_home_pages(site_dir: str, manifests_dir: str, manifests,
     including deploys of other projects, which is the point: the front
     page's curated cards carry each project's live version, and a version
     changes when *that* project releases, not when the home project does.
+
+    Each page is re-rendered against its own hop back to the site root, so
+    a region on a page one level down links a project as ``../alpha/`` and
+    the same region on the front page links it as ``alpha/``.
     """
-    from selfblog.sitedirectives import SiteContext, refresh_regions
+    from selfblog.sitedirectives import SiteContext, page_context, refresh_regions
     from selfdoc_core.utils import atomic_write
 
     written: list[str] = []
     if not home_slug:
         return written
     context = SiteContext(
-        manifests=manifests, docs_base=docs_base, listing=listing,
-        home_slug=home_slug,
+        manifests=manifests, listing=listing, home_slug=home_slug,
     )
     for rel in home_page_paths(manifests_dir, home_slug):
         path = os.path.join(site_dir, *rel.split("/"))
@@ -1074,7 +1077,9 @@ def refresh_home_pages(site_dir: str, manifests_dir: str, manifests,
             continue
         with open(path, "r", encoding="utf-8") as f:
             page_html = f.read()
-        refreshed = refresh_regions(page_html, context, source=f"site/{rel}")
+        refreshed = refresh_regions(
+            page_html, page_context(context, rel), source=f"site/{rel}",
+        )
         if refreshed != page_html:
             atomic_write(path, refreshed)
         written.append(path)
@@ -1154,10 +1159,14 @@ def generate_shared_files(
     manifests = load_assembly_manifests(manifests_dir)
     listing = load_listing_for(manifests_dir, home_slug)
 
+    # Both generated pages sit one level in, so both address the site root
+    # by hopping out of their own directory.  Nothing here is written
+    # against docs_base: a link a reader clicks has to resolve under any
+    # mount, and only the feed and the sitemap below stay absolute.
     homepage_fragment = generate_homepage(
-        manifests, docs_base, home_slug=home_slug, listing=listing,
+        manifests, "../", home_slug=home_slug, listing=listing,
     )
-    blog_fragment = generate_blog_index(manifests, docs_base)
+    blog_fragment = generate_blog_index(manifests, "../")
     nav_json = generate_nav_json(manifests, home_slug=home_slug)
     feed_xml = generate_unified_feed(manifests, docs_base)
     # The sitemap takes the canonical base, never docs_base: every <loc> is
@@ -1202,7 +1211,7 @@ def generate_shared_files(
     written.append(projects_path)
 
     written.extend(refresh_home_pages(
-        site_dir, manifests_dir, manifests, docs_base,
+        site_dir, manifests_dir, manifests,
         home_slug=home_slug, listing=listing,
     ))
 
@@ -1240,7 +1249,7 @@ def generate_shared_files(
 
     not_found_path = os.path.join(site_dir, "404.html")
     atomic_write(not_found_path, generate_not_found_page(
-        canonical_base, css_url=chrome_href("404.html", home_chrome),
+        css_url=chrome_href("404.html", home_chrome), site_hop="",
     ))
     written.append(not_found_path)
 
@@ -2035,8 +2044,7 @@ def _run_step(argv, *, cwd, step, timeout, resource=None, grant=None,
 
 
 def build_source_project(source_dir: str, scope: str, *, home: bool = False,
-                         manifests_dir: str = "",
-                         docs_base: str = "") -> list[str]:
+                         manifests_dir: str = "") -> list[str]:
     """Build the cloned source project and return the argv that was run.
 
     The home project builds through ``selfblog build --target home``, which
@@ -2050,7 +2058,6 @@ def build_source_project(source_dir: str, scope: str, *, home: bool = False,
         argv = [
             "selfblog", "build", "--target", "home",
             "--site-manifests", os.path.abspath(manifests_dir),
-            "--docs-base", docs_base,
             "--no-auto-commit",
         ]
     else:
@@ -2346,8 +2353,7 @@ def integrate_project(
 
     if scope != "shared-only" and build:
         build_source_project(
-            source_dir, scope, home=is_home,
-            manifests_dir=manifests_dir, docs_base=canonical_base,
+            source_dir, scope, home=is_home, manifests_dir=manifests_dir,
         )
 
     last_push_error = ""

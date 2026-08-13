@@ -46,7 +46,7 @@ def test_homepage_with_two_projects():
         _make_manifest("Zebra", "zebra", "1.0.0", description="Z project"),
         _make_manifest("Alpha", "alpha", "2.0.0", description="A project"),
     ]
-    result = generate_homepage(manifests, "https://docs.example.com")
+    result = generate_homepage(manifests, "../")
     # Alpha sorts before Zebra
     alpha_pos = result.index("Alpha")
     zebra_pos = result.index("Zebra")
@@ -54,14 +54,14 @@ def test_homepage_with_two_projects():
     # Both project names present
     assert "Alpha" in result
     assert "Zebra" in result
-    # Correct links
-    assert 'href="https://docs.example.com/alpha/"' in result
-    assert 'href="https://docs.example.com/zebra/"' in result
+    # Correct links, hopped out of the page's own directory
+    assert 'href="../alpha/"' in result
+    assert 'href="../zebra/"' in result
 
 
 def test_homepage_empty_manifests():
     """Empty list: no article elements but section/h1 present."""
-    result = generate_homepage([], "https://docs.example.com")
+    result = generate_homepage([], "../")
     assert "<section" in result
     assert "<h1>" in result
     assert "<article" not in result
@@ -70,7 +70,7 @@ def test_homepage_empty_manifests():
 def test_homepage_escapes_html_in_names():
     """Manifest with <script> in name is escaped."""
     manifests = [_make_manifest("<script>alert(1)</script>", "xss", "1.0.0")]
-    result = generate_homepage(manifests, "https://docs.example.com")
+    result = generate_homepage(manifests, "../")
     assert "<script>" not in result
     assert "&lt;script&gt;" in result
 
@@ -78,16 +78,16 @@ def test_homepage_escapes_html_in_names():
 def test_homepage_version_badge():
     """Version badge shows v{version}."""
     manifests = [_make_manifest("MyLib", "mylib", "3.2.1")]
-    result = generate_homepage(manifests, "https://docs.example.com")
+    result = generate_homepage(manifests, "../")
     assert "v3.2.1" in result
     assert 'class="version-badge"' in result
 
 
 def test_homepage_link_structure():
-    """Href follows {docs_base}/{slug}/ pattern."""
+    """Href follows {site_hop}{slug}/ -- relative, never a base URL."""
     manifests = [_make_manifest("Foo", "foo-lib", "0.1.0")]
-    result = generate_homepage(manifests, "https://my-docs.io")
-    assert 'href="https://my-docs.io/foo-lib/"' in result
+    result = generate_homepage(manifests, "")
+    assert 'href="foo-lib/"' in result
 
 
 # -- generate_blog_index ------------------------------------------------------
@@ -103,7 +103,7 @@ def test_blog_index_multiple_projects():
             {"title": "Post Two", "slug": "post-two", "date": "2024-04-01"},
         ]),
     ]
-    result = generate_blog_index(manifests, "https://docs.example.com")
+    result = generate_blog_index(manifests, "../")
     assert "Post One" in result
     assert "Post Two" in result
 
@@ -117,7 +117,7 @@ def test_blog_index_sorted_by_date_descending():
             {"title": "Mid Post", "slug": "mid", "date": "2024-01-01"},
         ]),
     ]
-    result = generate_blog_index(manifests, "https://docs.example.com")
+    result = generate_blog_index(manifests, "../")
     new_pos = result.index("New Post")
     mid_pos = result.index("Mid Post")
     old_pos = result.index("Old Post")
@@ -129,7 +129,7 @@ def test_blog_index_no_posts():
     manifests = [
         _make_manifest("EmptyProj", "empty", "1.0.0"),
     ]
-    result = generate_blog_index(manifests, "https://docs.example.com")
+    result = generate_blog_index(manifests, "../")
     assert "No posts yet." in result
 
 
@@ -140,8 +140,8 @@ def test_blog_index_link_structure():
             {"title": "Hello", "slug": "hello-world", "date": "2024-01-01"},
         ]),
     ]
-    result = generate_blog_index(manifests, "https://docs.example.com")
-    assert 'href="https://docs.example.com/blog/hello-world/"' in result
+    result = generate_blog_index(manifests, "../")
+    assert 'href="../blog/hello-world/"' in result
     assert "my-proj/posts" not in result
 
 
@@ -152,39 +152,39 @@ def test_blog_index_shows_project_name():
             {"title": "A Post", "slug": "a-post", "date": "2024-01-01"},
         ]),
     ]
-    result = generate_blog_index(manifests, "https://docs.example.com")
+    result = generate_blog_index(manifests, "../")
     assert "SpecialProject" in result
     assert 'class="project-name"' in result
 
 
-def test_blog_index_root_relative_urls():
-    """When docs_base is empty, URLs are root-relative (slug is a path, not hostname)."""
+def test_blog_index_at_the_site_root_needs_no_hop():
+    """An empty hop is a page at the root, and the link is a bare path."""
     manifests = [
         _make_manifest("MyProj", "my-proj", "1.0.0", posts=[
             {"title": "Hello", "slug": "hello-world", "date": "2024-01-01"},
         ]),
     ]
     result = generate_blog_index(manifests, "")
-    # Must be root-relative: /blog/hello-world/
-    assert 'href="/blog/hello-world/"' in result
-    # Must NOT treat the blog segment as a hostname
-    assert "://blog" not in result
+    assert 'href="blog/hello-world/"' in result
 
 
-def test_blog_index_no_protocol_only_docs_base():
-    """Regression: docs_base must not be just a protocol like 'https:' from bad derivation."""
+def test_blog_index_never_writes_an_absolute_or_rooted_link():
+    """Neither address form resolves under a mount -- see LINK001.
+
+    Origin-absolute (``/blog/...``) names nothing when the site is served
+    from a subdirectory, and an absolute URL resolves on the deployed host
+    alone: on a preview it works by leaving the preview.
+    """
     manifests = [
         _make_manifest("rlsbl", "rlsbl", "1.0.0", posts=[
             {"title": "Post", "slug": "first", "date": "2024-01-01"},
         ]),
     ]
-    # A proper docs_base produces proper URLs
-    result = generate_blog_index(manifests, "https://docs.smmh.dev")
-    assert 'href="https://docs.smmh.dev/blog/first/"' in result
-    # A broken docs_base like "https:" would produce "https:/blog/first/", which
-    # browsers normalize to "https://blog/first/" (the segment as a hostname)
-    broken_result = generate_blog_index(manifests, "https:")
-    assert 'href="https:/blog/' in broken_result  # this is what the bug produced
+    for hop in ("", "../", "../../"):
+        result = generate_blog_index(manifests, hop)
+        assert f'href="{hop}blog/first/"' in result
+        assert 'href="/' not in result
+        assert "href=\"http" not in result
 
 
 # -- generate_nav_json --------------------------------------------------------
