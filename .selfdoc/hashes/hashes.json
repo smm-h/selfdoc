@@ -81,11 +81,11 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/architecture.md": {
-    "content": "ed26186eadf7cddc8a28b9312c2d7a06a562cfd743824474331ad753e5d8586a",
+    "content": "93914e54b70728efa39e4d7df7361ec4d461e42cdbcd6826999f4df90a757ce1",
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "ec0976af0669997f35b8c59fb9a2eb862bddfa808cd3664a0ab4dcf21859cd87",
+    "content": "53313d20bddc1cad9fd00c48aa1c0f4d4bde92a055b2959749a1a84588cfb956",
     "description": "1548587366ad46824ec1d3d7f98effadd4a64ce992f7542abff80d0d040d0486"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
@@ -208,7 +208,7 @@
     "description": "62d110073d6baf71fc8b116980d397441d42546e119cb8595bfeeab5f5f77253"
   },
   "en/getting-started.md": {
-    "content": "31d234fa79c02a62a244d0f9b3978e84c66c48061f512157b9d3a71eee0ea2b5",
+    "content": "a68c80340751d584de4d7e283fe2a0e843ff2371a8bfbb9d9fbdef53fdce8f73",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -224,7 +224,7 @@
     "description": "569cfc0e18516b909e82c95a48088c40064ec4f54d403bcad583907fcb4999d3"
   },
   "en/internals.md": {
-    "content": "bd509f84dc50a35fd2aa7ca61a4d2325483827c06f2b75b63ef523b1f89e304c",
+    "content": "e02b53a6765a768506ca4044e72766250258c92d1f7ce6722129ac71e209cf67",
     "description": "368283e2ae5434b431437461e25c722f4ddc31083b2720fe7794ada67c517418"
   },
   "en/llms-txt.md": {
