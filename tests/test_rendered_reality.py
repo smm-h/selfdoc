@@ -370,6 +370,124 @@ class TestStickyTables:
             f"{topmost['hit']!r} -- another column is covering it"
         )
 
+    def test_the_pinned_header_keeps_the_sort_indicator_every_column_has(
+        self, page, fixture,
+    ):
+        """One ``::after`` per element, and the pinned edge was taking it.
+
+        Every header cell is emitted with ``aria-sort``, and the sort
+        indicator is painted on ``th[aria-sort]::after``.  The pinned
+        column's scroll-edge hairline claimed the same pseudo-element on
+        ``th:first-child``, so the first column silently lost its
+        indicator -- invisible to CSS string assertions, and visible in a
+        screenshot as one header that is missing what every other header
+        has.  The reading is comparative on purpose: it is theme-agnostic
+        and it survives any restyling of the indicator itself.
+        """
+        wrap = self._table_page(page, fixture)
+        reading = wrap.evaluate(
+            """(el) => {
+                const heads = el.querySelectorAll('thead tr th');
+                const first = heads[0], other = heads[1];
+                // The unsorted state is the one the server emits; a theme
+                // may paint nothing for it, so read a sorted one, which
+                // every theme indicates.
+                for (const th of [first, other])
+                    th.setAttribute('aria-sort', 'ascending');
+                const read = (th) => {
+                    const s = getComputedStyle(th, '::after');
+                    return {
+                        content: s.content,
+                        width: s.width,
+                        height: s.height,
+                        position: s.position,
+                        borderBottom: s.borderBottomWidth + ' '
+                                    + s.borderBottomColor,
+                        background: s.backgroundColor,
+                    };
+                };
+                return {first: read(first), other: read(other)};
+            }"""
+        )
+        assert reading["first"] == reading["other"], (
+            f"[{fixture.theme}] the pinned first column's header paints a "
+            f"different ::after than its neighbour, so its sort indicator is "
+            f"gone: first={reading['first']} other={reading['other']}"
+        )
+
+
+class TestTableCellsAreNotChips:
+    """A data table whose every cell is a bordered code chip is noise.
+
+    The framework's prose sheet boxes an unclassed ``code`` -- background,
+    border, padding -- which is right in a sentence and wrong in a grid
+    where every cell is one.  The theme overlay neutralises the box inside
+    ``.tm-table`` and nowhere else, so the two assertions here are a pair:
+    the cell is plain, the paragraph still has its chip.
+
+    Skipped for a theme that ships no framework payload: the chip those
+    themes paint is their own decision, not the overlay's to undo.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _only_framework_themes(self, fixture):
+        if not _theme_framework(fixture.theme):
+            pytest.skip(f"{fixture.theme} ships no framework payload")
+
+    def test_a_code_span_in_a_cell_paints_no_box(self, page, fixture):
+        _open(page, fixture, "docs-tables")
+        reading = page.evaluate(
+            """() => {
+                const code = document.querySelector(
+                    '.table-wrap tbody td code');
+                const s = getComputedStyle(code);
+                return {
+                    border: s.borderTopWidth,
+                    background: s.backgroundColor,
+                    padding: s.paddingTop + ' ' + s.paddingLeft,
+                    family: s.fontFamily,
+                };
+            }"""
+        )
+        assert reading["border"] == "0px", (
+            f"[{fixture.theme}] a table cell's code span still draws a "
+            f"border: {reading}"
+        )
+        assert reading["background"] in ("rgba(0, 0, 0, 0)", "transparent"), (
+            f"[{fixture.theme}] a table cell's code span still fills a "
+            f"background: {reading}"
+        )
+        assert reading["padding"] == "0px 0px", (
+            f"[{fixture.theme}] a table cell's code span still pads its box: "
+            f"{reading}"
+        )
+        assert "mono" in reading["family"].lower(), (
+            f"[{fixture.theme}] a table cell's code span lost its monospace "
+            f"face along with the box: {reading}"
+        )
+
+    def test_a_code_span_in_prose_keeps_its_box(self, page, fixture):
+        """The other half: the fix is scoped to the table, not global."""
+        _open(page, fixture, "docs-tables")
+        reading = page.evaluate(
+            """() => {
+                const code = document.querySelector('.doc-body p code');
+                if (!code) return {missing: true};
+                const s = getComputedStyle(code);
+                return {
+                    border: s.borderTopWidth,
+                    background: s.backgroundColor,
+                };
+            }"""
+        )
+        assert not reading.get("missing"), (
+            f"[{fixture.theme}] the fixture page has no prose code span to "
+            f"read, so the scoping cannot be measured"
+        )
+        assert reading["border"] != "0px", (
+            f"[{fixture.theme}] prose lost its code chip too: {reading}"
+        )
+
 
 # -- 2. one date -----------------------------------------------------------------------
 

@@ -83,6 +83,65 @@ class TestRenderedTableStructure:
         assert "<thead>" in html
 
 
+class TestPinnedColumnEdgeKeepsOffTheSortCaret:
+    """The pinned column's edge hairline and the sort caret are both ``::after``.
+
+    Every markdown table header cell is emitted with ``aria-sort="none"``,
+    and a theme paints the sort indicator on ``th[aria-sort]::after``.  An
+    element has exactly one ``::after``, so a pinned-column rule that also
+    claims ``::after`` on ``th:first-child`` does not sit behind the caret
+    -- it *is* the caret's box, restyled into a 4px full-height bar.  The
+    first column's indicator disappears while every other column keeps
+    one.  The edge belongs on ``::before``, which nothing else claims.
+    """
+
+    _PINNED_AFTER = re.compile(
+        r"\.table-wrap\.has-overflow\s+(?:th|td):first-child::after",
+    )
+    _PINNED_BEFORE = re.compile(
+        r"\.table-wrap\.has-overflow\s+th:first-child::before",
+    )
+
+    def test_the_edge_does_not_claim_the_header_cell_after_pseudo(
+        self, theme_css: str,
+    ) -> None:
+        assert not self._PINNED_AFTER.search(theme_css)
+
+    def test_the_edge_is_painted_on_before(self, theme_css: str) -> None:
+        assert self._PINNED_BEFORE.search(theme_css)
+
+
+class TestTableCellCodeIsNotAChip:
+    """Data tables are mostly code spans; chips make them unreadable.
+
+    tinymoon's ``prose.css`` boxes every unclassed ``code`` -- background,
+    border, padding -- which reads well in a sentence and terribly in a
+    grid where every cell is one.  The overlay neutralises the box inside
+    ``.tm-table`` only, so prose keeps its chip.
+    """
+
+    _NEUTRALISED = re.compile(
+        r"\.tm-table\s+(?:th|td)\s+code:not\(\[class\]\)[^{]*\{([^}]*)\}",
+    )
+
+    def test_the_overlay_strips_the_box_inside_a_table(self) -> None:
+        bodies = [m.group(1) for m in self._NEUTRALISED.finditer(get_theme("tinymoon"))]
+        assert bodies, "no rule neutralising a table cell's code chip"
+        joined = "\n".join(bodies)
+        assert "background: none" in joined
+        assert re.search(r"border:\s*0", joined), joined
+        assert re.search(r"padding:\s*0", joined), joined
+
+    def test_prose_keeps_its_chip(self) -> None:
+        """The neutralisation is scoped; a paragraph's chip is untouched."""
+        css = get_theme("tinymoon")
+        prose = re.search(
+            r"\.doc-body\s+p\s+code:not\(\[class\]\)\s*\{([^}]*)\}", css,
+        )
+        assert prose, "the framework's prose chip rule is gone entirely"
+        assert "background: var(--surface-2)" in prose.group(1)
+
+
 class TestEmptyParagraphs:
     """A directive's block element leaves empty paragraphs around it.
 

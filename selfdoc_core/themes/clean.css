@@ -1979,8 +1979,12 @@ hr {
 .table-wrap.has-overflow tr:hover td:first-child {
     background: color-mix(in srgb, var(--link) 6%, var(--bg));
 }
-.table-wrap.has-overflow td:first-child::after,
-.table-wrap.has-overflow th:first-child::after {
+/* ``::before``, not ``::after``: the sort indicator every header cell
+   carries is painted on ``th[aria-sort]::after``, and an element has
+   one of each -- claiming ``::after`` here restyles the indicator's own
+   box into a 4px bar and the first column loses its caret. */
+.table-wrap.has-overflow td:first-child::before,
+.table-wrap.has-overflow th:first-child::before {
     content: "";
     position: absolute;
     top: 0;
@@ -1993,13 +1997,13 @@ hr {
 
 /* Dark mode sticky column shadow */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .table-wrap.has-overflow td:first-child::after,
-    :root:not([data-theme="light"]) .table-wrap.has-overflow th:first-child::after {
+    :root:not([data-theme="light"]) .table-wrap.has-overflow td:first-child::before,
+    :root:not([data-theme="light"]) .table-wrap.has-overflow th:first-child::before {
         background: linear-gradient(to right, rgba(0,0,0,0.15), transparent);
     }
 }
-[data-theme="dark"] .table-wrap.has-overflow td:first-child::after,
-[data-theme="dark"] .table-wrap.has-overflow th:first-child::after {
+[data-theme="dark"] .table-wrap.has-overflow td:first-child::before,
+[data-theme="dark"] .table-wrap.has-overflow th:first-child::before {
     background: linear-gradient(to right, rgba(0,0,0,0.15), transparent);
 }
 

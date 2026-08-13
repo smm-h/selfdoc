@@ -952,6 +952,25 @@ pre:focus-within .run-btn {
     white-space: nowrap;
 }
 
+/* The framework's prose sheet boxes every unclassed `code` -- surface,
+   border, padding -- and that is right for a name dropped into a
+   sentence.  A data table is the opposite case: nearly every cell is a
+   code span, so the boxes tile into a grid of chips and the data stops
+   being readable.  Inside a table the span keeps the mono face at reading
+   scale and drops the box.  Everything here is a token, so light, dark
+   and high-contrast all resolve through the framework as usual. */
+.tm-table th code:not([class]),
+.tm-table td code:not([class]),
+.doc-body .tm-table th code:not([class]),
+.doc-body .tm-table td code:not([class]) {
+    font-family: var(--font-mono);
+    font-size: var(--read-code);
+    color: var(--text);
+    background: none;
+    border: 0;
+    padding: 0;
+}
+
 
 .table-wrap {
     overflow-x: auto;
@@ -985,8 +1004,13 @@ pre:focus-within .run-btn {
 .table-wrap.has-overflow tr:hover td:first-child {
     background: var(--sidebar-hover-bg);
 }
-.table-wrap.has-overflow td:first-child::after,
-.table-wrap.has-overflow th:first-child::after {
+/* ``::before``, not ``::after``: an element has one of each, and the sort
+   indicator every header cell carries is painted on ``th[aria-sort]::after``.
+   Claiming ``::after`` here does not layer the edge over the indicator --
+   it restyles the indicator's own box into a 4px bar, and the first
+   column loses the caret every other column shows. */
+.table-wrap.has-overflow td:first-child::before,
+.table-wrap.has-overflow th:first-child::before {
     content: "";
     position: absolute;
     top: 0;
