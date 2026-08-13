@@ -22,6 +22,7 @@ every count, so a project is scored on the code it actually owns.
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -63,6 +64,14 @@ NEXT_STEPS = {
     3: "Use :-: directives in docs/ to connect docs to source code",
     4: "Define custom directives or configure blog posts",
 }
+
+
+class DirstatError(RuntimeError):
+    """dirstat could not be run, or answered in a shape this module cannot read.
+
+    A RuntimeError subclass so the CLI's user-error handler prints it as one
+    refusal line instead of a traceback.
+    """
 
 
 def check_dirstat():
@@ -108,6 +117,78 @@ def get_submodule_paths(project_path):
         return []
 
 
+def _scan_groups(target):
+    """Run ``dirstat scan`` over *target* and return its format groups.
+
+    dirstat's machine output is the strictcli envelope: stdout carries one
+    document whose ``payload`` member is the scan document.  Every way this
+    can go wrong raises :class:`DirstatError`.  Nothing here degrades to a
+    zero, because source LOC has no second source: a swallowed failure would
+    not make the report incomplete, it would make it wrong -- 0 source LOC
+    grades every project an A on an infinite doc ratio.
+    """
+    argv = [
+        "dirstat", "scan", str(target),
+        "--json",
+        "--type", "text",
+        "--stats", "count",
+        "--stats", "total-loc",
+    ]
+    try:
+        result = effects.run(
+            argv, capture_output=True, text=True, timeout=60, read=True,
+        )
+    except FileNotFoundError as exc:
+        raise DirstatError(f"dirstat is not installed: {exc}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise DirstatError(
+            f"dirstat scan of {target} timed out after 60s"
+        ) from exc
+
+    if result.returncode != 0:
+        raise DirstatError(
+            f"dirstat scan of {target} exited {result.returncode}: "
+            f"{(result.stderr or '').strip() or 'no error output'}"
+        )
+
+    try:
+        envelope = json.loads(result.stdout)
+    except ValueError as exc:
+        raise DirstatError(
+            f"dirstat scan of {target} produced output that is not valid "
+            f"JSON: {exc}"
+        ) from exc
+
+    if not isinstance(envelope, dict) or "payload" not in envelope:
+        raise DirstatError(
+            f"dirstat scan of {target} did not answer with an envelope "
+            f"carrying a payload"
+        )
+    document = envelope["payload"]
+    if not isinstance(document, dict):
+        raise DirstatError(
+            f"dirstat scan of {target} answered with an empty payload"
+        )
+    groups = document.get("groups")
+    if not isinstance(groups, list):
+        raise DirstatError(
+            f"dirstat scan of {target} answered with no groups array"
+        )
+    return groups
+
+
+def _code_totals(groups):
+    """Sum LOC and file counts over the groups this module calls code."""
+    code_loc = 0
+    code_files = 0
+    for group in groups:
+        fmt = (group.get("format") or "").lower()
+        if fmt in CODE_EXTENSIONS:
+            code_loc += group.get("total_loc") or 0
+            code_files += group.get("count") or 0
+    return code_loc, code_files
+
+
 def get_code_loc(project_path, submodule_paths=None):
     """Return ``(code_loc, code_files)`` for the project, submodules excluded.
 
@@ -118,64 +199,22 @@ def get_code_loc(project_path, submodule_paths=None):
     overlapping entries (a submodule nested inside another submodule) are
     subtracted once each, so the totals can go negative.
 
-    Returns ``(0, 0)`` when the scan fails, times out (60s per scan), or emits
-    output that is not parseable JSON; a failing submodule subtraction is
-    skipped while the outer total is kept.
+    Raises :class:`DirstatError` when any scan fails, times out (60s per
+    scan), or answers in a shape this module cannot read -- the submodule
+    scans included, since a subtraction that silently did not happen inflates
+    the total it was there to correct.
     """
-    try:
-        result = effects.run(
-            [
-                "dirstat", "scan", str(project_path),
-                "--output", "json",
-                "--type", "text",
-                "--stats", "count",
-                "--stats", "total-loc",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            read=True,
-        )
-        data = json.loads(result.stdout)
-        code_loc = 0
-        code_files = 0
-        for group in data.get("groups", []):
-            fmt = group.get("format", "").lower()
-            if fmt in CODE_EXTENSIONS:
-                code_loc += group.get("total_loc", 0)
-                code_files += group.get("count", 0)
+    code_loc, code_files = _code_totals(_scan_groups(project_path))
 
-        if submodule_paths:
-            for sp in submodule_paths:
-                sub_dir = Path(project_path) / sp
-                if not sub_dir.is_dir():
-                    continue
-                try:
-                    sub_result = effects.run(
-                        [
-                            "dirstat", "scan", str(sub_dir),
-                            "--output", "json",
-                            "--type", "text",
-                            "--stats", "count",
-                            "--stats", "total-loc",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        read=True,
-                    )
-                    sub_data = json.loads(sub_result.stdout)
-                    for group in sub_data.get("groups", []):
-                        fmt = group.get("format", "").lower()
-                        if fmt in CODE_EXTENSIONS:
-                            code_loc -= group.get("total_loc", 0)
-                            code_files -= group.get("count", 0)
-                except Exception:
-                    pass
+    for sp in submodule_paths or []:
+        sub_dir = Path(project_path) / sp
+        if not sub_dir.is_dir():
+            continue
+        sub_loc, sub_files = _code_totals(_scan_groups(sub_dir))
+        code_loc -= sub_loc
+        code_files -= sub_files
 
-        return (code_loc, code_files)
-    except Exception:
-        return (0, 0)
+    return (code_loc, code_files)
 
 
 def count_markdown(project_path, submodule_paths=None, root_file_templates=None):
@@ -409,8 +448,8 @@ def score_project(project_path):
     floored at 0; ``doc_ratio`` is doc LOC over ``source_loc`` rounded to four
     decimals, or ``None`` when there is no source to divide by.
 
-    The returned dict is the shape both formatters and ``selfdoc quality
-    --format json`` consume: ``project``, ``path``, ``tier``, ``tier_name``,
+    The returned dict is the shape both the text report and ``selfdoc
+    quality --json`` carry: ``project``, ``path``, ``tier``, ``tier_name``,
     ``code_loc``, ``test_loc``, ``source_loc``, ``doc_loc``, ``doc_files``,
     ``doc_ratio``, ``content_grade``, the nested ``selfdoc`` adoption dict,
     and ``next_step`` (``None`` at tier 5, where nothing is left to do).
@@ -537,27 +576,20 @@ def format_single_text(result):
     return "\n".join(lines)
 
 
-def format_json(data):
-    """Serialize a score result as indented JSON (2 spaces), for ``--format json``."""
-    return json.dumps(data, indent=2)
-
-
-def run_quality(format="text"):
-    """Run ``selfdoc quality``: score the current directory and print the report.
+def run_quality():
+    """Run ``selfdoc quality``: score the current directory.
 
     Verifies ``dirstat`` is installed first (:func:`check_dirstat` exits the
-    process when it is not), scores the current working directory, then prints
-    either the JSON document (``format="json"``) or the text report.
+    process when it is not), then scores the current working directory and
+    returns the :func:`score_project` result.  That dict is both the
+    command's machine payload (declared by ``selfdoc/payload_schemas.py``)
+    and the input to :func:`format_single_text`, so the two renderings are
+    one computation.
 
-    Always returns 0 -- quality is a report, not a gate, so a low tier or a
-    failing grade never fails the command.
+    Raises :class:`DirstatError` when the scan the score rests on could not
+    be performed or understood.  Scoring itself never fails the command --
+    quality is a report, not a blocker, so a low tier or a failing grade is
+    an answer, not an error.
     """
     check_dirstat()
-
-    result = score_project(Path.cwd())
-    if format == "json":
-        print(format_json(result))
-    else:
-        print(format_single_text(result))
-
-    return 0
+    return score_project(Path.cwd())

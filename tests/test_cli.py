@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 import pytest
+from conftest import cli_payload, run_cli
 
 
 @pytest.fixture()
@@ -162,22 +163,18 @@ def test_build_produces_output(project_dir):
 
 def test_check_finds_directives(project_dir, capsys):
     """selfdoc check reports directive validation results."""
-    from selfdoc.cli import _cmd_init, _cmd_check
+    from selfdoc.cli import _cmd_init
 
     _cmd_init(None, base_url="https://example.com",
               author_name="Test Author", author_url="https://author.example")
 
     # The starter template has a :::module directive that resolves OK,
     # but check exits 1 due to SEO warnings on the starter template.
-    try:
-        _cmd_check(None)
-    except SystemExit:
-        pass
+    result = run_cli("check")
 
-    captured = capsys.readouterr()
-    assert "OK" in captured.out
-    assert "ref" in captured.out
-    assert "directive(s)" in captured.out
+    assert "OK" in result.stdout
+    assert "ref" in result.stdout
+    assert "directive(s)" in result.stdout
 
 
 def test_build_shows_seo_warnings(project_dir, capsys):
@@ -223,50 +220,47 @@ def test_build_exits_1_on_errors(project_dir, capsys):
 
 def test_check_always_runs_seo_lints(project_dir, capsys):
     """selfdoc check always runs SEO lints (no --no-seo flag)."""
-    from selfdoc.cli import _cmd_init, _cmd_check
+    from selfdoc.cli import _cmd_init
 
     _cmd_init(None, base_url="https://example.com",
               author_name="Test Author", author_url="https://author.example")
 
     # SEO warnings appear (e.g. SEO009 short description) but only
     # warnings, so check exits 0.
-    _cmd_check(None)
+    result = run_cli("check")
 
-    captured = capsys.readouterr()
-    assert "SEO" in captured.out
+    assert result.exit_code == 0
+    assert "SEO" in result.stdout
 
 
 def test_check_rejects_an_unregistered_ignore_code(project_dir, capsys):
     """`--ignore SEO0O8` is a typo that would suppress nothing -- refuse it."""
-    from selfdoc.cli import _cmd_init, _cmd_check
+    from selfdoc.cli import _cmd_init
 
     _cmd_init(None, base_url="https://example.com",
               author_name="Test Author", author_url="https://author.example")
 
-    with pytest.raises(SystemExit) as exc_info:
-        _cmd_check(None, ignore="SEO0O8")
+    result = run_cli("check", "--ignore", "SEO0O8")
 
-    assert exc_info.value.code == 1
-    captured = capsys.readouterr()
-    assert "SEO0O8" in captured.err
+    assert result.exit_code == 1
+    assert "SEO0O8" in result.stderr
 
 
 def test_check_accepts_a_registered_ignore_code(project_dir, capsys):
     """A registered code passed to --ignore suppresses that rule's output."""
-    from selfdoc.cli import _cmd_init, _cmd_check
+    from selfdoc.cli import _cmd_init
 
     _cmd_init(None, base_url="https://example.com",
               author_name="Test Author", author_url="https://author.example")
 
-    _cmd_check(None, ignore="SEO009")
+    result = run_cli("check", "--ignore", "SEO009")
 
-    captured = capsys.readouterr()
-    assert "SEO009" not in captured.out
+    assert "SEO009" not in result.stdout
 
 
 def test_check_exits_1_on_errors(project_dir, capsys):
     """selfdoc check exits 1 when lint errors exist."""
-    from selfdoc.cli import _cmd_init, _cmd_check
+    from selfdoc.cli import _cmd_init
 
     _cmd_init(None, base_url="https://example.com",
               author_name="Test Author", author_url="https://author.example")
@@ -275,13 +269,10 @@ def test_check_exits_1_on_errors(project_dir, capsys):
     index_path = project_dir / "docs" / "index.md"
     index_path.write_text("# Test\n\nContent.\n")
 
-    with pytest.raises(SystemExit) as exc_info:
-        _cmd_check(None)
+    result = run_cli("check")
 
-    assert exc_info.value.code == 1
-
-    captured = capsys.readouterr()
-    assert "SEO006" in captured.out
+    assert result.exit_code == 1
+    assert "SEO006" in result.stdout
 
 
 def test_check_exits_1_on_broken_validated_example(project_dir, capsys):
@@ -295,7 +286,7 @@ def test_check_exits_1_on_broken_validated_example(project_dir, capsys):
     """
     import shlex
 
-    from selfdoc.cli import _cmd_init, _cmd_check
+    from selfdoc.cli import _cmd_init
 
     _cmd_init(None, base_url="https://example.com",
               author_name="Test Author", author_url="https://author.example")
@@ -330,14 +321,11 @@ def test_check_exits_1_on_broken_validated_example(project_dir, capsys):
         "A page whose executable example parses fine but raises when it runs",
     )
 
-    capsys.readouterr()  # discard init chatter so stdout is pure JSON
+    result = run_cli("check", "--json", "--no-auto-commit")
 
-    with pytest.raises(SystemExit) as exc_info:
-        _cmd_check(None, format="json", auto_commit=False)
+    assert result.exit_code == 1
 
-    assert exc_info.value.code == 1
-
-    report = json.loads(capsys.readouterr().out)
+    report = cli_payload(result)
     assert report["exit_code"] == 1
 
     errors = [lint for lint in report["lints"] if lint["severity"] == "error"]

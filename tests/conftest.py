@@ -56,6 +56,26 @@ def chromium_browser():
         yield browser
         browser.close()
 
+def run_cli(*argv):
+    """Dispatch a selfdoc command through the app's own in-process surface.
+
+    A handler that supplies a machine payload needs a real Context, so the
+    commands that do can no longer be called as plain functions with a bare
+    ``None``. This runs the real dispatch instead -- the same parse, the same
+    handler, the same envelope in machine mode -- and returns strictcli's
+    Result (``stdout``, ``stderr``, ``exit_code``, ``data``), with stdout
+    captured by the framework rather than by capsys.
+    """
+    from selfdoc.cli import app
+
+    return app.test(list(argv))
+
+
+def cli_payload(result):
+    """The payload member of a machine-mode run's envelope."""
+    return json.loads(result.stdout)["payload"]
+
+
 def _git(args, cwd):
     """Run a git command with deterministic author identity."""
     # No identity injection here: stricttest's isolation floor owns the git

@@ -400,14 +400,11 @@ def test_spell001_is_registered_as_an_error():
 
 
 def test_spell001_is_in_the_check_output_schema():
-    """The JSON output schema's enum admits the code the check can emit."""
-    import os
+    """The declared payload schema's enum admits the code the check emits."""
+    from selfdoc import payload_schemas
 
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    with open(
-        os.path.join(repo_root, "schemas", "check-output.schema.json"),
-        encoding="utf-8",
-    ) as f:
-        schema = json.load(f)
-    codes = schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+    codes = (
+        payload_schemas.CHECK["properties"]["lints"]["items"]
+        ["properties"]["code"]["enum"]
+    )
     assert "SPELL001" in codes

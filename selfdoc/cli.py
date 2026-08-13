@@ -9,6 +9,7 @@ import threading
 
 import strictcli
 
+from selfdoc import payload_schemas
 from selfdoc._version import __version__
 from selfdoc_core import effects
 
@@ -595,14 +596,12 @@ def _cmd_deploy(ctx):
 
 
 
-@app.command("check", help="Check documentation coverage, directive resolution, and lint rules", effect="mutating")
+@app.command("check", help="Check documentation coverage, directive resolution, and lint rules", effect="mutating", payload_schema=payload_schemas.CHECK)
 @strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
-@strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format for check results: text (human) or json (machine)")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
 @strictcli.flag("version-override", type=str, default="", help="Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump")
 @effects.handler
-def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
-               version_override=""):
+def _cmd_check(ctx, ignore="", auto_commit=True, version_override=""):
     """Check documentation coverage and consistency."""
     from selfdoc.check import (
         check_docs,
@@ -667,21 +666,23 @@ def _cmd_check(ctx, ignore="", format="text", auto_commit=True,
     # Determine exit code before output
     exit_code = check_result_exit_code(result, config)
 
-    if format == "json":
-        output = serialize_check_result(result, exit_code)
-        print(json.dumps(output, indent=2))
-    else:
+    # The payload is supplied in both modes -- the framework decides what to
+    # do with it -- and the human report is written only outside machine
+    # mode, where stdout carries the envelope and nothing else.
+    ctx.payload(serialize_check_result(result, exit_code))
+
+    if not ctx.json:
         print_results(result)
 
-    if below_threshold:
-        cov = result.coverage
-        threshold = config.get("coverage_threshold", 1.0) if config else 1.0
-        pct = cov.documented * 100 / cov.total_public
-        threshold_pct = threshold * 100
-        print(
-            f"Coverage: {cov.documented}/{cov.total_public} symbols documented"
-            f" ({pct:.0f}%). Threshold is {threshold_pct:.0f}%."
-        )
+        if below_threshold:
+            cov = result.coverage
+            threshold = config.get("coverage_threshold", 1.0) if config else 1.0
+            pct = cov.documented * 100 / cov.total_public
+            threshold_pct = threshold * 100
+            print(
+                f"Coverage: {cov.documented}/{cov.total_public} symbols documented"
+                f" ({pct:.0f}%). Threshold is {threshold_pct:.0f}%."
+            )
 
     if exit_code != 0:
         sys.exit(1)
@@ -892,30 +893,42 @@ def _cmd_gen_data(ctx, auto_commit=True):
     return 0
 
 
-@app.command("spell-corpus", help="Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits", effect="read_only")
+@app.command("spell-corpus", help="Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits", effect="read_only", payload_schema=payload_schemas.SPELL_CORPUS)
 @strictcli.flag("root", type=str, default="", help="Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings")
-@strictcli.flag("format", type=str, default="text", choices=["text", "json"], help="Output format: text (table plus per-project word lists) or json (machine-readable)")
 @strictcli.flag("detail", type=bool, default=True, help="List each project's unknown words with a first location and any suggestion, after the summary table")
 @effects.handler
-def _cmd_spell_corpus(ctx, root="", format="text", detail=True):
+def _cmd_spell_corpus(ctx, root="", detail=True):
     """Run the spelling engine across every sibling selfdoc project."""
     from selfdoc_core.spelling import AcceptListError
-    from selfdoc.spell_corpus import run_spell_corpus
+    from selfdoc.spell_corpus import render_corpus_text, run_spell_corpus
 
     target = root or os.path.dirname(os.path.abspath("."))
     try:
-        return run_spell_corpus(target, format=format, detail=detail)
+        document, exit_code = run_spell_corpus(target)
     except AcceptListError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    ctx.payload(document)
+    if not ctx.json:
+        print(render_corpus_text(document, detail=detail))
+    return exit_code
 
-@app.command("quality", help="Show documentation quality tier and metrics for the current project", effect="read_only")
-@strictcli.flag("format", type=str, default="text", help="Output format: text or json")
+
+@app.command("quality", help="Show documentation quality tier and metrics for the current project", effect="read_only", payload_schema=payload_schemas.QUALITY)
 @effects.handler
-def _cmd_quality(ctx, format="text"):
-    from selfdoc.quality import run_quality
-    return run_quality(format=format)
+def _cmd_quality(ctx):
+    from selfdoc.quality import format_single_text, run_quality
+
+    try:
+        result = run_quality()
+    except _user_errors() as exc:
+        _fail(exc)
+
+    ctx.payload(result)
+    if not ctx.json:
+        print(format_single_text(result))
+    return 0
 
 
 def run():

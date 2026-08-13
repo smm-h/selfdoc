@@ -265,7 +265,7 @@ selfdoc check --ignore SEO007,SEO008
 For machine-readable output (useful in CI):
 
 ```bash
-selfdoc check --format json
+selfdoc check --json
 ```
 
 ## Next Steps

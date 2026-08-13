@@ -2011,7 +2011,7 @@ def test_skeleton_only_symbols_printed(tmp_path, capsys):
 
 
 def test_json_format(python_project, capsys):
-    """--format json outputs valid JSON with expected structure."""
+    """The machine document has the expected structure."""
     docs_dir = os.path.join(python_project, "docs")
     with open(os.path.join(docs_dir, "api.md"), "w", encoding="utf-8") as f:
         f.write('# API\n\n:-: ref path="mylib"\n')

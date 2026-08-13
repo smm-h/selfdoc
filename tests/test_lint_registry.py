@@ -4,8 +4,8 @@
 severity and its one-line description.  Two surfaces are DERIVED from it and
 must not drift:
 
-- ``schemas/check-output.schema.json`` -- its lint-code enum (pinned by
-  tests/test_check_schema.py).
+- ``selfdoc/payload_schemas.py`` -- the lint-code enum in the check
+  command's declared payload schema (pinned by tests/test_check_schema.py).
 - ``docs/check-guide.md`` -- its lint-rule table (pinned here).
 
 The emission side needs no test to stay honest: :class:`LintResult` takes no

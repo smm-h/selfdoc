@@ -5,8 +5,9 @@ selfblog can emit: its severity and its one-line description live there and
 nowhere else.  :class:`LintResult` derives ``severity`` from the registry, so
 a construction site cannot state a severity and cannot emit an unregistered
 code -- both are hard errors rather than conventions.  The lint-code enum in
-``schemas/check-output.schema.json`` and the lint-rule table in
-``docs/check-guide.md`` are pinned to the registry by tests.
+selfdoc's declared check payload schema (``selfdoc/payload_schemas.py``) and
+the lint-rule table in ``docs/check-guide.md`` are pinned to the registry by
+tests.
 
 
 ``selfdoc check``, ``selfblog check`` (unified), the post-build lint pass and

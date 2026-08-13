@@ -2627,12 +2627,13 @@ def check_result_exit_code(result, config=None):
 
 
 def serialize_check_result(result, exit_code):
-    """Build the JSON payload emitted by ``selfdoc check --format json``.
+    """Build the machine payload ``selfdoc check --json`` carries.
 
     This is the single definition of the machine-readable check contract:
-    the CLI and its tests both call it, so the schema in
-    ``schemas/check-output.schema.json`` has exactly one producer to stay
-    in sync with.
+    the CLI and its tests both call it, so the schema declared in
+    ``selfdoc/payload_schemas.py`` has exactly one producer to stay in sync
+    with -- and the framework validates this document against that
+    declaration where it writes the envelope.
 
     Args:
         result: CheckResult to serialize (lints already filtered).
@@ -2640,7 +2641,7 @@ def serialize_check_result(result, exit_code):
             check_exit_code().
 
     Returns:
-        JSON-serializable dict conforming to check-output.schema.json.
+        JSON-serializable dict conforming to payload_schemas.CHECK.
     """
     output = {
         "directives": [

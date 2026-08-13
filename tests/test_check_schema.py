@@ -1,4 +1,16 @@
-"""Tests for JSON schema validation of selfdoc check --format json output."""
+"""The declared payload schema of ``selfdoc check``.
+
+Machine output is strictcli's ``--json`` mode: stdout carries the envelope
+and the check document is its ``payload`` member. The document's shape is
+declared as a JSON Schema literal in ``selfdoc/payload_schemas.py``, the
+framework validates every emitted payload against it, and ``--dump-schema``
+publishes it -- so the declaration is the single artifact a consumer
+generates against, with no second copy to drift.
+
+These tests hold the declaration to three things: it is what the command
+actually declares, it accepts what the command actually emits, and its
+lint-code enum stays exactly the registry in ``selfdoc_core/lints.toml``.
+"""
 
 import json
 import os
@@ -7,16 +19,17 @@ import subprocess
 import sys
 
 import pytest
+import strictcli
 
+from selfdoc import payload_schemas
 from selfdoc.check import check_docs, check_result_exit_code, serialize_check_result
 from selfdoc_core.lints import LINT_REGISTRY
 
 
-# -- Schema-aware validation helpers (no jsonschema dependency) --
+# -- Validation helpers --
 
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-_SCHEMA_PATH = os.path.join(_REPO_ROOT, "schemas", "check-output.schema.json")
 
 # Modules that construct LintResult objects. Every lint code reachable from a
 # CheckResult originates in one of these; the tests below pin both the schema
@@ -29,31 +42,25 @@ _LINT_SOURCE_FILES = (
 _CODE_LITERAL_RE = re.compile(r'code\s*=\s*"([A-Z][A-Z0-9]*[0-9]{3})"')
 
 
-def _load_schema():
-    """Load the check-output JSON schema from disk."""
-    with open(_SCHEMA_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _schema():
+    """The declared payload schema."""
+    return payload_schemas.CHECK
 
 
 def _schema_lint_codes():
-    """The lint-code enum declared by the JSON schema."""
-    schema = _load_schema()
+    """The lint-code enum the declaration carries."""
     return set(
-        schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+        _schema()["properties"]["lints"]["items"]["properties"]["code"]["enum"]
     )
 
 
-def _schema_coverage_object():
-    """The object variant of the schema's ``coverage`` property."""
-    schema = _load_schema()
-    for variant in schema["properties"]["coverage"]["oneOf"]:
-        if variant.get("type") == "object":
-            return variant
-    raise AssertionError("schema coverage has no object variant")
+def _schema_coverage():
+    """The declaration's ``coverage`` subschema."""
+    return _schema()["properties"]["coverage"]
 
 
 def _cli_check_output(project_dir):
-    """Run the real ``selfdoc check --format json`` and parse its output.
+    """Run the real ``selfdoc check --json`` and return the envelope's payload.
 
     This is the shipped contract as consumers see it -- not a
     reconstruction of it -- so schema-completeness assertions below hold
@@ -62,7 +69,7 @@ def _cli_check_output(project_dir):
     proc = subprocess.run(
         [
             sys.executable, "-m", "selfdoc",
-            "check", "--format", "json", "--no-auto-commit",
+            "check", "--json", "--no-auto-commit",
         ],
         cwd=str(project_dir),
         capture_output=True,
@@ -73,7 +80,8 @@ def _cli_check_output(project_dir):
         f"selfdoc check produced no stdout (exit {proc.returncode}):\n"
         f"{proc.stderr}"
     )
-    return json.loads(proc.stdout)
+    envelope = json.loads(proc.stdout)
+    return envelope["payload"]
 
 
 def _source_emitted_lint_codes():
@@ -89,88 +97,31 @@ def _source_emitted_lint_codes():
     return codes
 
 
-_VALID_STATUSES = {"OK", "FAILED"}
-_VALID_SEVERITIES = {"error", "warning"}
-# Derived from the schema rather than hand-mirrored, so the assertions in this
-# file always test the shipped contract instead of a stale copy of it.
 _VALID_LINT_CODES = _schema_lint_codes()
+_VALID_SEVERITIES = {"error", "warning"}
 
 
 def _validate_check_output(data):
-    """Validate *data* against the check-output JSON schema.
+    """Emit *data* under the declaration, through the framework's validator.
 
-    Raises AssertionError with a descriptive message on any violation.
-    Uses only stdlib -- no jsonschema dependency.
+    No hand-rolled mirror of the schema lives here any more: the framework
+    validates a payload against its declaration where it writes the
+    envelope, so the honest way to ask "does this document satisfy the
+    contract" is to have it emitted. A deviation raises.
     """
-    # Top-level structure
-    assert isinstance(data, dict), "root must be an object"
-    for key in ("directives", "coverage", "lints", "exit_code"):
-        assert key in data, f"missing required top-level key: {key}"
+    app = strictcli.App(name="probe", version="0.0.0", help="schema probe")
 
-    # exit_code
-    assert isinstance(data["exit_code"], int), "exit_code must be an integer"
-    assert data["exit_code"] in (0, 1), f"exit_code must be 0 or 1, got {data['exit_code']}"
+    @app.command(
+        "emit", effect="read_only", help="emit the document",
+        payload_schema=payload_schemas.CHECK,
+    )
+    def _emit(ctx):
+        ctx.payload(data)
+        return strictcli.outcome()
 
-    # directives
-    assert isinstance(data["directives"], list), "directives must be an array"
-    for i, dr in enumerate(data["directives"]):
-        prefix = f"directives[{i}]"
-        assert isinstance(dr, dict), f"{prefix} must be an object"
-        for field in ("file", "line", "directive", "status", "error"):
-            assert field in dr, f"{prefix} missing required field: {field}"
-        assert isinstance(dr["file"], str), f"{prefix}.file must be a string"
-        assert isinstance(dr["line"], int), f"{prefix}.line must be an integer"
-        assert isinstance(dr["directive"], str), f"{prefix}.directive must be a string"
-        assert isinstance(dr["status"], str), f"{prefix}.status must be a string"
-        assert dr["status"] in _VALID_STATUSES, (
-            f"{prefix}.status must be OK or FAILED, got {dr['status']!r}"
-        )
-        assert isinstance(dr["error"], str), f"{prefix}.error must be a string"
-
-    # coverage (null or object)
-    cov = data["coverage"]
-    if cov is not None:
-        assert isinstance(cov, dict), "coverage must be null or an object"
-        for field in ("total_public", "referenced", "documented",
-                      "referenced_symbols", "documented_symbols",
-                      "unreferenced_symbols"):
-            assert field in cov, f"coverage missing required field: {field}"
-        assert isinstance(cov["total_public"], int), "coverage.total_public must be an integer"
-        assert cov["total_public"] >= 0, "coverage.total_public must be >= 0"
-        assert isinstance(cov["referenced"], int), "coverage.referenced must be an integer"
-        assert cov["referenced"] >= 0, "coverage.referenced must be >= 0"
-        assert isinstance(cov["documented"], int), "coverage.documented must be an integer"
-        assert cov["documented"] >= 0, "coverage.documented must be >= 0"
-        assert isinstance(cov["referenced_symbols"], list), "coverage.referenced_symbols must be an array"
-        for j, sym in enumerate(cov["referenced_symbols"]):
-            assert isinstance(sym, str), f"coverage.referenced_symbols[{j}] must be a string"
-        assert isinstance(cov["documented_symbols"], list), "coverage.documented_symbols must be an array"
-        for j, sym in enumerate(cov["documented_symbols"]):
-            assert isinstance(sym, str), f"coverage.documented_symbols[{j}] must be a string"
-        assert isinstance(cov["unreferenced_symbols"], list), "coverage.unreferenced_symbols must be an array"
-        for j, sym in enumerate(cov["unreferenced_symbols"]):
-            assert isinstance(sym, str), f"coverage.unreferenced_symbols[{j}] must be a string"
-
-    # lints
-    assert isinstance(data["lints"], list), "lints must be an array"
-    for i, lint in enumerate(data["lints"]):
-        prefix = f"lints[{i}]"
-        assert isinstance(lint, dict), f"{prefix} must be an object"
-        for field in ("file", "line", "code", "message", "severity"):
-            assert field in lint, f"{prefix} missing required field: {field}"
-        assert isinstance(lint["file"], str), f"{prefix}.file must be a string"
-        assert lint["line"] is None or isinstance(lint["line"], int), (
-            f"{prefix}.line must be an integer or null"
-        )
-        assert isinstance(lint["code"], str), f"{prefix}.code must be a string"
-        assert lint["code"] in _VALID_LINT_CODES, (
-            f"{prefix}.code {lint['code']!r} not in allowed enum"
-        )
-        assert isinstance(lint["message"], str), f"{prefix}.message must be a string"
-        assert isinstance(lint["severity"], str), f"{prefix}.severity must be a string"
-        assert lint["severity"] in _VALID_SEVERITIES, (
-            f"{prefix}.severity must be error or warning, got {lint['severity']!r}"
-        )
+    result = app.test(["emit", "--json"])
+    assert result.exit_code == 0, result.stderr
+    return json.loads(result.stdout)["payload"]
 
 
 def _serialize_check_result(result):
@@ -240,16 +191,29 @@ def python_project(tmp_path):
 # -- Tests --
 
 
-def test_schema_file_is_valid_json():
-    """The schema file parses as valid JSON."""
-    schema_path = os.path.join(
-        os.path.dirname(__file__), "..", "schemas", "check-output.schema.json",
-    )
-    with open(schema_path, "r", encoding="utf-8") as f:
-        schema = json.load(f)
-    assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert schema["title"] == "selfdoc check output"
-    assert schema["type"] == "object"
+def test_the_check_command_declares_this_schema():
+    """The literal under test is the one the command registered."""
+    from selfdoc.cli import app
+
+    declared = app._commands["check"].payload_schema
+    assert declared is payload_schemas.CHECK
+    assert declared["type"] == "object"
+
+
+def test_a_document_the_declaration_forbids_is_refused():
+    """Enforcement is real: the framework refuses a deviating payload.
+
+    Without this, every assertion below would only be testing that a
+    validator accepts things.
+    """
+    with pytest.raises(RuntimeError, match="payload"):
+        _validate_check_output({
+            "directives": [],
+            "coverage": None,
+            "lints": [],
+            "exit_code": 0,
+            "unexpected": True,
+        })
 
 
 def test_check_output_validates_against_schema(python_project):
@@ -380,9 +344,9 @@ def test_check_output_with_lint_warnings(python_project):
 def test_example_lint_code_validates_against_schema():
     """A payload carrying an EXAMPLE002 lint conforms to the schema.
 
-    Regression: the schema's lint-code enum listed only SEO*/STALE001, so
-    consumers validating ``selfdoc check --format json`` rejected every
-    example, doc-quality, param/return and drift code.
+    Regression: the lint-code enum once listed only SEO*/STALE001, so
+    consumers validating the check document rejected every example,
+    doc-quality, param/return and drift code.
     """
     data = {
         "directives": [],
@@ -428,36 +392,36 @@ def test_schema_accepts_current_lint_code(code):
 
 
 def test_schema_lint_enum_is_derived_from_the_registry():
-    """The schema enum is exactly the registry, in sorted order.
+    """The declared enum is exactly the registry, in sorted order.
 
-    The JSON output schema is a DERIVED surface: selfdoc_core/lints.toml is
-    the single source of truth for which codes exist. Registering a code
-    without extending schemas/check-output.schema.json fails here, and so
-    does an enum entry no longer in the registry.
+    The declaration is a DERIVED surface: selfdoc_core/lints.toml is the
+    single source of truth for which codes exist. Registering a code
+    without extending selfdoc/payload_schemas.py fails here, and so does an
+    enum entry no longer in the registry.
     """
-    schema = _load_schema()
-    enum = schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+    enum = _schema()["properties"]["lints"]["items"]["properties"]["code"]["enum"]
     expected = sorted(LINT_REGISTRY)
 
     assert sorted(enum) == expected, (
-        "the schema's lint-code enum has drifted from the registry in "
-        "selfdoc_core/lints.toml. Missing from the schema: "
-        f"{sorted(set(expected) - set(enum))}; stale in the schema: "
+        "the declaration's lint-code enum has drifted from the registry in "
+        "selfdoc_core/lints.toml. Missing from the declaration: "
+        f"{sorted(set(expected) - set(enum))}; stale in the declaration: "
         f"{sorted(set(enum) - set(expected))}."
     )
     assert enum == expected, (
-        "the schema's lint-code enum must be sorted, matching the derivation "
-        "order: sorted(LINT_REGISTRY)."
+        "the declaration's lint-code enum must be sorted, matching the "
+        "derivation order: sorted(LINT_REGISTRY)."
     )
 
 
 def test_schema_severity_enum_matches_registry_severities():
-    """The schema's severity enum is exactly the severities the registry uses."""
-    schema = _load_schema()
-    declared = schema["properties"]["lints"]["items"]["properties"]["severity"]["enum"]
+    """The declared severity enum is exactly the severities the registry uses."""
+    declared = (
+        _schema()["properties"]["lints"]["items"]["properties"]["severity"]["enum"]
+    )
     used = sorted({spec.severity for spec in LINT_REGISTRY.values()})
     assert sorted(declared) == used, (
-        f"schema severity enum {sorted(declared)} does not match the "
+        f"declared severity enum {sorted(declared)} does not match the "
         f"severities the registry uses ({used})."
     )
 
@@ -477,12 +441,13 @@ def test_every_code_literal_in_the_check_modules_is_registered():
 
 
 def test_schema_coverage_properties_match_emitted_fields(python_project):
-    """The schema's coverage object declares exactly the fields the CLI emits.
+    """The declared coverage object states exactly the fields the CLI emits.
 
-    Structural guard against schema rot, sibling of the lint-enum test:
-    extra properties validate silently, so a field emitted by
-    ``selfdoc check --format json`` but absent from the schema is invisible
-    to validators while breaking every type-generating consumer.
+    Structural guard against schema rot, sibling of the lint-enum test: a
+    field the CLI emits but the declaration omits is now a hard emission
+    failure, and a field the declaration requires but the CLI never emits is
+    the same failure from the other side. This test names which one it is
+    instead of leaving a validator message to be decoded.
     """
     data = _cli_check_output(python_project)
     assert data["coverage"] is not None, (
@@ -490,7 +455,7 @@ def test_schema_coverage_properties_match_emitted_fields(python_project):
     )
     emitted = set(data["coverage"])
 
-    coverage_schema = _schema_coverage_object()
+    coverage_schema = _schema_coverage()
     declared = set(coverage_schema["properties"])
     required = set(coverage_schema["required"])
 
@@ -498,24 +463,26 @@ def test_schema_coverage_properties_match_emitted_fields(python_project):
     stale_in_schema = sorted(declared - emitted)
 
     assert not missing_from_schema, (
-        "coverage fields emitted by selfdoc check but absent from the schema: "
-        f"{missing_from_schema}. Add them to "
-        "schemas/check-output.schema.json."
+        "coverage fields emitted by selfdoc check but absent from the "
+        f"declaration: {missing_from_schema}. Add them to "
+        "selfdoc/payload_schemas.py."
     )
     assert not stale_in_schema, (
         "coverage fields declared by the schema that selfdoc check never "
         f"emits: {stale_in_schema}. Remove them from "
-        "schemas/check-output.schema.json."
+        "selfdoc/payload_schemas.py."
     )
     # Every emitted field is unconditional, so all of them are required.
     assert required == emitted, (
-        "schema coverage.required must list every emitted field; "
+        "the declaration's coverage.required must list every emitted field; "
         f"required={sorted(required)} emitted={sorted(emitted)}"
     )
+    # Nullability is part of the contract: a project with no source to cover
+    # emits null here, so the declaration carries the type list.
+    assert coverage_schema["type"] == ["object", "null"]
 
 
 def test_schema_lint_enum_is_sorted_and_unique():
-    """The schema enum has no duplicates, keeping the contract unambiguous."""
-    schema = _load_schema()
-    enum = schema["properties"]["lints"]["items"]["properties"]["code"]["enum"]
+    """The declared enum has no duplicates, keeping the contract unambiguous."""
+    enum = _schema()["properties"]["lints"]["items"]["properties"]["code"]["enum"]
     assert len(enum) == len(set(enum)), f"duplicate codes in enum: {enum}"

@@ -15,7 +15,11 @@ import os
 import pytest
 
 from selfdoc.check import check_docs, check_result_exit_code
-from selfdoc.spell_corpus import run_spell_corpus, scan_project
+from selfdoc.spell_corpus import (
+    render_corpus_text,
+    run_spell_corpus,
+    scan_project,
+)
 from selfdoc_core import spelling
 from selfdoc_core.fleet import discover_fleet
 
@@ -437,36 +441,55 @@ def test_scan_project_reports_an_unreadable_project_without_raising(tmp_path):
     assert report.misspellings == []
 
 
-def test_corpus_run_exits_nonzero_when_a_word_is_flagged(tmp_path, capsys):
+def test_corpus_run_exits_nonzero_when_a_word_is_flagged(tmp_path):
     """A misspelling anywhere in the corpus is a finding, not a note."""
     _project(tmp_path, {"index.md": _CLEAN_PAGE.replace(
         "spelled correctly", "spelled correclty",
     )}, name="alpha")
 
-    assert run_spell_corpus(str(tmp_path)) == 1
-    assert "correclty" in capsys.readouterr().out
+    document, exit_code = run_spell_corpus(str(tmp_path))
+    assert exit_code == 1
+    assert "correclty" in render_corpus_text(document)
 
 
-def test_corpus_run_exits_zero_on_a_clean_sweep(tmp_path, capsys):
+def test_corpus_run_exits_zero_on_a_clean_sweep(tmp_path):
     """Nothing flagged is a pass."""
     _project(tmp_path, {"index.md": _CLEAN_PAGE}, name="alpha")
-    assert run_spell_corpus(str(tmp_path)) == 0
-    assert "total flagged: 0" in capsys.readouterr().out
+    document, exit_code = run_spell_corpus(str(tmp_path))
+    assert exit_code == 0
+    assert "total flagged: 0" in render_corpus_text(document)
 
 
-def test_corpus_json_output_is_machine_readable(tmp_path, capsys):
-    """The json format carries every located word for a tool to consume."""
+def test_corpus_document_is_machine_readable(tmp_path):
+    """The machine payload carries every located word for a tool to consume."""
     _project(tmp_path, {"index.md": _CLEAN_PAGE.replace(
         "spelled correctly", "spelled correclty",
     )}, name="alpha")
 
-    run_spell_corpus(str(tmp_path), format="json")
-    payload = json.loads(capsys.readouterr().out)
+    payload, _exit_code = run_spell_corpus(str(tmp_path))
     assert payload["total"] == 1
     entry = payload["projects"][0]["misspellings"][0]
     assert entry["word"] == "correclty"
     assert entry["file"] == "index.md"
     assert entry["line"] >= 1 and entry["column"] >= 1
+
+
+def test_corpus_text_rendering_reads_the_same_document(tmp_path):
+    """One computation, two renderings: the text report is built from the
+    machine document, so a project the payload names is a row in the table."""
+    _project(tmp_path, {"index.md": _CLEAN_PAGE.replace(
+        "spelled correctly", "spelled correclty",
+    )}, name="alpha")
+
+    document, _exit_code = run_spell_corpus(str(tmp_path))
+    text = render_corpus_text(document, detail=True)
+    assert "alpha" in text
+    assert "total flagged: 1" in text
+    # The detail block names the word, its location and any suggestion.
+    assert "correclty" in text
+    assert "index.md:" in text
+
+    assert "correclty" not in render_corpus_text(document, detail=False)
 
 
 def test_corpus_run_writes_nothing_into_the_projects(tmp_path):

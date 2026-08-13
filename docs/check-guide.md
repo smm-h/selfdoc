@@ -219,24 +219,32 @@ Human-readable output with colored status indicators, file paths, line numbers, 
 selfdoc check
 ```
 
-### JSON
+### Machine output
 
-Machine-readable output for CI integration, custom tooling, or programmatic analysis. The JSON format includes the same information as text output but structured as arrays of objects with consistent field names for easy parsing:
+Machine-readable output for CI integration, custom tooling, or programmatic analysis. `--json` is the framework's machine mode: stdout carries exactly one document, the envelope, and the check report is its `payload` member. The report holds the same information as the text output, structured as arrays of objects with consistent field names for easy parsing:
 
 ```bash
-selfdoc check --format json
+selfdoc check --json
 ```
 
-Returns a JSON object with `directives`, `coverage`, `lints`, and `exit_code` fields. Example structure:
+The payload is an object with `directives`, `coverage`, `lints`, and `exit_code` fields. Example structure:
 
 ```text
 {
-  "directives": [{"file": "index.md", "line": 12, "status": "OK", ...}],
-  "coverage": {"total_public": 23, "referenced": 15, ...},
-  "lints": [{"code": "SEO006", "severity": "error", ...}],
-  "exit_code": 0
+  "interface_version": 1,
+  "app": "selfdoc",
+  "command": "check",
+  "exit_code": 0,
+  "payload": {
+    "directives": [{"file": "index.md", "line": 12, "status": "OK", ...}],
+    "coverage": {"total_public": 23, "referenced": 15, ...},
+    "lints": [{"code": "SEO006", "severity": "error", ...}],
+    "exit_code": 0
+  }
 }
 ```
+
+The payload's shape is declared as a JSON Schema on the command itself and validated before it is written, so a document that deviates fails the run instead of reaching a consumer. `selfdoc --dump-schema` publishes the declaration.
 
 ## Exit Codes
 

@@ -18,7 +18,6 @@ project whose config cannot be loaded is reported and skipped, never fatal.
 
 from __future__ import annotations
 
-import json
 import os
 from collections import Counter
 from dataclasses import dataclass, field
@@ -105,21 +104,22 @@ def scan_project(project, vocab, accepted) -> ProjectSpellReport:
     return report
 
 
-def run_spell_corpus(root, format="text", detail=True) -> int:
-    """Sweep every selfdoc project under *root* and print the findings.
+def run_spell_corpus(root) -> tuple[dict, int]:
+    """Sweep every selfdoc project under *root* and return what it found.
 
     Args:
         root: Directory whose immediate subdirectories are searched for
             ``selfdoc.json``.
-        format: ``"text"`` for the table, ``"json"`` for the machine shape.
-        detail: Whether the text output lists each project's unknown words
-            with a first location.
 
     Returns:
-        1 when any unknown word was found (a misspelling is an error, and
-        the accept list is the sanctioned answer for a genuine term), 0 on
-        a clean sweep.  A project that could not be read is reported but
-        does not by itself fail the sweep.
+        ``(document, exit_code)``.  The document is the sweep's machine
+        payload, declared by ``selfdoc/payload_schemas.py`` and rendered for
+        humans by :func:`render_corpus_text`; it is the one computation
+        behind both renderings.  The exit code is 1 when any unknown word
+        was found (a misspelling is an error, and the accept list is the
+        sanctioned answer for a genuine term), 0 on a clean sweep.  A
+        project that could not be read is reported but does not by itself
+        fail the sweep.
     """
     vocab = spelling.load_wordlist()
     accepted = spelling.load_accept_list()
@@ -131,66 +131,86 @@ def run_spell_corpus(root, format="text", detail=True) -> int:
 
     total = sum(len(r.misspellings) for r in reports)
 
-    if format == "json":
-        print(json.dumps({
-            "root": os.path.abspath(root),
-            "accept_list": str(spelling.ACCEPT_LIST_PATH),
-            "accepted_terms": len(accepted),
-            "wordlist_words": len(vocab),
-            "projects": [
-                {
-                    "project": r.name,
-                    "pages": r.pages,
-                    "error": r.error,
-                    "misspellings": [
-                        {
-                            "file": m.file,
-                            "line": m.line,
-                            "column": m.column,
-                            "word": m.word,
-                            "suggestions": list(m.suggestions),
-                        }
-                        for m in r.misspellings
-                    ],
-                }
-                for r in reports
-            ],
-            "total": total,
-        }, indent=2))
-        return 1 if total else 0
+    document = {
+        "root": os.path.abspath(root),
+        "accept_list": str(spelling.ACCEPT_LIST_PATH),
+        "accepted_terms": len(accepted),
+        "wordlist_words": len(vocab),
+        "projects": [
+            {
+                "project": r.name,
+                "pages": r.pages,
+                "error": r.error,
+                "misspellings": [
+                    {
+                        "file": m.file,
+                        "line": m.line,
+                        "column": m.column,
+                        "word": m.word,
+                        "suggestions": list(m.suggestions),
+                    }
+                    for m in r.misspellings
+                ],
+            }
+            for r in reports
+        ],
+        "total": total,
+    }
+    return document, (1 if total else 0)
 
-    print(
-        f"Word list: {len(vocab)} words. "
-        f"Accept list: {len(accepted)} terms "
-        f"({spelling.ACCEPT_LIST_PATH})."
-    )
-    print()
-    print(f"{'project':28} {'pages':>5} {'flagged':>8} {'unique':>7}")
-    for r in reports:
-        if r.error:
-            print(f"{r.name:28} {'-':>5} {'-':>8} {'-':>7}  {r.error}")
+
+def _unique_words(misspellings) -> list[tuple[str, int]]:
+    """Unknown words with their occurrence counts, commonest first."""
+    counts = Counter(m["word"] for m in misspellings)
+    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].lower()))
+
+
+def render_corpus_text(document, detail=True) -> str:
+    """Render a :func:`run_spell_corpus` document as the human report.
+
+    The summary table plus, when *detail*, each project's unknown words with
+    a first location and any suggestion.  Reads the same document the
+    machine payload carries, so the two renderings can never disagree.
+    """
+    lines = [
+        f"Word list: {document['wordlist_words']} words. "
+        f"Accept list: {document['accepted_terms']} terms "
+        f"({document['accept_list']}).",
+        "",
+        f"{'project':28} {'pages':>5} {'flagged':>8} {'unique':>7}",
+    ]
+    for project in document["projects"]:
+        name = project["project"]
+        if project["error"]:
+            lines.append(
+                f"{name:28} {'-':>5} {'-':>8} {'-':>7}  {project['error']}"
+            )
             continue
-        print(
-            f"{r.name:28} {r.pages:5} {len(r.misspellings):8} "
-            f"{len(r.unique_words):7}"
+        unique = _unique_words(project["misspellings"])
+        lines.append(
+            f"{name:28} {project['pages']:5} "
+            f"{len(project['misspellings']):8} {len(unique):7}"
         )
-    print()
-    print(f"total flagged: {total}")
+    lines.append("")
+    lines.append(f"total flagged: {document['total']}")
 
     if detail:
-        for r in reports:
-            if not r.misspellings:
+        for project in document["projects"]:
+            misspellings = project["misspellings"]
+            if not misspellings:
                 continue
-            print(f"\n{r.name}:")
-            first: dict[str, spelling.Misspelling] = {}
-            for m in r.misspellings:
-                first.setdefault(m.word, m)
-            for word, count in r.unique_words:
+            lines.append("")
+            lines.append(f"{project['project']}:")
+            first: dict[str, dict] = {}
+            for m in misspellings:
+                first.setdefault(m["word"], m)
+            for word, count in _unique_words(misspellings):
                 m = first[word]
-                where = f"{m.file}:{m.line}:{m.column}"
+                where = f"{m['file']}:{m['line']}:{m['column']}"
                 hint = (
-                    f"  -> {', '.join(m.suggestions)}" if m.suggestions else ""
+                    f"  -> {', '.join(m['suggestions'])}"
+                    if m["suggestions"] else ""
                 )
-                print(f"  {word:24} x{count:<4} {where}{hint}")
+                lines.append(f"  {word:24} x{count:<4} {where}{hint}")
 
-    return 1 if total else 0
+    return "\n".join(lines)

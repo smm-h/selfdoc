@@ -113,15 +113,15 @@ The Selfdoc section shows which selfdoc features are active. A dash (`-`) means 
 
 The Completed and To do sections list which tiers have been reached and what remains. The next actionable step is always the first item under "To do".
 
-## JSON output
+## Machine output
 
-Pass `--format json` for machine-readable output:
+Pass `--json` for machine-readable output:
 
 ```bash
-selfdoc quality --format json
+selfdoc quality --json
 ```
 
-The JSON object includes all fields: `tier`, `tier_name`, `code_loc`, `test_loc`, `source_loc`, `doc_loc`, `doc_files`, `doc_ratio`, `content_grade`, `selfdoc` (with feature flags), and `next_step`.
+Stdout then carries exactly one document -- the strictcli envelope -- and the score is its `payload` member. The score object includes all fields: `tier`, `tier_name`, `code_loc`, `test_loc`, `source_loc`, `doc_loc`, `doc_files`, `doc_ratio`, `content_grade`, `selfdoc` (with feature flags), and `next_step`.
 
 ## Using quality to find improvement areas
 
