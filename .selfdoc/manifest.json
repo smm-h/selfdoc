@@ -1366,6 +1366,11 @@
         },
         {
           "level": 3,
+          "text": "Definition lists",
+          "anchor": "definition-lists"
+        },
+        {
+          "level": 3,
           "text": "The `list-glossary` directive",
           "anchor": "the-list-glossary-directive"
         },
@@ -1378,6 +1383,11 @@
           "level": 2,
           "text": "The Generated Glossary Page",
           "anchor": "the-generated-glossary-page"
+        },
+        {
+          "level": 3,
+          "text": "From the definition back to the glossary",
+          "anchor": "from-the-definition-back-to-the-glossary"
         },
         {
           "level": 2,
@@ -3453,5 +3463,5 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T20:38:16.329497+00:00"
+  "last_gen": "2026-08-13T09:07:14.722603+00:00"
 }

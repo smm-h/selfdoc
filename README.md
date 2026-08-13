@@ -219,6 +219,7 @@ Custom directives take priority over built-in names.
 | `gen_data` | no | Configuration for the gen-data command. |
 | `schema_types` | no | Mapping from page type to schema.org @type (e.g. guide -> TechArticle). |
 | `versions` | no | List of documentation versions to build. |
+| `unversioned` | no | Declares that this project has no public version -- a personal site or portfolio that publishes no artifact. It replaces the 'versions' array (declaring both is an error) and is refused for a project that declares 'source', because code is the thing that gets released and therefore carries a version. An unversioned project's pages show no version badge, offer no version search filter and no version picker. |
 | `locales` | no | List of locales for multi-language documentation. |
 | `unified` | no | Configuration for unified multi-project documentation. |
 | `posts` | no | Blog post configuration. |
