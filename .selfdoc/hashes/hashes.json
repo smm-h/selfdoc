@@ -93,7 +93,7 @@
     "description": "a88fdbfd865bb583c35a594a76b0fd7c9f861cd6fd9c0ec5c29a23c60d80da52"
   },
   "en/check-guide.md": {
-    "content": "4adb87aa608cf521809242292bb64443c8b72ee4569980ab3bcad62c02a263cd",
+    "content": "0dbee114ddff5964d9d85a2a93f4f0d37f0714e060ae4e819b5101bab40368b5",
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
@@ -108,14 +108,14 @@
     "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
   },
   "en/cli-build.md": {
-    "content": "45935e7764a22d7a30ff2d21310021ac58102c7b5c8b7a96264c7c3b4397857b",
+    "content": "20c52a46f8e0754339f50b35a3f4e6cc9868a38c4ab5a5e97d2c0ebd7f7cdd75",
     "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8",
-    "schema_hash": "fe0892d4955fbd801bf9d75ffa21bec86d0b3bc9933ea884e57a6f02515df750"
+    "schema_hash": "ef7ffe5bf19abed91bf6a43a98da269121a65613497c9a365a78adfc2ede8389"
   },
   "en/cli-check.md": {
-    "content": "25ef24c0424f86fce8caf937d7e6407c715d25eb4b4fbbe2908229c4b10102d3",
+    "content": "52378f3f2aa1b3f4abe4d71a4507c19c1628640bf74fd78fabae8fd6bad4b838",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd",
-    "schema_hash": "6ff1a90505b4f77523b7a5dfc6408aaca0800adc0cacfa001fe0eec67d73f6f3"
+    "schema_hash": "9a577f0af16063512fe6137998ef745ee24f3f299b16e498177fa4efa866f6cd"
   },
   "en/cli-deploy.md": {
     "content": "5f2c7b3815dd00bf1e296d241c328d80019676afe6790d08616316a3b19a65cb",
@@ -137,9 +137,9 @@
     "description": "c30342a2cd66cf7bfb9c53315e71bfff9e51498aaa457679673189ccaff05b1d"
   },
   "en/cli-init.md": {
-    "content": "5f8d74b07767bdffa35df6b4564651f1c3f823bf2876b87108a39a5f83f2c3ed",
+    "content": "c90cb823380d89cade6b235f18f32ff56c6d631ab72c63dc9d84bb2a0b521aba",
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb",
-    "schema_hash": "3e4cb03d096f6b0ebd747ec6b3815cfe9ef57273ab4518c50792be097e1797ed"
+    "schema_hash": "079fa235e409e14a15737ceb255bfb9c6357a71ec4d8f80f77c20ba3bacbf994"
   },
   "en/cli-post.md": {
     "content": "2a90efcd877e9ca2958e70c7e4d4b403e768c6a2c771c341fafc581eb8b00f42",
@@ -192,7 +192,7 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/editor-guide.md": {
-    "content": "f965ca924ccf216ff21190ba54b2ba4232d89b07d42c8c717830f5a68eeab0e7",
+    "content": "809dbb42f12f5cfb20098b2f0cf3411b18b878c81d97036c2f712662eb3aa417",
     "description": "38a476c5f710dadace70dd593f9813b47d8a180564628ed6f6f06bfaaaf1516b"
   },
   "en/feeds.md": {
@@ -204,11 +204,11 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "1ac71dd29bb361a35f3421625ce298f4652b0cc7e2466b86df4102d1cf2788d3",
+    "content": "16da77ecad0f985b92e1b058486f2aa170c15e92120bf6bd5b1f6ed58a8919a9",
     "description": "62d110073d6baf71fc8b116980d397441d42546e119cb8595bfeeab5f5f77253"
   },
   "en/getting-started.md": {
-    "content": "a68c80340751d584de4d7e283fe2a0e843ff2371a8bfbb9d9fbdef53fdce8f73",
+    "content": "92e7b67d6b135fa71ce297198ca9088bc73ff5eeac433900bd9820a3571f8a1f",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -240,7 +240,7 @@
     "description": "197dd0d273eaa74a3ed138f5386130d5e5fb6595bde77798a5e6f53dda35f050"
   },
   "en/quality-guide.md": {
-    "content": "2ea7f1dbad91bee13e4c766302c7db0dfea85a35e3e725950ed6c9948ca3ff6d",
+    "content": "bbfbef4f65315d25eb26a07a86fd60ce42167cdaef73d07951f4fae3c05366fd",
     "description": "dc4d5de0f56b7095a07fb4de44f00a9bf5d9d3cb6459cdc6a326bb67de529d74"
   },
   "en/rlsbl-integration.md": {
@@ -460,7 +460,7 @@
     "description": "5e3bc8a5c461afb1c43cee84a6e4ce7eeb544c36201849aa061e801b938ad726"
   },
   "en/theming.md": {
-    "content": "62e46392c8af90eeedcc2f8ef5f5a66bb32f664a8241a88a7cbfdffbfea279b1",
+    "content": "977b2c2952413b672de23e629b7476bf9c4189c8dfd47bad1b2db7fed196362f",
     "description": "1f0a530a8ac11af9c98b997dd759ba0a7b1193280575955dd75f14837a89107c"
   },
   "feeds.md": {
