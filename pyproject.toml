@@ -19,6 +19,10 @@ dev = [
     "pygments>=2.20.0",
     "pytest>=9.0.3",
     "pytest-playwright>=0.7.2",
+    # axe-core, bundled as a JS blob the driver injects -- the
+    # accessibility assertions in tests/test_rendered_reality.py run it
+    # against a live page, and it reaches no network to do so.
+    "axe-playwright-python>=0.1.8",
     "stricttest",
 ]
 
@@ -34,10 +38,14 @@ dev = [
 # remembering to mock subprocess. The throwaway HOME removes the ambient `gh`
 # credential outright, so a forgotten mock fails instead of publishing.
 #
-# loopback = "allow" is the one deliberate opening: tests/test_demo_panel.py
-# serves the demo page from a 127.0.0.1 http.server and drives it with
-# headless chromium. Nothing in the suite legitimately reaches off-machine, so
-# sockets stays "deny" with both allowlists empty.
+# loopback = "allow" is the one deliberate opening, and it is a real socket
+# rather than a stub on purpose: tests/test_demo_panel.py serves the demo page
+# from a 127.0.0.1 http.server, and tests/test_rendered_reality.py serves whole
+# built sites through the production preview server on ephemeral loopback ports
+# and drives them with headless chromium. Both are on-machine by construction
+# -- the port is bound to 127.0.0.1 and never advertised -- so sockets stays
+# "deny" with both allowlists empty, and nothing in the suite can reach
+# off-machine.
 #
 # sandbox_required = "false" because this repo has no sandbox runner yet; the
 # always-on env/push/chdir/socket guards apply regardless.
@@ -46,6 +54,15 @@ stricttest_socket_allowlist = []
 stricttest_unix_socket_allowlist = []
 stricttest_loopback = "allow"
 stricttest_sandbox_required = "false"
+
+markers = [
+    # The rendered-reality suite: real fixture sites, built through the real
+    # pipeline, served on loopback and asserted in headless chromium. It is
+    # slower than the rest of the suite by a wide margin and needs a browser
+    # binary, so it is selectable -- `-m e2e_rendered` runs only it,
+    # `-m 'not e2e_rendered'` runs everything else. CI runs both.
+    "e2e_rendered: browser assertions against a really-built site",
+]
 
 [tool.ruff]
 target-version = "py312"

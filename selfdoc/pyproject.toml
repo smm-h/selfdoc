@@ -60,6 +60,10 @@ dev = [
     "pygments>=2.20.0",
     "pytest>=9.0.3",
     "pytest-playwright>=0.7.2",
+    # axe-core, bundled as a JS blob the driver injects -- the
+    # accessibility assertions in tests/test_rendered_reality.py run it
+    # against a live page, and it reaches no network to do so.
+    "axe-playwright-python>=0.1.8",
     # The isolation floor. CI syncs from this directory, so the plugin has to
     # be declared here -- inheriting it from the workspace root's dev group
     # only works for root-rooted runs.
@@ -75,9 +79,19 @@ testpaths = ["../tests"]
 # stricttest's isolation floor. A member-rooted pytest run reads THIS file as
 # its inifile, and testpaths points at the root suite -- so the stance must
 # match the root pyproject's, including loopback = "allow" for the demo-panel
-# test that drives a 127.0.0.1 http.server with headless chromium.
+# test and the rendered-reality suite, both of which bind 127.0.0.1 servers and
+# drive them with headless chromium.
 stricttest_sockets = "deny"
 stricttest_socket_allowlist = []
 stricttest_unix_socket_allowlist = []
 stricttest_loopback = "allow"
 stricttest_sandbox_required = "false"
+
+markers = [
+    # The rendered-reality suite: real fixture sites, built through the real
+    # pipeline, served on loopback and asserted in headless chromium. It is
+    # slower than the rest of the suite by a wide margin and needs a browser
+    # binary, so it is selectable -- `-m e2e_rendered` runs only it,
+    # `-m 'not e2e_rendered'` runs everything else. CI runs both.
+    "e2e_rendered: browser assertions against a really-built site",
+]
