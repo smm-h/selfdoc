@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from selfdoc.html import md_to_html
-from selfdoc_core.themes import list_themes
+from selfdoc_core.themes import get_theme, list_themes
 
 THEMES_DIR = Path(__file__).resolve().parent.parent / "selfdoc_core" / "themes"
 
@@ -23,17 +23,27 @@ THEMES_DIR = Path(__file__).resolve().parent.parent / "selfdoc_core" / "themes"
 # without anybody remembering to extend a tuple.
 THEMES = tuple(f"{name}.css" for name in list_themes())
 
-#: The sticky ``thead`` rule body, per theme file.
-_THEAD_RULE = re.compile(r"\bthead\s*\{([^}]*)\}", re.MULTILINE)
+#: The sticky ``thead`` rule body, in either spelling: the whole row group
+#: or the header cells inside it.  A framework theme states it the second
+#: way, and both make the header stick.
+_THEAD_RULE = re.compile(
+    r"(?:^|[,\s])(?:\.tm-table\s+)?thead(?:\s+th)?\s*\{([^}]*)\}",
+    re.MULTILINE,
+)
 
 
 def _thead_rules(css: str) -> list[str]:
     return [m.group(1) for m in _THEAD_RULE.finditer(css)]
 
 
-@pytest.fixture(scope="module", params=THEMES)
+#: The unit is the **composed** stylesheet, not the theme file.  A theme
+#: that declares a framework ships as an overlay on someone else's sheets,
+#: and the sticky header is one of the things it stops restating -- reading
+#: the overlay alone would report the rule as missing when what happened is
+#: that the framework now carries it.
+@pytest.fixture(scope="module", params=[n for n in list_themes()])
 def theme_css(request) -> str:
-    return (THEMES_DIR / request.param).read_text()
+    return get_theme(request.param)
 
 
 class TestStickyTableHeader:

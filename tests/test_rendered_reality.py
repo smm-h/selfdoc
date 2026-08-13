@@ -235,10 +235,14 @@ TABLE_WIDTH = 700
 
 
 def _scroll_page_to(page, top):
-    """Scroll the document to *top* and wait until it has arrived.
+    """Scroll the content region to *top* and wait until it has arrived.
 
-    The pages set ``scroll-behavior: smooth``, so ``window.scrollTo``
-    starts an animation rather than moving the document, and a geometry
+    The scrolling element is ``#tm-content``, not the document: every
+    theme states the framework's application frame, which is fixed to the
+    viewport with the content column as its only scroller.
+
+    The pages set ``scroll-behavior: smooth``, so assigning ``scrollTop``
+    starts an animation rather than moving the column, and a geometry
     reading taken a fixed number of milliseconds later is a reading of
     some frame in the middle of it -- a layout no reader ever sees.  What
     every assertion here is about is the layout at rest, so the animation
@@ -251,15 +255,16 @@ def _scroll_page_to(page, top):
     """
     page.evaluate(
         """(t) => {
-            document.documentElement.style.scrollBehavior = 'auto';
-            window.scrollTo(0, t);
+            const el = document.getElementById('tm-content');
+            el.style.scrollBehavior = 'auto';
+            el.scrollTop = t;
         }""",
         top,
     )
     page.wait_for_function(
-        "(t) => Math.abs(window.scrollY - t) < 2"
-        " || window.scrollY >= document.documentElement.scrollHeight"
-        " - window.innerHeight - 2",
+        "(t) => { const el = document.getElementById('tm-content');"
+        " return Math.abs(el.scrollTop - t) < 2"
+        " || el.scrollTop >= el.scrollHeight - el.clientHeight - 2; }",
         arg=top,
         timeout=5000,
     )
@@ -429,7 +434,7 @@ class TestTableOfContents:
             page.set_viewport_size({"width": width, "height": 900})
             page.wait_for_timeout(60)
             seen[width] = (
-                _visible_count(page, "aside.toc"),
+                _visible_count(page, "nav.docs-toc"),
                 _visible_count(page, "details.mobile-toc"),
             )
 
@@ -451,12 +456,12 @@ class TestTableOfContents:
         _open(page, fixture, label)
         page.set_viewport_size({"width": 1920, "height": 900})
         page.wait_for_timeout(60)
-        assert _visible_count(page, "aside.toc") == 1, (
+        assert _visible_count(page, "nav.docs-toc") == 1, (
             f"[{fixture.theme}] {label} has no desktop table of contents at 1920px"
         )
         page.set_viewport_size({"width": 700, "height": 900})
         page.wait_for_timeout(60)
-        assert _visible_count(page, "aside.toc") == 0, (
+        assert _visible_count(page, "nav.docs-toc") == 0, (
             f"[{fixture.theme}] {label} still shows the desktop aside at 700px"
         )
         assert _visible_count(page, "details.mobile-toc") == 1, (
@@ -470,7 +475,7 @@ class TestTableOfContents:
         for width in WIDTHS:
             page.set_viewport_size({"width": width, "height": 900})
             page.wait_for_timeout(60)
-            desk = _visible_count(page, "aside.toc")
+            desk = _visible_count(page, "nav.docs-toc")
             mob = _visible_count(page, "details.mobile-toc")
             if desk or mob:
                 offenders[width] = (desk, mob)
@@ -486,7 +491,7 @@ class TestTableOfContents:
         """
         _open(page, fixture, "post")
         present = page.evaluate(
-            "() => document.querySelectorAll('aside.toc, details.mobile-toc').length"
+            "() => document.querySelectorAll('nav.docs-toc, details.mobile-toc').length"
         )
         assert present == 0, (
             f"[{fixture.theme}] a post carries {present} table-of-contents "
@@ -639,15 +644,15 @@ class TestTheFrameworkPayloadIsServed:
     def test_a_page_taller_than_the_viewport_still_scrolls(
         self, page, fixture, label,
     ):
-        """The framework's globals are written for the framework's shell.
+        """The application frame is fixed, so the content column must move.
 
-        ``base.css`` gives the viewport to an application frame: the body
-        is ``overflow: hidden`` because the scroller is ``#tm-content``, and
-        ``user-select: none`` because the selectable carve-out is
-        ``.doc-body``.  A selfdoc page has neither element, so inheriting
-        those globals unchanged means everything below the fold is
-        unreachable and no passage can be copied -- and both look perfect
-        in a screenshot of the top of the page.
+        Every theme states the framework's shell: ``#tm-app`` is pinned to
+        the viewport and ``#tm-content`` is the only scroller on the page.
+        Get that wrong -- the column not scrolling, or the document
+        scrolling instead of it -- and everything below the fold is
+        unreachable while the top of the page looks perfect in a
+        screenshot.  ``.doc-body`` is the selectable region, so a passage
+        has to be copyable too.
         """
         _open(page, fixture, label)
         page.wait_for_load_state("networkidle")
@@ -655,14 +660,21 @@ class TestTheFrameworkPayloadIsServed:
         page.wait_for_timeout(80)
         metrics = page.evaluate(
             """() => {
-                const el = document.scrollingElement;
-                window.scrollTo(0, 100000);
+                const el = document.getElementById('tm-content');
+                if (!el) return {missing: true};
+                el.style.scrollBehavior = 'auto';
+                el.scrollTop = 100000;
                 return {
                     scrollable: el.scrollHeight > el.clientHeight + 4,
                     moved: el.scrollTop > 0,
-                    select: getComputedStyle(document.body).userSelect,
+                    select: getComputedStyle(
+                        document.querySelector('.doc-body')).userSelect,
                 };
             }"""
+        )
+        assert not metrics.get("missing"), (
+            f"[{fixture.theme}] {label} carries no #tm-content, so the page "
+            f"is not the framework's shell at all"
         )
         assert metrics["scrollable"], (
             f"[{fixture.theme}] {label} is not taller than a 500px viewport; "
@@ -673,7 +685,7 @@ class TestTheFrameworkPayloadIsServed:
             f"the fold is unreachable"
         )
         assert metrics["select"] != "none", (
-            f"[{fixture.theme}] {label} renders unselectable text "
+            f"[{fixture.theme}] {label} renders unselectable prose "
             f"(user-select: {metrics['select']})"
         )
 
@@ -1120,7 +1132,7 @@ class TestVersionUI:
 
     def test_the_archive_page_shows_the_superseded_notice(self, page, fixture):
         _open(page, fixture, "standalone-archive")
-        notice = page.locator(".version-notice")
+        notice = page.locator(".tm-notice")
         assert notice.count() == 1, (
             f"[{fixture.theme}] an archive page carries {notice.count()} "
             f"superseded notices"
@@ -1133,7 +1145,7 @@ class TestVersionUI:
 
     def test_the_current_version_shows_no_notice(self, page, fixture):
         _open(page, fixture, "standalone-current")
-        assert page.locator(".version-notice").count() == 0, (
+        assert page.locator(".tm-notice").count() == 0, (
             f"[{fixture.theme}] the current version claims to be superseded"
         )
 
@@ -1141,15 +1153,15 @@ class TestVersionUI:
         _open(page, fixture, "standalone-archive")
         page.evaluate("() => localStorage.clear()")
         _open(page, fixture, "standalone-archive")
-        notice = page.locator(".version-notice")
+        notice = page.locator(".tm-notice")
         assert notice.first.is_visible()
-        page.locator(".version-notice-dismiss").first.click()
+        page.locator(".tm-notice-dismiss").first.click()
         assert not notice.first.is_visible(), (
             f"[{fixture.theme}] the notice stayed visible after Dismiss"
         )
 
         _open(page, fixture, "standalone-archive")
-        assert not page.locator(".version-notice").first.is_visible(), (
+        assert not page.locator(".tm-notice").first.is_visible(), (
             f"[{fixture.theme}] the dismissal did not survive a reload"
         )
 
@@ -1157,9 +1169,9 @@ class TestVersionUI:
         _open(page, fixture, "standalone-archive")
         page.evaluate("() => localStorage.clear()")
         _open(page, fixture, "standalone-archive")
-        page.locator(".version-notice a").first.click()
+        page.locator(".tm-notice a").first.click()
         page.wait_for_load_state("load")
-        assert page.locator(".version-notice").count() == 0, (
+        assert page.locator(".tm-notice").count() == 0, (
             f"[{fixture.theme}] the notice's link went to {page.url}, which "
             f"also claims to be superseded"
         )
@@ -1199,7 +1211,7 @@ class TestVersionUI:
         readings = {
             "badge": page.locator(".version-badge").count(),
             "picker": page.locator(".version-picker").count(),
-            "notice": page.locator(".version-notice").count(),
+            "notice": page.locator(".tm-notice").count(),
         }
         assert readings == {"badge": 0, "picker": 0, "notice": 0}, (
             f"[{fixture.theme}] an unversioned project's page carries version "
@@ -1239,9 +1251,9 @@ class TestViewportMonotonicity:
     """
 
     ELEMENTS = {
-        "topbar": ".topbar",
-        "sidebar": ".sidebar",
-        "desktop-toc": "aside.toc",
+        "topbar": "#tm-topbar",
+        "sidebar": "#tm-sidebar",
+        "desktop-toc": "nav.docs-toc",
         "mobile-toc": "details.mobile-toc",
         "footer": ".site-footer, footer.page-footer",
         "search-trigger": ".search-trigger",
@@ -1524,6 +1536,8 @@ class TestTheFixtureItself:
         room = wrap.evaluate(
             "(el) => ({down: el.scrollHeight - el.clientHeight,"
             " across: el.scrollWidth - el.clientWidth,"
+            " client: el.clientWidth,"
+            " table: el.querySelector('table').getBoundingClientRect().width,"
             " overflowing: el.classList.contains('has-overflow')})"
         )
         assert room["across"] > 0, (
@@ -1537,13 +1551,17 @@ class TestTheFixtureItself:
         )
 
     def test_the_page_itself_scrolls_past_the_table(self, page, fixture):
-        """The sticky header is asserted against the page scroll too."""
+        """The sticky header is asserted against the page scroll too.
+
+        "The page" is ``#tm-content``: the frame is fixed to the viewport
+        and the content column is the only thing that moves.
+        """
         _open(page, fixture, "docs-tables")
         page.set_viewport_size({"width": TABLE_WIDTH, "height": 900})
         page.wait_for_timeout(80)
         room = page.evaluate(
-            "() => document.documentElement.scrollHeight - "
-            "document.documentElement.clientHeight"
+            "() => { const el = document.getElementById('tm-content');"
+            " return el.scrollHeight - el.clientHeight; }"
         )
         assert room > 900, (
             f"[{fixture.theme}] the table page is only {room}px taller than "
@@ -1566,7 +1584,8 @@ class TestTheFixtureItself:
     def test_the_fixture_declares_exactly_one_external_link(self, page, fixture):
         _open(page, fixture, "docs")
         external = page.evaluate(
-            """(origin) => Array.from(document.querySelectorAll('main a[href]'))
+            """(origin) => Array.from(
+                document.querySelectorAll('article a[href]'))
                 .map(a => a.href)
                 .filter(h => h.startsWith('http') && !h.startsWith(origin))""",
             fixture.assembly.origin,

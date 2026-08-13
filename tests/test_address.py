@@ -754,12 +754,12 @@ def test_archive_pages_carry_a_dismissable_notice_keyed_per_version(tmp_path):
     output_dir = os.path.join(str(project), "docs", "_build")
 
     archived = _read(output_dir, "v/0.1.0/guide/index.html")
-    assert 'class="version-notice"' in archived
+    assert 'class="tm-notice tm-notice-warn"' in archived
     assert 'data-notice-key="0.1.0"' in archived
-    assert 'class="version-notice-dismiss"' in archived
+    assert 'class="tm-notice-dismiss"' in archived
     assert "selfdoc-version-notice-" in archived, "dismissal is not stored"
     # The current version has nothing to say about being superseded.
-    assert 'class="version-notice"' not in _read(output_dir, "guide/index.html")
+    assert 'class="tm-notice tm-notice-warn"' not in _read(output_dir, "guide/index.html")
 
 
 def test_the_share_control_never_offers_an_address_that_is_not_emitted(tmp_path):

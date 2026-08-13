@@ -125,7 +125,7 @@ class TestBuiltPages:
 
     def test_a_versioned_project_still_carries_all_three(self, versioned_site):
         html = _build_index(versioned_site)
-        assert 'class="version-badge">v1.2.3<' in html
+        assert 'version-badge">v1.2.3<' in html
         assert 'data-pagefind-filter="version:1.2.3"' in html
 
 

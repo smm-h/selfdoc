@@ -303,7 +303,7 @@ class TestParseTableEscapedPipes:
             "| cmd | a\\|b |",
         ]
         html = _parse_table(lines)
-        assert "<td>a|b</td>" in html
+        assert '''<td role="gridcell">a|b</td>''' in html
 
     def test_escaped_pipe_in_header(self):
         """A \\| in header content renders as a literal pipe."""
@@ -313,7 +313,7 @@ class TestParseTableEscapedPipes:
             "| 1 | 2 |",
         ]
         html = _parse_table(lines)
-        assert "<th>A|B</th>" in html
+        assert '''<th class="sortable" role="columnheader" aria-sort="none">A|B</th>''' in html
 
     def test_multiple_escaped_pipes(self):
         """Multiple escaped pipes in one cell."""
@@ -323,7 +323,7 @@ class TestParseTableEscapedPipes:
             "| x\\|y\\|z |",
         ]
         html = _parse_table(lines)
-        assert "<td>x|y|z</td>" in html
+        assert '''<td role="gridcell">x|y|z</td>''' in html
 
 
 # -- _parse_table: alignment markers ----------------------------------------
@@ -370,8 +370,8 @@ class TestParseTableAlignment:
             "| val |",
         ]
         html = _parse_table(lines)
-        assert '<th style="text-align: center">' in html
-        assert '<td style="text-align: center">' in html
+        assert '<th class="sortable" role="columnheader" aria-sort="none" style="text-align: center">' in html
+        assert '<td role="gridcell" style="text-align: center">' in html
 
     def test_mixed_alignment(self):
         """Different alignments per column."""
@@ -412,10 +412,10 @@ class TestParseTableBackwardCompat:
         html = _parse_table(lines)
         assert "<thead>" in html
         assert "<tbody>" in html
-        assert "<th>Name</th>" in html
-        assert "<th>Value</th>" in html
-        assert "<td>foo</td>" in html
-        assert "<td>bar</td>" in html
+        assert '''<th class="sortable" role="columnheader" aria-sort="none">Name</th>''' in html
+        assert '''<th class="sortable" role="columnheader" aria-sort="none">Value</th>''' in html
+        assert '''<td role="gridcell">foo</td>''' in html
+        assert '''<td role="gridcell">bar</td>''' in html
 
     def test_no_separator_table(self):
         """Table without separator: all rows in tbody."""
@@ -426,7 +426,7 @@ class TestParseTableBackwardCompat:
         html = _parse_table(lines)
         assert "<thead>" not in html
         assert "<tbody>" in html
-        assert "<td>" in html
+        assert '''<td role="gridcell">''' in html
 
     def test_empty_input(self):
         """Empty input returns empty string."""
@@ -451,10 +451,10 @@ class TestRoundTrip:
         assert 'style="text-align: center"' in html
         assert 'style="text-align: right"' in html
         # Headers get alignment too
-        assert '<th style="text-align: left">Left</th>' in html
-        assert '<th style="text-align: center">Center</th>' in html
-        assert '<th style="text-align: right">Right</th>' in html
+        assert '<th class="sortable" role="columnheader" aria-sort="none" style="text-align: left">Left</th>' in html
+        assert '<th class="sortable" role="columnheader" aria-sort="none" style="text-align: center">Center</th>' in html
+        assert '<th class="sortable" role="columnheader" aria-sort="none" style="text-align: right">Right</th>' in html
         # Data cells
-        assert '<td style="text-align: left">a</td>' in html
-        assert '<td style="text-align: center">b</td>' in html
-        assert '<td style="text-align: right">c</td>' in html
+        assert '<td role="gridcell" style="text-align: left">a</td>' in html
+        assert '<td role="gridcell" style="text-align: center">b</td>' in html
+        assert '<td role="gridcell" style="text-align: right">c</td>' in html

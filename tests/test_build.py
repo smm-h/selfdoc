@@ -173,7 +173,7 @@ def test_build_generates_sidebar(project_dir):
 
     # Sidebar should link to guide/ (directory-style URL)
     assert 'href="guide/"' in content
-    assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
+    assert '<nav id="tm-nav" aria-label="Site navigation">' in content
 
 
 def test_robots_txt_with_base_url(tmp_path):
@@ -253,7 +253,7 @@ def test_html_article_tag_present(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert "<article data-pagefind-body>" in content
+    assert '<article data-pagefind-body class="doc-body">' in content
     assert "</article>" in content
 
 
@@ -1053,7 +1053,7 @@ def test_404_contains_sidebar_navigation(project_dir):
     with open(os.path.join(output_dir, "404.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
+    assert '<nav id="tm-nav" aria-label="Site navigation">' in content
     assert f'href="guide/"' in content
     assert "index.html" in content
 
@@ -1153,8 +1153,8 @@ def test_diff_code_blocks_still_work(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert 'class="line line-add"' in content
-    assert 'class="line line-remove"' in content
+    assert 'class="tm-code-line tm-code-add"' in content
+    assert 'class="tm-code-line tm-code-del"' in content
 
 
 def test_style_css_contains_pygments_rules(project_dir):
@@ -1167,7 +1167,7 @@ def test_style_css_contains_pygments_rules(project_dir):
 
     from selfdoc.html import HAS_PYGMENTS
     if HAS_PYGMENTS:
-        assert ".code-block code" in content
+        assert ".tm-code code" in content
         # CSS is minified, so spaces around colon are removed
         assert "prefers-color-scheme:dark" in content
 
@@ -1252,7 +1252,7 @@ def test_minify_js_keeps_every_block_of_an_assembled_script_alive():
 
     assembled = _minify_js(assemble_body_js(
         "<pre>code</pre>", "", "",
-        extras_html='<div class="version-notice"></div>',
+        extras_html='<div class="tm-notice tm-notice-warn"></div>',
         chrome_html='<div class="sel version-picker">',
     ))
     assert "//" not in assembled
@@ -1380,7 +1380,7 @@ def test_critical_css_contains_root_variables(project_dir):
 
 
 def test_critical_css_contains_layout(project_dir):
-    """Critical CSS inlined in HTML contains .layout grid styles."""
+    """Critical CSS inlined in HTML contains the application frame."""
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
@@ -1391,7 +1391,7 @@ def test_critical_css_contains_layout(project_dir):
     assert style_match is not None
     style_content = style_match.group(1)
 
-    assert ".layout" in style_content
+    assert "#tm-app" in style_content
 
 
 def test_critical_css_excludes_admonition(project_dir):
@@ -3154,9 +3154,10 @@ def test_breadcrumbs_flat_page(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "guide", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
-    assert '<a href="../index.html">Home</a>' in content
-    assert '<span>Guide</span>' in content
+    assert '<nav class="tm-crumbs-nav" aria-label="Breadcrumb">' in content
+    assert '<a class="tm-crumb-link" href="../index.html">Home</a>' in content
+    assert ('<span class="tm-crumb-current" aria-current="page">Guide'
+            '</span>') in content
     assert " / " in content
 
 
@@ -3177,11 +3178,13 @@ def test_breadcrumbs_subdirectory_page(project_dir):
     with open(endpoints_html, "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<nav class="breadcrumbs" aria-label="Breadcrumbs">' in content
-    assert '<a href="../../index.html">Home</a>' in content
+    assert '<nav class="tm-crumbs-nav" aria-label="Breadcrumb">' in content
+    assert ('<a class="tm-crumb-link" href="../../index.html">Home</a>'
+            ) in content
     # No api/index.md exists, so intermediate breadcrumb is a span not a link
-    assert '<span>Api</span>' in content
-    assert '<span>Endpoints</span>' in content
+    assert '<span class="tm-crumb-static">Api</span>' in content
+    assert ('<span class="tm-crumb-current" aria-current="page">Endpoints'
+            '</span>') in content
 
 
 def test_breadcrumbs_json_ld_nested(project_dir):
@@ -3623,10 +3626,10 @@ def test_subdirectory_pages_grouped_in_nav(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert 'class="nav-group"' in content
-    assert 'class="nav-group-title"' in content
+    assert 'class="tm-tree-details"' in content
+    assert 'class="tm-tree-label"' in content
     assert "Guides" in content
-    assert 'class="nav-group-items"' in content
+    assert 'class="tm-tree-group"' in content
     assert 'href="guides/intro/"' in content
     assert 'href="guides/setup/"' in content
 
@@ -3646,7 +3649,7 @@ def test_top_level_pages_ungrouped(project_dir):
     # FAQ link should exist as a direct nav-list child, not inside a group
     assert 'href="faq/"' in content
     # The nav-list should not contain any nav-group since there are no subdirs
-    assert 'class="nav-group"' not in content
+    assert 'class="tm-tree-details"' not in content
 
 
 def test_nav_group_frontmatter_override(project_dir):
@@ -3706,14 +3709,14 @@ def test_active_group_auto_expands(project_dir):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "guides", "intro", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert '<details open>' in content
+    assert '<details class="tm-tree-details" open>' in content
     # Check that the index page (different group) does NOT have it open
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
         index_content = f.read()
 
     # On index page, the group should be closed (no active page in it)
-    assert '<details open>' not in index_content
-    assert '<details>' in index_content
+    assert '<details class="tm-tree-details" open>' not in index_content
+    assert '<details class="tm-tree-details">' in index_content
 
 
 def test_nav_groups_sorted_alphabetically(project_dir):
@@ -4057,7 +4060,7 @@ def test_content_header_flex():
     )
     content = html_files["guide/index.html"]
     assert 'class="content-header"' in content
-    assert 'class="breadcrumbs"' in content
+    assert 'class="tm-crumbs-nav"' in content
     assert 'edit-link-top' in content
 
 
@@ -4073,7 +4076,7 @@ def test_sidebar_nav_aria_label():
     )
     content = html_files["index.html"]
     assert 'aria-label="Site navigation"' in content
-    assert '<nav class="sidebar" id="sidebar" aria-label="Site navigation">' in content
+    assert '<nav id="tm-nav" aria-label="Site navigation">' in content
 
 
 def test_toc_nav_aria_label():
@@ -4086,7 +4089,7 @@ def test_toc_nav_aria_label():
         author=TEST_AUTHOR,
     )
     content = html_files["index.html"]
-    assert '<nav class="toc-nav" aria-label="Table of contents">' in content
+    assert '<nav class="docs-toc" aria-label="On this page">' in content
 
 
 def test_search_dialog_aria_label():
@@ -4157,7 +4160,7 @@ def test_copy_button_hidden_until_hover():
     assert copy_btn_match is not None
     copy_btn_body = copy_btn_match.group(1)
     assert "opacity: 0" in copy_btn_body
-    assert ".code-block:hover .copy-btn" in css
+    assert ".tm-code:hover .copy-btn" in css
 
 
 def test_table_has_caption():
@@ -4180,18 +4183,19 @@ def test_details_summary_styled():
 
 
 def test_admonition_icons():
-    """CSS contains admonition icon rules with mask-image data URIs."""
+    """A callout's glyph is a real inline <svg>, sized by the title row.
+
+    It used to be a masked pseudo-element, because the emitter produced no
+    icon at all.  It emits one now -- the framework's own -- so what the
+    theme owes is the rule that sizes it and the colour of the kind it
+    belongs to.  A mask for the same glyph would draw it twice.
+    """
     from selfdoc.themes import get_theme
 
     css = get_theme("minimal")
-    assert ".admonition-title::before" in css
-    assert "mask-image" in css
-    # Each admonition type gets an icon
-    assert ".admonition.note .admonition-title::before" in css
-    assert ".admonition.tip .admonition-title::before" in css
-    assert ".admonition.warning .admonition-title::before" in css
-    assert ".admonition.caution .admonition-title::before" in css
-    assert ".admonition.important .admonition-title::before" in css
+    assert ".tm-callout-title svg" in css
+    for kind in ("note", "tip", "info", "warn", "danger"):
+        assert f".tm-callout-{kind} .tm-callout-title" in css
 
 
 def test_page_nav_card_style():
@@ -4244,14 +4248,14 @@ def test_print_forces_light_colors():
 
 
 def test_print_hides_breadcrumbs():
-    """CSS print block hides .breadcrumbs, .page-summary, .content-header."""
+    """The print block hides the crumbs, the summary and the header."""
     from selfdoc.themes import get_theme
 
     css = get_theme("minimal")
     print_match = re.search(r"@media\s+print\s*\{(.+)", css, re.DOTALL)
     assert print_match is not None
     print_body = print_match.group(1)
-    assert ".breadcrumbs" in print_body
+    assert ".tm-crumbs-nav" in print_body
     assert ".page-summary" in print_body
     assert ".content-header" in print_body
     assert "display: none !important" in print_body
@@ -4301,7 +4305,7 @@ def test_breadcrumb_no_broken_links(project_dir):
         content = f.read()
 
     # Intermediate "Guides" should be a span (no index page), not a link
-    assert '<span>Guides</span>' in content
+    assert '<span class="tm-crumb-static">Guides</span>' in content
     assert '<a href="../../guides/index.html">' not in content
 
 
@@ -4733,12 +4737,11 @@ def test_topbar_page_title():
         author=TEST_AUTHOR,
     )
     guide_content = html_files["guide/index.html"]
-    assert 'topbar-page-title' in guide_content
-    assert 'topbar-sep' in guide_content
-    assert 'My Guide' in guide_content
-    # Index page should NOT have the topbar page title
+    assert '<span id="tm-page-title">My Guide</span>' in guide_content
+    # The index page carries its own title there, not the project's: the
+    # project name is the sidebar's wordmark under the framework's shell.
     index_content = html_files["index.html"]
-    assert 'topbar-page-title' not in index_content
+    assert '<span id="tm-page-title">Home</span>' in index_content
 
 
 def test_scrollspy_uses_scroll_event():

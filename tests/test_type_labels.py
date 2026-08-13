@@ -40,7 +40,7 @@ class TestSupersededNotice:
 
     def test_archived_page_shows_the_notice(self):
         html = _render_archived_page(page_type="guide")
-        assert 'class="version-notice"' in html
+        assert 'class="tm-notice tm-notice-warn"' in html
         assert "has been superseded" in html
 
     def test_notice_is_keyed_to_this_version(self):
@@ -49,7 +49,7 @@ class TestSupersededNotice:
 
     def test_notice_is_dismissable(self):
         html = _render_archived_page(page_type="guide")
-        assert "version-notice-dismiss" in html
+        assert "tm-notice-dismiss" in html
         assert "selfdoc-version-notice-" in html
 
     def test_notice_links_the_current_version_of_this_page(self):
@@ -64,11 +64,11 @@ class TestSupersededNotice:
             "glossary", None,
         ):
             html = _render_archived_page(page_type=page_type)
-            assert 'class="version-notice"' in html, page_type
+            assert 'class="tm-notice tm-notice-warn"' in html, page_type
 
     def test_current_version_never_shows_the_notice(self):
         html = _render_archived_page(page_type="guide", archived=False)
-        assert 'class="version-notice"' not in html
+        assert 'class="tm-notice tm-notice-warn"' not in html
 
     def test_a_page_with_no_address_shows_no_notice(self):
         """The 404 page has no address of its own, so it has no version."""
@@ -81,4 +81,4 @@ class TestSupersededNotice:
             available_versions=[{"version": "0.9.0"}, {"version": "1.0.0"}],
             author=TEST_AUTHOR,
         )
-        assert 'class="version-notice"' not in html
+        assert 'class="tm-notice tm-notice-warn"' not in html

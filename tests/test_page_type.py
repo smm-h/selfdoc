@@ -121,7 +121,7 @@ class TestDeclaredTypeReachesTheMarkup:
         build(str(project))
 
         page = project / "docs" / "_build" / "cv" / "index.html"
-        assert '<main class="content page-cv"' in page.read_text()
+        assert '<main id="tm-content" class="content page-cv"' in page.read_text()
 
     def test_a_page_with_no_declared_type_carries_no_class(self, make_project):
         from selfdoc.build import build
@@ -134,5 +134,5 @@ class TestDeclaredTypeReachesTheMarkup:
 
         page = project / "docs" / "_build" / "changelog" / "index.html"
         text = page.read_text()
-        assert '<main class="content"' in text
+        assert '<main id="tm-content" class="content"' in text
         assert "page-changelog" not in text

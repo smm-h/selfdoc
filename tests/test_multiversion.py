@@ -52,9 +52,9 @@ class TestMultiVersionBuild:
 
         output_dir = os.path.join(str(project_dir), "docs", "_build")
         old_html = _read_html(output_dir, "v/0.1.0/index.html")
-        assert 'class="version-notice"' in old_html
+        assert 'class="tm-notice tm-notice-warn"' in old_html
         assert 'data-notice-key="0.1.0"' in old_html
-        assert "version-notice-dismiss" in old_html
+        assert "tm-notice-dismiss" in old_html
         # The link out is document-relative, back to the stable address.
         assert 'href="../../"' in old_html
 

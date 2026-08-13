@@ -57,6 +57,39 @@ DELIBERATE_OMISSIONS: dict[str, dict[str, str]] = {
         "search-header": "part of the dialog this theme does not emit",
         "search-header-title": "part of the dialog this theme does not emit",
         "search-close": "part of the dialog this theme does not emit",
+        # widgets.css says so in as many words: the bare .badge IS the
+        # neutral variant, so the framework selects four kind classes and
+        # leaves the fifth to the base rule.  A page under this theme
+        # emits `badge badge-neutral` and is painted by `.badge`.
+        "badge-neutral": "the framework's bare .badge is the neutral kind",
+    },
+}
+
+#: The sources that decide what a page carries: the emitters and the
+#: scripts they ship.  A class no file here names cannot appear on any
+#: page, whatever a stylesheet says about it.
+_EMITTER_SOURCES = (
+    Path(__file__).resolve().parent.parent / "selfdoc_core",
+)
+
+#: Classes put on an element by the framework rather than by selfdoc --
+#: its shipped modules build these, so no selfdoc source names them and a
+#: theme may still have an opinion about how they paint.
+_FRAMEWORK_OWNED_CLASSES = frozenset({
+    "sidebar-open",   # shell.css's drawer state, toggled by sidebar.js
+    "hidden",         # base.css's own utility
+    "tm-palette",     # palette.js builds the command palette
+})
+
+#: Elements a named theme deliberately leaves to the user agent.
+DELIBERATE_ELEMENT_OMISSIONS: dict[str, dict[str, str]] = {
+    "clean": {},
+    "minimal": {},
+    "tinymoon": {
+        # The prose tier dresses the inline marks that need a colour or a
+        # box -- kbd, mark, del, ins, var, samp -- and leaves emphasis to
+        # the browser's own italic, which is already the design.
+        "em": "the framework leaves emphasis to the user agent's italic",
     },
 }
 
@@ -85,17 +118,55 @@ def _classes(css: str) -> set[str]:
 
 
 def _elements(css: str) -> set[str]:
-    """Every bare element name the stylesheet targets at the top of a
-    selector -- ``table``, ``thead``, ``kbd`` and the rest of the surface
-    that carries no class."""
+    """Every bare element name the stylesheet targets -- ``table``,
+    ``thead``, ``kbd`` and the rest of the surface that carries no class.
+
+    Measured anywhere in a compound selector, not only at its head.  A
+    prose tier that dresses unclassed elements *inside a prose root* --
+    ``.doc-body kbd:not([class])`` -- has styled ``kbd`` every bit as much
+    as a bare ``kbd`` rule has, and reading only the first simple selector
+    would report the whole tier as a gap.
+    """
     names: set[str] = set()
     for sel in _selectors(css):
         for part in sel.split(","):
-            part = part.strip()
-            match = re.match(r"^([a-z][a-z0-9]*)\b", part)
-            if match:
-                names.add(match.group(1))
+            for token in re.split(r"[ >+~]+", part.strip()):
+                match = re.match(r"^([a-z][a-z0-9]*)(?![\w-])", token)
+                if match:
+                    names.add(match.group(1))
     return names
+
+
+def _is_reachable(name: str, text: str) -> bool:
+    """Can any page carry the class *name*?
+
+    Either an emitter writes it whole, or it is composed: a class like
+    ``tm-callout-warn`` is written ``f"tm-callout-{kind}"`` with the kind
+    a value elsewhere in the source, so the prefix and the suffix are both
+    present and neither is the whole name.  Both spellings count -- what
+    is being asked is whether the class can reach an element at all.
+    """
+    if re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", text):
+        return True
+    for index, char in enumerate(name):
+        if char != "-":
+            continue
+        prefix, suffix = name[:index + 1], name[index + 1:]
+        if prefix in text and re.search(
+            rf"""["']{re.escape(suffix)}["']""", text,
+        ):
+            return True
+    return False
+
+
+def _emitter_text() -> str:
+    """Every emitter and script source, concatenated once."""
+    parts = []
+    for root in _EMITTER_SOURCES:
+        for path in sorted(root.rglob("*")):
+            if path.suffix in {".py", ".js"} and "__pycache__" not in path.parts:
+                parts.append(path.read_text(encoding="utf-8"))
+    return "\n".join(parts)
 
 
 def _read(theme: str) -> str:
@@ -110,6 +181,11 @@ def _read(theme: str) -> str:
 @pytest.fixture(scope="module")
 def reference_css() -> str:
     return _read(REFERENCE)
+
+
+@pytest.fixture(scope="module")
+def emitter_text() -> str:
+    return _emitter_text()
 
 
 OTHER_THEMES = [t for t in list_themes() if t != REFERENCE]
@@ -142,10 +218,41 @@ class TestClassSurfaceParity:
     ) -> None:
         expected = _elements(reference_css)
         actual = _elements(_read(theme))
-        missing = sorted(expected - actual)
+        omitted = set(DELIBERATE_ELEMENT_OMISSIONS.get(theme, {}))
+        missing = sorted(expected - actual - omitted)
         assert not missing, (
             f"theme {theme!r} styles none of these elements, which "
-            f"{REFERENCE!r} does: {', '.join(missing)}"
+            f"{REFERENCE!r} does: {', '.join(missing)}. Style them, or "
+            f"record them in DELIBERATE_ELEMENT_OMISSIONS with the reason."
+        )
+
+    @pytest.mark.parametrize("theme", list_themes())
+    def test_the_theme_styles_nothing_no_page_can_carry(
+        self, theme: str, emitter_text: str,
+    ) -> None:
+        """The other direction: no styled-but-never-emitted class.
+
+        Parity alone only catches a theme that forgot something.  A rule
+        for a class the emitters stopped producing is the opposite defect
+        and is invisible on every page: it costs bytes, it survives every
+        rename, and the next reader takes it for a description of the
+        markup.  So each class a theme *file* selects has to be named
+        somewhere in the emitters or their scripts.
+
+        The framework's own sheets are excluded -- they are another
+        project's bytes and describe another project's components.  What
+        is measured is what selfdoc wrote.
+        """
+        css = (THEMES_DIR / f"{theme}.css").read_text(encoding="utf-8")
+        orphans = sorted(
+            name for name in _classes(css)
+            if name not in _FRAMEWORK_OWNED_CLASSES
+            and not _is_reachable(name, emitter_text)
+        )
+        assert not orphans, (
+            f"theme {theme!r} styles {len(orphans)} class(es) no emitter "
+            f"produces, so no page can ever carry them: "
+            f"{', '.join(orphans)}. Delete the rules, or emit the markup."
         )
 
     @pytest.mark.parametrize("theme", OTHER_THEMES)

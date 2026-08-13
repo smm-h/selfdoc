@@ -217,7 +217,7 @@ def test_the_chrome_asset_is_the_theme_stylesheet(tree):
     written = (tree / "site" / rel).read_text(encoding="utf-8")
     assert written == chrome_css(DEFAULT_THEME)
     # Theme rules and the assembly's own shared-page rules, in one file.
-    assert ".topbar" in written
+    assert "#tm-topbar" in written
     assert ".blog-entry" in written
 
 

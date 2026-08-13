@@ -23,16 +23,17 @@ class TestPostPageLayout:
 
     def test_post_page_has_layout_narrow_class(self):
         html = _render_page(page_type="post")
-        assert 'class="layout layout--narrow"' in html
+        assert 'class="docs-layout docs-layout--narrow"' in html
 
     def test_post_page_no_toc_aside_even_with_toc_html(self):
-        toc = '<nav class="toc-nav"><a href="#sec">Section</a></nav>'
+        toc = ('<nav class="docs-toc" aria-label="On this page">'
+               '<a class="docs-toc-item" href="#sec">Section</a></nav>')
         html = _render_page(page_type="post", toc_html=toc)
-        assert '<aside class="toc">' not in html
+        assert '<nav class="docs-toc"' not in html
 
     def test_post_page_no_toc_aside_without_toc_html(self):
         html = _render_page(page_type="post", toc_html="")
-        assert '<aside class="toc">' not in html
+        assert '<nav class="docs-toc"' not in html
 
 
 class TestNonPostPageLayout:
@@ -40,23 +41,25 @@ class TestNonPostPageLayout:
 
     def test_guide_page_has_standard_layout_class(self):
         html = _render_page(page_type="guide")
-        assert 'class="layout"' in html
+        assert 'class="docs-layout"' in html
         assert "layout--narrow" not in html
 
     def test_guide_page_retains_toc_when_present(self):
-        toc = '<nav class="toc-nav"><a href="#sec">Section</a></nav>'
+        toc = ('<nav class="docs-toc" aria-label="On this page">'
+               '<a class="docs-toc-item" href="#sec">Section</a></nav>')
         html = _render_page(page_type="guide", toc_html=toc)
-        assert '<aside class="toc">' in html
+        assert '<nav class="docs-toc"' in html
 
     def test_tutorial_page_retains_toc(self):
-        toc = '<nav class="toc-nav"><a href="#sec">Section</a></nav>'
+        toc = ('<nav class="docs-toc" aria-label="On this page">'
+               '<a class="docs-toc-item" href="#sec">Section</a></nav>')
         html = _render_page(page_type="tutorial", toc_html=toc)
-        assert '<aside class="toc">' in html
+        assert '<nav class="docs-toc"' in html
         assert "layout--narrow" not in html
 
     def test_none_type_uses_standard_layout(self):
         html = _render_page(page_type=None)
-        assert 'class="layout"' in html
+        assert 'class="docs-layout"' in html
         assert "layout--narrow" not in html
 
     def test_changelog_page_uses_standard_layout(self):
@@ -66,7 +69,7 @@ class TestNonPostPageLayout:
     def test_no_toc_aside_when_toc_html_empty_regardless_of_type(self):
         """Even non-post pages omit TOC aside when toc_html is empty."""
         html = _render_page(page_type="guide", toc_html="")
-        assert '<aside class="toc">' not in html
+        assert '<nav class="docs-toc"' not in html
 
 
 class TestPostTocSuppression:
@@ -78,7 +81,8 @@ class TestPostTocSuppression:
     page was zoomed and nowhere else.
     """
 
-    TOC = '<nav class="toc-nav"><a href="#sec">Section</a></nav>'
+    TOC = ('<nav class="docs-toc" aria-label="On this page">'
+               '<a class="docs-toc-item" href="#sec">Section</a></nav>')
 
     def test_post_page_has_no_mobile_toc(self):
         html = _render_page(page_type="post", toc_html=self.TOC)
@@ -86,12 +90,12 @@ class TestPostTocSuppression:
 
     def test_post_page_has_neither_toc_element(self):
         html = _render_page(page_type="post", toc_html=self.TOC)
-        assert '<aside class="toc">' not in html
+        assert '<nav class="docs-toc"' not in html
         assert "mobile-toc" not in html
 
     def test_docs_page_still_has_both_toc_elements(self):
         html = _render_page(page_type="guide", toc_html=self.TOC)
-        assert '<aside class="toc">' in html
+        assert '<nav class="docs-toc"' in html
         assert '<details class="mobile-toc">' in html
 
 
