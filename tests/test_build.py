@@ -1981,9 +1981,9 @@ def test_glossary_directive_resolves_to_dl(project_dir):
 
     assert '<div class="glossary">' in content
     assert "<dl>" in content
-    assert "<dt><dfn>API</dfn></dt>" in content
+    assert '<dt><dfn id="term-api">API</dfn></dt>' in content
     assert "<dd>Application Programming Interface</dd>" in content
-    assert "<dt><dfn>SDK</dfn></dt>" in content
+    assert '<dt><dfn id="term-sdk">SDK</dfn></dt>' in content
     assert "<dd>Software Development Kit</dd>" in content
 
 
@@ -2062,12 +2062,21 @@ def test_glossary_integration_end_to_end(project_dir):
     # Verify glossary HTML structure
     assert '<div class="glossary">' in content
     assert "<dl>" in content
-    assert "<dt><dfn>Directive</dfn></dt>" in content
-    assert "<dd>A special block in Markdown templates</dd>" in content
-    assert "<dt><dfn>Extractor</dfn></dt>" in content
-    assert "<dd>A language-specific code parser</dd>" in content
-    assert "<dt><dfn>Resolver</dfn></dt>" in content
-    assert "<dd>The factory that dispatches directives</dd>" in content
+    # Each definition site keeps its id and links to its glossary entry.
+    for slug, term in [
+        ("directive", "Directive"),
+        ("extractor", "Extractor"),
+        ("resolver", "Resolver"),
+    ]:
+        assert re.search(
+            rf'<dt><dfn id="term-{slug}"[^>]*>'
+            rf'<a class="term-def-link" href="[^"]*glossary/#term-{slug}">'
+            rf'{term}</a></dfn></dt>',
+            content,
+        ), f"definition site for {term} is not linked"
+    assert "<dd>A special block in Markdown templates" in content
+    assert "<dd>A language-specific code parser" in content
+    assert "<dd>The factory that dispatches directives" in content
 
     # Verify DefinedTermSet JSON-LD
     assert '<script type="application/ld+json">' in content
@@ -2105,9 +2114,9 @@ def test_definition_list_two_terms():
 
     assert '<div class="glossary">' in result
     assert "<dl>" in result
-    assert "<dt><dfn>Term One</dfn></dt>" in result
+    assert '<dt><dfn id="term-term-one">Term One</dfn></dt>' in result
     assert "<dd>Definition of term one</dd>" in result
-    assert "<dt><dfn>Term Two</dfn></dt>" in result
+    assert '<dt><dfn id="term-term-two">Term Two</dfn></dt>' in result
     assert "<dd>Definition of term two</dd>" in result
 
 
@@ -2116,7 +2125,7 @@ def test_definition_list_multiple_definitions_per_term():
     md = "Term One\n: First definition\n: Second definition\n"
     result = md_to_html(md)
 
-    assert "<dt><dfn>Term One</dfn></dt>" in result
+    assert '<dt><dfn id="term-term-one">Term One</dfn></dt>' in result
     assert "<dd>First definition</dd>" in result
     assert "<dd>Second definition</dd>" in result
     assert result.count("<dt>") == 1
@@ -2147,7 +2156,7 @@ def test_synthesized_glossary_source_links_resolve(project_dir):
         content = f.read()
 
     hrefs = re.findall(r'<a href="([^"]*)">Source</a>', content)
-    assert hrefs == ["../terms/"], hrefs
+    assert hrefs == ["../terms/#term-api"], hrefs
     assert os.path.isfile(
         os.path.join(output_dir, DEFAULT_PREFIX, "terms", "index.html"),
     )
@@ -2206,7 +2215,7 @@ def test_definition_list_no_false_match_on_paragraphs():
 
     assert "<p>This is a regular paragraph.</p>" in result
     assert "<p>Another regular paragraph.</p>" in result
-    assert "<dt><dfn>Term</dfn></dt>" in result
+    assert '<dt><dfn id="term-term">Term</dfn></dt>' in result
     assert "<dd>Definition</dd>" in result
 
 
@@ -2862,61 +2871,16 @@ def test_conditional_js_includes_all_when_needed():
     assert "search-dialog" in content
 
 
-# -- Phase 6A: Auto-detect definition patterns --
-
-
-def test_dfn_plain_text_after_heading():
-    """Plain text 'X is a ...' after H2 gets <dfn> wrapping."""
-    md = "## Overview\n\nselfdoc is a static site generator.\n"
-    result = md_to_html(md)
-    assert "<dfn>selfdoc</dfn> is a" in result
-
-
-def test_dfn_code_after_heading():
-    """`code` subject after heading wraps outer <code> in <dfn>."""
-    md = "## Function\n\n`parse_directives` is a function.\n"
-    result = md_to_html(md)
-    assert "<dfn><code>parse_directives</code></dfn> is a" in result
-
-
-def test_dfn_inverted_form():
-    """'A directive refers to' after heading wraps subject in <dfn>."""
-    md = "### Directives\n\nA directive refers to a block.\n"
-    result = md_to_html(md)
-    assert "<dfn>directive</dfn> refers to" in result
-
-
-def test_dfn_not_applied_without_heading():
-    """Paragraph NOT after a heading does NOT get <dfn> treatment."""
-    md = "selfdoc is a static site generator.\n"
-    result = md_to_html(md)
-    assert "<dfn>" not in result
-
-
-def test_dfn_not_applied_to_second_paragraph():
-    """Second paragraph after heading does NOT get <dfn> treatment."""
-    md = (
-        "## Overview\n\n"
-        "First paragraph here.\n\n"
-        "selfdoc is a static site generator.\n"
-    )
-    result = md_to_html(md)
-    # The first paragraph has no definitional pattern, and the second
-    # should not be treated since it is not the first after the heading.
-    assert "<dfn>" not in result
-
-
 # --- Phase 2E: DefinedTerm from standalone dfn tags ---
 
 
 def test_inline_dfn_produces_defined_term_jsonld():
-    """A page with a definitional pattern (triggering _apply_definitions)
-    produces a DefinedTerm JSON-LD entry."""
+    """A hand-written <dfn> produces a DefinedTerm JSON-LD entry."""
     html_files = generate_html(
         {"index.md": (
             "# Test Page\n\n"
             "## Overview\n\n"
-            "Selfdoc is a static site generator.\n"
+            "<dfn>Selfdoc</dfn> is a static site generator.\n"
         )},
         project_name="Test",
         author=TEST_AUTHOR,
@@ -5023,8 +4987,8 @@ def test_two_pass_output_identical(tmp_path):
         f.write(
             "# Glossary\n\n"
             "## Terms\n\n"
-            "Widget is a reusable UI component.\n\n"
-            "Gadget refers to a hardware device.\n"
+            "Widget\n: A reusable UI component\n\n"
+            "Gadget\n: A hardware device\n"
         )
 
     written = build(str(tmp_path))
@@ -5046,7 +5010,7 @@ def test_two_pass_output_identical(tmp_path):
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "glossary", "index.html"), "r") as f:
         glossary_html = f.read()
     assert "Glossary" in glossary_html
-    assert "<dfn>" in glossary_html  # _apply_definitions should have added dfn tags
+    assert "<dfn " in glossary_html  # declared terms carry ids
     assert "Widget" in glossary_html
     assert "Gadget" in glossary_html
 
@@ -5336,7 +5300,7 @@ def test_cross_page_term_linked(tmp_path):
     output_dir = os.path.join(tmp_path, "docs", "_build")
     with open(os.path.join(output_dir, DEFAULT_PREFIX, "page_b", "index.html"), "r") as f:
         content_b = f.read()
-    assert 'page_a/#resolver" class="term-link"' in content_b
+    assert 'page_a/#term-resolver" class="term-link"' in content_b
 
 
 def test_cross_page_term_not_linked_on_same_page(tmp_path):

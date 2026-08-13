@@ -100,7 +100,7 @@ def _build_alpha(source):
         f.write(
             "# Guide\n\nHow to.\n\n"
             "## Widget catalog\n\n"
-            "Widget catalog is a list of every widget this project ships.\n\n"
+            "<dfn>Widget catalog</dfn> is a list of every widget this project ships.\n\n"
             "See the notes on chained revision for the history model.\n"
         )
 
@@ -112,7 +112,7 @@ def _build_alpha(source):
             f"slug: {POST_SLUG}\ntags: []\ndraft: false\ndirectives: false\n"
             "---\nThe post body.\n\n"
             "## Chained revision\n\n"
-            "Chained revision is a recorded edge between two schema states.\n\n"
+            "<dfn>Chained revision</dfn> is a recorded edge between two schema states.\n\n"
             "The widget catalog is described at length in the guide.\n"
         )
 

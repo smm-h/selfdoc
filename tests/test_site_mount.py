@@ -42,7 +42,7 @@ _POST = (
     "\n"
     "## Chained revision\n"
     "\n"
-    "Chained revision is a recorded edge between two schema states.\n"
+    "<dfn>Chained revision</dfn> is a recorded edge between two schema states.\n"
     "\n"
     "The widget catalog is described at length in the guide.\n",
 )
@@ -58,7 +58,7 @@ _GUIDE = (
     "\n"
     "## Widget catalog\n"
     "\n"
-    "Widget catalog is a list of every widget this project ships.\n"
+    "<dfn>Widget catalog</dfn> is a list of every widget this project ships.\n"
     "\n"
     "See the notes on chained revision for the history model.\n"
 )

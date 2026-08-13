@@ -535,48 +535,19 @@ def generate_html(markdown_files, project_name=None, version=None,
             # Suppress page summary on the landing page (hero replaces it)
             frontmatter_description = None
 
-        # Extract <dfn> terms from processed body HTML into site_terms.
-        # Glossary terms: <dt><dfn>X</dfn></dt><dd>Y</dd>
-        if '<div class="glossary">' in body_html:
-            for term_match in re.finditer(
-                r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>", body_html,
-            ):
-                term_name = term_match.group(1)
-                term_desc = term_match.group(2)
-                key = term_name.lower()
-                if key not in site_terms:
-                    site_terms[key] = {
-                        "term": term_name,
-                        "page": html_path,
-                        "anchor": _slugify(term_name),
-                        "definition": term_desc,
-                    }
-
-        # Standalone <dfn> tags (from _apply_definitions, inside <p> tags)
-        for p_match in re.finditer(r"<p>(.*?)</p>", body_html, re.DOTALL):
-            p_content = p_match.group(1)
-            dfn_match = re.search(r"<dfn>(.*?)</dfn>", p_content)
-            if not dfn_match:
-                continue
-            # Skip if inside a glossary block
-            p_start = p_match.start()
-            glossary_open = body_html.rfind(
-                '<div class="glossary">', 0, p_start,
-            )
-            if glossary_open != -1:
-                glossary_close = body_html.find('</div>', glossary_open)
-                if glossary_close == -1 or glossary_close > p_start:
-                    continue
-            raw_term = dfn_match.group(1)
-            clean_name = re.sub(r"<[^>]+>", "", raw_term).strip()
-            key = clean_name.lower()
+        # Extract author-declared <dfn> terms from the processed body HTML
+        # into site_terms.  Every <dfn> here was written by an author (or
+        # rendered from a definition list or the glossary directive) and
+        # carries the id _assign_definition_ids gave it, so the glossary's
+        # link back to the definition site has a real target.
+        for term_name, anchor, definition in _collect_declared_terms(body_html):
+            key = term_name.lower()
             if key not in site_terms:
-                clean_desc = re.sub(r"<[^>]+>", "", p_content).strip()
                 site_terms[key] = {
-                    "term": clean_name,
+                    "term": term_name,
                     "page": html_path,
-                    "anchor": _slugify(clean_name),
-                    "definition": clean_desc,
+                    "anchor": anchor,
+                    "definition": definition,
                 }
 
         # Store all per-page state for pass 2
@@ -630,11 +601,21 @@ def generate_html(markdown_files, project_name=None, version=None,
         # Build glossary body HTML
         sorted_terms = sorted(site_terms.values(), key=lambda t: t["term"].lower())
         glossary_dl_items = []
+        glossary_anchors = set()
         for info in sorted_terms:
             anchor = info["anchor"]
             term_name = _escape_html(info["term"])
             definition = info["definition"]
             source_page = info["page"]
+            # The glossary page has its own id space: two pages can each
+            # own a "term-x", but one glossary page cannot.
+            entry_anchor = term_anchor(info["term"])
+            counter = 0
+            while entry_anchor in glossary_anchors:
+                counter += 1
+                entry_anchor = f"{term_anchor(info['term'])}-{counter}"
+            glossary_anchors.add(entry_anchor)
+            info["glossary_anchor"] = entry_anchor
             # _html_path_to_url gives the URL relative to the root the
             # source page is served from, and the glossary page sits a
             # level inside the project's mount, so the hop back is what
@@ -645,9 +626,10 @@ def generate_html(markdown_files, project_name=None, version=None,
                 _path_hop(source_page, glossary_addr.to_mount_root,
                           glossary_site_prefix)
                 + _html_path_to_url(source_page)
+                + f"#{anchor}"
             )
             glossary_dl_items.append(
-                f'<dt id="{anchor}"><dfn>{term_name}</dfn></dt>'
+                f'<dt id="{entry_anchor}"><dfn>{term_name}</dfn></dt>'
                 f'<dd>{definition} '
                 f'<a href="{source_url}">Source</a></dd>'
             )
@@ -754,6 +736,29 @@ def generate_html(markdown_files, project_name=None, version=None,
     # --- Pass 2: Wrap pages ---
     # Now that all pages are processed and site_terms is fully populated,
     # wrap each page in the full HTML template.
+    #
+    # The definition site itself becomes the way into the glossary: the
+    # <dfn> an author wrote turns into a link to its glossary entry,
+    # carrying the definition's first sentence as its tooltip.  This only
+    # happens where the synthesized glossary page exists -- with no such
+    # page there is no entry to promise.
+    glossary_synthesized = any(
+        pd["html_path"] == "glossary/index.html"
+        and pd.get("page_type") == "glossary"
+        for pd in page_data
+    ) and any("glossary_anchor" in info for info in site_terms.values())
+    if glossary_synthesized:
+        for pd in page_data:
+            if pd["html_path"] == "glossary/index.html":
+                continue
+            glossary_url = (
+                _path_hop("glossary/index.html", pd["prefix"], pd["site_prefix"])
+                + _html_path_to_url("glossary/index.html")
+            )
+            pd["body_html"] = _link_definition_sites(
+                pd["body_html"], site_terms, pd["html_path"], glossary_url,
+            )
+
     html_files = {}
     for pd in page_data:
         full_html = _wrap_page(
@@ -1177,9 +1182,10 @@ def md_to_html(text, metadata=None, config=None):
     if run_api:
         result = _wrap_api_entries(result)
 
-    # Post-process: auto-detect definitional patterns after headings and
-    # wrap the subject in <dfn> tags (Phase 6A)
-    result = _apply_definitions(result)
+    # Post-process: give every author-declared definition site an id, so
+    # the glossary can link to it.  A term is only ever declared, never
+    # inferred from prose.
+    result = _assign_definition_ids(result)
 
     # Post-process: mark the first image as high-priority LCP candidate
     # (Phase 3.3). All images start with loading="lazy" from _inline_format;
@@ -1480,68 +1486,117 @@ def _wrap_api_entries(html):
     return ''.join(result)
 
 
-def _apply_definitions(html):
-    """Wrap definitional subjects in <dfn> tags when they follow headings.
+def term_anchor(term):
+    """Return the id a definition site carries for *term*.
 
-    Detects patterns like "X is a ...", "X refers to ...", "X means ...",
-    "X represents ...", or the inverted "A/An X is ..." in the first <p>
-    after an <h2> or <h3> heading, and wraps X in <dfn>.
+    Terms live in their own ``term-`` namespace so a term can never take
+    an id a heading already owns -- heading ids come from
+    :func:`assign_heading_anchors` and are bare slugs.
     """
-    # Match: <h2/h3 ...>...</h2/h3> followed by optional whitespace then <p>
-    # that starts with a definitional pattern.
-    #
-    # The subject (X) can be:
-    #   - Plain text (one or more words)
-    #   - Wrapped in <code>...</code>
-    #   - Wrapped in <strong>...</strong>
-    #
-    # Definitional verbs: "is a", "is an", "is the", "refers to",
-    # "means", "represents"
+    return f"term-{_slugify(term)}"
 
-    # Pattern for the subject: plain words, or <code>...</code>,
-    # or <strong>...</strong>
-    subject_plain = r"[A-Za-z][A-Za-z0-9 ]*?"
-    subject_code = r"<code>[^<]+</code>"
-    subject_strong = r"<strong>[^<]+</strong>"
-    subject = rf"(?:{subject_code}|{subject_strong}|{subject_plain})"
 
-    # Definitional verbs
-    direct_verb = r"(?:is\s+(?:a|an|the)\b|refers\s+to\b|means\b|represents\b)"
+def _collect_declared_terms(body_html):
+    """Return every author-declared term in *body_html*.
 
-    # Inverted form: "A/An Subject verb ..."
-    inverted_pattern = (
-        rf"(<h[23]\s[^>]*>.*?</h[23]>)\n"
-        rf"<p>(?:A|An)\s+({subject})\s+({direct_verb})"
-    )
+    Yields ``(term, anchor, definition_html)`` triples in document order,
+    one per definition site: a ``<dt><dfn>`` inside a glossary block (the
+    definition is its ``<dd>``) or a standalone ``<dfn>`` in a paragraph
+    (the definition is the paragraph).  The anchor is the id the
+    definition site already carries, so callers link to a real target.
+    Nothing here is inferred -- a term appears only where an author wrote
+    a ``<dfn>``, a definition list, or the glossary directive.
+    """
+    terms = []
+    seen_anchors = set()
 
-    # Direct form pattern (excludes "A/An " starts to avoid overlap)
-    direct_pattern = (
-        rf"(<h[23]\s[^>]*>.*?</h[23]>)\n"
-        rf"<p>(?!An?\s)({subject})\s+({direct_verb})"
-    )
+    if '<div class="glossary">' in body_html:
+        for match in re.finditer(
+            r"<dt><dfn([^>]*)>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>",
+            body_html,
+            re.DOTALL,
+        ):
+            attrs, raw_term, definition = match.groups()
+            term = re.sub(r"<[^>]+>", "", raw_term).strip()
+            if not term:
+                continue
+            anchor = _dfn_anchor(attrs, term)
+            seen_anchors.add(anchor)
+            terms.append((term, anchor, definition.strip()))
 
-    def _wrap_subject(match_obj, inverted=False):
-        heading = match_obj.group(1)
-        subject_text = match_obj.group(2)
-        verb = match_obj.group(3)
+    for p_match in re.finditer(r"<p>(.*?)</p>", body_html, re.DOTALL):
+        p_content = p_match.group(1)
+        dfn_match = re.search(r"<dfn([^>]*)>(.*?)</dfn>", p_content, re.DOTALL)
+        if not dfn_match:
+            continue
+        # Skip a <p> inside a glossary block: those terms are already
+        # collected above from their <dt>/<dd> pair.
+        p_start = p_match.start()
+        glossary_open = body_html.rfind('<div class="glossary">', 0, p_start)
+        if glossary_open != -1:
+            glossary_close = body_html.find("</div>", glossary_open)
+            if glossary_close == -1 or glossary_close > p_start:
+                continue
+        attrs, raw_term = dfn_match.groups()
+        term = re.sub(r"<[^>]+>", "", raw_term).strip()
+        if not term:
+            continue
+        anchor = _dfn_anchor(attrs, term)
+        if anchor in seen_anchors:
+            continue
+        seen_anchors.add(anchor)
+        terms.append((term, anchor, re.sub(r"<[^>]+>", "", p_content).strip()))
 
-        # Wrap subject in <dfn>. If it's inside <code> or <strong>,
-        # wrap the outer tag.
-        dfn_subject = f"<dfn>{subject_text}</dfn>"
+    return terms
 
-        if inverted:
-            # Determine original article from context
-            # Re-read the full match to get the article
-            full = match_obj.group(0)
-            article = "An" if full.startswith(heading + "\n<p>An ") else "A"
-            return f"{heading}\n<p>{article} <dfn>{subject_text}</dfn> {verb}"
-        return f"{heading}\n<p>{dfn_subject} {verb}"
 
-    # Apply inverted form first (more specific), then direct form
-    result = re.sub(inverted_pattern, lambda m: _wrap_subject(m, inverted=True), html)
-    result = re.sub(direct_pattern, lambda m: _wrap_subject(m, inverted=False), result)
+def _dfn_anchor(attrs, term):
+    """Return the id on a ``<dfn>``'s attribute string, or the term's own."""
+    id_match = re.search(r'id="([^"]+)"', attrs or "")
+    if id_match:
+        return id_match.group(1)
+    return term_anchor(term)
 
-    return result
+
+def _first_sentence(text):
+    """Return the first sentence of *text*, for a definition tooltip."""
+    plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", text)).strip()
+    match = re.search(r"^(.*?[.!?])(?:\s|$)", plain)
+    return match.group(1) if match else plain
+
+
+def _assign_definition_ids(html):
+    """Give every ``<dfn>`` without an id the id of its term.
+
+    A ``<dfn>`` reaches this pass only because an author wrote one, or
+    wrote a definition list or a glossary directive that renders to one.
+    The id is ``term-<slug>``, deduplicated against every id already in
+    the document (headings included) and against earlier terms, so a
+    page never emits the same id twice.
+    """
+    if "<dfn" not in html:
+        return html
+
+    used = set(re.findall(r'\sid="([^"]+)"', html))
+
+    def _assign(match):
+        attrs = match.group(1)
+        inner = match.group(2)
+        if "id=" in attrs:
+            return match.group(0)
+        term = re.sub(r"<[^>]+>", "", inner).strip()
+        if not term:
+            return match.group(0)
+        base = term_anchor(term)
+        anchor = base
+        counter = 0
+        while anchor in used:
+            counter += 1
+            anchor = f"{base}-{counter}"
+        used.add(anchor)
+        return f'<dfn id="{anchor}"{attrs}>{inner}</dfn>'
+
+    return re.sub(r"<dfn([^>]*)>(.*?)</dfn>", _assign, html, flags=re.DOTALL)
 
 
 def _split_table_cells(line):
@@ -1754,6 +1809,45 @@ def _inline_format_prose(seg):
     # Italic: *text*
     formatted = re.sub(r"\*(.+?)\*", r"<em>\1</em>", formatted)
     return formatted
+
+
+def _link_definition_sites(body_html, site_terms, current_page, glossary_url):
+    """Turn each definition site on *current_page* into a glossary link.
+
+    The ``<dfn>`` an author wrote keeps its id and gains a tooltip with
+    the definition's first sentence; its text becomes a link to the term's
+    glossary entry.  Other occurrences of the term on the same page are
+    left alone -- :func:`_apply_cross_page_terms` deliberately links only
+    terms defined elsewhere, and a page does not need a forest of links to
+    a term it defines itself.
+    """
+    for info in site_terms.values():
+        if info["page"] != current_page:
+            continue
+        entry_anchor = info.get("glossary_anchor")
+        if not entry_anchor:
+            continue
+        anchor = info["anchor"]
+        pattern = re.compile(
+            rf'<dfn id="{re.escape(anchor)}"([^>]*)>(.*?)</dfn>',
+            re.DOTALL,
+        )
+        tooltip = _escape_html(_first_sentence(info["definition"]))
+        href = f"{glossary_url}#{entry_anchor}"
+
+        def _wrap(match, tooltip=tooltip, href=href, anchor=anchor):
+            attrs, inner = match.groups()
+            if "term-def-link" in inner:
+                return match.group(0)
+            title = f' title="{tooltip}"' if tooltip else ""
+            return (
+                f'<dfn id="{anchor}"{title}{attrs}>'
+                f'<a class="term-def-link" href="{href}">{inner}</a>'
+                f'</dfn>'
+            )
+
+        body_html = pattern.sub(_wrap, body_html, count=1)
+    return body_html
 
 
 def _apply_cross_page_terms(body_html, site_terms, current_page, prefix,
@@ -2649,52 +2743,18 @@ def _render_seo_tags(title, base_url, page_path, description, body_html,
             f'\n</script>'
         )
 
-    # DefinedTermSet JSON-LD from glossary blocks and standalone <dfn> tags
+    # DefinedTermSet JSON-LD from the page's author-declared terms:
+    # definition lists, the glossary directive, and hand-written <dfn>.
     defined_terms = []
     seen_names = set()
-
-    # 1. Glossary terms: <dt><dfn>X</dfn></dt><dd>Y</dd>
-    if '<div class="glossary">' in body_html:
-        dfn_terms = re.findall(
-            r"<dt><dfn>(.*?)</dfn></dt>\s*<dd>(.*?)</dd>",
-            body_html,
-        )
-        for term_name, term_desc in dfn_terms:
-            if term_name not in seen_names:
-                seen_names.add(term_name)
-                defined_terms.append({
-                    "@type": "DefinedTerm",
-                    "name": term_name,
-                    "description": term_desc,
-                })
-
-    # 2. Standalone <dfn> tags from _apply_definitions (inside <p> tags,
-    #    outside glossary blocks). Extract term and containing paragraph.
-    for p_match in re.finditer(r"<p>(.*?)</p>", body_html, re.DOTALL):
-        p_content = p_match.group(1)
-        dfn_match = re.search(r"<dfn>(.*?)</dfn>", p_content)
-        if not dfn_match:
+    for term_name, _anchor, definition in _collect_declared_terms(body_html):
+        if term_name in seen_names:
             continue
-        # Skip if this <p> is inside a glossary block
-        p_start = p_match.start()
-        # Find the last glossary-open before this <p>
-        glossary_open = body_html.rfind('<div class="glossary">', 0, p_start)
-        if glossary_open != -1:
-            glossary_close = body_html.find('</div>', glossary_open)
-            if glossary_close == -1 or glossary_close > p_start:
-                continue  # inside a glossary block
-        term_name = dfn_match.group(1)
-        # Strip HTML tags from term name (e.g. <code>, <strong>)
-        clean_name = re.sub(r"<[^>]+>", "", term_name).strip()
-        if clean_name in seen_names:
-            continue
-        seen_names.add(clean_name)
-        # Use full paragraph text (stripped of HTML) as description
-        clean_desc = re.sub(r"<[^>]+>", "", p_content).strip()
+        seen_names.add(term_name)
         defined_terms.append({
             "@type": "DefinedTerm",
-            "name": clean_name,
-            "description": clean_desc,
+            "name": term_name,
+            "description": definition,
         })
 
     if defined_terms:

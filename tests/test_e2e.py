@@ -135,6 +135,6 @@ def test_e2e_build_with_new_directives(tmp_path):
         glossary_html = f.read()
 
     assert "<dl>" in glossary_html
-    assert "<dt><dfn>Directive</dfn></dt>" in glossary_html
+    assert '<dt><dfn id="term-directive">Directive</dfn></dt>' in glossary_html
     assert "<dd>" in glossary_html
     assert "language-specific module" in glossary_html
