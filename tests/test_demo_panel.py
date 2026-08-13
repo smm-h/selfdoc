@@ -1,7 +1,5 @@
 """Playwright-based tests for the demo page's design settings panel."""
 
-import os
-import pwd
 import socket
 import subprocess
 import sys
@@ -10,29 +8,9 @@ from pathlib import Path
 
 import pytest
 
-# Playwright resolves its downloaded browsers from ``XDG_CACHE_HOME`` (or
-# ``~/.cache``), and stricttest's isolation floor repoints both at a throwaway
-# directory before any test module is imported -- so without this pin, every
-# browser launch below fails with "Executable doesn't exist".
-#
-# ``PLAYWRIGHT_BROWSERS_PATH`` is the variable Playwright itself provides for
-# relocating that cache. It is pointed at the invoking user's REAL cache,
-# resolved from the password database rather than from ``HOME`` (which the
-# floor has already replaced). The directory holds downloaded browser binaries
-# and nothing else -- no credential, no identity, no config -- so reaching it
-# is the same carve-out stricttest already makes for the Go, Rust, npm, uv and
-# pip toolchain caches through ``stricttest_preserve``. That enum is closed and
-# has no Playwright entry yet, which is why the pin lives here; a todo is filed
-# in stricttest to add one, after which this block collapses into one
-# ``stricttest_preserve`` line in pyproject.toml.
-#
-# Set before ``playwright`` is imported so the launcher reads the final value.
-os.environ.setdefault(
-    "PLAYWRIGHT_BROWSERS_PATH",
-    os.path.join(pwd.getpwuid(os.getuid()).pw_dir, ".cache", "ms-playwright"),
-)
-
-from playwright.sync_api import sync_playwright  # noqa: E402
+# The browser itself comes from conftest's session-scoped
+# ``chromium_browser``: one launcher per suite, because Playwright's sync
+# API refuses a second one while the first is open.
 
 DEMO_DIR = Path(__file__).resolve().parent.parent / "demo"
 
@@ -77,18 +55,9 @@ def http_server():
 
 
 @pytest.fixture(scope="session")
-def browser_instance():
-    """Launch a Playwright Chromium browser for the entire session."""
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
-        yield browser
-        browser.close()
-
-
-@pytest.fixture(scope="session")
-def browser_context(browser_instance):
+def browser_context(chromium_browser):
     """Create a single browser context shared across all tests."""
-    ctx = browser_instance.new_context()
+    ctx = chromium_browser.new_context()
     # Grant clipboard permissions for the export test
     ctx.grant_permissions(["clipboard-read", "clipboard-write"])
     yield ctx
@@ -133,8 +102,8 @@ def click_knob_option(page, knob_name, value):
 # ---------------------------------------------------------------------------
 
 
-def test_page_loads_without_js_errors(browser_instance, http_server):
-    ctx = browser_instance.new_context()
+def test_page_loads_without_js_errors(chromium_browser, http_server):
+    ctx = chromium_browser.new_context()
     pg = ctx.new_page()
     errors = []
     pg.on("pageerror", lambda exc: errors.append(str(exc)))
@@ -736,9 +705,9 @@ def test_url_hash_encodes_on_knob_change(page):
 # ---------------------------------------------------------------------------
 
 
-def test_url_hash_decoded_on_load(browser_instance, http_server):
+def test_url_hash_decoded_on_load(chromium_browser, http_server):
     """Navigate to the page with a hash, verify the knob is applied."""
-    ctx = browser_instance.new_context()
+    ctx = chromium_browser.new_context()
     pg = ctx.new_page()
     pg.goto(
         f"http://127.0.0.1:{http_server}/demo/index.html#accent-color=purple"
@@ -762,9 +731,9 @@ def test_url_hash_decoded_on_load(browser_instance, http_server):
 # ---------------------------------------------------------------------------
 
 
-def test_url_hash_priority_over_localstorage(browser_instance, http_server):
+def test_url_hash_priority_over_localstorage(chromium_browser, http_server):
     """Set a localStorage value, navigate with a different hash, verify hash wins."""
-    ctx = browser_instance.new_context()
+    ctx = chromium_browser.new_context()
 
     # First page: set border-radius to "16px" in localStorage
     pg1 = ctx.new_page()
