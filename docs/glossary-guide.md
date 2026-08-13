@@ -1,6 +1,6 @@
 ---
 title: Glossary Guide
-description: "How to use selfdoc's glossary feature: define terms with dfn tags and list-glossary directives, get auto-linking and a generated glossary page."
+description: "selfdoc's glossary: declare a term with a dfn tag, a definition list or the list-glossary directive -- prose declares nothing -- and get auto-linking, term anchors and a generated page."
 nav_group: "Guides"
 nav_order: 14
 ---

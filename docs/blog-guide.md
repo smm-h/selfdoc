@@ -1,6 +1,6 @@
 ---
 title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the worker redirects every other address to, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, and the verification every deploy has to pass."
+description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the worker redirects every other address to, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, the verification every deploy has to pass, and the local preview that assembles the whole site from checkouts and serves it before anything ships."
 nav_group: "Guides"
 nav_order: 19
 ---
@@ -376,6 +376,62 @@ address in `outbound-cache.json` and trusted for `cache_days`, so a deploy
 that changes nothing sends no requests. **With no `outbound.toml` there is
 no outbound check**, and every run says so on stderr rather than passing
 quietly.
+
+### Previewing the whole site before it ships
+
+`selfblog assembly preview` assembles the site from local checkouts and
+serves it, so the last look at a change happens before anything is
+published rather than after:
+
+```bash
+selfblog assembly preview \
+  --home ~/Projects/portfolio \
+  --repo ~/Projects/pgdesign \
+  --repo ~/Projects/rlsbl \
+  --canonical-base https://smmh.dev \
+  --out ~/scratch/preview \
+  --port 8790
+```
+
+Every flag is required except `--legacy-blog-host`. `--home` names the one
+project served at the site root; `--repo` is repeated once per other
+project and each is served under the slug its own `selfdoc.json` declares.
+`--canonical-base` is the **deployed** base, not the loopback address: the
+preview shows the pages with the canonical links, sitemap entries and
+cross-project links they would ship with, and verifies those.
+
+The pipeline is the deploy's, step for step, with the remote-coupled steps
+replaced by their local equivalents rather than skipped:
+
+| Step | What runs |
+|---|---|
+| Build | Each checkout is built by the toolchain running the command -- the home project through `selfblog build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
+| Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects`, `_worker.js` and `404.html` left behind. |
+| Membership | A roster rendered from the checkouts named on the command line, and a `projects.json` written by the same `record_membership` the deploy uses. Dropping a `--repo` on a rerun retires that project from the tree. |
+| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, `_worker.js`, the site chrome asset, and the re-pointing pass that aims every grafted page at it. |
+| Search | The pagefind pass over the assembled tree. |
+| Verification | The real `verify_assembly`, printed **first and loudly**. |
+
+Verification reports; it does not block. A deploy refuses a tree that
+fails, but a preview exists to be looked at when something is wrong, so
+the report is printed and the server starts either way.
+
+The server binds `127.0.0.1` only. It serves each directory's
+`index.html`, redirects an address missing its trailing slash, serves
+every file under its real content type, and answers an address the tree
+does not carry with the tree's own `404.html` **and a 404 status** -- a
+404 page served as `200` is how a broken link survives a preview.
+
+`--out` is refused when it sits inside a git working tree at a path git
+does not ignore. A preview writes thousands of generated files, and a
+generated site dropped into a checkout is untracked noise in every
+`git status` run in it -- including other sessions' -- and gets committed
+by accident. Choose a directory outside every repository, or gitignore the
+path first.
+
+`--dry-run` is refused at parse time with its reason: the command exists to
+produce output you look at, and every step after the build reads what the
+step before it wrote.
 
 ### Posts-only vs full builds
 
