@@ -55,7 +55,7 @@ After block rendering produces a joined HTML string, five regex-based post-proce
 - **Code tabs** (`_group_code_tabs`): consecutive code blocks with different languages become a tabbed interface
 - **Step guides** (`_apply_step_guides`): ordered lists after headings containing "step", "guide", or "tutorial" get `class="steps"`
 - **API entries** (`_wrap_api_entries`): h3/h4 + code block + description are wrapped in `<div class="api-entry">` cards
-- **Definitions** (`_apply_definitions`): definitional patterns get `<dfn>` wrapping for glossary cross-linking
+- **Definition ids** (`_assign_definition_ids`): every author-declared `<dfn>` gets a `term-<slug>` id, deduplicated against every id already on the page, so the glossary can link to the definition site
 - **LCP promotion**: first image promoted from `loading="lazy"` to `fetchpriority="high" loading="eager"`
 
 ### Phase 3: Page assembly

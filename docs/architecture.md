@@ -77,7 +77,7 @@ After block rendering produces HTML, 5 regex-based post-processors detect cross-
 - **Code tabs** -- consecutive code blocks with different languages become a tabbed interface
 - **Step guides** -- ordered lists after headings containing "step", "guide", or "tutorial" get a `class="steps"` for special styling
 - **API entries** -- sequences of h3/h4 + code block + description are wrapped in `<div class="api-entry">` cards
-- **Definitions** -- definitional patterns after headings get `<dfn>` wrapping for semantic markup and glossary cross-linking
+- **Definition ids** -- every author-declared definition site (a definition list, the `list-glossary` directive, or a hand-written `<dfn>`) gets a `term-<slug>` id so the glossary can link to it. A term is only ever declared; prose that reads like a definition declares nothing.
 - **LCP promotion** -- the first image is promoted from `loading="lazy"` to `fetchpriority="high"` for faster Largest Contentful Paint
 
 ## Staleness Tracking

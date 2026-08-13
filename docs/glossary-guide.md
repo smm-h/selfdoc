@@ -11,7 +11,9 @@ selfdoc can build a glossary from terms defined across your documentation. Defin
 
 ## Defining Terms
 
-There are 2 ways to mark a term as a glossary entry: inline `<dfn>` tags embedded naturally in your prose, or the `list-glossary` content directive for dedicated reference sections. Both methods register terms in the site-wide glossary and enable auto-linking across pages.
+A term becomes a glossary entry only because you declared it. There are 3 declaration forms: inline `<dfn>` tags embedded naturally in your prose, Markdown definition lists, and the `list-glossary` content directive for dedicated reference sections. All three register terms in the site-wide glossary and enable auto-linking across pages.
+
+selfdoc never guesses a term from prose. A sentence like "The export represents the whole build" is prose, not a declaration, no matter which heading it follows.
 
 ### Inline `<dfn>` tags
 
@@ -23,6 +25,18 @@ that selfdoc resolves at build time by extracting content from source code.
 ```
 
 This creates a glossary entry for "directive" with the paragraph text as its definition.
+
+### Definition lists
+
+A Markdown definition list -- a term line followed by one or more lines starting with `: ` -- declares each of its terms:
+
+```markdown
+Directive
+: A structured marker that selfdoc resolves at build time.
+
+Extractor
+: A language-specific module that reads source code.
+```
 
 ### The `list-glossary` directive
 
@@ -50,7 +64,13 @@ Auto-linking is case-insensitive for matching but preserves the original casing 
 
 ## The Generated Glossary Page
 
-When `glossary` is `true` in your `selfdoc.json` (which it is by default), selfdoc generates an alphabetically sorted glossary page that collects every `<dfn>` term and `list-glossary` entry across your entire site. Each entry shows the term, its definition, and a link back to the page where it was defined.
+When `glossary` is `true` in your `selfdoc.json` (which it is by default), selfdoc generates an alphabetically sorted glossary page that collects every declared term across your entire site. Each entry shows the term, its definition, and a Source link back to the exact definition site on the page that declared it. Declare no terms and there is no glossary page at all -- selfdoc never emits an empty one.
+
+Every definition site carries an id of the form `term-<slug>`, in its own namespace so it can never take an id a heading owns. That id is what the Source link and the cross-page term links scroll to.
+
+### From the definition back to the glossary
+
+The definition site works in the other direction too: the `<dfn>` you wrote becomes a link to its glossary entry, with the definition's first sentence as its tooltip. Other mentions of the term on that same page stay plain -- the page already defines it.
 
 ## Configuration
 
