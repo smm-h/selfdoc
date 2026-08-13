@@ -45,10 +45,10 @@ selfdoc init --base-url https://myproject.pages.dev
 This does three things:
 
 1. **Detects your project language** from manifest files (`pyproject.toml` for Python, `go.mod` for Go, `tsconfig.json` or `package.json` for TypeScript/JavaScript).
-2. **Creates `selfdoc.json`** -- the base URL you passed, source directories, docs path, output path, and the `versions` and `locales` arrays with a single entry each. The emitted file builds as-is; nothing has to be added by hand.
+2. **Creates `selfdoc.json`** -- the base URL you passed, source directories, docs path, output path, the version declaration and the `locales` array with a single entry. The emitted file builds as-is; nothing has to be added by hand. The version comes from your own manifest (`pyproject.toml`, `package.json` or `VERSION`); if your project has code but states no version there, `init` says so and stops rather than writing a number you never released.
 3. **Creates `docs/index.md`** with a starter template that includes a `ref` directive pointing at your main module.
 
-A project with no detectable language is a **codeless project** -- a portfolio or personal site that is nothing but Markdown pages. `init` initializes it too: the config gets no `source` key and the starter page gets no `ref` directive. Directives that extract from source code are a hard error in such a project, so add a `source` entry before using one.
+A project with no detectable language is a **codeless project** -- a portfolio or personal site that is nothing but Markdown pages. `init` initializes it too: the config gets no `source` key, the starter page gets no `ref` directive, and instead of a `versions` array it gets `"unversioned": true` -- the declaration that the project publishes no artifact and therefore has no public version. Its pages carry no version badge, no version search filter and no version picker. Directives that extract from source code are a hard error in such a project, so add a `source` entry before using one (and a `versions` array with it, since `unversioned` and `source` are mutually exclusive).
 
 The `init` command also auto-commits the generated files unless you pass `--no-auto-commit`.
 

@@ -37,6 +37,24 @@ Even a single-version, single-locale project needs them:
 }
 ```
 
+A project that publishes no artifact -- a portfolio, a personal site --
+declares that instead of naming a version it never released:
+
+```json
+{
+  "unversioned": true,
+  "locales": [{"code": "en", "label": "English", "default": true}]
+}
+```
+
+`unversioned` replaces `versions` (declaring both is an error) and is
+refused for a project that declares `source`, because code is what gets
+released and therefore carries a version. Such a project's pages show no
+version badge, offer no version search filter and no version picker.
+`selfdoc init` writes this declaration for a project with no detectable
+language, and refuses to invent a version for one that has code but states
+none in its manifest.
+
 ### Multi-version builds
 
 Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. The version picker's links are computed by the build from each page's own address, and archived pages carry a dismissable notice keyed per version.
@@ -91,7 +109,8 @@ uv run pytest
 
 ## Important config fields
 
-- `versions` (required): array of `{version}` objects -- controls multi-version builds
+- `versions` (required, unless `unversioned`): array of `{version}` objects -- controls multi-version builds
+- `unversioned`: `true` declares the project has no public version; replaces `versions`, refused alongside `source`
 - `locales` (required): array of `{code, label, default}` objects -- controls localization
 - `unified`: optional, for monorepo docs-site projects -- lists constituent projects
 - `gen_data`: optional sandboxed script execution config

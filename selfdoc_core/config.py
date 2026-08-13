@@ -648,6 +648,20 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         description="List of documentation versions to build.",
     ),
     FieldSpec(
+        name="unversioned",
+        type=_B,
+        default=None,
+        description=(
+            "Declares that this project has no public version -- a personal "
+            "site or portfolio that publishes no artifact. It replaces the "
+            "'versions' array (declaring both is an error) and is refused "
+            "for a project that declares 'source', because code is the "
+            "thing that gets released and therefore carries a version. An "
+            "unversioned project's pages show no version badge, offer no "
+            "version search filter and no version picker."
+        ),
+    ),
+    FieldSpec(
         name="locales",
         type=_L,
         default=None,
@@ -995,6 +1009,26 @@ def _post_validate(config: dict) -> dict:
                 f"found {len(defaults)}"
             )
 
+    # A project with no public version says so, and the declaration is what
+    # every version-shaped emitter reads: one anonymous version, whose empty
+    # string means no badge, no search filter, no picker and no version
+    # segment in any address.  Nothing is sniffed and no number is invented.
+    if config.get("unversioned") is True:
+        if config.get("versions") is not None:
+            raise ConfigError(
+                "'unversioned': true and 'versions' contradict each other. "
+                "A project either has public versions or declares it has "
+                "none -- remove one of the two."
+            )
+        if config.get("source"):
+            raise ConfigError(
+                "'unversioned': true is refused for a project that declares "
+                "'source'. Code is what gets released, so it carries a "
+                'version: declare it, e.g. "versions": [{"version": '
+                '"0.1.0"}].'
+            )
+        config["versions"] = [{"version": ""}]
+
     # Versions validation: unique version strings
     versions = config.get("versions")
     if versions is not None:
@@ -1050,6 +1084,16 @@ def load_config(dir_path="."):
     except json.JSONDecodeError as exc:
         raise ConfigError(f"selfdoc.json is not valid JSON: {exc}") from exc
 
+    return validate_config(raw)
+
+
+def validate_config(raw):
+    """Validate a raw config document and return the resolved config.
+
+    This is what :func:`load_config` runs on the parsed contents of
+    selfdoc.json; it is separate so a config assembled in memory goes
+    through exactly the same rules as one read from disk.
+    """
     if not isinstance(raw, dict):
         raise ConfigError("selfdoc.json must be a JSON object")
 

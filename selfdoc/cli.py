@@ -155,10 +155,30 @@ def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
     project_name = os.path.basename(os.path.abspath("."))
     main_module = _detect_main_module() if detected else None
 
+    # What the project states about its own version decides what goes in the
+    # file, and nothing is invented.  A codeless project publishes no
+    # artifact, so it declares it has no public version and its pages carry
+    # no badge, no version filter and no picker.  A project with code reads
+    # its version out of its own manifest; when the manifest states none,
+    # init refuses rather than writing a number the project never released.
+    if source_entries:
+        detected_version = detect_project_version(".")
+        if not detected_version:
+            print(
+                "No version found in pyproject.toml, package.json or "
+                "VERSION. A project that ships code has a version, so "
+                "declare it there and run init again.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        version_declaration = {"versions": [{"version": detected_version}]}
+    else:
+        version_declaration = {"unversioned": True}
+
     # Everything load_config and build require is written into the file, so
     # the emitted config is buildable with no hand-editing.  base_url comes
-    # from the caller; the single version and the single default locale are
-    # the honest starting point for a new site and are visible in the file.
+    # from the caller; the version declaration above and the single default
+    # locale are the honest starting point for a new site.
     config = {
         "base_url": base_url.strip().rstrip("/"),
         "author": {
@@ -171,7 +191,7 @@ def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
     config.update({
         "docs": "docs/",
         "output": "docs/_build/",
-        "versions": [{"version": detect_project_version(".", "0.1.0")}],
+        **version_declaration,
         "locales": [{"code": "en", "label": "English", "default": True}],
         "search_engine": "pagefind",
     })
