@@ -2057,6 +2057,16 @@ hr {
     color: var(--link);
 }
 
+/* The definition site itself: a link to this term's glossary entry. */
+.term-def-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.term-def-link:hover {
+    color: var(--link);
+}
+
 /* === Inline code annotations === */
 
 .code-annotation {

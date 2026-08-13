@@ -21,6 +21,18 @@ _DEFAULT_THEME_META = {
 }
 
 
+def list_themes():
+    """Return every theme name this build ships, sorted.
+
+    A theme *is* its CSS file, so the directory listing is the registry --
+    there is no second list to keep in step with it.  Every place that
+    validates or enumerates a theme reads this.
+    """
+    return sorted(
+        f[:-4] for f in os.listdir(_THEMES_DIR) if f.endswith(".css")
+    )
+
+
 def get_theme(name):
     """Load and return the CSS content for the named theme.
 
@@ -35,12 +47,10 @@ def get_theme(name):
     """
     css_path = os.path.join(_THEMES_DIR, f"{name}.css")
     if not os.path.isfile(css_path):
-        available = [
-            f[:-4] for f in os.listdir(_THEMES_DIR) if f.endswith(".css")
-        ]
+        available = list_themes()
         raise ValueError(
             f"unknown theme {name!r}; "
-            f"available themes: {', '.join(sorted(available)) or 'none'}"
+            f"available themes: {', '.join(available) or 'none'}"
         )
     with open(css_path, "r", encoding="utf-8") as f:
         return f.read()
