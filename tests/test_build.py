@@ -3735,17 +3735,22 @@ def test_page_meta_has_flex_layout():
 
 
 def test_sticky_thead_offset(project_dir):
-    """CSS contains thead with top: 52px, not top: 0."""
+    """The built CSS sticks thead to the top of its own scroll container.
+
+    A table is emitted inside .table-wrap, whose overflow-x makes it the
+    scrollport; a topbar-sized offset here was measured from the top of the
+    table and pushed the header row down over the first body rows.
+    """
     build(str(project_dir))
     output_dir = os.path.join(project_dir, "docs", "_build")
     css_path = os.path.join(output_dir, "style.css")
     with open(css_path, "r", encoding="utf-8") as f:
         css = f.read()
 
-    assert "top:52px" in css or "top: 52px" in css
-    # Should NOT have top:0 for thead
-    # Find the thead rule and check it uses 52px
-    assert "top:0" not in css.split("thead")[1].split("}")[0] if "thead" in css else True
+    assert "thead" in css
+    thead_rule = css.split("thead")[1].split("}")[0]
+    assert "top:0" in thead_rule or "top: 0" in thead_rule
+    assert "52px" not in thead_rule
 
 
 # --- OG PNG predraw integration ---
