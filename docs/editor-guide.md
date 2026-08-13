@@ -129,7 +129,7 @@ The command refuses a `--dry-run` run rather than previewing one. An interactive
 
 The editing surface is tinymoon's editor component: a real text area over a scroll-synchronised decoration layer, with the framework's own chrome, theme and light/dark handling around it.
 
-tinymoon is not a runtime dependency of selfblog, so the app is told where its assets are rather than discovering them. There are exactly two answers and the caller picks one:
+tinymoon *is* a runtime dependency now -- selfdoc-core depends on it, because the tinymoon theme composes its stylesheet out of the framework's own sheets -- but the editor still takes its asset source explicitly rather than assuming the installed one, because a checkout and a release are routinely different trees here. There are exactly two answers and the caller picks one:
 
 - **`--tinymoon-assets <path>`** -- a checkout's `assets` directory;
 - **nothing** -- the installed tinymoon package, read through its own asset path.

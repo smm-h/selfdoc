@@ -24,17 +24,19 @@ Three themes are available:
 
 - **minimal** (default) -- GitHub-inspired styling with Inter and JetBrains Mono fonts. Blue accent color (`#0969da`), light sidebar background, dark topbar. Content-focused and familiar.
 - **clean** -- Stripe-inspired styling with system fonts and a purple accent (`#5046e4`). White topbar, borderless code blocks, slightly taller line height (1.7 vs 1.6). Feels more polished and modern.
-- **tinymoon** -- dark by default, sharp corners everywhere, three vendored fonts (IBM Plex Sans for prose, IBM Plex Mono for anything that reads as data, Space Grotesk for headings), hairline borders with an accent glow instead of shadows, and a 100-180ms motion vocabulary. Blue accent (`#2d6cf4`). Tables, badges, breadcrumbs and metadata are all set in mono, and a faint grain overlay sits over the page.
+- **tinymoon** -- the [tinymoon](https://github.com/smm-h/tinymoon) framework itself, not an imitation of it: dark by default, sharp corners everywhere, three vendored fonts (IBM Plex Sans for prose, IBM Plex Mono for anything that reads as data, Space Grotesk for headings), hairline borders with an accent glow instead of shadows, and a 100-180ms motion vocabulary. Blue accent (`#2d6cf4`). Tables, badges, breadcrumbs and metadata are all set in mono, and a faint grain overlay sits over the page.
 
 All three include full dark mode, high contrast, reduced motion, and print support.
 
 ### What differs about tinymoon
 
-Two things are worth knowing before choosing it.
+Three things are worth knowing before choosing it.
 
-**It rests in dark.** The other two themes define their light palette in `:root` and reassign for dark; tinymoon does the reverse. The three-state theme toggle (system / light / dark) works exactly the same either way, and a `custom.css` override still lands on the same custom property names -- but a `:root` override in `custom.css` will be changing tinymoon's *dark* values, not its light ones. Its light palette is in `[data-theme="light"]` and in a `@media (prefers-color-scheme: light)` block.
+**It is not a stylesheet in this repository.** minimal and clean are single CSS files selfdoc owns. tinymoon is an *overlay* on the [tinymoon](https://github.com/smm-h/tinymoon) framework, which selfdoc-core depends on: the stylesheet a page receives is the framework's own sheets -- `tokens`, `base`, `shell`, `primitives`, `widgets`, `prose`, in that order, byte for byte out of the installed package -- with selfdoc's overlay appended. The overlay carries the parts of a selfdoc page the framework has no shape for and a *bridge* that defines selfdoc's custom-property names as references to the framework's tokens. Upgrading the framework upgrades the theme.
 
-**It carries its own fonts.** The three faces are inlined into the stylesheet as base64 woff2, so the theme fetches nothing from a font CDN and works offline. They sit below the theme's critical-CSS marker, so they load with the async stylesheet rather than inside every page's `<head>`; `font-display: swap` covers the moment before they arrive. The stylesheet is correspondingly large -- around 165 KB, of which about 110 KB is font data -- and is served once and cached, unlike the critical CSS which is inlined per page.
+**It rests in dark.** The framework's `:root` is the dark palette and the light one is a reassignment, which is the reverse of the other two themes. A `custom.css` override still lands on the same custom property names, but a `:root` override will be changing the *dark* values. The light palette is in `html[data-theme="light"]` for the explicit choice, and in `html:not([data-theme])` inside a `@media (prefers-color-scheme: light)` block for the system one -- so all three toggle states resolve in CSS alone, with no JavaScript involved in painting the right scheme.
+
+**Its stylesheet is written into `css/` and ships files beside it.** The framework's `@font-face` rules address `../fonts/`, so the theme's stylesheet goes to `css/style.css` at the output root with the four woff2 faces in `fonts/`. Nothing is fetched from a font CDN and nothing is base64 in the stylesheet, so the faces are cached once for the whole site instead of re-downloaded with every sheet. In an assembled site the same payload is the site-level page chrome, under one content-hashed directory: a framework upgrade renames the directory, so no cache can serve the previous bytes against the new markup.
 
 ## Previewing a Theme
 
