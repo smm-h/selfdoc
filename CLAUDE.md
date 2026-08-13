@@ -165,6 +165,7 @@ Everything theme-sensitive runs across all three themes. A session builds six si
 - **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources -- provides runtime access to bundled JavaScript for search, theming, and navigation.
 - **selfdoc.manifest** (`selfdoc/manifest.py`): Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info.
 - **selfdoc.ownership** (`selfdoc/ownership.py`): Description ownership predicate: machine-owned vs handwritten.
+- **selfdoc.payload_schemas** (`selfdoc/payload_schemas.py`): Declared payload schemas for selfdoc's machine-mode commands.
 - **selfdoc.quality** (`selfdoc/quality.py`): Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio.
 - **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors based on file extension and configured source paths.
 - **selfdoc.spell_corpus** (`selfdoc/spell_corpus.py`): The corpus-wide spelling run: the same engine, every sibling project.

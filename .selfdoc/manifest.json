@@ -308,8 +308,8 @@
         },
         {
           "level": 3,
-          "text": "JSON",
-          "anchor": "json"
+          "text": "Machine output",
+          "anchor": "machine-output"
         },
         {
           "level": 2,
@@ -1815,8 +1815,8 @@
         },
         {
           "level": 2,
-          "text": "JSON output",
-          "anchor": "json-output"
+          "text": "Machine output",
+          "anchor": "machine-output"
         },
         {
           "level": 2,
@@ -2881,6 +2881,23 @@
       ]
     },
     {
+      "path": "selfdoc-payload_schemas.md",
+      "title": "selfdoc.payload_schemas",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc.payload_schemas",
+          "anchor": "selfdocpayload_schemas"
+        },
+        {
+          "level": 2,
+          "text": "`selfdoc.payload_schemas`",
+          "anchor": "selfdocpayload_schemas"
+        }
+      ]
+    },
+    {
       "path": "selfdoc-quality.md",
       "title": "selfdoc.quality",
       "type": "doc",
@@ -2897,6 +2914,11 @@
         },
         {
           "level": 3,
+          "text": "`DirstatError`",
+          "anchor": "dirstaterror"
+        },
+        {
+          "level": 3,
           "text": "`check_dirstat`",
           "anchor": "check_dirstat"
         },
@@ -2904,6 +2926,16 @@
           "level": 3,
           "text": "`get_submodule_paths`",
           "anchor": "get_submodule_paths"
+        },
+        {
+          "level": 3,
+          "text": "`_scan_groups`",
+          "anchor": "_scan_groups"
+        },
+        {
+          "level": 3,
+          "text": "`_code_totals`",
+          "anchor": "_code_totals"
         },
         {
           "level": 3,
@@ -2944,11 +2976,6 @@
           "level": 3,
           "text": "`format_single_text`",
           "anchor": "format_single_text"
-        },
-        {
-          "level": 3,
-          "text": "`format_json`",
-          "anchor": "format_json"
         },
         {
           "level": 3,
@@ -3008,6 +3035,16 @@
           "level": 3,
           "text": "`run_spell_corpus`",
           "anchor": "run_spell_corpus"
+        },
+        {
+          "level": 3,
+          "text": "`_unique_words`",
+          "anchor": "_unique_words"
+        },
+        {
+          "level": 3,
+          "text": "`render_corpus_text`",
+          "anchor": "render_corpus_text"
         }
       ]
     },
@@ -3478,6 +3515,6 @@
       ]
     }
   ],
-  "last_gen": "2026-08-13T16:39:40.281164+00:00",
+  "last_gen": "2026-08-13T18:54:07.323362+00:00",
   "theme": "minimal"
 }

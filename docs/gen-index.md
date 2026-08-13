@@ -32,6 +32,7 @@ order: 90
 - [selfdoc.js.loader](../selfdoc-js-loader/)
 - [selfdoc.manifest](../selfdoc-manifest/)
 - [selfdoc.ownership](../selfdoc-ownership/)
+- [selfdoc.payload_schemas](../selfdoc-payload_schemas/)
 - [selfdoc.quality](../selfdoc-quality/)
 - [selfdoc.resolver](../selfdoc-resolver/)
 - [selfdoc.spell_corpus](../selfdoc-spell_corpus/)

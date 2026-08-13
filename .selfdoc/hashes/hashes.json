@@ -395,6 +395,11 @@
     "description": "c57bbd4dde2fb8d530b7b8f19eea1a5cddee292fd285f79b8ef693b03f82bd9c",
     "source_docstring": "139f1b85e93eea3325543dab919675ccb74e314ad37bd8e4b3ae7b71cd405363"
   },
+  "en/selfdoc-payload_schemas.md": {
+    "content": "2b4d21fa334ec5521b47646c5582fe5dc831c4beed5b1a55ec75dd317e09733b",
+    "description": "fff30782594304b5015a80a02a2ef010400e3cd484fd05ed7ac45bff08f9066b",
+    "seed_hash": "fff30782594304b5015a80a02a2ef010400e3cd484fd05ed7ac45bff08f9066b"
+  },
   "en/selfdoc-quality.md": {
     "content": "78bc53da300ebbc28d66d0915528c4c7dfa89c8e773d56f5701ad5fff3409cae",
     "description": "f3bc336ec7dcd8aeec9cff29c5f1fe71cd773a81dc8b765abf20cfe09e0f98e0",
