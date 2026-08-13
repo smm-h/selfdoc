@@ -77,6 +77,9 @@ a {
     --admonition-warning: #c4841d;
     --admonition-caution: #cd3d64;
     --shadow-sm: rgba(0, 0, 0, 0.04);
+    /* The edge shadow a horizontally scrollable block paints where
+       content is hidden behind that edge. */
+    --scroll-shadow: rgba(10, 37, 64, 0.16);
     --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04);
     --radius: 6px;
     --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -111,6 +114,7 @@ a {
         --admonition-warning: #f5a623;
         --admonition-caution: #e25c73;
         --shadow-sm: rgba(0, 0, 0, 0.2);
+        --scroll-shadow: rgba(0, 0, 0, 0.45);
         --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.2);
         --mark-bg: rgba(155, 147, 255, 0.18);
     }
@@ -140,6 +144,7 @@ a {
     --admonition-warning: #f5a623;
     --admonition-caution: #e25c73;
     --shadow-sm: rgba(0, 0, 0, 0.2);
+    --scroll-shadow: rgba(0, 0, 0, 0.45);
     --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.2);
     --mark-bg: rgba(155, 147, 255, 0.18);
 }
@@ -2095,22 +2100,50 @@ hr {
     background: linear-gradient(to right, rgba(0,0,0,0.15), transparent);
 }
 
-/* === Scroll affordance gradient === */
+/* === Scroll affordance shadows === */
 
+/* A block wider than its wrapper clips mid-word at the edge, and a fade
+   toward the page background is, at rest, the page background: it said
+   nothing.  ``scroll-affordance.js`` owns the state -- ``has-overflow``
+   while there is anything to scroll to, ``scrolled-start`` and
+   ``scrolled-end`` while the scrollport sits at that edge -- and a shadow
+   is painted at an edge exactly while content is hidden behind it. */
+
+.tm-code.has-overflow::before,
 .tm-code.has-overflow::after,
+.table-wrap.has-overflow::before,
 .table-wrap.has-overflow::after {
     content: "";
     position: absolute;
     top: 0;
-    right: 0;
     bottom: 0;
-    width: 40px;
-    background: linear-gradient(to right, transparent, var(--bg));
+    width: 28px;
     pointer-events: none;
+    z-index: 3;
+    opacity: 1;
     transition: opacity 0.2s ease;
-    border-radius: 0 var(--radius, 6px) var(--radius, 6px) 0;
+    /* ``.table-wrap`` is itself the scrollport, and an absolutely
+       positioned child of a scroll container scrolls with the content --
+       an edge shadow left to itself slides off the side it marks.  The JS
+       publishes the offset on that one element; ``.tm-code`` scrolls its
+       inner ``<pre>`` and keeps the fallback. */
+    transform: translateX(var(--scroll-x, 0px));
 }
 
+.tm-code.has-overflow::before,
+.table-wrap.has-overflow::before {
+    left: 0;
+    background: linear-gradient(to right, var(--scroll-shadow), transparent);
+}
+
+.tm-code.has-overflow::after,
+.table-wrap.has-overflow::after {
+    right: 0;
+    background: linear-gradient(to left, var(--scroll-shadow), transparent);
+}
+
+.tm-code.scrolled-start::before,
+.table-wrap.scrolled-start::before,
 .tm-code.scrolled-end::after,
 .table-wrap.scrolled-end::after {
     opacity: 0;

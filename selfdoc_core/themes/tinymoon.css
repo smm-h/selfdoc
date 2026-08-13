@@ -1095,22 +1095,71 @@ pre:focus-within .run-btn {
     pointer-events: none;
 }
 
-/* === Scroll affordance gradient === */
+/* === Scroll affordance shadows === */
 
+/* A table wider than its wrapper clips mid-word at the edge, and a fade
+   toward the page background is, at rest, the page background: nothing on
+   screen said there was more table to the right, and nothing ever said
+   there was more to the left once the reader had scrolled.
+   ``scroll-affordance.js`` owns the state -- ``has-overflow`` while there
+   is anything to scroll to, ``scrolled-start`` and ``scrolled-end`` while
+   the scrollport sits at that edge -- and a shadow is painted at an edge
+   exactly while content is hidden behind it. */
+
+/* Derived from the text token rather than stated per mode, so light, dark
+   and high-contrast all resolve it through the framework.  It is declared
+   on the scrolling blocks themselves, not in the bridge: the bridge is
+   selfdoc's variable names pointed at framework tokens, and this is a
+   value of selfdoc's own. */
+.tm-code.has-overflow,
+.table-wrap.has-overflow {
+    --scroll-shadow: color-mix(in srgb, var(--text) 22%, transparent);
+}
+
+.tm-code.has-overflow::before,
 .tm-code.has-overflow::after,
+.table-wrap.has-overflow::before,
 .table-wrap.has-overflow::after {
     content: "";
     position: absolute;
     top: 0;
-    right: 0;
     bottom: 0;
-    width: 40px;
-    background: linear-gradient(to right, transparent, var(--bg));
+    width: 28px;
     pointer-events: none;
+    z-index: 3;
+    opacity: 1;
     transition: opacity var(--dur-slow) ease;
     border-radius: 0;
 }
 
+/* ``.table-wrap`` is itself the scrollport, and an absolutely positioned
+   child of a scroll container scrolls with the content -- an edge shadow
+   left to itself slides off the side it is meant to mark.  The JS writes
+   the scroll offset to ``--scroll-x`` on that one element, and the
+   translate holds both edges against the visible box.  ``.tm-code`` is not
+   its own scrollport (the ``<pre>`` inside it is), so it never carries the
+   variable and the fallback keeps its shadows still. */
+.tm-code.has-overflow::before,
+.tm-code.has-overflow::after,
+.table-wrap.has-overflow::before,
+.table-wrap.has-overflow::after {
+    transform: translateX(var(--scroll-x, 0px));
+}
+
+.tm-code.has-overflow::before,
+.table-wrap.has-overflow::before {
+    left: 0;
+    background: linear-gradient(to right, var(--scroll-shadow), transparent);
+}
+
+.tm-code.has-overflow::after,
+.table-wrap.has-overflow::after {
+    right: 0;
+    background: linear-gradient(to left, var(--scroll-shadow), transparent);
+}
+
+.tm-code.scrolled-start::before,
+.table-wrap.scrolled-start::before,
 .tm-code.scrolled-end::after,
 .table-wrap.scrolled-end::after {
     opacity: 0;
