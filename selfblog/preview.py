@@ -198,7 +198,11 @@ def built_under_theme(source_dir: str, theme: str) -> bool:
     not the same claim as grafting something styled correctly, and the
     graft will fail on its own terms a moment later anyway.
     """
-    path = os.path.join(source_dir, "docs", "_build", "style.css")
+    from selfdoc_core.themes import theme_css_rel
+
+    path = os.path.join(
+        source_dir, "docs", "_build", *theme_css_rel(theme).split("/"),
+    )
     if not os.path.isfile(path):
         return False
     with open(path, encoding="utf-8") as handle:

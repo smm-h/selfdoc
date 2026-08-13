@@ -35,7 +35,7 @@ from selfdoc_core.html import (
     generate_pygments_css,
     get_css,
 )
-from selfdoc_core.themes import get_theme_meta, list_themes
+from selfdoc_core.themes import get_theme_meta, list_themes, theme_assets
 from selfdoc_core.urls import SimpleURLBuilder
 
 from selfdoc_core import effects
@@ -759,7 +759,8 @@ def _build_unified_body(
         '<html lang="en">'
         '<head><meta charset="utf-8">'
         f'<title>Projects - {common_latest_build["project_name"]}</title>'
-        f'<link rel="stylesheet" href="{landing_addr.to_site_root}style.css">'
+        f'<link rel="stylesheet"'
+        f' href="{landing_addr.to_site_root}{theme_meta["css_rel"]}">'
         '</head>'
         '<body>'
         f'<h1>Projects</h1>'
@@ -773,7 +774,8 @@ def _build_unified_body(
 
     # --- Shared assets: CSS ---
     lb = common_latest_build
-    css_path = os.path.join(output_dir, "style.css")
+    css_path = os.path.join(output_dir, *theme_meta["css_rel"].split("/"))
+    effects.makedirs(os.path.dirname(css_path), exist_ok=True)
     theme_css = raw_theme_css
     pygments_css = generate_pygments_css(
         light_style=theme_meta.get("pygments_light", "default"),
@@ -789,6 +791,13 @@ def _build_unified_body(
     with effects.open_write(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
+
+    # A framework theme's fonts travel with its stylesheet.
+    for src, asset_rel in theme_assets(theme_meta["name"]):
+        dst = os.path.join(output_dir, *asset_rel.split("/"))
+        effects.makedirs(os.path.dirname(dst), exist_ok=True)
+        effects.copy_file(src, dst)
+        written[dst] = True
 
     # --- Custom CSS ---
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")

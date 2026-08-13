@@ -59,7 +59,7 @@ from selfdoc_core import effects
 from selfdoc_core.build import _minify_css
 from selfdoc_core.html import generate_pygments_css, get_css
 from selfdoc_core.manifest import DEFAULT_THEME as _MANIFEST_DEFAULT_THEME
-from selfdoc_core.themes import get_theme_meta
+from selfdoc_core.themes import get_theme_meta, theme_assets, theme_css_rel
 from selfdoc_core.utils import atomic_write
 
 __all__ = [
@@ -233,17 +233,39 @@ def chrome_css(theme: str) -> str:
 
 
 def chrome_asset_rel(theme: str, css: str) -> str:
-    """The site-relative path the asset for *theme* with content *css* takes."""
+    """The site-relative path the asset for *theme* with content *css* takes.
+
+    A plain theme is one file.  A framework theme is a *directory* --
+    ``_chrome/<theme>-<digest>/css/style.css`` with ``fonts/`` beside the
+    ``css/``, because the framework's ``@font-face`` rules are addressed
+    relative to the sheet rather than to the site.  The digest covers
+    the composed stylesheet, which is the framework's own bytes plus
+    selfdoc's overlay, so a framework upgrade renames the whole directory
+    and every file under it is cache-pinned by that one name.
+    """
     digest = hashlib.sha256(css.encode("utf-8")).hexdigest()[:_HASH_LENGTH]
+    if theme_assets(theme):
+        return f"{CHROME_DIR}/{theme}-{digest}/{theme_css_rel(theme)}"
     return f"{CHROME_DIR}/{theme}-{digest}.css"
+
+
+def _chrome_entry(rel: str) -> str:
+    """The name directly under :data:`CHROME_DIR` that *rel* belongs to.
+
+    A plain theme's asset is that name itself; a framework theme's is the
+    directory every one of its files sits under.  The prune below deletes
+    by entry, so one name covers a whole framework payload.
+    """
+    return rel.split("/")[1]
 
 
 def write_chrome_assets(site_dir: str, themes) -> dict[str, str]:
     """Write one asset per theme in *themes*; return ``theme -> site path``.
 
-    Any other file under :data:`CHROME_DIR` is deleted: an asset whose
+    Any other entry under :data:`CHROME_DIR` is deleted: an asset whose
     content changed took a new name, and the old name is a file no page
-    references and every deploy would otherwise carry forever.
+    references and every deploy would otherwise carry forever.  A framework
+    theme's payload is a directory, and is pruned whole for the same reason.
     """
     wanted: dict[str, str] = {}
     for theme in sorted(set(themes)):
@@ -253,17 +275,25 @@ def write_chrome_assets(site_dir: str, themes) -> dict[str, str]:
         path = os.path.join(site_dir, *rel.split("/"))
         effects.makedirs(os.path.dirname(path), exist_ok=True)
         atomic_write(path, css)
+        # The framework's fonts and modules travel with its stylesheet, in
+        # the layout the sheet addresses them by.
+        payload_root = os.path.dirname(os.path.dirname(path))
+        for src, asset_rel in theme_assets(theme):
+            dst = os.path.join(payload_root, *asset_rel.split("/"))
+            effects.makedirs(os.path.dirname(dst), exist_ok=True)
+            effects.copy_file(src, dst)
 
-    keep = set(wanted.values())
+    keep = {_chrome_entry(rel) for rel in wanted.values()}
     chrome_dir = os.path.join(site_dir, CHROME_DIR)
     if os.path.isdir(chrome_dir):
         for name in sorted(os.listdir(chrome_dir)):
-            rel = f"{CHROME_DIR}/{name}"
-            if rel in keep:
+            if name in keep:
                 continue
             path = os.path.join(chrome_dir, name)
             if os.path.isfile(path):
                 effects.remove(path)
+            elif os.path.isdir(path):
+                effects.rmtree(path)
     return wanted
 
 
