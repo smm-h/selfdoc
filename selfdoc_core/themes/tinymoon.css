@@ -1100,16 +1100,17 @@ cite {
     top: -100%;
     left: 0;
     padding: 0.5rem 1rem;
-    background: var(--link);
-    color: var(--topbar-text);
+    background: var(--accent);
+    color: var(--on-accent);
     z-index: 1002;
     text-decoration: none;
+    font-weight: 500;
     font-size: 0.875rem;
 }
 
 .skip-link:focus {
     top: 0;
-    color: var(--topbar-text);
+    color: var(--on-accent);
 }
 
 /* === Hero section (landing page) === */
@@ -2428,11 +2429,13 @@ hr {
     width: 2rem;
     height: 2rem;
     border-radius: 0;
-    background: var(--link);
-    color: var(--topbar-text);
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 0 10px var(--accent-a18);
     text-align: center;
     line-height: 2rem;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-weight: 400;
     font-size: 0.875rem;
 }
 
@@ -2445,7 +2448,7 @@ hr {
 .tab-bar {
     display: flex;
     gap: 0;
-    border-bottom: 2px solid var(--border);
+    border-bottom: 2px solid var(--border-2);
     margin-bottom: 0;
 }
 
@@ -2453,10 +2456,11 @@ hr {
     padding: 0.5rem 1rem;
     border: none;
     background: none;
-    color: var(--text-secondary);
-    font-family: var(--font-body);
-    font-size: 0.8125rem;
-    font-weight: 500;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    font-weight: 400;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
@@ -2469,8 +2473,9 @@ hr {
 }
 
 .tab-bar .tab.active {
-    color: var(--link);
-    border-bottom-color: var(--link);
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    box-shadow: 0 2px 8px -2px var(--accent-glow);
 }
 
 .tab-panel {
@@ -2555,10 +2560,11 @@ hr {
     width: 1.25em;
     height: 1.25em;
     border-radius: 0;
-    background: var(--link);
-    color: var(--topbar-text);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-family: var(--font-mono);
     font-size: 0.75em;
-    font-weight: 700;
+    font-weight: 400;
     cursor: pointer;
     position: relative;
     vertical-align: middle;
@@ -2638,8 +2644,8 @@ article details:not(.mobile-toc) > summary::before {
 }
 
 article details:not(.mobile-toc) > summary:hover {
-    color: var(--link);
-    background: var(--sidebar-hover-bg);
+    color: var(--text);
+    background: var(--surface-2);
     border-radius: 0;
 }
 
@@ -2752,12 +2758,14 @@ dfn {
     position: absolute;
     left: 0;
     top: -1.75rem;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
-    color: var(--link);
-    background: var(--bg);
+    color: var(--text);
+    background: var(--surface);
     padding: 0.125rem 0.5rem;
     border-radius: 0;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-2);
+    box-shadow: 0 0 12px var(--accent-a18);
     white-space: nowrap;
     animation: toast-fade 2s ease forwards;
     pointer-events: none;
