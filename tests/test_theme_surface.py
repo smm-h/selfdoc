@@ -68,8 +68,14 @@ DELIBERATE_OMISSIONS: dict[str, dict[str, str]] = {
 #: The sources that decide what a page carries: the emitters and the
 #: scripts they ship.  A class no file here names cannot appear on any
 #: page, whatever a stylesheet says about it.
+#:
+#: ``selfblog`` is an emitter too.  The curated project cards and the
+#: generated ``/projects/`` page are its markup, painted by the same three
+#: themes, and reading only ``selfdoc_core`` reported every class those
+#: cards carry as unreachable.
 _EMITTER_SOURCES = (
     Path(__file__).resolve().parent.parent / "selfdoc_core",
+    Path(__file__).resolve().parent.parent / "selfblog",
 )
 
 #: Classes put on an element by the framework rather than by selfdoc --

@@ -496,6 +496,76 @@ pre:focus-within .run-btn {
     margin-bottom: 0;
 }
 
+/* === Curated project cards === */
+
+/* The listing is stated in the framework's own card vocabulary --
+   ``.card-grid`` for the grid, ``.card`` for the box, ``.card-title-row``
+   and ``.card-badges`` for the head -- so the border, the hover edge and
+   the version chip all come from widgets.css rather than from a
+   restatement here.  What is left is what a project card has and a
+   dashboard tile does not: a title that is a link and wraps, a blurb of
+   prose, and a repository line held at the bottom edge.
+
+   ``.card-grid`` fixes its row height at 232px so a wall of tiles is
+   uniform.  A card whose height is the length of its blurb cannot honour
+   that without truncating the blurb, so the project grid sizes its rows
+   from their content. */
+
+.project-grid {
+    grid-auto-rows: auto;
+}
+
+.project-list .project-category + .project-category {
+    margin-top: 2.5rem;
+}
+
+.project-card .card-title {
+    margin: 0;
+    white-space: normal;
+    overflow: visible;
+    font-size: var(--text-base);
+}
+
+.project-card .card-title a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+.project-card .card-title a:hover {
+    text-decoration: underline;
+}
+
+.project-card .project-blurb {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    line-height: var(--leading-normal);
+}
+
+/* ``margin-top: auto`` inside the card's flex column pins the repository
+   line to the bottom edge, so a row of cards of different heights still
+   agrees on where the link is. */
+.project-card .project-repo {
+    margin-top: auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-2);
+    padding-bottom: 0.125rem;
+}
+
+.project-card .project-repo:hover {
+    color: var(--accent-hi);
+    border-bottom-color: var(--accent-hi);
+}
+
 /* === Site footer === */
 
 .site-footer {

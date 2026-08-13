@@ -323,6 +323,14 @@ def render_listing_html(listing: Listing, manifests, site_hop: str, *,
     through it.  A card for an *external* project keeps the absolute URL
     the listing declares: that one really does name somebody else's
     server.
+
+    The cards are stated in the framework's own card vocabulary --
+    ``.card-grid`` for the responsive grid, ``.card`` for the box,
+    ``.card-title-row``/``.card-title`` for the head, ``.card-badges`` and
+    ``.badge`` for the version chip -- with ``.project-*`` hooks riding
+    alongside for the rules only a project card needs.  A private class
+    surface no theme knew about is what made these render as full-width
+    unstyled boxes.
     """
     check_listing_against(listing, manifests, home_slug=home_slug)
     by_slug = {str(m.get("slug") or ""): m for m in manifests}
@@ -333,6 +341,7 @@ def render_listing_html(listing: Listing, manifests, site_hop: str, *,
     for category in listing.categories:
         parts.append('  <section class="project-category">')
         parts.append(f"    <h2>{html.escape(category.name)}</h2>")
+        parts.append('    <div class="card-grid project-grid">')
         for project in category.projects:
             if project.external:
                 name = project.name
@@ -343,26 +352,47 @@ def render_listing_html(listing: Listing, manifests, site_hop: str, *,
                 name = str(manifest.get("name") or project.slug)
                 href = f"{site_hop}{project.slug}/"
                 version = str(manifest.get("version") or "")
-            parts.append('    <article class="project-card">')
+            parts.append('      <article class="card project-card">')
+            parts.append('        <div class="card-title-row">')
             parts.append(
-                f'      <h3><a href="{html.escape(href)}">'
+                f'          <h3 class="card-title">'
+                f'<a href="{html.escape(href)}">'
                 f"{html.escape(name)}</a></h3>"
             )
+            parts.append("        </div>")
+            badges = []
             if version:
                 label = "monorepo" if version == "0.0.0" else f"v{version}"
-                parts.append(
-                    f'      <span class="version-badge">'
+                badges.append(
+                    f'<span class="badge badge-neutral version-badge">'
                     f"{html.escape(label)}</span>"
                 )
             if project.external:
-                parts.append('      <span class="external-badge">external</span>')
-            parts.append(f"      <p>{html.escape(project.blurb)}</p>")
-            if project.repo:
-                parts.append(
-                    f'      <a class="project-repo" '
-                    f'href="{html.escape(project.repo)}">Repository</a>'
+                badges.append(
+                    '<span class="badge badge-neutral external-badge">'
+                    "external</span>"
                 )
-            parts.append("    </article>")
+            if badges:
+                parts.append(
+                    '        <div class="card-badges">'
+                    + "".join(badges)
+                    + "</div>"
+                )
+            parts.append(
+                f'        <p class="project-blurb">'
+                f"{html.escape(project.blurb)}</p>"
+            )
+            if project.repo:
+                # The arrow is what makes the line read as a link rather than
+                # as a label; it is decorative, so it is hidden from the
+                # accessibility tree and the link's name stays "Repository".
+                parts.append(
+                    f'        <a class="project-repo" '
+                    f'href="{html.escape(project.repo)}">Repository'
+                    f'<span aria-hidden="true">&#8599;</span></a>'
+                )
+            parts.append("      </article>")
+        parts.append("    </div>")
         parts.append("  </section>")
     parts.append("</section>")
     return "\n".join(parts)
