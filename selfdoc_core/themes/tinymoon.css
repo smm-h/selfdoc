@@ -511,7 +511,11 @@ pre:focus-within .run-btn {
    that without truncating the blurb, so the project grid sizes its rows
    from their content. */
 
+/* The 320px minimum track ``.card-grid`` declares is for a dashboard of
+   tiles across a full-width app; a docs column is narrower, and it left
+   two columns of very wide cards where three read better. */
 .project-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
     grid-auto-rows: auto;
 }
 
