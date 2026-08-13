@@ -118,43 +118,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-/* === Scroll offset for fixed topbar + accent strip === */
+/* === Scroll offset ===
+
+   The topbar is inside the scroller's sibling column now, not over it, so
+   an anchor needs no topbar-sized offset -- only breathing room. */
 
 [id] {
-    scroll-margin-top: 63px;
-}
-
-/* === Body === */
-
-/* tinymoon's base.css hands the whole viewport to its own application
-   shell: `html, body { height: 100% }`, `body { overflow: hidden }`
-   because the scrolling element is `#tm-content`, and
-   `body { user-select: none }` because the selectable carve-out is
-   `.doc-body`.  A selfdoc page has neither element yet -- the document
-   itself scrolls and the prose is not inside a `.doc-body` -- so a page
-   under those globals is unscrollable below the fold and its text cannot
-   be selected.  All three are handed back here, and all three lines go
-   when the emitters produce the framework's shell and prose root. */
-body {
-    font-family: var(--font-body);
-    font-size: 16px;
-    line-height: 1.6;
-    color: var(--text);
-    background: var(--bg);
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-    user-select: text;
-    -webkit-font-smoothing: antialiased;
-}
-
-html {
-    height: auto;
-}
-
-::selection {
-    background: var(--accent-soft);
-    color: var(--text);
+    scroll-margin-top: 1rem;
 }
 
 /* === Accent strip (Feature 47) === */
@@ -175,53 +145,11 @@ body::before {
     z-index: 1001;
 }
 
-/* === Grain overlay === */
-
-/* Ported from tinymoon as-is.  It is fixed, pointer-events: none and
-   sits below the search dialog, so it never intercepts a click and
-   never sits over the one surface a reader types into.  Opacity drops
-   to 0.025 in light and to 0 under prefers-contrast: more, and it is
-   suppressed for print. */
-body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 400;
-    pointer-events: none;
-    opacity: var(--grain-opacity);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-}
-
-/* === Scrollbars === */
-
-* {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-2) transparent;
-}
-
-*::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-*::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-    background: var(--scroll-thumb);
-    border: 2px solid var(--bg);
-}
-
-*::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
-}
-
 /* === Reading progress bar === */
 
 .reading-progress {
     position: fixed;
-    top: 51px;
+    top: 3px;
     left: 0;
     width: 0%;
     height: 2px;
@@ -232,396 +160,28 @@ body::after {
     pointer-events: none;
 }
 
-/* === Top bar === */
+/* === What the framework's docs layout has no shape for === */
 
-.topbar {
-    position: fixed;
-    top: 3px;
-    left: 0;
-    right: 0;
-    height: 48px;
-    background: var(--topbar-bg);
-    color: var(--topbar-text);
-    z-index: 200;
-    border-bottom: 1px solid var(--border);
-}
-
-.topbar-inner {
-    max-width: 1440px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.project-name {
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    color: var(--topbar-text);
-    text-decoration: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1;
-    min-width: 0;
-}
-
-.project-name:hover {
-    color: var(--topbar-text);
-    opacity: 0.85;
-}
-
-/* Mono-for-data: a version string is data, so it is set in the mono
-   face at 400 (the only mono weight the theme ships) with the wide
-   tracking tinymoon gives small uppercase metadata. */
-.version-badge {
-    display: inline-block;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 400;
-    letter-spacing: 0.06em;
-    background: var(--badge-bg);
-    color: var(--badge-text);
-    padding: 0.2em 0.5em;
-    border-radius: 0;
-    line-height: 1.4;
-}
-
-.topbar-sep {
-    color: var(--topbar-text);
-    opacity: 0.4;
-    margin: 0 0.25rem;
-}
-
-.topbar-page-title {
-    color: var(--topbar-text);
-    opacity: 0.7;
-    font-size: 0.875rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 200px;
-}
-
-/* The version and locale pickers are the framework's combobox shape now,
-   and .sel / .sel-btn / .sel-menu / .sel-opt are all dressed by
-   primitives.css.  Only the width restraint is selfdoc's: a topbar picker
-   sits beside a page title rather than in a form column, so it takes the
-   width of its own label instead of the primitive's 160px floor. */
-.sel.version-picker, .sel.locale-picker {
-    min-width: 0;
-}
-.sel.version-picker .sel-btn, .sel.locale-picker .sel-btn {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.35rem;
-    min-width: 0;
-}
-
-/* === Layout (three-column with responsive collapse) === */
-
-.layout {
-    display: grid;
-    grid-template-columns: 240px minmax(0, 1fr) 200px;
-    padding-top: 51px;
-    min-height: 100vh;
-}
-
-/* Narrow layout for post-type pages: two-column (sidebar + content), no TOC */
-.layout.layout--narrow {
-    grid-template-columns: 240px minmax(0, 1fr);
-}
-
-.layout.layout--narrow .content {
+/* A post reads top to bottom, so its column is narrower and centred --
+   there is no table of contents beside it to balance against. */
+.docs-layout--narrow .docs-main {
     max-width: 48rem;
     margin: 0 auto;
 }
 
-/* === Sidebar === */
-
-.sidebar {
-    position: fixed;
-    top: 51px;
-    left: 0;
-    width: 240px;
-    height: calc(100vh - 51px);
-    overflow-y: auto;
-    background: var(--sidebar-bg);
-    border-right: 1px solid var(--border);
-    padding: 1.25rem 0.75rem;
-    z-index: 100;
+/* A sidebar entry inside a group is indented under its disclosure. */
+.nav-item-nested {
+    padding-inline-start: 2.25rem;
 }
 
-.nav-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
+/* === Empty paragraphs around a directive's block element === */
 
-.nav-list li {
-    margin-bottom: 2px;
-}
-
-.nav-list a {
-    display: block;
-    position: relative;
-    padding: 0.5rem 1rem;
-    min-height: 44px;
-    line-height: 28px;
-    color: var(--sidebar-text);
-    text-decoration: none;
-    border: 1px solid transparent;
-    border-radius: 0;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: background var(--dur-base) ease, color var(--dur-base) ease, border-color var(--dur-base) ease;
-}
-
-.nav-list a:hover {
-    background: var(--surface-2);
-    color: var(--text);
-    text-decoration: none;
-}
-
-/* The active row is tinymoon's nav-item.active: a soft accent fill, an
-   accent hairline, and the glowing marker bar on the leading edge. */
-.nav-list a.active {
-    color: var(--text);
-    font-weight: 600;
-    background: var(--accent-soft);
-    border-color: var(--accent-a35);
-}
-
-.nav-list a.active::before {
-    content: "";
-    position: absolute;
-    left: -0.75rem;
-    top: 6px;
-    bottom: 6px;
-    width: 2px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-}
-
-/* === Nav groups (collapsible sidebar sections) === */
-
-.nav-group {
-    margin: 0;
-}
-
-.nav-group details {
-    margin: 0;
-}
-
-/* A group label is a section marker, not prose: mono, uppercase, wide
-   tracking -- the treatment tinymoon gives every small label. */
-.nav-group-title {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem 1rem 0.375rem;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-faint);
-    cursor: pointer;
-    user-select: none;
-    list-style: none;
-    transition: color var(--dur-base) ease;
-}
-
-.nav-group-title:hover {
-    color: var(--text);
-}
-
-.nav-group-title::-webkit-details-marker {
-    display: none;
-}
-
-.nav-group-title::before {
-    content: "";
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3l5 5-5 5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    -webkit-mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3l5 5-5 5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    background-color: currentColor;
-    margin-right: 0.625rem;
-    transition: transform var(--dur-base) ease;
-}
-
-.nav-group details[open] > .nav-group-title::before {
-    transform: rotate(90deg);
-}
-
-.nav-group-items {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.nav-group-items a {
-    padding-left: 2rem;
-}
-
-/* === Content area === */
-
-.content {
-    grid-column: 2;
-    max-width: 800px;
-    padding: 2.5rem 3rem;
-    min-width: 0;
-}
-
-/* === Right-side TOC (Feature 2) === */
-
-.toc {
-    grid-column: 3;
-    position: sticky;
-    top: 63px;
-    align-self: start;
-    max-height: calc(100vh - 80px);
-    overflow-y: auto;
-    padding: 1rem 1.5rem 1rem 0.75rem;
-    font-size: 0.8125rem;
-    border-left: 1px solid var(--border);
-}
-
-.toc-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.toc-item {
-    margin-bottom: 2px;
-}
-
-.toc-item a {
-    display: block;
-    padding: 0.25rem 0.5rem;
-    min-height: 44px;
-    line-height: 36px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    border-left: 2px solid transparent;
-    border-radius: 0;
-    transition: color var(--dur-base) ease, background var(--dur-base) ease, border-color var(--dur-base) ease;
-}
-
-.toc-item a:hover {
-    color: var(--text);
-    background: var(--surface-2);
-    text-decoration: none;
-}
-
-/* The marker is the accent edge itself.  A blurred shadow on a
-   full-width row bleeds around all four sides however it is offset, and
-   the result reads as a box drawn around the item rather than an edge
-   lit along it. */
-.toc-item a.active {
-    color: var(--text);
-    font-weight: 600;
-    border-left-color: var(--accent);
-    background: var(--accent-soft);
-}
-
-.toc-h3 {
-    padding-left: 0.75rem;
-}
-
-/* === Typography === */
-
-/* The display face carries every heading -- that is the third of the
-   three-font system, and the one a reader notices first. */
-h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    color: var(--heading);
-    line-height: 1.25;
-    letter-spacing: -0.01em;
-}
-
-h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin: 0 0 1rem;
-}
-
-h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 2.5rem 0 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-}
-
-/* First h2 after h1 should not have the border-top */
-h1 + h2 {
-    border-top: none;
-    padding-top: 0;
-    margin-top: 1.5rem;
-}
-
-h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 2rem 0 0.75rem;
-}
-
-h4 {
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin: 1.5rem 0 0.5rem;
-}
-
-h5 {
-    font-size: 1rem;
-    font-weight: 500;
-    margin: 1.5rem 0 0.5rem;
-}
-
-/* h6 is tinymoon's label heading: uppercase, tracked out, smallest. */
-h6 {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-secondary);
-    margin: 1.5rem 0 0.5rem;
-}
-
-p {
-    margin-bottom: 1rem;
-}
-
-/* A content directive emits a block element inside a paragraph, and the
-   HTML parser hoists the block out, leaving an empty paragraph on each
-   side of it.  Those carry the margin above and take up space nothing
-   occupies. */
+/* `<p><div class="callout">...</div></p>` parses as an empty paragraph, the
+   div, and another empty paragraph.  Both carry the prose margin and space
+   out content that is not there.  The framework has no such markup and so
+   no rule for it. */
 p:empty {
     display: none;
-}
-
-/* === Links === */
-
-a {
-    color: var(--link);
-    text-decoration: none;
-    transition: color var(--dur-base) ease;
-}
-
-a:hover {
-    color: var(--link-hover);
-    text-decoration: underline;
 }
 
 /* === Heading anchor links === */
@@ -674,68 +234,39 @@ h6:hover .heading-link {
     :target { animation: none; }
 }
 
-/* === Code === */
-
-code {
-    font-family: var(--font-mono);
-    font-size: 0.875em;
-}
-
-/* Inline code styling distinct from code blocks (Feature 29) */
-:not(pre) > code {
-    background: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 0;
-    font-size: 0.875em;
-    border: 1px solid var(--code-border);
-}
-
-pre {
-    font-family: var(--font-mono);
-    background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 0;
-    padding: 1rem;
-    overflow-x: auto;
-    white-space: pre;
-    margin-bottom: 1rem;
-    line-height: 1.5;
-}
-
-pre code {
-    font-size: 0.875rem;
-    white-space: pre;
-}
-
 /* === Copy button on code blocks (Feature 5) === */
 
+/* The framework reserves the slot (.tm-code-actions in the label bar) and
+   does no copying; the button is the consumer's, so its resting state is
+   stated here.  It is in the flow of the bar rather than floated over the
+   code, which is where the bar exists to put it. */
+
 .copy-btn {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    padding: 0.25rem 0.375rem;
-    font-size: 0.6875rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem 0.25rem;
     border: none;
-    border-radius: 0;
     background: none;
-    color: var(--text-secondary);
+    color: var(--text-faint);
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity var(--dur-base) ease, color var(--dur-base) ease;
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
 }
 
-.code-block:hover .copy-btn,
-pre:hover .copy-btn,
-pre:focus-within .copy-btn {
-    opacity: 0.4;
+.copy-btn svg {
+    width: 14px;
+    height: 14px;
 }
 
-.copy-btn:hover {
+.tm-code:hover .copy-btn {
     opacity: 1;
+}
+
+.copy-btn:hover,
+.copy-btn.copied {
     color: var(--text);
+    opacity: 1;
 }
 
 /* === Run button on code blocks (Feature 41) === */
@@ -759,7 +290,7 @@ pre:focus-within .copy-btn {
     text-decoration: none;
 }
 
-.code-block:hover .run-btn,
+.tm-code:hover .run-btn,
 pre:hover .run-btn,
 pre:focus-within .run-btn {
     opacity: 0.4;
@@ -778,123 +309,6 @@ pre:focus-within .run-btn {
         min-width: 44px;
         min-height: 44px;
     }
-}
-
-/* === Lists === */
-
-ul, ol {
-    margin-bottom: 1rem;
-    padding-left: 1.5rem;
-}
-
-li {
-    margin-bottom: 0.25rem;
-}
-
-li > ul,
-li > ol {
-    margin-bottom: 0;
-}
-
-/* === Bold / italic === */
-
-strong {
-    font-weight: 600;
-}
-
-em {
-    font-style: italic;
-}
-
-/* === Inline semantic elements === */
-
-mark {
-    background: var(--mark-bg);
-    color: var(--text);
-    padding: 0.125em 0.25em;
-    border-radius: 0;
-}
-
-kbd {
-    background: var(--surface-2);
-    border: 1px solid var(--border-2);
-    border-radius: 0;
-    padding: 0.125em 0.375em;
-    font-family: var(--font-mono);
-    font-size: 0.8125em;
-    color: var(--text);
-}
-
-abbr[title] {
-    text-decoration: underline dotted var(--text-secondary);
-    cursor: help;
-}
-
-del {
-    color: var(--text-secondary);
-    text-decoration: line-through;
-    text-decoration-color: var(--text-secondary);
-}
-
-ins {
-    text-decoration: underline;
-    text-decoration-color: var(--link);
-}
-
-small {
-    font-size: 0.875em;
-    color: var(--text-secondary);
-}
-
-figure {
-    margin: 1.5rem 0;
-}
-
-figcaption {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--text-faint);
-    margin-top: 0.5rem;
-    text-align: center;
-}
-
-var {
-    font-style: italic;
-    color: var(--text);
-}
-
-samp {
-    font-family: var(--font-mono);
-    font-size: 0.875em;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    padding: 2px 6px;
-    border-radius: 0;
-}
-
-cite {
-    font-style: italic;
-    color: var(--text-secondary);
-}
-
-/* === Skip-to-content link (Feature 10) === */
-
-.skip-link {
-    position: absolute;
-    top: -100%;
-    left: 0;
-    padding: 0.5rem 1rem;
-    background: var(--accent);
-    color: var(--on-accent);
-    z-index: 1002;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.875rem;
-}
-
-.skip-link:focus {
-    top: 0;
-    color: var(--on-accent);
 }
 
 /* === Hero section (landing page) === */
@@ -1047,245 +461,6 @@ cite {
    is nothing to restate here. */
 
 
-/* === Tables (Feature 38) === */
-
-/* Mono-for-data: a table is data, so the whole table is set in the mono
-   face.  tinymoon's table treatment is a heavier hairline under the head
-   row and a light one under each body row -- no fills, no zebra. */
-table {
-    width: auto;
-    max-width: 100%;
-    border-collapse: collapse;
-    margin: 1.5rem 0;
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    line-height: 1.5;
-}
-
-/* The scrollport is .table-wrap (overflow-x: auto), not the viewport, so
-   the header sticks to the top of the wrapper.  A topbar-sized offset here
-   pushed the header down over the first body rows. */
-thead {
-    position: sticky;
-    top: 0;
-    background: var(--bg);
-}
-
-th {
-    text-align: left;
-    font-weight: 400;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text);
-    background: var(--bg);
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--border-2);
-}
-
-td {
-    padding: 0.4rem 0.75rem;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border);
-}
-
-/* A flag name, a type, an identifier: one token that means one thing, and
-   breaking it across lines makes it read as two.  The wrapper scrolls, so
-   refusing the break costs nothing but a scrollbar on a wide table. */
-th code,
-td code {
-    white-space: nowrap;
-}
-
-/* No zebra: the design reads rows off the hairlines, and a fill under
-   every other row is the noise it was drawn to avoid. */
-tr:nth-child(even) td {
-    background: transparent;
-}
-
-tr:hover td {
-    background: var(--surface-2);
-    color: var(--text);
-}
-
-/* === Sort indicators for sortable tables === */
-
-article th {
-    cursor: pointer;
-    user-select: none;
-    transition: color var(--dur-base) ease;
-}
-
-article th:hover {
-    color: var(--accent-hi);
-}
-
-article th.sort-asc::after {
-    content: " \25B2";
-    font-size: 0.7em;
-    opacity: 0.5;
-}
-
-article th.sort-desc::after {
-    content: " \25BC";
-    font-size: 0.7em;
-    opacity: 0.5;
-}
-
-/* === Blockquotes === */
-
-blockquote {
-    border-left: 2px solid var(--accent);
-    background: var(--surface);
-    padding: 0.75rem 1.25rem;
-    margin: 0 0 1rem 0;
-    color: var(--text-secondary);
-}
-
-blockquote p {
-    margin-bottom: 0.5rem;
-}
-
-blockquote p:last-child {
-    margin-bottom: 0;
-}
-
-/* === Admonition / callout blocks (Feature 7) === */
-
-/* Every callout is the same shape: a full hairline in the status color
-   at low alpha, a solid 2px marker on the leading edge, and a tint mixed
-   from the same colour.  The tint is derived with color-mix from the
-   --admonition-* token, so it follows the light/dark reassignment
-   automatically instead of being restated per mode. */
-.admonition {
-    border: 1px solid var(--border);
-    border-left: 2px solid var(--border-2);
-    border-radius: 0;
-    padding: 0.75rem 1rem;
-    margin: 0 0 1rem 0;
-    background: var(--surface);
-}
-
-.admonition-title {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-}
-
-.admonition p:last-child {
-    margin-bottom: 0;
-}
-
-.admonition.note {
-    border-color: color-mix(in srgb, var(--link) 30%, transparent);
-    border-left-color: var(--link);
-    background: color-mix(in srgb, var(--link) 8%, var(--surface));
-}
-
-.admonition.note .admonition-title {
-    color: var(--link);
-}
-
-.admonition.tip {
-    border-color: color-mix(in srgb, var(--admonition-tip) 30%, transparent);
-    border-left-color: var(--admonition-tip);
-    background: color-mix(in srgb, var(--admonition-tip) 8%, var(--surface));
-}
-
-.admonition.tip .admonition-title {
-    color: var(--admonition-tip);
-}
-
-.admonition.important {
-    border-color: color-mix(in srgb, var(--admonition-important) 30%, transparent);
-    border-left-color: var(--admonition-important);
-    background: color-mix(in srgb, var(--admonition-important) 8%, var(--surface));
-}
-
-.admonition.important .admonition-title {
-    color: var(--admonition-important);
-}
-
-.admonition.warning {
-    border-color: color-mix(in srgb, var(--admonition-warning) 30%, transparent);
-    border-left-color: var(--admonition-warning);
-    background: color-mix(in srgb, var(--admonition-warning) 8%, var(--surface));
-}
-
-.admonition.warning .admonition-title {
-    color: var(--admonition-warning);
-}
-
-.admonition.caution {
-    border-color: color-mix(in srgb, var(--admonition-caution) 30%, transparent);
-    border-left-color: var(--admonition-caution);
-    background: color-mix(in srgb, var(--admonition-caution) 8%, var(--surface));
-}
-
-.admonition.caution .admonition-title {
-    color: var(--admonition-caution);
-}
-
-/* Diff line indicators track the theme's own status colours, so they
-   need no per-mode restatement either. */
-.code-block .line-add::before { color: var(--green); }
-.code-block .line-remove::before { color: var(--red); }
-
-/* === Code block with label (Feature 11) === */
-
-.code-block {
-    position: relative;
-    margin-bottom: 1rem;
-    background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 0;
-}
-
-.code-block pre {
-    margin-bottom: 0;
-    scrollbar-width: thin;
-    background: var(--code-bg);
-    border: none;
-}
-
-.code-label {
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.625rem;
-    font-family: var(--font-body);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-    opacity: 0.6;
-    background: none;
-    border: none;
-    /* The framework's corners are sharp everywhere; a code label rounding
-       its own top-left was a leftover from the imitation. */
-    border-radius: 0;
-    padding: 4px 0.625rem;
-    line-height: 1.4;
-    z-index: 1;
-    transition: opacity var(--dur-base) ease;
-}
-
-.code-label svg {
-    width: 1em;
-    height: 1em;
-}
-
-.code-block:hover .code-label {
-    opacity: 1;
-}
-
 /* === API entry cards (Feature 48) === */
 
 .api-entry {
@@ -1313,49 +488,12 @@ blockquote p:last-child {
     background: transparent;
 }
 
-.api-entry .code-block {
+.api-entry .tm-code {
     margin-bottom: 0.5rem;
 }
 
 .api-entry p:last-child {
     margin-bottom: 0;
-}
-
-/* === Focus indicators (Feature 12) === */
-
-/* tinymoon's focus ring: a 1px accent outline plus the glow.  :focus
-   itself is stripped so only keyboard focus draws. */
-:focus {
-    outline: none;
-}
-
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-summary:focus-visible,
-[tabindex]:focus-visible {
-    outline: 1px solid var(--accent);
-    outline-offset: 2px;
-    box-shadow: 0 0 12px var(--accent-glow);
-}
-
-/* === Horizontal rule === */
-
-hr {
-    border: none;
-    border-top: 1px solid var(--border-2);
-    margin: 2rem 0;
-}
-
-/* === Footer === */
-
-.footer {
-    margin-left: 240px;
-    padding: 1.5rem 3rem;
-    border-top: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-size: 0.85rem;
 }
 
 /* === Site footer === */
@@ -1386,7 +524,7 @@ hr {
     margin-bottom: 1rem;
 }
 
-.content-header .breadcrumbs {
+.content-header .tm-crumbs-nav {
     margin-bottom: 0;
 }
 
@@ -1400,32 +538,6 @@ hr {
 .edit-link-top {
     font-size: 0.8125rem;
     white-space: nowrap;
-}
-
-/* === Breadcrumbs (Feature 9) === */
-
-/* A breadcrumb trail is page metadata, so it is mono like every other
-   piece of metadata on the page. */
-.breadcrumbs {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-    color: var(--text-faint);
-    margin-bottom: 0.75rem;
-}
-
-.breadcrumbs a {
-    color: var(--text-faint);
-    text-decoration: none;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    transition: color var(--dur-base) ease;
-}
-
-.breadcrumbs a:hover {
-    color: var(--accent-hi);
-    text-decoration: none;
 }
 
 /* === Page summary block (Phase 2.6) === */
@@ -1579,43 +691,6 @@ hr {
     font-family: var(--font-mono);
 }
 
-/* === Hamburger button (Feature 25) === */
-
-.hamburger {
-    display: none;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    min-width: 44px;
-    min-height: 44px;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-}
-
-.hamburger span {
-    display: block;
-    width: 20px;
-    height: 2px;
-    background: var(--topbar-text);
-    transition: transform var(--dur-slow) ease, opacity var(--dur-slow) ease;
-}
-
-/* Animate to X when sidebar is open */
-.sidebar-open .hamburger span:nth-child(1) {
-    transform: translateY(7px) rotate(45deg);
-}
-
-.sidebar-open .hamburger span:nth-child(2) {
-    opacity: 0;
-}
-
-.sidebar-open .hamburger span:nth-child(3) {
-    transform: translateY(-7px) rotate(-45deg);
-}
-
 /* === Page footer (Feature 18) === */
 
 .page-footer {
@@ -1666,65 +741,6 @@ hr {
     display: none;
 }
 
-/* === Diff line highlighting (Feature 27) === */
-
-.code-block .line {
-    display: block;
-}
-
-.code-block .line-add {
-    background: color-mix(in srgb, var(--green) 14%, transparent);
-    border-left: 2px solid var(--green);
-}
-
-.code-block .line-remove {
-    background: color-mix(in srgb, var(--red) 14%, transparent);
-    border-left: 2px solid var(--red);
-}
-
-.code-block .line-add::before {
-    content: "+";
-    display: inline-block;
-    width: 1.5ch;
-    color: var(--green);
-    font-weight: 600;
-    user-select: none;
-}
-.code-block .line-remove::before {
-    content: "\2212";
-    display: inline-block;
-    width: 1.5ch;
-    color: var(--red);
-    font-weight: 600;
-    user-select: none;
-}
-
-/* === Line numbers === */
-
-.has-line-numbers code {
-    counter-reset: line-number 0;
-}
-
-.has-line-numbers .code-line {
-    display: block;
-}
-
-.has-line-numbers .code-line::before {
-    counter-increment: line-number;
-    content: counter(line-number);
-    display: inline-block;
-    width: 3ch;
-    margin-right: 1.25ch;
-    text-align: right;
-    color: var(--text-secondary);
-    opacity: 0.4;
-    font-family: var(--font-mono);
-    font-size: inherit;
-    user-select: none;
-    position: sticky;
-    left: 0;
-}
-
 /* === Mobile TOC disclosure (Feature 26) === */
 
 .mobile-toc {
@@ -1770,7 +786,7 @@ hr {
     transform: rotate(90deg);
 }
 
-.mobile-toc .toc-nav {
+.mobile-toc .docs-toc {
     padding: 0 1rem 0.75rem;
 }
 
@@ -1807,20 +823,29 @@ hr {
     box-shadow: 0 0 12px var(--accent-a18);
 }
 
-/* === Sidebar overlay for mobile (Feature 25) === */
+/* === The docs column in the framework's stacked mode === */
 
-.sidebar-overlay {
-    display: none;
+/* `.docs-layout` is `align-items: flex-start`, which in the row direction
+   only decides vertical alignment.  Below 768px the framework turns the
+   layout into a column, and there flex-start sizes every child to its own
+   content instead of to the container -- a wide table then makes the whole
+   column as wide as the table, and the wrapper that exists to scroll it
+   never has anything to scroll. */
+@media (max-width: 768px) {
+    .docs-main {
+        align-self: stretch;
+        width: 100%;
+    }
 }
 
 /* === Responsive: medium screens (hide TOC) === */
 
-@media (max-width: 1280px) {
-    .layout {
-        grid-template-columns: 240px minmax(0, 1fr);
-    }
+/* The framework collapses .docs-layout to one column at its own
+   breakpoint; what is selfdoc's here is the disclosure that replaces the
+   column, which the framework has no shape for. */
 
-    .toc {
+@media (max-width: 1280px) {
+    .docs-toc {
         display: none;
     }
 
@@ -1829,68 +854,20 @@ hr {
     }
 }
 
-/* === Responsive: collapse sidebar on mobile === */
+/* === Responsive: narrow screens === */
+
+/* The drawer, the hamburger and the backdrop are shell.css's. What is left
+   here is selfdoc's own chrome. */
 
 @media (max-width: 768px) {
-    .topbar-inner {
-        padding: 0 1rem;
-    }
-
-    .hamburger {
-        display: flex;
-    }
-
-    .sidebar {
-        position: fixed;
-        top: 51px;
-        left: -260px;
-        width: 240px;
-        height: calc(100vh - 51px);
-        border-right: 1px solid var(--border);
-        transition: left var(--dur-slow) ease;
-        z-index: 150;
-    }
-
-    .sidebar-open .sidebar {
-        left: 0;
-    }
-
-    /* Full-height overlay behind sidebar */
-    .sidebar-open::after {
-        content: "";
-        position: fixed;
-        top: 51px;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: var(--backdrop);
-        z-index: 140;
-    }
-
-    .layout {
-        display: block;
-    }
-
-    .content {
-        padding: 1.5rem 1rem;
-        max-width: 100%;
-    }
-
-    .toc {
+    .docs-toc {
         display: none;
-    }
-
-    .footer {
-        margin-left: 0;
-        padding: 1.5rem 1rem;
     }
 
     .search-bar-text,
     .search-bar-kbd {
         display: none;
     }
-
-    .topbar-sep, .topbar-page-title { display: none; }
 }
 
 /* === Print stylesheet (Feature 37) === */
@@ -1898,11 +875,11 @@ hr {
 @page { margin: 2cm; }
 
 @media print {
-    .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
-    .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
+    .docs-toc, .mobile-toc,
+    .tm-skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
     .tm-palette, .heading-link, .theme-toggle, .site-footer,
     .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger,
-    .breadcrumbs, .page-summary, .content-header,
+    .tm-crumbs-nav, .page-summary, .content-header,
     .hero, .feature-grid, .reading-progress {
         display: none !important;
     }
@@ -1926,7 +903,7 @@ hr {
         --grain-opacity: 0;
     }
 
-    .code-block, .table-wrap, img, .api-entry, .admonition, blockquote,
+    .tm-code, .table-wrap, img, .api-entry, .tm-callout, blockquote,
     .cv-header {
         page-break-inside: avoid;
     }
@@ -1940,14 +917,13 @@ hr {
         display: none !important;
     }
 
-    .layout {
+    .docs-layout {
         display: block;
     }
 
-    .content {
+    .docs-main {
         max-width: 100%;
         margin: 0;
-        padding: 0;
     }
 
     pre {
@@ -1967,6 +943,15 @@ hr {
 }
 
 /* === Table wrapper for horizontal scrolling (Feature 38) === */
+
+/* A flag name, a type, an identifier: one token that means one thing, and
+   breaking it across lines makes it read as two.  The wrapper scrolls, so
+   refusing the break costs nothing but a scrollbar on a wide table. */
+.tm-table th code,
+.tm-table td code {
+    white-space: nowrap;
+}
+
 
 .table-wrap {
     overflow-x: auto;
@@ -2018,7 +1003,7 @@ hr {
 
 /* === Scroll affordance gradient === */
 
-.code-block.has-overflow::after,
+.tm-code.has-overflow::after,
 .table-wrap.has-overflow::after {
     content: "";
     position: absolute;
@@ -2032,7 +1017,7 @@ hr {
     border-radius: 0;
 }
 
-.code-block.scrolled-end::after,
+.tm-code.scrolled-end::after,
 .table-wrap.scrolled-end::after {
     opacity: 0;
 }
@@ -2117,11 +1102,11 @@ hr {
     display: block;
 }
 
-.tab-panel .code-block {
+.tab-panel .tm-code {
     margin-bottom: 0;
 }
 
-.tab-panel .code-block pre {
+.tab-panel .tm-code pre {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
@@ -2288,52 +1273,6 @@ article details:not(.mobile-toc) > :not(summary) {
     padding: 0.75rem 1rem 0.75rem;
 }
 
-/* === Admonition icons (Feature 9.2) === */
-
-.admonition-title::before {
-    content: "";
-    display: inline-block;
-    width: 1.1em;
-    height: 1.1em;
-    margin-right: 0.4em;
-    vertical-align: -0.15em;
-    -webkit-mask-size: contain;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    flex-shrink: 0;
-}
-
-.admonition.note .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
-    background-color: var(--link);
-}
-
-.admonition.tip .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z'/%3E%3C/svg%3E");
-    background-color: var(--admonition-tip);
-}
-
-.admonition.warning .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
-    background-color: var(--admonition-warning);
-}
-
-.admonition.caution .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    background-color: var(--admonition-caution);
-}
-
-.admonition.important .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 1L23 12L12 23L1 12Z'/%3E%3Cline x1='12' y1='8' x2='12' y2='13'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 1L23 12L12 23L1 12Z'/%3E%3Cline x1='12' y1='8' x2='12' y2='13'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    background-color: var(--admonition-important);
-}
-
 /* === Prev/next nav cards (Feature 9.3) === */
 
 .page-nav a {
@@ -2437,36 +1376,6 @@ dfn {
 
 
 /* Superseded-version notice and the two-address share control */
-.version-notice {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0 0 1.5rem;
-    padding: 0.6rem 0.9rem;
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--link);
-    border-radius: 0;
-    background: var(--bg-alt, var(--bg));
-    font-size: 0.9rem;
-}
-.version-notice p {
-    margin: 0;
-    flex: 1;
-}
-.version-notice-dismiss {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 0;
-    background: var(--bg);
-    color: var(--text);
-    cursor: pointer;
-    font-family: var(--font-body);
-}
-.version-notice-dismiss:hover {
-    border-color: var(--link);
-    color: var(--link);
-}
 .share-address {
     display: flex;
     align-items: center;
@@ -2581,7 +1490,6 @@ dfn {
 
 /* Every link in a CV is a reference the reader may want to follow, so they
    are marked as links rather than left to colour alone. */
-.page-cv .content-body a,
 .page-cv article a:not(.heading-link):not(.term-link) {
     text-decoration: underline dotted var(--border-2) 1px;
     text-underline-offset: 0.25em;

@@ -30,7 +30,7 @@ img, svg {
    rendered, and JS uses it that way: the superseded-version notice sets
    `notice.hidden = true` when it is dismissed. The UA rule that honours it
    is `[hidden] { display: none }` at specificity (0,1,0), which any single
-   class carrying a `display` -- `.version-notice { display: flex }` -- ties
+   class carrying a `display` -- `.tm-notice { display: flex }` -- ties
    with and wins on source order. The result was a Dismiss button that
    stored the dismissal and changed nothing on screen. Stated here, once,
    for every element rather than for the one that has JS today. */
@@ -192,7 +192,14 @@ a {
 
 /* === Body === */
 
+html, body {
+    height: 100%;
+}
+
+/* The scrolling element is #tm-content, not the document: the frame
+   is fixed and only the content column moves. */
 body {
+    overflow: hidden;
     font-family: var(--font-body);
     font-size: 16px;
     line-height: 1.6;
@@ -231,206 +238,181 @@ body::before {
 
 /* === Top bar === */
 
-.topbar {
-    position: fixed;
-    top: 3px;
-    left: 0;
-    right: 0;
-    height: 48px;
-    background: var(--topbar-bg);
-    color: var(--topbar-text);
-    z-index: 200;
-    border-bottom: 1px solid var(--border);
-}
+/* The framework's shell puts the topbar inside the main column, beside the
+   sidebar rather than over it: #tm-app is the fixed frame, #tm-main is the
+   column, and this is its first row. */
 
-.topbar-inner {
-    max-width: 1440px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 100%;
+#tm-topbar {
+    height: 48px;
+    flex: none;
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    padding: 0 1.5rem;
+    background: var(--topbar-bg);
+    color: var(--topbar-text);
+    border-bottom: 1px solid var(--border);
 }
 
-.project-name {
-    font-size: 1.1rem;
+#tm-page-title {
+    margin: 0;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--topbar-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+#tm-page-sub {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+#tm-topbar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* The project name is the sidebar's wordmark, which is where the shell puts
+   it -- not a second title in the bar. */
+
+#tm-logo {
+    padding: 1.25rem 1rem 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+#tm-logo .wordmark {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--heading);
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex-shrink: 1;
-    min-width: 0;
 }
 
-.project-name:hover {
-    color: var(--topbar-text);
-    opacity: 0.85;
+#tm-logo .wordmark:hover {
+    color: var(--link);
 }
 
-.version-badge {
+#tm-logo .tagline {
+    margin-top: 0.375rem;
+}
+
+/* The badge family. selfdoc stamps one kind -- a version is neutral -- so
+   one kind is styled; a variant nothing emits would be a rule no page can
+   ever reach. */
+
+.badge {
     display: inline-block;
     font-size: 0.75rem;
     font-weight: 500;
-    background: var(--badge-bg);
-    color: var(--badge-text);
     padding: 0.15em 0.5em;
-    border-radius: 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     line-height: 1.4;
 }
 
-.topbar-sep {
-    color: var(--topbar-text);
-    opacity: 0.4;
-    margin: 0 0.25rem;
+.badge-neutral {
+    background: var(--badge-bg);
+    color: var(--badge-text);
+    border-color: transparent;
 }
 
-.topbar-page-title {
-    color: var(--topbar-text);
-    opacity: 0.7;
-    font-size: 0.875rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 200px;
+/* === Layout (the framework's application frame) === */
+
+/* #tm-app is a fixed frame filling the viewport; the sidebar and the main
+   column are its two flex children, and #tm-content is the only thing that
+   scrolls. The document itself does not: that is what makes the topbar and
+   the sidebar stay put without a single `position: fixed` on either. */
+
+#tm-app {
+    position: fixed;
+    inset: 0;
+    display: flex;
 }
 
-.sel.version-picker, .sel.locale-picker {
-    position: relative;
+#tm-main {
+    flex: 1;
     min-width: 0;
-}
-.sel .sel-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.8125rem;
-    padding: 0.125rem 0.35rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    cursor: pointer;
-}
-.sel .sel-btn svg {
-    width: 12px;
-    height: 12px;
-    flex: none;
-}
-.sel .sel-menu {
-    display: none;
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    z-index: 40;
-    min-width: 100%;
-    max-height: 16rem;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-}
-.sel.open .sel-menu {
-    display: block;
-}
-.sel .sel-opt {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8125rem;
-    white-space: nowrap;
-    cursor: pointer;
-    color: var(--text-color);
-}
-.sel .sel-opt:hover, .sel .sel-opt.hover {
-    background: var(--bg-secondary);
-}
-.sel .sel-opt[aria-selected="true"] {
-    color: var(--accent-color);
-}
-
-/* === Layout (three-column with responsive collapse) === */
-
-.layout {
-    display: grid;
-    grid-template-columns: 240px minmax(0, 1fr) 200px;
-    padding-top: 51px;
-    min-height: 100vh;
-}
-
-/* Narrow layout for post-type pages: two-column (sidebar + content), no TOC */
-.layout.layout--narrow {
-    grid-template-columns: 240px minmax(0, 1fr);
-}
-
-.layout.layout--narrow .content {
-    max-width: 48rem;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 /* === Sidebar === */
 
-.sidebar {
-    position: fixed;
-    top: 51px;
-    left: 0;
+#tm-sidebar {
     width: 240px;
-    height: calc(100vh - 51px);
-    overflow-y: auto;
+    flex: none;
+    display: flex;
+    flex-direction: column;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border);
-    padding: 1.25rem 0.75rem;
-    z-index: 100;
 }
 
-.nav-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+#tm-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.nav-list li {
-    margin-bottom: 2px;
-}
-
-.nav-list a {
-    display: block;
-    padding: 0.5rem 1rem;
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.875rem;
     min-height: 44px;
     line-height: 28px;
     color: var(--sidebar-text);
     text-decoration: none;
-    border-radius: 4px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: none;
     font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-.nav-list a:hover {
+.nav-item:hover {
     background: var(--sidebar-hover-bg);
     color: var(--link);
     text-decoration: none;
 }
 
-.nav-list a.active {
+.nav-item.active {
     color: var(--sidebar-active);
     font-weight: 600;
     background: var(--sidebar-hover-bg);
 }
 
-/* === Nav groups (collapsible sidebar sections) === */
+.nav-item-nested {
+    padding-left: 2rem;
+}
 
-.nav-group {
+.nav-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* === Nav groups (the framework's scriptless tree row) === */
+
+.tm-tree-details {
     margin: 0;
 }
 
-.nav-group details {
-    margin: 0;
-}
-
-.nav-group-title {
+.tm-tree-row {
     display: flex;
     align-items: center;
-    padding: 0.375rem 1rem;
+    padding: 0.375rem 0.875rem;
     font-size: 0.8125rem;
     font-weight: 600;
     color: var(--sidebar-text);
@@ -439,97 +421,119 @@ body::before {
     list-style: none;
 }
 
-.nav-group-title::-webkit-details-marker {
+.tm-tree-row::-webkit-details-marker {
     display: none;
 }
 
-.nav-group-title::before {
+.tm-tree-row::marker {
     content: "";
-    display: inline-block;
+}
+
+.tm-tree-twist {
+    display: inline-flex;
+    align-items: center;
     width: 16px;
     height: 16px;
     flex-shrink: 0;
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3l5 5-5 5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    -webkit-mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3l5 5-5 5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    background-color: currentColor;
-    margin-right: 0.625rem;
+    margin-right: 0.5rem;
     transition: transform 0.15s ease;
 }
 
-.nav-group details[open] > .nav-group-title::before {
-    transform: rotate(90deg);
+.tm-tree-twist svg {
+    width: 16px;
+    height: 16px;
 }
 
-.nav-group-items {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.tm-tree-details:not([open]) > .tm-tree-row .tm-tree-twist {
+    transform: rotate(-90deg);
 }
 
-.nav-group-items a {
-    padding-left: 2rem;
+.tm-tree-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tm-tree-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 /* === Content area === */
 
-.content {
-    grid-column: 2;
-    max-width: 800px;
+#tm-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 2.5rem 3rem;
-    min-width: 0;
+    scroll-behavior: smooth;
 }
 
-/* === Right-side TOC (Feature 2) === */
+.docs-layout {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
 
-.toc {
-    grid-column: 3;
+.docs-main {
+    flex: 1;
+    min-width: 0;
+    max-width: 800px;
+}
+
+.docs-layout--narrow .docs-main {
+    max-width: 48rem;
+    margin: 0 auto;
+}
+
+/* === Right-side table of contents === */
+
+.docs-toc {
     position: sticky;
-    top: 63px;
-    align-self: start;
-    max-height: calc(100vh - 80px);
+    top: 0;
+    width: 200px;
+    flex: none;
+    max-height: calc(100vh - 8rem);
     overflow-y: auto;
-    padding: 1rem 1.5rem 1rem 0.75rem;
+    padding: 0.5rem 0;
     font-size: 0.8125rem;
     border-left: 1px solid var(--border);
 }
 
-.toc-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.docs-toc-head {
+    padding: 0 0.75rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
 }
 
-.toc-item {
-    margin-bottom: 2px;
-}
-
-.toc-item a {
+.docs-toc-item {
     display: block;
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 0.75rem;
     min-height: 44px;
     line-height: 36px;
     color: var(--text-secondary);
     text-decoration: none;
-    border-radius: 3px;
-    transition: color 0.15s ease, background 0.15s ease;
+    border-left: 2px solid transparent;
+    transition: color 0.15s ease;
 }
 
-.toc-item a:hover {
+.docs-toc-item:hover {
     color: var(--link);
     text-decoration: none;
 }
 
-.toc-item a.active {
+.docs-toc-item[aria-current="page"] {
     color: var(--link);
     font-weight: 600;
+    border-left-color: var(--link);
 }
 
-.toc-h3 {
-    padding-left: 0.75rem;
+.docs-toc-item.sub {
+    padding-left: 1.5rem;
 }
 
 /* === Typography === */
@@ -688,32 +692,37 @@ pre code {
 
 /* === Copy button on code blocks (Feature 5) === */
 
+/* The framework reserves the slot -- .tm-code-actions in the label bar --
+   and does no copying, so the button's own dress is stated here.  It sits
+   in the flow of the bar, which is what the bar is for. */
+
 .copy-btn {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    padding: 0.25rem 0.375rem;
-    font-size: 0.6875rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.15rem 0.25rem;
     border: none;
     border-radius: 3px;
     background: none;
     color: var(--text-secondary);
     cursor: pointer;
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity 0.15s ease, color 0.15s ease;
-    font-family: var(--font-body);
-    text-shadow: 0 1px 2px var(--code-bg);
 }
 
-.code-block:hover .copy-btn,
-pre:hover .copy-btn,
-pre:focus-within .copy-btn {
-    opacity: 0.4;
+.copy-btn svg {
+    width: 14px;
+    height: 14px;
 }
 
-.copy-btn:hover {
+.tm-code:hover .copy-btn {
     opacity: 1;
-    color: var(--text);
+}
+
+.copy-btn:hover,
+.copy-btn.copied {
+    opacity: 1;
+    color: var(--link);
 }
 
 /* === Run button on code blocks (Feature 41) === */
@@ -736,7 +745,7 @@ pre:focus-within .copy-btn {
     text-shadow: 0 1px 2px var(--code-bg);
 }
 
-.code-block:hover .run-btn,
+.tm-code:hover .run-btn,
 pre:hover .run-btn,
 pre:focus-within .run-btn {
     opacity: 0.4;
@@ -852,23 +861,23 @@ cite {
     color: var(--text-secondary);
 }
 
-/* === Skip-to-content link (Feature 10) === */
+/* === Skip-to-content link === */
 
-.skip-link {
+.tm-skip-link {
     position: absolute;
     top: -100%;
     left: 0;
     padding: 0.5rem 1rem;
     background: var(--link);
-    color: var(--topbar-text);
+    color: #fff;
     z-index: 1002;
     text-decoration: none;
     font-size: 0.875rem;
 }
 
-.skip-link:focus {
+.tm-skip-link:focus {
     top: 0;
-    color: var(--topbar-text);
+    color: #fff;
 }
 
 /* === Hero section (landing page) === */
@@ -995,9 +1004,14 @@ cite {
 
 /* --- NON-CRITICAL --- */
 
-/* === Tables (Feature 38) === */
+/* === Tables === */
 
-table {
+/* Every content table is the framework's `table.data.tm-table[role=grid]`,
+   so the rules name that class rather than the bare element: an element
+   selector would also dress the tables inside components that carry their
+   own sheet. */
+
+.tm-table {
     width: auto;
     max-width: 100%;
     border-collapse: collapse;
@@ -1008,51 +1022,55 @@ table {
 /* The scrollport is .table-wrap (overflow-x: auto), not the viewport, so
    the header sticks to the top of the wrapper.  A topbar-sized offset here
    pushed the header down over the first body rows. */
-thead {
+.tm-table thead {
     position: sticky;
     top: 0;
-    background: var(--sidebar-bg);
+    background: var(--bg);
 }
 
-th {
+.tm-table th {
     text-align: left;
     font-weight: 600;
-    padding: 0.5rem 0.75rem;
+    padding: 0.625rem 0.75rem;
     border-bottom: 2px solid var(--border);
+    background: var(--bg);
 }
 
-td {
-    padding: 0.5rem 0.75rem;
+.tm-table td {
+    padding: 0.625rem 0.75rem;
     border-bottom: 1px solid var(--border);
 }
 
-tr:nth-child(even) td {
-    background: var(--sidebar-bg);
+.tm-table tr:nth-child(even) td {
+    background: var(--sidebar-hover-bg);
 }
 
-tr:hover td {
-    background: var(--sidebar-hover-bg);
+.tm-table tr:hover td {
+    background: color-mix(in srgb, var(--link) 6%, var(--bg));
 }
 
 /* === Sort indicators for sortable tables === */
 
-article th {
+/* aria-sort IS the indicator: the server states the order it rendered and
+   the script moves the attribute, so there is no class to keep in step. */
+
+.tm-table th.sortable {
     cursor: pointer;
     user-select: none;
     transition: color 0.15s ease;
 }
 
-article th:hover {
+.tm-table th.sortable:hover {
     color: var(--link);
 }
 
-article th.sort-asc::after {
+.tm-table th[aria-sort="ascending"]::after {
     content: " \25B2";
     font-size: 0.7em;
     opacity: 0.5;
 }
 
-article th.sort-desc::after {
+.tm-table th[aria-sort="descending"]::after {
     content: " \25BC";
     font-size: 0.7em;
     opacity: 0.5;
@@ -1075,141 +1093,153 @@ blockquote p:last-child {
     margin-bottom: 0;
 }
 
-/* === Admonition / callout blocks (Feature 7) === */
+/* === Callouts (the framework's five kinds) === */
 
-.admonition {
-    border-left: 4px solid var(--border);
-    border-radius: 4px;
-    padding: 0.75rem 1rem;
+.tm-callout {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
     margin: 0 0 1rem 0;
-    background: var(--code-bg);
+    background: var(--bg);
 }
 
-.admonition-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+.tm-callout-title {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
 }
 
-.admonition p:last-child {
+/* The glyph is a real inline <svg> the build emits, so it takes its colour
+   from the title row rather than from a masked pseudo-element. */
+.tm-callout-title svg {
+    width: 1.1em;
+    height: 1.1em;
+    flex-shrink: 0;
+}
+
+.tm-callout-body > :last-child {
     margin-bottom: 0;
 }
 
-.admonition.note {
-    border-left-color: var(--link);
-    background: rgba(9, 105, 218, 0.06);
+.tm-callout-note {
+    border-color: var(--link);
+    background: color-mix(in srgb, var(--link) 4%, var(--bg));
 }
 
-.admonition.note .admonition-title {
+.tm-callout-note .tm-callout-title {
     color: var(--link);
 }
 
-.admonition.tip {
-    border-left-color: var(--admonition-tip);
-    background: rgba(26, 127, 55, 0.06);
+.tm-callout-tip {
+    border-color: var(--admonition-tip);
+    background: color-mix(in srgb, var(--admonition-tip) 4%, var(--bg));
 }
 
-.admonition.tip .admonition-title {
+.tm-callout-tip .tm-callout-title {
     color: var(--admonition-tip);
 }
 
-.admonition.important {
-    border-left-color: var(--admonition-important);
-    background: rgba(130, 80, 223, 0.06);
+.tm-callout-info {
+    border-color: var(--admonition-important);
+    background: color-mix(in srgb, var(--admonition-important) 4%, var(--bg));
 }
 
-.admonition.important .admonition-title {
+.tm-callout-info .tm-callout-title {
     color: var(--admonition-important);
 }
 
-.admonition.warning {
-    border-left-color: var(--admonition-warning);
-    background: rgba(109, 74, 0, 0.06);
+.tm-callout-warn {
+    border-color: var(--admonition-warning);
+    background: color-mix(in srgb, var(--admonition-warning) 4%, var(--bg));
 }
 
-.admonition.warning .admonition-title {
+.tm-callout-warn .tm-callout-title {
     color: var(--admonition-warning);
 }
 
-.admonition.caution {
-    border-left-color: var(--admonition-caution);
-    background: rgba(207, 34, 46, 0.06);
+.tm-callout-danger {
+    border-color: var(--admonition-caution);
+    background: color-mix(in srgb, var(--admonition-caution) 4%, var(--bg));
 }
 
-.admonition.caution .admonition-title {
+.tm-callout-danger .tm-callout-title {
     color: var(--admonition-caution);
 }
 
-/* Dark mode admonition backgrounds */
+/* Dark mode callout backgrounds */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .admonition.note { background: rgba(88, 166, 255, 0.08); }
-    :root:not([data-theme="light"]) .admonition.tip { background: rgba(63, 185, 80, 0.08); }
-    :root:not([data-theme="light"]) .admonition.important { background: rgba(188, 140, 255, 0.08); }
-    :root:not([data-theme="light"]) .admonition.warning { background: rgba(210, 153, 34, 0.08); }
-    :root:not([data-theme="light"]) .admonition.caution { background: rgba(248, 81, 73, 0.08); }
+    :root:not([data-theme="light"]) .tm-callout-note { background: color-mix(in srgb, var(--link) 8%, var(--bg)); }
+    :root:not([data-theme="light"]) .tm-callout-tip { background: color-mix(in srgb, var(--admonition-tip) 8%, var(--bg)); }
+    :root:not([data-theme="light"]) .tm-callout-info { background: color-mix(in srgb, var(--admonition-important) 8%, var(--bg)); }
+    :root:not([data-theme="light"]) .tm-callout-warn { background: color-mix(in srgb, var(--admonition-warning) 8%, var(--bg)); }
+    :root:not([data-theme="light"]) .tm-callout-danger { background: color-mix(in srgb, var(--admonition-caution) 8%, var(--bg)); }
 }
 
-[data-theme="dark"] .admonition.note { background: rgba(88, 166, 255, 0.08); }
-[data-theme="dark"] .admonition.tip { background: rgba(63, 185, 80, 0.08); }
-[data-theme="dark"] .admonition.important { background: rgba(188, 140, 255, 0.08); }
-[data-theme="dark"] .admonition.warning { background: rgba(210, 153, 34, 0.08); }
-[data-theme="dark"] .admonition.caution { background: rgba(248, 81, 73, 0.08); }
+[data-theme="dark"] .tm-callout-note { background: color-mix(in srgb, var(--link) 8%, var(--bg)); }
+[data-theme="dark"] .tm-callout-tip { background: color-mix(in srgb, var(--admonition-tip) 8%, var(--bg)); }
+[data-theme="dark"] .tm-callout-info { background: color-mix(in srgb, var(--admonition-important) 8%, var(--bg)); }
+[data-theme="dark"] .tm-callout-warn { background: color-mix(in srgb, var(--admonition-warning) 8%, var(--bg)); }
+[data-theme="dark"] .tm-callout-danger { background: color-mix(in srgb, var(--admonition-caution) 8%, var(--bg)); }
 
 /* Dark mode diff line indicator colors */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .code-block .line-add::before { color: #3fb950; }
-    :root:not([data-theme="light"]) .code-block .line-remove::before { color: #f85149; }
+    :root:not([data-theme="light"]) .tm-code .tm-code-add::before { color: #3ecf8e; }
+    :root:not([data-theme="light"]) .tm-code .tm-code-del::before { color: #e25c73; }
 }
-[data-theme="dark"] .code-block .line-add::before { color: #3fb950; }
-[data-theme="dark"] .code-block .line-remove::before { color: #f85149; }
+[data-theme="dark"] .tm-code .tm-code-add::before { color: #3ecf8e; }
+[data-theme="dark"] .tm-code .tm-code-del::before { color: #e25c73; }
 
-/* === Code block with label (Feature 11) === */
+/* === Code chrome (the framework's figure.tm-code) === */
 
-.code-block {
+.tm-code {
     position: relative;
-    margin-bottom: 1rem;
+    margin: 0 0 1rem;
     background: var(--code-bg);
-    border: 1px solid var(--code-border);
-    border-radius: 4px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
 }
 
-.code-block pre {
-    margin-bottom: 0;
+.tm-code pre {
+    margin: 0;
     scrollbar-width: thin;
     background: var(--code-bg);
-    border: none;
+    box-shadow: none;
+    border-radius: 0 0 var(--radius) var(--radius);
 }
 
-.code-label {
-    position: absolute;
-    top: 0;
-    left: 0;
+.tm-code-bar {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 4px 0.625rem;
     font-size: 0.625rem;
     font-family: var(--font-body);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-secondary);
-    opacity: 0.6;
-    background: none;
-    border: none;
-    border-top-left-radius: 4px;
-    padding: 4px 0.625rem;
+    border-bottom: 1px solid var(--code-border);
     line-height: 1.4;
-    z-index: 1;
-    transition: opacity 0.15s ease;
 }
 
-.code-label svg {
+.tm-code-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.tm-code-label svg {
     width: 1em;
     height: 1em;
 }
 
-.code-block:hover .code-label {
-    opacity: 1;
+.tm-code-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 /* === API entry cards (Feature 48) === */
@@ -1238,7 +1268,7 @@ blockquote p:last-child {
     background: transparent;
 }
 
-.api-entry .code-block {
+.api-entry .tm-code {
     margin-bottom: 0.5rem;
 }
 
@@ -1263,16 +1293,6 @@ hr {
     border: none;
     border-top: 1px solid var(--border);
     margin: 2rem 0;
-}
-
-/* === Footer === */
-
-.footer {
-    margin-left: 240px;
-    padding: 1.5rem 3rem;
-    border-top: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-size: 0.85rem;
 }
 
 /* === Site footer === */
@@ -1303,7 +1323,7 @@ hr {
     margin-bottom: 1rem;
 }
 
-.content-header .breadcrumbs {
+.content-header .tm-crumbs-nav {
     margin-bottom: 0;
 }
 
@@ -1318,15 +1338,37 @@ hr {
     white-space: nowrap;
 }
 
-/* === Breadcrumbs (Feature 9) === */
+/* === Breadcrumbs === */
 
-.breadcrumbs {
+.tm-crumbs-nav {
     font-size: 0.8125rem;
     color: var(--text-secondary);
     margin-bottom: 0.75rem;
 }
 
-.breadcrumbs a {
+.tm-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.tm-crumb {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* The separator is drawn between list items, so there is no separator
+   element on the page to keep in step with it. */
+.tm-crumb + .tm-crumb::before {
+    content: "/";
+    margin: 0 0.4rem;
+    opacity: 0.5;
+}
+
+.tm-crumb-link {
     color: var(--text-secondary);
     text-decoration: none;
     min-height: 44px;
@@ -1334,9 +1376,17 @@ hr {
     align-items: center;
 }
 
-.breadcrumbs a:hover {
+.tm-crumb-link:hover {
     color: var(--link);
     text-decoration: underline;
+}
+
+.tm-crumb-current {
+    color: var(--text);
+}
+
+.tm-crumb-static {
+    color: var(--text-secondary);
 }
 
 /* === Page summary block (Phase 2.6) === */
@@ -1481,9 +1531,9 @@ hr {
     font-family: var(--font-mono);
 }
 
-/* === Hamburger button (Feature 25) === */
+/* === Hamburger button === */
 
-.hamburger {
+.tm-hamburger {
     display: none;
     background: none;
     border: none;
@@ -1491,31 +1541,19 @@ hr {
     padding: 0.5rem;
     min-width: 44px;
     min-height: 44px;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    color: var(--topbar-text);
+    flex: none;
 }
 
-.hamburger span {
-    display: block;
+.tm-hamburger svg {
     width: 20px;
-    height: 2px;
-    background: var(--topbar-text);
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    height: 20px;
 }
 
-/* Animate to X when sidebar is open */
-.sidebar-open .hamburger span:nth-child(1) {
-    transform: translateY(7px) rotate(45deg);
-}
-
-.sidebar-open .hamburger span:nth-child(2) {
-    opacity: 0;
-}
-
-.sidebar-open .hamburger span:nth-child(3) {
-    transform: translateY(-7px) rotate(-45deg);
+.tm-hamburger:hover {
+    color: var(--link);
 }
 
 /* === Page footer (Feature 18) === */
@@ -1628,52 +1666,50 @@ hr {
     display: none;
 }
 
-/* === Diff line highlighting (Feature 27) === */
+/* === Diff line highlighting === */
 
-.code-block .line {
+/* The +/- markers are generated content, never text: the build emits the
+   line without them, so a copied diff is code and not a gutter. */
+
+.tm-code .tm-code-line {
     display: block;
 }
 
-.code-block .line-add {
-    background: rgba(46, 160, 67, 0.15);
-    border-left: 3px solid rgba(46, 160, 67, 0.4);
+.tm-code .tm-code-add {
+    background: rgba(30, 166, 114, 0.12);
+    border-left: 3px solid rgba(30, 166, 114, 0.4);
 }
 
-.code-block .line-remove {
-    background: rgba(248, 81, 73, 0.15);
-    border-left: 3px solid rgba(248, 81, 73, 0.4);
+.tm-code .tm-code-del {
+    background: rgba(205, 61, 100, 0.12);
+    border-left: 3px solid rgba(205, 61, 100, 0.4);
 }
 
-.code-block .line-add::before {
+.tm-code .tm-code-add::before {
     content: "+";
     display: inline-block;
     width: 1.5ch;
-    color: #2ea043;
+    color: #1ea672;
     font-weight: 600;
     user-select: none;
 }
-.code-block .line-remove::before {
+.tm-code .tm-code-del::before {
     content: "\2212";
     display: inline-block;
     width: 1.5ch;
-    color: #f85149;
+    color: #cd3d64;
     font-weight: 600;
     user-select: none;
 }
 
 /* === Line numbers === */
 
-.has-line-numbers code {
-    counter-reset: line-number 0;
-}
+/* The counter is reset on the figure by an inline style, so a block that
+   starts at line 40 numbers from 40. */
 
-.has-line-numbers .code-line {
-    display: block;
-}
-
-.has-line-numbers .code-line::before {
-    counter-increment: line-number;
-    content: counter(line-number);
+.tm-code-numbered .tm-code-line::before {
+    counter-increment: tm-code-line;
+    content: counter(tm-code-line);
     display: inline-block;
     width: 3ch;
     margin-right: 1.25ch;
@@ -1732,7 +1768,7 @@ hr {
     transform: rotate(90deg);
 }
 
-.mobile-toc .toc-nav {
+.mobile-toc .docs-toc {
     padding: 0 1rem 0.75rem;
 }
 
@@ -1765,20 +1801,10 @@ hr {
     background: var(--sidebar-hover-bg);
 }
 
-/* === Sidebar overlay for mobile (Feature 25) === */
-
-.sidebar-overlay {
-    display: none;
-}
-
 /* === Responsive: medium screens (hide TOC) === */
 
 @media (max-width: 1280px) {
-    .layout {
-        grid-template-columns: 240px minmax(0, 1fr);
-    }
-
-    .toc {
+    .docs-toc {
         display: none;
     }
 
@@ -1790,57 +1816,44 @@ hr {
 /* === Responsive: collapse sidebar on mobile === */
 
 @media (max-width: 768px) {
-    .topbar-inner {
+    #tm-topbar {
         padding: 0 1rem;
     }
 
-    .hamburger {
+    .tm-hamburger {
         display: flex;
     }
 
-    .sidebar {
+    /* The framework's drawer: the sidebar slides in when #tm-app carries
+       .sidebar-open, over a backdrop drawn by the frame itself. */
+    #tm-sidebar {
         position: fixed;
-        top: 51px;
-        left: -260px;
-        width: 240px;
-        height: calc(100vh - 51px);
-        border-right: 1px solid var(--border);
-        transition: left 0.2s ease;
-        z-index: 150;
-    }
-
-    .sidebar-open .sidebar {
+        inset-block: 0;
         left: 0;
+        width: 240px;
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
     }
 
-    /* Full-height overlay behind sidebar */
-    .sidebar-open::after {
+    #tm-app.sidebar-open #tm-sidebar {
+        transform: translateX(0);
+    }
+
+    #tm-app.sidebar-open::before {
         content: "";
         position: fixed;
-        top: 51px;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        inset: 0;
         background: rgba(0, 0, 0, 0.4);
         z-index: 140;
     }
 
-    .layout {
-        display: block;
-    }
-
-    .content {
+    #tm-content {
         padding: 1.5rem 1rem;
-        max-width: 100%;
     }
 
-    .toc {
+    .docs-toc {
         display: none;
-    }
-
-    .footer {
-        margin-left: 0;
-        padding: 1.5rem 1rem;
     }
 
     .search-bar-text,
@@ -1848,7 +1861,9 @@ hr {
         display: none;
     }
 
-    .topbar-sep, .topbar-page-title { display: none; }
+    #tm-page-title {
+        font-size: 0.9375rem;
+    }
 }
 
 /* === Print stylesheet (Feature 37) === */
@@ -1856,11 +1871,11 @@ hr {
 @page { margin: 2cm; }
 
 @media print {
-    .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
-    .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
+    #tm-sidebar, .docs-toc, .mobile-toc, #tm-topbar, .tm-hamburger,
+    .tm-skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
     .search-dialog, .heading-link, .theme-toggle, .site-footer,
     .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger,
-    .breadcrumbs, .page-summary, .content-header,
+    .tm-crumbs-nav, .page-summary, .content-header,
     .hero, .feature-grid, .reading-progress {
         display: none !important;
     }
@@ -1877,7 +1892,7 @@ hr {
         --border: #d0d7de;
     }
 
-    .code-block, .table-wrap, img, .api-entry, .admonition, blockquote,
+    .tm-code, .table-wrap, img, .api-entry, .tm-callout, blockquote,
     .cv-header {
         page-break-inside: avoid;
     }
@@ -1886,14 +1901,40 @@ hr {
         display: none;
     }
 
-    .layout {
+    /* The frame is fixed and the content column is the scroller, so
+       both have to become ordinary flow or only the first page prints. */
+    #tm-app {
+        position: static;
+        display: block;
+        height: auto;
+        overflow: visible;
+    }
+
+    #tm-main {
         display: block;
     }
 
-    .content {
+    .docs-layout {
+        display: block;
+    }
+
+    #tm-content {
+        position: static;
+        overflow: visible;
+        height: auto;
+        max-height: none;
         max-width: 100%;
         margin: 0;
         padding: 0;
+    }
+
+    .docs-main {
+        max-width: 100%;
+    }
+
+    html, body {
+        height: auto;
+        overflow: visible;
     }
 
     pre {
@@ -1972,7 +2013,7 @@ hr {
 
 /* === Scroll affordance gradient === */
 
-.code-block.has-overflow::after,
+.tm-code.has-overflow::after,
 .table-wrap.has-overflow::after {
     content: "";
     position: absolute;
@@ -1986,7 +2027,7 @@ hr {
     border-radius: 0 var(--radius, 4px) var(--radius, 4px) 0;
 }
 
-.code-block.scrolled-end::after,
+.tm-code.scrolled-end::after,
 .table-wrap.scrolled-end::after {
     opacity: 0;
 }
@@ -2067,11 +2108,11 @@ hr {
     display: block;
 }
 
-.tab-panel .code-block {
+.tab-panel .tm-code {
     margin-bottom: 0;
 }
 
-.tab-panel .code-block pre {
+.tab-panel .tm-code pre {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
@@ -2233,52 +2274,6 @@ article details:not(.mobile-toc) > :not(summary) {
     padding: 0.75rem 1rem 0.75rem;
 }
 
-/* === Admonition icons (Feature 9.2) === */
-
-.admonition-title::before {
-    content: "";
-    display: inline-block;
-    width: 1.1em;
-    height: 1.1em;
-    margin-right: 0.4em;
-    vertical-align: -0.15em;
-    -webkit-mask-size: contain;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    flex-shrink: 0;
-}
-
-.admonition.note .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
-    background-color: var(--link);
-}
-
-.admonition.tip .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z'/%3E%3C/svg%3E");
-    background-color: var(--admonition-tip);
-}
-
-.admonition.warning .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
-    background-color: var(--admonition-warning);
-}
-
-.admonition.caution .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86'/%3E%3Cline x1='12' y1='8' x2='12' y2='12'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    background-color: var(--admonition-caution);
-}
-
-.admonition.important .admonition-title::before {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 1L23 12L12 23L1 12Z'/%3E%3Cline x1='12' y1='8' x2='12' y2='13'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 1L23 12L12 23L1 12Z'/%3E%3Cline x1='12' y1='8' x2='12' y2='13'/%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'/%3E%3C/svg%3E");
-    background-color: var(--admonition-important);
-}
-
 /* === Prev/next nav cards (Feature 9.3) === */
 
 .page-nav a {
@@ -2379,24 +2374,53 @@ dfn {
 
 
 /* Superseded-version notice and the two-address share control */
-.version-notice {
+.tm-notice {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
     margin: 0 0 1.5rem;
     padding: 0.6rem 0.9rem;
     border: 1px solid var(--border);
-    border-left: 3px solid var(--link);
+    border-left: 3px solid var(--border);
     border-radius: 4px;
     background: var(--bg-alt, var(--bg));
     font-size: 0.9rem;
 }
-.version-notice p {
-    margin: 0;
-    flex: 1;
+.tm-notice-icon {
+    display: inline-flex;
+    flex: none;
+    margin-top: 0.1rem;
 }
-.version-notice-dismiss {
-    font-size: 0.75rem;
+.tm-notice-icon svg {
+    width: 16px;
+    height: 16px;
+}
+.tm-notice-body {
+    flex: 1;
+    min-width: 0;
+}
+.tm-notice-title {
+    font-weight: 600;
+    margin-bottom: 0.15rem;
+}
+.tm-notice-text {
+    margin: 0;
+}
+/* selfdoc raises one kind of banner -- a superseded version is a warning --
+   so one kind is styled. */
+.tm-notice-warn {
+    border-left-color: var(--admonition-warning);
+}
+.tm-notice-warn .tm-notice-icon {
+    color: var(--admonition-warning);
+}
+.tm-notice-dismiss {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     padding: 0.2rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -2405,10 +2429,15 @@ dfn {
     cursor: pointer;
     font-family: var(--font-body);
 }
-.version-notice-dismiss:hover {
+.tm-notice-dismiss svg {
+    width: 14px;
+    height: 14px;
+}
+.tm-notice-dismiss:hover {
     border-color: var(--link);
     color: var(--link);
 }
+
 .share-address {
     display: flex;
     align-items: center;
@@ -2517,7 +2546,6 @@ dfn {
 
 /* Every link in a CV is a reference the reader may want to follow, so they
    are marked as links rather than left to colour alone. */
-.page-cv .content-body a,
 .page-cv article a:not(.heading-link):not(.term-link) {
     text-decoration: underline dotted var(--text-secondary) 1px;
     text-underline-offset: 0.25em;
