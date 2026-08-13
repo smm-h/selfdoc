@@ -253,12 +253,12 @@ class TestRendering:
         cv = parse_cv(DOCUMENT)
         page = render_cv_markdown(cv)
 
-        assert "# Ada Lovelace" in page
-        assert "![Profile picture](pic.jpg)" in page
+        assert ">Ada Lovelace</h2>" in page
+        assert 'src="pic.jpg"' in page
         assert "Analyst" in page
         assert "London, England" in page
-        assert "[ada@example.org](mailto:ada@example.org)" in page
-        assert "[example.org/ada](https://example.org/ada)" in page
+        assert '<a href="mailto:ada@example.org">ada@example.org</a>' in page
+        assert '<a href="https://example.org/ada">example.org/ada</a>' in page
         assert "I write [notes](https://example.org/notes) about engines." in page
 
         assert "- **Languages:** Analytical Engine notation, French" in page
@@ -301,7 +301,162 @@ class TestRendering:
 
     def test_an_absent_photo_emits_no_image(self):
         cv = parse_cv(DOCUMENT.replace('photo = "pic.jpg"\n', ""))
-        assert "![Profile picture]" not in render_cv_markdown(cv)
+        page = render_cv_markdown(cv)
+        assert "cv-photo" not in page
+        assert "<img" not in page
+
+
+class TestTheHeaderIsStructure:
+    """The CV opens with the person, not with a paragraph of loose facts.
+
+    Flattening the header to Markdown produced a bare image on one line and
+    the headline, location, email and profile links running together on the
+    next, with nothing for a theme to style.  The block is emitted as real
+    markup instead, so the design lives in the themes.
+    """
+
+    def test_the_header_is_one_block(self):
+        page = render_cv_markdown(parse_cv(DOCUMENT))
+        assert page.count('<div class="cv-header">') == 1
+        # One line, so the Markdown converter passes it through whole.
+        header_line = next(
+            line for line in page.splitlines() if "cv-header" in line
+        )
+        assert header_line.endswith("</div>")
+
+    def test_the_header_carries_the_portrait(self):
+        page = render_cv_markdown(parse_cv(DOCUMENT))
+        assert (
+            '<div class="cv-photo">'
+            '<img src="pic.jpg" alt="Profile picture"></div>'
+        ) in page
+
+    def test_the_header_names_the_person(self):
+        page = render_cv_markdown(parse_cv(DOCUMENT))
+        assert '<h2 class="cv-name">Ada Lovelace</h2>' in page
+
+    def test_the_details_are_separable_items(self):
+        """Each fact is its own span, so the theme can divide them."""
+        page = render_cv_markdown(parse_cv(DOCUMENT))
+        subtitle = re.search(
+            r'<div class="cv-subtitle">(.*?)</div>', page, re.S,
+        )
+        assert subtitle, page
+        assert subtitle.group(1).count("<span>") == 4
+        assert "<span>Analyst</span>" in subtitle.group(1)
+        assert "<span>London, England</span>" in subtitle.group(1)
+
+    def test_the_closing_date_is_its_own_element(self):
+        page = render_cv_markdown(parse_cv(DOCUMENT))
+        assert (
+            '<div class="cv-updated">Last updated on October 10th, 1852</div>'
+        ) in page
+
+    def test_html_special_characters_are_escaped(self):
+        cv = parse_cv(DOCUMENT.replace(
+            'name = "Ada Lovelace"', 'name = "Ada <b>Lovelace</b> & Co"',
+        ))
+        page = render_cv_markdown(cv)
+        assert "Ada &lt;b&gt;Lovelace&lt;/b&gt; &amp; Co" in page
+
+    def test_the_body_stays_markdown(self):
+        """Only the header and the closing date are markup.
+
+        Sections stay Markdown headings so they keep their anchors and
+        reach the table of contents.
+        """
+        page = render_cv_markdown(parse_cv(DOCUMENT))
+        assert "## Skills" in page
+        assert "<h2 class=\"cv-section\"" not in page
+
+
+class TestTheRenderedPage:
+    """What the converted page carries, end to end."""
+
+    def test_the_header_survives_conversion(self):
+        from selfdoc.html import md_to_html
+
+        html = md_to_html(render_cv_markdown(parse_cv(DOCUMENT)))
+        assert '<div class="cv-header">' in html
+        assert '<img src="pic.jpg" alt="Profile picture"' in html
+        assert '<h2 class="cv-name">Ada Lovelace</h2>' in html
+        assert '<span>Analyst</span>' in html
+
+    def test_the_sections_still_become_headings_with_anchors(self):
+        from selfdoc.html import md_to_html
+
+        html = md_to_html(render_cv_markdown(parse_cv(DOCUMENT)))
+        assert '<h2 id="skills">' in html
+        assert '<h2 id="education">' in html
+
+
+class TestThemesCarryTheDesign:
+    """Both themes style the markup the renderer emits."""
+
+    THEMES = ("minimal.css", "clean.css")
+
+    @pytest.fixture(params=THEMES)
+    def whole_css(self, request):
+        path = (
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        with open(
+            os.path.join(path, "selfdoc_core", "themes", request.param),
+            encoding="utf-8",
+        ) as f:
+            return f.read()
+
+    @pytest.fixture()
+    def theme_css(self, whole_css):
+        """The theme's CV section, so a match cannot come from elsewhere."""
+        marker = "/* === CV page === */"
+        assert marker in whole_css, "theme carries no CV section"
+        return whole_css[whole_css.index(marker):]
+
+    def test_the_header_is_a_row(self, theme_css):
+        rule = re.search(r"\.cv-header\s*\{([^}]*)\}", theme_css)
+        assert rule, "no .cv-header rule"
+        assert "display: flex" in rule.group(1)
+
+    def test_the_portrait_is_circular(self, theme_css):
+        rule = re.search(r"\.cv-photo\s*\{([^}]*)\}", theme_css)
+        assert rule, "no .cv-photo rule"
+        assert "border-radius: 50%" in rule.group(1)
+        assert "box-shadow" in rule.group(1)
+
+    def test_the_details_are_divided(self, theme_css):
+        rule = re.search(
+            r"\.cv-subtitle\s*>\s*span:not\(:last-child\)\s*\{([^}]*)\}",
+            theme_css,
+        )
+        assert rule, "no .cv-subtitle separator rule"
+        assert "dotted" in rule.group(1)
+
+    def test_the_sections_get_their_own_heading_treatment(self, theme_css):
+        rule = re.search(r"\.page-cv h2\s*\{([^}]*)\}", theme_css)
+        assert rule, "no .page-cv h2 rule"
+        assert "dotted" in rule.group(1)
+
+    def test_the_links_are_marked(self, theme_css):
+        assert ".page-cv article a" in theme_css
+        assert "underline dotted" in theme_css
+
+    def test_the_closing_date_is_styled(self, theme_css):
+        assert re.search(r"\.cv-updated\s*\{", theme_css)
+
+    def test_every_colour_comes_from_a_theme_variable(self, theme_css):
+        """No literal colours: the dark palettes then apply unchanged."""
+        for literal in ("#fff", "#000", "rgba("):
+            assert literal not in theme_css, literal
+        assert "var(--text-secondary)" in theme_css
+
+    def test_the_header_is_kept_whole_when_printed(self, whole_css):
+        """The print rule names it among the blocks that must not split."""
+        print_rule = re.search(
+            r"([^{}]*)\{\s*page-break-inside: avoid;", whole_css,
+        )
+        assert print_rule
+        assert "cv-header" in print_rule.group(1)
 
 
 # -- the Person a CV states ----------------------------------------------------
@@ -374,7 +529,7 @@ class TestDirective:
             "cv", {"path": "docs/cv.toml"}, [], str(project),
             config={"author": dict(TEST_AUTHOR)},
         )
-        assert "# Ada Lovelace" in result
+        assert '<h2 class="cv-name">Ada Lovelace</h2>' in result
         assert CV_PERSON_ATTR in result
 
     def test_the_person_survives_the_markdown_conversion(self, tmp_path):

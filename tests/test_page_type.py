@@ -100,3 +100,39 @@ class TestTypeOnBuiltPages:
 
         page = project / "docs" / "_build" / "changelog" / "index.html"
         assert 'data-pagefind-filter="type:changelog"' in page.read_text()
+
+
+class TestDeclaredTypeReachesTheMarkup:
+    """A declared type is on the page, so a theme can style that kind.
+
+    Only a frontmatter-declared type counts: a derived facet type is a
+    search filter, not a design decision.
+    """
+
+    def test_a_declared_type_becomes_a_class_on_main(self, make_project):
+        from selfdoc.build import build
+
+        project = make_project()
+        (project / "docs" / "cv.md").write_text(
+            "---\ntitle: CV\ntype: cv\n"
+            "description: The curriculum vitae page of this small site.\n"
+            "---\n\n# CV\n\nA record.\n",
+        )
+        build(str(project))
+
+        page = project / "docs" / "_build" / "cv" / "index.html"
+        assert '<main class="content page-cv"' in page.read_text()
+
+    def test_a_page_with_no_declared_type_carries_no_class(self, make_project):
+        from selfdoc.build import build
+
+        project = make_project()
+        (project / "docs" / "changelog.md").write_text(
+            "# Changelog\n\nWhat changed.\n",
+        )
+        build(str(project))
+
+        page = project / "docs" / "_build" / "changelog" / "index.html"
+        text = page.read_text()
+        assert '<main class="content"' in text
+        assert "page-changelog" not in text

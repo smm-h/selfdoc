@@ -3851,6 +3851,15 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         )
     )
 
+    # A page that declares a type says so in the markup, so a theme can give
+    # that kind of page its own treatment without the content having to
+    # carry a wrapper of its own.  Only the declared frontmatter type counts
+    # here: a derived facet type is a search filter, not a design decision.
+    page_type_class = (
+        f' page-{_escape_html(page_type)}'
+        if page_type and re.fullmatch(r"[A-Za-z0-9_-]+", page_type) else ""
+    )
+
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -3880,7 +3889,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{nav_html}\n'
         f'</ul>\n'
         f'</nav>\n'
-        f'<main class="content" id="main-content">\n'
+        f'<main class="content{page_type_class}" id="main-content">\n'
         f'{version_notice_html}\n'
         f'<article data-pagefind-body>\n'
         f'{pagefind_block}\n'

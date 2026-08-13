@@ -1818,7 +1818,8 @@ hr {
         --border: #d0d7de;
     }
 
-    .code-block, .table-wrap, img, .api-entry, .admonition, blockquote {
+    .code-block, .table-wrap, img, .api-entry, .admonition, blockquote,
+    .cv-header {
         page-break-inside: avoid;
     }
 
@@ -2373,4 +2374,112 @@ dfn {
 .share-address-copy:hover {
     border-color: var(--link);
     color: var(--link);
+}
+
+/* === CV page === */
+
+/* A CV is a document about a person, so it opens with the person: a
+   portrait beside the name and the handful of details that place them.
+   The rules below are scoped to .page-cv, the class a page carries when
+   its frontmatter declares `type: cv`. */
+
+.cv-header {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    margin: 0 0 1.5rem;
+}
+
+.cv-photo {
+    flex: 0 0 auto;
+    width: 8em;
+    height: 8em;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0.5em 0.75em var(--shadow-sm);
+}
+
+.cv-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    aspect-ratio: 1 / 1;
+}
+
+.cv-identity {
+    min-width: 0;
+}
+
+.cv-name {
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 0.35rem;
+    padding-top: 0;
+    border-top: none;
+}
+
+/* The details read as one line of facts, divided rather than listed. */
+.cv-subtitle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+}
+
+.cv-subtitle > span:not(:last-child) {
+    border-right: 1px dotted var(--text-secondary);
+    padding-right: 0.5rem;
+}
+
+/* Sections are dividers in a record, not chapters in an article. */
+.page-cv h2 {
+    border-top: none;
+    padding-top: 0;
+    margin: 2.25rem 0 1rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px dotted var(--link);
+    text-decoration: underline 0.15em solid var(--link);
+    text-underline-offset: 0.3em;
+}
+
+.page-cv h3 {
+    margin: 1.75rem 0 0.5rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px dotted var(--border);
+    font-size: 1.125rem;
+}
+
+.page-cv ul {
+    list-style-type: square;
+}
+
+/* Every link in a CV is a reference the reader may want to follow, so they
+   are marked as links rather than left to colour alone. */
+.page-cv .content-body a,
+.page-cv article a:not(.heading-link):not(.term-link) {
+    text-decoration: underline dotted var(--text-secondary) 1px;
+    text-underline-offset: 0.25em;
+}
+
+.cv-updated {
+    margin-top: 2.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .cv-header {
+        gap: 1.25rem;
+    }
+    .cv-photo {
+        width: 5em;
+        height: 5em;
+    }
+    .cv-name {
+        font-size: 1.375rem;
+    }
 }

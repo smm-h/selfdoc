@@ -423,21 +423,69 @@ def _link(text: str, url: str) -> str:
     return f"[{text}]({url})" if url else text
 
 
+def _esc(text: str) -> str:
+    """Escape *text* for embedding in the header's HTML."""
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def _render_cv_header(identity) -> str:
+    """Return the CV's header block: the photo beside who the person is.
+
+    This is HTML rather than Markdown because it is structure, not prose: a
+    portrait, a name, and a row of details separated from one another.  The
+    themes style it through the ``cv-`` classes it carries, and the whole
+    block is emitted on one line so the Markdown converter passes it
+    through whole.
+
+    The name is a level-2 heading: the page's own title is its ``h1``, and
+    the name introduces the document under it.
+    """
+    photo = ""
+    if identity.photo:
+        photo = (
+            f'<div class="cv-photo">'
+            f'<img src="{_esc(identity.photo)}" alt="Profile picture">'
+            f'</div>'
+        )
+
+    details = [_esc(identity.headline), _esc(identity.location)]
+    details.append(
+        f'<a href="mailto:{_esc(identity.email)}">{_esc(identity.email)}</a>'
+    )
+    details += [
+        f'<a href="{_esc(p.url)}">{_esc(p.label)}</a>'
+        for p in identity.profiles
+    ]
+    subtitle = "".join(f"<span>{d}</span>" for d in details)
+
+    return (
+        f'<div class="cv-header">'
+        f'{photo}'
+        f'<div class="cv-identity">'
+        f'<h2 class="cv-name">{_esc(identity.name)}</h2>'
+        f'<div class="cv-subtitle">{subtitle}</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+
 def render_cv_markdown(cv: CV) -> str:
     """Return the CV as the Markdown body of a page.
 
     Section headings are fixed, because they are the document's structure
-    rather than one of its facts.
+    rather than one of its facts.  The header block and the closing date
+    are HTML, for the reason :func:`_render_cv_header` gives; everything
+    else is Markdown, so the headings enter the table of contents and the
+    prose keeps its links and emphasis.
     """
     identity = cv.identity
-    parts: list[str] = [f"# {identity.name}", ""]
-    if identity.photo:
-        parts += [f"![Profile picture]({identity.photo})", ""]
-
-    header = [identity.headline, identity.location,
-              _link(identity.email, f"mailto:{identity.email}")]
-    header += [_link(p.label, p.url) for p in identity.profiles]
-    parts += header + ["", identity.summary, ""]
+    parts: list[str] = [_render_cv_header(identity), ""]
+    parts += [identity.summary, ""]
 
     parts += ["## Skills", ""]
     for group in cv.skills:
@@ -497,7 +545,11 @@ def render_cv_markdown(cv: CV) -> str:
     parts += ["## Contact information", "", cv.contact, ""]
 
     if identity.updated:
-        parts += [f"Last updated on {identity.updated}", ""]
+        parts += [
+            f'<div class="cv-updated">Last updated on '
+            f'{_esc(identity.updated)}</div>',
+            "",
+        ]
 
     return "\n".join(parts).rstrip("\n") + "\n"
 
