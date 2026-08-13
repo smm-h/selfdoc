@@ -1,7 +1,7 @@
 // Embedded live code playground (Feature 41)
 (function() {
-  document.querySelectorAll('.code-block[data-run="true"]').forEach(function(block) {
-    var label = block.querySelector('.code-label');
+  document.querySelectorAll('.tm-code[data-run="true"]').forEach(function(block) {
+    var label = block.querySelector('.tm-code-label');
     if (!label) return;
     var lang = label.textContent.trim().toLowerCase();
     var code = block.querySelector('code');

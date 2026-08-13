@@ -1,7 +1,14 @@
-// Scrollspy for TOC (Feature 2, Issue 44)
+// Scrollspy for the table of contents (Feature 2, Issue 44)
+//
+// The entries are the framework's anchor spelling, so the state they carry
+// is aria-current="page" -- the static counterpart of the .active class a
+// router would toggle, and what a.docs-toc-item[aria-current] paints.  The
+// scrolling element is #tm-content, so positions are measured against its
+// box rather than against the viewport.
 (function() {
-  var tocLinks = document.querySelectorAll('.toc a');
-  if (!tocLinks.length) return;
+  var tocLinks = document.querySelectorAll('.docs-toc-item');
+  var scroller = document.getElementById('tm-content');
+  if (!tocLinks.length || !scroller) return;
   var headings = [];
   tocLinks.forEach(function(link) {
     var id = link.getAttribute('href').substring(1);
@@ -10,21 +17,21 @@
   });
   var ticking = false;
   function update() {
-    var scrollTop = window.scrollY + 100;
+    var top = scroller.getBoundingClientRect().top;
     var active = null;
     for (var i = 0; i < headings.length; i++) {
-      if (headings[i].el.offsetTop <= scrollTop) {
+      if (headings[i].el.getBoundingClientRect().top - top <= 100) {
         active = headings[i];
       }
     }
-    tocLinks.forEach(function(a) { a.classList.remove('active'); });
+    tocLinks.forEach(function(a) { a.removeAttribute('aria-current'); });
     if (active) {
-      active.link.classList.add('active');
+      active.link.setAttribute('aria-current', 'page');
       active.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
     ticking = false;
   }
-  window.addEventListener('scroll', function() {
+  scroller.addEventListener('scroll', function() {
     if (!ticking) {
       requestAnimationFrame(update);
       ticking = true;

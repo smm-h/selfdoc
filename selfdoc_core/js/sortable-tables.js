@@ -1,19 +1,24 @@
 // Sortable tables in article content
+//
+// aria-sort IS the sort indicator the framework paints -- the arrow comes
+// from `.tm-table th[aria-sort]::after` -- so sorting moves the attribute
+// and nothing else. The server renders `aria-sort="none"` on every sortable
+// header, which is the state it rendered.
 (function() {
   var article = document.querySelector('article');
   if (!article) return;
-  article.querySelectorAll('table').forEach(function(table) {
+  article.querySelectorAll('table.tm-table').forEach(function(table) {
     var thead = table.querySelector('thead');
     if (!thead) return;
-    var ths = thead.querySelectorAll('th');
+    var ths = thead.querySelectorAll('th.sortable');
     ths.forEach(function(th, colIdx) {
       th.addEventListener('click', function() {
         var tbody = table.querySelector('tbody');
         if (!tbody) return;
         var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-        var asc = !th.classList.contains('sort-asc');
-        ths.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
-        th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+        var asc = th.getAttribute('aria-sort') !== 'ascending';
+        ths.forEach(function(h) { h.setAttribute('aria-sort', 'none'); });
+        th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
         var allNum = rows.every(function(r) {
           var c = r.children[colIdx];
           if (!c) return false;

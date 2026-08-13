@@ -1,10 +1,18 @@
-// Mobile sidebar toggle (Feature 25)
+// Mobile sidebar drawer (Feature 25)
+//
+// The framework's shell paints the drawer -- #tm-sidebar slides in when
+// #tm-app carries .sidebar-open, over a backdrop -- but ships no toggle a
+// server-emitted page can use: its own wiring lives inside mountShell(),
+// which builds the frame from nothing and would throw this page's shell
+// away. So the click, the focus trap and the Escape key are selfdoc's, and
+// the class they toggle is the framework's.
 (function() {
-  var toggle = document.querySelector('.hamburger');
-  var sidebar = document.getElementById('sidebar');
-  if (!toggle || !sidebar) return;
+  var toggle = document.querySelector('.tm-hamburger');
+  var sidebar = document.getElementById('tm-sidebar');
+  var app = document.getElementById('tm-app');
+  if (!toggle || !sidebar || !app) return;
   function openSidebar() {
-    document.body.classList.add('sidebar-open');
+    app.classList.add('sidebar-open');
     toggle.setAttribute('aria-expanded', 'true');
     var focusable = sidebar.querySelectorAll('a, button, input, [tabindex]');
     if (focusable.length) {
@@ -13,7 +21,7 @@
     }
   }
   function closeSidebar() {
-    document.body.classList.remove('sidebar-open');
+    app.classList.remove('sidebar-open');
     toggle.setAttribute('aria-expanded', 'false');
     sidebar.removeEventListener('keydown', trapFocus);
     toggle.focus();
@@ -33,19 +41,19 @@
     }
   }
   toggle.addEventListener('click', function() {
-    if (document.body.classList.contains('sidebar-open')) {
+    if (app.classList.contains('sidebar-open')) {
       closeSidebar();
     } else {
       openSidebar();
     }
   });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+    if (e.key === 'Escape' && app.classList.contains('sidebar-open')) {
       closeSidebar();
     }
   });
   document.addEventListener('click', function(e) {
-    if (document.body.classList.contains('sidebar-open') &&
+    if (app.classList.contains('sidebar-open') &&
         !sidebar.contains(e.target) && !toggle.contains(e.target)) {
       closeSidebar();
     }

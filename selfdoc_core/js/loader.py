@@ -64,7 +64,7 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         js_blocks.append(load_js("heading-copy"))
     if 'class="table-wrap"' in body_html:
         js_blocks.append(load_js("sortable-tables"))
-    if 'class="version-notice"' in extras_html:
+    if "data-notice-key=" in extras_html:
         js_blocks.append(load_js("version-notice"))
     if 'class="share-address"' in extras_html:
         js_blocks.append(load_js("share-address"))

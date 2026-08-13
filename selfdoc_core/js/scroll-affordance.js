@@ -14,7 +14,7 @@
     check();
   }
   function init() {
-    document.querySelectorAll('.code-block').forEach(function(el) {
+    document.querySelectorAll('.tm-code').forEach(function(el) {
       var pre = el.querySelector('pre');
       if (pre) setup(el, pre);
     });

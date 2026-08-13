@@ -141,7 +141,7 @@ def _theme_css_rel(theme_meta):
 
 # The scope every highlight rule is written under.  It matches the markup
 # ``_render_code_block`` produces, and nothing outside a code block.
-PYGMENTS_SCOPE = ".code-block code"
+PYGMENTS_SCOPE = ".tm-code code"
 
 #: The prefix every generated highlight custom property carries.
 PYGMENTS_VAR_PREFIX = "--sd-hl-"
@@ -197,7 +197,7 @@ def _pygments_var(selector, prop, scope):
 
     Derived from the token classes the selector names, so the variable a
     reader meets in the rule says which token it paints:
-    ``.code-block code .kd`` + ``color`` becomes ``--sd-hl-kd-color``.
+    ``.tm-code code .kd`` + ``color`` becomes ``--sd-hl-kd-color``.
     """
     tail = selector[len(scope):].strip() or "base"
     slug = _PYGMENTS_SLUG_RE.sub("-", tail.lower()).strip("-")
@@ -1193,8 +1193,9 @@ def _render_table(token, tokens, idx):
             break
     if caption_text:
         table_html = table_html.replace(
-            "<table>",
-            f'<table><caption class="sr-only">'
+            '<table class="data tm-table" role="grid">',
+            f'<table class="data tm-table" role="grid">'
+            f'<caption class="sr-only">'
             f"{_escape_html(caption_text)}</caption>",
             1,
         )
@@ -1413,49 +1414,63 @@ def _render_code_block(lang, code_lines, annotations=None, run=False,
                 f"# [{_escape_html(num)}]", badge
             )
 
-    # Wrap each line in a <span class="code-line"> for line numbers
+    # Wrap each line in a <span class="tm-code-line"> for line numbers.  The
+    # numbers themselves are a CSS counter over these wrappers, so nothing
+    # here emits a number and a copied selection is code and nothing else.
     if line_numbers and not is_diff:
         wrapped_lines = []
         for raw_line in code_content.split("\n"):
-            wrapped_lines.append(f'<span class="code-line">{raw_line}</span>')
+            wrapped_lines.append(
+                f'<span class="tm-code-line">{raw_line}</span>'
+            )
         code_content = "\n".join(wrapped_lines)
 
     run_attr = ' data-run="true"' if run else ""
     has_ln = line_numbers and not is_diff
-    ln_class = " has-line-numbers" if has_ln else ""
+    ln_class = " tm-code-numbered" if has_ln else ""
     ln_attr = f' data-line-start="{line_start}"' if has_ln else ""
     # Inline counter-reset so line numbering starts at the right value.
     # counter-reset sets the initial value; counter-increment fires
     # before display, so reset to (line_start - 1).
-    ln_style = f' style="counter-reset:line-number {line_start - 1}"' if has_ln else ""
+    ln_style = (
+        f' style="counter-reset:tm-code-line {line_start - 1}"'
+        if has_ln else ""
+    )
+    # The framework's code chrome: a <figure class="tm-code"> wrapping the
+    # label bar and the <pre>.  The bar is always emitted, because it is
+    # where the copy button goes -- .tm-code-actions is the slot the sheet
+    # reserves and the script fills.
     if lang:
         escaped_lang = _escape_html(lang)
         icon_svg = get_icon(lang, code_icons) if code_icons != "none" else None
         icon_html = icon_svg + " " if icon_svg else ""
-        label = f'<div class="code-label">{icon_html}{escaped_lang}</div>'
-        return (
-            f'<div class="code-block{ln_class}"{run_attr}>{label}'
-            f'<pre tabindex="0" aria-label="Code: {escaped_lang}"{ln_attr}>'
-            f'<code class="language-{escaped_lang}"{ln_style}>'
-            f"{code_content}</code></pre></div>"
-        )
+        label = f'<span class="tm-code-label">{icon_html}{escaped_lang}</span>'
+        aria = f'Code: {escaped_lang}'
+        code_open = f'<code class="language-{escaped_lang}">'
+    else:
+        label = '<span class="tm-code-label"></span>'
+        aria = "Code block"
+        code_open = "<code>"
     return (
-        f'<div class="code-block{ln_class}"{run_attr}>'
-        f'<pre tabindex="0" aria-label="Code block"{ln_attr}>'
-        f'<code{ln_style}>{code_content}</code></pre>'
-        f'</div>'
+        f'<figure class="tm-code{ln_class}"{run_attr}{ln_style}>'
+        f'<figcaption class="tm-code-bar">{label}'
+        f'<span class="tm-code-actions"></span></figcaption>'
+        f'<pre tabindex="0" aria-label="{aria}"{ln_attr}>'
+        f'{code_open}{code_content}</code></pre>'
+        f'</figure>'
     )
 
 
 _RE_CODE_BLOCK_WITH_LABEL = re.compile(
-    r'<div class="code-block"[^>]*><div class="code-label">'
+    r'<figure class="tm-code"[^>]*>'
+    r'<figcaption class="tm-code-bar"><span class="tm-code-label">(?!</span>)'
 )
 
 
 def _group_code_tabs(html):
     """Group consecutive code blocks into a tabbed interface (Feature 31).
 
-    Detects runs of consecutive <div class="code-block"> elements (with
+    Detects runs of consecutive <figure class="tm-code"> elements (with
     different language labels) and wraps them in a tab container.
     Only groups blocks that have language labels.
     """
@@ -1479,11 +1494,12 @@ def _group_code_tabs(html):
                 tabs = []
                 panels = []
                 for idx, block_html in enumerate(group):
-                    # Extract language text from the code-label div.
+                    # Extract language text from the code bar's label.
                     # The label may contain an SVG icon before the text,
                     # so we match the last text node (after any SVG).
                     label_match = re.search(
-                        r'<div class="code-label">(?:<svg[^>]*>.*?</svg>\s*)?([^<]+)</div>',
+                        r'<span class="tm-code-label">'
+                        r'(?:<svg[^>]*>.*?</svg>\s*)?([^<]+)</span>',
                         block_html,
                         re.DOTALL,
                     )
@@ -1594,7 +1610,7 @@ def _wrap_api_entries(html):
     """Wrap h3/h4 + code block + description paragraph in API entry cards
     (Feature 48).
 
-    When an h3 or h4 heading is followed by a code-block div (a function/type
+    When an h3 or h4 heading is followed by a code figure (a function/type
     signature) and a <p> (description), with optional whitespace/newlines
     between them, wrap them together in a <div class="api-entry">.
 
@@ -1608,7 +1624,7 @@ def _wrap_api_entries(html):
     _identifier_re = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*(\(.*\))?$')
     pattern = re.compile(
         r'(<h[34]\s[^>]*>.*?</h[34]>)\s*'
-        r'(<div class="code-block">.*?</div>)\s*'
+        r'(<figure class="tm-code">.*?</figure>)\s*'
         r'(<p>.*?</p>)',
         re.DOTALL,
     )
@@ -1814,36 +1830,62 @@ def _parse_table(table_lines):
             else:
                 alignments.append(None)
 
-    def _th(content, col_idx):
+    def _align(col_idx):
         if col_idx < len(alignments) and alignments[col_idx]:
-            return f'<th style="text-align: {alignments[col_idx]}">{_inline_format(content)}</th>'
-        return f"<th>{_inline_format(content)}</th>"
+            return f' style="text-align: {alignments[col_idx]}"'
+        return ""
+
+    def _th(content, col_idx):
+        # ``aria-sort`` IS the sort indicator the framework paints, so the
+        # server states the order it rendered -- unsorted -- and the
+        # sorting script moves the attribute rather than a class.
+        return (
+            f'<th class="sortable" role="columnheader" aria-sort="none"'
+            f'{_align(col_idx)}>{_inline_format(content)}</th>'
+        )
 
     def _td(content, col_idx):
-        if col_idx < len(alignments) and alignments[col_idx]:
-            return f'<td style="text-align: {alignments[col_idx]}">{_inline_format(content)}</td>'
-        return f"<td>{_inline_format(content)}</td>"
+        return (
+            f'<td role="gridcell"{_align(col_idx)}>'
+            f'{_inline_format(content)}</td>'
+        )
 
-    html = "<table>\n"
+    # The framework's static table: ``table.data.tm-table[role=grid]``, with
+    # a ``<tfoot>`` that is always present (it holds a row-cap note when one
+    # is in force, and is empty otherwise).
+    html = '<table class="data tm-table" role="grid">\n'
 
     if separator_idx is not None and separator_idx > 0:
         # Rows before separator are headers
         html += "<thead>\n"
         for row in rows[:separator_idx]:
-            html += "<tr>" + "".join(_th(c, i) for i, c in enumerate(row)) + "</tr>\n"
+            html += (
+                '<tr role="row">'
+                + "".join(_th(c, i) for i, c in enumerate(row))
+                + "</tr>\n"
+            )
         html += "</thead>\n"
         # Rows after separator are body
         html += "<tbody>\n"
         for row in rows[separator_idx + 1:]:
-            html += "<tr>" + "".join(_td(c, i) for i, c in enumerate(row)) + "</tr>\n"
+            html += (
+                '<tr role="row">'
+                + "".join(_td(c, i) for i, c in enumerate(row))
+                + "</tr>\n"
+            )
         html += "</tbody>\n"
     else:
         # No separator: all rows are body
         html += "<tbody>\n"
         for row in rows:
-            html += "<tr>" + "".join(f"<td>{_inline_format(c)}</td>" for c in row) + "</tr>\n"
+            html += (
+                '<tr role="row">'
+                + "".join(_td(c, i) for i, c in enumerate(row))
+                + "</tr>\n"
+            )
         html += "</tbody>\n"
 
+    html += "<tfoot></tfoot>\n"
     html += "</table>"
     return html
 
@@ -1876,11 +1918,11 @@ def _parse_blockquote(bq_lines):
                     body_parts.append(f"<p>{_inline_format(para)}</p>")
             body_html = "\n".join(body_parts) if body_parts else ""
             title = admonition_type.capitalize()
-            css_class = admonition_type.lower()
+            kind, icon_svg, role = _CALLOUT_KINDS[admonition_type]
             return (
-                f'<div class="admonition {css_class}">\n'
-                f'<p class="admonition-title">{title}</p>\n'
-                f'{body_html}\n'
+                f'<div class="tm-callout tm-callout-{kind}" role="{role}">\n'
+                f'<div class="tm-callout-title">{icon_svg}{title}</div>\n'
+                f'<div class="tm-callout-body">{body_html}</div>\n'
                 f'</div>'
             )
 
@@ -1892,18 +1934,27 @@ def _parse_blockquote(bq_lines):
 def _render_diff_lines(code_lines):
     """Render code lines with diff-style highlighting.
 
-    Lines starting with '+' get class "line-add", lines starting with '-'
-    get class "line-remove". Other lines get a plain "line" span.
+    Every line is a ``.tm-code-line`` wrapper; an added line also carries
+    ``.tm-code-add`` and a removed one ``.tm-code-del``.  The ``+``/``-``
+    marker itself is **not** emitted: the framework draws it as generated
+    content in a gutter, so a copied selection is the code without the
+    diff column.  Emitting the character as well would print it twice.
     """
     parts = []
     for line in code_lines:
-        escaped = _escape_html(line)
         if line.startswith("+"):
-            parts.append(f'<span class="line line-add">{escaped}</span>')
+            escaped = _escape_html(line[1:])
+            parts.append(
+                f'<span class="tm-code-line tm-code-add">{escaped}</span>'
+            )
         elif line.startswith("-"):
-            parts.append(f'<span class="line line-remove">{escaped}</span>')
+            escaped = _escape_html(line[1:])
+            parts.append(
+                f'<span class="tm-code-line tm-code-del">{escaped}</span>'
+            )
         else:
-            parts.append(f'<span class="line">{escaped}</span>')
+            escaped = _escape_html(line)
+            parts.append(f'<span class="tm-code-line">{escaped}</span>')
     return "\n".join(parts)
 
 
@@ -2561,6 +2612,18 @@ def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix,
     site mount the posts are outside this project's output entirely, and
     :func:`_site_level_hop` answers with an absolute URL.
     """
+    def _entry(item, extra_class=""):
+        item_prefix = _nav_hop(item, prefix, unversioned_prefix, site_prefix)
+        href = item_prefix + _html_path_to_url(item["path"])
+        is_active = item["path"] == current_path
+        classes = "nav-item" + extra_class + (" active" if is_active else "")
+        current = ' aria-current="page"' if is_active else ""
+        return (
+            f'<a class="{classes}" href="{href}"{current}>'
+            f'<span class="nav-label">{_escape_html(item["label"])}</span>'
+            f'</a>'
+        )
+
     items_html = []
     for item in nav_items:
         if "group" in item:
@@ -2569,42 +2632,25 @@ def _render_nav(nav_items, prefix, current_path="", *, unversioned_prefix,
                 sub["path"] == current_path for sub in item["items"]
             )
             open_attr = " open" if is_active_group else ""
-            sub_items = []
-            for sub in item["items"]:
-                sub_prefix = _nav_hop(
-                    sub, prefix, unversioned_prefix, site_prefix,
-                )
-                href = sub_prefix + _html_path_to_url(sub["path"])
-                active_cls = (
-                    ' class="active"' if sub["path"] == current_path else ""
-                )
-                sub_items.append(
-                    f'<li><a href="{href}"{active_cls}>'
-                    f'{_escape_html(sub["label"])}</a></li>'
-                )
+            sub_items = [
+                _entry(sub, " nav-item-nested") for sub in item["items"]
+            ]
+            # The framework's JavaScript-free tree row: a native
+            # <details>/<summary> disclosure reusing .tm-tree-row, so the
+            # scripted and unscripted spellings are pixel-identical.
             items_html.append(
-                f'<li class="nav-group">'
-                f'<details{open_attr}>'
-                f'<summary class="nav-group-title">'
-                f'{_escape_html(item["group"])}</summary>'
-                f'<ul class="nav-group-items">'
+                f'<details class="tm-tree-details"{open_attr}>'
+                f'<summary class="tm-tree-row">'
+                f'<span class="tm-tree-twist">{CHEVRON_ICON}</span>'
+                f'<span class="tm-tree-label">'
+                f'{_escape_html(item["group"])}</span></summary>'
+                f'<div class="tm-tree-group">'
                 f'{"".join(sub_items)}'
-                f'</ul>'
+                f'</div>'
                 f'</details>'
-                f'</li>'
             )
         else:
-            item_prefix = _nav_hop(
-                item, prefix, unversioned_prefix, site_prefix,
-            )
-            href = item_prefix + _html_path_to_url(item["path"])
-            active_cls = (
-                ' class="active"' if item["path"] == current_path else ""
-            )
-            items_html.append(
-                f'<li><a href="{href}"{active_cls}>'
-                f'{_escape_html(item["label"])}</a></li>'
-            )
+            items_html.append(_entry(item))
     return "".join(items_html)
 
 
@@ -2649,13 +2695,22 @@ def _build_toc(body_html):
         # Strip any remaining HTML tags from the heading text
         clean_text = re.sub(r"<[^>]+>", "", text).strip()
         level = tag  # "h2" or "h3"
-        indent_cls = " toc-h3" if level == "h3" else ""
+        indent_cls = " sub" if level == "h3" else ""
         items.append(
-            f'<li class="toc-item{indent_cls}">'
-            f'<a href="#{slug}">{_escape_html(clean_text)}</a></li>'
+            f'<a class="docs-toc-item{indent_cls}" href="#{slug}">'
+            f'{_escape_html(clean_text)}</a>'
         )
 
-    return '<nav class="toc-nav" aria-label="Table of contents"><ul>' + "\n".join(items) + "</ul></nav>"
+    # The anchor spelling of the framework's table of contents: real URLs,
+    # so the entries work with scripting off.  ``aria-current="page"`` is
+    # the static counterpart of the ``.active`` class a router toggles, and
+    # is what the scrollspy sets as the reader moves down the page.
+    return (
+        '<nav class="docs-toc" aria-label="On this page">'
+        '<div class="docs-toc-head">Contents</div>'
+        + "\n".join(items)
+        + "</nav>"
+    )
 
 
 def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
@@ -2698,7 +2753,10 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
     if logical_path.endswith("/index.html"):
         logical_path = logical_path[: -len("/index.html")]
     parts = logical_path.split("/")
-    crumbs = [f'<a href="{home_href}">Home</a>']
+    crumbs = [
+        f'<li class="tm-crumb">'
+        f'<a class="tm-crumb-link" href="{home_href}">Home</a></li>'
+    ]
     # Add intermediate directory breadcrumbs
     for i, dir_name in enumerate(parts[:-1]):
         dir_path = "/".join(parts[:i + 1])
@@ -2706,15 +2764,28 @@ def _build_breadcrumbs(html_path, page_title, prefix, existing_pages=None,
         target = f'{dir_path}/index.html'
         if target in existing_pages:
             hop = _path_hop(target, prefix, site_prefix)
-            crumbs.append(f'<a href="{hop}{_html_path_to_url(target)}">{label}</a>')
+            crumbs.append(
+                f'<li class="tm-crumb"><a class="tm-crumb-link" '
+                f'href="{hop}{_html_path_to_url(target)}">{label}</a></li>'
+            )
         else:
-            crumbs.append(f'<span>{label}</span>')
-    # Final segment is the current page (no link)
-    crumbs.append(f'<span>{_escape_html(page_title)}</span>')
+            crumbs.append(
+                f'<li class="tm-crumb">'
+                f'<span class="tm-crumb-static">{label}</span></li>'
+            )
+    # Final segment is the current page: never a link, and the one crumb
+    # carrying aria-current.
+    crumbs.append(
+        f'<li class="tm-crumb"><span class="tm-crumb-current" '
+        f'aria-current="page">{_escape_html(page_title)}</span></li>'
+    )
+    # The separators are drawn in CSS between list items -- there is no
+    # separator element to emit.
     return (
-        '<nav class="breadcrumbs" aria-label="Breadcrumbs">'
-        + " / ".join(crumbs)
-        + '</nav>'
+        '<nav class="tm-crumbs-nav" aria-label="Breadcrumb">'
+        '<ol class="tm-crumbs">'
+        + "".join(crumbs)
+        + '</ol></nav>'
     )
 
 
@@ -3154,6 +3225,51 @@ CHEVRON_ICON = (
     'stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>'
 )
 
+#: The rest of the framework's icon set this build emits, copied verbatim
+#: from ``assets/js/icons.js`` for the same reason: a server-emitted
+#: component and a factory-built one carry the same glyph.
+CLOSE_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2"><path d="M5 5l14 14M19 5L5 19"/></svg>'
+)
+MENU_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>'
+)
+INFO_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2"><rect x="3" y="3" width="18" height="18"/>'
+    '<path d="M12 10v6M12 7v.5"/></svg>'
+)
+WARN_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2"><path d="M12 3L2 21h20z"/>'
+    '<path d="M12 10v5M12 18v.5"/></svg>'
+)
+NOTE_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2"><path d="M17 3l4 4L8 20H4v-4z"/></svg>'
+)
+CHECK_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2.5"><path d="M4 12.5l5 5L20 6"/></svg>'
+)
+
+#: The superseded-version banner is the ``warn`` kind, so it carries the
+#: warn glyph.
+NOTICE_ICON = WARN_ICON
+
+#: selfdoc's five admonition kinds in the framework's five callout kinds,
+#: with the glyph and the role each carries.  ``danger`` is the one that
+#: interrupts, so it is the one that gets ``role="alert"``.
+_CALLOUT_KINDS = {
+    "NOTE": ("note", NOTE_ICON, "note"),
+    "TIP": ("tip", CHECK_ICON, "note"),
+    "IMPORTANT": ("info", INFO_ICON, "note"),
+    "WARNING": ("warn", WARN_ICON, "note"),
+    "CAUTION": ("danger", WARN_ICON, "alert"),
+}
+
 #: A counter making every picker's listbox id unique within a page.  The
 #: framework's contract pins the *shape* of the reference -- the button's
 #: ``aria-controls`` naming its own listbox -- never the number.
@@ -3291,12 +3407,22 @@ def _render_version_notice(addr):
     )
     href = _page_href(addr, current)
     ver = _escape_html(addr.version)
+    # The framework's notice banner, in its warn kind.  The dismissal split
+    # is the framework's: it dresses the button and removes nothing, so the
+    # click is wired by selfdoc's own script (version-notice.js), which
+    # keys the stored dismissal on ``data-notice-key``.
     return (
-        f'<div class="version-notice" role="note" data-notice-key="{ver}">'
-        f'<p>You are reading v{ver} of this page, which has been superseded. '
-        f'<a href="{href}">Go to the current version</a>.</p>'
-        f'<button type="button" class="version-notice-dismiss"'
-        f' aria-label="Dismiss this notice">Dismiss</button>'
+        f'<div class="tm-notice tm-notice-warn" role="status"'
+        f' data-notice-key="{ver}">'
+        f'<span class="tm-notice-icon">{NOTICE_ICON}</span>'
+        f'<div class="tm-notice-body">'
+        f'<div class="tm-notice-title">Superseded version</div>'
+        f'<div class="tm-notice-text">You are reading v{ver} of this page, '
+        f'which has been superseded. '
+        f'<a href="{href}">Go to the current version</a>.</div>'
+        f'</div>'
+        f'<button type="button" class="tm-notice-dismiss"'
+        f' aria-label="Dismiss this notice">{CLOSE_ICON}</button>'
         f'</div>'
     )
 
@@ -3353,16 +3479,49 @@ def _render_share_control(addr, url_builder, base_url):
     )
 
 
-def _render_topbar(project_name, version_badge, topbar_page_title_html,
-                   search_trigger_html, home_href,
-                   version_picker_html="", locale_picker_html=""):
-    """Build the topbar header with hamburger, project name, theme toggle, search.
+def _render_sidebar(project_name, version_badge, home_href, nav_html):
+    """Build the framework's sidebar: the logo block and the nav.
 
     ``home_href`` is where the site-name link points -- the home page as
     seen from the rendering page, which is not always this mount's own
-    index (see :func:`_home_href`).  The two pickers are rendered by
+    index (see :func:`_home_href`).  The version badge sits under the
+    wordmark, in the slot the framework's sheet dresses as the tagline.
+    """
+    badge_html = (
+        f'<div class="tagline">{version_badge}</div>' if version_badge else ""
+    )
+    return (
+        f'<aside id="tm-sidebar">\n'
+        f'<div id="tm-logo">\n'
+        f'<a class="wordmark project-name" href="{home_href}">'
+        f'{_escape_html(project_name)}</a>\n'
+        f'{badge_html}\n'
+        f'</div>\n'
+        f'<nav id="tm-nav" aria-label="Site navigation">\n'
+        f'{nav_html}\n'
+        f'</nav>\n'
+        f'</aside>'
+    )
+
+
+def _render_topbar(page_title, search_trigger_html,
+                   version_picker_html="", locale_picker_html=""):
+    """Build the framework's topbar: hamburger, page title, actions.
+
+    The project name is not here -- it is the sidebar's wordmark, which is
+    where the framework's shell puts it.  The two pickers are rendered by
     :func:`_render_version_picker` and :func:`_render_locale_picker`,
     which is where their links are decided.
+
+    **One deliberate departure from the shell fixture**: ``#tm-page-title``
+    is a ``<span>``, not the fixture's ``<h1>``.  The framework's shell is
+    the whole of an application's chrome and its content region carries no
+    heading of its own, so the topbar is the page's ``<h1>``.  A selfdoc
+    page is a document: the article already opens with a real ``<h1>``
+    carrying the page's anchor, and repeating it in the chrome would give
+    every page two top-level headings and announce its title twice.  The
+    id, the class surface and the position in the bar are the framework's;
+    only the element differs, and the sheet selects it by id either way.
     """
     # Theme toggle SVG icons (Feature 6)
     sun_icon = (
@@ -3397,17 +3556,17 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
     )
 
     return (
-        f'<header class="topbar">\n'
-        f'<div class="topbar-inner">\n'
-        f'<button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">\n'
-        f'<span></span><span></span><span></span>\n'
+        f'<header id="tm-topbar">\n'
+        f'<button class="tm-hamburger" type="button"'
+        f' aria-label="Toggle navigation" aria-expanded="false">\n'
+        f'{MENU_ICON}\n'
         f'</button>\n'
-        f'<a class="project-name" href="{home_href}">{_escape_html(project_name)}</a>\n'
-        f'{version_badge}\n'
+        f'<span id="tm-page-title">{_escape_html(page_title)}</span>\n'
+        f'<span id="tm-page-sub"></span>\n'
+        f'<div id="tm-topbar-actions">\n'
         f'{version_picker_html}'
         f'{locale_picker_html}'
-        f'{topbar_page_title_html}\n'
-        f'<button class="theme-toggle" aria-label="Toggle theme">\n'
+        f'<button class="theme-toggle" type="button" aria-label="Toggle theme">\n'
         f'{sun_icon}{moon_icon}{auto_icon}\n'
         f'</button>\n'
         f'{search_trigger_html}'
@@ -3747,7 +3906,7 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     version_badge, custom_css_tag, feed_tag, description_tag, breadcrumbs_html,
     edit_link_html, content_date_html, page_nav_html, feedback_html,
     date_display_html, footer_html, toc_aside, mobile_toc_html, summary_html,
-    topbar_page_title_html, font_tags, auto_h1_html, search_trigger_html,
+    font_tags, auto_h1_html,
     meta_description, feed_footer_html.
     """
     if unversioned_prefix is None:
@@ -3765,8 +3924,12 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
             body_html, site_terms, page_path, prefix, site_prefix,
         )
 
+    # The framework's badge family: five sanctioned variants, and a version
+    # stamp is a neutral one.  ``version-badge`` rides along as the hook the
+    # build's own rules and assertions name it by.
     version_badge = (
-        f'<span class="version-badge">v{_escape_html(version)}</span>'
+        f'<span class="badge badge-neutral version-badge">'
+        f'v{_escape_html(version)}</span>'
         if version else ""
     )
     custom_css_tag = (
@@ -3946,10 +4109,11 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     # appeared below 1280px and nowhere else.
     wants_toc = bool(toc_html) and page_type != "post"
 
-    # TOC aside (Feature 2) -- desktop only
-    toc_aside = ""
-    if wants_toc:
-        toc_aside = f'<aside class="toc">{toc_html}</aside>'
+    # The docs-layout's second column (Feature 2) -- desktop only.  The
+    # table of contents is itself the framework's ``nav.docs-toc``, so it
+    # needs no wrapper: an <aside> around it would be a second landmark
+    # naming the same region.
+    toc_aside = toc_html if wants_toc else ""
 
     # Mobile TOC disclosure (Feature 26) -- shown only on mobile via CSS
     mobile_toc_html = ""
@@ -3968,14 +4132,6 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
             f'<div class="page-summary">\n'
             f'  <p>{_escape_html(summary)}</p>\n'
             f'</div>'
-        )
-
-    # Page title in topbar for non-index pages (Issue 51)
-    topbar_page_title_html = ""
-    if page_path and page_path != "index.html":
-        topbar_page_title_html = (
-            f'<span class="topbar-sep">/</span>'
-            f'<span class="topbar-page-title">{_escape_html(title)}</span>'
         )
 
     # Build font loading tags from theme metadata (or omit when no fonts_url)
@@ -4046,7 +4202,6 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         "toc_aside": toc_aside,
         "mobile_toc_html": mobile_toc_html,
         "summary_html": summary_html,
-        "topbar_page_title_html": topbar_page_title_html,
         "font_tags": font_tags,
         "auto_h1_html": auto_h1_html,
         "feed_footer_html": feed_footer_html,
@@ -4188,15 +4343,18 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         # "hidden" -- no trigger in topbar
         search_trigger_html = ""
 
-    # Build topbar
+    # Build the shell's two chrome regions
     topbar_html = _render_topbar(
-        project_name=project_name,
-        version_badge=meta["version_badge"],
-        topbar_page_title_html=meta["topbar_page_title_html"],
+        page_title=title,
         search_trigger_html=search_trigger_html,
-        home_href=home_href,
         version_picker_html=version_picker_html,
         locale_picker_html=locale_picker_html,
+    )
+    sidebar_html = _render_sidebar(
+        project_name=project_name,
+        version_badge=meta["version_badge"],
+        home_href=home_href,
+        nav_html=nav_html,
     )
 
     # The search surface.  A framework theme draws its own -- the
@@ -4284,18 +4442,18 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{search_head_html}'
         f'</head>\n'
         f'<body>\n'
-        f'<a class="skip-link" href="#main-content">Skip to content</a>\n'
-        f'{topbar_html}\n'
+        f'<a class="tm-skip-link" href="#tm-content">Skip to content</a>\n'
         f'<div class="reading-progress" id="reading-progress"></div>\n'
-        f'<div class="layout{" layout--narrow" if page_type == "post" else ""}">\n'
-        f'<nav class="sidebar" id="sidebar" aria-label="Site navigation">\n'
-        f'<ul class="nav-list">\n'
-        f'{nav_html}\n'
-        f'</ul>\n'
-        f'</nav>\n'
-        f'<main class="content{page_type_class}" id="main-content">\n'
+        f'<div id="tm-app">\n'
+        f'{sidebar_html}\n'
+        f'<div id="tm-main">\n'
+        f'{topbar_html}\n'
+        f'<main id="tm-content" class="content{page_type_class}">\n'
         f'{version_notice_html}\n'
-        f'<article data-pagefind-body>\n'
+        f'<div class="docs-layout'
+        f'{" docs-layout--narrow" if page_type == "post" else ""}">\n'
+        f'<div class="docs-main">\n'
+        f'<article data-pagefind-body class="doc-body">\n'
         f'{pagefind_block}\n'
         f'{meta["breadcrumbs_html"]}\n'
         f'{meta["mobile_toc_html"]}\n'
@@ -4305,13 +4463,17 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{share_html}\n'
         f'{meta["footer_html"]}\n'
         f'</article>\n'
-        f'</main>\n'
+        f'</div>\n'
         f'{meta["toc_aside"]}\n'
         f'</div>\n'
         f'<footer class="site-footer">\n'
         f'<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
         f'{meta["feed_footer_html"]}\n'
         f'</footer>\n'
+        f'</main>\n'
+        f'</div>\n'
+        f'<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>\n'
+        f'</div>\n'
         f'<script>{body_js}</script>\n'
         f'{search_dialog_html}\n'
         f'{search_script_html}\n'
