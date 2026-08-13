@@ -1329,6 +1329,14 @@ td {
     border-bottom: 1px solid var(--border);
 }
 
+/* A flag name, a type, an identifier: one token that means one thing, and
+   breaking it across lines makes it read as two.  The wrapper scrolls, so
+   refusing the break costs nothing but a scrollbar on a wide table. */
+th code,
+td code {
+    white-space: nowrap;
+}
+
 /* No zebra: the design reads rows off the hairlines, and a fill under
    every other row is the noise it was drawn to avoid. */
 tr:nth-child(even) td {
