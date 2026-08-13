@@ -62,12 +62,30 @@ class TestPagefindUI:
         assert "search-index.json" not in html
 
     def test_asset_paths_use_the_page_hop(self):
-        """Assets and the bundle path resolve from the page's own address."""
+        """The bundle's own assets resolve from the page's own address."""
         html = _page(asset_prefix="../../")
         assert "../../pagefind/pagefind-ui.css" in html
         assert "../../pagefind/pagefind-ui.js" in html
-        assert 'bundlePath: "../../pagefind/"' in html
 
-    def test_bundle_path_at_the_output_root(self):
-        """A page at the output root addresses pagefind/ relatively."""
-        assert 'bundlePath: "pagefind/"' in _page(asset_prefix="")
+    def test_no_bundle_path_is_ever_written_into_the_page(self):
+        """The UI derives the index location; the build must not guess it.
+
+        The UI reads ``document.currentScript.src`` and takes the
+        directory it was loaded from -- a root-absolute path, correct at
+        every depth and under every mount. A build-time value cannot be:
+        the dynamic ``import()`` that loads the index resolves relative
+        specifiers against the *bundle's* URL rather than the page's, so
+        the hop that is right for the ``<script src>`` is wrong for the
+        import. Written as ``asset_prefix + "pagefind/"``, a page at the
+        output root produced the bare specifier ``"pagefind/pagefind.js"``
+        (refused outright, so search returned nothing on every front page
+        and every project landing page) and a page two levels inside a
+        mount climbed one level too far and fetched another project's
+        index.
+        """
+        for prefix in ("", "../", "../../", "../../../../"):
+            assert "bundlePath" not in _page(asset_prefix=prefix), (
+                f"asset_prefix={prefix!r} wrote a bundlePath into the page; "
+                f"the only correct value is the one the UI computes at "
+                f"runtime from its own script location"
+            )

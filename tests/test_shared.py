@@ -578,8 +578,8 @@ def test_wrap_shared_page_carries_the_search_dialog():
         search_prefix="../",
     )
     assert 'id="pagefind-container"' in result
-    assert 'bundlePath: "../pagefind/"' in result
     assert '<script src="../pagefind/pagefind-ui.js"></script>' in result
+    assert "bundlePath" not in result
 
 
 # -- cross-project post slug collisions ---------------------------------------

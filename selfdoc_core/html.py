@@ -3323,16 +3323,34 @@ def pagefind_meta_html(*, project="", page_type="", date=""):
 def pagefind_init_script(asset_prefix):
     """Return inline script that initializes Pagefind UI and wires Cmd+K.
 
-    ``bundlePath`` is passed explicitly from the page's own hop back to the
-    output root rather than left to the UI's guess, so the dialog finds the
-    index under any mount point.
+    **No ``bundlePath`` is passed, on purpose.**  The UI derives its own
+    from ``document.currentScript.src`` at load time, which yields the
+    *root-absolute* path of the directory the bundle was loaded from --
+    exactly ``<asset_prefix>pagefind/``, resolved against the page.  That
+    is the correct answer at every depth and under every mount, and it is
+    the one thing a build-time string cannot be.
+
+    A build-time value was passed here for a long time, computed as
+    ``asset_prefix + "pagefind/"``, and it was wrong twice over.  The UI
+    loads the index with a dynamic ``import()``, whose relative specifiers
+    resolve against the *module's* URL -- ``<asset_prefix>pagefind/`` --
+    and not against the page.  So a page at the output root sent
+    ``"pagefind/"``, a **bare** specifier a browser refuses outright
+    ("Failed to resolve module specifier 'pagefind/pagefind.js'"), and
+    every site's front page and every project's landing page returned no
+    search results at all.  A page more than one level inside its mount
+    sent one ``../`` too many and fetched another project's index, or a
+    404.  The only depths that worked were the ones where the two
+    mistakes cancelled.
+
+    *asset_prefix* stays in the signature because the caller has it and
+    the head tags beside this one still need it.
     """
-    bundle_path = f"{asset_prefix}pagefind/"
     return (
         '<script>\n'
         'document.addEventListener("DOMContentLoaded", function() {\n'
         '  new PagefindUI({ element: "#pagefind-container", showSubResults: true, '
-        f'showImages: false, bundlePath: "{bundle_path}" }});\n'
+        'showImages: false });\n'
         '  var dialog = document.getElementById("search-dialog");\n'
         '  document.addEventListener("keydown", function(e) {\n'
         '    if ((e.metaKey || e.ctrlKey) && e.key === "k") {\n'

@@ -189,12 +189,17 @@ def test_no_locale_picker_when_none():
 # --- The Pagefind bundle path follows the page's own address ---
 
 
-def test_search_bundle_path_at_the_output_root():
-    """An unmounted page addresses pagefind/ beside itself."""
+def test_search_assets_at_the_output_root():
+    """An unmounted page loads the bundle from pagefind/ beside itself.
+
+    No ``bundlePath`` accompanies it: the UI derives the index location
+    from where this very bundle was loaded, which is the only value that
+    is right at every depth. See ``pagefind_init_script``.
+    """
     files = _make_html()
     content = files["index.html"]
-    assert 'bundlePath: "pagefind/"' in content
     assert 'href="pagefind/pagefind-ui.css"' in content
+    assert "bundlePath" not in content
 
 
 def test_search_bundle_path_is_never_site_absolute():
@@ -209,5 +214,5 @@ def test_search_bundle_path_is_never_site_absolute():
         author=TEST_AUTHOR,
     )
     content = files["en/v/1.0.0/guide/index.html"]
-    assert 'bundlePath: "../../../../pagefind/"' in content
     assert 'href="../../../../pagefind/pagefind-ui.css"' in content
+    assert "bundlePath" not in content
