@@ -38,6 +38,7 @@ from selfdoc_core.themes import (
     theme_assets,
     theme_css_rel,
     theme_framework,
+    theme_modules,
     theme_overlay,
 )
 
@@ -210,13 +211,38 @@ class TestTheAssetsThatTravelWithIt:
     def test_only_the_declared_kinds_travel(self) -> None:
         """The declaration drives the payload, not a hardcoded list.
 
-        Only ``fonts`` is declared today, because only the ``@font-face``
-        rules reference anything outside the stylesheet.  The framework's ES
-        modules join the declaration when a page imports one; shipping 536 KB
-        of modules nothing references would be dead weight on every deploy.
+        ``fonts`` is declared as a directory, because the ``@font-face``
+        rules reference every file in it.  The modules are declared as
+        *entry points* instead and their closure is computed, because a
+        page imports one module and gets whatever that module imports --
+        shipping the framework's whole module tree would be an order of
+        magnitude of dead weight on every deploy.
         """
         kinds = {rel.split("/")[0] for _, rel in theme_assets("tinymoon")}
-        assert kinds == set(theme_framework("tinymoon")["assets"])
+        assert kinds == set(theme_framework("tinymoon")["assets"]) | {"js"}
+
+    def test_the_module_payload_is_the_closure_of_the_entry_points(
+        self,
+    ) -> None:
+        """Declared entries, plus everything they import, and nothing else."""
+        block = theme_framework("tinymoon")
+        shipped = theme_modules("tinymoon")
+        assert set(block["modules"]) <= set(shipped)
+        js_dir = os.path.join(str(tinymoon.assets_path()), "js")
+        whole_tree = [n for n in os.listdir(js_dir) if n.endswith(".js")]
+        assert len(shipped) < len(whole_tree) / 4
+        # Every import inside the closure resolves within it, or a page
+        # loading the entry point fetches a module the site does not carry.
+        import re as _re
+
+        for name in shipped:
+            with open(os.path.join(js_dir, name), encoding="utf-8") as handle:
+                source = handle.read()
+            for spec in _re.findall(
+                r"""(?:from|import)\s*\(?\s*["'](\./[\w.\-/]+\.js)["']""",
+                source,
+            ):
+                assert spec[2:] in shipped, f"{name} -> {spec}"
 
     def test_every_source_exists(self) -> None:
         for src, _ in theme_assets("tinymoon"):
@@ -269,8 +295,12 @@ class TestTheStandaloneBuild:
         assert os.path.isdir(fonts)
         assert any(n.endswith(".woff2") for n in os.listdir(fonts))
 
-    def test_nothing_undeclared_is_written(self, built: str) -> None:
-        assert not os.path.isdir(os.path.join(built, "js"))
+    def test_the_modules_are_written_beside_them(self, built: str) -> None:
+        """A standalone deploy has no assembly to serve the payload."""
+        js = os.path.join(built, "js")
+        assert os.path.isdir(js)
+        written = sorted(n for n in os.listdir(js) if n.endswith(".js"))
+        assert written == theme_modules("tinymoon")
 
     def test_every_font_url_in_the_written_sheet_resolves(
         self, built: str,

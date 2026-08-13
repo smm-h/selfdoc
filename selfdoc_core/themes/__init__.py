@@ -31,6 +31,7 @@ Two consequences the rest of the build reads through this module:
 
 import json
 import os
+import re
 
 _THEMES_DIR = os.path.dirname(__file__)
 
@@ -130,22 +131,85 @@ def framework_sheets_css(name):
     return "\n\n".join(parts)
 
 
+#: Where a framework theme's ES modules are written, from the payload root.
+MODULES_DIR = "js"
+
+# Every static-import form the framework's modules use.  A specifier is
+# always relative and always names a file: the framework has no bare
+# specifiers, no import maps and no extensionless imports, so this covers
+# the whole surface -- and a form it does not cover fails loudly below
+# rather than shipping a module whose dependency is missing.
+_JS_IMPORT_RE = re.compile(
+    r"""(?:from|import)\s*\(?\s*["'](\./[\w.\-/]+\.js)["']"""
+)
+
+
+def theme_modules(name):
+    """Every framework module a page under this theme loads, sorted.
+
+    The theme's ``framework`` block names *entry points* -- the modules the
+    page's own script imports by name.  Their transitive imports are
+    computed here from the package's own sources rather than declared,
+    because a declared list is a second copy of a fact the sources already
+    state, and the failure when it falls behind is a page that imports a
+    module the site does not carry.
+
+    The framework ships far more than a documentation page uses (its whole
+    ``js/`` tree is an order of magnitude larger than this closure), so the
+    closure is also what keeps the payload to what is really loaded.
+
+    Empty for a theme that declares no framework, or one whose framework
+    block names no modules.
+    """
+    block = theme_framework(name)
+    if not block:
+        return []
+    entries = block.get("modules") or []
+    if not entries:
+        return []
+    js_dir = os.path.join(_framework_assets_dir(block["package"]), MODULES_DIR)
+    seen = set()
+    queue = list(entries)
+    while queue:
+        module = queue.pop()
+        if module in seen:
+            continue
+        path = os.path.join(js_dir, module)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(
+                f"theme {name!r} reaches the framework module {module!r}, "
+                f"which {block['package']} does not ship at {path}"
+            )
+        seen.add(module)
+        with open(path, "r", encoding="utf-8") as handle:
+            source = handle.read()
+        for specifier in _JS_IMPORT_RE.findall(source):
+            queue.append(specifier[2:])
+    return sorted(seen)
+
+
 def theme_assets(name):
     """``(absolute source, site-relative destination)`` for a theme's assets.
 
     The files that have to travel with the stylesheet and are not the
-    stylesheet, one directory per kind the ``framework`` block names.  Today
-    that is ``fonts``, because the ``@font-face`` rules are the only thing
-    in the sheets that addresses anything outside them; the framework's ES
-    modules join the declaration when a page imports one.  Empty for a theme
-    that declares no framework.  Destinations keep the layout the package
-    uses, because the sheets address them by relative URL.
+    stylesheet: one directory per kind the ``framework`` block names -- the
+    ``@font-face`` rules are the only thing in the sheets that addresses
+    anything outside them -- plus the ES modules a page imports, which are
+    the closure of the block's declared entry points rather than the
+    framework's whole module tree.  Empty for a theme that declares no
+    framework.  Destinations keep the layout the package uses, because the
+    sheets and the modules address each other by relative URL.
     """
     block = theme_framework(name)
     if not block:
         return []
     assets = _framework_assets_dir(block["package"])
     pairs = []
+    for module in theme_modules(name):
+        pairs.append((
+            os.path.join(assets, MODULES_DIR, module),
+            f"{MODULES_DIR}/{module}",
+        ))
     for kind in block.get("assets", []):
         src_dir = os.path.join(assets, kind)
         if not os.path.isdir(src_dir):

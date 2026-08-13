@@ -6,7 +6,19 @@
   "pygments_dark": "github-dark",
   "framework": {
     "package": "tinymoon",
-    "sheets": ["tokens", "base", "shell", "primitives", "widgets", "prose"],
-    "assets": ["fonts"]
+    "sheets": [
+      "tokens",
+      "base",
+      "shell",
+      "primitives",
+      "widgets",
+      "prose"
+    ],
+    "assets": [
+      "fonts"
+    ],
+    "modules": [
+      "palette.js"
+    ]
   }
 }

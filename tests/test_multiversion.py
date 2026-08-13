@@ -273,7 +273,7 @@ class TestVersionPicker:
         output_dir = os.path.join(str(project_dir), "docs", "_build")
         html = _read_html(output_dir, "index.html")
         hrefs = dict(re.findall(
-            r'<option value="([^"]*)" data-href="([^"]*)"', html,
+            r'data-value="([^"]*)" data-href="([^"]*)"', html,
         ))
         assert hrefs == {"0.1.0": "v/0.1.0/", "0.2.0": "./"}
 
@@ -285,15 +285,11 @@ class TestVersionPicker:
         output_dir = os.path.join(str(project_dir), "docs", "_build")
         # The archived page has its own version selected
         old_html = _read_html(output_dir, "v/0.1.0/index.html")
-        assert re.search(
-            r'<option value="0\.1\.0"[^>]* selected>', old_html,
-        )
+        assert 'aria-selected="true" data-value="0.1.0"' in old_html
 
         # The stable page has the current version selected
         latest_html = _read_html(output_dir, "index.html")
-        assert re.search(
-            r'<option value="0\.2\.0"[^>]* selected>', latest_html,
-        )
+        assert 'aria-selected="true" data-value="0.2.0"' in latest_html
 
 
 class TestSingleVersion:

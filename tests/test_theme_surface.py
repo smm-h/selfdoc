@@ -45,7 +45,19 @@ REFERENCE = "minimal"
 DELIBERATE_OMISSIONS: dict[str, dict[str, str]] = {
     "clean": {},
     "minimal": {},
-    "tinymoon": {},
+    "tinymoon": {
+        # The framework's command palette is this theme's search surface.
+        # A page under it loads palette.js and queries Pagefind through
+        # its own search() API, so Pagefind's shipped widget is never
+        # loaded and the <dialog> chrome it mounted into is never emitted.
+        # These five classes cannot appear on a tinymoon page at all;
+        # shell.css dresses .tm-palette instead.
+        "search-dialog": "the framework's palette replaces the dialog",
+        "search-inner": "part of the dialog this theme does not emit",
+        "search-header": "part of the dialog this theme does not emit",
+        "search-header-title": "part of the dialog this theme does not emit",
+        "search-close": "part of the dialog this theme does not emit",
+    },
 }
 
 _COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)

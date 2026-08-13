@@ -2256,12 +2256,22 @@ def fold_posts_into_overlay(manifests_dir: str, slug: str,
 
 
 def index_site(site_dir: str) -> None:
-    """Build the pagefind search index over the assembled site."""
+    """Build the pagefind search index over the assembled site.
+
+    The indexer also writes its own search widget beside the index.  An
+    assembly whose pages all draw their own search surface -- every
+    framework-theme page does -- references none of it, and the unwanted
+    payload is pruned right after indexing.  One page still loading the
+    widget keeps it for the whole tree.
+    """
+    from selfdoc_core.build import prune_unreferenced_pagefind_widget
+
     _run_step(
         [sys.executable, "-m", "pagefind", "--site", site_dir],
         cwd=None, step="pagefind index", timeout=_INDEX_TIMEOUT,
         resource=f"search-index:{site_dir}",
     )
+    prune_unreferenced_pagefind_widget(site_dir)
 
 
 def verify_before_deploy(assembly_dir: str, *, canonical_base: str) -> list[str]:

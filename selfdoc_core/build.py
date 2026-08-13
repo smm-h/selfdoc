@@ -23,6 +23,8 @@ from selfdoc_core.prose import first_paragraph
 from selfdoc_core.docs import resolve_all_docs
 from selfdoc_core.utils import detect_project_version, parse_frontmatter
 from selfdoc_core.html import (
+    PAGEFIND_UI_ASSETS,
+    PAGEFIND_WIDGET_BUNDLE,
     generate_html, generate_404_page, get_css, generate_pygments_css,
     _md_to_html_path, _html_to_md_path,
     _extract_title, _escape_html, _build_nav,
@@ -474,6 +476,46 @@ def _run_pagefind(output_dir):
         "Pagefind is not installed. Install it with: uv add pagefind\n"
         "Or install the standalone binary: npm install -g pagefind"
     )
+
+
+def prune_unreferenced_pagefind_widget(site_dir):
+    """Delete Pagefind's own search widget when no page loads it.
+
+    The indexer writes its widget beside the index whether or not anything
+    references it, and a framework theme draws its own search surface over
+    Pagefind's query API instead.  What decides is therefore not the theme
+    but the pages: a tree where nothing names the widget's bundle carries
+    it as dead weight, and its stylesheets paint a design language those
+    pages do not share.  Reading the answer off the emitted HTML is also
+    what makes this right for an assembly, where one tree can carry
+    several themes and one page still loading the widget keeps it for
+    everyone.
+
+    The index itself and ``pagefind.js`` -- the query API a palette calls
+    -- are never touched.
+
+    Returns the paths removed.
+    """
+    widget_dir = os.path.join(site_dir, "pagefind")
+    if not os.path.isdir(widget_dir):
+        return []
+    for root, _dirs, files in os.walk(site_dir):
+        if os.path.abspath(root).startswith(os.path.abspath(widget_dir)):
+            continue
+        for name in files:
+            if not name.endswith(".html"):
+                continue
+            with open(os.path.join(root, name), "r", encoding="utf-8",
+                      errors="replace") as handle:
+                if PAGEFIND_WIDGET_BUNDLE in handle.read():
+                    return []
+    removed = []
+    for name in PAGEFIND_UI_ASSETS:
+        path = os.path.join(widget_dir, name)
+        if os.path.isfile(path):
+            effects.remove(path)
+            removed.append(path)
+    return removed
 
 
 def _generate_og_svg(project_name, page_title, accent_color="#0969da"):
@@ -2557,6 +2599,7 @@ def _build_body(
     # page and the redirect stubs -- and before compression, so the index
     # covers the whole site and its own assets get compressed with it.
     _run_pagefind(output_dir)
+    prune_unreferenced_pagefind_widget(output_dir)
 
     # Pre-compress
     compress_count, has_brotli = _compress_output(output_dir)

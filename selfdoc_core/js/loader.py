@@ -17,7 +17,7 @@ def load_js(name: str) -> str:
 
 
 def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
-                     extras_html: str = "") -> str:
+                     extras_html: str = "", chrome_html: str = "") -> str:
     """Assemble the body JS blocks based on page content.
 
     Always includes: theme-toggle, sidebar, nav-groups,
@@ -32,6 +32,8 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         extras_html: Template-level HTML the article body does not carry --
             the superseded-version notice and the share control, which the
             page wrapper renders around the body.
+        chrome_html: The page chrome outside the article -- the topbar,
+            where the two pickers live.
 
     Returns:
         Concatenated JS string (not yet minified).
@@ -43,10 +45,11 @@ def assemble_body_js(body_html: str, toc_html: str, footer_html: str,
         load_js("nav-groups"),
         load_js("scroll-affordance"),
         load_js("reading-progress"),
-        load_js("pickers"),
     ]
 
     # Conditional blocks
+    if "version-picker" in chrome_html or "locale-picker" in chrome_html:
+        js_blocks.append(load_js("pickers"))
     if "<pre" in body_html:
         js_blocks.append(load_js("copy-button"))
     if toc_html:

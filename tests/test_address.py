@@ -725,7 +725,7 @@ def test_version_picker_links_are_server_side_and_resolve(tmp_path):
 
     page = "guide/index.html"
     html = _read(output_dir, page)
-    options = re.findall(r'<option value="([^"]*)" data-href="([^"]*)"', html)
+    options = re.findall(r'data-value="([^"]*)" data-href="([^"]*)"', html)
     assert {v for v, _ in options} == {"0.1.0", "0.2.0"}
     for version, href in options:
         target = _resolve(page, html_mod.unescape(href))
@@ -739,7 +739,7 @@ def test_version_picker_links_are_server_side_and_resolve(tmp_path):
     # From inside the archive the hops are longer, and still resolve.
     archived_page = "v/0.1.0/guide/index.html"
     archived_hrefs = dict(re.findall(
-        r'<option value="([^"]*)" data-href="([^"]*)"',
+        r'data-value="([^"]*)" data-href="([^"]*)"',
         _read(output_dir, archived_page),
     ))
     assert archived_hrefs["0.2.0"] == "../../../guide/"

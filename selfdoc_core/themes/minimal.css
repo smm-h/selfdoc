@@ -297,17 +297,56 @@ body::before {
     max-width: 200px;
 }
 
-.version-picker, .locale-picker {
+.sel.version-picker, .sel.locale-picker {
+    position: relative;
+    min-width: 0;
+}
+.sel .sel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     font-size: 0.8125rem;
-    padding: 0.125rem 0.25rem;
+    padding: 0.125rem 0.35rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-color);
     color: var(--text-color);
+    cursor: pointer;
 }
-.version-picker:disabled, .locale-picker:disabled {
-    opacity: 0.5;
-    cursor: default;
+.sel .sel-btn svg {
+    width: 12px;
+    height: 12px;
+    flex: none;
+}
+.sel .sel-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 40;
+    min-width: 100%;
+    max-height: 16rem;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+.sel.open .sel-menu {
+    display: block;
+}
+.sel .sel-opt {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    cursor: pointer;
+    color: var(--text-color);
+}
+.sel .sel-opt:hover, .sel .sel-opt.hover {
+    background: var(--bg-secondary);
+}
+.sel .sel-opt[aria-selected="true"] {
+    color: var(--accent-color);
 }
 
 /* === Layout (three-column with responsive collapse) === */

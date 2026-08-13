@@ -43,6 +43,8 @@ import os
 
 import pytest
 
+from selfdoc_core.themes import theme_framework as _theme_framework
+
 from rendered_site import (
     ALLOWED_EXTERNAL,
     EXTERNAL_ALLOWLIST,
@@ -820,35 +822,99 @@ class TestGlossary:
 # -- 7. search ---------------------------------------------------------------------------------
 
 
+#: Two search surfaces, because a theme that composes the framework draws
+#: its own.  A framework theme loads the framework's command palette over
+#: Pagefind's query API and never loads Pagefind's shipped widget; every
+#: other theme mounts the widget in selfdoc's own dialog.  The selectors
+#: differ, what a reader does does not, so the assertions below take the
+#: surface from the theme and are otherwise one set of tests.
+SEARCH_SURFACES = {
+    "framework": {
+        "overlay": "dialog.tm-palette",
+        "input": ".tm-palette-input",
+        "result": ".tm-palette-item",
+    },
+    "widget": {
+        "overlay": "#search-dialog",
+        "input": ".pagefind-ui__search-input",
+        "result": ".pagefind-ui__result",
+    },
+}
+
+#: The themes that compose a framework, and therefore draw their own
+#: search.  Read from the theme registry rather than listed, so a theme
+#: that starts or stops composing one joins the right sweep by itself.
+FRAMEWORK_THEMES = {
+    name for name in THEMES if _theme_framework(name)
+}
+
+
+def _surface(fixture):
+    kind = "framework" if fixture.theme in FRAMEWORK_THEMES else "widget"
+    return SEARCH_SURFACES[kind]
+
+
+def _await_overlay(page, surface):
+    """Wait until the search overlay is really painted, not merely present.
+
+    The framework's palette animates in, so an assertion sampled the
+    instant its input appears reads an opacity of 0 and calls a perfectly
+    open overlay invisible.  Waiting on what the assertion measures is the
+    honest wait: the same predicate, given time to become true.
+    """
+    page.wait_for_function(
+        """(sel) => Array.from(document.querySelectorAll(sel)).some(el => {
+            const style = getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            if (parseFloat(style.opacity) === 0) return false;
+            const box = el.getBoundingClientRect();
+            return box.width > 0 && box.height > 0;
+        })""",
+        arg=surface["overlay"],
+        timeout=15000,
+    )
+
+
+def _open_search(page, fixture):
+    """Open search the way a reader does, and wait for it to be there."""
+    surface = _surface(fixture)
+    page.keyboard.press("Control+k")
+    page.wait_for_selector(surface["input"], timeout=15000)
+    _await_overlay(page, surface)
+    return surface
+
+
 class TestSearch:
-    """The search dialog, driven the way a reader drives it.
+    """The search overlay, driven the way a reader drives it.
 
     Pagefind really ran over the fixture tree in the session fixture, so
-    the index the dialog queries is the index a deploy would ship.
+    the index the overlay queries is the index a deploy would ship.
     """
 
-    def test_ctrl_k_opens_the_dialog(self, page, fixture):
+    def test_ctrl_k_opens_the_overlay(self, page, fixture):
         _open(page, fixture, "docs")
-        assert not page.evaluate(
-            "() => document.getElementById('search-dialog').open"
-        )
-        page.keyboard.press("Control+k")
-        page.wait_for_function(
-            "() => document.getElementById('search-dialog').open", timeout=5000,
-        )
-        assert _visible_count(page, "#search-dialog") == 1, (
-            f"[{fixture.theme}] the dialog reports open but paints nothing"
+        surface = _surface(fixture)
+        assert _visible_count(page, surface["overlay"]) == 0
+        _open_search(page, fixture)
+        assert _visible_count(page, surface["overlay"]) == 1, (
+            f"[{fixture.theme}] the overlay opened but paints nothing"
         )
 
-    def test_escape_closes_the_dialog(self, page, fixture):
+    def test_the_trigger_opens_the_overlay(self, page, fixture):
+        """The topbar's magnifier is a control, not decoration."""
         _open(page, fixture, "docs")
-        page.keyboard.press("Control+k")
-        page.wait_for_function(
-            "() => document.getElementById('search-dialog').open", timeout=5000,
-        )
+        surface = _surface(fixture)
+        page.click(".search-trigger, .search-bar-trigger")
+        page.wait_for_selector(surface["input"], timeout=15000)
+        _await_overlay(page, surface)
+        assert _visible_count(page, surface["overlay"]) == 1
+
+    def test_escape_closes_the_overlay(self, page, fixture):
+        _open(page, fixture, "docs")
+        surface = _open_search(page, fixture)
         page.keyboard.press("Escape")
-        page.wait_for_function(
-            "() => !document.getElementById('search-dialog').open", timeout=5000,
+        page.wait_for_selector(
+            surface["overlay"], state="hidden", timeout=5000,
         )
 
     # One page class per depth the index can be addressed from. The depth
@@ -871,31 +937,38 @@ class TestSearch:
             "console",
             lambda m: failures.append(m.text) if m.type == "error" else None,
         )
-        page.keyboard.press("Control+k")
-        page.wait_for_selector(".pagefind-ui__search-input", timeout=15000)
-        page.fill(".pagefind-ui__search-input", "fixture")
+        surface = _open_search(page, fixture)
+        page.fill(surface["input"], "fixture")
         try:
-            page.wait_for_selector(".pagefind-ui__result", timeout=20000)
+            page.wait_for_selector(surface["result"], timeout=20000)
         except Exception:
             raise AssertionError(
                 f"[{fixture.theme}] searching from {label} returned nothing "
                 f"for a word the fixture content certainly carries. Console: "
                 f"{failures[:3]}"
             ) from None
-        assert page.locator(".pagefind-ui__result").count() >= 1
+        assert page.locator(surface["result"]).count() >= 1
         assert not failures, (
             f"[{fixture.theme}] the search on {label} logged errors: "
             f"{failures[:3]}"
         )
 
     def test_the_facets_render(self, page, fixture):
-        """The build declares filter facets; the UI has to offer them."""
+        """The build declares filter facets; the widget has to offer them.
+
+        Only the widget: the framework's palette is a ranked list with no
+        filter surface, so a framework theme's search offers no facets and
+        this is the one capability the two surfaces do not share.  The
+        facet elements are still emitted and still indexed -- what changes
+        is that nothing on the page exposes them as controls.
+        """
+        if fixture.theme in FRAMEWORK_THEMES:
+            pytest.skip("the framework's palette offers no filter controls")
         _open(page, fixture, "docs")
         page.wait_for_load_state("networkidle")
-        page.keyboard.press("Control+k")
-        page.wait_for_selector(".pagefind-ui__search-input", timeout=15000)
-        page.fill(".pagefind-ui__search-input", "fixture")
-        page.wait_for_selector(".pagefind-ui__result", timeout=20000)
+        surface = _open_search(page, fixture)
+        page.fill(surface["input"], "fixture")
+        page.wait_for_selector(surface["result"], timeout=20000)
         facets = page.locator(
             ".pagefind-ui__filter-panel, .pagefind-ui__drawer, .pagefind-ui__filter-group"
         ).count()
@@ -903,6 +976,20 @@ class TestSearch:
             f"[{fixture.theme}] the search UI rendered no filter controls, "
             f"though the build declares facets for them to read"
         )
+
+    def test_a_framework_theme_ships_no_pagefind_widget(self, page, fixture):
+        """Nothing loads it, so the deploy does not carry it."""
+        if fixture.theme not in FRAMEWORK_THEMES:
+            pytest.skip("this theme mounts the widget")
+        site, _path = _served(fixture, "docs")
+        for asset in ("pagefind-ui.css", "pagefind-ui.js"):
+            response = page.request.get(site.url(f"/pagefind/{asset}"))
+            assert response.status >= 400, (
+                f"[{fixture.theme}] {asset} is still served, though no page "
+                f"references it"
+            )
+        # The query API the palette calls is a different file, and stays.
+        assert page.request.get(site.url("/pagefind/pagefind.js")).ok
 
 
 # -- 8. theme toggle -------------------------------------------------------------------------------

@@ -5,6 +5,7 @@ paragraphs, lists, links, bold/italic, tables, blockquotes, and admonitions.
 Syntax highlighting uses Pygments when available (optional dependency).
 """
 
+import itertools
 import json
 import posixpath
 import re
@@ -18,7 +19,14 @@ from selfdoc_core.directives import BACKTICK_SPAN_RE
 from selfdoc_core.icons import get_icon
 from selfdoc_core.identity import person_entity
 from selfdoc_core.prose import first_sentence
-from selfdoc_core.themes import DEFAULT_CSS_REL, get_theme, get_theme_meta
+from selfdoc_core.themes import (
+    DEFAULT_CSS_REL,
+    FRAMEWORK_CSS_REL,
+    MODULES_DIR,
+    get_theme,
+    get_theme_meta,
+    theme_framework,
+)
 from selfdoc_core.urls import SimpleURLBuilder
 from selfdoc_core.tokenizer import (
     tokenize as tokenize_md,
@@ -3126,6 +3134,65 @@ def _page_href(addr, target):
     return (addr.to_site_root + target.url) or "./"
 
 
+#: The framework's own chevron, copied verbatim from its icon set so a
+#: server-emitted combobox and a factory-built one carry the same glyph.
+CHEVRON_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    'stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>'
+)
+
+#: A counter making every picker's listbox id unique within a page.  The
+#: framework's contract pins the *shape* of the reference -- the button's
+#: ``aria-controls`` naming its own listbox -- never the number.
+_SEL_COUNTER = itertools.count(1)
+
+
+def _render_select(kind, label, options):
+    """Render one picker in the framework's combobox shape.
+
+    ``options`` is ``[(value, href, text, selected), ...]``.  The markup is
+    the APG combobox the framework's ``createSelect`` builds -- a
+    ``button[role=combobox]`` naming a ``div[role=listbox]`` of
+    ``div[role=option]`` -- emitted by the server so the control is painted
+    and readable before any script runs.
+
+    **No hidden native ``<select>``**, which the factory does emit: that
+    element is legal only inside the framework's own shipped modules, and
+    server-emitted markup that printed one would be a banned native control
+    on the page.  Nothing here submits a form, so nothing needs it.
+
+    The href each option navigates to is on the option, computed by the
+    build from the addressing authority -- the client does no path
+    arithmetic.
+    """
+    instance = f"tm-sel-{next(_SEL_COUNTER)}"
+    current = next(
+        (text for _, _, text, selected in options if selected),
+        options[0][2] if options else "",
+    )
+    opts = "".join(
+        f'<div class="sel-opt" id="{instance}-opt-{index}" role="option"'
+        f' aria-selected="{"true" if selected else "false"}"'
+        f' data-value="{_escape_html(value)}"'
+        f' data-href="{_escape_html(href)}">{text}</div>'
+        for index, (value, href, text, selected) in enumerate(options)
+    )
+    return (
+        f'<div class="sel {kind}">'
+        f'<button class="sel-btn" type="button" role="combobox"'
+        f' aria-haspopup="listbox" aria-expanded="false"'
+        f' aria-label="{_escape_html(label)}"'
+        f' aria-controls="{instance}-listbox">'
+        f'<span class="sel-label">{current}</span>'
+        f'{CHEVRON_ICON}'
+        f'</button>'
+        f'<div class="sel-menu" id="{instance}-listbox" role="listbox">'
+        f'{opts}'
+        f'</div>'
+        f'</div>\n'
+    )
+
+
 def _render_version_picker(addr, available_versions, version_pages):
     """Build the version picker for a version-scoped page.
 
@@ -3156,18 +3223,16 @@ def _render_version_picker(addr, available_versions, version_pages):
             version=ver,
             archived=(ver != latest_version),
         )
-        selected = " selected" if ver == addr.version else ""
-        options.append(
-            f'<option value="{_escape_html(ver)}"'
-            f' data-href="{_escape_html(_page_href(addr, target))}"'
-            f'{selected}>v{_escape_html(ver)}</option>'
-        )
+        options.append((
+            ver,
+            _page_href(addr, target),
+            f"v{_escape_html(ver)}",
+            ver == addr.version,
+        ))
     if len(options) <= 1:
         return ""
-    return (
-        '<select class="version-picker" aria-label="Documentation version">\n'
-        + "\n".join(options)
-        + "\n</select>\n"
+    return _render_select(
+        "version-picker", "Documentation version", options,
     )
 
 
@@ -3190,17 +3255,13 @@ def _render_locale_picker(addr, available_locales, current_locale):
             version=addr.version,
             archived=addr.archived,
         )
-        selected = " selected" if code == current_locale else ""
-        options.append(
-            f'<option value="{_escape_html(code)}"'
-            f' data-href="{_escape_html(_page_href(addr, target))}"'
-            f'{selected}>{_escape_html(loc["label"])}</option>'
-        )
-    return (
-        '<select class="locale-picker" aria-label="Language">\n'
-        + "\n".join(options)
-        + "\n</select>\n"
-    )
+        options.append((
+            code,
+            _page_href(addr, target),
+            _escape_html(loc["label"]),
+            code == current_locale,
+        ))
+    return _render_select("locale-picker", "Language", options)
 
 
 def _render_version_notice(addr):
@@ -3364,6 +3425,125 @@ def pagefind_head_tags(asset_prefix):
     return (
         f'<link href="{asset_prefix}pagefind/pagefind-ui.css" rel="stylesheet">\n'
         f'<script src="{asset_prefix}pagefind/pagefind-ui.js"></script>\n'
+    )
+
+
+#: The widget bundle a page names when it loads Pagefind's own search UI.
+#: A tree in which no page names it is a tree the widget can be pruned
+#: from -- see ``prune_unreferenced_pagefind_widget``.
+PAGEFIND_WIDGET_BUNDLE = "pagefind/pagefind-ui.js"
+
+#: Every file the Pagefind indexer writes that belongs to its own search
+#: *widget* rather than to the index or the query API.  A framework theme
+#: draws its own search surface, so these are neither loaded nor kept: they
+#: would be a payload every deploy carries and no page references, and
+#: their stylesheets paint rounded corners the framework does not allow.
+PAGEFIND_UI_ASSETS = (
+    "pagefind-ui.css",
+    "pagefind-ui.js",
+    "pagefind-modular-ui.css",
+    "pagefind-modular-ui.js",
+    "pagefind-component-ui.css",
+    "pagefind-component-ui.js",
+    "pagefind-highlight.js",
+)
+
+
+def module_specifier(path):
+    """*path* as a specifier a browser will resolve against the page.
+
+    A module specifier that begins with neither ``.`` nor ``/`` is a
+    **bare** specifier, which a browser refuses outright unless an import
+    map defines it -- ``import "js/palette.js"`` raises "Failed to resolve
+    module specifier".  A page at the output root is exactly where the hop
+    is empty and the path becomes bare, which is to say the front page and
+    every project's landing page.  This is the same mistake the Pagefind
+    bundle path made for a long time, in the same place, and it is worth a
+    function rather than a remembered ``"./"``.
+    """
+    return path if path.startswith((".", "/")) else "./" + path
+
+
+def theme_modules_prefix(css_href):
+    """The hop from a page to the framework payload's ``js/`` directory.
+
+    Both places a framework theme's stylesheet is written -- a standalone
+    build's ``css/style.css`` and the assembly's
+    ``_chrome/<theme>-<digest>/css/style.css`` -- end in the same relative
+    tail, because both are :data:`FRAMEWORK_CSS_REL`.  Stripping that tail
+    off the address the page already carries yields the payload root, and
+    the modules sit beside the stylesheet's directory inside it.  Deriving
+    it beats threading a second address through every page renderer: the
+    two can then never disagree about where the payload is.
+    """
+    if not css_href.endswith(FRAMEWORK_CSS_REL):
+        raise ValueError(
+            f"{css_href!r} is not a framework theme's stylesheet address; "
+            f"a framework payload is only addressable from one that ends "
+            f"in {FRAMEWORK_CSS_REL!r}"
+        )
+    return css_href[: -len(FRAMEWORK_CSS_REL)] + f"{MODULES_DIR}/"
+
+
+def palette_search_script(asset_prefix, css_href):
+    """The module script that gives a framework theme its search surface.
+
+    The framework's command palette replaces Pagefind's shipped widget:
+    the widget's stylesheet and bundle are not loaded at all, and the
+    palette queries the index through Pagefind's own ``search()`` API
+    instead.  What the reader gets is the framework's own overlay --
+    keyboard-driven, painted by the sheets already on the page -- rather
+    than a second design language bolted onto the corner of the site.
+
+    The palette ranks what a source returns by subsequence-matching the
+    query against each item's ``label``, so a source that pre-filters (as
+    a full-text index does) has to return labels the query still matches.
+    That is what the framework's own guidance says to do, and it is why the
+    label carries the matched excerpt after the page title rather than the
+    title alone.
+
+    ``asset_prefix`` reaches the index; ``css_href`` locates the framework
+    payload the modules are served from.
+    """
+    palette = module_specifier(theme_modules_prefix(css_href) + "palette.js")
+    index_url = module_specifier(f"{asset_prefix}pagefind/pagefind.js")
+    return (
+        '<script type="module">\n'
+        f'import {{ openPalette, registerPaletteSource }} from "{palette}";\n'
+        'let index = null;\n'
+        'async function search(query) {\n'
+        '  if (!query) return [];\n'
+        '  if (!index) {\n'
+        f'    index = await import("{index_url}");\n'
+        '    await index.init();\n'
+        '  }\n'
+        '  const found = await index.search(query);\n'
+        '  const top = await Promise.all(\n'
+        '    found.results.slice(0, 8).map((r) => r.data())\n'
+        '  );\n'
+        '  return top.map((d) => {\n'
+        '    const excerpt = String(d.excerpt || "").replace(/<[^>]*>/g, "");\n'
+        '    return {\n'
+        '      label: d.meta && d.meta.title\n'
+        '        ? d.meta.title + " \\u2014 " + excerpt\n'
+        '        : excerpt,\n'
+        '      hint: d.url,\n'
+        '      run: () => { window.location.href = d.url; },\n'
+        '    };\n'
+        '  });\n'
+        '}\n'
+        'registerPaletteSource(search);\n'
+        'function open() { openPalette(); }\n'
+        'document.addEventListener("keydown", (e) => {\n'
+        '  if ((e.metaKey || e.ctrlKey) && e.key === "k") {\n'
+        '    e.preventDefault();\n'
+        '    open();\n'
+        '  }\n'
+        '});\n'
+        'for (const t of document.querySelectorAll(\n'
+        '  ".search-trigger, .search-bar-trigger"\n'
+        ')) t.addEventListener("click", open);\n'
+        '</script>'
     )
 
 
@@ -4006,8 +4186,19 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         locale_picker_html=locale_picker_html,
     )
 
-    # Build search dialog
-    search_dialog_html = pagefind_dialog_html()
+    # The search surface.  A framework theme draws its own -- the
+    # framework's command palette over Pagefind's query API -- and loads
+    # neither the widget's stylesheet nor its bundle nor the dialog it
+    # mounts into.  Every other theme gets the widget.
+    uses_framework_search = bool(theme_framework(theme_meta["name"]))
+    if uses_framework_search:
+        search_head_html = ""
+        search_dialog_html = ""
+        search_script_html = palette_search_script(asset_prefix, css_href)
+    else:
+        search_head_html = pagefind_head_tags(asset_prefix)
+        search_dialog_html = pagefind_dialog_html()
+        search_script_html = pagefind_init_script(asset_prefix)
 
     # Load JS from external files via the loader module
     from selfdoc_core.js.loader import load_js, assemble_body_js
@@ -4018,6 +4209,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     body_js = _minify_js(assemble_body_js(
         body_html, toc_html, meta["footer_html"],
         extras_html=version_notice_html + share_html,
+        chrome_html=topbar_html,
     ))
 
     # Google Analytics script (injected when feedback.ga is configured)
@@ -4076,7 +4268,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{meta["custom_css_tag"]}{meta["feed_tag"]}{seo_tags}{security_meta}\n'
         f'<script>{head_js}</script>\n'
         f'{ga_head_script}'
-        f'{pagefind_head_tags(asset_prefix)}'
+        f'{search_head_html}'
         f'</head>\n'
         f'<body>\n'
         f'<a class="skip-link" href="#main-content">Skip to content</a>\n'
@@ -4109,7 +4301,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'</footer>\n'
         f'<script>{body_js}</script>\n'
         f'{search_dialog_html}\n'
-        f'{pagefind_init_script(asset_prefix)}\n'
+        f'{search_script_html}\n'
         f'</body>\n'
         f'</html>\n'
     )

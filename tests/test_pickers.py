@@ -1,5 +1,7 @@
 """Tests for version/locale pickers and absolute search base (Phase 1.4/1.5)."""
 
+import re
+
 from selfdoc.html import generate_html
 from conftest import TEST_AUTHOR
 
@@ -31,7 +33,7 @@ def _make_html(available_versions=None, available_locales=None,
 
 
 def test_version_picker_present_with_multiple_versions():
-    """Version picker <select> is present when multiple versions configured."""
+    """The version picker is present when multiple versions are configured."""
     versions = [
         {"version": "0.9.0"},
         {"version": "1.0.0"},
@@ -41,14 +43,15 @@ def test_version_picker_present_with_multiple_versions():
         current_version="1.0.0",
     )
     content = files["index.html"]
-    assert '<select class="version-picker"' in content
-    assert "<option" in content
+    assert '<div class="sel version-picker">' in content
+    assert 'role="combobox"' in content
+    assert 'class="sel-opt"' in content
     assert "v0.9.0" in content
     assert "v1.0.0" in content
 
 
 def test_version_picker_current_selected():
-    """The current_version option gets the selected attribute."""
+    """The current version's option is the one marked selected."""
     versions = [
         {"version": "0.9.0"},
         {"version": "1.0.0"},
@@ -58,11 +61,11 @@ def test_version_picker_current_selected():
         current_version="1.0.0",
     )
     content = files["index.html"]
-    # Each option carries the address the build computed for it, then the
-    # selected marker on the one being rendered.
-    assert 'value="1.0.0" data-href="./" selected' in content
-    assert 'value="0.9.0" data-href="v/0.9.0/"' in content
-    assert 'value="0.9.0" data-href="v/0.9.0/" selected' not in content
+    # Each option carries the address the build computed for it, and the
+    # one being rendered is the selected option.
+    assert 'aria-selected="true" data-value="1.0.0" data-href="./"' in content
+    assert 'data-value="0.9.0" data-href="v/0.9.0/"' in content
+    assert 'aria-selected="true" data-value="0.9.0"' not in content
 
 
 def test_no_version_picker_for_a_single_version():
@@ -92,8 +95,14 @@ def test_no_version_picker_on_a_page_that_is_not_version_scoped():
     assert '<select class="version-picker"' not in content
 
 
-def test_version_picker_not_disabled_multiple_versions():
-    """Version picker is not disabled when multiple versions exist."""
+def test_version_picker_button_names_its_own_listbox():
+    """The combobox's aria-controls has to reach the listbox beside it.
+
+    The shape is pinned by the framework's markup contract, and it is the
+    one part a server can get wrong silently: a button pointing at an id
+    no element carries reads to assistive technology as a combobox with
+    no options at all.
+    """
     versions = [
         {"version": "0.9.0"},
         {"version": "1.0.0"},
@@ -103,22 +112,23 @@ def test_version_picker_not_disabled_multiple_versions():
         current_version="1.0.0",
     )
     content = files["index.html"]
-    picker_tag = content.split("version-picker")[1].split(">")[0]
-    assert "disabled" not in picker_tag
+    controls = re.search(r'aria-controls="([^"]+)"', content)
+    assert controls, content
+    assert f'<div class="sel-menu" id="{controls.group(1)}" role="listbox">' in content
 
 
 def test_no_version_picker_when_none():
-    """No version picker <select> appears when available_versions is None."""
+    """No version picker appears when available_versions is None."""
     files = _make_html(available_versions=None)
     content = files["index.html"]
-    assert '<select class="version-picker"' not in content
+    assert "version-picker" not in content
 
 
 # --- Locale picker ---
 
 
 def test_locale_picker_present_with_multiple_locales():
-    """Locale picker <select> is present when multiple locales configured."""
+    """The locale picker is present when multiple locales are configured."""
     locales = [
         {"code": "en", "label": "English"},
         {"code": "fr", "label": "French"},
@@ -129,11 +139,11 @@ def test_locale_picker_present_with_multiple_locales():
         mount_locale="en",
     )
     content = files["en/index.html"]
-    assert '<select class="locale-picker"' in content
+    assert '<div class="sel locale-picker">' in content
     assert "English" in content
     assert "French" in content
     # Each option addresses this same page in the other locale.
-    assert 'value="fr" data-href="../fr/"' in content
+    assert 'data-value="fr" data-href="../fr/"' in content
 
 
 def test_locale_picker_current_selected():
@@ -148,8 +158,8 @@ def test_locale_picker_current_selected():
         mount_locale="fr",
     )
     content = files["fr/index.html"]
-    assert 'value="fr" data-href="../fr/" selected' in content
-    assert 'value="en" data-href="../en/" selected' not in content
+    assert 'aria-selected="true" data-value="fr"' in content
+    assert 'aria-selected="true" data-value="en"' not in content
 
 
 def test_no_locale_picker_for_a_single_locale():
@@ -160,11 +170,17 @@ def test_no_locale_picker_for_a_single_locale():
         current_locale="en",
     )
     content = files["index.html"]
-    assert '<select class="locale-picker"' not in content
+    assert "locale-picker" not in content
 
 
-def test_locale_picker_not_disabled_multiple_locales():
-    """Locale picker is not disabled when multiple locales exist."""
+def test_no_picker_prints_a_native_select():
+    """The hidden native <select> is the framework's to print, never ours.
+
+    The framework's own factory emits one for form participation, and the
+    conformance checker allows it there because the allowance is keyed on
+    the file's location inside the packaged assets.  Server-emitted markup
+    printing one would be a banned native control on the page.
+    """
     locales = [
         {"code": "en", "label": "English"},
         {"code": "fr", "label": "French"},
@@ -175,15 +191,15 @@ def test_locale_picker_not_disabled_multiple_locales():
         mount_locale="en",
     )
     content = files["en/index.html"]
-    picker_tag = content.split('<select class="locale-picker"')[1].split(">")[0]
-    assert "disabled" not in picker_tag
+    assert "<select" not in content
+    assert "<option" not in content
 
 
 def test_no_locale_picker_when_none():
-    """No locale picker <select> appears when available_locales is None."""
+    """No locale picker appears when available_locales is None."""
     files = _make_html(available_locales=None)
     content = files["index.html"]
-    assert '<select class="locale-picker"' not in content
+    assert "locale-picker" not in content
 
 
 # --- The Pagefind bundle path follows the page's own address ---
@@ -216,3 +232,56 @@ def test_search_bundle_path_is_never_site_absolute():
     content = files["en/v/1.0.0/guide/index.html"]
     assert 'href="../../../../pagefind/pagefind-ui.css"' in content
     assert "bundlePath" not in content
+
+
+# --- A framework theme's module specifiers ---
+
+
+def test_no_module_specifier_is_ever_bare():
+    """A specifier starting with neither "." nor "/" is refused outright.
+
+    The palette script imports the framework's module and the index's
+    query API, and at the output root -- the front page, and every
+    project's landing page -- the hop to both is empty.  Written without
+    a leading "./" the specifier becomes bare, which a browser answers
+    with "Failed to resolve module specifier" and no search at all.  The
+    Pagefind bundle path made this exact mistake in this exact place
+    before, which is why there is a test rather than a habit.
+    """
+    from selfdoc_core.html import palette_search_script
+
+    for asset_prefix, css_href in (
+        ("", "css/style.css"),
+        ("../", "../css/style.css"),
+        ("../../", "../../_chrome/tinymoon-abc123/css/style.css"),
+    ):
+        script = palette_search_script(asset_prefix, css_href)
+        specifiers = re.findall(r'(?:from|import\()\s*"([^"]+)"', script)
+        assert specifiers, script
+        for specifier in specifiers:
+            assert specifier.startswith(("./", "../", "/")), (
+                f"bare module specifier {specifier!r} at prefix "
+                f"{asset_prefix!r}"
+            )
+
+
+def test_the_module_payload_is_addressed_from_the_stylesheet():
+    """One address decides both, so they cannot disagree."""
+    from selfdoc_core.html import theme_modules_prefix
+
+    assert theme_modules_prefix("css/style.css") == "js/"
+    assert theme_modules_prefix("../css/style.css") == "../js/"
+    assert (
+        theme_modules_prefix("../_chrome/tinymoon-abc123/css/style.css")
+        == "../_chrome/tinymoon-abc123/js/"
+    )
+
+
+def test_a_plain_themes_stylesheet_has_no_module_payload():
+    """Asking for one is a mistake, not a value to invent."""
+    import pytest
+
+    from selfdoc_core.html import theme_modules_prefix
+
+    with pytest.raises(ValueError, match="framework payload"):
+        theme_modules_prefix("style.css")

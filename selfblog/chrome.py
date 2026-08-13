@@ -59,7 +59,12 @@ from selfdoc_core import effects
 from selfdoc_core.build import _minify_css
 from selfdoc_core.html import generate_pygments_css, get_css
 from selfdoc_core.manifest import DEFAULT_THEME as _MANIFEST_DEFAULT_THEME
-from selfdoc_core.themes import get_theme_meta, theme_assets, theme_css_rel
+from selfdoc_core.themes import (
+    MODULES_DIR,
+    get_theme_meta,
+    theme_assets,
+    theme_css_rel,
+)
 from selfdoc_core.utils import atomic_write
 
 __all__ = [
@@ -236,14 +241,26 @@ def chrome_asset_rel(theme: str, css: str) -> str:
     """The site-relative path the asset for *theme* with content *css* takes.
 
     A plain theme is one file.  A framework theme is a *directory* --
-    ``_chrome/<theme>-<digest>/css/style.css`` with ``fonts/`` beside the
-    ``css/``, because the framework's ``@font-face`` rules are addressed
-    relative to the sheet rather than to the site.  The digest covers
-    the composed stylesheet, which is the framework's own bytes plus
-    selfdoc's overlay, so a framework upgrade renames the whole directory
-    and every file under it is cache-pinned by that one name.
+    ``_chrome/<theme>-<digest>/css/style.css`` with ``fonts/`` and ``js/``
+    beside the ``css/``, because the framework's ``@font-face`` rules and
+    the page's module imports are addressed relative to the sheet rather
+    than to the site.
+
+    The digest covers the composed stylesheet **and the module payload**.
+    The stylesheet alone would be enough for a framework whose CSS changes
+    whenever its JavaScript does, and that is not a property anything
+    guarantees: a framework release that fixed only a module would leave
+    the directory name unchanged and every cache would go on serving the
+    old modules from it.  What names the payload has to be everything
+    inside it.
     """
-    digest = hashlib.sha256(css.encode("utf-8")).hexdigest()[:_HASH_LENGTH]
+    material = [css.encode("utf-8")]
+    for src, rel in theme_assets(theme):
+        if rel.startswith(f"{MODULES_DIR}/"):
+            with open(src, "rb") as handle:
+                material.append(rel.encode("utf-8"))
+                material.append(handle.read())
+    digest = hashlib.sha256(b"\0".join(material)).hexdigest()[:_HASH_LENGTH]
     if theme_assets(theme):
         return f"{CHROME_DIR}/{theme}-{digest}/{theme_css_rel(theme)}"
     return f"{CHROME_DIR}/{theme}-{digest}.css"

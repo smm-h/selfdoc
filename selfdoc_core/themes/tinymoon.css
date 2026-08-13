@@ -307,26 +307,18 @@ body::after {
     max-width: 200px;
 }
 
-.version-picker, .locale-picker {
-    font-family: var(--font-mono);
+/* The version and locale pickers are the framework's combobox shape now,
+   and .sel / .sel-btn / .sel-menu / .sel-opt are all dressed by
+   primitives.css.  Only the width restraint is selfdoc's: a topbar picker
+   sits beside a page title rather than in a form column, so it takes the
+   width of its own label instead of the primitive's 160px floor. */
+.sel.version-picker, .sel.locale-picker {
+    min-width: 0;
+}
+.sel.version-picker .sel-btn, .sel.locale-picker .sel-btn {
     font-size: 0.75rem;
     padding: 0.2rem 0.35rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0;
-    background: var(--input-bg);
-    color: var(--text-color);
-    transition: border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
-}
-.version-picker:hover, .locale-picker:hover {
-    border-color: var(--hover-border);
-}
-.version-picker:focus, .locale-picker:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 10px var(--accent-a18);
-}
-.version-picker:disabled, .locale-picker:disabled {
-    opacity: 0.5;
-    cursor: default;
+    min-width: 0;
 }
 
 /* === Layout (three-column with responsive collapse) === */
@@ -1276,7 +1268,9 @@ blockquote p:last-child {
     opacity: 0.6;
     background: none;
     border: none;
-    border-top-left-radius: 4px;
+    /* The framework's corners are sharp everywhere; a code label rounding
+       its own top-left was a leftover from the imitation. */
+    border-radius: 0;
     padding: 4px 0.625rem;
     line-height: 1.4;
     z-index: 1;
@@ -1655,165 +1649,21 @@ hr {
     text-decoration: underline;
 }
 
-/* === Search dialog (Feature 19) === */
+/* === Search ===
 
-.search-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-    background: transparent;
-    padding: 0;
-    max-width: 100%;
-    max-height: 100%;
-}
+   The framework's command palette is this theme's search surface: the page
+   loads palette.js and queries Pagefind through its own search() API, so
+   Pagefind's shipped widget is never loaded and its bundle is not even
+   written into the site.  Everything this file used to carry to make that
+   widget presentable -- the <dialog> chrome it mounted in, the eight
+   custom properties its stylesheet reads, and the dozen rules bringing its
+   input, filter pills and result rows into the design language -- is gone
+   with it.  shell.css dresses .tm-palette.
 
-.search-dialog::backdrop {
-    background: var(--backdrop);
-    backdrop-filter: blur(4px);
-}
+   What remains is the facet elements, which the indexer still reads. */
 
-.search-inner {
-    position: fixed;
-    top: 15vh;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 560px;
-    background: var(--surface);
-    border: 1px solid var(--border-2);
-    border-radius: 0;
-    box-shadow: 0 24px 64px var(--shadow-sm), 0 0 40px var(--accent-a12);
-    overflow: hidden;
-}
-
-.search-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.75rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.search-header-title {
-    font-family: var(--font-mono);
-    font-weight: 400;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-faint);
-}
-
-.search-close {
-    border: none;
-    background: none;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    line-height: 1;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    border-radius: 0;
-}
-
-.search-close {
-    font-family: var(--font-mono);
-    transition: color var(--dur-base) ease, background var(--dur-base) ease;
-}
-
-.search-close:hover {
-    background: var(--surface-2);
-    color: var(--text);
-}
-
-/* The Pagefind UI renders the input, the filter panel and the results
-   inside this container; it styles all three itself. */
-#pagefind-container {
-    padding: 0.75rem 1rem 1rem;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-/* The hidden elements carrying Pagefind's filter and metadata values.
-   They hold no text, and this keeps them out of layout regardless. */
 .pagefind-facet {
     display: none;
-}
-
-/* Pagefind ships its own stylesheet and reads these custom properties
-   from whatever scope encloses its root.  Left unset -- which is what
-   the other themes do -- the results panel renders in Pagefind's own
-   light palette with rounded corners, which on a dark page is a white
-   rectangle in the middle of the screen.  Every one is bound to a theme
-   token, so the dialog follows the light/dark reassignment with the
-   rest of the page. */
-#pagefind-container {
-    --pagefind-ui-primary: var(--accent-hi);
-    --pagefind-ui-text: var(--text);
-    --pagefind-ui-background: var(--surface);
-    --pagefind-ui-border: var(--border);
-    --pagefind-ui-tag: var(--surface-2);
-    --pagefind-ui-border-width: 1px;
-    --pagefind-ui-border-radius: 0;
-    --pagefind-ui-font: var(--font-body);
-}
-
-/* Pagefind's own input, filter pills and result rows, brought into the
-   design language: sharp corners, hairline borders, accent glow on
-   focus, mono for the counts and filter labels. */
-#pagefind-container .pagefind-ui__search-input {
-    background: var(--input-bg);
-    border: 1px solid var(--border-2);
-    color: var(--text);
-    font-family: var(--font-body);
-    transition: border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
-}
-
-#pagefind-container .pagefind-ui__search-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 10px var(--accent-a18);
-    outline: none;
-}
-
-#pagefind-container .pagefind-ui__search-clear {
-    background: none;
-    color: var(--text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-}
-
-#pagefind-container .pagefind-ui__result-title {
-    font-family: var(--font-display);
-    font-weight: 600;
-}
-
-#pagefind-container .pagefind-ui__result-link {
-    color: var(--link);
-}
-
-#pagefind-container .pagefind-ui__result-excerpt {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-#pagefind-container .pagefind-ui__result {
-    border-top: 1px solid var(--border);
-}
-
-#pagefind-container .pagefind-ui__message,
-#pagefind-container .pagefind-ui__filter-name,
-#pagefind-container .pagefind-ui__filter-value {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-#pagefind-container mark,
-#pagefind-container .pagefind-ui__result-excerpt mark {
-    background: var(--mark-bg);
-    color: var(--text);
 }
 
 /* === Diff line highlighting (Feature 27) === */
@@ -2013,7 +1863,7 @@ hr {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
+        background: var(--backdrop);
         z-index: 140;
     }
 
@@ -2050,7 +1900,7 @@ hr {
 @media print {
     .sidebar, .toc, .mobile-toc, .topbar, .hamburger,
     .skip-link, .page-nav, .feedback, .copy-btn, .run-btn,
-    .search-dialog, .heading-link, .theme-toggle, .site-footer,
+    .tm-palette, .heading-link, .theme-toggle, .site-footer,
     .edit-link, .edit-link-top, .search-trigger, .search-bar-trigger,
     .breadcrumbs, .page-summary, .content-header,
     .hero, .feature-grid, .reading-progress {
@@ -2381,7 +2231,7 @@ hr {
     max-width: 300px;
     z-index: 10;
     pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-pop);
 }
 
 /* === Content details/summary styling (Feature 9.1) === */

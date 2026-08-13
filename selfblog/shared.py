@@ -15,8 +15,10 @@ from selfdoc_core.html import (
     pagefind_dialog_html,
     pagefind_head_tags,
     pagefind_init_script,
+    palette_search_script,
 )
 from selfdoc_core.robots import ROBOTS_AGENTS, render_robots_txt
+from selfdoc_core.themes import FRAMEWORK_CSS_REL
 
 __all__ = [
     "POSTS_SEGMENT",
@@ -100,6 +102,20 @@ def wrap_shared_page(
             "page's reference to the asset selfblog.chrome writes."
         )
     css_link = f'\n    <link rel="stylesheet" href="{html.escape(css_url)}">'
+    # Which search surface this page carries is read off the stylesheet it
+    # already names: a framework theme's sheet is the only one written at
+    # FRAMEWORK_CSS_REL inside its payload directory, and the framework's
+    # modules sit beside it.  Deriving it beats threading the theme name
+    # through every shared-page caller, and it cannot disagree with the
+    # stylesheet the page actually loads.
+    if css_url.endswith(FRAMEWORK_CSS_REL):
+        search_head = ""
+        search_dialog = ""
+        search_script = palette_search_script(search_prefix, css_url)
+    else:
+        search_head = pagefind_head_tags(search_prefix)
+        search_dialog = pagefind_dialog_html()
+        search_script = pagefind_init_script(search_prefix)
     canonical_link = ""
     if canonical_url:
         canonical_link = (
@@ -112,7 +128,7 @@ def wrap_shared_page(
         '    <meta charset="utf-8">\n'
         '    <meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"    <title>{html.escape(title)}</title>{canonical_link}{css_link}\n"
-        f"{pagefind_head_tags(search_prefix)}"
+        f"{search_head}"
         "</head>\n"
         "<body>\n"
         '<div class="shared-page">\n'
@@ -121,8 +137,8 @@ def wrap_shared_page(
         '<footer class="site-footer">\n'
         '<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
         "</footer>\n"
-        f"{pagefind_dialog_html()}\n"
-        f"{pagefind_init_script(search_prefix)}\n"
+        f"{search_dialog}\n"
+        f"{search_script}\n"
         "</body>\n"
         "</html>\n"
     )
