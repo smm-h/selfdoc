@@ -1255,9 +1255,10 @@ def _cmd_assembly_verify(ctx, assembly_dir=".", canonical_base=""):
 @strictcli.flag("port", type=int, help="Port to bind on 127.0.0.1. Required and has no default: which port a long-running local server occupies is a decision the caller states rather than inherits.")
 @strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.")
 @strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Empty when no such subdomain exists.")
+@strictcli.flag("build", type=bool, help="Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in docs/_build, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.")
 @effects.handler
 def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
-                          canonical_base="", legacy_blog_host=""):
+                          canonical_base="", legacy_blog_host="", build=True):
     """Build every named checkout into a preview tree and serve it."""
     from selfblog.preview import (
         HOST,
@@ -1290,6 +1291,7 @@ def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
             out_dir=out,
             canonical_base=canonical_base,
             legacy_blog_host=legacy_blog_host,
+            build=build,
         )
     except (ValueError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)

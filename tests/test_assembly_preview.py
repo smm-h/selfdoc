@@ -399,6 +399,52 @@ class TestTheServer:
         assert body == b""
 
 
+# -- the command surface -------------------------------------------------------
+
+
+class TestTheCommand:
+    """What `selfblog assembly preview` declares at registration.
+
+    The declarations are the contract: which inputs have no default, that
+    the command refuses to pretend it can preview itself, and that it is
+    classified as the mutation it is.
+    """
+
+    def _command(self):
+        import selfblog.cli
+
+        return selfblog.cli.app._groups["assembly"].commands["preview"]
+
+    def _flags(self):
+        return {f.name: f for f in self._command().flags}
+
+    def test_it_is_mutating_and_not_consequential(self):
+        cmd = self._command()
+        assert cmd.effect == "mutating"
+        assert cmd.consequential is False
+
+    def test_it_refuses_dry_run_with_a_reason(self):
+        cmd = self._command()
+        assert cmd.dry_run_supported is False
+        assert "look at" in cmd.dry_run_unsupported_reason
+
+    def test_every_input_that_decides_the_output_is_required(self):
+        # strictcli spells "required" as the absence of a default.
+        flags = self._flags()
+        for name in ("home", "out", "port", "canonical-base", "build"):
+            assert flags[name].default is None, f"--{name} must have no default"
+
+    def test_the_build_choice_is_negatable_rather_than_defaulted(self):
+        build = self._flags()["build"]
+        assert build.type is bool
+        assert build.negatable
+
+    def test_repo_is_repeatable_and_deduplicated(self):
+        repo = self._flags()["repo"]
+        assert repo.repeatable
+        assert repo.unique
+
+
 # -- where a preview may be written --------------------------------------------
 
 

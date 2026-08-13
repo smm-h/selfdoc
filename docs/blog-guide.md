@@ -390,7 +390,8 @@ selfblog assembly preview \
   --repo ~/Projects/rlsbl \
   --canonical-base https://smmh.dev \
   --out ~/scratch/preview \
-  --port 8790
+  --port 8790 \
+  --build
 ```
 
 Every flag is required except `--legacy-blog-host`. `--home` names the one
@@ -399,6 +400,16 @@ project and each is served under the slug its own `selfdoc.json` declares.
 `--canonical-base` is the **deployed** base, not the loopback address: the
 preview shows the pages with the canonical links, sitemap entries and
 cross-project links they would ship with, and verifies those.
+`--build` / `--no-build` has no default because the choice is the point:
+`--build` is the honest preview of what would ship, `--no-build`
+re-assembles whatever each checkout already has in `docs/_build`, which is
+how you iterate after one edit without rebuilding every project.
+
+Curation cuts both ways here: the home project's `docs/projects.toml`
+names the projects the front page lists, and **a listed slug with no
+manifest is a hard error**. So a preview has to include every non-external
+project the listing names, not just the ones being changed. Leaving a
+roster project out of the listing stays legal -- it simply is not listed.
 
 The pipeline is the deploy's, step for step, with the remote-coupled steps
 replaced by their local equivalents rather than skipped:
