@@ -744,11 +744,15 @@ body::after {
     text-decoration: none;
 }
 
+/* The marker is the accent edge itself.  A blurred shadow on a
+   full-width row bleeds around all four sides however it is offset, and
+   the result reads as a box drawn around the item rather than an edge
+   lit along it. */
 .toc-item a.active {
     color: var(--text);
     font-weight: 600;
     border-left-color: var(--accent);
-    box-shadow: -2px 0 8px -2px var(--accent-glow);
+    background: var(--accent-soft);
 }
 
 .toc-h3 {
