@@ -35,7 +35,7 @@ from selfdoc_core.html import (
     generate_pygments_css,
     get_css,
 )
-from selfdoc_core.themes import get_theme_meta
+from selfdoc_core.themes import get_theme_meta, list_themes
 from selfdoc_core.urls import SimpleURLBuilder
 
 from selfdoc_core import effects
@@ -257,7 +257,7 @@ def _generate_unified_glossary_html(merged_terms, projects_info):
     )
 
 
-def build_unified(dir_path=".", config=None, include_drafts=False):
+def build_unified(dir_path=".", config=None, include_drafts=False, theme=""):
     """Build a unified documentation site from multiple constituent projects.
 
     Main entry point for monorepo unified builds. Reads the ``unified``
@@ -270,6 +270,8 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
         dir_path: The docs-site's project root directory.
         config: Pre-loaded config dict (if None, loads from selfdoc_core.json).
         include_drafts: Include draft posts in the build output.
+        theme: Theme name overriding the config's, for this build only.
+            Empty means the config decides.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -280,6 +282,15 @@ def build_unified(dir_path=".", config=None, include_drafts=False):
         raise RuntimeError(
             "No selfdoc.json found. Run 'selfdoc init' to initialize."
         )
+
+    if theme:
+        known = list_themes()
+        if theme not in known:
+            raise ConfigError(
+                f"unknown theme {theme!r}; available themes: "
+                f"{', '.join(known)}"
+            )
+        config = {**config, "theme": theme}
 
     unified_config = config.get("unified")
     if unified_config is None:

@@ -152,7 +152,12 @@ CONFIG_SCHEMA: tuple[FieldSpec, ...] = (
         name="theme",
         type=_S,
         default="minimal",
-        description="Visual theme for the generated site.",
+        description=(
+            "Visual theme for the generated site. One of the themes selfdoc "
+            "ships -- 'minimal', 'clean' or 'tinymoon'. A build's --theme "
+            "flag overrides this for that build only, without writing "
+            "anything back here."
+        ),
     ),
     FieldSpec(
         name="repo",

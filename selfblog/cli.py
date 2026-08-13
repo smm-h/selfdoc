@@ -1262,9 +1262,11 @@ def _cmd_assembly_verify(ctx, assembly_dir=".", canonical_base=""):
 @strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.")
 @strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Empty when no such subdomain exists.")
 @strictcli.flag("build", type=bool, help="Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in docs/_build, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.")
+@strictcli.flag("theme", type=str, default="", help="Build every checkout under this theme instead of the one its selfdoc.json declares, for this preview only. Empty -- the default -- leaves every project on its configured theme, which is what a deploy does. This exists to judge a theme on the real pages: the same site, every project flipped at once, without editing a config anywhere. Validated against the theme registry, and refused with --no-build, because a theme is baked into build output and re-grafting an existing tree cannot restyle it.")
 @effects.handler
 def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
-                          canonical_base="", legacy_blog_host="", build=True):
+                          canonical_base="", legacy_blog_host="", build=True,
+                          theme=""):
     """Build every named checkout into a preview tree and serve it."""
     from selfblog.preview import (
         HOST,
@@ -1298,6 +1300,7 @@ def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
             canonical_base=canonical_base,
             legacy_blog_host=legacy_blog_host,
             build=build,
+            theme=theme,
         )
     except (ValueError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1626,9 +1629,10 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
 @strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
 @strictcli.flag("site-manifests", type=str, default="", help="Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.")
+@strictcli.flag("theme", type=str, default="", help="Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json")
 @effects.handler
 def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
-               site_manifests=""):
+               site_manifests="", theme=""):
     """Build blog posts, the unified site, or the home project."""
     config = _load_config_or_fail()
     if config is None:
@@ -1641,7 +1645,7 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
         try:
             written = build_home_project(
                 ".", config, site_manifests=site_manifests,
-                include_drafts=drafts,
+                include_drafts=drafts, theme=theme,
             )
         except _user_errors() as e:
             _fail(e)
@@ -1653,7 +1657,9 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
         from selfblog.unified import build_unified
 
         try:
-            written = build_unified(dir_path=".", include_drafts=drafts)
+            written = build_unified(
+                dir_path=".", include_drafts=drafts, theme=theme,
+            )
         except _user_errors() as e:
             _fail(e)
 
@@ -1668,6 +1674,7 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
                 ".",
                 include_drafts=drafts,
                 target="posts",
+                theme=theme,
             )
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)

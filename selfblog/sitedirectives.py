@@ -270,7 +270,7 @@ def home_listing_path(dir_path: str, config) -> str:
 
 
 def build_home_project(dir_path: str, config, *, site_manifests: str,
-                       include_drafts: bool = False):
+                       include_drafts: bool = False, theme: str = ""):
     """Build the home project with the assembly's data in scope.
 
     This is the only build that can resolve a site-level directive, and the
@@ -323,7 +323,10 @@ def build_home_project(dir_path: str, config, *, site_manifests: str,
         home_slug=home_slug,
     )
     build_config[CONTEXT_KEY] = context
-    written = build(dir_path, config=build_config, include_drafts=include_drafts)
+    written = build(
+        dir_path, config=build_config, include_drafts=include_drafts,
+        theme=theme,
+    )
 
     output_dir = os.path.join(
         dir_path, (config.get("output") or "docs/_build/").rstrip("/"),

@@ -261,8 +261,9 @@ def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
 @strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
 @strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output alongside published posts")
 @strictcli.flag("target", type=str, default="", help="Build target: empty for full build ('posts' builds moved to selfblog)")
+@strictcli.flag("theme", type=str, default="", help="Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it")
 @effects.handler
-def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target=""):
+def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target="", theme=""):
     """Build the documentation site."""
     # A present-but-invalid selfdoc.json is a user error like any other:
     # it prints the message and exits 1, rather than ending the process on
@@ -294,6 +295,7 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
             locale_filter=locale or None,
             include_drafts=drafts,
             target=target,
+            theme=theme,
         )
     except _user_errors() as e:
         _fail(e)

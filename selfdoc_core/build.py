@@ -27,7 +27,7 @@ from selfdoc_core.html import (
     _md_to_html_path, _html_to_md_path,
     _extract_title, _escape_html, _build_nav,
 )
-from selfdoc_core.themes import get_theme_meta
+from selfdoc_core.themes import get_theme_meta, list_themes
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
 
 from selfdoc_core import effects
@@ -1840,7 +1840,7 @@ def _build_posts_only(dir_path, config, output_dir, docs_dir_name,
 
 
 def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
-          include_drafts=False, target=""):
+          include_drafts=False, target="", theme=""):
     """Build docs from templates + directives, with multi-locale/multi-version support.
 
     Outer loop iterates locales, inner loop iterates versions. For each
@@ -1857,6 +1857,10 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         include_drafts: Include draft posts in the build output.
         target: Build target. ``"posts"`` for posts-only build, empty
             string for a full build.
+        theme: Theme name that overrides the one the config declares, for
+            this build only.  Empty means the config decides.  Nothing is
+            written back to selfdoc.json -- the override lives as long as
+            the call does.
 
     Returns:
         Dict of {output_path: True} for files written.
@@ -1867,6 +1871,18 @@ def build(dir_path=".", config=None, version_filter=None, locale_filter=None,
         raise RuntimeError(
             "No selfdoc.json found. Run 'selfdoc init' to initialize."
         )
+
+    if theme:
+        # Validated against the registry rather than trusted: a
+        # misspelled name would otherwise reach get_theme and fail deep
+        # in the render with a less useful message.
+        known = list_themes()
+        if theme not in known:
+            raise ConfigError(
+                f"unknown theme {theme!r}; available themes: "
+                f"{', '.join(known)}"
+            )
+        config = {**config, "theme": theme}
 
     if config.get("versions") is None:
         raise ConfigError(

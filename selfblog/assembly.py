@@ -1094,6 +1094,7 @@ def generate_shared_files(
     docs_base: str = "",
     legacy_blog_host: str = "",
     home_slug: str = "",
+    theme: str = "",
 ) -> list[str]:
     """Write the assembly's shared cross-project files and return their paths.
 
@@ -1118,6 +1119,12 @@ def generate_shared_files(
     deploy, so a version badge on the front page is as current as the last
     deploy of the project it names rather than as the last deploy of the
     home project.
+
+    *theme* names one theme every page's chrome asset is built from,
+    overriding what each project's manifest declares.  It is the preview's
+    ``--theme``: the checkouts were all built under that theme, so their
+    pages have to reference its stylesheet.  Empty -- which is what every
+    deploy passes -- leaves each project on its own.
 
     Raises ValueError when a required input is missing -- the CLI turns
     those into a usage error, the integrate command lets them abort the
@@ -1189,7 +1196,7 @@ def generate_shared_files(
     # asset per theme the roster declares, sourced from the theme files of
     # the toolchain running this deploy; the shared pages below name theirs
     # directly and every grafted page is re-pointed at the end.
-    themes_by_slug, home_theme = chrome_themes(manifests, home_slug)
+    themes_by_slug, home_theme = chrome_themes(manifests, home_slug, theme)
     chrome_assets = write_chrome_assets(
         site_dir, [*themes_by_slug.values(), home_theme],
     )
@@ -2044,13 +2051,18 @@ def _run_step(argv, *, cwd, step, timeout, resource=None, grant=None,
 
 
 def build_source_project(source_dir: str, scope: str, *, home: bool = False,
-                         manifests_dir: str = "") -> list[str]:
+                         manifests_dir: str = "", theme: str = "") -> list[str]:
     """Build the cloned source project and return the argv that was run.
 
     The home project builds through ``selfblog build --target home``, which
     is the one build that can resolve a site-level directive: its front page
     renders the curated listing with every project's live version, and the
     manifests those versions come from are the assembly's, not its own.
+
+    *theme* overrides whatever theme the checkout's own ``selfdoc.json``
+    declares, for this build only.  Empty leaves every project on its
+    configured theme, which is what a deploy always does; a name is
+    passed straight through as ``--theme`` and the build validates it.
     """
     if scope == "posts":
         argv = ["selfblog", "build", "--target", "posts", "--no-auto-commit"]
@@ -2065,6 +2077,8 @@ def build_source_project(source_dir: str, scope: str, *, home: bool = False,
         latest = detect_latest_version(source_dir)
         if latest:
             argv += ["--version", latest]
+    if theme:
+        argv += ["--theme", theme]
     _run_step(
         argv, cwd=source_dir, step=f"source build ({scope})",
         timeout=_BUILD_TIMEOUT, resource=f"build:{source_dir}",

@@ -166,6 +166,45 @@ def read_slug(source_dir: str) -> str:
 # -- the pipeline --------------------------------------------------------------
 
 
+def expected_stylesheet(theme: str) -> str:
+    """The stylesheet ``selfdoc build`` writes for *theme*, byte for byte.
+
+    Recomputed the same way the build computes it -- the theme's CSS, the
+    Pygments rules its metadata names, minified together -- so a
+    comparison against a build's ``style.css`` is an equality rather than
+    a resemblance.  It is deliberately sensitive to the theme file
+    changing after a build: a page rendered against an older version of
+    the theme is exactly the thing the caller wants to be told about.
+    """
+    from selfdoc_core.build import _minify_css
+    from selfdoc_core.html import generate_pygments_css, get_css
+    from selfdoc_core.themes import get_theme_meta
+
+    meta = get_theme_meta(theme)
+    css = get_css(theme)
+    pygments = generate_pygments_css(
+        light_style=meta.get("pygments_light", "default"),
+        dark_style=meta.get("pygments_dark", "monokai"),
+    )
+    if pygments:
+        css = css + "\n\n/* Pygments syntax highlighting */\n" + pygments
+    return _minify_css(css)
+
+
+def built_under_theme(source_dir: str, theme: str) -> bool:
+    """Whether *source_dir*'s existing build output was made with *theme*.
+
+    False for a checkout with no build output at all: nothing to graft is
+    not the same claim as grafting something styled correctly, and the
+    graft will fail on its own terms a moment later anyway.
+    """
+    path = os.path.join(source_dir, "docs", "_build", "style.css")
+    if not os.path.isfile(path):
+        return False
+    with open(path, encoding="utf-8") as handle:
+        return handle.read() == expected_stylesheet(theme)
+
+
 def preview_assembly(
     *,
     home_dir: str,
@@ -174,6 +213,7 @@ def preview_assembly(
     canonical_base: str,
     legacy_blog_host: str = "",
     build: bool = True,
+    theme: str = "",
 ) -> dict:
     """Assemble every named checkout into *out_dir* and verify the result.
 
@@ -193,6 +233,13 @@ def preview_assembly(
         build: Whether to run each checkout's build.  False previews whatever
             is already in each checkout's ``docs/_build``, which is what the
             suite does and what a second look after one edit wants.
+        theme: A theme name every checkout is built under, overriding each
+            project's own configured theme for this preview only.  Empty
+            means every project keeps its configured theme, which is what
+            a deploy always does.  With ``build`` it reaches each build.
+            Without it, the build trees already on disk have to have been
+            produced under that theme, and a checkout whose has not is a
+            hard error naming it -- see :func:`built_under_theme`.
 
     Returns:
         A summary: ``out_dir``, ``site_dir``, ``home``, ``slugs``, ``shared``
@@ -223,6 +270,15 @@ def preview_assembly(
             "canonical and every sitemap entry is written against, and the "
             "preview asserts the deployed addresses, not the loopback ones."
         )
+    if theme:
+        from selfdoc_core.themes import list_themes
+
+        known = list_themes()
+        if theme not in known:
+            raise ValueError(
+                f"unknown theme {theme!r}; available themes: "
+                f"{', '.join(known)}"
+            )
     refuse_unsafe_out_dir(out_dir)
 
     out_dir = os.path.abspath(out_dir)
@@ -248,6 +304,31 @@ def preview_assembly(
         checkouts[slug] = source_dir
         ordered.append((slug, source_dir, False))
     ordered.append((home_slug, home_dir, True))
+
+    # A theme reaches a page twice: the build inlines its critical part
+    # into the page's own head, and the page then references the site's
+    # chrome asset for the rest.  With --build both come from *theme*.
+    # With --no-build only the second one can, so the first has to be
+    # checked rather than assumed -- otherwise the preview would serve
+    # one theme's pages against another theme's stylesheet and look like
+    # a rendering bug.  The check is an equality, not a guess: it
+    # recomputes the stylesheet the build writes and compares.
+    if theme and not build:
+        stale = [
+            slug for slug, source_dir in sorted(checkouts.items())
+            if not built_under_theme(source_dir, theme)
+        ]
+        if stale:
+            raise RuntimeError(
+                "--no-build was given with --theme "
+                f"{theme!r}, but the build tree of "
+                f"{', '.join(stale)} was not produced under that theme "
+                f"(or under the theme as it stands now). Their pages carry "
+                f"another theme's inlined styles, so serving them against "
+                f"{theme}'s stylesheet would look like a rendering fault "
+                f"rather than the theme. Rebuild those checkouts under "
+                f"--theme {theme}, or run the preview with --build."
+            )
 
     effects.makedirs(manifests_dir, exist_ok=True)
     effects.makedirs(site_dir, exist_ok=True)
@@ -275,7 +356,7 @@ def preview_assembly(
         if build:
             build_source_project(
                 source_dir, "full", home=is_home,
-                manifests_dir=manifests_dir, docs_base=canonical_base,
+                manifests_dir=manifests_dir, theme=theme,
             )
         apply_project_files(out_dir, source_dir, slug, "full", home=is_home)
         record_membership(
@@ -288,6 +369,7 @@ def preview_assembly(
         docs_base=canonical_base,
         legacy_blog_host=legacy_blog_host,
         home_slug=home_slug,
+        theme=theme,
     )
     index_site(site_dir)
 
