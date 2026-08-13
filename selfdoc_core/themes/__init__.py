@@ -17,7 +17,7 @@ good deal of component styling, because the emitters still produce
 selfdoc's own class surface rather than the framework's markup shapes;
 that restatement goes when the emitters migrate.
 
-Two consequences the rest of the build reads through this module:
+Three consequences the rest of the build reads through this module:
 
 - :func:`get_theme` returns the *composed* stylesheet -- the framework's
   sheets, in the order its markup contract requires, then the overlay.  The
@@ -27,6 +27,12 @@ Two consequences the rest of the build reads through this module:
   relative to a site root.  The framework's ``@font-face`` rules address
   ``../fonts/``, so the stylesheet goes in ``css/`` with ``fonts/`` beside
   it -- the layout inside the installed package, preserved.
+- :func:`theme_modules` is the ES modules a page under the theme imports:
+  the *closure* of the entry points the framework block declares, computed
+  from the package's own sources.  They travel in ``js/`` beside the
+  stylesheet's directory.  A declared list would be a second copy of a fact
+  the sources already state, and the failure when it fell behind would be a
+  page importing a module the site does not carry.
 """
 
 import json
