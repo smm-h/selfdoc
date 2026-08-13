@@ -27,7 +27,9 @@ from selfdoc_core.html import (
     _md_to_html_path, _html_to_md_path,
     _extract_title, _escape_html, _build_nav,
 )
-from selfdoc_core.themes import get_theme_meta, list_themes
+from selfdoc_core.themes import (
+    get_theme_meta, list_themes, theme_assets, theme_css_rel,
+)
 from selfdoc_core.urls import SimpleURLBuilder, TopologyURLBuilder
 
 from selfdoc_core import effects
@@ -2346,8 +2348,13 @@ def _build_body(
     lb = latest_build
     theme_meta = lb["theme_meta"]
 
-    # Shared assets: CSS
-    css_path = os.path.join(output_dir, "style.css")
+    # Shared assets: CSS.  A framework theme writes into css/ with the
+    # framework's fonts beside it, because the framework's
+    # @font-face rules address ../fonts/ -- see selfdoc_core.themes.
+    theme_name = theme_meta.get("name") or config.get("theme", "minimal")
+    css_rel = theme_css_rel(theme_name)
+    css_path = os.path.join(output_dir, *css_rel.split("/"))
+    effects.makedirs(os.path.dirname(css_path), exist_ok=True)
     theme_css = lb["raw_theme_css"]
     pygments_css = generate_pygments_css(
         light_style=theme_meta.get("pygments_light", "default"),
@@ -2359,6 +2366,15 @@ def _build_body(
     with effects.open_write(css_path, "w", encoding="utf-8") as f:
         f.write(theme_css)
     written[css_path] = True
+
+    # A standalone site carries its own copy of whatever the theme's
+    # stylesheet references and is not itself -- today, the faces.
+    # There is no assembly under a standalone deploy to serve them.
+    for src, asset_rel in theme_assets(theme_name):
+        dst = os.path.join(output_dir, *asset_rel.split("/"))
+        effects.makedirs(os.path.dirname(dst), exist_ok=True)
+        effects.copy_file(src, dst)
+        written[dst] = True
 
     # Custom CSS
     custom_css_src = os.path.join(lb["docs_dir"], "custom.css")
@@ -2776,6 +2792,15 @@ def _generate_headers(output_dir):
         "  X-XSS-Protection: 0\n"
         "\n"
         "/style.css\n"
+        "  Cache-Control: public, max-age=31536000, immutable\n"
+        "\n"
+        # A framework theme writes its sheet into css/ and ships the
+        # faces beside it; those are the framework's own bytes and never
+        # change without the stylesheet changing too.
+        "/css/*\n"
+        "  Cache-Control: public, max-age=31536000, immutable\n"
+        "\n"
+        "/fonts/*\n"
         "  Cache-Control: public, max-age=31536000, immutable\n"
         "\n"
         "/*.svg\n"

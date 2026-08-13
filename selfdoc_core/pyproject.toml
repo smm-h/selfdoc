@@ -19,6 +19,11 @@ keywords = ["documentation", "static-site-generator", "docstring", "selfdoc", "r
 dependencies = [
     "strictspec>=0.1.0",
     "strictcli>=0.36.0",
+    # The tinymoon theme consumes the framework rather than imitating it: the
+    # wheel ships tinymoon's css/, js/ and fonts/, and the build copies them
+    # out of tinymoon.assets_path(). The floor is 0.10.0, the version that
+    # publishes the markup contract the emitters are written against.
+    "tinymoon>=0.10.0",
 ]
 
 [project.optional-dependencies]

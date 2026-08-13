@@ -3,12 +3,44 @@
 Themes are CSS files stored alongside this module. Use get_theme(name) to load
 a theme's CSS content by name. Use get_theme_meta(name) to load a theme's
 metadata (fonts, accent color, Pygments styles) from its companion JSON file.
+
+Framework themes
+----------------
+
+A theme's companion JSON may declare a ``framework`` block, and then the
+theme is not a whole stylesheet: it is an *overlay* on top of a framework
+whose sheets ship in an installed package.  ``tinymoon`` is the one such
+theme -- selfdoc consumes the framework rather than imitating it, so the
+palette, the reset and the faces are the framework's, and the file in this
+directory carries only what is selfdoc's.  The overlay still restates a
+good deal of component styling, because the emitters still produce
+selfdoc's own class surface rather than the framework's markup shapes;
+that restatement goes when the emitters migrate.
+
+Two consequences the rest of the build reads through this module:
+
+- :func:`get_theme` returns the *composed* stylesheet -- the framework's
+  sheets, in the order its markup contract requires, then the overlay.  The
+  framework bytes are shipped as-is; nothing here rewrites them.
+- :func:`theme_assets` names the non-CSS files that have to travel with the
+  stylesheet, and :func:`theme_css_rel` says where the stylesheet is written
+  relative to a site root.  The framework's ``@font-face`` rules address
+  ``../fonts/``, so the stylesheet goes in ``css/`` with ``fonts/`` beside
+  it -- the layout inside the installed package, preserved.
 """
 
 import json
 import os
 
 _THEMES_DIR = os.path.dirname(__file__)
+
+#: Where a plain theme's stylesheet is written, relative to a site root.
+DEFAULT_CSS_REL = "style.css"
+
+#: Where a framework theme's stylesheet is written.  The directory is not
+#: decoration: the framework's font URLs are ``../fonts/``, so the sheet has
+#: to sit one level in with ``fonts/`` as its sibling.
+FRAMEWORK_CSS_REL = "css/style.css"
 
 # Default metadata returned when a theme has no companion .json file.
 # These match the values historically hardcoded across build.py and html.py.
@@ -33,18 +65,109 @@ def list_themes():
     )
 
 
-def get_theme(name):
-    """Load and return the CSS content for the named theme.
+def theme_framework(name):
+    """The ``framework`` block a theme declares, or ``None``.
 
-    Args:
-        name: Theme name (corresponds to a .css file in the themes directory).
+    The block names an installed package and the sheets to take from it::
 
-    Returns:
-        The CSS content as a string.
+        {"framework": {"package": "tinymoon",
+                       "sheets": ["tokens", "base", ...],
+                       "assets": ["fonts"]}}
 
-    Raises:
-        ValueError: If the theme does not exist.
+    A theme with no such block is a whole stylesheet of its own and every
+    framework-aware branch below is skipped for it.
     """
+    meta = get_theme_meta(name)
+    block = meta.get("framework")
+    if not block:
+        return None
+    if not block.get("package") or not block.get("sheets"):
+        raise ValueError(
+            f"theme {name!r} declares a framework block with no "
+            f"'package' or no 'sheets'"
+        )
+    return block
+
+
+def _framework_assets_dir(package):
+    """The directory the named framework package ships its assets in.
+
+    The package is a hard dependency of this engine, so a missing one is a
+    broken install rather than a condition to route around.
+    """
+    if package == "tinymoon":
+        import tinymoon
+
+        return str(tinymoon.assets_path())
+    raise ValueError(
+        f"unknown theme framework package {package!r}; selfdoc knows how "
+        f"to locate the assets of: tinymoon"
+    )
+
+
+def framework_sheets_css(name):
+    """The framework sheets a theme composes over, concatenated in order.
+
+    Empty string for a theme that declares no framework.  The bytes are the
+    package's own: they are read and joined, never rewritten, so the hash of
+    the result pins the framework version that produced it.
+    """
+    block = theme_framework(name)
+    if not block:
+        return ""
+    assets = _framework_assets_dir(block["package"])
+    parts = []
+    for sheet in block["sheets"]:
+        path = os.path.join(assets, "css", f"{sheet}.css")
+        if not os.path.isfile(path):
+            raise FileNotFoundError(
+                f"theme {name!r} names the framework sheet {sheet!r}, which "
+                f"{block['package']} does not ship at {path}"
+            )
+        with open(path, "r", encoding="utf-8") as f:
+            parts.append(f"/* --- {block['package']}/{sheet}.css --- */\n"
+                         + f.read())
+    return "\n\n".join(parts)
+
+
+def theme_assets(name):
+    """``(absolute source, site-relative destination)`` for a theme's assets.
+
+    The files that have to travel with the stylesheet and are not the
+    stylesheet, one directory per kind the ``framework`` block names.  Today
+    that is ``fonts``, because the ``@font-face`` rules are the only thing
+    in the sheets that addresses anything outside them; the framework's ES
+    modules join the declaration when a page imports one.  Empty for a theme
+    that declares no framework.  Destinations keep the layout the package
+    uses, because the sheets address them by relative URL.
+    """
+    block = theme_framework(name)
+    if not block:
+        return []
+    assets = _framework_assets_dir(block["package"])
+    pairs = []
+    for kind in block.get("assets", []):
+        src_dir = os.path.join(assets, kind)
+        if not os.path.isdir(src_dir):
+            raise FileNotFoundError(
+                f"theme {name!r} names the framework asset directory "
+                f"{kind!r}, which {block['package']} does not ship at "
+                f"{src_dir}"
+            )
+        for entry in sorted(os.listdir(src_dir)):
+            src = os.path.join(src_dir, entry)
+            if os.path.isfile(src):
+                pairs.append((src, f"{kind}/{entry}"))
+    return pairs
+
+
+def theme_css_rel(name):
+    """Where the named theme's stylesheet is written, from a site root."""
+    return FRAMEWORK_CSS_REL if theme_framework(name) else DEFAULT_CSS_REL
+
+
+def theme_overlay(name):
+    """The theme's own CSS file, without any framework sheets under it."""
     css_path = os.path.join(_THEMES_DIR, f"{name}.css")
     if not os.path.isfile(css_path):
         available = list_themes()
@@ -56,6 +179,31 @@ def get_theme(name):
         return f.read()
 
 
+def get_theme(name):
+    """Load and return the CSS content for the named theme.
+
+    For a framework theme this is the composition: the framework's sheets
+    followed by selfdoc's overlay.  The whole composition sits *below* the
+    critical-CSS marker, because the framework's ``@font-face`` rules are
+    written relative to the stylesheet's own location and inlining them into
+    a page at arbitrary depth would aim them at nothing.
+
+    Args:
+        name: Theme name (corresponds to a .css file in the themes directory).
+
+    Returns:
+        The CSS content as a string.
+
+    Raises:
+        ValueError: If the theme does not exist.
+    """
+    overlay = theme_overlay(name)
+    framework = framework_sheets_css(name)
+    if not framework:
+        return overlay
+    return "/* --- NON-CRITICAL --- */\n" + framework + "\n\n" + overlay
+
+
 def get_theme_meta(name):
     """Load and return the metadata dict for the named theme.
 
@@ -65,14 +213,21 @@ def get_theme_meta(name):
 
     Returns:
         A dict with keys: fonts_url, fonts_preconnect, accent_color,
-        pygments_light, pygments_dark.
+        pygments_light, pygments_dark, name, css_rel.  ``name`` and
+        ``css_rel`` are computed rather than declared: every page renderer
+        already carries the metadata, so carrying the theme's identity and
+        the address of its stylesheet in the same dict saves threading two
+        more parameters through every wrapper.
     """
     json_path = os.path.join(_THEMES_DIR, f"{name}.json")
+    result = dict(_DEFAULT_THEME_META)
     if os.path.isfile(json_path):
         with open(json_path, "r", encoding="utf-8") as f:
             meta = json.load(f)
         # Merge over defaults so missing keys get filled in
-        result = dict(_DEFAULT_THEME_META)
         result.update(meta)
-        return result
-    return dict(_DEFAULT_THEME_META)
+    result["name"] = name
+    result["css_rel"] = (
+        FRAMEWORK_CSS_REL if result.get("framework") else DEFAULT_CSS_REL
+    )
+    return result

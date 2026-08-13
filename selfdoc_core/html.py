@@ -18,7 +18,7 @@ from selfdoc_core.directives import BACKTICK_SPAN_RE
 from selfdoc_core.icons import get_icon
 from selfdoc_core.identity import person_entity
 from selfdoc_core.prose import first_sentence
-from selfdoc_core.themes import get_theme, get_theme_meta
+from selfdoc_core.themes import DEFAULT_CSS_REL, get_theme, get_theme_meta
 from selfdoc_core.urls import SimpleURLBuilder
 from selfdoc_core.tokenizer import (
     tokenize as tokenize_md,
@@ -102,6 +102,20 @@ def get_css(theme_name="minimal"):
         The CSS content as a string.
     """
     return get_theme(theme_name)
+
+
+def _theme_css_rel(theme_meta):
+    """Where this page's stylesheet sits, relative to the output root.
+
+    A framework theme's sheet lives in ``css/`` with ``fonts/`` beside it,
+    because the framework addresses its faces at ``../fonts/``.  Every other
+    theme keeps ``style.css`` at the root.  Pages that render before a theme
+    is known (and the tests that build one by hand) pass no metadata at all
+    and get the plain answer.
+    """
+    if not theme_meta:
+        return DEFAULT_CSS_REL
+    return theme_meta.get("css_rel") or DEFAULT_CSS_REL
 
 
 def _flatten_dark_css(dark_rules):
@@ -470,7 +484,7 @@ def generate_html(markdown_files, project_name=None, version=None,
         # (The advisory SEO length lint in check.py still pressures authors to
         # keep descriptions concise -- only silent mutation was removed.)
 
-        css_href = asset_prefix + "style.css"
+        css_href = asset_prefix + _theme_css_rel(theme_meta)
         custom_css_href = (asset_prefix + "custom.css") if has_custom_css else None
 
         # Prev/next page links (Feature 8)
@@ -703,7 +717,7 @@ def generate_html(markdown_files, project_name=None, version=None,
             "title": "Glossary",
             "description": "",
             "frontmatter_description": None,
-            "css_href": glossary_asset_prefix + "style.css",
+            "css_href": glossary_asset_prefix + _theme_css_rel(theme_meta),
             "custom_css_href": (
                 (glossary_asset_prefix + "custom.css") if has_custom_css else None
             ),
@@ -910,7 +924,7 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
 
     return _wrap_page(
         body_html, nav_html, title, project_name, version,
-        css_href="style.css",
+        css_href=_theme_css_rel(theme_meta),
         custom_css_href="custom.css" if has_custom_css else None,
         prefix=mount_prefix,
         unversioned_prefix=unversioned_prefix,

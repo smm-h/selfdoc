@@ -3,5 +3,10 @@
   "fonts_preconnect": [],
   "accent_color": "#2d6cf4",
   "pygments_light": "xcode",
-  "pygments_dark": "github-dark"
+  "pygments_dark": "github-dark",
+  "framework": {
+    "package": "tinymoon",
+    "sheets": ["tokens", "base", "shell", "primitives", "widgets", "prose"],
+    "assets": ["fonts"]
+  }
 }
