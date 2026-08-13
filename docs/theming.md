@@ -1,6 +1,6 @@
 ---
 title: Theming
-description: "Customize your selfdoc site with built-in themes, CSS custom properties, dark mode support, and a visual design tool for iterating on styles."
+description: "Customize your selfdoc site with the three built-in themes, CSS custom properties, dark mode support, the build-time theme override that lets one theme be judged on real pages, and a visual design tool for iterating on styles."
 order: 40
 nav_group: "Guides"
 nav_order: 3
@@ -8,7 +8,7 @@ nav_order: 3
 
 # Theming
 
-selfdoc ships with two built-in themes and a comprehensive set of CSS custom properties that you can override without touching theme internals. Dark mode, high contrast, and print stylesheets work out of the box.
+selfdoc ships with three built-in themes and a comprehensive set of CSS custom properties that you can override without touching theme internals. Dark mode, high contrast, and print stylesheets work out of the box.
 
 ## Choosing a Theme
 
@@ -20,12 +20,31 @@ Set the `theme` field in your `selfdoc.json` configuration to select which built
 }
 ```
 
-Two themes are available:
+Three themes are available:
 
 - **minimal** (default) -- GitHub-inspired styling with Inter and JetBrains Mono fonts. Blue accent color (`#0969da`), light sidebar background, dark topbar. Content-focused and familiar.
 - **clean** -- Stripe-inspired styling with system fonts and a purple accent (`#5046e4`). White topbar, borderless code blocks, slightly taller line height (1.7 vs 1.6). Feels more polished and modern.
+- **tinymoon** -- dark by default, sharp corners everywhere, three vendored fonts (IBM Plex Sans for prose, IBM Plex Mono for anything that reads as data, Space Grotesk for headings), hairline borders with an accent glow instead of shadows, and a 100-180ms motion vocabulary. Blue accent (`#2d6cf4`). Tables, badges, breadcrumbs and metadata are all set in mono, and a faint grain overlay sits over the page.
 
-Both themes include full dark mode, high contrast, reduced motion, and print support.
+All three include full dark mode, high contrast, reduced motion, and print support.
+
+### What differs about tinymoon
+
+Two things are worth knowing before choosing it.
+
+**It rests in dark.** The other two themes define their light palette in `:root` and reassign for dark; tinymoon does the reverse. The three-state theme toggle (system / light / dark) works exactly the same either way, and a `custom.css` override still lands on the same custom property names -- but a `:root` override in `custom.css` will be changing tinymoon's *dark* values, not its light ones. Its light palette is in `[data-theme="light"]` and in a `@media (prefers-color-scheme: light)` block.
+
+**It carries its own fonts.** The three faces are inlined into the stylesheet as base64 woff2, so the theme fetches nothing from a font CDN and works offline. They sit below the theme's critical-CSS marker, so they load with the async stylesheet rather than inside every page's `<head>`; `font-display: swap` covers the moment before they arrive. The stylesheet is correspondingly large -- around 165 KB, of which about 110 KB is font data -- and is served once and cached, unlike the critical CSS which is inlined per page.
+
+## Previewing a Theme
+
+To see a theme on real pages without editing any project's configuration, pass `--theme` to a build:
+
+```bash
+selfdoc build --no-auto-commit --theme tinymoon
+```
+
+The override applies to that build only and is never written back to `selfdoc.json`. `selfblog build` takes the same flag, and `selfblog assembly preview --theme <name>` applies it to every checkout in an assembled preview at once -- which is the point: judging a theme means seeing the whole site under it, not one page. An unknown name is refused against the theme registry. With `--no-build`, where the override cannot reach the builds themselves, the preview checks that each checkout's existing build output really was produced under that theme -- an equality against the stylesheet a build writes, not a guess -- and hard-errors naming any checkout that was not.
 
 ## CSS Custom Properties
 
