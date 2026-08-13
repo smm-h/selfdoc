@@ -84,23 +84,39 @@ class TestTheRegistryIsTheOneList:
         assert meta["fonts_url"] is None
         assert meta["fonts_preconnect"] == []
 
-    def test_tinymoon_inlines_its_faces(self) -> None:
+    def test_tinymoon_serves_its_faces_as_files(self) -> None:
+        """The faces used to be 110 KB of base64 in every stylesheet.
+
+        They are now the framework's own woff2 files, shipped beside the
+        stylesheet and addressed relatively -- so the bytes are cached once
+        for the whole site instead of re-downloaded with every sheet.
+        """
         css = get_theme("tinymoon")
-        assert css.count("@font-face") == 3
-        assert "data:font/woff2;base64," in css
+        assert css.count("@font-face {") == 4
+        assert "data:font/woff2;base64," not in css
+        assert 'src: url("../fonts/' in css
         assert "fonts.googleapis.com" not in css
 
-    def test_the_inlined_faces_are_below_the_critical_marker(self) -> None:
-        """Above it, every byte is inlined into the head of every page."""
+    def test_the_faces_are_below_the_critical_marker(self) -> None:
+        """Above it, every byte is inlined into the head of every page --
+        where a ``../fonts/`` URL would resolve against the page instead of
+        against the stylesheet and find nothing."""
         css = get_theme("tinymoon")
         assert css.index("/* --- NON-CRITICAL --- */") < css.index("@font-face")
 
 
-def _built_css(project_dir):
-    with open(
-        os.path.join(project_dir, "docs", "_build", "style.css"),
-        encoding="utf-8",
-    ) as f:
+def _built_css(project_dir, theme="minimal"):
+    """The stylesheet a build wrote, wherever the theme puts it.
+
+    A framework theme writes into ``css/`` so its ``../fonts/`` URLs
+    resolve; every other theme keeps ``style.css`` at the output root.
+    """
+    from selfdoc_core.themes import theme_css_rel
+
+    path = os.path.join(
+        project_dir, "docs", "_build", *theme_css_rel(theme).split("/"),
+    )
+    with open(path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -118,7 +134,7 @@ class TestTheBuildOverride:
 
     def test_the_override_reaches_the_rendered_css(self, themed_project) -> None:
         build(str(themed_project), theme="tinymoon")
-        assert _TINYMOON_MARKER in _built_css(themed_project)
+        assert _TINYMOON_MARKER in _built_css(themed_project, "tinymoon")
 
     def test_the_override_is_not_written_back_to_the_config(
         self, themed_project,
@@ -306,7 +322,7 @@ class TestTheStylesheetEqualityCheck:
 
     def test_a_tree_built_under_the_theme_passes(self, tmp_path) -> None:
         checkout = tmp_path / "proj"
-        build_dir = checkout / "docs" / "_build"
+        build_dir = checkout / "docs" / "_build" / "css"
         build_dir.mkdir(parents=True)
         (build_dir / "style.css").write_text(expected_stylesheet("tinymoon"))
         assert built_under_theme(str(checkout), "tinymoon")

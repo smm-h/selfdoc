@@ -246,80 +246,144 @@ def _extract_hc_light_pairing_vars(css: str) -> dict[str, str]:
     return _parse_vars(m.group(1))
 
 
+# ---------------------------------------------------------------------------
+# The framework theme: resolved rather than read
+# ---------------------------------------------------------------------------
+#
+# tinymoon is not a stylesheet in this directory any more.  It is an overlay
+# on a framework whose tokens.css carries the palette and the whole
+# light/dark/high-contrast mechanism, and the overlay's :root is a BRIDGE:
+# selfdoc's variable names defined as references to the framework's.
+#
+# So the pairs below cannot be read off a block -- --sidebar-bg is the string
+# "var(--surface)" until something resolves it.  These helpers compose the
+# cascade the browser would compose for one scheme, then resolve the
+# references, and the same contract pairs are asserted against the result.
+# A pair whose value resolves to color-mix() or another non-hex form is
+# skipped by _assert_pairs_pass, as it is for every other theme.
+
+_ANY_VAR_RE = re.compile(r"--([a-z][-a-z0-9]*)\s*:\s*([^;}]+)\s*[;}]")
+_VAR_REF_RE = re.compile(r"var\(\s*(--[a-z][-a-z0-9]*)\s*\)")
+
+
+def _parse_all_vars(block: str) -> dict[str, str]:
+    """Every custom property in *block*, hex or reference alike."""
+    return {m.group(1): m.group(2).strip() for m in _ANY_VAR_RE.finditer(block)}
+
+
+def _blocks(css: str, selector_re: str, within: str = "") -> list[str]:
+    """Bodies of every ``selector { ... }`` in *css*, optionally inside a
+    named at-rule prelude."""
+    if within:
+        css = "".join(
+            css[m.end():m.end() + 4000]
+            for m in re.finditer(within, css)
+        )
+    return [
+        m.group(1)
+        for m in re.finditer(selector_re + r"\s*\{([^}]*)\}", css, re.M)
+    ]
+
+
+def _resolve(vars_: dict[str, str]) -> dict[str, str]:
+    """Follow every ``var(--x)`` chain to the value it lands on."""
+    out: dict[str, str] = {}
+    for name in vars_:
+        value = vars_[name]
+        for _ in range(10):
+            ref = _VAR_REF_RE.fullmatch(value.strip())
+            if not ref:
+                break
+            value = vars_.get(ref.group(1)[2:], value)
+        out[name] = value.strip()
+    return {k: v for k, v in out.items() if v.startswith("#")}
+
+
+def _tinymoon_scheme(css: str, *, light: bool, high_contrast: bool) -> dict[str, str]:
+    """The variables in force for one resolvable scheme.
+
+    The framework resolves the system state in CSS alone -- :root is the dark
+    resting state and ``html:not([data-theme])`` inside a
+    ``prefers-color-scheme: light`` block is the light one -- so the cascade
+    is assembled in that order and the bridge, which comes last in the
+    composition, is folded in with it.
+    """
+    layers = _blocks(css, r"^:root")
+    if light:
+        layers += _blocks(
+            css, r"html:not\(\[data-theme\]\)",
+            within=r"@media \(prefers-color-scheme: light\)\s*\{",
+        )
+    if high_contrast:
+        within_hc = r"@media \(prefers-contrast: more\)\s*\{"
+        if light:
+            layers += _blocks(
+                css, r"html:not\(\[data-theme\]\)",
+                within=(r"@media \(prefers-contrast: more\) and "
+                        r"\(prefers-color-scheme: light\)\s*\{"),
+            )
+        else:
+            layers += _blocks(css, r"^\s*:root", within=within_hc)
+    merged: dict[str, str] = {}
+    for layer in layers:
+        merged.update(_parse_all_vars(layer))
+    return _resolve(merged)
+
+
 @pytest.fixture(scope="module")
 def tinymoon_css() -> str:
-    return (THEMES_DIR / "tinymoon.css").read_text()
+    """The stylesheet a page actually receives, not the overlay file."""
+    from selfdoc_core.themes import get_theme
+
+    return get_theme("tinymoon")
 
 
 class TestTinymoonTheme:
     def test_dark_contrast(self, tinymoon_css: str) -> None:
         """:root is the dark set here, not the light one."""
-        vars_ = _extract_root_vars(tinymoon_css)
+        vars_ = _tinymoon_scheme(tinymoon_css, light=False, high_contrast=False)
         _assert_pairs_pass(vars_, TEXT_PAIRS, "tinymoon-dark")
 
     def test_light_contrast(self, tinymoon_css: str) -> None:
-        root = _extract_root_vars(tinymoon_css)
-        light = _extract_light_media_vars(tinymoon_css)
-        merged = {**root, **light}
-        _assert_pairs_pass(merged, TEXT_PAIRS, "tinymoon-light")
-
-    def test_the_explicit_light_block_matches_the_media_block(
-        self, tinymoon_css: str,
-    ) -> None:
-        """Two spellings of one reassignment: they must agree.
-
-        The media block covers the system state and the attribute block
-        the explicit one.  A value that drifts between them means the
-        page changes colour when the reader picks the scheme their
-        system already reported.
-        """
-        media = _extract_light_media_vars(tinymoon_css)
-        m = re.search(r'\[data-theme="light"\]\s*\{([^}]+)\}', tinymoon_css)
-        assert m, "No explicit [data-theme=\"light\"] block"
-        explicit = _parse_vars(m.group(1))
-        assert media == explicit
-
-    def test_the_explicit_dark_block_matches_the_resting_state(
-        self, tinymoon_css: str,
-    ) -> None:
-        """[data-theme="dark"] restates :root; it must restate it exactly."""
-        root = _extract_root_vars(tinymoon_css)
-        m = re.search(r'\[data-theme="dark"\]\s*\{([^}]+)\}', tinymoon_css)
-        assert m, 'No explicit [data-theme="dark"] block'
-        explicit = _parse_vars(m.group(1))
-        # :root carries a few variables the override has no reason to
-        # restate (the font stack, the durations); every colour it does
-        # restate has to match.
-        for name, value in explicit.items():
-            assert root.get(name) == value, (
-                f'[data-theme="dark"] --{name} is {value}, :root has '
-                f"{root.get(name)}"
-            )
-
-    def test_hc_dark_has_overrides(self, tinymoon_css: str) -> None:
-        hc = _extract_hc_light_vars(tinymoon_css)
-        for var in ("link", "link-hover", "text-secondary", "sidebar-text",
-                    "sidebar-active"):
-            assert var in hc, f"tinymoon high-contrast dark missing --{var}"
-
-    def test_hc_light_has_overrides(self, tinymoon_css: str) -> None:
-        hc = _extract_hc_light_pairing_vars(tinymoon_css)
-        for var in ("link", "link-hover", "text-secondary", "sidebar-text",
-                    "sidebar-active"):
-            assert var in hc, f"tinymoon high-contrast light missing --{var}"
+        vars_ = _tinymoon_scheme(tinymoon_css, light=True, high_contrast=False)
+        _assert_pairs_pass(vars_, TEXT_PAIRS, "tinymoon-light")
 
     def test_hc_dark_contrast(self, tinymoon_css: str) -> None:
-        root = _extract_root_vars(tinymoon_css)
-        hc = _extract_hc_light_vars(tinymoon_css)
-        merged = {**root, **hc}
-        _assert_pairs_pass(merged, TEXT_PAIRS, "tinymoon-hc-dark")
+        vars_ = _tinymoon_scheme(tinymoon_css, light=False, high_contrast=True)
+        _assert_pairs_pass(vars_, TEXT_PAIRS, "tinymoon-hc-dark")
 
     def test_hc_light_contrast(self, tinymoon_css: str) -> None:
-        root = _extract_root_vars(tinymoon_css)
-        light = _extract_light_media_vars(tinymoon_css)
-        hc = _extract_hc_light_pairing_vars(tinymoon_css)
-        merged = {**root, **light, **hc}
-        _assert_pairs_pass(merged, TEXT_PAIRS, "tinymoon-hc-light")
+        vars_ = _tinymoon_scheme(tinymoon_css, light=True, high_contrast=True)
+        _assert_pairs_pass(vars_, TEXT_PAIRS, "tinymoon-hc-light")
+
+    def test_every_contract_pair_really_resolves(self, tinymoon_css: str) -> None:
+        """A pair that resolves to nothing is silently skipped above.
+
+        The bridge is exactly the kind of thing that can lose a name in a
+        rename, so at least one side of every pair has to come out as a
+        colour rather than as an unresolved reference.
+        """
+        vars_ = _tinymoon_scheme(tinymoon_css, light=False, high_contrast=False)
+        for fg, bg in TEXT_PAIRS:
+            assert fg in vars_ or bg in vars_, (
+                f"neither --{fg} nor --{bg} resolves to a colour under the "
+                f"tinymoon bridge"
+            )
+
+    def test_the_scheme_really_changes(self, tinymoon_css: str) -> None:
+        """Light and dark are two palettes, not one read twice."""
+        dark = _tinymoon_scheme(tinymoon_css, light=False, high_contrast=False)
+        light = _tinymoon_scheme(tinymoon_css, light=True, high_contrast=False)
+        assert dark["bg"] != light["bg"]
+        assert dark["text"] != light["text"]
+
+    def test_high_contrast_moves_the_dim_step(self, tinymoon_css: str) -> None:
+        plain = _tinymoon_scheme(tinymoon_css, light=False, high_contrast=False)
+        boosted = _tinymoon_scheme(tinymoon_css, light=False, high_contrast=True)
+        assert boosted["text-secondary"] != plain["text-secondary"]
+        assert contrast_ratio(boosted["text-secondary"], boosted["bg"]) > (
+            contrast_ratio(plain["text-secondary"], plain["bg"])
+        )
 
 
 # ---------------------------------------------------------------------------

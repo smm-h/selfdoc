@@ -545,6 +545,124 @@ class TestStylesApplied:
         )
 
 
+class TestTheFrameworkPayloadIsServed:
+    """A theme may ship someone else's sheets and faces.
+
+    The tinymoon theme stopped imitating the framework and started
+    consuming it: the stylesheet is the framework's own bytes, and its
+    ``@font-face`` rules address ``../fonts/`` relative to wherever that
+    stylesheet was written.  That is a whole class of defect a string
+    assertion cannot see -- the CSS is byte-perfect and the fonts 404,
+    the page renders in a fallback face, and every unit test passes.
+
+    Skipped for a theme that ships no payload; there is nothing to serve.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _only_framework_themes(self, fixture):
+        from selfdoc_core.themes import theme_framework
+
+        if not theme_framework(fixture.theme):
+            pytest.skip(f"{fixture.theme} ships no framework payload")
+
+    @pytest.mark.parametrize("label", ALL_PAGES)
+    def test_every_font_the_page_asks_for_arrives(self, page, fixture, label):
+        """Network capture on the font requests, on both served trees."""
+        seen = []
+        page.on(
+            "response",
+            lambda r: seen.append((r.url, r.status))
+            if r.request.resource_type == "font" or r.url.endswith(".woff2")
+            else None,
+        )
+        _open(page, fixture, label)
+        page.wait_for_load_state("networkidle")
+        # A font is fetched only when something on the page needs that face,
+        # so an empty list is not a failure -- a failed fetch is.
+        failed = [(url, status) for url, status in seen if status >= 400]
+        assert not failed, (
+            f"[{fixture.theme}] {label} asked for fonts that do not resolve: "
+            f"{failed}"
+        )
+
+    @pytest.mark.parametrize("label", ["docs", "standalone-current"])
+    def test_the_body_is_set_in_the_framework_face(self, page, fixture, label):
+        """Not a fallback: the face the framework ships is the one painted."""
+        _open(page, fixture, label)
+        page.wait_for_load_state("networkidle")
+        loaded = page.evaluate(
+            """() => {
+                const out = [];
+                document.fonts.forEach(f => { if (f.status === 'loaded')
+                    out.push(f.family); });
+                return out;
+            }"""
+        )
+        assert any("Plex" in family for family in loaded), (
+            f"[{fixture.theme}] {label} loaded no framework face; "
+            f"loaded={sorted(set(loaded))}"
+        )
+
+    @pytest.mark.parametrize("label", ["docs", "docs-tables", "standalone-current"])
+    def test_a_page_taller_than_the_viewport_still_scrolls(
+        self, page, fixture, label,
+    ):
+        """The framework's globals are written for the framework's shell.
+
+        ``base.css`` gives the viewport to an application frame: the body
+        is ``overflow: hidden`` because the scroller is ``#tm-content``, and
+        ``user-select: none`` because the selectable carve-out is
+        ``.doc-body``.  A selfdoc page has neither element, so inheriting
+        those globals unchanged means everything below the fold is
+        unreachable and no passage can be copied -- and both look perfect
+        in a screenshot of the top of the page.
+        """
+        _open(page, fixture, label)
+        page.wait_for_load_state("networkidle")
+        page.set_viewport_size({"width": 1280, "height": 500})
+        page.wait_for_timeout(80)
+        metrics = page.evaluate(
+            """() => {
+                const el = document.scrollingElement;
+                window.scrollTo(0, 100000);
+                return {
+                    scrollable: el.scrollHeight > el.clientHeight + 4,
+                    moved: el.scrollTop > 0,
+                    select: getComputedStyle(document.body).userSelect,
+                };
+            }"""
+        )
+        assert metrics["scrollable"], (
+            f"[{fixture.theme}] {label} is not taller than a 500px viewport; "
+            f"the fixture cannot measure scrolling on it"
+        )
+        assert metrics["moved"], (
+            f"[{fixture.theme}] {label} does not scroll -- everything below "
+            f"the fold is unreachable"
+        )
+        assert metrics["select"] != "none", (
+            f"[{fixture.theme}] {label} renders unselectable text "
+            f"(user-select: {metrics['select']})"
+        )
+
+    @pytest.mark.parametrize("label", ALL_PAGES)
+    def test_nothing_is_fetched_from_off_origin(self, page, fixture, label):
+        """The framework vendors everything; a CDN request means it did not."""
+        offsite = []
+        page.on(
+            "request",
+            lambda r: offsite.append(r.url)
+            if not r.url.startswith(("http://127.0.0.1", "http://localhost",
+                                     "data:", "blob:"))
+            else None,
+        )
+        _open(page, fixture, label)
+        page.wait_for_load_state("networkidle")
+        assert not offsite, (
+            f"[{fixture.theme}] {label} fetched from off-origin: {offsite}"
+        )
+
+
 # -- 5. on-origin navigation ----------------------------------------------------------------
 
 

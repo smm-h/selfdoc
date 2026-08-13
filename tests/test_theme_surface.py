@@ -12,6 +12,16 @@ reach ``.admonition.note`` by different routes -- one restating it per
 colour scheme, another deriving the tint with ``color-mix`` from a token
 that already flips -- and both have styled it.  Comparing selector text
 would call the second one a gap.
+
+**The unit of comparison is the composed stylesheet, not the theme file.**
+A theme may declare a *framework* and ship as an overlay on someone else's
+sheets (see :mod:`selfdoc_core.themes`).  What reaches a page is the
+composition, so that is what a class has to be styled by and what a
+structural marker has to be found in -- measuring the overlay alone would
+report every rule the framework already carries as a gap.  The two
+structural properties below that a framework legitimately spells
+differently -- where the tokens live, and how the three theme states
+resolve -- are asserted per mechanism rather than per spelling.
 """
 
 import re
@@ -19,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-from selfdoc_core.themes import list_themes
+from selfdoc_core.themes import get_theme, list_themes, theme_framework
 
 THEMES_DIR = Path(__file__).resolve().parent.parent / "selfdoc_core" / "themes"
 
@@ -77,7 +87,12 @@ def _elements(css: str) -> set[str]:
 
 
 def _read(theme: str) -> str:
-    return (THEMES_DIR / f"{theme}.css").read_text()
+    """The stylesheet a page receives under *theme*.
+
+    For a framework theme this is the framework's sheets plus selfdoc's
+    overlay; for every other theme it is the file itself.
+    """
+    return get_theme(theme)
 
 
 @pytest.fixture(scope="module")
@@ -143,10 +158,18 @@ class TestEveryThemeCarriesTheStructuralMarkers:
 
     @pytest.mark.parametrize("theme", list_themes())
     def test_the_theme_defines_the_contract_variables(self, theme: str) -> None:
+        """Every name selfdoc's rules read has to resolve somewhere.
+
+        A framework theme defines some of them in the framework's own token
+        layer and the rest in its bridge, so the definitions are gathered
+        from every resting-state block of the composition rather than from
+        one ``:root`` -- what is asserted is that the name is defined, not
+        where.
+        """
         css = _read(theme)
-        root = re.search(r":root\s*\{([^}]+)\}", css)
-        assert root, f"{theme}: no :root block"
-        body = root.group(1)
+        blocks = re.findall(r"^:root\s*\{([^}]+)\}", css, re.M)
+        assert blocks, f"{theme}: no :root block"
+        body = "\n".join(blocks)
         for var in (
             "--bg", "--text", "--text-secondary", "--heading", "--link",
             "--link-hover", "--sidebar-bg", "--sidebar-text",
@@ -159,7 +182,8 @@ class TestEveryThemeCarriesTheStructuralMarkers:
         ):
             assert f"{var}:" in body, f"{theme}: :root does not define {var}"
 
-    @pytest.mark.parametrize("theme", list_themes())
+    @pytest.mark.parametrize("theme", [t for t in list_themes()
+                                       if not theme_framework(t)])
     def test_the_light_dark_mechanism_is_intact(self, theme: str) -> None:
         """One scheme rests in :root, the other is reassigned two ways.
 
@@ -202,10 +226,47 @@ class TestEveryThemeCarriesTheStructuralMarkers:
         own, the Dismiss button on an archive page stored the dismissal
         and left the notice on screen.
         """
-        css = (THEMES_DIR / f"{theme}.css").read_text(encoding="utf-8")
+        css = _read(theme)
         assert re.search(r"\[hidden\]\s*\{[^}]*display:\s*none\s*!important", css), (
             f"{theme}: no `[hidden] {{ display: none !important }}` rule, so "
             f"an element JS hides stays painted wherever a class sets display"
+        )
+
+    @pytest.mark.parametrize("theme", [t for t in list_themes()
+                                       if theme_framework(t)])
+    def test_a_framework_theme_resolves_all_three_states(
+        self, theme: str,
+    ) -> None:
+        """The same three states, spelled the framework's way.
+
+        A framework may resolve the system state in CSS alone rather than
+        through the ``:root:not([data-theme=...])`` pairing selfdoc's own
+        themes use: one block for the resting scheme, one attribute block
+        for the explicit opposite, and one ``html:not([data-theme])`` block
+        inside a ``prefers-color-scheme`` query for the system state.  All
+        three still have to be there, or a state paints as another.
+        """
+        css = _read(theme)
+        assert re.search(r"^:root\s*\{", css, re.M), (
+            f"{theme}: no resting-state block"
+        )
+        explicit = re.findall(r'html\[data-theme="(light|dark)"\]\s*\{', css)
+        assert explicit, (
+            f"{theme}: no explicit html[data-theme=...] block, so choosing a "
+            f"scheme against the system preference does nothing"
+        )
+        system = re.search(
+            r"@media\s*\(prefers-color-scheme:\s*(light|dark)\)\s*\{\s*"
+            r"html:not\(\[data-theme\]\)\s*\{",
+            css,
+        )
+        assert system, (
+            f"{theme}: no CSS-only system-state block, so a reader who has "
+            f"chosen nothing depends on JavaScript to be painted correctly"
+        )
+        assert system.group(1) in explicit, (
+            f"{theme}: the system block reassigns to {system.group(1)!r}, "
+            f"which no explicit block covers"
         )
 
     @pytest.mark.parametrize("theme", list_themes())
