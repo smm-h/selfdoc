@@ -3,7 +3,7 @@
 from selfdoc.html import _wrap_page
 
 
-def _render_page(page_type=None, toc_html=""):
+def _render_page(page_type=None, toc_html="", date_modified=""):
     """Render a page with _wrap_page and return the full HTML."""
     return _wrap_page(
         "<p>Test content</p>",
@@ -14,6 +14,7 @@ def _render_page(page_type=None, toc_html=""):
         prefix="",
         page_type=page_type,
         toc_html=toc_html,
+        date_modified=date_modified,
     )
 
 
@@ -66,3 +67,54 @@ class TestNonPostPageLayout:
         """Even non-post pages omit TOC aside when toc_html is empty."""
         html = _render_page(page_type="guide", toc_html="")
         assert '<aside class="toc">' not in html
+
+
+class TestPostTocSuppression:
+    """A post has no table of contents at any viewport.
+
+    The desktop aside is suppressed by design; the mobile disclosure is the
+    same decision at a narrower width, so it is suppressed with it.  Shipping
+    only one of the two produced a table of contents that appeared when the
+    page was zoomed and nowhere else.
+    """
+
+    TOC = '<nav class="toc-nav"><a href="#sec">Section</a></nav>'
+
+    def test_post_page_has_no_mobile_toc(self):
+        html = _render_page(page_type="post", toc_html=self.TOC)
+        assert '<details class="mobile-toc">' not in html
+
+    def test_post_page_has_neither_toc_element(self):
+        html = _render_page(page_type="post", toc_html=self.TOC)
+        assert '<aside class="toc">' not in html
+        assert "mobile-toc" not in html
+
+    def test_docs_page_still_has_both_toc_elements(self):
+        html = _render_page(page_type="guide", toc_html=self.TOC)
+        assert '<aside class="toc">' in html
+        assert '<details class="mobile-toc">' in html
+
+
+class TestSingleLastUpdated:
+    """The page states when it was last updated exactly once.
+
+    The styled page footer carries it in a readable form.  A second emitter
+    put a raw ISO date outside the article, under classes no stylesheet
+    defines, and a script prepended an "Updated" badge with no separator --
+    the live "UpdatedLast updated: 2026-06-29".
+    """
+
+    def test_post_page_has_one_last_updated_element(self):
+        html = _render_page(page_type="post", date_modified="2026-06-29")
+        assert html.count("Last updated") == 1
+
+    def test_post_page_footer_carries_the_readable_date(self):
+        html = _render_page(page_type="post", date_modified="2026-06-29")
+        assert '<time datetime="2026-06-29">June 29, 2026</time>' in html
+
+    def test_post_page_has_no_read_indicator_block(self):
+        html = _render_page(page_type="post", date_modified="2026-06-29")
+        assert "post-read-indicator" not in html
+        assert "post-last-updated" not in html
+        assert "post-updated-badge" not in html
+        assert 'class="post-meta"' not in html

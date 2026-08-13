@@ -3125,48 +3125,6 @@ def _render_topbar(project_name, version_badge, topbar_page_title_html,
     )
 
 
-def _generate_post_read_indicator_script(last_updated):
-    """Generate a small inline script for post read-tracking via localStorage.
-
-    Shows an "Updated" badge if the post was modified since the reader's
-    last visit, and displays a "Last updated" line.  On page load, records
-    the current timestamp so future visits know this version was seen.
-
-    Args:
-        last_updated: ISO date or datetime string for the post's last
-            modification (e.g. "2026-07-05" or "2026-07-05T14:30:00Z").
-            Empty string if unknown.
-    """
-    if not last_updated:
-        return ""
-
-    # Escape for safe embedding in a JS string literal
-    escaped = _escape_html(last_updated)
-
-    return (
-        f'<div class="post-meta" id="post-read-indicator">'
-        f'<span class="post-last-updated">Last updated: {escaped}</span>'
-        f'</div>\n'
-        f'<script>\n'
-        f'(function(){{\n'
-        f'  var slug=location.pathname.split("/").filter(Boolean).pop()||"";\n'
-        f'  var key="post-read-"+slug;\n'
-        f'  var updated=new Date("{escaped}").getTime();\n'
-        f'  if(updated){{var lastRead=parseInt(localStorage.getItem(key)||"0",10);\n'
-        f'    if(updated>lastRead){{\n'
-        f'      var badge=document.createElement("span");\n'
-        f'      badge.className="post-updated-badge";\n'
-        f'      badge.textContent="Updated";\n'
-        f'      var el=document.getElementById("post-read-indicator");\n'
-        f'      if(el)el.prepend(badge);\n'
-        f'    }}\n'
-        f'  }}\n'
-        f'  localStorage.setItem(key,Date.now().toString());\n'
-        f'}})();\n'
-        f'</script>'
-    )
-
-
 #: The facets the corpus carries, in the order they are emitted.  Every one
 #: is a Pagefind filter, so every one is selectable in the search UI; ``tags``
 #: is last because it is the only multi-valued key.
@@ -3529,14 +3487,21 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
         edit_link_html, date_display_html, feedback_html, page_nav_html,
     )
 
+    # A post reads top to bottom and carries no table of contents.  That is
+    # one decision, so it is taken once here and applies to both elements:
+    # the desktop aside and the mobile disclosure are the same feature at two
+    # widths, and suppressing only the aside left a table of contents that
+    # appeared below 1280px and nowhere else.
+    wants_toc = bool(toc_html) and page_type != "post"
+
     # TOC aside (Feature 2) -- desktop only
     toc_aside = ""
-    if toc_html:
+    if wants_toc:
         toc_aside = f'<aside class="toc">{toc_html}</aside>'
 
     # Mobile TOC disclosure (Feature 26) -- shown only on mobile via CSS
     mobile_toc_html = ""
-    if toc_html:
+    if wants_toc:
         mobile_toc_html = (
             f'<details class="mobile-toc">'
             f'<summary>On this page</summary>'
@@ -3826,14 +3791,6 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         )
     )
 
-    # Post read-indicator script: localStorage-based "Updated" badge
-    # and "Last updated" display for post pages.
-    post_read_script = ""
-    if page_type == "post":
-        post_read_script = _generate_post_read_indicator_script(
-            date_modified or date_published or "",
-        )
-
     return (
         f'<!DOCTYPE html>\n'
         f'<html lang="{lang}">\n'
@@ -3875,9 +3832,8 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
         f'{share_html}\n'
         f'{meta["footer_html"]}\n'
         f'</article>\n'
-        f'{post_read_script}\n'
         f'</main>\n'
-        f'{meta["toc_aside"] if page_type != "post" else ""}\n'
+        f'{meta["toc_aside"]}\n'
         f'</div>\n'
         f'<footer class="site-footer">\n'
         f'<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
