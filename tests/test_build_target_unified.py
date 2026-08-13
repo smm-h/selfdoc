@@ -30,7 +30,9 @@ def test_build_target_unified_calls_build_unified(tmp_path, monkeypatch):
 
     with patch("selfblog.unified.build_unified", return_value={"a.html": True}) as mock_fn:
         _cmd_build(None, target="unified", drafts=False, auto_commit=False)
-        mock_fn.assert_called_once_with(dir_path=".", include_drafts=False)
+        mock_fn.assert_called_once_with(
+            dir_path=".", include_drafts=False, theme="",
+        )
 
 
 def test_build_target_posts_still_works(tmp_path, monkeypatch):
@@ -40,7 +42,9 @@ def test_build_target_posts_still_works(tmp_path, monkeypatch):
 
     with patch("selfdoc_core.build.build", return_value={}) as mock_build:
         _cmd_build(None, target="posts", drafts=False, auto_commit=False)
-        mock_build.assert_called_once_with(".", include_drafts=False, target="posts")
+        mock_build.assert_called_once_with(
+            ".", include_drafts=False, target="posts", theme="",
+        )
 
 
 def test_build_target_invalid_exits_with_error(tmp_path, monkeypatch):
@@ -74,7 +78,9 @@ def test_build_target_unified_passes_include_drafts(tmp_path, monkeypatch):
 
     with patch("selfblog.unified.build_unified", return_value={}) as mock_fn:
         _cmd_build(None, target="unified", drafts=True, auto_commit=False)
-        mock_fn.assert_called_once_with(dir_path=".", include_drafts=True)
+        mock_fn.assert_called_once_with(
+            dir_path=".", include_drafts=True, theme="",
+        )
 
 
 def test_build_target_unified_runtime_error(tmp_path, monkeypatch, capsys):

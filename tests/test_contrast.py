@@ -215,6 +215,114 @@ class TestMinimalTheme:
 
 
 # ---------------------------------------------------------------------------
+# tinymoon theme tests
+# ---------------------------------------------------------------------------
+
+# tinymoon rests in dark and reassigns for light, the opposite of the two
+# themes above, so its blocks are read the other way round: :root is the
+# dark set, and the media query names light.
+
+
+def _extract_light_media_vars(css: str) -> dict[str, str]:
+    """Variables from @media (prefers-color-scheme: light) { :root... }."""
+    pattern = (
+        r'@media\s*\(prefers-color-scheme:\s*light\)\s*\{[^}]*'
+        r':root:not\(\[data-theme="dark"\]\)\s*\{([^}]+)\}'
+    )
+    m = re.search(pattern, css)
+    assert m, "No light mode media block found"
+    return _parse_vars(m.group(1))
+
+
+def _extract_hc_light_pairing_vars(css: str) -> dict[str, str]:
+    """Variables from the (prefers-contrast: more) and (light) block."""
+    pattern = (
+        r"@media\s*\(prefers-contrast:\s*more\)\s*and\s*"
+        r"\(prefers-color-scheme:\s*light\)\s*\{[^}]*"
+        r':root:not\(\[data-theme="dark"\]\)\s*\{([^}]+)\}'
+    )
+    m = re.search(pattern, css)
+    assert m, "No light high-contrast block found"
+    return _parse_vars(m.group(1))
+
+
+@pytest.fixture(scope="module")
+def tinymoon_css() -> str:
+    return (THEMES_DIR / "tinymoon.css").read_text()
+
+
+class TestTinymoonTheme:
+    def test_dark_contrast(self, tinymoon_css: str) -> None:
+        """:root is the dark set here, not the light one."""
+        vars_ = _extract_root_vars(tinymoon_css)
+        _assert_pairs_pass(vars_, TEXT_PAIRS, "tinymoon-dark")
+
+    def test_light_contrast(self, tinymoon_css: str) -> None:
+        root = _extract_root_vars(tinymoon_css)
+        light = _extract_light_media_vars(tinymoon_css)
+        merged = {**root, **light}
+        _assert_pairs_pass(merged, TEXT_PAIRS, "tinymoon-light")
+
+    def test_the_explicit_light_block_matches_the_media_block(
+        self, tinymoon_css: str,
+    ) -> None:
+        """Two spellings of one reassignment: they must agree.
+
+        The media block covers the system state and the attribute block
+        the explicit one.  A value that drifts between them means the
+        page changes colour when the reader picks the scheme their
+        system already reported.
+        """
+        media = _extract_light_media_vars(tinymoon_css)
+        m = re.search(r'\[data-theme="light"\]\s*\{([^}]+)\}', tinymoon_css)
+        assert m, "No explicit [data-theme=\"light\"] block"
+        explicit = _parse_vars(m.group(1))
+        assert media == explicit
+
+    def test_the_explicit_dark_block_matches_the_resting_state(
+        self, tinymoon_css: str,
+    ) -> None:
+        """[data-theme="dark"] restates :root; it must restate it exactly."""
+        root = _extract_root_vars(tinymoon_css)
+        m = re.search(r'\[data-theme="dark"\]\s*\{([^}]+)\}', tinymoon_css)
+        assert m, 'No explicit [data-theme="dark"] block'
+        explicit = _parse_vars(m.group(1))
+        # :root carries a few variables the override has no reason to
+        # restate (the font stack, the durations); every colour it does
+        # restate has to match.
+        for name, value in explicit.items():
+            assert root.get(name) == value, (
+                f'[data-theme="dark"] --{name} is {value}, :root has '
+                f"{root.get(name)}"
+            )
+
+    def test_hc_dark_has_overrides(self, tinymoon_css: str) -> None:
+        hc = _extract_hc_light_vars(tinymoon_css)
+        for var in ("link", "link-hover", "text-secondary", "sidebar-text",
+                    "sidebar-active"):
+            assert var in hc, f"tinymoon high-contrast dark missing --{var}"
+
+    def test_hc_light_has_overrides(self, tinymoon_css: str) -> None:
+        hc = _extract_hc_light_pairing_vars(tinymoon_css)
+        for var in ("link", "link-hover", "text-secondary", "sidebar-text",
+                    "sidebar-active"):
+            assert var in hc, f"tinymoon high-contrast light missing --{var}"
+
+    def test_hc_dark_contrast(self, tinymoon_css: str) -> None:
+        root = _extract_root_vars(tinymoon_css)
+        hc = _extract_hc_light_vars(tinymoon_css)
+        merged = {**root, **hc}
+        _assert_pairs_pass(merged, TEXT_PAIRS, "tinymoon-hc-dark")
+
+    def test_hc_light_contrast(self, tinymoon_css: str) -> None:
+        root = _extract_root_vars(tinymoon_css)
+        light = _extract_light_media_vars(tinymoon_css)
+        hc = _extract_hc_light_pairing_vars(tinymoon_css)
+        merged = {**root, **light, **hc}
+        _assert_pairs_pass(merged, TEXT_PAIRS, "tinymoon-hc-light")
+
+
+# ---------------------------------------------------------------------------
 # Unit tests for the contrast ratio formula itself
 # ---------------------------------------------------------------------------
 

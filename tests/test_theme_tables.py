@@ -14,10 +14,14 @@ from pathlib import Path
 import pytest
 
 from selfdoc.html import md_to_html
+from selfdoc_core.themes import list_themes
 
 THEMES_DIR = Path(__file__).resolve().parent.parent / "selfdoc_core" / "themes"
 
-THEMES = ("minimal.css", "clean.css")
+# Registry-driven: a theme added without these rules is a theme whose
+# sticky header overlaps its own first rows, and the suite should say so
+# without anybody remembering to extend a tuple.
+THEMES = tuple(f"{name}.css" for name in list_themes())
 
 #: The sticky ``thead`` rule body, per theme file.
 _THEAD_RULE = re.compile(r"\bthead\s*\{([^}]*)\}", re.MULTILINE)
