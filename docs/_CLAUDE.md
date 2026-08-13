@@ -102,10 +102,24 @@ This project uses [rlsbl](https://github.com/smm-h/rlsbl) for release orchestrat
 ## Testing
 
 ```bash
-uv run pytest
+uv run pytest                        # everything
+uv run pytest -m e2e_rendered        # only the rendered-reality suite
+uv run pytest -m 'not e2e_rendered'  # everything else, no browser needed
 ```
 
-1270+ tests in `tests/` covering config loading, directive parsing, the build pipeline, language-specific extractors (Python, Go, TypeScript), check command, gen command, gendata, unified builder, context dataclasses, search, pickers, filters, localization, and multi-version builds.
+5000+ tests in `tests/` covering config loading, directive parsing, the build pipeline, language-specific extractors (Python, Go, TypeScript), check command, gen command, gendata, unified builder, context dataclasses, search, pickers, filters, localization, and multi-version builds.
+
+### The rendered-reality suite
+
+`tests/test_rendered_reality.py`, with its fixture in `tests/rendered_site.py`, asserts against real pages in a real headless browser. It exists because six user-visible defects shipped while 4,600 unit tests and every grep-level check passed: a sticky table header overlapping the first data row, a table of contents visible only inside one band of viewport widths, a shared page served with no stylesheet, a duplicated "Last updated" element, absolute links that left the site, and a glossary term no page had defined. None of those is visible to a test that asserts on a string of HTML; every one is obvious to a browser.
+
+**The pipeline is never mocked.** That is the suite's design principle. The fixture writes three source checkouts and hands them to `selfblog.preview.preview_assembly` -- the production path: the real `selfdoc build` and `selfblog build`, the real `split_build_output` graft, the real `generate_shared_files`, a real Pagefind index, the production preview server on an ephemeral loopback port, and the production `verify_assembly` as a precondition on the tree. Dependency injection is for genuine external seams -- the network, the clock, another repository -- and for nothing else. Mocked-flow tests are how the defects above shipped.
+
+Two trees are built and served per theme, because a project has two published shapes: the **assembled site**, where every project mounts under its slug and only the current version is published, and the **standalone site** a project deploys on its own, which is where the archive under `v/<version>/` lives.
+
+What it asserts, each mapped to a defect class: sticky table headers and the pinned first column measured as painted; exactly one visible "Last updated" per page; table-of-contents presence swept across five viewport widths (and its total absence from posts, at every width); every page's computed body style differing from the browser default, with network capture on stylesheet requests; every visible link resolving on-origin and answering below 400; glossary Source links landing on a definition element scrolled into view; Ctrl+K opening the dialog and the real index answering a query from every mount depth; the theme toggle changing what is painted; the archive notice, its dismissal across a reload, and the version picker; a monotonicity guard that fails any layout element visible only in a middle band of widths; the CV portrait decoding and its header laid out as a row; and axe on every page class of every theme.
+
+Everything theme-sensitive runs across all three themes. A session builds six sites and runs 408 browser assertions in about four minutes.
 
 ## Important config fields
 
