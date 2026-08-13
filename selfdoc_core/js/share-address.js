@@ -2,6 +2,12 @@
 // The evergreen and pinned URLs are both rendered into the button's
 // data-share-url by the build; this file only copies one to the
 // clipboard and confirms it.
+//
+// One copy path, not two. There used to be a document.execCommand
+// fallback behind a hidden textarea, which is a banned native control and
+// was never reached anyway: navigator.clipboard.writeText is available in
+// every browser that can run this page from an https or localhost origin,
+// and a page served from neither has no clipboard access by any route.
 (function() {
   var buttons = document.querySelectorAll('.share-address-copy');
   if (!buttons.length) return;
@@ -14,17 +20,7 @@
         button.textContent = 'Copied';
         setTimeout(function() { button.textContent = label; }, 1500);
       }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(confirmCopy);
-        return;
-      }
-      var field = document.createElement('textarea');
-      field.value = url;
-      document.body.appendChild(field);
-      field.select();
-      document.execCommand('copy');
-      document.body.removeChild(field);
-      confirmCopy();
+      navigator.clipboard.writeText(url).then(confirmCopy);
     });
   });
 })();

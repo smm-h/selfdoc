@@ -1228,6 +1228,38 @@ def test_minify_js_removes_comments():
     assert "y" in result
 
 
+def test_minify_js_strips_a_comment_containing_an_apostrophe():
+    """A line-initial // is a comment whatever punctuation it carries.
+
+    The guard that keeps `//` inside a string literal from being stripped
+    used to apply to line-initial comments too, so a comment reading
+    "the framework's combobox shape" survived minification -- and the
+    whitespace collapse then pulled the statement on the NEXT line up onto
+    the comment's line, commenting it out along with every block after it
+    in the same assembled script. The symptom was a page whose scripts
+    simply did not run, with nothing logged anywhere.
+    """
+    js = "// the framework's combobox shape\n(function() { window.ran = true; })();\n"
+    result = _minify_js(js)
+    assert "//" not in result
+    assert "combobox" not in result
+    assert "window.ran=true" in result.replace(" ", "")
+
+
+def test_minify_js_keeps_every_block_of_an_assembled_script_alive():
+    """No block may be swallowed by the comment of the block above it."""
+    from selfdoc_core.js.loader import assemble_body_js
+
+    assembled = _minify_js(assemble_body_js(
+        "<pre>code</pre>", "", "",
+        extras_html='<div class="version-notice"></div>',
+        chrome_html='<div class="sel version-picker">',
+    ))
+    assert "//" not in assembled
+    # One IIFE per block, and every one of them outside any comment.
+    assert assembled.count("(function(){") >= 6
+
+
 def test_minify_js_preserves_urls():
     """_minify_js does not break URLs containing //."""
     js = "var url = 'https://example.com/path';\n"

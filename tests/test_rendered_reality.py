@@ -234,6 +234,37 @@ def _visible_count(pg, selector):
 TABLE_WIDTH = 700
 
 
+def _scroll_page_to(page, top):
+    """Scroll the document to *top* and wait until it has arrived.
+
+    The pages set ``scroll-behavior: smooth``, so ``window.scrollTo``
+    starts an animation rather than moving the document, and a geometry
+    reading taken a fixed number of milliseconds later is a reading of
+    some frame in the middle of it -- a layout no reader ever sees.  What
+    every assertion here is about is the layout at rest, so the animation
+    is turned off for the jump and the arrival is waited for.
+
+    (The animation only started happening once the block that re-enables
+    smooth scrolling stopped being commented out by the JS minifier.
+    Before that it was suppressed on every page from load onwards, which
+    is why a fixed 40ms wait used to be enough.)
+    """
+    page.evaluate(
+        """(t) => {
+            document.documentElement.style.scrollBehavior = 'auto';
+            window.scrollTo(0, t);
+        }""",
+        top,
+    )
+    page.wait_for_function(
+        "(t) => Math.abs(window.scrollY - t) < 2"
+        " || window.scrollY >= document.documentElement.scrollHeight"
+        " - window.innerHeight - 2",
+        arg=top,
+        timeout=5000,
+    )
+
+
 class TestStickyTables:
     """Defect 1: a sticky ``thead`` that overlapped the first data row.
 
@@ -262,8 +293,7 @@ class TestStickyTables:
         for box_top in (0, 60, 200, 600):
             for page_top in (0, 120, 400, 900):
                 wrap.evaluate("(el, t) => { el.scrollTop = t; }", box_top)
-                page.evaluate("(t) => window.scrollTo(0, t)", page_top)
-                page.wait_for_timeout(40)
+                _scroll_page_to(page, page_top)
                 head_box = head.bounding_box()
                 row_box = first_row.bounding_box()
                 if _boxes_intersect(head_box, row_box):
@@ -1143,8 +1173,8 @@ class TestVersionUI:
         )
         options = page.evaluate(
             """() => Array.from(
-                document.querySelectorAll('.version-picker option')
-            ).map(o => ({value: o.value, href: o.dataset.href}))"""
+                document.querySelectorAll('.version-picker .sel-opt')
+            ).map(o => ({value: o.dataset.value, href: o.dataset.href}))"""
         )
         assert {o["value"] for o in options} == {"0.1.0", "0.2.0"}, (
             f"[{fixture.theme}] the picker offers {options}"

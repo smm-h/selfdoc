@@ -65,10 +65,23 @@ def _minify_js(js_text):
     # Remove multi-line comments /* ... */
     js_text = re.sub(r"/\*.*?\*/", "", js_text, flags=re.DOTALL)
     # Remove single-line comments (// ... to end of line) but not inside
-    # strings and not URLs (https://, http://).  Only strip when //
-    # appears at the start of a line or after whitespace/semicolons.
-    js_text = re.sub(r"(?m)(?<=^)[ \t]*//(?!.*['\"]).*$", "", js_text)
-    js_text = re.sub(r"(?m)(?<=[;{}\n])[ \t]*//(?!.*['\"]).*$", "", js_text)
+    # strings and not URLs (https://, http://).
+    #
+    # A line whose first non-whitespace characters are ``//`` is a comment,
+    # full stop -- no source here carries a multi-line string literal, so
+    # there is nothing else it could be.  It is stripped unconditionally.
+    # The quote guard below applies only to a ``//`` that follows code on
+    # the same line, where it really might be inside a string.
+    #
+    # That distinction is not a nicety.  The guard used to apply to
+    # line-initial comments too, so a comment containing an apostrophe --
+    # "the framework's combobox shape" -- survived, and the whitespace
+    # collapse below then pulled the *following* statement up onto the
+    # comment's line and commented it out, along with every block after it
+    # in the same assembled script.  The symptom was a page whose scripts
+    # simply did not run, with no error anywhere.
+    js_text = re.sub(r"(?m)^[ \t]*//.*$", "", js_text)
+    js_text = re.sub(r"(?m)(?<=[;{}])[ \t]*//(?!.*['\"]).*$", "", js_text)
     # Collapse runs of whitespace (but keep at least one space between
     # word characters so identifiers don't merge)
     js_text = re.sub(r"[ \t]+", " ", js_text)
