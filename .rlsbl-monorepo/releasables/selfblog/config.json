@@ -4,6 +4,7 @@
     "strictcli",
     "strictspec",
     "selfdoc-core",
+    "tinymoon",
     "predraw"
   ]
 }
