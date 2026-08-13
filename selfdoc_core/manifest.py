@@ -10,6 +10,11 @@ from dataclasses import dataclass
 
 from selfdoc_core.utils import atomic_write, detect_project_version
 
+#: The theme a project's manifest records when its config names none.  It
+#: is the same default ``build`` applies, and the assembly's chrome reads
+#: this field to decide which stylesheet a project's pages reference.
+DEFAULT_THEME = "minimal"
+
 from selfdoc_core import effects
 
 
@@ -25,6 +30,11 @@ class Manifest:
     pages: list
     posts: list
     last_gen: str
+    #: The theme the build rendered against.  The assembly's site-level
+    #: chrome asset is keyed by it, so a manifest that does not carry one
+    #: leaves every page referencing the default theme's stylesheet
+    #: regardless of what its project configured.
+    theme: str = ""
 
 
 def _to_kebab(name: str) -> str:
@@ -130,6 +140,9 @@ def generate_manifest(
     # Base URL
     base_url = config.get("base_url") or ""
 
+    # Theme: what the chrome asset for this project's pages is built from.
+    theme = str(config.get("theme") or "") or DEFAULT_THEME
+
     # Pages
     pages = []
     for rel_path, (frontmatter, resolved, raw, _fm_line_count) in sorted(
@@ -167,6 +180,7 @@ def generate_manifest(
         pages=pages,
         posts=posts,
         last_gen=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        theme=theme,
     )
 
     # Write to .selfdoc/<output_name>
@@ -185,6 +199,7 @@ def generate_manifest(
         "pages": manifest.pages,
         "posts": manifest.posts,
         "last_gen": manifest.last_gen,
+        "theme": manifest.theme,
     }
 
     # Skip write when only last_gen changed (idempotency: avoids dirtying
@@ -247,6 +262,7 @@ def manifest_compat(data: dict, source: str = "") -> Manifest:
         pages=data.get("pages", []),
         posts=data.get("posts", []),
         last_gen=data.get("last_gen", ""),
+        theme=str(data.get("theme") or ""),
     )
 
 

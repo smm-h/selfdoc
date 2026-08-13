@@ -58,6 +58,7 @@ import re
 from selfdoc_core import effects
 from selfdoc_core.build import _minify_css
 from selfdoc_core.html import generate_pygments_css, get_css
+from selfdoc_core.manifest import DEFAULT_THEME as _MANIFEST_DEFAULT_THEME
 from selfdoc_core.themes import get_theme_meta
 from selfdoc_core.utils import atomic_write
 
@@ -87,7 +88,9 @@ CHROME_DIR = "_chrome"
 #: here: it is the same default ``selfdoc build`` applies when a project's
 #: ``selfdoc.json`` carries no ``theme`` key, and the two have to agree or a
 #: page would be styled by a stylesheet its build never rendered against.
-DEFAULT_THEME = "minimal"
+#: Imported from the manifest module rather than restated, so there is one
+#: value and not two that have to be kept equal by hand.
+DEFAULT_THEME = _MANIFEST_DEFAULT_THEME
 
 #: How much of the digest goes in the file name.  Twelve hex characters is
 #: 48 bits, which no site of this size collides in, and it keeps the name
@@ -184,21 +187,29 @@ def manifest_theme(manifest: dict) -> str:
     return str(manifest.get("theme") or "") or DEFAULT_THEME
 
 
-def chrome_themes(manifests, home_slug: str) -> tuple[dict[str, str], str]:
+def chrome_themes(manifests, home_slug: str,
+                  override: str = "") -> tuple[dict[str, str], str]:
     """Return ``(slug -> theme, home theme)`` for a roster's manifests.
 
     Theme choice is per project, so the site-level asset is theme-keyed
     rather than singular: the assembly emits one asset per distinct theme
     its projects declare, and a page references the one its own project
-    uses.  Today every project leaves the key unset and the set has one
-    member, which is the cheap case of the same rule rather than an
-    assumption the rule depends on.
+    uses.
+
+    *override* names one theme every project is treated as declaring.  It
+    exists for the preview's ``--theme``, which builds every checkout
+    under one theme so the whole site can be judged under it at once; the
+    pages were rendered against that theme, so the asset they reference
+    has to be that theme too, whatever each project's manifest says.
+    Empty -- always, on a deploy -- means every project keeps its own.
     """
     by_slug = {
-        str(m.get("slug") or ""): manifest_theme(m)
+        str(m.get("slug") or ""): override or manifest_theme(m)
         for m in manifests
         if m.get("slug")
     }
+    if override:
+        return by_slug, override
     return by_slug, by_slug.get(home_slug, DEFAULT_THEME)
 
 
