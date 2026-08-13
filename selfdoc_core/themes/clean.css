@@ -938,9 +938,12 @@ table {
     font-size: 0.9rem;
 }
 
+/* The scrollport is .table-wrap (overflow-x: auto), not the viewport, so
+   the header sticks to the top of the wrapper.  A topbar-sized offset here
+   pushed the header down over the first body rows. */
 thead {
     position: sticky;
-    top: 50px;
+    top: 0;
     background: var(--bg);
 }
 
