@@ -19,5 +19,4 @@ Spell-check the docs of every selfdoc project beside this one, using the same en
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
 | `--root` |  | str |  |  | Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings |
-| `--format` |  | str | text |  | Output format: text (table plus per-project word lists) or json (machine-readable) |
 | `--detail` |  | bool | True |  | List each project's unknown words with a first location and any suggestion, after the summary table |

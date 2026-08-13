@@ -483,11 +483,6 @@
           "level": 1,
           "text": "selfdoc quality",
           "anchor": "selfdoc-quality"
-        },
-        {
-          "level": 2,
-          "text": "Flags",
-          "anchor": "flags"
         }
       ]
     },
@@ -3515,6 +3510,6 @@
       ]
     }
   ],
-  "last_gen": "2026-08-13T18:54:07.323362+00:00",
+  "last_gen": "2026-08-13T18:54:50.100496+00:00",
   "theme": "minimal"
 }

@@ -18,4 +18,6 @@ Initialize selfdoc configuration and starter docs template
 | Name | Short | Type | Default | Env | Description |
 | --- | --- | --- | --- | --- | --- |
 | `--base-url` |  | str |  |  | Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it |
+| `--author-name` |  | str |  |  | Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent |
+| `--author-url` |  | str |  |  | Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address |
 | `--auto-commit` |  | bool | True |  | Automatically commit the generated selfdoc.json and docs/index.md template files to git |

@@ -13,9 +13,3 @@ nav_order: 8
 Show documentation quality tier and metrics for the current project
 
 **Effect:** read_only
-
-## Flags
-
-| Name | Short | Type | Default | Env | Description |
-| --- | --- | --- | --- | --- | --- |
-| `--format` |  | str | text |  | Output format: text or json |

@@ -22,3 +22,4 @@ Build the documentation site from templates and source code
 | `--version` |  | str |  |  | Build only the specified version instead of all (e.g., '1.0.0') |
 | `--drafts` |  | bool |  |  | Include posts marked as draft in the build output alongside published posts |
 | `--target` |  | str |  |  | Build target: empty for full build ('posts' builds moved to selfblog) |
+| `--theme` |  | str |  |  | Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it |
