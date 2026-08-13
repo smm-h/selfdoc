@@ -26,6 +26,18 @@ img, svg {
     max-width: 100%;
 }
 
+/* The `hidden` attribute is a statement that an element is not to be
+   rendered, and JS uses it that way: the superseded-version notice sets
+   `notice.hidden = true` when it is dismissed. The UA rule that honours it
+   is `[hidden] { display: none }` at specificity (0,1,0), which any single
+   class carrying a `display` -- `.version-notice { display: flex }` -- ties
+   with and wins on source order. The result was a Dismiss button that
+   stored the dismissal and changed nothing on screen. Stated here, once,
+   for every element rather than for the one that has JS today. */
+[hidden] {
+    display: none !important;
+}
+
 button, input {
     font: inherit;
     color: inherit;

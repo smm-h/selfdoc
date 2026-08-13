@@ -192,6 +192,23 @@ class TestEveryThemeCarriesTheStructuralMarkers:
         )
 
     @pytest.mark.parametrize("theme", list_themes())
+    def test_the_theme_honours_the_hidden_attribute(self, theme: str) -> None:
+        """An element JS marks ``hidden`` must stop being painted.
+
+        The UA's own ``[hidden] { display: none }`` sits at specificity
+        (0,1,0), which any single class carrying a ``display`` ties with
+        and beats on source order -- and every theme styles
+        ``.version-notice`` with ``display: flex``.  Without a rule of its
+        own, the Dismiss button on an archive page stored the dismissal
+        and left the notice on screen.
+        """
+        css = (THEMES_DIR / f"{theme}.css").read_text(encoding="utf-8")
+        assert re.search(r"\[hidden\]\s*\{[^}]*display:\s*none\s*!important", css), (
+            f"{theme}: no `[hidden] {{ display: none !important }}` rule, so "
+            f"an element JS hides stays painted wherever a class sets display"
+        )
+
+    @pytest.mark.parametrize("theme", list_themes())
     def test_the_theme_has_a_metadata_file(self, theme: str) -> None:
         assert (THEMES_DIR / f"{theme}.json").is_file(), (
             f"{theme}: no companion .json; it would silently inherit the "
