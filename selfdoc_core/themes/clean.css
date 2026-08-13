@@ -521,6 +521,14 @@ p {
     margin-bottom: 1.1rem;
 }
 
+/* A content directive emits a block element inside a paragraph, and the
+   HTML parser hoists the block out, leaving an empty paragraph on each
+   side of it.  Those carry the margin above and take up space nothing
+   occupies. */
+p:empty {
+    display: none;
+}
+
 /* === Links === */
 
 a {

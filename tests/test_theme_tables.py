@@ -67,3 +67,17 @@ class TestRenderedTableStructure:
         )
         assert '<div class="table-wrap">' in html
         assert "<thead>" in html
+
+
+class TestEmptyParagraphs:
+    """A directive's block element leaves empty paragraphs around it.
+
+    ``<p><div class="callout">...</div></p>`` parses as an empty paragraph,
+    the div, and another empty paragraph.  Both carry the paragraph margin
+    and space out content that is not there.
+    """
+
+    def test_the_theme_hides_them(self, theme_css: str) -> None:
+        rule = re.search(r"p:empty\s*\{([^}]*)\}", theme_css)
+        assert rule, "no p:empty rule"
+        assert "display: none" in rule.group(1)
