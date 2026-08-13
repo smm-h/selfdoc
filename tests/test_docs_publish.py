@@ -122,6 +122,7 @@ def _shape(output, rel, title, address):
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
         f"  <title>{title}</title>\n"
         f'  <link rel="canonical" href="https://docs.example.com/{address}">\n'
+        '  <link rel="stylesheet" href="style.css">\n'
         f"</head>\n<body><p>{rel}</p></body>\n</html>\n"
     )
 
@@ -472,6 +473,7 @@ def _shape_root_page(path):
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
         "  <title>Front page</title>\n"
         '  <link rel="canonical" href="https://docs.example.com/">\n'
+        '  <link rel="stylesheet" href="style.css">\n'
         "</head>\n<body>\n  <p>home</p>\n</body>\n</html>\n"
     )
 

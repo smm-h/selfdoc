@@ -31,6 +31,10 @@ What is asserted
   the assembled tree.
 * **Every page is addressable.**  A title, and a canonical under the
   site's canonical base.
+* **Every page is styled by the site's own chrome.**  The site-level
+  stylesheet is in the tree and every page links it.  A page linking a
+  copy inside its own subtree, or none at all, fails: the shared pages
+  published as unstyled HTML for as long as nothing asserted this.
 * **Nothing half-built or per-project leaked in.**  No unresolved
   directive markers, and none of the per-project routing artifacts the
   graft filters out.
@@ -99,6 +103,7 @@ CHECKS = (
     "sitemap-entries",
     "feed-links",
     "page-metadata",
+    "site-chrome",
     "unresolved-directives",
     "routing-artifacts",
     "cross-project-links",
@@ -139,6 +144,11 @@ _CANONICAL_TAG_RE = re.compile(
     r"""<link\b[^>]*\brel\s*=\s*["']?canonical["']?[^>]*>""", re.IGNORECASE,
 )
 _HREF_RE = re.compile(r"""\bhref\s*=\s*["']([^"']*)["']""", re.IGNORECASE)
+#: Every ``rel=stylesheet`` element, so the page-chrome assertion can read
+#: which stylesheets a page actually loads.
+_STYLESHEET_TAG_RE = re.compile(
+    r"""<link\b[^>]*\brel\s*=\s*["']?stylesheet["']?[^>]*>""", re.IGNORECASE,
+)
 _VERSION_ATTR_RE = re.compile(r'data-default-version="([^"]*)"')
 _CODE_BLOCK_RE = re.compile(
     r"<pre\b.*?</pre>|<code\b.*?</code>", re.IGNORECASE | re.DOTALL,
@@ -863,6 +873,67 @@ def check_page_metadata(tree: AssemblyTree) -> list[Failure]:
     return failures
 
 
+def check_site_chrome(tree: AssemblyTree) -> list[Failure]:
+    """The site-level stylesheet exists and every page references it.
+
+    This is the assertion the live site went without.  The blog index, the
+    project listing and the root 404 were wrapped by a function whose
+    stylesheet parameter no caller passed, so they published as unstyled
+    HTML and nothing said so -- the pages had titles, canonicals and links
+    that all resolved, and every assertion made about a page passed.
+
+    Two properties, one check.  The asset has to be in the tree, and every
+    page has to name it: a page naming its own subtree copy instead is a
+    page a toolchain upgrade will not reach, and a page naming nothing is
+    the defect itself.  That the reference *resolves* is not asserted here
+    -- it is a document-relative href like any other, and the LINK001 pass
+    behind ``internal-references`` already measures it against the emitted
+    tree.
+    """
+    from selfblog.chrome import CHROME_DIR, is_chrome_reference
+
+    failures = []
+    assets = sorted(
+        rel for rel in tree.emitted
+        if rel.startswith(f"{CHROME_DIR}/") and rel.endswith(".css")
+    )
+    if not assets:
+        failures.append(Failure(
+            "site-chrome", f"site/{CHROME_DIR}",
+            "holds no stylesheet. The assembly serves one set of page "
+            "chrome for the whole site, and with none of it in the tree "
+            "every page is unstyled HTML.",
+        ))
+
+    for page_rel in tree.pages:
+        page_html = tree.read(page_rel)
+        referenced = [
+            match.group(1)
+            for tag in _STYLESHEET_TAG_RE.findall(page_html)
+            for match in [_HREF_RE.search(tag)]
+            if match is not None and is_chrome_reference(match.group(1))
+        ]
+        if not referenced:
+            failures.append(Failure(
+                "site-chrome", f"site/{page_rel}",
+                "links no page-chrome stylesheet, so it is served as "
+                "unstyled HTML.",
+            ))
+            continue
+        for href in referenced:
+            target = reference_target(page_rel, href)
+            if target is not None and target.startswith(f"{CHROME_DIR}/"):
+                continue
+            failures.append(Failure(
+                "site-chrome", f"site/{page_rel}",
+                f"links the stylesheet {href}, which is not the site-level "
+                f"asset under {CHROME_DIR}/. A page pointing at a copy "
+                f"inside its own subtree is a page the next presentation "
+                f"fix will not reach.",
+            ))
+    return failures
+
+
 def check_unresolved_directives(tree: AssemblyTree) -> list[Failure]:
     """No page carries a directive the build did not resolve.
 
@@ -1222,6 +1293,7 @@ def verify_assembly(
         ("manifest-posts-emitted", check_manifest_posts_emitted),
         ("shared-artifacts", check_shared_artifacts),
         ("page-metadata", check_page_metadata),
+        ("site-chrome", check_site_chrome),
         ("unresolved-directives", check_unresolved_directives),
         ("routing-artifacts", check_routing_artifacts),
         ("cross-project-links", check_cross_project_links),

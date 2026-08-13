@@ -50,12 +50,19 @@ def _write(path, content):
 
 
 def _page(title, address, body=""):
+    """A page as a build emits one, stylesheet included.
+
+    The stylesheet names the project-local ``style.css`` a build writes at
+    its own output root; the shared generator re-points it at the
+    site-level chrome asset.
+    """
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
         "<head>\n"
         f"  <title>{title}</title>\n"
         f'  <link rel="canonical" href="{CANONICAL_BASE}/{address}">\n'
+        '  <link rel="stylesheet" href="style.css">\n'
         "</head>\n"
         "<body>\n"
         f"{body}\n"

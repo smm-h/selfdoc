@@ -25,6 +25,7 @@ from selfblog.assembly import (
     record_membership,
     render_roster,
 )
+from selfblog.chrome import CHROME_DIR
 
 CANONICAL_BASE = "https://docs.example.com"
 
@@ -53,6 +54,11 @@ def _page(title, address, marker="", version=""):
     build's own output does.  *address* is the site-relative address the
     page is emitted at (``alpha/guide/``), and *marker* is the body text a
     test looks for to tell one build's output from another's.
+
+    It carries a stylesheet too, naming the project-local ``style.css`` a
+    build writes.  The shared generator re-points every page at the
+    site-level chrome asset, and a page that arrives with no stylesheet at
+    all is one the deploy refuses.
     """
     version_attr = f' data-default-version="{version}"' if version else ""
     return (
@@ -61,6 +67,7 @@ def _page(title, address, marker="", version=""):
         "<head>\n"
         f"  <title>{title}</title>\n"
         f'  <link rel="canonical" href="{CANONICAL_BASE}/{address}">\n'
+        '  <link rel="stylesheet" href="style.css">\n'
         "</head>\n"
         "<body>\n"
         f'  <dialog class="search-dialog" data-search-base="./"{version_attr}></dialog>\n'
@@ -504,7 +511,19 @@ def test_full_integrate_records_membership(assembly_tree, runner):
 def test_full_integrate_regenerates_the_shared_files(assembly_tree, runner):
     summary = _integrate(assembly_tree, build=False)
     names = {os.path.relpath(p, str(assembly_tree / "site")) for p in summary["shared"]}
-    assert names == {
+    chrome = {n for n in names if n.startswith(f"{CHROME_DIR}{os.sep}")}
+    # One site-level stylesheet, content-hashed, for the one theme in use.
+    assert len(chrome) == 1
+    # Every page in the tree was re-pointed at it, so each is reported too.
+    repointed = {
+        os.path.join("alpha", "index.html"),
+        os.path.join("alpha", "guide", "index.html"),
+        os.path.join("beta", "index.html"),
+        os.path.join("blog", "hello", "index.html"),
+        os.path.join("blog", "old-post", "index.html"),
+    }
+    assert repointed <= names
+    assert names - chrome - repointed == {
         # The listing at its fixed address, the home project's front page
         # re-rendered in place, and the rest of the site-wide artifacts.
         # There is no generated root index.html: the site root is the home

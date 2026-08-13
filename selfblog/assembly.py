@@ -13,6 +13,7 @@ import sys
 import time
 from collections.abc import Mapping
 
+from selfblog.chrome import CHROME_DIR
 from selfblog.shared import POSTS_SEGMENT
 from selfblog.verify import OUTBOUND_CACHE_PATH
 from selfdoc_core import effects
@@ -59,7 +60,7 @@ MANIFEST_SIDECAR_SUFFIXES = ("-revisions.json", "-files.json", "-listing.json")
 
 # Directories under site/ that belong to the assembly itself rather than to
 # any project, so membership reconciliation never mistakes one for a slug.
-SITE_RESERVED_DIRS = ("blog", "projects", "pagefind")
+SITE_RESERVED_DIRS = ("blog", "projects", "pagefind", CHROME_DIR)
 
 # Scopes a dispatch may carry. "" from a client payload that omits the key
 # means a full project build; the workflow always passes the flag.
@@ -1117,6 +1118,13 @@ def generate_shared_files(
     those into a usage error, the integrate command lets them abort the
     deploy.
     """
+    from selfblog.chrome import (
+        chrome_href,
+        chrome_themes,
+        emitted_pages,
+        repoint_pages,
+        write_chrome_assets,
+    )
     from selfblog.shared import (
         generate_blog_index,
         generate_homepage,
@@ -1157,11 +1165,6 @@ def generate_shared_files(
     # root-relative for in-page links.
     sitemap_xml = generate_sitemap(manifests, canonical_base, home_slug=home_slug)
 
-    blog_html = wrap_shared_page(
-        "Blog", blog_fragment, canonical_url=f"{canonical_base}/blog/",
-        search_prefix="../",
-    )
-
     headers_content = (
         "/*\n"
         "  X-Frame-Options: DENY\n"
@@ -1172,12 +1175,28 @@ def generate_shared_files(
     written: list[str] = []
 
     effects.makedirs(site_dir, exist_ok=True)
+
+    # The site-level page chrome, before anything that references it.  One
+    # asset per theme the roster declares, sourced from the theme files of
+    # the toolchain running this deploy; the shared pages below name theirs
+    # directly and every grafted page is re-pointed at the end.
+    themes_by_slug, home_theme = chrome_themes(manifests, home_slug)
+    chrome_assets = write_chrome_assets(
+        site_dir, [*themes_by_slug.values(), home_theme],
+    )
+    written.extend(
+        os.path.join(site_dir, *rel.split("/"))
+        for rel in sorted(chrome_assets.values())
+    )
+    home_chrome = chrome_assets[home_theme]
+
     projects_dir = os.path.join(site_dir, "projects")
     effects.makedirs(projects_dir, exist_ok=True)
     projects_path = os.path.join(projects_dir, "index.html")
     atomic_write(projects_path, wrap_shared_page(
         "Projects", homepage_fragment,
         canonical_url=f"{canonical_base}/projects/",
+        css_url=chrome_href("projects/index.html", home_chrome),
         search_prefix="../",
     ))
     written.append(projects_path)
@@ -1190,7 +1209,11 @@ def generate_shared_files(
     blog_dir = os.path.join(site_dir, "blog")
     effects.makedirs(blog_dir, exist_ok=True)
     blog_path = os.path.join(blog_dir, "index.html")
-    atomic_write(blog_path, blog_html)
+    atomic_write(blog_path, wrap_shared_page(
+        "Blog", blog_fragment, canonical_url=f"{canonical_base}/blog/",
+        css_url=chrome_href("blog/index.html", home_chrome),
+        search_prefix="../",
+    ))
     written.append(blog_path)
 
     nav_path = os.path.join(site_dir, "nav.json")
@@ -1216,7 +1239,9 @@ def generate_shared_files(
     written.append(llms_path)
 
     not_found_path = os.path.join(site_dir, "404.html")
-    atomic_write(not_found_path, generate_not_found_page(canonical_base))
+    atomic_write(not_found_path, generate_not_found_page(
+        canonical_base, css_url=chrome_href("404.html", home_chrome),
+    ))
     written.append(not_found_path)
 
     headers_path = os.path.join(site_dir, "_headers")
@@ -1238,6 +1263,21 @@ def generate_shared_files(
         ],
     ))
     written.append(worker_js_path)
+
+    # Last, once every page this deploy writes exists: aim every stylesheet
+    # reference in the tree at the site-level asset.  A project's build
+    # emits a self-contained style.css beside its own pages -- it has to,
+    # a standalone deploy has no assembly behind it -- so a grafted subtree
+    # arrives pointing at its own copy and is re-pointed here.  Because
+    # this runs on every deploy of any project, a toolchain upgrade reaches
+    # pages published months ago without republishing them.
+    written.extend(
+        os.path.join(site_dir, *rel.split("/"))
+        for rel in repoint_pages(
+            site_dir, emitted_pages(site_dir), themes_by_slug,
+            chrome_assets, home_theme,
+        )
+    )
 
     return written
 

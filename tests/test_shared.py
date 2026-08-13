@@ -521,14 +521,17 @@ def test_page_path_to_url_segment_index_in_name():
 
 def test_wrap_shared_page_has_doctype():
     """Output starts with <!DOCTYPE html>."""
-    result = wrap_shared_page("Test", "<p>Hello</p>", search_prefix="")
+    result = wrap_shared_page(
+        "Test", "<p>Hello</p>", css_url="_chrome/x.css", search_prefix="",
+    )
     assert "<!DOCTYPE html>" in result
 
 
 def test_wrap_shared_page_title_in_tag():
     """Title appears inside a <title> tag."""
     result = wrap_shared_page(
-        "My Page Title", "<p>body</p>", search_prefix="",
+        "My Page Title", "<p>body</p>", css_url="_chrome/x.css",
+        search_prefix="",
     )
     assert "<title>My Page Title</title>" in result
 
@@ -536,28 +539,44 @@ def test_wrap_shared_page_title_in_tag():
 def test_wrap_shared_page_body_html_present():
     """body_html fragment appears in the output."""
     fragment = '<section class="content"><h1>Welcome</h1></section>'
-    result = wrap_shared_page("Home", fragment, search_prefix="")
+    result = wrap_shared_page(
+        "Home", fragment, css_url="_chrome/x.css", search_prefix="",
+    )
     assert fragment in result
 
 
 def test_wrap_shared_page_css_url_produces_link():
-    """When css_url is provided, a <link rel="stylesheet"> tag is present."""
+    """The stylesheet the page is given is the stylesheet it links."""
     result = wrap_shared_page(
-        "Styled", "<p>text</p>", css_url="/assets/main.css", search_prefix="",
+        "Styled", "<p>text</p>", css_url="_chrome/main.css", search_prefix="",
     )
-    assert '<link rel="stylesheet" href="/assets/main.css">' in result
+    assert '<link rel="stylesheet" href="_chrome/main.css">' in result
 
 
-def test_wrap_shared_page_no_link_when_css_empty():
-    """With no css_url, the only <link> is the Pagefind UI stylesheet."""
-    result = wrap_shared_page("Plain", "<p>text</p>", search_prefix="")
+def test_wrap_shared_page_refuses_an_empty_css_url():
+    """The parameter was optional and unused, and the pages shipped bare."""
+    with pytest.raises(ValueError, match="css_url"):
+        wrap_shared_page("Plain", "<p>text</p>", css_url="", search_prefix="")
+
+
+def test_wrap_shared_page_links_exactly_two_stylesheets():
+    """Its own chrome, and the Pagefind UI's."""
+    result = wrap_shared_page(
+        "Plain", "<p>text</p>", css_url="_chrome/main.css", search_prefix="",
+    )
     links = [line for line in result.split("\n") if "<link" in line]
-    assert links == ['<link href="pagefind/pagefind-ui.css" rel="stylesheet">']
+    assert links == [
+        '    <link rel="stylesheet" href="_chrome/main.css">',
+        '<link href="pagefind/pagefind-ui.css" rel="stylesheet">',
+    ]
 
 
 def test_wrap_shared_page_carries_the_search_dialog():
     """A shared page answers Cmd/Ctrl+K like every documentation page."""
-    result = wrap_shared_page("Plain", "<p>text</p>", search_prefix="../")
+    result = wrap_shared_page(
+        "Plain", "<p>text</p>", css_url="../_chrome/x.css",
+        search_prefix="../",
+    )
     assert 'id="pagefind-container"' in result
     assert 'bundlePath: "../pagefind/"' in result
     assert '<script src="../pagefind/pagefind-ui.js"></script>' in result

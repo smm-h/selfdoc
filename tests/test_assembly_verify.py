@@ -9,10 +9,18 @@ injected defect per asserted property.
 
 import json
 import os
+import re
 
 import pytest
 
 from selfblog.assembly import RosterEntry, generate_shared_files, render_roster
+from selfblog.chrome import (
+    CHROME_DIR,
+    DEFAULT_THEME,
+    chrome_asset_rel,
+    chrome_css,
+    chrome_href,
+)
 from selfblog.verify import (
     CHECKS,
     OUTBOUND_CACHE_PATH,
@@ -43,8 +51,26 @@ def _write(path, content):
         f.write(content)
 
 
-def _page(title, canonical, body="", version=""):
-    """A page shaped the way a real build's pages are shaped."""
+def _chrome_ref(page_rel):
+    """The stylesheet reference a re-pointed page at *page_rel* carries.
+
+    Tests that rewrite a page after the shared generator has run are
+    writing a page nothing will re-point, so they write the re-pointed
+    form themselves.
+    """
+    return chrome_href(
+        page_rel, chrome_asset_rel(DEFAULT_THEME, chrome_css(DEFAULT_THEME)),
+    )
+
+
+def _page(title, canonical, body="", version="", css_href="style.css"):
+    """A page shaped the way a real build's pages are shaped.
+
+    That includes the stylesheet link: a project's build writes one on
+    every page, pointing at the ``style.css`` at its own output root.  The
+    shared generator re-points it at the site-level asset, so a page that
+    arrives here naming its own copy is what the graft really delivers.
+    """
     version_attr = f' data-default-version="{version}"' if version else ""
     return (
         "<!DOCTYPE html>\n"
@@ -52,6 +78,7 @@ def _page(title, canonical, body="", version=""):
         "<head>\n"
         f"  <title>{title}</title>\n"
         f'  <link rel="canonical" href="{canonical}">\n'
+        f'  <link rel="stylesheet" href="{css_href}">\n'
         "</head>\n"
         "<body>\n"
         f'  <dialog class="search-dialog" data-search-base="./"{version_attr}></dialog>\n'
@@ -669,6 +696,60 @@ def test_a_canonical_pointing_off_the_site_fails(assembly):
     assert any("elsewhere.example.net" in m for m in messages)
 
 
+# -- every page is styled by the site's own chrome -----------------------------
+
+
+def test_the_clean_tree_carries_a_site_level_chrome_asset(assembly):
+    chrome_dir = assembly / "site" / CHROME_DIR
+    assets = [p.name for p in chrome_dir.iterdir()]
+    assert len(assets) == 1
+    assert assets[0].endswith(".css")
+
+
+def test_a_page_with_no_stylesheet_fails(assembly):
+    """The live defect: the shared pages shipped as bare HTML."""
+    page = (assembly / "site" / "blog" / "index.html").read_text(
+        encoding="utf-8",
+    )
+    stripped = re.sub(
+        r'<link rel="stylesheet" href="[^"]*_chrome[^"]*">\n?', "", page,
+    )
+    assert stripped != page
+    _write(str(assembly / "site" / "blog" / "index.html"), stripped)
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("site-chrome")]
+    assert any("blog/index.html" in m and "unstyled" in m for m in messages)
+
+
+def test_a_page_pointing_at_its_own_subtree_copy_fails(assembly):
+    """A page the next presentation fix would not reach."""
+    _write(str(assembly / "site" / "beta" / "index.html"),
+           _page("Beta", f"{CANONICAL_BASE}/beta/", version="2.0.0",
+                 css_href="style.css"))
+    _write(str(assembly / "site" / "beta" / "style.css"), "/* local */")
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("site-chrome")]
+    assert any("beta/index.html" in m and CHROME_DIR in m for m in messages)
+
+
+def test_a_missing_chrome_asset_fails(assembly):
+    chrome_dir = assembly / "site" / CHROME_DIR
+    for asset in chrome_dir.iterdir():
+        asset.unlink()
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("site-chrome")]
+    assert any(CHROME_DIR in m and "no stylesheet" in m for m in messages)
+
+
+def test_the_chrome_reference_is_resolved_by_the_link_pass(assembly):
+    """A dangling stylesheet href is the LINK001 pass's failure, not a new one."""
+    for asset in (assembly / "site" / CHROME_DIR).iterdir():
+        asset.unlink()
+    report = _verify(assembly)
+    messages = [str(f) for f in report.failures_of("internal-references")]
+    assert any(CHROME_DIR in m for m in messages)
+
+
 # -- nothing half-built or per-project leaked in -------------------------------
 
 
@@ -750,7 +831,8 @@ def test_a_link_to_a_published_post_resolves(assembly):
     _write(str(assembly / "site" / "beta" / "index.html"),
            _page("Beta", f"{CANONICAL_BASE}/beta/",
                  body='  <a href="../blog/hello/">Hello</a>',
-                 version="2.0.0"))
+                 version="2.0.0",
+                 css_href=_chrome_ref("beta/index.html")))
     report = _verify(assembly)
     assert report.failures_of("cross-project-links") == []
     assert report.failures_of("internal-references") == []
@@ -793,7 +875,8 @@ def _with_outbound(root, body, page_body=None):
     if page_body is not None:
         _write(str(root / "site" / "beta" / "index.html"),
                _page("Beta", f"{CANONICAL_BASE}/beta/", body=page_body,
-                     version="2.0.0"))
+                     version="2.0.0",
+                     css_href=_chrome_ref("beta/index.html")))
 
 
 OUTBOUND_DECL = 'cache_days = 7\n\n[[page]]\npath = "beta/index.html"\n'

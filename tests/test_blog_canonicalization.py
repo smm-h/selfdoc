@@ -91,20 +91,22 @@ def test_worker_strips_trailing_slash_from_canonical_base():
 def test_wrap_shared_page_emits_canonical_link():
     html = wrap_shared_page(
         "Blog", "<p>x</p>", canonical_url=f"{CANONICAL_BASE}/blog/",
-        search_prefix="../",
+        css_url="../_chrome/x.css", search_prefix="../",
     )
     assert f'<link rel="canonical" href="{CANONICAL_BASE}/blog/">' in html
 
 
 def test_wrap_shared_page_omits_canonical_when_empty():
-    html = wrap_shared_page("Blog", "<p>x</p>", search_prefix="../")
+    html = wrap_shared_page(
+        "Blog", "<p>x</p>", css_url="../_chrome/x.css", search_prefix="../",
+    )
     assert 'rel="canonical"' not in html
 
 
 def test_wrap_shared_page_escapes_canonical_url():
     html = wrap_shared_page(
         "Blog", "<p>x</p>", canonical_url='https://x/"><script>',
-        search_prefix="../",
+        css_url="../_chrome/x.css", search_prefix="../",
     )
     assert "<script>" not in html.split("<body>")[0]
 

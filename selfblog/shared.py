@@ -48,21 +48,38 @@ POSTS_SEGMENT = POSTS_PREFIX
 def wrap_shared_page(
     title: str,
     body_html: str,
-    css_url: str = "",
     canonical_url: str = "",
     *,
+    css_url: str,
     search_prefix: str,
 ) -> str:
     """Wrap an HTML fragment in a complete HTML page.
 
+    The wrapper reuses the theme's own class surface where the theme has
+    one -- ``.site-footer`` is the theme's footer, and the version badge in
+    the project listing is the theme's badge.  The rest of what these pages
+    render (the listing cards, the blog rows, the not-found list) is the
+    assembly's own markup, styled by the shared-page rules appended to the
+    site-level chrome asset in :mod:`selfblog.chrome`.
+
+    The theme's three-column ``.layout`` is deliberately *not* reused: it
+    reserves a 240px sidebar column and a 200px table-of-contents column,
+    and a shared page has neither, so it would render as a centred column
+    with two empty gutters.  ``.shared-page`` is the container these pages
+    get instead.
+
     Args:
         title: Page title for the <title> tag.
         body_html: HTML fragment to place inside <body>.
-        css_url: Optional URL for an external CSS stylesheet.
         canonical_url: Absolute URL for the page's rel=canonical link.
             The assembly site is reachable on more than one host, so the
             shared pages declare which one is canonical.  Empty means no
             canonical link is emitted.
+        css_url: The page's reference to the site-level chrome stylesheet,
+            relative to the page.  Required, and refused when empty: this
+            parameter was optional and no caller ever passed it, so every
+            shared page the assembly published shipped as bare HTML.  There
+            is no styling without it and nothing to fall back to.
         search_prefix: The hop from this page back to the site root, where
             the assembly's one site-wide Pagefind index lives (``""`` for a
             page at the root, ``"../"`` one level in).  Required: a shared
@@ -71,10 +88,18 @@ def wrap_shared_page(
 
     Returns:
         Complete HTML document string.
+
+    Raises:
+        ValueError: When *css_url* is empty.
     """
-    css_link = ""
-    if css_url:
-        css_link = f'\n    <link rel="stylesheet" href="{html.escape(css_url)}">'
+    if not css_url:
+        raise ValueError(
+            "wrap_shared_page needs a css_url: a shared page carries the "
+            "site-level chrome stylesheet like every other page on the "
+            "site, and with none it renders as unstyled HTML. Pass the "
+            "page's reference to the asset selfblog.chrome writes."
+        )
+    css_link = f'\n    <link rel="stylesheet" href="{html.escape(css_url)}">'
     canonical_link = ""
     if canonical_url:
         canonical_link = (
@@ -88,16 +113,14 @@ def wrap_shared_page(
         '    <meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"    <title>{html.escape(title)}</title>{canonical_link}{css_link}\n"
         f"{pagefind_head_tags(search_prefix)}"
-        "    <style>\n"
-        "        body { max-width: 48rem; margin: 0 auto; padding: 1rem 1.5rem;"
-        " font-family: system-ui, -apple-system, sans-serif;"
-        " line-height: 1.6; color: #222; }\n"
-        "        a { color: #0366d6; }\n"
-        "        a:visited { color: #6f42c1; }\n"
-        "    </style>\n"
         "</head>\n"
         "<body>\n"
+        '<div class="shared-page">\n'
         f"{body_html}\n"
+        "</div>\n"
+        '<footer class="site-footer">\n'
+        '<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>\n'
+        "</footer>\n"
         f"{pagefind_dialog_html()}\n"
         f"{pagefind_init_script(search_prefix)}\n"
         "</body>\n"
@@ -423,7 +446,7 @@ def generate_llms_txt(manifests: list[dict], canonical_base: str, *,
     return "\n".join(lines)
 
 
-def generate_not_found_page(canonical_base: str) -> str:
+def generate_not_found_page(canonical_base: str, *, css_url: str) -> str:
     """Produce the assembly's root 404 page.
 
     The only one the site has.  ``404.html`` is answered at the root of
@@ -442,6 +465,10 @@ def generate_not_found_page(canonical_base: str) -> str:
     no address of its own -- it is the answer to every address the site
     does not serve.  Naming one would hand a crawler a real URL for a page
     that only ever appears under URLs that do not exist.
+
+    *css_url* is the page's reference to the site-level chrome stylesheet.
+    The 404 sits at the site root, so it is the one shared page whose hop
+    back to the root is empty.
     """
     base = canonical_base.rstrip("/")
     body = (
@@ -459,7 +486,8 @@ def generate_not_found_page(canonical_base: str) -> str:
         "</main>"
     )
     return wrap_shared_page(
-        "Page not found", body, canonical_url="", search_prefix="",
+        "Page not found", body, canonical_url="",
+        css_url=css_url, search_prefix="",
     )
 
 
