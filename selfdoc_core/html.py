@@ -118,52 +118,170 @@ def _theme_css_rel(theme_meta):
     return theme_meta.get("css_rel") or DEFAULT_CSS_REL
 
 
-def _flatten_dark_css(dark_rules):
-    """Convert dark mode CSS rules to flat selectors.
+# The scope every highlight rule is written under.  It matches the markup
+# ``_render_code_block`` produces, and nothing outside a code block.
+PYGMENTS_SCOPE = ".code-block code"
 
-    Pygments ``get_style_defs`` returns rules like ``.code-block code .hll { ... }``.
-    We need to wrap each rule individually for both ``@media`` and ``[data-theme]``
-    contexts instead of nesting them (which is invalid CSS without native nesting).
+#: The prefix every generated highlight custom property carries.
+PYGMENTS_VAR_PREFIX = "--sd-hl-"
+
+#: What a highlight property means when the style being resolved has no
+#: opinion about it.  A custom property has to resolve to *something* on
+#: both sides of the light/dark split, and the neutral answer differs by
+#: property: an unstyled token inherits its colour, paints no background,
+#: and carries no weight, slant or decoration of its own.
+_PYGMENTS_NEUTRAL = {
+    "color": "inherit",
+    "background": "transparent",
+    "background-color": "transparent",
+    "border": "none",
+    "font-weight": "normal",
+    "font-style": "normal",
+    "text-decoration": "none",
+}
+
+_PYGMENTS_RULE_RE = re.compile(r"([^{}]+)\{([^{}]*)\}")
+_PYGMENTS_SLUG_RE = re.compile(r"[^a-z0-9]+")
+_CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+def _pygments_rules(defs, scope):
+    """``[(selector, [(prop, value), ...]), ...]`` for rules under *scope*.
+
+    Pygments' ``get_style_defs`` also emits three unscoped rules -- ``pre``
+    and the two ``linenos`` shapes -- that would style elements far outside
+    a code block, and the line numbers selfdoc renders are its own markup
+    rather than Pygments' table.  Those are dropped here: what survives is
+    exactly the token classes inside the scope.
     """
-    rules = re.findall(r'([^{]+)\{([^}]+)\}', dark_rules)
-    media_lines = []
-    attr_lines = []
-    for selector, body in rules:
-        selector = selector.strip()
-        media_lines.append(
-            f"  :root:not([data-theme='light']) {selector} {{ {body.strip()} }}"
-        )
-        attr_lines.append(
-            f"[data-theme='dark'] {selector} {{ {body.strip()} }}"
-        )
-    media_block = (
-        "@media (prefers-color-scheme: dark) {\n"
-        + "\n".join(media_lines)
-        + "\n}"
-    )
-    attr_block = "\n".join(attr_lines)
-    return f"{media_block}\n\n{attr_block}"
+    out = []
+    defs = _CSS_COMMENT_RE.sub("", defs)
+    for match in _PYGMENTS_RULE_RE.finditer(defs):
+        selector = " ".join(match.group(1).split())
+        if selector != scope and not selector.startswith(scope + " "):
+            continue
+        decls = []
+        for part in match.group(2).split(";"):
+            prop, sep, value = part.partition(":")
+            if not sep:
+                continue
+            decls.append((prop.strip(), value.strip()))
+        if decls:
+            out.append((selector, decls))
+    return out
+
+
+def _pygments_var(selector, prop, scope):
+    """The custom-property name that carries *prop* for *selector*.
+
+    Derived from the token classes the selector names, so the variable a
+    reader meets in the rule says which token it paints:
+    ``.code-block code .kd`` + ``color`` becomes ``--sd-hl-kd-color``.
+    """
+    tail = selector[len(scope):].strip() or "base"
+    slug = _PYGMENTS_SLUG_RE.sub("-", tail.lower()).strip("-")
+    prop_slug = _PYGMENTS_SLUG_RE.sub("-", prop.lower()).strip("-")
+    return f"{PYGMENTS_VAR_PREFIX}{slug}-{prop_slug}"
 
 
 def generate_pygments_css(light_style="default", dark_style="monokai"):
-    """Generate Pygments CSS rules for light and dark mode.
+    """Generate the syntax-highlight CSS, tokenized across the light/dark split.
+
+    Two Pygments styles are resolved -- one per colour scheme -- and neither
+    of them reaches a rule as a literal.  Every declaration either style
+    makes becomes a custom property defined three times over (the default
+    scheme, an explicitly chosen dark one, and the system fallback for a
+    reader with no choice recorded) and referenced once by a single set of
+    rules.  A token's colour is therefore a *value in the token layer* and
+    the rules that paint it are scheme-agnostic, which is the shape the
+    framework's conformance checker requires and, independent of that, the
+    only spelling where the two schemes cannot drift apart rule by rule.
+
+    The three token blocks are spelled exactly ``:root``,
+    ``html[data-theme="dark"]`` and ``html:not([data-theme])`` inside a
+    ``prefers-color-scheme`` query -- the same CSS-only three-state
+    resolution the tinymoon theme uses, so a reader who has expressed no
+    preference and runs no JavaScript still gets the dark palette.
 
     Args:
-        light_style: Pygments style name for light mode.
-        dark_style: Pygments style name for dark mode.
-
-    Scoped to ``.code-block code`` to match the HTML structure produced
-    by ``_render_code_block()``.
+        light_style: Pygments style name for the light scheme.
+        dark_style: Pygments style name for the dark scheme.
 
     Returns the CSS string, or an empty string if Pygments is not installed.
     """
     if not HAS_PYGMENTS:
         return ""
-    scope = ".code-block code"
-    light = HtmlFormatter(style=light_style).get_style_defs(scope)
-    dark = HtmlFormatter(style=dark_style).get_style_defs(scope)
-    dark_css = _flatten_dark_css(dark)
-    return f"{light}\n\n{dark_css}"
+    scope = PYGMENTS_SCOPE
+    light = _pygments_rules(
+        HtmlFormatter(style=light_style).get_style_defs(scope), scope
+    )
+    dark = _pygments_rules(
+        HtmlFormatter(style=dark_style).get_style_defs(scope), scope
+    )
+    light_values = {
+        (sel, prop): value for sel, decls in light for prop, value in decls
+    }
+    dark_values = {
+        (sel, prop): value for sel, decls in dark for prop, value in decls
+    }
+
+    # Selectors in the order the light style states them, then any the dark
+    # style adds -- a stable order, so two builds of the same styles produce
+    # byte-identical CSS.
+    order = []
+    seen_selectors = set()
+    for sel, _ in light + dark:
+        if sel not in seen_selectors:
+            seen_selectors.add(sel)
+            order.append(sel)
+
+    rules = []
+    light_tokens = []
+    dark_tokens = []
+    # A variable name is derived from a selector, so two selectors that slug
+    # the same would share one value and paint one of the two tokens wrong.
+    # Nothing in Pygments' class vocabulary collides today; a style that
+    # introduced one would be a silent miscolouring, so it is a hard error.
+    assigned = {}
+    for selector in order:
+        props = []
+        for source in (light, dark):
+            for sel, decls in source:
+                if sel != selector:
+                    continue
+                for prop, _ in decls:
+                    if prop not in props:
+                        props.append(prop)
+        declarations = []
+        for prop in props:
+            name = _pygments_var(selector, prop, scope)
+            owner = assigned.setdefault(name, (selector, prop))
+            if owner != (selector, prop):
+                raise ValueError(
+                    f"highlight variable {name!r} would be shared by "
+                    f"{owner[0]!r}/{owner[1]} and {selector!r}/{prop}"
+                )
+            neutral = _PYGMENTS_NEUTRAL.get(prop, "initial")
+            light_tokens.append(
+                f"  {name}: {light_values.get((selector, prop), neutral)};"
+            )
+            dark_tokens.append(
+                f"  {name}: {dark_values.get((selector, prop), neutral)};"
+            )
+            declarations.append(f"{prop}: var({name});")
+        rules.append(f"{selector} {{ {' '.join(declarations)} }}")
+
+    light_block = ":root {\n" + "\n".join(light_tokens) + "\n}"
+    dark_block = 'html[data-theme="dark"] {\n' + "\n".join(dark_tokens) + "\n}"
+    system_block = (
+        "@media (prefers-color-scheme: dark) {\n"
+        "html:not([data-theme]) {\n"
+        + "\n".join(dark_tokens)
+        + "\n}\n}"
+    )
+    return "\n\n".join(
+        [light_block, dark_block, system_block, "\n".join(rules)]
+    )
 
 
 def _generate_hero_html(branding, project_name, config_description, nav_items):
