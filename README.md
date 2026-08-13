@@ -188,7 +188,7 @@ Custom directives take priority over built-in names.
 | `docs` | no | Directory containing Markdown documentation templates. |
 | `output` | no | Output directory for generated HTML files. |
 | `changelog` | no | Path to the changelog document published as the site's changelog page, relative to the project root. Absent means the project root's CHANGELOG.md is used if it exists; declare it when that file is not this site's changelog. |
-| `theme` | no | Visual theme for the generated site. |
+| `theme` | no | Visual theme for the generated site. One of the themes selfdoc ships -- 'minimal', 'clean' or 'tinymoon'. A build's --theme flag overrides this for that build only, without writing anything back here. |
 | `repo` | no | GitHub repository URL shown in the site header. |
 | `lang` | no | BCP 47 language tag for the site content (e.g. 'en', 'pt-BR'). |
 | `name` | no | Explicit project name. Used as the single source of truth for the manifest name and the auto-generated API reference index description. When absent, the name is derived heuristically (single-source basename or project directory basename). |
