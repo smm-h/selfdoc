@@ -1067,7 +1067,11 @@ def test_404_contains_search_button(project_dir):
         content = f.read()
 
     assert "Try searching for what you need:" in content
-    assert "Search documentation</button>" in content
+    # The button is dressed by the theme, not by an inline style, and the
+    # search wiring binds it by class -- so what the page has to carry is
+    # the class and the label, not a handler attribute.
+    assert 'class="search-bar-trigger"' in content
+    assert "Search documentation</span></button>" in content
     assert "search-dialog" in content
 
 
@@ -3868,8 +3872,10 @@ def test_search_trigger_hidden(project_dir):
     index_html = os.path.join(output_dir, DEFAULT_PREFIX, "index.html")
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
-    assert 'search-trigger' not in content
-    assert 'search-bar-trigger' not in content
+    # The wiring script names both trigger classes in a selector regardless;
+    # what "hidden" means is that no page element carries either class.
+    assert 'class="search-trigger"' not in content
+    assert 'class="search-bar-trigger"' not in content
 
 
 def test_search_cmd_k_always_works(project_dir):

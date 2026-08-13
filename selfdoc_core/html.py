@@ -1000,17 +1000,17 @@ def generate_404_page(project_name=None, version=None, has_custom_css=False,
                            unversioned_prefix=unversioned_prefix,
                            site_prefix="")
 
-    # Search prompt button
+    # Search prompt button.  It carries the same class as the topbar's
+    # bar-shaped trigger, so it is dressed by the theme rather than by an
+    # inline style: the inline one hardcoded a radius and two colour
+    # literals that no theme could reach, and opened the dialog through an
+    # inline handler that only knew about one search implementation.
     search_html = (
         '<p>Try searching for what you need:</p>\n'
-        '<button onclick="document.getElementById(\'search-dialog\')'
-        '.showModal(); var i=document.querySelector('
-        '\'.pagefind-ui__search-input\'); if(i)i.focus();" '
-        'style="padding: 0.5rem 1.5rem; font-size: 1rem; cursor: pointer; '
-        'border: 1px solid var(--border); border-radius: 6px; '
-        'background: var(--bg-secondary, #f5f5f5); '
-        'color: var(--text-primary, #333);">'
-        'Search documentation</button>'
+        '<button type="button" class="search-bar-trigger" '
+        'aria-label="Search documentation">'
+        '<span class="search-bar-text">Search documentation</span>'
+        '</button>'
     )
 
     # Popular pages section (first 5 nav items, flattened)
@@ -1975,7 +1975,7 @@ def _link_definition_sites(body_html, site_terms, current_page, glossary_url):
             attrs, inner = match.groups()
             if "term-def-link" in inner:
                 return match.group(0)
-            title = f' title="{tooltip}"' if tooltip else ""
+            title = f' data-tooltip="{tooltip}"' if tooltip else ""
             return (
                 f'<dfn id="{anchor}"{title}{attrs}>'
                 f'<a class="term-def-link" href="{href}">{inner}</a>'
@@ -2080,7 +2080,7 @@ def _apply_cross_page_terms(body_html, site_terms, current_page, prefix,
                 escaped_title = _escape_html(f"Defined in: {page_title}")
                 link = (
                     f'<a href="{href}" class="term-link" '
-                    f'title="{escaped_title}">{original_text}</a>'
+                    f'data-tooltip="{escaped_title}">{original_text}</a>'
                 )
                 # Replace only the first occurrence
                 new_segment = segment[:match.start()] + link + segment[match.end():]
@@ -3484,6 +3484,17 @@ def pagefind_init_script(asset_prefix):
         '  new PagefindUI({ element: "#pagefind-container", showSubResults: true, '
         'showImages: false });\n'
         '  var dialog = document.getElementById("search-dialog");\n'
+        '  function openSearch() {\n'
+        '    if (dialog.open) return;\n'
+        '    dialog.showModal();\n'
+        '    var input = dialog.querySelector(".pagefind-ui__search-input");\n'
+        '    if (input) input.focus();\n'
+        '  }\n'
+        '  var triggers = document.querySelectorAll('
+        '".search-trigger, .search-bar-trigger");\n'
+        '  for (var i = 0; i < triggers.length; i++) {\n'
+        '    triggers[i].addEventListener("click", openSearch);\n'
+        '  }\n'
         '  document.addEventListener("keydown", function(e) {\n'
         '    if ((e.metaKey || e.ctrlKey) && e.key === "k") {\n'
         '      e.preventDefault();\n'
@@ -3572,9 +3583,12 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
     # Atom feed link tag
     feed_tag = ""
     if feed_url:
+        # No ``title=``: a single alternate feed needs no disambiguating
+        # label, and the name a reader displays comes from the Atom
+        # document's own <title> rather than from this element.
         feed_tag = (
             f'\n<link rel="alternate" type="application/atom+xml" '
-            f'title="{_escape_html(project_name)} Feed" href="{feed_url}">'
+            f'href="{feed_url}">'
         )
     # Meta description tag (Feature 34)
     # Fall back to the auto-extracted first sentence when frontmatter
@@ -3965,7 +3979,7 @@ def _wrap_page(body_html, nav_html, title, project_name, version,
     effective_search = search if search else "icon"
     if effective_search == "icon":
         search_trigger_html = (
-            '<button class="search-trigger" aria-label="Search documentation" title="Search (Cmd+K)">\n'
+            '<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">\n'
             '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\n'
             '</button>\n'
         )

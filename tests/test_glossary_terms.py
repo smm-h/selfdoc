@@ -230,7 +230,7 @@ def test_definition_site_links_to_its_glossary_entry(project_dir):
     )
     assert match, f"definition site is not a link: {content[:0]}"
     assert match.group(1).endswith("glossary/#term-api"), match.group(1)
-    assert 'title="Application Programming Interface."' in content
+    assert 'data-tooltip="Application Programming Interface."' in content
 
 
 def test_glossary_page_entry_id_matches_the_reverse_link(project_dir):
