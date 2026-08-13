@@ -92,6 +92,10 @@ SELFBLOG_EFFECTS = {
     "assembly.generate-shared": "mutating",
     # rewrites the assembly checkout's tree and pushes the deploy commit
     "assembly.integrate": "mutating",
+    # builds every named local checkout and writes a whole preview site tree
+    # into the output directory, then serves it on loopback. Nothing leaves
+    # the machine, but the tree on disk is a real mutation of a real path
+    "assembly.preview": "mutating",
     # reads a built assembly checkout and reports what is wrong with it.
     # The outbound-link results it produces are handed back to the caller
     # rather than written: the deploy persists them, this command does not.

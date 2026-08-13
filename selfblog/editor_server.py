@@ -39,36 +39,23 @@ half-working.
 from __future__ import annotations
 
 import json
-import mimetypes
 import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
+from selfblog.serving import HOST, content_type, resolve_under
 from selfdoc_core import effects
 from selfdoc_core.utils import atomic_write
 
-#: The editor writes working trees and answers with no authentication of any
-#: kind, so the bind address is not configurable: loopback, always.
-HOST = "127.0.0.1"
+#: ``HOST``, ``content_type`` and ``resolve_under`` are imported rather than
+#: restated: the preview server answers the same two questions about the same
+#: kind of tree, and one of them answering differently would be a bug nobody
+#: would see until a browser did.
 
 #: How often an idle event stream emits a comment, so a client that went away
 #: is noticed rather than held forever.
 _HEARTBEAT_SECONDS = 15
-
-_CONTENT_TYPES = {
-    ".html": "text/html; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".mjs": "text/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".svg": "image/svg+xml",
-    ".map": "application/json; charset=utf-8",
-    ".woff2": "font/woff2",
-    ".woff": "font/woff",
-    ".xml": "application/xml; charset=utf-8",
-    ".txt": "text/plain; charset=utf-8",
-}
 
 
 class EditorError(RuntimeError):
@@ -332,23 +319,6 @@ class EditorState:
 # -- HTTP ---------------------------------------------------------------------
 
 
-def _content_type(path):
-    ext = os.path.splitext(path)[1].lower()
-    if ext in _CONTENT_TYPES:
-        return _CONTENT_TYPES[ext]
-    guessed, _ = mimetypes.guess_type(path)
-    return guessed or "application/octet-stream"
-
-
-def _resolve_under(root, rel):
-    """Join *rel* under *root*, refusing anything that escapes it."""
-    root = os.path.realpath(root)
-    full = os.path.realpath(os.path.join(root, *rel.split("/")))
-    if full != root and not full.startswith(root + os.sep):
-        raise NotFound(f"{rel} is outside the served directory")
-    return full
-
-
 class EditorHandler(BaseHTTPRequestHandler):
     """One request.  ``state`` is set on the subclass by :func:`make_server`."""
 
@@ -392,11 +362,13 @@ class EditorHandler(BaseHTTPRequestHandler):
             raise NotFound(str(exc)) from None
 
     def _serve_file(self, root, rel):
-        full = _resolve_under(root, rel)
+        full = resolve_under(root, rel)
+        if full is None:
+            raise NotFound(f"{rel} is outside the served directory")
         if not os.path.isfile(full):
             raise NotFound(f"no such file: {rel}")
         with open(full, "rb") as handle:
-            self._send(200, handle.read(), _content_type(full))
+            self._send(200, handle.read(), content_type(full))
 
     # -- dispatch ------------------------------------------------------------
 

@@ -1231,6 +1231,87 @@ def _cmd_assembly_verify(ctx, assembly_dir=".", canonical_base=""):
     return 0
 
 
+@assembly_group.command("preview", help="Assemble every named local checkout into a preview tree and serve it on loopback. Builds each project with the toolchain running this command, grafts the output exactly as the deploy does -- the home project at the site root, everybody else under their slug -- writes the roster, membership record and manifests the assembly keeps, generates the shared cross-project files and the site chrome, rebuilds the search index, runs the real pre-deploy verification and prints its report, then serves the result with a working 404. Nothing leaves the machine and nothing is published: this is the look-before-you-ship step.", effect="mutating",
+    # Not consequential: everything it writes is a local build tree at a
+    # path the caller named, and nothing reaches the world.
+    #
+    # It cannot preview itself, and says so at parse time. The command's
+    # whole output is a tree on disk plus a server over it; recording the
+    # writes instead of performing them would leave nothing to look at, and
+    # every step after the first reads what the step before it wrote.
+    dry_run_supported=False,
+    dry_run_unsupported_reason=(
+        "'assembly preview' exists to produce output you look at: a built "
+        "site tree and a server over it. A recorded run would write no tree, "
+        "and every step after the build reads what the step before it wrote "
+        "-- the graft reads the build, the shared generator reads the grafted "
+        "manifests, the index and the verification read the pages. Run it "
+        "without --dry-run; it publishes nothing."
+    ),
+)
+@strictcli.flag("repo", type=str, repeatable=True, unique=True, help="Path to a project checkout to include, served under the slug its selfdoc.json declares. Repeat once per project. The home project is named by --home instead and must not be repeated here.")
+@strictcli.flag("home", type=str, help="Path to the home project's checkout: the one project served at the site root rather than under a slug. Required -- a site needs a front page, and there is no default.")
+@strictcli.flag("out", type=str, help="Directory the preview tree is written to. Required. Refused when it sits inside a git working tree at a path git does not ignore, because a generated site dropped into a checkout is untracked noise in every session sharing it.")
+@strictcli.flag("port", type=int, help="Port to bind on 127.0.0.1. Required and has no default: which port a long-running local server occupies is a decision the caller states rather than inherits.")
+@strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.")
+@strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Empty when no such subdomain exists.")
+@effects.handler
+def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
+                          canonical_base="", legacy_blog_host=""):
+    """Build every named checkout into a preview tree and serve it."""
+    from selfblog.preview import (
+        HOST,
+        preview_assembly,
+        render_report,
+        serve_preview,
+    )
+
+    if not home:
+        print("Error: --home is required.", file=sys.stderr)
+        sys.exit(1)
+    if not out:
+        print("Error: --out is required.", file=sys.stderr)
+        sys.exit(1)
+    if not port:
+        print("Error: --port is required.", file=sys.stderr)
+        sys.exit(1)
+    if not canonical_base:
+        print(
+            "Error: --canonical-base is required (the assembly's "
+            "topology.docs_base, e.g. 'https://smmh.dev').",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        summary = preview_assembly(
+            home_dir=home,
+            project_dirs=list(repo),
+            out_dir=out,
+            canonical_base=canonical_base,
+            legacy_blog_host=legacy_blog_host,
+        )
+    except (ValueError, RuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    # The report first, and loudly. A preview serves a tree that failed
+    # verification on purpose -- that is the state worth looking at -- so
+    # the only thing standing between a broken tree and a wrong conclusion
+    # is that the reader was told.
+    print(render_report(summary["report"], out_dir=summary["out_dir"]))
+    print(
+        f"Preview of {len(summary['slugs'])} project(s) "
+        f"(home: {summary['home']}) at {summary['site_dir']}"
+    )
+
+    def _ready(bound_port):
+        print(f"Preview: http://{HOST}:{bound_port}/  (Ctrl-C to stop)")
+        sys.stdout.flush()
+
+    return serve_preview(summary["site_dir"], port, on_ready=_ready)
+
+
 @assembly_group.command("sync-workflow", help="Regenerate the assembly repository's deploy workflow from this project's configuration and push it. The deployed workflow is a generated artifact like any other: without this it stays frozen at whatever the template said when 'assembly init' ran. Pushes only when the content actually differs.", effect="mutating",
     # Deliberately NOT consequential: it rewrites one tool-owned generated
     # file to match the generator, and rerunning converges. See the note on
