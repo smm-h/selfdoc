@@ -1523,12 +1523,13 @@ blockquote p:last-child {
     border-radius: 0;
     padding: 1.25rem;
     margin: 1rem 0 1.5rem;
-    background: var(--sidebar-bg);
-    transition: border-color var(--dur-base) ease;
+    background: var(--surface);
+    transition: border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
 }
 
 .api-entry:hover {
-    border-color: var(--link);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px var(--accent-a12);
 }
 
 .api-entry h3,
