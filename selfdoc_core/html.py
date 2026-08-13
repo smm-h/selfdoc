@@ -3572,9 +3572,19 @@ def _build_page_meta(body_html, nav_html, title, prefix, repo, source_path,
             '</div>'
         )
 
-    # Format date_modified for display (e.g. "May 1, 2026")
+    # Format date_modified for display (e.g. "May 1, 2026").
+    #
+    # A page that already states its own date states it once: a CV whose
+    # document declares `identity.updated` closes with a `.cv-updated`
+    # line, and the footer's generic "Last updated" beside it is the same
+    # fact twice, in two formats, from two sources that are free to
+    # disagree.  The document's own statement is the authority; the
+    # footer's stands down.  Read off the body rather than off a page-type
+    # flag because the CV's closing line is itself conditional -- a CV
+    # that declares no `updated` has nothing to defer to, and keeps the
+    # footer's date.
     date_display_html = ""
-    if date_modified:
+    if date_modified and 'class="cv-updated"' not in body_html:
         try:
             dt = datetime.strptime(date_modified, "%Y-%m-%d")
             formatted_date = dt.strftime("%B %-d, %Y")

@@ -575,7 +575,13 @@ class TestDirective:
 
 
 class TestCvPageBuild:
-    def _build(self, tmp_path):
+    def _build(self, tmp_path, *, page_date="", declare_updated=True):
+        """Build a one-CV site and return the CV page.
+
+        *page_date* puts a ``date`` in the page's frontmatter, which is
+        what gives the footer a "Last updated" of its own; *declare_updated*
+        keeps or drops the CV document's own closing date.
+        """
         from selfdoc.build import build
 
         project = tmp_path / "site"
@@ -583,14 +589,21 @@ class TestCvPageBuild:
         docs.mkdir(parents=True)
         (project / "src").mkdir()
         (project / "src" / "__init__.py").write_text('"""x."""\n')
-        (docs / "cv.toml").write_text(DOCUMENT, encoding="utf-8")
+        document = DOCUMENT
+        if not declare_updated:
+            document = "\n".join(
+                line for line in DOCUMENT.splitlines()
+                if not line.startswith("updated")
+            ) + "\n"
+        (docs / "cv.toml").write_text(document, encoding="utf-8")
         (docs / "index.md").write_text("# Home\n\nWelcome.\n", encoding="utf-8")
         (docs / "cv.md").write_text(
             "---\n"
             "title: CV\n"
             f"type: {CV_PAGE_TYPE}\n"
             "description: The curriculum vitae of Ada Lovelace, analyst.\n"
-            "---\n"
+            + (f"date: {page_date}\n" if page_date else "")
+            + "---\n"
             "\n"
             ':-: cv path="docs/cv.toml"\n',
             encoding="utf-8",
@@ -633,6 +646,36 @@ class TestCvPageBuild:
                         "Education", "Work experience", "Languages",
                         "Contact information"):
             assert heading in page
+
+    def test_the_page_states_its_date_once(self, tmp_path):
+        """A CV that declares ``updated`` says so once, not twice.
+
+        The CV's own closing line and the page footer's "Last updated" are
+        two elements saying the same thing in two formats, from two
+        sources -- ``identity.updated`` and the frontmatter ``date`` -- so
+        a CV that declared both painted them both, at different dates
+        whenever they disagreed. The document's own statement wins; the
+        footer's generic one stands down.
+        """
+        page = self._build(tmp_path, page_date="2026-02-01")
+        assert page.count("Last updated") == 1, (
+            "a CV page with both a declared 'updated' and a frontmatter "
+            "date painted more than one 'Last updated' element"
+        )
+        assert "October 10th, 1852" in page, (
+            "the surviving date must be the CV's own, not the frontmatter's"
+        )
+
+    def test_a_cv_without_a_declared_date_keeps_the_footer_one(self, tmp_path):
+        """Standing down is conditional on the CV having said it itself."""
+        page = self._build(
+            tmp_path, page_date="2026-02-01", declare_updated=False,
+        )
+        assert page.count("Last updated") == 1
+        assert "February 1, 2026" in page, (
+            "with no declared 'updated', the footer's date is the only one "
+            "the page has and must survive"
+        )
 
     def test_the_page_carries_every_entry(self, tmp_path):
         page = self._build(tmp_path)
