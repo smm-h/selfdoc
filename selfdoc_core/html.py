@@ -685,7 +685,22 @@ def generate_html(markdown_files, project_name=None, version=None,
             if features_html:
                 landing_prefix += "\n" + features_html
             body_html = landing_prefix + "\n" + body_html
-            # Suppress page summary on the landing page (hero replaces it)
+
+        # Who prints the frontmatter description above the H1.
+        #
+        # The block is presentation of the same string the ``description``
+        # meta tag carries.  On a reference page that is a useful summary of
+        # what the page covers, and it stays.  On the home page and on a
+        # post it is the page's own opening line said a second time inside
+        # one viewport, because both of those open with a lead paragraph an
+        # author wrote -- the home page's site description and the post's
+        # own first line.
+        #
+        # The rule reads the page's identity, never its prose: a home page
+        # is ``index.md``, a post declares ``type: post``.  Comparing the
+        # description against the first paragraph would make the layout
+        # change with the wording, which is a rendering nobody can predict.
+        if html_path == "index.html" or page_type == "post":
             frontmatter_description = None
 
         # Extract author-declared <dfn> terms from the processed body HTML

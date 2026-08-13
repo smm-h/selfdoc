@@ -103,8 +103,26 @@ Your content here...
 ```
 
 - `title` -- used in the sidebar navigation and HTML `<title>`
-- `description` -- used in meta tags for SEO
+- `description` -- used in meta tags for SEO, and printed above the H1 on most pages
 - `order` -- controls sidebar sort order (lower numbers appear first)
+
+#### Where the description is printed on the page
+
+`description` always goes into the `<meta name="description">` tag. Whether it
+is *also* printed as a summary block above the H1 is decided by what the page
+is, never by what it says:
+
+| Page | Summary block above the H1 |
+|---|---|
+| `index.md` (the home page) | No -- the home page opens with its own lead paragraph |
+| A page declaring `type: post` | No -- a post opens with its own lead paragraph |
+| Every other page | Yes |
+
+Printing it on a home page or a post says the same sentence twice inside one
+viewport. Everywhere else the block is a useful summary of what the page
+covers, so it stays. Nothing compares the description against the first
+paragraph: a layout that changed with the wording would be a layout nobody
+could predict.
 
 Files are organized into a flat structure. The filename (minus `.md`) becomes the URL slug: `docs/api-reference.md` becomes `/api-reference/`.
 

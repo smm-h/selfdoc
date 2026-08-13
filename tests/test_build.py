@@ -872,15 +872,20 @@ def test_page_summary_shown_with_description(project_dir):
 
 
 def test_no_page_summary_without_frontmatter(project_dir):
-    """A page without frontmatter description gets no .page-summary div (no auto-extraction)."""
+    """A page without frontmatter description gets no .page-summary div (no auto-extraction).
+
+    Stated on an ordinary page, not on ``index.md``: the home page has no
+    summary block at all (see ``test_page_summary_rule.py``), so asserting
+    the absence there would pass without saying anything about extraction.
+    """
     docs_dir = os.path.join(project_dir, "docs")
-    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
-        f.write("# Test Project\n\nThis is a substantial first paragraph with enough text.\n")
+    with open(os.path.join(docs_dir, "plain.md"), "w", encoding="utf-8") as f:
+        f.write("# Plain Page\n\nThis is a substantial first paragraph with enough text.\n")
 
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "plain", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' not in content
@@ -903,15 +908,19 @@ def test_page_summary_text_matches_description(project_dir):
 
 
 def test_page_summary_frontmatter_takes_priority(project_dir):
-    """A page with frontmatter description uses that for summary, not auto-generated."""
+    """A page with frontmatter description uses that for summary, not auto-generated.
+
+    On an ordinary page: the home page drops the block entirely, so it
+    cannot say which of two candidate strings the block would have shown.
+    """
     docs_dir = os.path.join(project_dir, "docs")
-    with open(os.path.join(docs_dir, "index.md"), "w", encoding="utf-8") as f:
+    with open(os.path.join(docs_dir, "priority.md"), "w", encoding="utf-8") as f:
         f.write("---\ndescription: Frontmatter desc\n---\n# Test\n\nFirst paragraph text.\n")
 
     build(str(project_dir))
 
     output_dir = os.path.join(project_dir, "docs", "_build")
-    with open(os.path.join(output_dir, DEFAULT_PREFIX, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, DEFAULT_PREFIX, "priority", "index.html"), "r", encoding="utf-8") as f:
         content = f.read()
 
     assert '<div class="page-summary">' in content
