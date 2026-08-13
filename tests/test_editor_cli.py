@@ -37,21 +37,35 @@ class TestRegistration:
         assert serve.effect == "mutating"
         assert serve.consequential is False
 
-    def test_serve_refuses_a_preview_with_a_reason(self, tmp_path):
-        """An interactive server has no set of effects to record at launch.
+    def test_serve_declares_that_it_cannot_be_previewed(self):
+        """An interactive server has no set of effects to record at launch."""
+        serve = app._groups["editor"].commands["serve"]
+        assert serve.dry_run_supported is False
+        assert serve.dry_run_unsupported_reason
+        assert "at the keyboard" in serve.dry_run_unsupported_reason
 
-        The refusal belongs at parse time (``dry_run_supported=False``), but
-        strictcli exposes that on ``App.command`` only, not on
-        ``Group.command``, at this project's floor.  The handler refuses one
-        step later instead -- what must never happen is a preview that binds
-        a port and then performs real saves.
+    def test_serve_refuses_a_preview_at_parse_time(self, tmp_path):
+        """The refusal comes before anything binds a port or reads a registry.
+
+        What must never happen is a preview that binds a port and then
+        performs real saves: they run on request threads that carry none of
+        the dispatch context, so a recorded run would execute them for real.
         """
         path = _registry(tmp_path, "")
         result = app.test([
             "editor", "serve", "--port", "0", "--registry", path, "--dry-run",
         ])
-        assert result.exit_code == 1
-        assert "cannot be previewed" in result.stderr
+        assert result.exit_code != 0
+        assert "at the keyboard" in (result.stderr + result.stdout)
+
+    def test_serve_refuses_a_preview_before_its_required_flags(self):
+        """Parse-time means it does not need a valid invocation to refuse."""
+        result = app.test(["editor", "serve", "--dry-run"])
+        assert result.exit_code != 0
+        assert "at the keyboard" in (result.stderr + result.stdout)
+
+    def test_serve_help_survives_dry_run_on_the_same_line(self):
+        assert app.test(["editor", "serve", "--dry-run", "--help"]).exit_code == 0
 
     def test_the_port_flag_has_no_default(self):
         """No default means strictcli requires it -- the port is stated."""

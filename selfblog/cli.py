@@ -1117,14 +1117,20 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
     # tag. A prompt here would hang the deploy forever. Same reasoning as
     # `assembly push`; strictcli's `consequential-grant-agreement` check warns
     # about the pairing by design and this comment is the answer to it.
-    # This command cannot honestly preview: every later step reads what an
-    # earlier step wrote -- the shared generator reads the manifests the graft
-    # just copied, the index reads the pages it just wrote, the commit reads
-    # the tree all of them produced. It should therefore declare
-    # dry_run_supported=False with that reason, but strictcli exposes those
-    # two parameters on App.command only, not on Group.command (todo filed
-    # against strictcli). Until then the run stops at the first recorded
-    # effect, which truncates the preview rather than lying about it.
+    #
+    # It cannot honestly preview itself, and says so at parse time: every
+    # step after the first reads what the step before it wrote, so a
+    # recorded run has nothing to hand the steps that follow.
+    dry_run_supported=False,
+    dry_run_unsupported_reason=(
+        "'assembly integrate' cannot be previewed: every step after the "
+        "first reads what the step before it wrote -- the shared generator "
+        "reads the manifests the graft just copied, the search index reads "
+        "the pages it just wrote, and the commit reads the tree all of them "
+        "produced. A recorded run writes none of that, so the preview would "
+        "stop at the first effect and misrepresent everything after it. To "
+        "see what an integration would produce, use 'assembly preview'."
+    ),
     grants=[
         strictcli.Grant(
             "assembly-commit",
@@ -1456,17 +1462,19 @@ def _cmd_editor_list_repos(ctx, registry=""):
     # are the ones the author asks for by pressing save. A confirmation prompt
     # at launch would be answering for edits that have not been made yet.
     #
-    # It also cannot honestly preview, and it should say so at parse time with
-    # dry_run_supported=False plus a reason -- but strictcli exposes those two
-    # parameters on App.command only, not on Group.command, in the version this
-    # project's floor allows (a todo is already filed against strictcli for
-    # this; `assembly integrate` carries the same note). Until the floor moves,
-    # the refusal below does the same job one step later: the handler's first
-    # act is to refuse a preview with the reason, so a --dry-run run never
-    # reaches a bind and never lies about what the editor would write. It has
-    # to be a refusal rather than a recorded run, because the saves happen on
-    # request threads that carry none of the dispatch context -- they would
-    # execute for real under a preview that claimed to record them.
+    # It also cannot honestly preview, and says so at parse time. A refusal
+    # is the only correct answer rather than a recorded run, because the
+    # saves happen on request threads that carry none of the dispatch
+    # context -- they would execute for real under a preview that claimed
+    # to be recording them.
+    dry_run_supported=False,
+    dry_run_unsupported_reason=(
+        "'editor serve' is an interactive server: its writes are the saves "
+        "you make at the keyboard while it runs, so at launch there is "
+        "nothing to record. Worse, those saves happen on request threads "
+        "that carry no preview context, so they would execute for real. Run "
+        "it without --dry-run, and preview a save by not pressing save."
+    ),
 )
 @strictcli.flag("port", type=int, help="Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits.")
 @strictcli.flag("registry", type=str, default="", help="Path to the editor registry TOML. Defaults to the machine-local registry at ~/Projects/ark/selfblog-registry.toml.")
@@ -1476,16 +1484,6 @@ def _cmd_editor_serve(ctx, port=0, registry="", tinymoon_assets=""):
     """Serve the authoring app on loopback."""
     from selfblog.editor_assets import AssetsError, resolve_tinymoon_assets
     from selfblog.editor_server import HOST, EditorState, serve
-
-    if effects.previewing():
-        print(
-            "Error: 'editor serve' cannot be previewed. It is an interactive "
-            "server: its writes are the saves you make at the keyboard while "
-            "it runs, so at launch there is nothing to record. Run it without "
-            "--dry-run, and preview a save by not pressing save.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     parsed = _load_registry_or_fail(registry)
 

@@ -801,3 +801,54 @@ def test_the_deploy_keeps_the_outbound_results_it_produced(
     stored = json.loads((assembly_tree / OUTBOUND_CACHE_PATH).read_text())
     assert "https://live.example.net/" in stored["entries"]
     assert any(OUTBOUND_CACHE_PATH in call for call in runner.of("git", "add"))
+
+
+# -- the command surface -------------------------------------------------------
+
+
+class TestTheCommand:
+    """What `selfblog assembly integrate` declares at registration.
+
+    The declaration is the contract.  Integrate cannot honestly preview
+    itself -- every step after the first reads what the step before it
+    wrote -- so it refuses `--dry-run` at parse time with a stated reason
+    rather than rendering a preview that stops at the first effect and
+    misrepresents the rest.
+    """
+
+    def _command(self):
+        import selfblog.cli
+
+        return selfblog.cli.app._groups["assembly"].commands["integrate"]
+
+    def test_it_is_mutating_and_not_consequential(self):
+        cmd = self._command()
+        assert cmd.effect == "mutating"
+        assert cmd.consequential is False
+
+    def test_it_refuses_dry_run_with_a_reason(self):
+        cmd = self._command()
+        assert cmd.dry_run_supported is False
+        assert cmd.dry_run_unsupported_reason
+        assert "reads what" in cmd.dry_run_unsupported_reason
+
+    def test_the_refusal_happens_at_parse_time(self):
+        import selfblog.cli
+
+        result = selfblog.cli.app.test(["assembly", "integrate", "--dry-run"])
+        assert result.exit_code != 0
+        assert "reads what" in (result.stderr + result.stdout)
+
+    def test_help_still_works(self):
+        import selfblog.cli
+
+        assert selfblog.cli.app.test(
+            ["assembly", "integrate", "--help"]
+        ).exit_code == 0
+
+    def test_help_survives_dry_run_on_the_same_line(self):
+        import selfblog.cli
+
+        assert selfblog.cli.app.test(
+            ["assembly", "integrate", "--dry-run", "--help"]
+        ).exit_code == 0
