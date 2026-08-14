@@ -317,8 +317,8 @@ def test_consequential_command_refuses_on_non_interactive_stdin(tmp_path):
 
     assert result.returncode == 1
     assert (
-        "error: stdin is not interactive; pass --approve-consequential to confirm"
-        in result.stderr
+        "error: stdin is not interactive; a consequential command must be "
+        "confirmed at a terminal" in result.stderr
     )
 
 

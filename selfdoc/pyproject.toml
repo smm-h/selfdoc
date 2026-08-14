@@ -19,10 +19,12 @@ keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "sel
 # crossing a shared site's mount named addresses the site does not serve; a
 # consumer that resolved an older core against this selfdoc would build a
 # documentation tree with dead links in it.
-# strictcli>=0.36.0 because cli.py registers a command with `consequential=True`,
-# which strictcli only accepts from 0.36.0 (before that, confirmation keyed on
-# `mutating` and the kwarg did not exist).
-dependencies = ["strictcli>=0.36.0", "selfdoc-core>=0.9.2"]
+# strictcli>=0.40.0 because cli.py is written against machine mode: `check`,
+# `spell-corpus` and `quality` declare a `payload_schema=` and answer through
+# `ctx.payload()` / `ctx.json`, none of which exist before 0.40.0 (0.36.0 is
+# only where `consequential=True` arrived, and an older strictcli rejects the
+# schema keyword at registration).
+dependencies = ["strictcli>=0.40.0", "selfdoc-core>=0.9.2"]
 
 [project.optional-dependencies]
 perf = ["selfdoc-core[perf]>=0.9.2"]

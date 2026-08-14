@@ -248,9 +248,13 @@ class TestTheFrameworkRefusesAnUnconsentedCall:
     def test_a_call_without_consent_is_refused(self, entry, recorder):
         with pytest.raises(PublishRefused) as exc:
             run_publish(entry, False)
-        # strictcli's own wording, not a message written here.
+        # strictcli's own wording, not a message written here.  The framework
+        # names the command and says the call has to carry confirmation; the
+        # exact phrasing is strictcli's to change, so only those two facts are
+        # asserted.
         assert PUBLISH_COMMAND in str(exc.value)
-        assert "approve_consequential" in str(exc.value)
+        assert "consequential" in str(exc.value)
+        assert "confirmation" in str(exc.value)
 
     def test_nothing_ran_when_the_call_was_refused(self, entry, recorder):
         with pytest.raises(PublishRefused):
@@ -409,7 +413,10 @@ class TestThePublishEndpoint:
             live, "POST", "/api/repos/proj/publish", json.dumps({}),
         )
         assert status == 403
-        assert "approve_consequential" in body["error"]
+        # strictcli's refusal, forwarded verbatim: it names the command and
+        # says the call has to carry confirmation.
+        assert "consequential" in body["error"]
+        assert "confirmation" in body["error"]
         assert recorder.pushes == []
 
     def test_a_post_with_consent_publishes(self, live, recorder):
