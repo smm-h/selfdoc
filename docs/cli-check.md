@@ -15,8 +15,8 @@ Check documentation coverage, directive resolution, and lint rules
 
 ## Flags
 
-| Name | Short | Type | Default | Env | Description |
+| Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--ignore` |  | str |  |  | Comma-separated SEO codes to suppress (e.g., SEO007,SEO008) |
-| `--auto-commit` |  | bool | True |  | Automatically commit updated content hash tracking files to git after checking |
-| `--version-override` |  | str |  |  | Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump |
+| `--ignore` |  | str | optional |  | Comma-separated SEO codes to suppress (e.g., SEO007,SEO008) |
+| `--auto-commit`, `--no-auto-commit` |  | bool | optional |  | Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted |
+| `--version-override` |  | str | optional |  | Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump |

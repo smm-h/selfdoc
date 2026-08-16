@@ -15,7 +15,7 @@ Serve the documentation site locally with live reload
 
 ## Flags
 
-| Name | Short | Type | Default | Env | Description |
+| Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--port` | `-p` | int | 8000 |  | HTTP port number to serve on (default: 8000, e.g., 3000) |
-| `--drafts` |  | bool |  |  | Rebuild the site with draft posts included before starting the local server |
+| `--port` | `-p` | int | optional |  | HTTP port number to serve on (e.g., 3000). Omitted, the server binds port 8000 |
+| `--drafts`, `--no-drafts` |  | bool | optional |  | Rebuild the site with draft posts included before starting the local server. Omitted, drafts are left out; pass --drafts to include them |

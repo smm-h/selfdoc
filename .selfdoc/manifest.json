@@ -1313,6 +1313,11 @@
           "anchor": "the-docs-directory"
         },
         {
+          "level": 4,
+          "text": "Where the description is printed on the page",
+          "anchor": "where-the-description-is-printed-on-the-page"
+        },
+        {
           "level": 2,
           "text": "Writing Your First Directive",
           "anchor": "writing-your-first-directive"
@@ -2271,6 +2276,11 @@
         },
         {
           "level": 3,
+          "text": "`_absent_means`",
+          "anchor": "_absent_means"
+        },
+        {
+          "level": 3,
           "text": "`_load_config_or_fail`",
           "anchor": "_load_config_or_fail"
         },
@@ -3140,6 +3150,41 @@
         },
         {
           "level": 3,
+          "text": "`_type_word`",
+          "anchor": "_type_word"
+        },
+        {
+          "level": 3,
+          "text": "`_presence_cell`",
+          "anchor": "_presence_cell"
+        },
+        {
+          "level": 3,
+          "text": "`_choices_note`",
+          "anchor": "_choices_note"
+        },
+        {
+          "level": 3,
+          "text": "`_spelled_name`",
+          "anchor": "_spelled_name"
+        },
+        {
+          "level": 3,
+          "text": "`_describe`",
+          "anchor": "_describe"
+        },
+        {
+          "level": 3,
+          "text": "`_flag_rows`",
+          "anchor": "_flag_rows"
+        },
+        {
+          "level": 3,
+          "text": "`_selector_rows`",
+          "anchor": "_selector_rows"
+        },
+        {
+          "level": 3,
           "text": "`_flag_table`",
           "anchor": "_flag_table"
         },
@@ -3147,6 +3192,46 @@
           "level": 3,
           "text": "`_arg_table`",
           "anchor": "_arg_table"
+        },
+        {
+          "level": 3,
+          "text": "`iter_flag_tokens`",
+          "anchor": "iter_flag_tokens"
+        },
+        {
+          "level": 3,
+          "text": "`iter_flag_help`",
+          "anchor": "iter_flag_help"
+        },
+        {
+          "level": 3,
+          "text": "`_member_text`",
+          "anchor": "_member_text"
+        },
+        {
+          "level": 3,
+          "text": "`_constraint_sentence`",
+          "anchor": "_constraint_sentence"
+        },
+        {
+          "level": 3,
+          "text": "`_constraints_lines`",
+          "anchor": "_constraints_lines"
+        },
+        {
+          "level": 3,
+          "text": "`_flag_sets_lines`",
+          "anchor": "_flag_sets_lines"
+        },
+        {
+          "level": 3,
+          "text": "`_update_lines`",
+          "anchor": "_update_lines"
+        },
+        {
+          "level": 3,
+          "text": "`_config_lines`",
+          "anchor": "_config_lines"
         },
         {
           "level": 3,
@@ -3510,6 +3595,6 @@
       ]
     }
   ],
-  "last_gen": "2026-08-13T18:54:50.100496+00:00",
+  "last_gen": "2026-08-16T11:31:27.593544+00:00",
   "theme": "minimal"
 }

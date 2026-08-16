@@ -15,7 +15,7 @@ Auto-generate documentation pages from project structure
 
 ## Flags
 
-| Name | Short | Type | Default | Env | Description |
+| Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--auto-commit` |  | bool | True |  | Automatically commit generated documentation pages and root files to git |
-| `--version-override` |  | str |  |  | Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump lands) |
+| `--auto-commit`, `--no-auto-commit` |  | bool | optional |  | Automatically commit generated documentation pages and root files to git. Omitted, it commits; pass --no-auto-commit to leave them uncommitted |
+| `--version-override` |  | str | optional |  | Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed) |

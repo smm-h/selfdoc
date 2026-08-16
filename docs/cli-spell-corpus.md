@@ -16,7 +16,7 @@ Spell-check the docs of every selfdoc project beside this one, using the same en
 
 ## Flags
 
-| Name | Short | Type | Default | Env | Description |
+| Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--root` |  | str |  |  | Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings |
-| `--detail` |  | bool | True |  | List each project's unknown words with a first location and any suggestion, after the summary table |
+| `--root` |  | str | optional |  | Directory whose immediate subdirectories are searched for selfdoc.json. Omitted, the parent of the current directory is searched, i.e. this project's siblings |
+| `--detail`, `--no-detail` |  | bool | default: `true` |  | List each project's unknown words with a first location and any suggestion, after the summary table |

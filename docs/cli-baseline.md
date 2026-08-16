@@ -20,12 +20,12 @@ Accept a reviewed staleness or drift dead-end by advancing a page's stored conte
 
 ### Flags
 
-| Name | Short | Type | Default | Env | Description |
+| Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--auto-commit` |  | bool | True |  | Automatically commit the updated content hash tracking file to git after accepting the named pages |
+| `--auto-commit`, `--no-auto-commit` |  | bool | optional |  | Automatically commit the updated content hash tracking file to git after accepting the named pages. Omitted, it commits; pass --no-auto-commit to leave it uncommitted |
 
 ### Arguments
 
-| Name | Required | Description |
-| --- | --- | --- |
-| `page` | yes | Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action. |
+| Name | Type | Presence | Description |
+| --- | --- | --- | --- |
+| `page` | list[str] (variadic) | required | Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action. |

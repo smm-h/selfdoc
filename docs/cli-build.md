@@ -15,11 +15,11 @@ Build the documentation site from templates and source code
 
 ## Flags
 
-| Name | Short | Type | Default | Env | Description |
+| Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--auto-commit` |  | bool | True |  | Automatically commit updated content hash tracking files to git after the build |
-| `--locale` |  | str |  |  | Build only the specified locale instead of all (e.g., 'en') |
-| `--version` |  | str |  |  | Build only the specified version instead of all (e.g., '1.0.0') |
-| `--drafts` |  | bool |  |  | Include posts marked as draft in the build output alongside published posts |
-| `--target` |  | str |  |  | Build target: empty for full build ('posts' builds moved to selfblog) |
-| `--theme` |  | str |  |  | Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it |
+| `--auto-commit`, `--no-auto-commit` |  | bool | optional |  | Automatically commit updated content hash tracking files to git after the build. Omitted, it commits; pass --no-auto-commit to leave them uncommitted |
+| `--locale` |  | str | optional |  | Build only the specified locale instead of all (e.g., 'en') |
+| `--version` |  | str | optional |  | Build only the specified version instead of all (e.g., '1.0.0') |
+| `--drafts`, `--no-drafts` |  | bool | optional |  | Include posts marked as draft in the build output alongside published posts. Omitted, drafts are left out; pass --drafts to include them |
+| `--target` |  | str | optional |  | Build target. Omitted, the whole site is built; the only other value 'posts' now refuses and names selfblog, where posts-only builds moved |
+| `--theme` |  | str | optional |  | Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Omitted, the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it |

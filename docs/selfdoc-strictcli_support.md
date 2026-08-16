@@ -1,6 +1,6 @@
 ---
 title: selfdoc.strictcli_support
-description: "Detect strictcli usage, extract CLI structure via AST, generate Markdown CLI reference pages, and preserve handwritten frontmatter descriptions."
+description: "Read a strictcli app's dumped schema at version 2, render its commands, flags, selectors, constraints and updates as Markdown reference pages, and preserve handwritten frontmatter descriptions."
 generated: true
 nav_group: "API Reference"
 nav_order: 27
