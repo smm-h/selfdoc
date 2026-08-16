@@ -1,44 +1,75 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "CLI reference pages read strictcli schema version 2, and selfdoc's own CLI declares its presence"
 # Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+context = """
+strictcli 0.41.0 turned a set of previously-inferred facts into mandatory
+declarations, every one of them a registration-time hard error, and it
+publishes the result at schema_version 2. Both halves reach selfdoc.
+
+Its own CLI could not start under 0.41 until every flag and argument
+declared its presence, which is what makes selfdoc runnable at all for a
+fleet already on the new floor -- selfdoc gen and selfdoc check are steps
+in every project's release, so nothing downstream could release until
+this shipped.
+
+Its reader of other projects' schemas was worse than broken: it read a
+`type` key v2 deleted and a `required` key an earlier round deleted, and
+both reads had a fallback, so every page claimed every flag was a string
+and every positional argument required, silently and successfully. The
+reader is now v2-only and refuses any other version rather than guessing,
+and it renders the constructs v2 adds -- presence, choices records,
+selectors and their scopes, constraints, update declarations -- instead of
+flattening them away.
+"""
 include = ["npm", "pypi"]
 exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "The tinymoon theme becomes the tinymoon framework, glossary terms are declared rather than guessed, and the rendered pages are measured in a real browser"
 # Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+context = """
+The rendered-reality suite is what produced most of this release. Six
+user-visible defects had shipped while every string-level assertion
+passed, so the engine's output is now built for real, served on loopback
+and asserted in a headless browser -- and that is what found the
+overlapping sticky headers, the doubled last-updated line, the unstyled
+shared pages, the dead search button, the table of contents visible only
+in one band of widths and the notice that would not dismiss.
+
+The tinymoon theme stopped imitating the tinymoon framework and started
+composing it, which moved its stylesheet and its fonts and replaced the
+shipped search widget with the framework's own command palette. The
+glossary stopped inventing terms from prose: a term exists where an author
+declared one, and nowhere else.
+"""
 include = ["pypi"]
 exclude = []
 
 [releasables.selfblog]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "A local authoring app, a whole-site preview before it ships, and one stylesheet for the assembled site"
 # Optional context explaining why these changes were made
-context = ""
-# Pre-release channel: alpha, beta, rc, or stable (ordered;
-# demotion is an error). Per package, so one workspace release
-# can ship some packages stable and others as alphas. See
-# docs/release-workflow.md#the-pre-release-channel.
-# preid = ""
+context = """
+Three things a person publishing to the assembly could not do before.
+`selfblog editor serve` opens a browser UI over a declared registry of
+repositories, with the publish renderer running over the unsaved buffer so
+what is approved is what publishes. `selfblog assembly preview` builds
+every named checkout, grafts them exactly as the deploy does, runs the real
+pre-deploy verification and serves the result on loopback. And the
+assembled site carries one site-level stylesheet rather than a copy per
+project subtree, so the shared pages ship styled.
+
+The CLI also declares its presence on strictcli 0.41's terms, which is what
+the flags that used to be enforced by a hand-written check now say in their
+own declaration.
+"""
 include = ["npm", "pypi"]
 exclude = []
