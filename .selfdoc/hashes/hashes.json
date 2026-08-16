@@ -102,9 +102,9 @@
     "schema_hash": "1fbe90cc550eb10d2060783cf2cbf6efe6f3728dc5c236550b051aa2d6aa065d"
   },
   "en/cli-baseline.md": {
-    "content": "935a653a677f6fc425ad785690de0cd9a518c6e40fb21e124fc9f39e1acd4669",
+    "content": "bccef3a4a0d5d8a7b2a498c9d8cd4e143586e1b7ff25341cc4657e41062cb2d8",
     "description": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a",
-    "schema_hash": "fc98a4ffb1dbaedce53024ec69b68e6479500ed5ca1d7fa66aeed211866842bb",
+    "schema_hash": "c51e58d4f9897a447e066cf014387d900cbd156bf7dbc248f88e5694ce4349d1",
     "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
   },
   "en/cli-build.md": {
@@ -158,9 +158,9 @@
     "schema_hash": "be460c6b1e8079380716f20be2ac1392a5037e827c6d8077604722183556038d"
   },
   "en/cli-spell-corpus.md": {
-    "content": "dbf58469d9bb78d72418a6f1d54082f2f9a7f3488d4b97d1e53cf088458e88d0",
+    "content": "214823ac511617b5530135e0b4dc9faab24cb00254f380eca50c663298646607",
     "description": "0c733b57b542d2d309233fed2f6e4d6b55e7310ad071622f055130bfd761a998",
-    "schema_hash": "4c9fdf69abd110b12ef64d94a6861dd2b8312c6e227065a56be2d7b42a300188",
+    "schema_hash": "3544a7b71aa56a3af5f455e8f6d98686bd432e6202339965547c400195dbc53b",
     "seed_hash": "0c733b57b542d2d309233fed2f6e4d6b55e7310ad071622f055130bfd761a998"
   },
   "en/code-blocks.md": {
