@@ -32,3 +32,4 @@
 {"format_version":1,"id":"18cb7e335873b66174cb12ffbb3c49f8a51718f44d7b2400","commits":["b0c725e47de8a82233eef604083d4ba2d9bf2172"],"user_facing":true,"description":"**Project cards fit three across a docs column.** The curated listing's grid uses a narrower minimum card width, so a desktop column shows three cards per row instead of two very wide ones.","type":"fix","packages":["selfdoc-core"]}
 {"format_version":1,"id":"18cb930ffcc1f8d9878c8156f00140fca644da0d919946d3","commits":["908b59ec3137168b5dcffdf6066d31c8a7790b9d"],"user_facing":false,"packages":["selfdoc-core"]}
 {"format_version":1,"id":"18cb931630b749028231d24640e6451685403c40096a1a86","commits":["eb94cc4973a2c6a89b157e8d90d0638431e9e937"],"user_facing":false,"packages":["selfdoc-core"]}
+{"format_version":1,"id":"18cc45ed4db9c28b478f45761ed3424c8ea0abb946cd70dc","commits":["6b0a344ab31c8b74ff4299bee655cac0a31cca5a"],"user_facing":false,"packages":["selfdoc-core"]}
