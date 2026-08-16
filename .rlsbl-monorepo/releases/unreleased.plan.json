@@ -1,0 +1,21 @@
+{
+  "items": [
+    {
+      "base_version": "0.38.0",
+      "bump": "patch",
+      "name": "selfdoc",
+      "registry": "npm",
+      "tag": "v0.38.1",
+      "target_version": "0.38.1"
+    },
+    {
+      "base_version": "0.10.0",
+      "bump": "patch",
+      "name": "selfdoc-core",
+      "registry": "pypi",
+      "tag": "selfdoc-core@v0.10.1",
+      "target_version": "0.10.1"
+    }
+  ],
+  "section_type": "releasables"
+}
