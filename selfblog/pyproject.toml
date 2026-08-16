@@ -5,7 +5,7 @@
 
 [project]
 name = "selfblog"
-version = "0.4.4"
+version = "0.5.0"
 description = "Blog system for selfdoc-based documentation sites"
 license = "MIT"
 authors = [{ name = "smm-h" }]
