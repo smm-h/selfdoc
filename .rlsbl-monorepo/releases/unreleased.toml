@@ -1,10 +1,27 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "patch"
 # Short description of this release (required)
-description = ""
+description = "Fixes the CLI reference pages selfdoc generates failing selfdoc's own spell check: the entity indent on a scoped flag row and the 'Clearable' heading of a sparse update."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+selfdoc renders a strictcli app's schema into reference pages and then
+spell-checks those pages, so every fixed word and every markup construct the
+renderer emits is judged by SPELL001 in the consumer's project. Two of them
+were not words the engine knew: the '&nbsp;' entity that indents a scoped
+flag's row under the member it belongs to, and the '- Clearable:' heading a
+sparse update publishes its unset tokens under. The first project to render a
+member-spelled selector and an update command with a nullable property got 37
+error-severity lints for text it did not write and could not edit.
+
+Both are fixed in the engine (selfdoc-core 0.10.1), each at the layer it
+belongs to: entity references are markup and are blanked like tags before a
+line is scanned, and the fixed vocabulary selfdoc's own renderers emit is
+carried by the engine and accepted everywhere, because the accept list belongs
+to one machine while a rendered page ships to all of them. A rendered-page test
+renders a schema exercising every construct the renderer has prose for, so a
+new fixed word cannot reach a consumer unaccepted.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
@@ -15,11 +32,22 @@ exclude = []
 
 [releasables.selfdoc-core]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "patch"
 # Short description of this release (required)
-description = ""
+description = "Fixes the spelling engine reading HTML entity references as English words, and gives it a vocabulary of its own for the fixed words selfdoc's renderers emit."
 # Optional context explaining why these changes were made
-context = ""
+context = """
+The scanner blanked tags, URLs and code spans before reading a line as prose
+but had no notion of an entity reference, so '&nbsp;' was read as the word
+'nbsp' -- four times per indent level in the flag tables selfdoc renders.
+Named and both numeric forms are now blanked the same way, with their columns
+preserved.
+
+The engine also carries a renderer vocabulary now: the fixed words selfdoc's
+own renderers write into generated pages, consulted on every run regardless of
+the machine's accept list. A consumer cannot put selfdoc's own headings on the
+accept list of every machine that checks the page, so the engine owns them.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
