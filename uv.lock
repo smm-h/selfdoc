@@ -845,7 +845,7 @@ dev = [
 
 [[package]]
 name = "selfdoc-core"
-version = "0.9.2"
+version = "0.10.0"
 source = { editable = "selfdoc_core" }
 dependencies = [
     { name = "strictcli" },
