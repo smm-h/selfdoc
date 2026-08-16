@@ -58,6 +58,7 @@ include = ["*.py", "README.md", "LICENSE"]
 
 [tool.uv.sources]
 selfdoc-core = { workspace = true }
+selfblog = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -76,6 +77,14 @@ dev = [
     # as stricttest: this member's testpaths runs the root suite, which builds
     # real sites, and a member-rooted sync never sees the root's dev group.
     "pagefind[bin]>=1.4.0",
+    # The rendered-reality suite assembles a whole site through the real
+    # deploy path, which shells out to the `selfblog` console script for the
+    # home project's build. A member-rooted sync installs only this member,
+    # so without this the executable is absent and every browser assertion
+    # errors at fixture setup. Dev-only and symmetric with selfblog's own
+    # dev-group entry for selfdoc; neither package depends on the other at
+    # runtime in either direction.
+    "selfblog",
 ]
 
 [tool.pytest.ini_options]
