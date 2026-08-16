@@ -1,42 +1,64 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "defaults": {
-    "schema_version": 1,
+    "schema_version": 2,
     "app": {
       "env_prefix": null,
       "config": false,
+      "config_format": "json",
+      "config_path": null,
+      "config_conflict_mode": "cli-wins",
+      "proc_observe_allowlist": [],
       "global_flags": [],
       "commands": {},
       "groups": {},
       "deprecated": {},
-      "tag_contracts": {}
+      "tag_contracts": {},
+      "checks": {},
+      "config_fields": {},
+      "infra": {}
     },
     "flag": {
       "short": null,
-      "default": null,
       "env": null,
-      "choices": null,
-      "repeatable": false,
-      "unique": false,
       "env_separator": null,
+      "prefixed": true,
+      "choices": null,
+      "elect_by": null,
+      "unique": false,
+      "conflict_mode": null,
       "negatable": null,
-      "hidden": false
+      "nullable": false
     },
     "arg": {
-      "type": "str",
-      "required": true,
-      "default": null,
       "variadic": false,
       "choices": null
     },
+    "choice": {
+      "flags": []
+    },
+    "choice_record": {
+      "help": null
+    },
     "command": {
+      "consequential": false,
+      "dry_run_supported": true,
+      "dry_run_unsupported_reason": null,
+      "update_of": null,
+      "write_mode": null,
+      "payload_schema": null,
+      "owns_stdout": false,
       "passthrough": false,
       "flags": [],
+      "flag_sets": [],
       "args": [],
       "tags": [],
       "constraints": [],
       "hidden": false,
-      "interactive": false
+      "interactive": false,
+      "config_fields": [],
+      "grants": [],
+      "forwarding": null
     },
     "group": {
       "commands": {},
@@ -44,6 +66,18 @@
       "deprecated": {},
       "tags": [],
       "hidden": false
+    },
+    "config_field": {
+      "default": null,
+      "bound_commands": []
+    },
+    "check": {
+      "scope": null
+    },
+    "infra": {
+      "roots": [],
+      "handshakes": [],
+      "connections": []
     }
   },
   "project_id": "selfdoc",
@@ -58,24 +92,35 @@
       "flags": [
         {
           "name": "base-url",
-          "type": "str",
-          "help": "Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it"
+          "help": "Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "required"
         },
         {
           "name": "author-name",
-          "type": "str",
-          "help": "Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent"
+          "help": "Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "required"
         },
         {
           "name": "author-url",
-          "type": "str",
-          "help": "Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address"
+          "help": "Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "required"
         },
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit the generated selfdoc.json and docs/index.md template files to git",
-          "default": true,
+          "help": "Automatically commit the generated selfdoc.json and docs/index.md template files to git. Omitted, it commits; pass --no-auto-commit to leave the files uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         }
       ]
@@ -87,41 +132,53 @@
       "flags": [
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit updated content hash tracking files to git after the build",
-          "default": true,
+          "help": "Automatically commit updated content hash tracking files to git after the build. Omitted, it commits; pass --no-auto-commit to leave them uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         },
         {
           "name": "locale",
-          "type": "str",
           "help": "Build only the specified locale instead of all (e.g., 'en')",
-          "default": ""
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "version",
-          "type": "str",
           "help": "Build only the specified version instead of all (e.g., '1.0.0')",
-          "default": ""
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "drafts",
-          "type": "bool",
-          "help": "Include posts marked as draft in the build output alongside published posts",
-          "default": false,
+          "help": "Include posts marked as draft in the build output alongside published posts. Omitted, drafts are left out; pass --drafts to include them",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         },
         {
           "name": "target",
-          "type": "str",
-          "help": "Build target: empty for full build ('posts' builds moved to selfblog)",
-          "default": ""
+          "help": "Build target. Omitted, the whole site is built; the only other value 'posts' now refuses and names selfblog, where posts-only builds moved",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "theme",
-          "type": "str",
-          "help": "Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it",
-          "default": ""
+          "help": "Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Omitted, the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         }
       ]
     },
@@ -132,16 +189,20 @@
       "flags": [
         {
           "name": "port",
-          "type": "int",
-          "help": "HTTP port number to serve on (default: 8000, e.g., 3000)",
+          "help": "HTTP port number to serve on (e.g., 3000). Omitted, the server binds port 8000",
+          "value_schema": {
+            "type": "integer"
+          },
           "short": "p",
-          "default": 8000
+          "presence": "optional"
         },
         {
           "name": "drafts",
-          "type": "bool",
-          "help": "Rebuild the site with draft posts included before starting the local server",
-          "default": false,
+          "help": "Rebuild the site with draft posts included before starting the local server. Omitted, drafts are left out; pass --drafts to include them",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         }
       ]
@@ -355,22 +416,28 @@
       "flags": [
         {
           "name": "ignore",
-          "type": "str",
           "help": "Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)",
-          "default": ""
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit updated content hash tracking files to git after checking",
-          "default": true,
+          "help": "Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         },
         {
           "name": "version-override",
-          "type": "str",
           "help": "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump",
-          "default": ""
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         }
       ]
     },
@@ -381,16 +448,20 @@
       "flags": [
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit generated documentation pages and root files to git",
-          "default": true,
+          "help": "Automatically commit generated documentation pages and root files to git. Omitted, it commits; pass --no-auto-commit to leave them uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         },
         {
           "name": "version-override",
-          "type": "str",
-          "help": "Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump lands)",
-          "default": ""
+          "help": "Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed)",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         }
       ]
     },
@@ -401,9 +472,11 @@
       "flags": [
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit the generated data output files to git after script execution",
-          "default": true,
+          "help": "Automatically commit the generated data output files to git after script execution. Omitted, it commits; pass --no-auto-commit to leave them uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         }
       ]
@@ -505,14 +578,19 @@
       "flags": [
         {
           "name": "root",
-          "type": "str",
-          "help": "Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings",
-          "default": ""
+          "help": "Directory whose immediate subdirectories are searched for selfdoc.json. Omitted, the parent of the current directory is searched, i.e. this project's siblings",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "detail",
-          "type": "bool",
           "help": "List each project's unknown words with a first location and any suggestion, after the summary table",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "default",
           "default": true,
           "negatable": true
         }
@@ -642,9 +720,11 @@
           "flags": [
             {
               "name": "auto-commit",
-              "type": "bool",
-              "help": "Automatically commit the updated content hash tracking file to git after accepting the named pages",
-              "default": true,
+              "help": "Automatically commit the updated content hash tracking file to git after accepting the named pages. Omitted, it commits; pass --no-auto-commit to leave it uncommitted",
+              "value_schema": {
+                "type": "boolean"
+              },
+              "presence": "optional",
               "negatable": true
             }
           ],
@@ -652,6 +732,13 @@
             {
               "name": "page",
               "help": "Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.",
+              "value_schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "presence": "required",
               "variadic": true
             }
           ]

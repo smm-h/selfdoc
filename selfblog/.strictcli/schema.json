@@ -1,42 +1,64 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "defaults": {
-    "schema_version": 1,
+    "schema_version": 2,
     "app": {
       "env_prefix": null,
       "config": false,
+      "config_format": "json",
+      "config_path": null,
+      "config_conflict_mode": "cli-wins",
+      "proc_observe_allowlist": [],
       "global_flags": [],
       "commands": {},
       "groups": {},
       "deprecated": {},
-      "tag_contracts": {}
+      "tag_contracts": {},
+      "checks": {},
+      "config_fields": {},
+      "infra": {}
     },
     "flag": {
       "short": null,
-      "default": null,
       "env": null,
-      "choices": null,
-      "repeatable": false,
-      "unique": false,
       "env_separator": null,
+      "prefixed": true,
+      "choices": null,
+      "elect_by": null,
+      "unique": false,
+      "conflict_mode": null,
       "negatable": null,
-      "hidden": false
+      "nullable": false
     },
     "arg": {
-      "type": "str",
-      "required": true,
-      "default": null,
       "variadic": false,
       "choices": null
     },
+    "choice": {
+      "flags": []
+    },
+    "choice_record": {
+      "help": null
+    },
     "command": {
+      "consequential": false,
+      "dry_run_supported": true,
+      "dry_run_unsupported_reason": null,
+      "update_of": null,
+      "write_mode": null,
+      "payload_schema": null,
+      "owns_stdout": false,
       "passthrough": false,
       "flags": [],
+      "flag_sets": [],
       "args": [],
       "tags": [],
       "constraints": [],
       "hidden": false,
-      "interactive": false
+      "interactive": false,
+      "config_fields": [],
+      "grants": [],
+      "forwarding": null
     },
     "group": {
       "commands": {},
@@ -44,6 +66,18 @@
       "deprecated": {},
       "tags": [],
       "hidden": false
+    },
+    "config_field": {
+      "default": null,
+      "bound_commands": []
+    },
+    "check": {
+      "scope": null
+    },
+    "infra": {
+      "roots": [],
+      "handshakes": [],
+      "connections": []
     }
   },
   "project_id": "selfblog",
@@ -58,15 +92,19 @@
       "flags": [
         {
           "name": "ignore",
-          "type": "str",
           "help": "Comma-separated lint codes to suppress (e.g., SEO007,SEO008)",
-          "default": ""
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit updated content hash tracking files to git after checking",
-          "default": true,
+          "help": "Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         }
       ]
@@ -78,35 +116,45 @@
       "flags": [
         {
           "name": "target",
-          "type": "str",
-          "help": "Build target: 'posts' for posts-only build, 'unified' for unified multi-project site, 'home' for the assembly's home project (the one served at the site root, whose pages carry site-level directives)",
-          "default": "posts"
+          "help": "Build target: 'posts' for posts-only build, 'unified' for unified multi-project site, 'home' for the assembly's home project (the one served at the site root, whose pages carry site-level directives). Omitted, 'posts' is built",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
           "name": "drafts",
-          "type": "bool",
-          "help": "Include posts marked as draft in the build output",
-          "default": false,
+          "help": "Include posts marked as draft in the build output. Omitted, drafts are left out; pass --drafts to include them",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         },
         {
           "name": "auto-commit",
-          "type": "bool",
-          "help": "Automatically commit updated content hash tracking files to git after the build",
-          "default": true,
+          "help": "Automatically commit updated content hash tracking files to git after the build. Omitted, it commits; pass --no-auto-commit to leave them uncommitted",
+          "value_schema": {
+            "type": "boolean"
+          },
+          "presence": "optional",
           "negatable": true
         },
         {
           "name": "site-manifests",
-          "type": "str",
           "help": "Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.",
-          "default": ""
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         },
         {
-          "name": "docs-base",
-          "type": "str",
-          "help": "Base URL of the assembled site, for the absolute links the site-level directives emit. Required by --target home.",
-          "default": ""
+          "name": "theme",
+          "help": "Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Omitted, the config decides. Nothing is written back to selfdoc.json",
+          "value_schema": {
+            "type": "string"
+          },
+          "presence": "optional"
         }
       ]
     }
@@ -123,8 +171,11 @@
           "flags": [
             {
               "name": "title",
-              "type": "str",
-              "help": "Title for the new blog post, used in frontmatter and filename generation"
+              "help": "Title for the new blog post, used in frontmatter and filename generation",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             }
           ]
         },
@@ -140,61 +191,96 @@
           "flags": [
             {
               "name": "from-release",
-              "type": "bool",
-              "help": "Generate the post from structured release metadata rather than freeform content",
+              "help": "Generate the post from structured release metadata rather than freeform content. Structured metadata is the only shape this command generates, so --no-from-release is refused; state --from-release to say what the post is built from",
+              "value_schema": {
+                "type": "boolean"
+              },
+              "presence": "required",
               "negatable": true
             },
             {
               "name": "version",
-              "type": "str",
-              "help": "The released version number to feature in the generated blog post title and metadata"
+              "help": "The released version number to feature in the generated blog post title and metadata",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             },
             {
               "name": "prev-version",
-              "type": "str",
-              "help": "Previous version number, used to show what version this release upgrades from"
+              "help": "Previous version number, used to show what version this release upgrades from",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "bump-type",
-              "type": "str",
-              "help": "Semver bump type (patch, minor, or major) included in the post frontmatter"
+              "help": "Semver bump type (patch, minor, or major) included in the post frontmatter",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "description",
-              "type": "str",
-              "help": "Short release description text included as the post summary paragraph"
+              "help": "Short release description text included as the post summary paragraph",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "context",
-              "type": "str",
-              "help": "Additional context explaining the rationale for this release, included in generated blog posts"
+              "help": "Additional context explaining the rationale for this release, included in generated blog posts",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "changelog-file",
-              "type": "str",
-              "help": "Path to a markdown file whose contents are embedded as the changelog section of the post"
+              "help": "Path to a markdown file whose contents are embedded as the changelog section of the post",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "body-file",
-              "type": "str",
-              "help": "Path to a file containing user-written prose to include as the main post body content"
+              "help": "Path to a file containing user-written prose to include as the main post body content",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "project-name",
-              "type": "str",
-              "help": "Human-readable project name used in the blog post title and frontmatter metadata"
+              "help": "Human-readable project name used in the blog post title and frontmatter metadata",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "release-url",
-              "type": "str",
-              "help": "Full URL to the GitHub release page, linked from the generated blog post"
+              "help": "Full URL to the GitHub release page, linked from the generated blog post",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "registry-url",
-              "type": "str",
               "help": "Package registry URL such as PyPI or npm page, can be specified multiple times",
-              "default": [],
-              "repeatable": true
+              "value_schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "presence": "default",
+              "default": []
             }
           ]
         },
@@ -296,9 +382,11 @@
           "flags": [
             {
               "name": "slug",
-              "type": "str",
               "help": "Slug of the project to retire; it is removed from the roster and every path it owns in the assembly is deleted",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             }
           ],
           "grants": [
@@ -321,13 +409,19 @@
           "flags": [
             {
               "name": "slug",
-              "type": "str",
-              "help": "Project slug used as the URL path segment in the assembly site structure"
+              "help": "Project slug used as the URL path segment in the assembly site structure",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             },
             {
               "name": "docs-base",
-              "type": "str",
-              "help": "Base URL of the assembly documentation site used for generating redirect targets"
+              "help": "Base URL of the assembly documentation site used for generating redirect targets",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             }
           ]
         },
@@ -338,34 +432,51 @@
           "flags": [
             {
               "name": "site-dir",
-              "type": "str",
-              "help": "Path to the combined site output directory where shared HTML files are written"
+              "help": "Path to the combined site output directory where shared HTML files are written",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             },
             {
               "name": "manifests-dir",
-              "type": "str",
-              "help": "Path to the directory containing per-project manifest JSON files for the assembly"
+              "help": "Path to the directory containing per-project manifest JSON files for the assembly",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             },
             {
               "name": "docs-base",
-              "type": "str",
-              "help": "Base URL used for in-page links in the generated feed, listing and blog index. May be root-relative or empty. The sitemap does not read it: every <loc> is absolute by protocol, so the sitemap is generated from --canonical-base whatever this says."
+              "help": "Base URL the Atom feed's entries are written against. Only the feed reads it: every entry there is an absolute URL by protocol. Nothing a reader clicks does -- the generated listing, the blog index and the 404 address the site relative to their own page, so they resolve under any mount. The sitemap does not read it either: it is generated from --canonical-base whatever this says.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "canonical-base",
-              "type": "str",
-              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base."
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             },
             {
               "name": "legacy-blog-host",
-              "type": "str",
-              "help": "Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists."
+              "help": "Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Omitted when no such subdomain exists.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "home-slug",
-              "type": "str",
-              "help": "The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Empty means the tree carries no home project (which the deploy path never does -- the roster requires one).",
-              "default": ""
+              "help": "The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Omitted means the tree carries no home project (which the deploy path never does -- the roster requires one).",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             }
           ]
         },
@@ -373,72 +484,96 @@
           "name": "integrate",
           "help": "Integrate one dispatched project into the assembly repository checkout and push the result. Builds the cloned source project, replaces its subtree under site/, refreshes its manifest and membership record, regenerates the shared cross-project elements, rebuilds the search index, then commits and pushes with a re-sync retry loop so concurrent deploys converge instead of clobbering each other. This is the whole body of the generated deploy workflow.",
           "effect": "mutating",
+          "dry_run_supported": false,
+          "dry_run_unsupported_reason": "'assembly integrate' cannot be previewed: every step after the first reads what the step before it wrote -- the shared generator reads the manifests the graft just copied, the search index reads the pages it just wrote, and the commit reads the tree all of them produced. A recorded run writes none of that, so the preview would stop at the first effect and misrepresent everything after it. To see what an integration would produce, use 'assembly preview'.",
           "flags": [
             {
               "name": "slug",
-              "type": "str",
               "help": "Project slug being integrated; the site subtree is site/<slug>/. Required unless --scope is 'shared-only'.",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "version",
-              "type": "str",
               "help": "Version of the project being integrated, recorded in projects.json and the commit message",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "ref",
-              "type": "str",
               "help": "Git ref (tag) the source project was cloned at, recorded in projects.json",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "source-repo",
-              "type": "str",
               "help": "Source project repository (owner/name), recorded in projects.json",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "scope",
-              "type": "str",
-              "help": "What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.",
-              "default": ""
+              "help": "What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Omitted means 'full'.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "canonical-base",
-              "type": "str",
               "help": "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
             },
             {
               "name": "legacy-blog-host",
-              "type": "str",
-              "help": "Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.",
-              "default": ""
+              "help": "Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Omitted when no such subdomain exists.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "assembly-dir",
-              "type": "str",
-              "help": "Path to the assembly repository checkout being updated",
-              "default": "."
+              "help": "Path to the assembly repository checkout being updated. Omitted, the current directory is used",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "source-dir",
-              "type": "str",
-              "help": "Path to the cloned source project. Defaults to <assembly-dir>/source/<slug>, where the deploy workflow clones it.",
-              "default": ""
+              "help": "Path to the cloned source project. Omitted, <assembly-dir>/source/<slug> is used, where the deploy workflow clones it.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "branch",
-              "type": "str",
-              "help": "Assembly repository branch the deploy commits and pushes to",
-              "default": "main"
+              "help": "Assembly repository branch the deploy commits and pushes to. Omitted, 'main' is used",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "attempts",
-              "type": "int",
-              "help": "How many times to re-sync with the remote and retry the push before failing",
-              "default": 3
+              "help": "How many times to re-sync with the remote and retry the push before failing. Omitted, 3 attempts are made",
+              "value_schema": {
+                "type": "integer"
+              },
+              "presence": "optional"
             }
           ],
           "grants": [
@@ -456,15 +591,99 @@
           "flags": [
             {
               "name": "assembly-dir",
-              "type": "str",
               "help": "Path to the assembly repository checkout to verify",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "default",
               "default": "."
             },
             {
               "name": "canonical-base",
-              "type": "str",
               "help": "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is what tells this site's absolute URLs from everybody else's, and without it half the assertions would pass by not looking.",
-              "default": ""
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
+            }
+          ]
+        },
+        "preview": {
+          "name": "preview",
+          "help": "Assemble every named local checkout into a preview tree and serve it on loopback. Builds each project with the toolchain running this command, grafts the output exactly as the deploy does -- the home project at the site root, everybody else under their slug -- writes the roster, membership record and manifests the assembly keeps, generates the shared cross-project files and the site chrome, rebuilds the search index, runs the real pre-deploy verification and prints its report, then serves the result with a working 404. Nothing leaves the machine and nothing is published: this is the look-before-you-ship step.",
+          "effect": "mutating",
+          "dry_run_supported": false,
+          "dry_run_unsupported_reason": "'assembly preview' exists to produce output you look at: a built site tree and a server over it. A recorded run would write no tree, and every step after the build reads what the step before it wrote -- the graft reads the build, the shared generator reads the grafted manifests, the index and the verification read the pages. Run it without --dry-run; it publishes nothing.",
+          "flags": [
+            {
+              "name": "repo",
+              "help": "Path to a project checkout to include, served under the slug its selfdoc.json declares. Repeat once per project. The home project is named by --home instead and must not be repeated here.",
+              "value_schema": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "presence": "default",
+              "default": [],
+              "unique": true
+            },
+            {
+              "name": "home",
+              "help": "Path to the home project's checkout: the one project served at the site root rather than under a slug. Required -- a site needs a front page, and there is no default.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
+            },
+            {
+              "name": "out",
+              "help": "Directory the preview tree is written to. Required. Refused when it sits inside a git working tree at a path git does not ignore, because a generated site dropped into a checkout is untracked noise in every session sharing it.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
+            },
+            {
+              "name": "port",
+              "help": "Port to bind on 127.0.0.1. Required and has no default: which port a long-running local server occupies is a decision the caller states rather than inherits.",
+              "value_schema": {
+                "type": "integer"
+              },
+              "presence": "required"
+            },
+            {
+              "name": "canonical-base",
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "required"
+            },
+            {
+              "name": "legacy-blog-host",
+              "help": "Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Omitted when no such subdomain exists.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
+            },
+            {
+              "name": "build",
+              "help": "Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in docs/_build, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.",
+              "value_schema": {
+                "type": "boolean"
+              },
+              "presence": "required",
+              "negatable": true
+            },
+            {
+              "name": "theme",
+              "help": "Build every checkout under this theme instead of the one its selfdoc.json declares, for this preview only. Omitted, every project stays on its configured theme, which is what a deploy does. This exists to judge a theme on the real pages: the same site, every project flipped at once, without editing a config anywhere. Validated against the theme registry, and refused with --no-build, because a theme is baked into build output and re-grafting an existing tree cannot restyle it.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             }
           ]
         },
@@ -475,21 +694,27 @@
           "flags": [
             {
               "name": "pin-version",
-              "type": "str",
-              "help": "selfblog version the regenerated workflow pins its toolchain install to. Defaults to the running selfblog's version, which is what the release path wants: the workflow names the selfblog that generated it.",
-              "default": ""
+              "help": "selfblog version the regenerated workflow pins its toolchain install to. Omitted, the running selfblog's version is used, which is what the release path wants: the workflow names the selfblog that generated it.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "pin-selfdoc",
-              "type": "str",
-              "help": "selfdoc version the regenerated workflow pins its toolchain install to. Defaults to the selfdoc installed in this environment; selfdoc missing here is a hard error, never an unpinned install.",
-              "default": ""
+              "help": "selfdoc version the regenerated workflow pins its toolchain install to. Omitted, the selfdoc installed in this environment is used; selfdoc missing here is a hard error, never an unpinned install.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             },
             {
               "name": "pin-pagefind",
-              "type": "str",
-              "help": "pagefind version the regenerated workflow pins its toolchain install to. Defaults to PyPI's current release: pagefind is a CI-only tool nothing here installs, so there is no local version to read.",
-              "default": ""
+              "help": "pagefind version the regenerated workflow pins its toolchain install to. Omitted, PyPI's current release is used: pagefind is a CI-only tool nothing here installs, so there is no local version to read.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             }
           ],
           "grants": [
@@ -497,6 +722,60 @@
               "name": "assembly-commit",
               "reason": "commits the regenerated deploy workflow to the assembly repository through the GitHub Git Data API",
               "kind": "proc_mutate"
+            }
+          ]
+        }
+      }
+    },
+    "editor": {
+      "name": "editor",
+      "help": "Run and inspect the local authoring app for blog posts",
+      "commands": {
+        "list-repos": {
+          "name": "list-repos",
+          "help": "List every repository the editor registry declares, with its kind and where it points. Reads the hand-written registry TOML, validates every entry in full, and prints one line per entry -- a local entry's working tree, or a remote entry's repository, ref and whether it declares that rendering runs against a checkout.",
+          "effect": "read_only",
+          "flags": [
+            {
+              "name": "registry",
+              "help": "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
+            }
+          ]
+        },
+        "serve": {
+          "name": "serve",
+          "help": "Run the local authoring app: a browser UI over the registry's repositories, with the tinymoon editor component on the left and a live preview on the right. The preview is the publish renderer over the unsaved buffer, so what you approve is byte-for-byte what publishing produces, and rendering a preview writes nothing. Saving writes the buffer into the repository's working tree. Binds 127.0.0.1 only.",
+          "effect": "mutating",
+          "dry_run_supported": false,
+          "dry_run_unsupported_reason": "'editor serve' is an interactive server: its writes are the saves you make at the keyboard while it runs, so at launch there is nothing to record. Worse, those saves happen on request threads that carry no preview context, so they would execute for real. Run it without --dry-run, and preview a save by not pressing save.",
+          "flags": [
+            {
+              "name": "port",
+              "help": "Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits.",
+              "value_schema": {
+                "type": "integer"
+              },
+              "presence": "required"
+            },
+            {
+              "name": "registry",
+              "help": "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
+            },
+            {
+              "name": "tinymoon-assets",
+              "help": "Path to a tinymoon checkout's 'assets' directory. Omitted, the installed tinymoon package is used. The editor tier (js/editor.js, js/completion.js, css/editor.css) is newer than the released package, so a checkout is currently the only complete source.",
+              "value_schema": {
+                "type": "string"
+              },
+              "presence": "optional"
             }
           ]
         }
