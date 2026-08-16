@@ -800,8 +800,13 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                                 flags.extend(subcmd.get("flags", []))
                             break
 
-                for flag in flags:
-                    flag_name = f"--{flag['name']}"
+                # The tokens an invocation can type, not the flag NAMES: a
+                # member-spelled selector's own name is never typed, its
+                # choices are, and a choice's scoped flags are tokens like
+                # any other. Comparing against names would demand that a
+                # page document `--mode` -- a token no user can write.
+                from selfdoc.strictcli_support import iter_flag_tokens
+                for flag_name in dict.fromkeys(iter_flag_tokens(flags)):
                     if flag_name not in page_content:
                         result.lints.append(LintResult(
                             file=page_name,
@@ -811,6 +816,7 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                         ))
 
         # CLI002: minimum help text length
+        from selfdoc.strictcli_support import iter_flag_help
         _MIN_HELP_LEN = 50
 
         def _check_help_len(element_kind, element_name, help_text, page_file):
@@ -830,10 +836,8 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
             cmd_name = cmd["name"]
             page_file = f"cli-{cmd_name}.md"
             _check_help_len("command", cmd_name, cmd.get("help", ""), page_file)
-            for fl in cmd.get("flags", []):
-                _check_help_len(
-                    "flag", f"--{fl['name']}", fl.get("help", ""), page_file,
-                )
+            for label, fl_help in iter_flag_help(cmd.get("flags", [])):
+                _check_help_len("flag", label, fl_help, page_file)
             for ar in cmd.get("args", []):
                 _check_help_len(
                     "arg", ar["name"], ar.get("help", ""), page_file,
@@ -849,10 +853,8 @@ def check_docs(dir_path=".", config=None, dry_run=False, version_filter=None,
                     "command", f"{grp_name} {subcmd_name}",
                     subcmd.get("help", ""), page_file,
                 )
-                for fl in subcmd.get("flags", []):
-                    _check_help_len(
-                        "flag", f"--{fl['name']}", fl.get("help", ""), page_file,
-                    )
+                for label, fl_help in iter_flag_help(subcmd.get("flags", [])):
+                    _check_help_len("flag", label, fl_help, page_file)
                 for ar in subcmd.get("args", []):
                     _check_help_len(
                         "arg", ar["name"], ar.get("help", ""), page_file,

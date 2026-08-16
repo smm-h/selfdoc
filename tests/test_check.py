@@ -4122,6 +4122,7 @@ def test_cli001_missing_page(tmp_path):
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir)
     schema = {
+        "schema_version": 2,
         "name": "myapp",
         "project_id": "unknown",
         "version": "1.0.0",
@@ -4173,6 +4174,7 @@ def test_cli001_missing_flag(tmp_path):
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir)
     schema = {
+        "schema_version": 2,
         "name": "myapp",
         "project_id": "unknown",
         "version": "1.0.0",
@@ -4182,8 +4184,8 @@ def test_cli001_missing_flag(tmp_path):
                 "name": "run",
                 "help": "Run something",
                 "flags": [
-                    {"name": "verbose", "help": "Enable verbose output", "type": "bool"},
-                    {"name": "output", "help": "Output file", "type": "str"},
+                    {"name": "verbose", "help": "Enable verbose output", "value_schema": {"type": "boolean"}, "presence": "optional"},
+                    {"name": "output", "help": "Output file", "value_schema": {"type": "string"}, "presence": "optional"},
                 ],
                 "args": [],
             }
@@ -4233,6 +4235,7 @@ def test_cli001_complete(tmp_path):
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir)
     schema = {
+        "schema_version": 2,
         "name": "myapp",
         "project_id": "unknown",
         "version": "1.0.0",
@@ -4242,7 +4245,7 @@ def test_cli001_complete(tmp_path):
                 "name": "run",
                 "help": "Run something",
                 "flags": [
-                    {"name": "verbose", "help": "Verbose", "type": "bool"},
+                    {"name": "verbose", "help": "Verbose", "value_schema": {"type": "boolean"}, "presence": "optional"},
                 ],
                 "args": [],
             }
@@ -4322,6 +4325,7 @@ def test_cli002_short_command_help(tmp_path):
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir)
     schema = {
+        "schema_version": 2,
         "name": "myapp",
         "project_id": "unknown",
         "version": "1.0.0",
@@ -4376,6 +4380,7 @@ def test_cli002_adequate_command_help(tmp_path):
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir)
     schema = {
+        "schema_version": 2,
         "name": "myapp",
         "project_id": "unknown",
         "version": "1.0.0",
@@ -4427,6 +4432,7 @@ def test_cli002_short_flag_help(tmp_path):
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir)
     schema = {
+        "schema_version": 2,
         "name": "myapp",
         "project_id": "unknown",
         "version": "1.0.0",
@@ -4436,7 +4442,7 @@ def test_cli002_short_flag_help(tmp_path):
                 "name": "run",
                 "help": "Run the main application pipeline with all configured settings",
                 "flags": [
-                    {"name": "verbose", "help": "Verbose", "type": "bool"},  # 7 chars
+                    {"name": "verbose", "help": "Verbose", "value_schema": {"type": "boolean"}, "presence": "optional"},  # 7 chars
                 ],
                 "args": [],
             }

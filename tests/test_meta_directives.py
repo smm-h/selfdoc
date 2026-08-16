@@ -340,11 +340,12 @@ def _write_schema(dir_path, *, name="testcli", project_id="test-app"):
     schema_dir = dir_path / ".strictcli"
     schema_dir.mkdir(parents=True, exist_ok=True)
     schema = {
+        "schema_version": 2,
         "project_id": project_id,
         "name": name,
         "version": "1.0.0",
         "help": "A test CLI",
-        "commands": {"hello": {"help": "Say hello", "arguments": [], "options": []}},
+        "commands": {"hello": {"help": "Say hello", "flags": [], "args": []}},
         "groups": {},
     }
     (schema_dir / "schema.json").write_text(json.dumps(schema))

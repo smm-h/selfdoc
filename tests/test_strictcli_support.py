@@ -22,7 +22,11 @@ def _mk_schema(base, subdir):
     sc = os.path.join(d, ".strictcli")
     os.makedirs(sc, exist_ok=True)
     with open(os.path.join(sc, "schema.json"), "w") as f:
-        json.dump({"project_id": "x", "name": "x", "commands": {}, "groups": {}}, f)
+        json.dump(
+            {"schema_version": 2, "project_id": "x", "name": "x",
+             "commands": {}, "groups": {}},
+            f,
+        )
 
 
 class TestDiscoverSchemaDirs:
@@ -78,9 +82,10 @@ def schema_json():
         "global_flags": [
             {
                 "name": "json",
-                "type": "bool",
+                "value_schema": {"type": "boolean"},
                 "help": "emit machine-readable JSON",
                 "short": None,
+                "presence": "default",
                 "default": False,
                 "env": None,
                 "negatable": True,
@@ -121,25 +126,23 @@ def schema_json():
                 "flags": [
                     {
                         "name": "target",
-                        "type": "str",
+                        "value_schema": {"type": "string"},
                         "help": "deploy target",
                         "short": None,
+                        "presence": "default",
                         "default": "prod",
                         "env": None,
-                        "choices": None,
-                        "repeatable": False,
                         "negatable": None,
                         "hidden": False,
                     },
                     {
                         "name": "dry-run",
-                        "type": "bool",
+                        "value_schema": {"type": "boolean"},
                         "help": "dry run mode",
                         "short": "n",
+                        "presence": "default",
                         "default": False,
                         "env": None,
-                        "choices": None,
-                        "repeatable": False,
                         "negatable": True,
                         "hidden": False,
                     },
@@ -160,13 +163,20 @@ def schema_json():
                         "flags": [
                             {
                                 "name": "format",
-                                "type": "str",
+                                "value_schema": {
+                                    "type": "string",
+                                    "enum": ["text", "json"],
+                                },
                                 "help": "output format",
                                 "short": None,
+                                "presence": "default",
                                 "default": "text",
                                 "env": None,
-                                "choices": ["text", "json"],
-                                "repeatable": False,
+                                "choices": [
+                                    {"value": "text",
+                                     "help": "human-readable output"},
+                                    {"value": "json"},
+                                ],
                                 "negatable": None,
                                 "hidden": False,
                             },
@@ -184,7 +194,13 @@ def schema_json():
 
 
 def _write_schema(tmp_path, schema):
-    """Write a schema.json file into .strictcli/ under tmp_path."""
+    """Write a schema.json file into .strictcli/ under tmp_path.
+
+    Stamps ``schema_version: 2`` unless the caller states one, so a test
+    that is not about the version does not have to carry it; the version
+    refusal has tests of its own.
+    """
+    schema = {"schema_version": 2, **schema}
     schema_dir = os.path.join(tmp_path, ".strictcli")
     os.makedirs(schema_dir, exist_ok=True)
     schema_path = os.path.join(schema_dir, "schema.json")
@@ -280,12 +296,18 @@ class TestReadSchemaJson:
         dry_run_flag = next(f for f in deploy["flags"] if f["name"] == "dry-run")
         assert dry_run_flag["negatable"] is True
         assert dry_run_flag["hidden"] is False
-        assert dry_run_flag["repeatable"] is False
+        assert dry_run_flag["presence"] == "default"
 
         config_grp = result["groups"][0]
         show = config_grp["commands"][0]
         format_flag = show["flags"][0]
-        assert format_flag["choices"] == ["text", "json"]
+        # v2 splits choices in two: the values as an enum inside the
+        # fragment, the value-plus-help records beside it.
+        assert format_flag["value_schema"]["enum"] == ["text", "json"]
+        assert format_flag["choices"] == [
+            {"value": "text", "help": "human-readable output"},
+            {"value": "json"},
+        ]
 
     def test_flags_extracted(self, tmp_path, schema_json):
         _write_schema(tmp_path, schema_json)
@@ -295,13 +317,14 @@ class TestReadSchemaJson:
         assert len(deploy["flags"]) == 2
 
         target_flag = next(f for f in deploy["flags"] if f["name"] == "target")
-        assert target_flag["type"] == "str"
+        assert target_flag["value_schema"] == {"type": "string"}
+        assert target_flag["presence"] == "default"
         assert target_flag["help"] == "deploy target"
         assert target_flag["default"] == "prod"
         assert target_flag["short"] is None
 
         dry_run_flag = next(f for f in deploy["flags"] if f["name"] == "dry-run")
-        assert dry_run_flag["type"] == "bool"
+        assert dry_run_flag["value_schema"] == {"type": "boolean"}
         assert dry_run_flag["help"] == "dry run mode"
         assert dry_run_flag["short"] == "n"
 
@@ -442,13 +465,14 @@ class TestExtractCliStructure:
         assert len(deploy["flags"]) == 2
 
         target_flag = next(f for f in deploy["flags"] if f["name"] == "target")
-        assert target_flag["type"] == "str"
+        assert target_flag["value_schema"] == {"type": "string"}
+        assert target_flag["presence"] == "default"
         assert target_flag["help"] == "deploy target"
         assert target_flag["default"] == "prod"
         assert target_flag["short"] is None
 
         dry_run_flag = next(f for f in deploy["flags"] if f["name"] == "dry-run")
-        assert dry_run_flag["type"] == "bool"
+        assert dry_run_flag["value_schema"] == {"type": "boolean"}
         assert dry_run_flag["help"] == "dry run mode"
         assert dry_run_flag["short"] == "n"
 
@@ -500,18 +524,19 @@ class TestGenerateCliPages:
                     "flags": [
                         {
                             "name": "target",
-                            "type": "str",
+                            "value_schema": {"type": "string"},
                             "help": "deploy target",
                             "short": None,
+                            "presence": "default",
                             "default": "prod",
                             "env": None,
                         },
                         {
                             "name": "dry-run",
-                            "type": "bool",
+                            "value_schema": {"type": "boolean"},
                             "help": "dry run mode",
                             "short": "n",
-                            "default": None,
+                            "presence": "optional",
                             "env": None,
                         },
                     ],
@@ -529,9 +554,10 @@ class TestGenerateCliPages:
                             "flags": [
                                 {
                                     "name": "format",
-                                    "type": "str",
+                                    "value_schema": {"type": "string"},
                                     "help": "output format",
                                     "short": None,
+                                    "presence": "default",
                                     "default": "text",
                                     "env": None,
                                 },
@@ -608,7 +634,7 @@ class TestGenerateCliPages:
         with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
             content = f.read()
 
-        assert "| Name | Short | Type | Default | Env | Description |" in content
+        assert "| Name | Short | Type | Presence | Env | Description |" in content
         assert "`--target`" in content
         assert "`--dry-run`" in content
         assert "`-n`" in content
@@ -684,12 +710,12 @@ class TestCommandPageArgumentsTable:
                     "args": [
                         {
                             "name": "target",
-                            "required": True,
+                            "presence": "required",
                             "help": "deploy target",
                         },
                         {
                             "name": "extra",
-                            "required": False,
+                            "presence": "optional",
                             "help": "optional extra arg",
                         },
                     ],
@@ -707,8 +733,8 @@ class TestCommandPageArgumentsTable:
             content = f.read()
 
         assert "## Arguments" in content
-        assert "| Name | Required | Description |" in content
-        assert "| --- | --- | --- |" in content
+        assert "| Name | Type | Presence | Description |" in content
+        assert "| --- | --- | --- | --- |" in content
 
     def test_command_page_args_required(self, tmp_path, cli_structure_with_args):
         """Command page renders required=true as 'yes'."""
@@ -718,7 +744,7 @@ class TestCommandPageArgumentsTable:
         with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
             content = f.read()
 
-        assert "| `target` | yes | deploy target |" in content
+        assert "| `target` |  | required | deploy target |" in content
 
     def test_command_page_args_optional(self, tmp_path, cli_structure_with_args):
         """Command page renders required=false as 'no'."""
@@ -728,10 +754,16 @@ class TestCommandPageArgumentsTable:
         with open(os.path.join(docs_dir, "cli-deploy.md"), "r") as f:
             content = f.read()
 
-        assert "| `extra` | no | optional extra arg |" in content
+        assert "| `extra` |  | optional | optional extra arg |" in content
 
-    def test_command_page_args_default_required(self, tmp_path):
-        """When 'required' key is missing, it defaults to True (yes)."""
+    def test_command_page_args_presence_absent_renders_blank(self, tmp_path):
+        """An entry with no presence renders no presence, never a guess.
+
+        v2 emits ``presence`` on every arg entry, so this shape cannot come
+        from strictcli.  The rule the test pins is that the reader states
+        nothing rather than inventing 'required', which is exactly the
+        defect the deleted ``ar.get("required", True)`` read had.
+        """
         structure = {
             "app_name": "testapp",
             "app_version": "1.0",
@@ -754,7 +786,7 @@ class TestCommandPageArgumentsTable:
         with open(os.path.join(docs_dir, "cli-run.md"), "r") as f:
             content = f.read()
 
-        assert "| `script` | yes | script to run |" in content
+        assert "| `script` |  |  | script to run |" in content
 
 
 class TestGroupPageArgumentsTable:
@@ -779,12 +811,12 @@ class TestGroupPageArgumentsTable:
                             "args": [
                                 {
                                     "name": "key",
-                                    "required": True,
+                                    "presence": "required",
                                     "help": "config key",
                                 },
                                 {
                                     "name": "value",
-                                    "required": True,
+                                    "presence": "required",
                                     "help": "config value",
                                 },
                             ],
@@ -796,12 +828,12 @@ class TestGroupPageArgumentsTable:
                             "args": [
                                 {
                                     "name": "key",
-                                    "required": True,
+                                    "presence": "required",
                                     "help": "config key to read",
                                 },
                                 {
                                     "name": "fallback",
-                                    "required": False,
+                                    "presence": "optional",
                                     "help": "default if missing",
                                 },
                             ],
@@ -822,8 +854,8 @@ class TestGroupPageArgumentsTable:
             content = f.read()
 
         assert "### Arguments" in content
-        assert "| Name | Required | Description |" in content
-        assert "| --- | --- | --- |" in content
+        assert "| Name | Type | Presence | Description |" in content
+        assert "| --- | --- | --- | --- |" in content
 
     def test_group_page_args_required(
         self, tmp_path, cli_structure_group_with_args,
@@ -835,8 +867,8 @@ class TestGroupPageArgumentsTable:
         with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
             content = f.read()
 
-        assert "| `key` | yes | config key |" in content
-        assert "| `value` | yes | config value |" in content
+        assert "| `key` |  | required | config key |" in content
+        assert "| `value` |  | required | config value |" in content
 
     def test_group_page_args_optional(
         self, tmp_path, cli_structure_group_with_args,
@@ -848,7 +880,7 @@ class TestGroupPageArgumentsTable:
         with open(os.path.join(docs_dir, "cli-config.md"), "r") as f:
             content = f.read()
 
-        assert "| `fallback` | no | default if missing |" in content
+        assert "| `fallback` |  | optional | default if missing |" in content
 
     def test_group_page_args_multiple_subcommands(
         self, tmp_path, cli_structure_group_with_args,
@@ -864,8 +896,8 @@ class TestGroupPageArgumentsTable:
         assert "## config set" in content
         assert "## config get" in content
         # Both subcommands' args are rendered
-        assert "| `key` | yes | config key to read |" in content
-        assert "| `fallback` | no | default if missing |" in content
+        assert "| `key` |  | required | config key to read |" in content
+        assert "| `fallback` |  | optional | default if missing |" in content
 
 
 class TestDescriptionPreservation:
@@ -1468,7 +1500,7 @@ class TestIndexAppLevelSections:
         content = _read_page(docs_dir, "cli-index.md")
 
         assert "## Global flags" in content
-        assert "| Name | Short | Type | Default | Env | Description |" in content
+        assert "| Name | Short | Type | Presence | Env | Description |" in content
         assert "`--json`" in content
         assert "emit machine-readable JSON" in content
 
@@ -1512,8 +1544,9 @@ class TestIndexAppLevelSections:
             "global_flags": [
                 {
                     "name": "archive-dir",
-                    "type": "str",
+                    "value_schema": {"type": "string"},
                     "help": "path to the archive directory",
+                    "presence": "default",
                     "default": {"relative_to_root": {"env_var": "T_HOME"}},
                 },
             ],
@@ -1522,7 +1555,7 @@ class TestIndexAppLevelSections:
         generate_cli_pages(structure, docs_dir)
         content = _read_page(docs_dir, "cli-index.md")
 
-        assert '{"relative_to_root": {"env_var": "T_HOME"}}' in content
+        assert '`{"relative_to_root": {"env_var": "T_HOME"}}`' in content
         assert "'relative_to_root'" not in content
 
 
@@ -1667,3 +1700,426 @@ class TestCheckIntegration:
         # the strictcli check should not trigger)
         result = check_docs(str(tmp_path))
         assert result is not None
+
+
+# ---------------------------------------------------------------------------
+# Schema version 2: the reader refuses anything else
+# ---------------------------------------------------------------------------
+
+
+class TestSchemaVersion:
+    """The reader is v2-only, and says so rather than guessing."""
+
+    def test_v1_schema_is_refused(self, tmp_path):
+        _write_schema(tmp_path, {
+            "schema_version": 1,
+            "name": "old", "project_id": "old",
+            "commands": {}, "groups": {},
+        })
+        with pytest.raises(ValueError, match="schema_version"):
+            read_schema_json(str(tmp_path))
+
+    def test_missing_version_is_refused(self, tmp_path):
+        _write_schema(tmp_path, {
+            "schema_version": None,
+            "name": "old", "project_id": "old",
+            "commands": {}, "groups": {},
+        })
+        with pytest.raises(ValueError, match="schema_version"):
+            read_schema_json(str(tmp_path))
+
+    def test_refusal_names_the_regeneration_command(self, tmp_path):
+        _write_schema(tmp_path, {
+            "schema_version": 1,
+            "name": "old", "project_id": "old",
+            "commands": {}, "groups": {},
+        })
+        with pytest.raises(ValueError) as excinfo:
+            read_schema_json(str(tmp_path))
+        assert "old --dump-schema" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Schema version 2: value_schema, presence, choices, selectors
+# ---------------------------------------------------------------------------
+
+
+def _v2_command(**overrides):
+    """A minimal v2 command entry with one flag, overridable."""
+    cmd = {
+        "name": "run",
+        "help": "run the thing that this command runs, at length",
+        "effect": "mutating",
+        "flags": [],
+        "args": [],
+    }
+    cmd.update(overrides)
+    return cmd
+
+
+def _v2_schema(command):
+    return {
+        "name": "app", "project_id": "app", "version": "1.0",
+        "help": "an app", "commands": {command["name"]: command},
+        "groups": {},
+    }
+
+
+class TestValueSchemaTypes:
+    """Every fragment of the closed subset renders as a readable type word."""
+
+    @pytest.mark.parametrize("fragment,word", [
+        ({"type": "string"}, "str"),
+        ({"type": "boolean"}, "bool"),
+        ({"type": "integer"}, "int"),
+        ({"type": "number"}, "float"),
+        ({"type": "array", "items": {"type": "string"}}, "list[str]"),
+        ({"type": "array", "items": {"type": "integer"}}, "list[int]"),
+        (
+            {"type": "object", "additionalProperties": {"type": "string"}},
+            "dict[str, str]",
+        ),
+    ])
+    def test_type_word(self, tmp_path, fragment, word):
+        cmd = _v2_command(flags=[{
+            "name": "value", "help": "a value of some declared shape",
+            "value_schema": fragment, "presence": "optional",
+        }])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert f"| {word} |" in content
+
+    def test_no_flag_is_labelled_str_by_default(self, tmp_path):
+        """The v1 reader's ``fl.get("type", "str")`` labelled everything str."""
+        cmd = _v2_command(flags=[{
+            "name": "count", "help": "how many times to run the thing",
+            "value_schema": {"type": "integer"}, "presence": "required",
+        }])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "| int |" in content
+        assert "| str |" not in content
+
+
+class TestPresenceColumn:
+    """One presence part per line, as strictcli's own help renders it."""
+
+    def test_required_optional_and_default(self, tmp_path):
+        cmd = _v2_command(flags=[
+            {"name": "a", "help": "the required one, described at length",
+             "value_schema": {"type": "string"}, "presence": "required"},
+            {"name": "b", "help": "the optional one, described at length",
+             "value_schema": {"type": "string"}, "presence": "optional"},
+            {"name": "c", "help": "the defaulted one, described at length",
+             "value_schema": {"type": "integer"}, "presence": "default",
+             "default": 3},
+        ])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "| Name | Short | Type | Presence | Env | Description |" in content
+        assert "| `--a` |  | str | required |" in content
+        assert "| `--b` |  | str | optional |" in content
+        assert "| `--c` |  | int | default: `3` |" in content
+
+    def test_empty_declared_default_is_rendered(self, tmp_path):
+        """``[]``, ``""``, ``0`` and ``false`` are declarations, not absences."""
+        cmd = _v2_command(flags=[
+            {"name": "tags", "help": "the empty list default, at some length",
+             "value_schema": {"type": "array", "items": {"type": "string"}},
+             "presence": "default", "default": []},
+            {"name": "quiet", "help": "the false default, described at length",
+             "value_schema": {"type": "boolean"}, "presence": "default",
+             "default": False},
+        ])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "default: `[]`" in content
+        assert "default: `false`" in content
+
+
+class TestChoicesRecords:
+    """A value flag's choices are rendered with their per-entry help."""
+
+    def test_values_and_help_appear(self, tmp_path):
+        cmd = _v2_command(flags=[{
+            "name": "format", "help": "how the result should be rendered",
+            "value_schema": {"type": "string", "enum": ["text", "json"]},
+            "presence": "optional",
+            "choices": [
+                {"value": "text", "help": "an indented text tree"},
+                {"value": "json"},
+            ],
+        }])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "Values: `text` (an indented text tree), `json`." in content
+
+
+class TestSelectorRendering:
+    """A selector renders as the construct it is, never as a phantom token."""
+
+    @pytest.fixture()
+    def member_spelled(self):
+        return _v2_command(flags=[{
+            "name": "mode",
+            "help": "which mode to run, of the two declared below here",
+            "presence": "required",
+            "elect_by": "member-flags",
+            "choices": [
+                {
+                    "name": "pattern",
+                    "help": "match mode: rewrite every occurrence found",
+                    "flags": [
+                        {"name": "value", "help": "the regex to match with",
+                         "value_schema": {"type": "string"},
+                         "presence": "required"},
+                        {"name": "replace",
+                         "help": "literal text to substitute for each match",
+                         "value_schema": {"type": "string"},
+                         "presence": "optional"},
+                    ],
+                },
+                {"name": "everything",
+                 "help": "whole-tree mode: no pattern is consulted at all"},
+            ],
+        }])
+
+    def test_selector_name_is_not_a_flag_token(self, tmp_path, member_spelled):
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(member_spelled))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "`--mode`" not in content
+        assert "| `mode` |" in content
+
+    def test_members_are_their_own_rows(self, tmp_path, member_spelled):
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(member_spelled))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "`--pattern`" in content
+        assert "`--everything`" in content
+        assert "Elects `mode` = `pattern`." in content
+
+    def test_scoped_flags_are_indented_and_name_their_scope(
+        self, tmp_path, member_spelled,
+    ):
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(member_spelled))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "&nbsp;&nbsp;&nbsp;&nbsp;`--pattern`" in content
+        assert "`--replace`" in content
+        assert "Only with `--pattern`." in content
+
+    def test_member_payload_types_the_member_row(self, tmp_path, member_spelled):
+        """The reserved ``value`` entry is the member's own payload."""
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(member_spelled))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "`--value`" not in content
+        assert "Its value: the regex to match with" in content
+
+    def test_selector_token_spelling_keeps_its_dashes(self, tmp_path):
+        cmd = _v2_command(flags=[{
+            "name": "via",
+            "help": "the delivery channel this notification travels on",
+            "presence": "required",
+            "elect_by": "selector-token",
+            "choices": [
+                {"name": "email", "help": "deliver it as an email message",
+                 "flags": [
+                     {"name": "recipient", "help": "destination address",
+                      "value_schema": {"type": "string"},
+                      "presence": "required"},
+                 ]},
+                {"name": "webhook", "help": "post it to a URL somewhere"},
+            ],
+        }])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "`--via <choice>`" in content
+        assert "Only with `--via email`." in content
+
+
+class TestConstraintRendering:
+    """Declared constraints are published, so they are rendered."""
+
+    def test_at_least_one(self, tmp_path):
+        cmd = _v2_command(
+            flags=[
+                {"name": "commits", "help": "the commits to select entries by",
+                 "value_schema": {"type": "string"}, "presence": "optional"},
+                {"name": "id", "help": "the entry id to select an entry by",
+                 "value_schema": {"type": "string"}, "presence": "optional"},
+            ],
+            constraints=[{
+                "type": "at_least_one", "name": "entry-selection",
+                "members": [
+                    {"kind": "flag", "name": "commits", "when": "present"},
+                    {"kind": "flag", "name": "id", "when": "present"},
+                ],
+            }],
+        )
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "## Constraints" in content
+        assert "`entry-selection`" in content
+        assert (
+            "At least one of `--commits` (when supplied), `--id` "
+            "(when supplied)." in content
+        )
+
+    def test_requires_and_implies(self, tmp_path):
+        cmd = _v2_command(constraints=[
+            {"type": "requires", "name": "needs-base",
+             "flag": "diff", "depends_on": "base"},
+            {"type": "implies", "name": "forces-json",
+             "flag": "machine", "implies": "format", "value": "json"},
+        ])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "`--diff` requires `--base`." in content
+        assert "`--machine` implies `--format` = `json`." in content
+
+
+class TestUpdateRendering:
+    """An update declaration states what a run writes and what it leaves."""
+
+    @pytest.fixture()
+    def update_cmd(self):
+        return _v2_command(
+            name="update-record",
+            update_of={
+                "resource": "dns-record",
+                "identity": ["zone"],
+                "properties": ["content", "ttl"],
+            },
+            write_mode="sparse",
+            flags=[
+                {"name": "zone", "help": "the zone the record belongs to",
+                 "value_schema": {"type": "string"}, "presence": "required"},
+                {"name": "content", "help": "the record's content value",
+                 "value_schema": {"type": "string"}, "presence": "optional"},
+                {"name": "ttl", "help": "the record's time to live, seconds",
+                 "value_schema": {"type": "integer"}, "presence": "optional",
+                 "nullable": True},
+            ],
+        )
+
+    def test_resource_mode_and_roles(self, tmp_path, update_cmd):
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(update_cmd))
+        content = _read_page(docs_dir, "cli-update-record.md")
+        assert "**Updates:** `dns-record` (write mode: sparse)" in content
+        assert "- Identified by: `--zone`" in content
+        assert (
+            "- Writes: `--content`, `--ttl` -- at least one of them is "
+            "required." in content
+        )
+        assert "- A property that is not supplied is left unchanged." in content
+
+    def test_full_replace_says_the_other_thing(self, tmp_path, update_cmd):
+        update_cmd["write_mode"] = "full_replace"
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(update_cmd))
+        content = _read_page(docs_dir, "cli-update-record.md")
+        assert "re-sent as read" in content
+
+    def test_nullable_publishes_the_minted_unset_flag(self, tmp_path, update_cmd):
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(update_cmd))
+        content = _read_page(docs_dir, "cli-update-record.md")
+        assert "`--ttl`, `--unset-ttl`" in content
+        assert "- Clearable: `--unset-ttl`." in content
+
+
+class TestNegationSpelling:
+    """A negatable bool publishes ``--no-x``, which gets no entry of its own."""
+
+    def test_negatable_bool_shows_both_spellings(self, tmp_path):
+        cmd = _v2_command(flags=[
+            {"name": "cache", "help": "whether to consult the on-disk cache",
+             "value_schema": {"type": "boolean"}, "presence": "optional"},
+            {"name": "force-delete",
+             "help": "delete without consulting anything at all",
+             "value_schema": {"type": "boolean"}, "presence": "optional",
+             "negatable": False},
+        ])
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "`--cache`, `--no-cache`" in content
+        assert "`--no-force-delete`" not in content
+
+
+class TestFlagTokenWalk:
+    """The completeness check compares against typeable tokens."""
+
+    def test_member_selector_yields_choices_not_the_selector(self):
+        from selfdoc.strictcli_support import iter_flag_tokens
+
+        flags = [{
+            "name": "mode", "help": "h", "presence": "required",
+            "elect_by": "member-flags",
+            "choices": [
+                {"name": "pattern", "help": "h", "flags": [
+                    {"name": "value", "help": "h",
+                     "value_schema": {"type": "string"},
+                     "presence": "required"},
+                    {"name": "replace", "help": "h",
+                     "value_schema": {"type": "string"},
+                     "presence": "optional"},
+                ]},
+            ],
+        }]
+        assert list(iter_flag_tokens(flags)) == [
+            "--pattern", "--replace",
+        ]
+
+    def test_token_selector_yields_its_own_name(self):
+        from selfdoc.strictcli_support import iter_flag_tokens
+
+        flags = [{
+            "name": "via", "help": "h", "presence": "required",
+            "elect_by": "selector-token",
+            "choices": [{"name": "email", "help": "h", "flags": [
+                {"name": "recipient", "help": "h",
+                 "value_schema": {"type": "string"},
+                 "presence": "required"},
+            ]}],
+        }]
+        assert list(iter_flag_tokens(flags)) == ["--via", "--recipient"]
+
+
+class TestAppConfigSection:
+    """v2's behavioral-completeness keys reach the index page."""
+
+    def test_config_keys_render(self, tmp_path):
+        schema = _v2_schema(_v2_command())
+        schema.update({
+            "config": True,
+            "config_format": "toml",
+            "config_conflict_mode": "config-wins",
+            "env_prefix": "APP_",
+        })
+        docs_dir = _gen_from_schema(tmp_path, schema)
+        content = _read_page(docs_dir, "cli-index.md")
+        assert "## Configuration" in content
+        assert "`toml`" in content
+        assert "`config-wins`" in content
+        assert "`APP_`" in content
+
+    def test_section_absent_when_the_app_declares_nothing(self, tmp_path):
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(_v2_command()))
+        content = _read_page(docs_dir, "cli-index.md")
+        assert "## Configuration" not in content
+
+
+class TestFlagSetsRendering:
+    """A command's flag-set grouping is otherwise invisible on the page."""
+
+    def test_sets_are_listed(self, tmp_path):
+        cmd = _v2_command(
+            flags=[
+                {"name": "push-timeout", "help": "seconds to allow per push",
+                 "value_schema": {"type": "integer"}, "presence": "optional"},
+                {"name": "ci-timeout", "help": "seconds to allow for the CI",
+                 "value_schema": {"type": "integer"}, "presence": "optional"},
+            ],
+            flag_sets=[{"name": "timeouts",
+                        "flags": ["push-timeout", "ci-timeout"]}],
+        )
+        docs_dir = _gen_from_schema(tmp_path, _v2_schema(cmd))
+        content = _read_page(docs_dir, "cli-run.md")
+        assert "Flag sets:" in content
+        assert "- `timeouts` -- `--push-timeout`, `--ci-timeout`" in content
