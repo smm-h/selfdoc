@@ -14,11 +14,15 @@ authors = [{ name = "smm-h" }]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
-# Floors, not pins -- upper bounds stay banned. selfdoc-core>=0.9.2 because the
-# engine writes every reference a build emits, and before 0.9.2 the ones
-# crossing a shared site's mount named addresses the site does not serve; a
-# consumer that resolved an older core against this selfdoc would build a
-# documentation tree with dead links in it.
+# Floors, not pins -- upper bounds stay banned. selfdoc-core>=0.10.1 because
+# this selfdoc's CLI renderer writes pages the engine has to accept: the
+# '&nbsp;' indent of a scoped flag row and the '- Clearable:' heading of a
+# sparse update are both read as English by an older engine, so a consumer
+# resolving one would fail its own `selfdoc check` on 37 lints in text
+# selfdoc wrote. (0.9.2 was the previous floor: the engine writes every
+# reference a build emits, and before 0.9.2 the ones crossing a shared
+# site's mount named addresses the site does not serve, so an older core
+# built a documentation tree with dead links in it.)
 # strictcli>=0.41.0 because cli.py is written against the declaration regime:
 # every flag and arg declares `presence=`, every `choices=` entry is a
 # `strictcli.Choice(...)` record, and the arg surface's `required=` keyword no
@@ -26,11 +30,11 @@ keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "sel
 # app does not build at all below the floor. (0.40.0 was the previous floor,
 # for machine mode: `check`, `spell-corpus` and `quality` declare a
 # `payload_schema=` and answer through `ctx.payload()` / `ctx.json`.)
-dependencies = ["strictcli>=0.41.0", "selfdoc-core>=0.9.2"]
+dependencies = ["strictcli>=0.41.0", "selfdoc-core>=0.10.1"]
 
 [project.optional-dependencies]
-perf = ["selfdoc-core[perf]>=0.9.2"]
-og = ["selfdoc-core[og]>=0.9.2"]
+perf = ["selfdoc-core[perf]>=0.10.1"]
+og = ["selfdoc-core[og]>=0.10.1"]
 
 [project.urls]
 Repository = "https://github.com/smm-h/selfdoc"
