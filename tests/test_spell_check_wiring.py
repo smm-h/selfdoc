@@ -509,3 +509,132 @@ def test_corpus_run_writes_nothing_into_the_projects(tmp_path):
         for name in files
     }
     assert after == before
+
+
+# -- Generated CLI reference pages ---------------------------------------------
+#
+# selfdoc renders a strictcli app's schema into reference pages, and then
+# spell-checks those pages like any other.  Every fixed word and every
+# markup construct the renderer emits is therefore held to selfdoc's own
+# standard, on a machine whose accept list is empty -- a consumer project
+# has no way to make selfdoc's own emission acceptable, and should not need
+# one.  Two escaped once: the ``&nbsp;`` indent on a scoped flag's row and
+# the ``- Clearable:`` heading of a sparse update, which together failed
+# the first consumer to declare a member-spelled selector and an update
+# command with a nullable property.
+
+
+_CLI_SCHEMA = {
+    "schema_version": 2,
+    "name": "curator",
+    "project_id": "curator",
+    "version": "1.0",
+    "help": "manage the records this example service keeps",
+    "commands": {
+        # A member-spelled selector: each choice is its own token, and the
+        # flags scoped to a choice are indented under it with entities.
+        "run": {
+            "name": "run",
+            "help": "run the rewrite that this command is here to run",
+            "effect": "mutating",
+            "args": [],
+            "flags": [{
+                "name": "mode",
+                "help": "which mode to run in, of the two declared below",
+                "presence": "required",
+                "elect_by": "member-flags",
+                "choices": [
+                    {
+                        "name": "pattern",
+                        "help": "match mode: rewrite every occurrence found",
+                        "flags": [
+                            {"name": "value",
+                             "help": "the regular expression to match with",
+                             "value_schema": {"type": "string"},
+                             "presence": "required"},
+                            {"name": "replace",
+                             "help": "literal text to substitute for a match",
+                             "value_schema": {"type": "string"},
+                             "presence": "optional"},
+                        ],
+                    },
+                    {"name": "everything",
+                     "help": "whole-tree mode: no pattern is consulted here"},
+                ],
+            }],
+        },
+        # A sparse update with a nullable property, which publishes the
+        # minted unset token under its own heading.
+        "update-record": {
+            "name": "update-record",
+            "help": "update one record that the service already holds",
+            "effect": "mutating",
+            "update_of": {
+                "resource": "record",
+                "identity": ["zone"],
+                "properties": ["content", "duration"],
+            },
+            "write_mode": "sparse",
+            "args": [],
+            "flags": [
+                {"name": "zone", "help": "the zone the record belongs to",
+                 "value_schema": {"type": "string"}, "presence": "required"},
+                {"name": "content", "help": "the content value to write",
+                 "value_schema": {"type": "string"}, "presence": "optional"},
+                {"name": "duration",
+                 "help": "how long the record is held, in seconds",
+                 "value_schema": {"type": "integer"}, "presence": "optional",
+                 "nullable": True},
+            ],
+        },
+    },
+    "groups": {},
+}
+
+
+def _strictcli_project(tmp_path, name="cliproj"):
+    """A project whose docs are the CLI pages selfdoc rendered for a schema."""
+    from selfdoc.strictcli_support import generate_cli_pages, read_schema_json
+
+    project = _project(tmp_path, {"index.md": _CLEAN_PAGE}, name=name)
+    schema_dir = project / ".strictcli"
+    schema_dir.mkdir(exist_ok=True)
+    with open(schema_dir / "schema.json", "w", encoding="utf-8") as f:
+        json.dump(_CLI_SCHEMA, f)
+    structure = read_schema_json(str(project))
+    generate_cli_pages(structure, str(project / "docs"))
+    return project
+
+
+def test_generated_cli_pages_carry_no_spelling_lint(tmp_path):
+    """selfdoc's own renderer writes pages that selfdoc's own check accepts."""
+    project = _strictcli_project(tmp_path)
+    result = check_docs(str(project))
+    assert [lint for lint in result.lints if lint.code == "SPELL001"] == []
+
+
+def test_a_scoped_flag_row_still_carries_its_indent(tmp_path):
+    """The pages under test are the ones with the constructs in them."""
+    project = _strictcli_project(tmp_path)
+    with open(project / "docs" / "cli-run.md", encoding="utf-8") as f:
+        assert "&nbsp;&nbsp;&nbsp;&nbsp;`--pattern`" in f.read()
+    with open(project / "docs" / "cli-update-record.md", encoding="utf-8") as f:
+        assert "- Clearable: `--unset-duration`." in f.read()
+
+
+def test_a_typo_on_a_generated_cli_page_is_still_reported(tmp_path):
+    """Accepting the renderer's own words is not accepting the page."""
+    project = _strictcli_project(tmp_path)
+    page = project / "docs" / "cli-run.md"
+    with open(page, encoding="utf-8") as f:
+        content = f.read()
+    # A generated page is written read-only; this test is the author it
+    # never has, editing one anyway.
+    os.chmod(page, 0o644)
+    with open(page, "w", encoding="utf-8") as f:
+        f.write(content + "\nA sentence with a recieve typo in it.\n")
+
+    result = check_docs(str(project))
+    spell = [lint for lint in result.lints if lint.code == "SPELL001"]
+    assert len(spell) == 1
+    assert "recieve" in spell[0].message

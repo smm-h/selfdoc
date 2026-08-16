@@ -160,6 +160,38 @@ def test_accepted_term_is_accepted_in_any_standard_casing(vocab):
     assert check_text(text, file="p.md", vocab=vocab, accepted=accepted) == []
 
 
+# -- The renderer vocabulary --------------------------------------------------
+
+
+@pytest.mark.parametrize("text", [
+    "- Clearable: the property that a run can empty.\n",
+    "| Name | Short | Type | Presence | Env | Description |\n",
+    "| a flag | | str | required | | what it is for |\n",
+    "This app reads a config file; one is selected on the command line.\n",
+    "Its env var is not prefixed with the app's env prefix.\n",
+    "These flags are owned by the strictcli framework, not by the app.\n",
+])
+def test_renderer_vocabulary_is_accepted_with_no_accept_list(vocab, text):
+    """A word selfdoc's own renderers emit is accepted by selfdoc's own check.
+
+    The accept list belongs to the machine, so a consumer project's check
+    has to pass on a machine that has never accepted anything.  Fixed
+    renderer vocabulary is therefore carried by the engine itself.
+    """
+    assert _words(text, vocab) == []
+
+
+def test_renderer_vocabulary_is_not_already_general_english(vocab):
+    """The set earns its keep: these are not words the vendored list holds."""
+    assert "clearable" not in vocab
+    assert "strictcli" not in vocab
+
+
+def test_the_renderer_vocabulary_does_not_accept_a_misspelling(vocab):
+    """It is a small closed set, not a hole in the check."""
+    assert _words("- Clearable: teh property.\n", vocab) == ["teh"]
+
+
 # -- What counts as a word ----------------------------------------------------
 
 
@@ -217,6 +249,33 @@ def test_html_tags_with_attributes_are_not_scanned(vocab, text):
 def test_prose_around_an_attribute_bearing_tag_is_still_scanned(vocab):
     """Masking the tag must not blank the sentence it sits in."""
     text = 'Before <img src="x.png" alt="ok"> recieve after.\n'
+    found = check_text(text, file="p.md", vocab=vocab, accepted=frozenset())
+    assert [m.word for m in found] == ["recieve"]
+    assert text.split("\n")[0][found[0].column - 1:].startswith("recieve")
+
+
+@pytest.mark.parametrize("text", [
+    # The entity that started this: four of them indent a table cell in
+    # every CLI reference page a scoped flag appears on, and 'nbsp' was
+    # read as an English word four times per indent level.
+    "Indented&nbsp;&nbsp;&nbsp;&nbsp;beyond the cell edge.\n",
+    "A&nbsp;non-breaking space.\n",
+    "Ampersand&amp;entity and an em&mdash;dash.\n",
+    "A numeric&#160;entity.\n",
+    "A hexadecimal&#x27;entity.\n",
+])
+def test_html_entities_are_not_scanned(vocab, text):
+    """An entity reference is markup: its name is not a word.
+
+    The mask covers the named form and both numeric forms, because all
+    three are the same construct spelled three ways.
+    """
+    assert _words(text, vocab) == []
+
+
+def test_prose_around_an_entity_is_still_scanned(vocab):
+    """Blanking the entity must not blank the sentence, or move its columns."""
+    text = "Before&nbsp;recieve after.\n"
     found = check_text(text, file="p.md", vocab=vocab, accepted=frozenset())
     assert [m.word for m in found] == ["recieve"]
     assert text.split("\n")[0][found[0].column - 1:].startswith("recieve")

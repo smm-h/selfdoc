@@ -56,6 +56,18 @@ mode, and the check behaves identically before and after the file appears --
 it just has fewer accepted terms.  A file that *exists* and is malformed is
 a hard error: it was written by someone who meant something by it, and
 guessing at their intent would silently drop accepted terms.
+
+The renderer vocabulary
+-----------------------
+
+The accept list cannot carry a word selfdoc itself writes.  selfdoc renders
+reference pages into a consumer's docs tree and then spell-checks them, so
+a heading a renderer invents becomes an error-severity lint in that
+consumer's project -- text they did not write, on a page they cannot edit,
+against a machine list they should not have to populate.  Fixed renderer
+vocabulary is therefore carried by the engine, in
+:data:`RENDERER_VOCABULARY`, and consulted on every run regardless of what
+the machine has accepted.
 """
 
 from __future__ import annotations
@@ -173,6 +185,44 @@ def load_accept_list(path: Path | str | None = None) -> frozenset[str]:
     return frozenset(accepted)
 
 
+# -- The renderer vocabulary --------------------------------------------------
+
+#: Fixed vocabulary selfdoc's own renderers write into generated pages.
+#:
+#: A generated page is checked by the same SPELL001 that checks an authored
+#: one, so a heading, a column header or a type word a renderer invents is
+#: judged against this engine in every project that renders one.  The
+#: consumer cannot fix such a finding: the text is not theirs, and the
+#: accept list that could silence it belongs to one machine while the
+#: rendered page ships everywhere.  Fixed renderer vocabulary is therefore
+#: carried by the engine itself and accepted unconditionally, on every
+#: machine, with or without an accept list.
+#:
+#: Seeded from the strictcli reference renderer
+#: (``selfdoc/strictcli_support.py``): the ``Clearable`` heading a sparse
+#: update publishes its unset tokens under, the ``Env`` column of the flag
+#: table, the ``Config`` rows of the configuration table, the type words the
+#: Type column renders, and the two tool names its prose names.  A renderer
+#: that adds a word adds it here; ``tests/test_strictcli_support.py`` renders
+#: a schema exercising every construct and fails when one is missing.
+RENDERER_VOCABULARY = frozenset({
+    # Literal headings and labels.
+    "clearable",
+    "config",
+    "env",
+    # The type words a value schema renders as, as one family.
+    "str",
+    "bool",
+    "int",
+    "float",
+    "list",
+    "dict",
+    # Tool names the renderer's own prose names.
+    "selfdoc",
+    "strictcli",
+})
+
+
 # -- Word scanning ------------------------------------------------------------
 
 # Markdown and HTML constructs whose content is never prose.  Each is blanked
@@ -192,6 +242,10 @@ _MASKS = (
     # tag broken across lines is not covered: the scanner is handed one raw
     # source line at a time, so the columns it reports stay true.
     re.compile(r"</?[A-Za-z!][^<>]*>"),
+    # HTML entity references, named and numeric.  An entity is markup that
+    # renders as one character, so its name is no more a word than a tag's
+    # is -- ``&nbsp;`` is a space, not the word "nbsp".
+    re.compile(r"&(?:[A-Za-z][A-Za-z0-9]*|#\d+|#[xX][0-9A-Fa-f]+);"),
     # Bare URLs and mail addresses left loose in prose.
     re.compile(r"\b[a-z][a-z0-9+.-]*://\S+"),
     re.compile(r"\bmailto:\S+"),
@@ -352,7 +406,11 @@ def check_text(
     """
     words = load_wordlist() if vocab is None else vocab
     accept = load_accept_list() if accepted is None else accepted
-    known = words | accept if accept else words
+    # The renderer vocabulary is not optional and not machine-local: a page
+    # selfdoc rendered is checked on machines that have accepted nothing.
+    known = words | RENDERER_VOCABULARY
+    if accept:
+        known = known | accept
 
     lines = content.split("\n")
     results: list[Misspelling] = []

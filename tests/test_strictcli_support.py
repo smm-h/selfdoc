@@ -2123,3 +2123,178 @@ class TestFlagSetsRendering:
         content = _read_page(docs_dir, "cli-run.md")
         assert "Flag sets:" in content
         assert "- `timeouts` -- `--push-timeout`, `--ci-timeout`" in content
+
+
+class TestRenderedProseIsSpellable:
+    """Every fixed word this renderer emits is a word SPELL001 accepts.
+
+    ``selfdoc check`` spell-checks the pages this module writes, so a
+    literal heading, a column header or a markup construct invented here
+    lands as an error-severity lint in every project that renders a schema
+    using it -- and the consumer cannot fix it, because the text is not
+    theirs.  The machine's accept list is deliberately not consulted here:
+    it belongs to one machine, and a consumer's check has to pass without
+    it.
+
+    A failure means the renderer emits a word the engine does not know.
+    The fix is to add it to ``RENDERER_VOCABULARY`` in
+    ``selfdoc_core/spelling.py`` -- never to the machine's accept list, and
+    never by rewording the page to dodge the check.
+    """
+
+    @pytest.fixture()
+    def maximal_schema(self):
+        """A schema exercising every construct the renderer has prose for."""
+        return {
+            "schema_version": 2,
+            "name": "app", "project_id": "app", "version": "1.0",
+            "help": "an app that manages the records it is given",
+            "env_prefix": "APP_",
+            "config": True, "config_format": "toml",
+            "config_path": "~/.config/app.toml",
+            "config_conflict_mode": "cli-wins",
+            "commands": {
+                "run": {
+                    "name": "run",
+                    "help": "run the rewrite that this command is here to run",
+                    "effect": "mutating", "consequential": True,
+                    "args": [{"name": "target",
+                              "help": "the tree to run the rewrite against",
+                              "value_schema": {"type": "string"},
+                              "presence": "required"}],
+                    "flags": [
+                        {"name": "count", "help": "how many passes to make",
+                         "value_schema": {"type": "integer"},
+                         "presence": "default", "default": 3,
+                         "env": "APP_COUNT"},
+                        {"name": "cache",
+                         "help": "whether to consult the cache on disk",
+                         "value_schema": {"type": "boolean"},
+                         "presence": "optional"},
+                        {"name": "tags", "help": "labels to attach to the run",
+                         "value_schema": {"type": "array",
+                                          "items": {"type": "string"}},
+                         "presence": "optional"},
+                        {"name": "vars", "help": "values to expand the tree with",
+                         "value_schema": {
+                             "type": "object",
+                             "additionalProperties": {"type": "string"}},
+                         "presence": "optional"},
+                        {"name": "label",
+                         "help": "a label the run can also remove",
+                         "value_schema": {"type": "string"},
+                         "presence": "optional", "nullable": True,
+                         "env": "LABEL", "prefixed": False},
+                        {"name": "mode",
+                         "help": "which mode to run in, of the two below",
+                         "presence": "required", "elect_by": "member-flags",
+                         "choices": [
+                             {"name": "pattern",
+                              "help": "match mode: rewrite each occurrence",
+                              "flags": [
+                                  {"name": "value",
+                                   "help": "the regular expression to match",
+                                   "value_schema": {"type": "string"},
+                                   "presence": "required"},
+                                  {"name": "replace",
+                                   "help": "text to substitute for a match",
+                                   "value_schema": {"type": "string"},
+                                   "presence": "optional"}]},
+                             {"name": "everything",
+                              "help": "whole-tree mode: no pattern at all"}]},
+                        {"name": "via",
+                         "help": "the channel the report is delivered on",
+                         "presence": "optional", "elect_by": "selector-token",
+                         "choices": [
+                             {"name": "email",
+                              "help": "deliver the report as a message",
+                              "flags": [{"name": "recipient",
+                                         "help": "the destination address",
+                                         "value_schema": {"type": "string"},
+                                         "presence": "required"}]},
+                             {"name": "webhook",
+                              "help": "post the report to a location"}]},
+                    ],
+                    "flag_sets": [{"name": "timeouts", "flags": ["count"]}],
+                    "constraints": [
+                        {"type": "at_least_one", "name": "selection",
+                         "members": [
+                             {"kind": "flag", "name": "count",
+                              "when": "present"},
+                             {"kind": "flag", "name": "cache",
+                              "when": "present"}]},
+                        {"type": "requires", "name": "needs-count",
+                         "flag": "cache", "depends_on": "count"},
+                        {"type": "implies", "name": "forces-count",
+                         "flag": "cache", "implies": "count", "value": 1},
+                    ],
+                    "grants": [{"kind": "network", "name": "api.example.com",
+                                "reason": "the report is delivered over it"}],
+                },
+                "update-record": {
+                    "name": "update-record",
+                    "help": "update one record the service already holds",
+                    "effect": "mutating",
+                    "update_of": {"resource": "record", "identity": ["zone"],
+                                  "properties": ["content", "duration"]},
+                    "write_mode": "sparse", "args": [],
+                    "flags": [
+                        {"name": "zone", "help": "the zone it belongs to",
+                         "value_schema": {"type": "string"},
+                         "presence": "required"},
+                        {"name": "content", "help": "the value to write",
+                         "value_schema": {"type": "string"},
+                         "presence": "optional"},
+                        {"name": "duration",
+                         "help": "how long it is held, in seconds",
+                         "value_schema": {"type": "integer"},
+                         "presence": "optional", "nullable": True}],
+                },
+                "replace-record": {
+                    "name": "replace-record",
+                    "help": "replace one record the service already holds",
+                    "effect": "mutating",
+                    "deprecated": "use the update command in place of it",
+                    "update_of": {"resource": "record", "identity": ["zone"],
+                                  "properties": ["content"]},
+                    "write_mode": "full_replace", "args": [],
+                    "flags": [
+                        {"name": "zone", "help": "the zone it belongs to",
+                         "value_schema": {"type": "string"},
+                         "presence": "required"},
+                        {"name": "content", "help": "the value to write",
+                         "value_schema": {"type": "string"},
+                         "presence": "optional"}],
+                },
+                "show": {
+                    "name": "show",
+                    "help": "show what the service is holding right now",
+                    "effect": "read_only", "args": [], "flags": [],
+                    "dry_run_supported": False,
+                    "dry_run_unsupported_reason": "it changes nothing at all",
+                },
+            },
+            "groups": {},
+        }
+
+    def test_every_rendered_page_is_spelled_acceptably(
+        self, tmp_path, maximal_schema,
+    ):
+        from selfdoc_core.spelling import check_text, load_wordlist
+
+        docs_dir = _gen_from_schema(tmp_path, maximal_schema)
+        vocabulary = load_wordlist()
+        offenders = {}
+        for fname in sorted(os.listdir(docs_dir)):
+            body = _read_page(docs_dir, fname)
+            # Frontmatter is not prose the page renders; the check strips it
+            # the same way before scanning.
+            if body.startswith("---\n"):
+                body = body.split("---\n", 2)[-1]
+            found = check_text(
+                body, file=fname, vocab=vocabulary, accepted=frozenset(),
+                suggest=False,
+            )
+            if found:
+                offenders[fname] = sorted({m.word for m in found})
+        assert offenders == {}
