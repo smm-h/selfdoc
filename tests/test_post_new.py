@@ -154,13 +154,21 @@ def test_post_new_no_title(tmp_path, monkeypatch):
         _cmd_post_new(None, title="")
 
 
-def test_post_new_no_title_default(tmp_path, monkeypatch):
-    """SystemExit when title is omitted (default empty string)."""
+def test_post_new_omitted_title_is_the_frameworks_refusal(tmp_path, monkeypatch):
+    """Omitting --title is refused before the handler runs.
+
+    ``--title`` declares ``presence="required"``, so absence never reaches
+    the command: strictcli refuses it at parse time and the handler has no
+    absent case to test.
+    """
+    from selfblog.cli import app
+
     _setup_project(tmp_path)
     monkeypatch.chdir(tmp_path)
 
-    with pytest.raises(SystemExit):
-        _cmd_post_new(None)
+    result = app.test(["post", "new"])
+    assert result.exit_code != 0
+    assert "--title" in result.stderr
 
 
 def test_post_new_no_config(tmp_path, monkeypatch):

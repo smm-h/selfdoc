@@ -675,13 +675,14 @@ def test_zero_attempts_is_rejected(assembly_tree, runner):
 # -- the CLI wrapper ----------------------------------------------------------
 
 
-def test_integrate_command_requires_a_canonical_base(assembly_tree, monkeypatch, capsys):
-    from selfblog.cli import _cmd_assembly_integrate
+def test_integrate_command_requires_a_canonical_base(assembly_tree, monkeypatch):
+    """The framework refuses the absent base, so the handler never runs."""
+    from selfblog.cli import app
 
     monkeypatch.chdir(assembly_tree)
-    with pytest.raises(SystemExit):
-        _cmd_assembly_integrate(None, slug="alpha", canonical_base="")
-    assert "--canonical-base is required" in capsys.readouterr().err
+    result = app.test(["assembly", "integrate", "--slug", "alpha"])
+    assert result.exit_code != 0
+    assert "--canonical-base" in result.stderr
 
 
 def test_integrate_command_runs_the_integration(assembly_tree, runner, monkeypatch, capsys):

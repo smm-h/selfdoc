@@ -128,14 +128,19 @@ def _run_generate_shared(tmp_path, **kwargs):
 
 
 def test_generate_shared_requires_canonical_base(tmp_path):
+    """The framework refuses the absent base, so the handler never runs."""
+    from selfblog.cli import app
+
     site_dir = str(tmp_path / "site")
     manifests_dir = str(tmp_path / "manifests")
     os.makedirs(site_dir)
     os.makedirs(manifests_dir)
-    with pytest.raises(SystemExit):
-        _cmd_assembly_generate_shared(
-            None, site_dir=site_dir, manifests_dir=manifests_dir,
-        )
+    result = app.test([
+        "assembly", "generate-shared",
+        "--site-dir", site_dir, "--manifests-dir", manifests_dir,
+    ])
+    assert result.exit_code != 0
+    assert "--canonical-base" in result.stderr
 
 
 def test_generate_shared_blog_index_declares_canonical(tmp_path):

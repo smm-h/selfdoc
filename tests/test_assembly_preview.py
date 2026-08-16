@@ -429,10 +429,13 @@ class TestTheCommand:
         assert "look at" in cmd.dry_run_unsupported_reason
 
     def test_every_input_that_decides_the_output_is_required(self):
-        # strictcli spells "required" as the absence of a default.
+        # Presence is declared, never derived: an absent default no longer
+        # means anything on its own.
         flags = self._flags()
         for name in ("home", "out", "port", "canonical-base", "build"):
-            assert flags[name].default is None, f"--{name} must have no default"
+            assert flags[name].presence == "required", (
+                f"--{name} must declare presence=required"
+            )
 
     def test_the_build_choice_is_negatable_rather_than_defaulted(self):
         build = self._flags()["build"]

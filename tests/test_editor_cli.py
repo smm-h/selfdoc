@@ -67,14 +67,14 @@ class TestRegistration:
     def test_serve_help_survives_dry_run_on_the_same_line(self):
         assert app.test(["editor", "serve", "--dry-run", "--help"]).exit_code == 0
 
-    def test_the_port_flag_has_no_default(self):
-        """No default means strictcli requires it -- the port is stated."""
+    def test_the_port_flag_is_declared_required(self):
+        """Presence is declared, never derived -- the port is stated."""
         port = next(
             f for f in app._groups["editor"].commands["serve"].flags
             if f.name == "port"
         )
         assert port.type is int
-        assert port.default is None
+        assert port.presence == "required"
 
     def test_help_runs(self):
         assert app.test(["editor", "--help"]).exit_code == 0

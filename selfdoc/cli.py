@@ -42,6 +42,20 @@ def _fail(exc):
     sys.exit(1)
 
 
+def _absent_means(value, fallback):
+    """Resolve an optional flag's absence to the fallback its help declares.
+
+    strictcli's mutating-default ban forbids ``default=`` on any flag of a
+    ``mutating`` command: a value the framework picks is a value the framework
+    writes.  selfdoc's opt-out booleans (``--auto-commit``, ``--drafts``) and
+    the one convenience scalar (``--port``) therefore declare
+    ``presence="optional"`` and name their fallback in their own help text.
+    This is the one place where absence becomes that fallback, so no
+    downstream branch ever sees a ``None`` it would read as false.
+    """
+    return fallback if value is None else value
+
+
 def _load_config_or_fail(dir_path="."):
     """Load the project config, or refuse cleanly.
 
@@ -109,13 +123,14 @@ def _detect_main_module():
 
 
 @app.command("init", help="Initialize selfdoc configuration and starter docs template", effect="mutating")
-@strictcli.flag("base-url", type=str, help="Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it")
-@strictcli.flag("author-name", type=str, help="Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent")
-@strictcli.flag("author-url", type=str, help="Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated selfdoc.json and docs/index.md template files to git")
+@strictcli.flag("base-url", type=str, presence="required", help="Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it")
+@strictcli.flag("author-name", type=str, presence="required", help="Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent")
+@strictcli.flag("author-url", type=str, presence="required", help="Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit the generated selfdoc.json and docs/index.md template files to git. Omitted, it commits; pass --no-auto-commit to leave the files uncommitted")
 @effects.handler
-def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
+def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=None):
     """Initialize selfdoc in the current project."""
+    auto_commit = _absent_means(auto_commit, True)
     from selfdoc.extractors import detect_languages
     from selfdoc_core.utils import detect_project_version
 
@@ -257,15 +272,17 @@ def _cmd_init(ctx, base_url, author_name, author_url, auto_commit=True):
 
 
 @app.command("build", help="Build the documentation site from templates and source code", effect="mutating")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
-@strictcli.flag("locale", type=str, default="", help="Build only the specified locale instead of all (e.g., 'en')")
-@strictcli.flag("version", type=str, default="", help="Build only the specified version instead of all (e.g., '1.0.0')")
-@strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output alongside published posts")
-@strictcli.flag("target", type=str, default="", help="Build target: empty for full build ('posts' builds moved to selfblog)")
-@strictcli.flag("theme", type=str, default="", help="Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit updated content hash tracking files to git after the build. Omitted, it commits; pass --no-auto-commit to leave them uncommitted")
+@strictcli.flag("locale", type=str, presence="optional", help="Build only the specified locale instead of all (e.g., 'en')")
+@strictcli.flag("version", type=str, presence="optional", help="Build only the specified version instead of all (e.g., '1.0.0')")
+@strictcli.flag("drafts", type=bool, presence="optional", help="Include posts marked as draft in the build output alongside published posts. Omitted, drafts are left out; pass --drafts to include them")
+@strictcli.flag("target", type=str, presence="optional", help="Build target. Omitted, the whole site is built; the only other value 'posts' now refuses and names selfblog, where posts-only builds moved")
+@strictcli.flag("theme", type=str, presence="optional", help="Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Omitted, the config decides. Nothing is written back to selfdoc.json -- this exists so the same pages can be built under a different theme and looked at, without editing every project's config to do it")
 @effects.handler
-def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, target="", theme=""):
+def _cmd_build(ctx, auto_commit=None, locale=None, version=None, drafts=None, target=None, theme=None):
     """Build the documentation site."""
+    auto_commit = _absent_means(auto_commit, True)
+    drafts = _absent_means(drafts, False)
     # A present-but-invalid selfdoc.json is a user error like any other:
     # it prints the message and exits 1, rather than ending the process on
     # an uncaught ConfigError and a traceback.
@@ -292,11 +309,13 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
     try:
         written = build(
             ".",
-            version_filter=version or None,
-            locale_filter=locale or None,
+            version_filter=version,
+            locale_filter=locale,
             include_drafts=drafts,
-            target=target,
-            theme=theme,
+            # The engine's own API spells "no override" as the empty string;
+            # the CLI now spells absence as absence, so the two meet here.
+            target=target or "",
+            theme=theme or "",
         )
     except _user_errors() as e:
         _fail(e)
@@ -322,7 +341,7 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
 
     # Run lint checks after build completes
     try:
-        check_result = check_docs(".", version_filter=version or None)
+        check_result = check_docs(".", version_filter=version)
         lints = filter_lints(check_result.lints, ignore_codes)
     except _user_errors() as e:
         _fail(e)
@@ -352,11 +371,13 @@ def _cmd_build(ctx, auto_commit=True, locale="", version="", drafts=False, targe
 
 
 @app.command("serve", help="Serve the documentation site locally with live reload", effect="mutating")
-@strictcli.flag("port", short="p", type=int, default=8000, help="HTTP port number to serve on (default: 8000, e.g., 3000)")
-@strictcli.flag("drafts", type=bool, default=False, help="Rebuild the site with draft posts included before starting the local server")
+@strictcli.flag("port", short="p", type=int, presence="optional", help="HTTP port number to serve on (e.g., 3000). Omitted, the server binds port 8000")
+@strictcli.flag("drafts", type=bool, presence="optional", help="Rebuild the site with draft posts included before starting the local server. Omitted, drafts are left out; pass --drafts to include them")
 @effects.handler
-def _cmd_serve(ctx, port=8000, drafts=False):
+def _cmd_serve(ctx, port=None, drafts=None):
     """Serve the documentation site locally with SSE-based live reload."""
+    port = _absent_means(port, 8000)
+    drafts = _absent_means(drafts, False)
     config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
@@ -597,12 +618,13 @@ def _cmd_deploy(ctx):
 
 
 @app.command("check", help="Check documentation coverage, directive resolution, and lint rules", effect="mutating", payload_schema=payload_schemas.CHECK)
-@strictcli.flag("ignore", type=str, default="", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
-@strictcli.flag("version-override", type=str, default="", help="Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump")
+@strictcli.flag("ignore", type=str, presence="optional", help="Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted")
+@strictcli.flag("version-override", type=str, presence="optional", help="Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump")
 @effects.handler
-def _cmd_check(ctx, ignore="", auto_commit=True, version_override=""):
+def _cmd_check(ctx, ignore=None, auto_commit=None, version_override=None):
     """Check documentation coverage and consistency."""
+    auto_commit = _absent_means(auto_commit, True)
     from selfdoc.check import (
         check_docs,
         check_result_exit_code,
@@ -638,7 +660,7 @@ def _cmd_check(ctx, ignore="", auto_commit=True, version_override=""):
     # makes the preview honest about the write a real run would perform.
     try:
         result = check_docs(
-            ".", version_override=version_override or None,
+            ".", version_override=version_override,
         )
     except _user_errors() as e:
         _fail(e)
@@ -690,11 +712,12 @@ def _cmd_check(ctx, ignore="", auto_commit=True, version_override=""):
 
 
 @baseline_group.command("accept", help="Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description.", effect="mutating")
-@strictcli.arg("page", variadic=True, required=True, help="Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the updated content hash tracking file to git after accepting the named pages")
+@strictcli.arg("page", variadic=True, presence="required", help="Page identifier(s) to accept, named exactly as shown in 'selfdoc check' output (e.g. 'en/index.md'). Each page must currently report a STALE001 or DRIFT001 error; pages are named explicitly with no glob or --all shortcut so acceptance stays a deliberate per-page action.")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit the updated content hash tracking file to git after accepting the named pages. Omitted, it commits; pass --no-auto-commit to leave it uncommitted")
 @effects.handler
-def _cmd_baseline_accept(ctx, page, auto_commit=True):
+def _cmd_baseline_accept(ctx, page, auto_commit=None):
     """Accept reviewed staleness/drift for the named pages."""
+    auto_commit = _absent_means(auto_commit, True)
     from selfdoc.check import AcceptError, accept_baselines
 
     config = _load_config_or_fail()
@@ -731,11 +754,12 @@ def _cmd_baseline_accept(ctx, page, auto_commit=True):
 
 
 @app.command("gen", help="Auto-generate documentation pages from project structure", effect="mutating")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit generated documentation pages and root files to git")
-@strictcli.flag("version-override", type=str, default="", help="Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump lands)")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit generated documentation pages and root files to git. Omitted, it commits; pass --no-auto-commit to leave them uncommitted")
+@strictcli.flag("version-override", type=str, presence="optional", help="Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed)")
 @effects.handler
-def _cmd_gen(ctx, auto_commit=True, version_override=""):
+def _cmd_gen(ctx, auto_commit=None, version_override=None):
     """Auto-generate documentation pages from project structure."""
+    auto_commit = _absent_means(auto_commit, True)
     from selfdoc.gen import GenResult, generate_docs, generate_root_files
     from selfdoc_core.content import VERSION_OVERRIDE_KEY
 
@@ -857,10 +881,11 @@ def _cmd_gen(ctx, auto_commit=True, version_override=""):
 
 
 @app.command("gen-data", help="Generate data files by running sandboxed scripts via bwrap", effect="mutating")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit the generated data output files to git after script execution")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit the generated data output files to git after script execution. Omitted, it commits; pass --no-auto-commit to leave them uncommitted")
 @effects.handler
-def _cmd_gen_data(ctx, auto_commit=True):
+def _cmd_gen_data(ctx, auto_commit=None):
     """Generate data files by running sandboxed scripts."""
+    auto_commit = _absent_means(auto_commit, True)
     from selfdoc.gendata import GenDataError, generate_data
 
     config = _load_config_or_fail()
@@ -894,10 +919,10 @@ def _cmd_gen_data(ctx, auto_commit=True):
 
 
 @app.command("spell-corpus", help="Spell-check the docs of every selfdoc project beside this one, using the same engine 'selfdoc check' runs (SPELL001) and the shared accept list. Read-only over every project it visits", effect="read_only", payload_schema=payload_schemas.SPELL_CORPUS)
-@strictcli.flag("root", type=str, default="", help="Directory whose immediate subdirectories are searched for selfdoc.json. Defaults to the parent of the current directory, i.e. this project's siblings")
+@strictcli.flag("root", type=str, presence="optional", help="Directory whose immediate subdirectories are searched for selfdoc.json. Omitted, the parent of the current directory is searched, i.e. this project's siblings")
 @strictcli.flag("detail", type=bool, default=True, help="List each project's unknown words with a first location and any suggestion, after the summary table")
 @effects.handler
-def _cmd_spell_corpus(ctx, root="", detail=True):
+def _cmd_spell_corpus(ctx, root=None, detail=True):
     """Run the spelling engine across every sibling selfdoc project."""
     from selfdoc_core.spelling import AcceptListError
     from selfdoc.spell_corpus import render_corpus_text, run_spell_corpus

@@ -55,19 +55,35 @@ def _load_config_or_fail(dir_path="."):
         _fail(exc)
 
 
+def _absent_means(value, fallback):
+    """Resolve an optional flag's absence to the fallback its help declares.
+
+    strictcli's mutating-default ban forbids ``default=`` on any flag of a
+    ``mutating`` command: a value the framework picks is a value the framework
+    writes.  selfblog's opt-out booleans (``--auto-commit``, ``--drafts``) and
+    its handful of convenience scalars (``--assembly-dir``, ``--branch``,
+    ``--attempts``, ``--target``) therefore declare ``presence="optional"``
+    and name their fallback in their own help text.  This is the one place
+    where absence becomes that fallback.
+    """
+    return fallback if value is None else value
+
+
 # -- post commands -----------------------------------------------------------
 
 
 @post_group.command("new", help="Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.", effect="mutating")
-@strictcli.flag("title", type=str, help="Title for the new blog post, used in frontmatter and filename generation")
+@strictcli.flag("title", type=str, presence="required", help="Title for the new blog post, used in frontmatter and filename generation")
 @effects.handler
-def _cmd_post_new(ctx, title=""):
+def _cmd_post_new(ctx, title):
     """Create a new blog post file in the posts directory."""
     from selfdoc_core.config import load_config
     from selfdoc_core.manifest import _to_kebab
 
-    if not title:
-        print("Error: --title is required.", file=sys.stderr)
+    # Presence is the framework's now; the VALUE is still this command's to
+    # judge, and an empty title names a file `<date>-.md` with no slug in it.
+    if not title.strip():
+        print("--title must be a non-empty title.", file=sys.stderr)
         sys.exit(1)
 
     config = load_config(".")
@@ -139,43 +155,50 @@ def _cmd_post_list(ctx):
 
 
 @post_group.command("generate", help="Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry.", effect="mutating")
-@strictcli.flag("from-release", type=bool, help="Generate the post from structured release metadata rather than freeform content")
-@strictcli.flag("version", type=str, help="The released version number to feature in the generated blog post title and metadata")
-@strictcli.flag("prev-version", type=str, help="Previous version number, used to show what version this release upgrades from")
-@strictcli.flag("bump-type", type=str, help="Semver bump type (patch, minor, or major) included in the post frontmatter")
-@strictcli.flag("description", type=str, help="Short release description text included as the post summary paragraph")
-@strictcli.flag("context", type=str, help="Additional context explaining the rationale for this release, included in generated blog posts")
-@strictcli.flag("changelog-file", type=str, help="Path to a markdown file whose contents are embedded as the changelog section of the post")
-@strictcli.flag("body-file", type=str, help="Path to a file containing user-written prose to include as the main post body content")
-@strictcli.flag("project-name", type=str, help="Human-readable project name used in the blog post title and frontmatter metadata")
-@strictcli.flag("release-url", type=str, help="Full URL to the GitHub release page, linked from the generated blog post")
-@strictcli.flag("registry-url", type=str, repeatable=True, unique=False, help="Package registry URL such as PyPI or npm page, can be specified multiple times")
+@strictcli.flag("from-release", type=bool, presence="required", help="Generate the post from structured release metadata rather than freeform content. Structured metadata is the only shape this command generates, so --no-from-release is refused; state --from-release to say what the post is built from")
+@strictcli.flag("version", type=str, presence="required", help="The released version number to feature in the generated blog post title and metadata")
+@strictcli.flag("prev-version", type=str, presence="optional", help="Previous version number, used to show what version this release upgrades from")
+@strictcli.flag("bump-type", type=str, presence="optional", help="Semver bump type (patch, minor, or major) included in the post frontmatter")
+@strictcli.flag("description", type=str, presence="optional", help="Short release description text included as the post summary paragraph")
+@strictcli.flag("context", type=str, presence="optional", help="Additional context explaining the rationale for this release, included in generated blog posts")
+@strictcli.flag("changelog-file", type=str, presence="optional", help="Path to a markdown file whose contents are embedded as the changelog section of the post")
+@strictcli.flag("body-file", type=str, presence="optional", help="Path to a file containing user-written prose to include as the main post body content")
+@strictcli.flag("project-name", type=str, presence="optional", help="Human-readable project name used in the blog post title and frontmatter metadata")
+@strictcli.flag("release-url", type=str, presence="optional", help="Full URL to the GitHub release page, linked from the generated blog post")
+@strictcli.flag("registry-url", type=str, repeatable=True, unique=False, default=[], help="Package registry URL such as PyPI or npm page, can be specified multiple times")
 @effects.handler
 def _cmd_post_generate(
     ctx,
-    from_release=False,
-    version="",
-    prev_version="",
-    bump_type="",
-    description="",
-    context="",
-    changelog_file="",
-    body_file="",
-    project_name="",
-    release_url="",
-    registry_url=None,
+    from_release,
+    version,
+    prev_version=None,
+    bump_type=None,
+    description=None,
+    context=None,
+    changelog_file=None,
+    body_file=None,
+    project_name=None,
+    release_url=None,
+    registry_url=(),
 ):
     """Generate a blog post from release metadata."""
     from selfdoc_core.config import load_config
     from selfdoc_core.manifest import generate_manifest, load_manifest
     from selfdoc_core.utils import atomic_write
 
+    # Presence is declared, so the framework demands a choice here; the
+    # command still owns which choice it can honour, and freeform generation
+    # was never implemented.
     if not from_release:
-        print("Error: --from-release is required.", file=sys.stderr)
+        print(
+            "Error: --no-from-release names a mode this command does not "
+            "have; pass --from-release.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    if not version:
-        print("Error: --version is required.", file=sys.stderr)
+    if not version.strip():
+        print("Error: --version must be a non-empty version.", file=sys.stderr)
         sys.exit(1)
 
     config = load_config(".")
@@ -229,8 +252,8 @@ def _cmd_post_generate(
     if release_url:
         fm_lines.append(f"release_url: {release_url}")
 
-    # registry_url is a list from repeatable flag (defaults to [] if none given)
-    registry_urls = registry_url if registry_url else []
+    # registry_url is a list from the repeatable flag, declared default=[]
+    registry_urls = list(registry_url)
     if registry_urls:
         urls_str = ", ".join(registry_urls)
         fm_lines.append(f"registry_urls: [{urls_str}]")
@@ -994,16 +1017,12 @@ def _cmd_assembly_rebuild(ctx):
         ),
     ],
 )
-@strictcli.flag("slug", type=str, default="", help="Slug of the project to retire; it is removed from the roster and every path it owns in the assembly is deleted")
+@strictcli.flag("slug", type=str, presence="required", help="Slug of the project to retire; it is removed from the roster and every path it owns in the assembly is deleted")
 @effects.handler
-def _cmd_assembly_retire(ctx, slug=""):
+def _cmd_assembly_retire(ctx, slug):
     """Remove a project from the assembly's roster and published tree."""
     from selfblog.assembly import retire_project
     from selfdoc_core.config import load_config
-
-    if not slug:
-        print("Error: --slug is required.", file=sys.stderr)
-        sys.exit(1)
 
     config = load_config(".")
     if config is None:
@@ -1048,19 +1067,12 @@ def _cmd_assembly_retire(ctx, slug=""):
 
 
 @assembly_group.command("redirects", help="Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout.", effect="read_only")
-@strictcli.flag("slug", type=str, help="Project slug used as the URL path segment in the assembly site structure")
-@strictcli.flag("docs-base", type=str, help="Base URL of the assembly documentation site used for generating redirect targets")
+@strictcli.flag("slug", type=str, presence="required", help="Project slug used as the URL path segment in the assembly site structure")
+@strictcli.flag("docs-base", type=str, presence="required", help="Base URL of the assembly documentation site used for generating redirect targets")
 @effects.handler
-def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
+def _cmd_assembly_redirects(ctx, slug, docs_base):
     """Print the _redirects file content for redirecting to the assembly site."""
     from selfblog.assembly import generate_redirects_file
-
-    if not slug:
-        print("Error: --slug is required.", file=sys.stderr)
-        sys.exit(1)
-    if not docs_base:
-        print("Error: --docs-base is required.", file=sys.stderr)
-        sys.exit(1)
 
     content = generate_redirects_file(slug, docs_base)
     print(content, end="")
@@ -1068,37 +1080,25 @@ def _cmd_assembly_redirects(ctx, slug="", docs_base=""):
 
 
 @assembly_group.command("generate-shared", help="Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page, a security headers file and the redirect worker in the site output directory.", effect="mutating")
-@strictcli.flag("site-dir", type=str, help="Path to the combined site output directory where shared HTML files are written")
-@strictcli.flag("manifests-dir", type=str, help="Path to the directory containing per-project manifest JSON files for the assembly")
-@strictcli.flag("docs-base", type=str, help="Base URL the Atom feed's entries are written against. Only the feed reads it: every entry there is an absolute URL by protocol. Nothing a reader clicks does -- the generated listing, the blog index and the 404 address the site relative to their own page, so they resolve under any mount. The sitemap does not read it either: it is generated from --canonical-base whatever this says.")
-@strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
-@strictcli.flag("legacy-blog-host", type=str, help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
-@strictcli.flag("home-slug", type=str, default="", help="The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Empty means the tree carries no home project (which the deploy path never does -- the roster requires one).")
+@strictcli.flag("site-dir", type=str, presence="required", help="Path to the combined site output directory where shared HTML files are written")
+@strictcli.flag("manifests-dir", type=str, presence="required", help="Path to the directory containing per-project manifest JSON files for the assembly")
+@strictcli.flag("docs-base", type=str, presence="optional", help="Base URL the Atom feed's entries are written against. Only the feed reads it: every entry there is an absolute URL by protocol. Nothing a reader clicks does -- the generated listing, the blog index and the 404 address the site relative to their own page, so they resolve under any mount. The sitemap does not read it either: it is generated from --canonical-base whatever this says.")
+@strictcli.flag("canonical-base", type=str, presence="required", help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.")
+@strictcli.flag("legacy-blog-host", type=str, presence="optional", help="Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Omitted when no such subdomain exists.")
+@strictcli.flag("home-slug", type=str, presence="optional", help="The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Omitted means the tree carries no home project (which the deploy path never does -- the roster requires one).")
 @effects.handler
-def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base="", canonical_base="", legacy_blog_host="", home_slug=""):
+def _cmd_assembly_generate_shared(ctx, site_dir, manifests_dir, canonical_base, docs_base=None, legacy_blog_host=None, home_slug=None):
     """Generate shared elements (homepage, blog index, nav, feed, sitemap, headers)."""
     from selfblog.assembly import generate_shared_files
 
-    if not site_dir:
-        print("Error: --site-dir is required.", file=sys.stderr)
-        sys.exit(1)
-    if not manifests_dir:
-        print("Error: --manifests-dir is required.", file=sys.stderr)
-        sys.exit(1)
-    if not canonical_base:
-        print(
-            "Error: --canonical-base is required (set topology.docs_base in "
-            "selfdoc.json and regenerate the assembly workflow).",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     try:
+        # The generator's own API spells "not given" as the empty string; the
+        # CLI now spells absence as absence, so the two meet here.
         written = generate_shared_files(
             site_dir, manifests_dir, canonical_base,
-            docs_base=docs_base,
-            legacy_blog_host=legacy_blog_host,
-            home_slug=home_slug,
+            docs_base=docs_base or "",
+            legacy_blog_host=legacy_blog_host or "",
+            home_slug=home_slug or "",
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1140,47 +1140,38 @@ def _cmd_assembly_generate_shared(ctx, site_dir="", manifests_dir="", docs_base=
         ),
     ],
 )
-@strictcli.flag("slug", type=str, default="", help="Project slug being integrated; the site subtree is site/<slug>/. Required unless --scope is 'shared-only'.")
-@strictcli.flag("version", type=str, default="", help="Version of the project being integrated, recorded in projects.json and the commit message")
-@strictcli.flag("ref", type=str, default="", help="Git ref (tag) the source project was cloned at, recorded in projects.json")
-@strictcli.flag("source-repo", type=str, default="", help="Source project repository (owner/name), recorded in projects.json")
-@strictcli.flag("scope", type=str, default="", help="What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Empty means 'full'.")
-@strictcli.flag("canonical-base", type=str, default="", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.")
-@strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Empty when no such subdomain exists.")
-@strictcli.flag("assembly-dir", type=str, default=".", help="Path to the assembly repository checkout being updated")
-@strictcli.flag("source-dir", type=str, default="", help="Path to the cloned source project. Defaults to <assembly-dir>/source/<slug>, where the deploy workflow clones it.")
-@strictcli.flag("branch", type=str, default="main", help="Assembly repository branch the deploy commits and pushes to")
-@strictcli.flag("attempts", type=int, default=3, help="How many times to re-sync with the remote and retry the push before failing")
+@strictcli.flag("slug", type=str, presence="optional", help="Project slug being integrated; the site subtree is site/<slug>/. Required unless --scope is 'shared-only'.")
+@strictcli.flag("version", type=str, presence="optional", help="Version of the project being integrated, recorded in projects.json and the commit message")
+@strictcli.flag("ref", type=str, presence="optional", help="Git ref (tag) the source project was cloned at, recorded in projects.json")
+@strictcli.flag("source-repo", type=str, presence="optional", help="Source project repository (owner/name), recorded in projects.json")
+@strictcli.flag("scope", type=str, presence="optional", help="What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Omitted means 'full'.")
+@strictcli.flag("canonical-base", type=str, presence="required", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.")
+@strictcli.flag("legacy-blog-host", type=str, presence="optional", help="Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Omitted when no such subdomain exists.")
+@strictcli.flag("assembly-dir", type=str, presence="optional", help="Path to the assembly repository checkout being updated. Omitted, the current directory is used")
+@strictcli.flag("source-dir", type=str, presence="optional", help="Path to the cloned source project. Omitted, <assembly-dir>/source/<slug> is used, where the deploy workflow clones it.")
+@strictcli.flag("branch", type=str, presence="optional", help="Assembly repository branch the deploy commits and pushes to. Omitted, 'main' is used")
+@strictcli.flag("attempts", type=int, presence="optional", help="How many times to re-sync with the remote and retry the push before failing. Omitted, 3 attempts are made")
 @effects.handler
-def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
-                            scope="", canonical_base="", legacy_blog_host="",
-                            assembly_dir=".",
-                            source_dir="", branch="main", attempts=3):
+def _cmd_assembly_integrate(ctx, canonical_base, slug=None, version=None,
+                            ref=None, source_repo=None, scope=None,
+                            legacy_blog_host=None, assembly_dir=None,
+                            source_dir=None, branch=None, attempts=None):
     """Integrate a dispatched project into the assembly and push."""
     from selfblog.assembly import integrate_project
 
-    if not canonical_base:
-        print(
-            "Error: --canonical-base is required (set topology.docs_base in "
-            "selfdoc.json and regenerate the assembly workflow with "
-            "'selfblog assembly sync-workflow').",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     try:
         summary = integrate_project(
-            slug=slug,
-            version=version,
-            ref=ref,
-            source_repo=source_repo,
-            scope=scope,
+            slug=slug or "",
+            version=version or "",
+            ref=ref or "",
+            source_repo=source_repo or "",
+            scope=scope or "",
             canonical_base=canonical_base,
-            assembly_dir=assembly_dir,
-            source_dir=source_dir,
-            legacy_blog_host=legacy_blog_host,
-            branch=branch,
-            attempts=attempts,
+            assembly_dir=_absent_means(assembly_dir, "."),
+            source_dir=source_dir or "",
+            legacy_blog_host=legacy_blog_host or "",
+            branch=_absent_means(branch, "main"),
+            attempts=_absent_means(attempts, 3),
         )
     except (ValueError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1203,19 +1194,11 @@ def _cmd_assembly_integrate(ctx, slug="", version="", ref="", source_repo="",
 
 @assembly_group.command("verify", help="Assert every property a built assembly tree has to have before it is deployed: that the roster, the site subtrees and the manifests name the same projects, that each manifest's pages and posts were actually emitted, that the shared cross-project artifacts exist and parse, that every internal reference, sitemap entry, feed link and cross-project link resolves, that every page has a title and a canonical, and that no unresolved directive or per-project routing file survived. The deploy runs this itself before it pushes; this command is how you run the same assertions by hand against a checkout.", effect="read_only")
 @strictcli.flag("assembly-dir", type=str, default=".", help="Path to the assembly repository checkout to verify")
-@strictcli.flag("canonical-base", type=str, default="", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is what tells this site's absolute URLs from everybody else's, and without it half the assertions would pass by not looking.")
+@strictcli.flag("canonical-base", type=str, presence="required", help="Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is what tells this site's absolute URLs from everybody else's, and without it half the assertions would pass by not looking.")
 @effects.handler
-def _cmd_assembly_verify(ctx, assembly_dir=".", canonical_base=""):
+def _cmd_assembly_verify(ctx, canonical_base, assembly_dir="."):
     """Verify a built assembly tree and report every offender."""
     from selfblog.verify import CHECKS, verify_assembly
-
-    if not canonical_base:
-        print(
-            "Error: --canonical-base is required (set topology.docs_base in "
-            "selfdoc.json).",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     try:
         report = verify_assembly(assembly_dir, canonical_base=canonical_base)
@@ -1255,18 +1238,17 @@ def _cmd_assembly_verify(ctx, assembly_dir=".", canonical_base=""):
         "without --dry-run; it publishes nothing."
     ),
 )
-@strictcli.flag("repo", type=str, repeatable=True, unique=True, help="Path to a project checkout to include, served under the slug its selfdoc.json declares. Repeat once per project. The home project is named by --home instead and must not be repeated here.")
-@strictcli.flag("home", type=str, help="Path to the home project's checkout: the one project served at the site root rather than under a slug. Required -- a site needs a front page, and there is no default.")
-@strictcli.flag("out", type=str, help="Directory the preview tree is written to. Required. Refused when it sits inside a git working tree at a path git does not ignore, because a generated site dropped into a checkout is untracked noise in every session sharing it.")
-@strictcli.flag("port", type=int, help="Port to bind on 127.0.0.1. Required and has no default: which port a long-running local server occupies is a decision the caller states rather than inherits.")
-@strictcli.flag("canonical-base", type=str, help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.")
-@strictcli.flag("legacy-blog-host", type=str, default="", help="Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Empty when no such subdomain exists.")
-@strictcli.flag("build", type=bool, help="Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in docs/_build, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.")
-@strictcli.flag("theme", type=str, default="", help="Build every checkout under this theme instead of the one its selfdoc.json declares, for this preview only. Empty -- the default -- leaves every project on its configured theme, which is what a deploy does. This exists to judge a theme on the real pages: the same site, every project flipped at once, without editing a config anywhere. Validated against the theme registry, and refused with --no-build, because a theme is baked into build output and re-grafting an existing tree cannot restyle it.")
+@strictcli.flag("repo", type=str, repeatable=True, unique=True, default=[], help="Path to a project checkout to include, served under the slug its selfdoc.json declares. Repeat once per project. The home project is named by --home instead and must not be repeated here.")
+@strictcli.flag("home", type=str, presence="required", help="Path to the home project's checkout: the one project served at the site root rather than under a slug. Required -- a site needs a front page, and there is no default.")
+@strictcli.flag("out", type=str, presence="required", help="Directory the preview tree is written to. Required. Refused when it sits inside a git working tree at a path git does not ignore, because a generated site dropped into a checkout is untracked noise in every session sharing it.")
+@strictcli.flag("port", type=int, presence="required", help="Port to bind on 127.0.0.1. Required and has no default: which port a long-running local server occupies is a decision the caller states rather than inherits.")
+@strictcli.flag("canonical-base", type=str, presence="required", help="Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.")
+@strictcli.flag("legacy-blog-host", type=str, presence="optional", help="Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Omitted when no such subdomain exists.")
+@strictcli.flag("build", type=bool, presence="required", help="Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in docs/_build, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.")
+@strictcli.flag("theme", type=str, presence="optional", help="Build every checkout under this theme instead of the one its selfdoc.json declares, for this preview only. Omitted, every project stays on its configured theme, which is what a deploy does. This exists to judge a theme on the real pages: the same site, every project flipped at once, without editing a config anywhere. Validated against the theme registry, and refused with --no-build, because a theme is baked into build output and re-grafting an existing tree cannot restyle it.")
 @effects.handler
-def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
-                          canonical_base="", legacy_blog_host="", build=True,
-                          theme=""):
+def _cmd_assembly_preview(ctx, home, out, port, canonical_base, build,
+                          repo=(), legacy_blog_host=None, theme=None):
     """Build every named checkout into a preview tree and serve it."""
     from selfblog.preview import (
         HOST,
@@ -1275,32 +1257,15 @@ def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
         serve_preview,
     )
 
-    if not home:
-        print("Error: --home is required.", file=sys.stderr)
-        sys.exit(1)
-    if not out:
-        print("Error: --out is required.", file=sys.stderr)
-        sys.exit(1)
-    if not port:
-        print("Error: --port is required.", file=sys.stderr)
-        sys.exit(1)
-    if not canonical_base:
-        print(
-            "Error: --canonical-base is required (the assembly's "
-            "topology.docs_base, e.g. 'https://smmh.dev').",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     try:
         summary = preview_assembly(
             home_dir=home,
             project_dirs=list(repo),
             out_dir=out,
             canonical_base=canonical_base,
-            legacy_blog_host=legacy_blog_host,
+            legacy_blog_host=legacy_blog_host or "",
             build=build,
-            theme=theme,
+            theme=theme or "",
         )
     except (ValueError, RuntimeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1336,11 +1301,11 @@ def _cmd_assembly_preview(ctx, repo=(), home="", out="", port=0,
         ),
     ],
 )
-@strictcli.flag("pin-version", type=str, default="", help="selfblog version the regenerated workflow pins its toolchain install to. Defaults to the running selfblog's version, which is what the release path wants: the workflow names the selfblog that generated it.")
-@strictcli.flag("pin-selfdoc", type=str, default="", help="selfdoc version the regenerated workflow pins its toolchain install to. Defaults to the selfdoc installed in this environment; selfdoc missing here is a hard error, never an unpinned install.")
-@strictcli.flag("pin-pagefind", type=str, default="", help="pagefind version the regenerated workflow pins its toolchain install to. Defaults to PyPI's current release: pagefind is a CI-only tool nothing here installs, so there is no local version to read.")
+@strictcli.flag("pin-version", type=str, presence="optional", help="selfblog version the regenerated workflow pins its toolchain install to. Omitted, the running selfblog's version is used, which is what the release path wants: the workflow names the selfblog that generated it.")
+@strictcli.flag("pin-selfdoc", type=str, presence="optional", help="selfdoc version the regenerated workflow pins its toolchain install to. Omitted, the selfdoc installed in this environment is used; selfdoc missing here is a hard error, never an unpinned install.")
+@strictcli.flag("pin-pagefind", type=str, presence="optional", help="pagefind version the regenerated workflow pins its toolchain install to. Omitted, PyPI's current release is used: pagefind is a CI-only tool nothing here installs, so there is no local version to read.")
 @effects.handler
-def _cmd_assembly_sync_workflow(ctx, pin_version="", pin_selfdoc="", pin_pagefind=""):
+def _cmd_assembly_sync_workflow(ctx, pin_version=None, pin_selfdoc=None, pin_pagefind=None):
     """Regenerate and push the assembly repo's deploy workflow."""
     from selfblog.assembly import (
         WORKFLOW_PATH,
@@ -1384,9 +1349,9 @@ def _cmd_assembly_sync_workflow(ctx, pin_version="", pin_selfdoc="", pin_pagefin
     # otherwise fail at the next dispatch, inside the assembly repo's CI.
     try:
         pins = resolve_toolchain_pins(
-            selfblog_version=pin_version,
-            selfdoc_version=pin_selfdoc,
-            pagefind_version=pin_pagefind,
+            selfblog_version=pin_version or "",
+            selfdoc_version=pin_selfdoc or "",
+            pagefind_version=pin_pagefind or "",
         )
         check_pins_are_published(pins)
     except (RuntimeError, ValueError) as exc:
@@ -1436,9 +1401,9 @@ def _load_registry_or_fail(registry):
 
 
 @editor_group.command("list-repos", help="List every repository the editor registry declares, with its kind and where it points. Reads the hand-written registry TOML, validates every entry in full, and prints one line per entry -- a local entry's working tree, or a remote entry's repository, ref and whether it declares that rendering runs against a checkout.", effect="read_only")
-@strictcli.flag("registry", type=str, default="", help="Path to the editor registry TOML. Defaults to the machine-local registry at ~/Projects/ark/selfblog-registry.toml.")
+@strictcli.flag("registry", type=str, presence="optional", help="Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.")
 @effects.handler
-def _cmd_editor_list_repos(ctx, registry=""):
+def _cmd_editor_list_repos(ctx, registry=None):
     """Enumerate the registry's entries."""
     parsed = _load_registry_or_fail(registry)
 
@@ -1479,11 +1444,11 @@ def _cmd_editor_list_repos(ctx, registry=""):
         "it without --dry-run, and preview a save by not pressing save."
     ),
 )
-@strictcli.flag("port", type=int, help="Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits.")
-@strictcli.flag("registry", type=str, default="", help="Path to the editor registry TOML. Defaults to the machine-local registry at ~/Projects/ark/selfblog-registry.toml.")
-@strictcli.flag("tinymoon-assets", type=str, default="", help="Path to a tinymoon checkout's 'assets' directory. Empty means the installed tinymoon package. The editor tier (js/editor.js, js/completion.js, css/editor.css) is newer than the released package, so a checkout is currently the only complete source.")
+@strictcli.flag("port", type=int, presence="required", help="Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits.")
+@strictcli.flag("registry", type=str, presence="optional", help="Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.")
+@strictcli.flag("tinymoon-assets", type=str, presence="optional", help="Path to a tinymoon checkout's 'assets' directory. Omitted, the installed tinymoon package is used. The editor tier (js/editor.js, js/completion.js, css/editor.css) is newer than the released package, so a checkout is currently the only complete source.")
 @effects.handler
-def _cmd_editor_serve(ctx, port=0, registry="", tinymoon_assets=""):
+def _cmd_editor_serve(ctx, port, registry=None, tinymoon_assets=None):
     """Serve the authoring app on loopback."""
     from selfblog.editor_assets import AssetsError, resolve_tinymoon_assets
     from selfblog.editor_server import HOST, EditorState, serve
@@ -1491,7 +1456,7 @@ def _cmd_editor_serve(ctx, port=0, registry="", tinymoon_assets=""):
     parsed = _load_registry_or_fail(registry)
 
     try:
-        assets_dir, assets_source = resolve_tinymoon_assets(tinymoon_assets)
+        assets_dir, assets_source = resolve_tinymoon_assets(tinymoon_assets or "")
     except AssetsError as exc:
         _fail(exc)
 
@@ -1510,11 +1475,12 @@ def _cmd_editor_serve(ctx, port=0, registry="", tinymoon_assets=""):
 
 
 @app.command("check", help="Check blog posts and unified multi-project documentation. For unified docs-site projects, runs the full documentation check across every constituent project plus the docs-site's own content; otherwise validates blog posts (POST001-POST005).", effect="mutating")
-@strictcli.flag("ignore", type=str, default="", help="Comma-separated lint codes to suppress (e.g., SEO007,SEO008)")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after checking")
+@strictcli.flag("ignore", type=str, presence="optional", help="Comma-separated lint codes to suppress (e.g., SEO007,SEO008)")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted")
 @effects.handler
-def _cmd_check(ctx, ignore="", auto_commit=True):
+def _cmd_check(ctx, ignore=None, auto_commit=None):
     """Check unified projects and blog posts."""
+    auto_commit = _absent_means(auto_commit, True)
     from selfdoc_core.lints import (
         DEFAULT_COVERAGE_THRESHOLD,
         LintSuppressionError,
@@ -1625,15 +1591,19 @@ def _cmd_check(ctx, ignore="", auto_commit=True):
 
 
 @app.command("build", help="Build blog posts, the unified documentation site, or the home project", effect="mutating")
-@strictcli.flag("target", type=str, default="posts", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site, 'home' for the assembly's home project (the one served at the site root, whose pages carry site-level directives)")
-@strictcli.flag("drafts", type=bool, default=False, help="Include posts marked as draft in the build output")
-@strictcli.flag("auto-commit", type=bool, default=True, help="Automatically commit updated content hash tracking files to git after the build")
-@strictcli.flag("site-manifests", type=str, default="", help="Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.")
-@strictcli.flag("theme", type=str, default="", help="Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Empty means the config decides. Nothing is written back to selfdoc.json")
+@strictcli.flag("target", type=str, presence="optional", help="Build target: 'posts' for posts-only build, 'unified' for unified multi-project site, 'home' for the assembly's home project (the one served at the site root, whose pages carry site-level directives). Omitted, 'posts' is built")
+@strictcli.flag("drafts", type=bool, presence="optional", help="Include posts marked as draft in the build output. Omitted, drafts are left out; pass --drafts to include them")
+@strictcli.flag("auto-commit", type=bool, presence="optional", help="Automatically commit updated content hash tracking files to git after the build. Omitted, it commits; pass --no-auto-commit to leave them uncommitted")
+@strictcli.flag("site-manifests", type=str, presence="optional", help="Path to the assembly's manifests directory. Required by --target home: the home project's front page renders the curated listing with each project's live version and the recent posts across the whole site, and only the assembly's manifests carry those.")
+@strictcli.flag("theme", type=str, presence="optional", help="Theme name that overrides the one selfdoc.json declares, for this build only (e.g. 'tinymoon'). Omitted, the config decides. Nothing is written back to selfdoc.json")
 @effects.handler
-def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
-               site_manifests="", theme=""):
+def _cmd_build(ctx, target=None, drafts=None, auto_commit=None,
+               site_manifests=None, theme=None):
     """Build blog posts, the unified site, or the home project."""
+    target = _absent_means(target, "posts")
+    drafts = _absent_means(drafts, False)
+    auto_commit = _absent_means(auto_commit, True)
+
     config = _load_config_or_fail()
     if config is None:
         print("Error: No selfdoc.json found. Run 'selfdoc init' first.", file=sys.stderr)
@@ -1644,8 +1614,8 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
 
         try:
             written = build_home_project(
-                ".", config, site_manifests=site_manifests,
-                include_drafts=drafts, theme=theme,
+                ".", config, site_manifests=site_manifests or "",
+                include_drafts=drafts, theme=theme or "",
             )
         except _user_errors() as e:
             _fail(e)
@@ -1658,7 +1628,7 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
 
         try:
             written = build_unified(
-                dir_path=".", include_drafts=drafts, theme=theme,
+                dir_path=".", include_drafts=drafts, theme=theme or "",
             )
         except _user_errors() as e:
             _fail(e)
@@ -1674,7 +1644,7 @@ def _cmd_build(ctx, target="posts", drafts=False, auto_commit=True,
                 ".",
                 include_drafts=drafts,
                 target="posts",
-                theme=theme,
+                theme=theme or "",
             )
         except RuntimeError as e:
             print(f"Error: {e}", file=sys.stderr)

@@ -270,13 +270,18 @@ def _project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
 
-def test_the_command_requires_a_slug(tmp_path, monkeypatch, capsys):
-    from selfblog.cli import _cmd_assembly_retire
+def test_the_command_requires_a_slug(tmp_path, monkeypatch):
+    """The framework refuses the absent slug, so the handler never runs.
+
+    ``--slug`` declares ``presence="required"``; the hand-rolled guard that
+    used to say so is gone with the sentinel default it was reading.
+    """
+    from selfblog.cli import app
 
     _project(tmp_path, monkeypatch)
-    with pytest.raises(SystemExit):
-        _cmd_assembly_retire(None, slug="")
-    assert "--slug is required" in capsys.readouterr().err
+    result = app.test(["assembly", "retire"])
+    assert result.exit_code != 0
+    assert "--slug" in result.stderr
 
 
 def test_the_command_retires_and_dispatches(tmp_path, monkeypatch, capsys):
