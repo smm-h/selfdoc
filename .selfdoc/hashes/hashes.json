@@ -108,14 +108,14 @@
     "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
   },
   "en/cli-build.md": {
-    "content": "20c52a46f8e0754339f50b35a3f4e6cc9868a38c4ab5a5e97d2c0ebd7f7cdd75",
+    "content": "3a5ea6f6a3ac58e7520f31e75ca4f37ff5b7f2b907ae11b6fe802659cdbba687",
     "description": "8a4adace98aa9e1d61ec6b19dad2790d33bb9a7b6ccc435cfc9484ea22799bc8",
-    "schema_hash": "ef7ffe5bf19abed91bf6a43a98da269121a65613497c9a365a78adfc2ede8389"
+    "schema_hash": "bb7ea822e2c32f5e9628f62d53b68753db3fa4470d55e749850bea2b7cf15dd1"
   },
   "en/cli-check.md": {
-    "content": "52378f3f2aa1b3f4abe4d71a4507c19c1628640bf74fd78fabae8fd6bad4b838",
+    "content": "0c4b4d90ce059d22efcd62c5ddf59e3e9feae861257ae02f350906c2ae5ac267",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd",
-    "schema_hash": "9a577f0af16063512fe6137998ef745ee24f3f299b16e498177fa4efa866f6cd"
+    "schema_hash": "b5cd9e9a46badcb3f9f0ba6de4d284020b2fcc4ce149f1409dd96564941557c1"
   },
   "en/cli-deploy.md": {
     "content": "5f2c7b3815dd00bf1e296d241c328d80019676afe6790d08616316a3b19a65cb",
@@ -123,23 +123,23 @@
     "schema_hash": "675e32580b6227418a4b559a355f7babcc6151afc2f812645344278abb2cffc6"
   },
   "en/cli-gen-data.md": {
-    "content": "a087c14d17669179e7b9688ddcf355424134062166230d142bfbadd999359e43",
+    "content": "90cce66d5143c7d0cc4bf7f6d3e209216f48de92b4df2e05e593e728a0d4a1f3",
     "description": "ae2ec87204ace68d67a6aaaccce864bdd6cdf63714801c5f43e0b71f0d188bc6",
-    "schema_hash": "ea3d4db4994ef40ac2e62933de311d63d95188ea5560c61c60a0a41060f623ad"
+    "schema_hash": "d178586f5f89174e63d52ebc7860049b923816bbfa33d6fd5e5c3beca1828011"
   },
   "en/cli-gen.md": {
-    "content": "f0a49e62f99c9d9a904643a20dfc40a298308166c1d01458a8a6750b62fd7cca",
+    "content": "9bcb6448d823402af1ad6b576339063972589dd36a2cbceaccdeb07558b2a262",
     "description": "cadea81e8d6236c03cc02d1d9dbaa016b4a202f2f349cf6267d975eaa0e8a0ac",
-    "schema_hash": "cb722f83e5eb702cef62bfd1b46cdc8e7e06288beefc8a0ef4ae533afb2c6f5a"
+    "schema_hash": "e7d2d9a19eba60f0ae326f667bab5b7fe8122c0811cf14dc7f13b18b8b986b49"
   },
   "en/cli-index.md": {
     "content": "8cac54562d33b13995062d283a3598c38e23b06120345743f135c7c30678afcb",
     "description": "c30342a2cd66cf7bfb9c53315e71bfff9e51498aaa457679673189ccaff05b1d"
   },
   "en/cli-init.md": {
-    "content": "c90cb823380d89cade6b235f18f32ff56c6d631ab72c63dc9d84bb2a0b521aba",
+    "content": "56201d3e8c8fc0331ac7f80e14882aaca081736b7e0a70f084e64a96aa77bc06",
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb",
-    "schema_hash": "079fa235e409e14a15737ceb255bfb9c6357a71ec4d8f80f77c20ba3bacbf994"
+    "schema_hash": "c33ec4fc7101b3ca683450f6d78dc7241a7bd0c27bcb76fcd17094f5f92950a9"
   },
   "en/cli-post.md": {
     "content": "2a90efcd877e9ca2958e70c7e4d4b403e768c6a2c771c341fafc581eb8b00f42",
@@ -153,9 +153,9 @@
     "seed_hash": "cedb351399c5b2dae0fca76f35010f96817d8ce3062e7e8f3b0d27ac7afbbee2"
   },
   "en/cli-serve.md": {
-    "content": "ca92c9da236023447de336d444f6ab6f240d6adfdf76cb184c94b05f2b92b51b",
+    "content": "e39374e096e6ffddc380d1afcf383553544ac7b0758416c43472bbebc27d84f7",
     "description": "764bb3e3e5a1599a9fba9de3ab6d0beecdfc58cd56e59c85e6adb4c3df3a5892",
-    "schema_hash": "be460c6b1e8079380716f20be2ac1392a5037e827c6d8077604722183556038d"
+    "schema_hash": "6731ecca71e9ecd6e640a501bf94bb9bcef4670c8bd64cf0588aed119364733a"
   },
   "en/cli-spell-corpus.md": {
     "content": "214823ac511617b5530135e0b4dc9faab24cb00254f380eca50c663298646607",
@@ -424,7 +424,7 @@
   "en/selfdoc-strictcli_support.md": {
     "content": "83ac2ad5b42f5ba15a7e26505568edc2992fcec3291573ecf683dc1a9e55093a",
     "description": "bc06730adaeb62e2403cde936cb0baf3e4397c35ffd6f206cc70a516dbff9a06",
-    "source_docstring": "8770a782870ee4fbf47077e3c2ead4f0b93cf21c3270d4d1153e297da2e926d1"
+    "source_docstring": "66ce7e4ab68138034ed880205e099a65429d935eb85c2240de2ec7461a0b3d4f"
   },
   "en/selfdoc-tables.md": {
     "content": "9855246161f691f17cbfcecd2b6ec23b9138114788c6cb7dca720305d814d89c",
