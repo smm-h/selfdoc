@@ -7,8 +7,12 @@
 # member dir, so this hook performs the root-level equivalents:
 #
 #   1. Sync root selfdoc.json "version" to the version being released.
-#   2. Regenerate docs (selfdoc gen) so the release ships fresh docs.
-#   3. Run selfdoc check as a hard freshness/validity gate.
+#   2. Regenerate every tracked .strictcli/schema.json, including the root
+#      copy `selfdoc gen` reads (the dump writes to CWD and the workspace
+#      root has no [project] table, so the root copy has no other way to
+#      stay current).
+#   3. Regenerate docs (selfdoc gen) so the release ships fresh docs.
+#   4. Run selfdoc check as a hard freshness/validity gate.
 #
 # Files modified here are picked up by rlsbl's hook-generated-file
 # snapshot and included in the release commit.
@@ -42,6 +46,9 @@ PY
 # `consequential`, and neither gen nor check does -- regenerating and
 # validating docs in the working tree is ordinary, git-recoverable work. This
 # hook has no TTY, so a gate on either would abort every release.
+echo "pre-checks: regenerating the dumped CLI schemas"
+python3 scripts/dump_schemas.py
+
 echo "pre-checks: regenerating docs (selfdoc gen)"
 uv run selfdoc gen --no-auto-commit
 
