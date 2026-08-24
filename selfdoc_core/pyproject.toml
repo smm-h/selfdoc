@@ -17,7 +17,7 @@ keywords = ["documentation", "static-site-generator", "docstring", "selfdoc", "r
 # every handle operation arrived in 0.35.0, and the floor sits at 0.36.0, the
 # version this engine is built and tested against.
 dependencies = [
-    "strictspec>=0.1.0",
+    "strictspec>=0.2.1",
     "strictcli>=0.36.0",
     # The tinymoon theme consumes the framework rather than imitating it: the
     # wheel ships tinymoon's css/, js/ and fonts/, and the build copies them
