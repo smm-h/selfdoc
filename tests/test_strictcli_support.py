@@ -388,6 +388,29 @@ class TestProjectIdValidation:
         with pytest.raises(ValueError, match="does not match project name"):
             read_schema_json(str(tmp_path))
 
+    def test_schema_project_id_polyglot_go_repo(self, tmp_path):
+        """A Go repo with an unrelated package.json resolves its name from go.mod.
+
+        The selfdoc.json source language picks the manifest; an incidental
+        package.json (e.g. a browser-test harness at the repo root) must not
+        win the lookup chain and break the project_id check.
+        """
+        (tmp_path / "go.mod").write_text("module github.com/owner/proj\n")
+        (tmp_path / "package.json").write_text(
+            '{"name": "proj-webui-tests", "private": true}\n')
+        (tmp_path / "selfdoc.json").write_text(
+            '{"version": "0.3.0", "source": [{"path": ".", "language": "go"}]}\n')
+        _write_schema(tmp_path, {
+            "name": "proj",
+            "project_id": "github.com/owner/proj",
+            "version": "1.0",
+            "help": "test",
+            "commands": {},
+            "groups": {},
+        })
+        result = read_schema_json(str(tmp_path))
+        assert result["app_name"] == "proj"
+
     def test_schema_project_id_valid(self, tmp_path):
         """Schema project_id matching project name succeeds."""
         _write_pyproject(tmp_path, "testapp")

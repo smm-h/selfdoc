@@ -145,20 +145,21 @@ def detect_project_version(base_dir: str, fallback: str = "") -> str:
     return fallback
 
 
-def _read_project_field(base_dir: str, field: str) -> str:
-    """Read a project metadata field from pyproject.toml, package.json, or go.mod."""
-    # For version, delegate to the shared utility
-    if field == "version":
-        return detect_project_version(base_dir, fallback="unknown")
+def _declared_source_language(base_dir: str) -> str:
+    """The first declared source language in base_dir's selfdoc.json, or ""."""
+    config = os.path.join(base_dir, "selfdoc.json")
+    try:
+        with open(config, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        sources = data.get("source") or []
+        if sources and isinstance(sources[0], dict):
+            return str(sources[0].get("language", "")).lower()
+    except (OSError, json.JSONDecodeError):
+        pass
+    return ""
 
-    # For other fields (e.g. "name"), use the original lookup chain
-    # Try pyproject.toml
-    pyproject = os.path.join(base_dir, "pyproject.toml")
-    if os.path.isfile(pyproject):
-        import tomllib
-        return _read_toml_field(pyproject, field, tomllib)
 
-    # Try package.json
+def _read_package_json_field(base_dir: str, field: str) -> str:
     pkg_json = os.path.join(base_dir, "package.json")
     if os.path.isfile(pkg_json):
         try:
@@ -167,19 +168,69 @@ def _read_project_field(base_dir: str, field: str) -> str:
             return str(data.get(field, "unknown"))
         except (OSError, json.JSONDecodeError):
             return "unknown"
+    return "unknown"
 
-    # Try go.mod (only for "name")
+
+def _read_go_mod_name(base_dir: str) -> str:
+    go_mod = os.path.join(base_dir, "go.mod")
+    if os.path.isfile(go_mod):
+        try:
+            with open(go_mod, "r", encoding="utf-8") as f:
+                for line in f:
+                    m = re.match(r"^module\s+(.+)", line.strip())
+                    if m:
+                        return m.group(1).strip()
+        except OSError:
+            pass
+    return "unknown"
+
+
+def _read_project_field(base_dir: str, field: str) -> str:
+    """Read a project metadata field from the project's manifest.
+
+    A source language declared in base_dir's selfdoc.json picks the manifest
+    (go -> go.mod, python -> pyproject.toml, js/node -> package.json), so a
+    polyglot repo's incidental manifests — e.g. a browser-test harness's
+    package.json at the root of a Go project — cannot win. Without a
+    declaration, or when the picked manifest is absent or unreadable, the
+    original lookup chain applies: pyproject.toml, then package.json, then
+    go.mod.
+    """
+    # For version, delegate to the shared utility
+    if field == "version":
+        return detect_project_version(base_dir, fallback="unknown")
+
+    lang = _declared_source_language(base_dir)
+    if lang:
+        if lang == "python":
+            pyproject = os.path.join(base_dir, "pyproject.toml")
+            if os.path.isfile(pyproject):
+                import tomllib
+                return _read_toml_field(pyproject, field, tomllib)
+        elif lang == "go":
+            if field == "name":
+                name = _read_go_mod_name(base_dir)
+                if name != "unknown":
+                    return name
+        elif lang in ("js", "javascript", "node", "typescript"):
+            name = _read_package_json_field(base_dir, field)
+            if name != "unknown":
+                return name
+        # Declared language without a readable manifest: fall through.
+
+    # The original lookup chain
+    pyproject = os.path.join(base_dir, "pyproject.toml")
+    if os.path.isfile(pyproject):
+        import tomllib
+        return _read_toml_field(pyproject, field, tomllib)
+
+    if os.path.isfile(os.path.join(base_dir, "package.json")):
+        return _read_package_json_field(base_dir, field)
+
     go_mod = os.path.join(base_dir, "go.mod")
     if os.path.isfile(go_mod):
         if field == "name":
-            try:
-                with open(go_mod, "r", encoding="utf-8") as f:
-                    for line in f:
-                        m = re.match(r"^module\s+(.+)", line.strip())
-                        if m:
-                            return m.group(1).strip()
-            except OSError:
-                pass
+            return _read_go_mod_name(base_dir)
         return "unknown"
 
     return "unknown"
