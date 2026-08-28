@@ -12,3 +12,7 @@ include = ["pypi"]
 exclude = []
 description = "Staleness v3: content hashes canonicalize directive attributes; per-page seed hashes; baseline re-established"
 context = "The staleness hash store advances to v3. Content hashes canonicalize directive marker attributes so mechanical path renames render identically and no longer flag stale descriptions, and per-page seed hashes are recorded to support description ownership. Older (v2) stores hold none of the data v3 needs, so they are discarded and re-baselined from current content on first load."
+candidate_sha = "5d5de4d837b49ee6533feb88e16b0563aa26c3d1"
+
+[tree_hashes]
+selfdoc_core = "4dde6e57266c9bd8cd6975b6e5a444fa9170191e"

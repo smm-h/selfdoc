@@ -12,3 +12,7 @@ include = ["npm", "pypi"]
 exclude = []
 description = "baseline accept command and gen-index staleness fix"
 context = "Adds `selfdoc baseline accept` for clearing staleness dead-ends on pages with dynamic content. Fixes gen-index to use content-aware seeded descriptions, preventing STALE001 deadlocks on generated index pages."
+candidate_sha = "b378cdf9b1cba10103cf9cab844fc9fa2b4e1700"
+
+[tree_hashes]
+selfdoc = "085cf7fc8ff875c78969441ef1a749bc98c2135a"

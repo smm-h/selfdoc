@@ -8,3 +8,7 @@ bump = "patch"
 include = ["pypi"]
 exclude = []
 description = "Repairs the unified-site deploy in the shared engine: mounted-project post addressing, no unreachable per-project 404, reference pages that mark extracted code as code and renest doc-comment headings, and declared dependency floors."
+candidate_sha = "12bf613b43152f5ccffdce763b79225905ef281c"
+
+[tree_hashes]
+selfdoc_core = "008578d2f90cccb38468ad643299540391f423fa"

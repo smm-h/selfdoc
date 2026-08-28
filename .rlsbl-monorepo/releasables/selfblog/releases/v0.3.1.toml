@@ -9,3 +9,7 @@ include = ["npm", "pypi"]
 exclude = []
 description = "Fix the unified build's root redirect stub so its hop resolves inside the site subtree."
 context = "The unified build carried the same root-relative stub hop as the per-project\nbuild (/<locale>/common/<version>/), which escapes any path prefix the site is\nserved under. The Cloudflare _redirects rule stays site-absolute, because it\nis only ever read at the deployed site root, where there is no document for a\nrelative target to resolve against."
+candidate_sha = "9b0b83e7a4d294eedc4c5d8131a123075fe8fc13"
+
+[tree_hashes]
+selfblog = "1df963822a5a4d0675b1af263bc42b68f0a00f41"

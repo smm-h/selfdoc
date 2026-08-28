@@ -9,3 +9,7 @@ include = ["npm", "pypi"]
 exclude = []
 description = "The site home keeps its own pages across a deploy"
 context = "Publishing the assembly's home project revealed it: the site root is the\nhome project's content root, so a page of its at cv/index.html emits at\nsite/cv/, beside the project subtrees rather than inside one. The\nmembership reconciler swept every directory under site/ as a project and\ndeleted that one on every deploy. home_owned_root_names has answered this\nsince it was written, and only the roster check was asking it."
+candidate_sha = "8887ce4640a45644f4ed308c4263039414eac859"
+
+[tree_hashes]
+selfblog = "f387b13b46835c3426f00151d83abce0c13c56bd"

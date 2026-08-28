@@ -11,3 +11,7 @@ bump = "minor"
 include = ["npm", "pypi"]
 exclude = []
 description = "Initial release of the blog and assembly toolchain."
+candidate_sha = "52ae68076361a6950e69c24b4d878d3867e526b6"
+
+[tree_hashes]
+selfblog = "4d4617559327645c7b56059d9eadf114b546fd9c"

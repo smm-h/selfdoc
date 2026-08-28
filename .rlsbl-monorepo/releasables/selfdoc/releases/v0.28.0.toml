@@ -11,3 +11,7 @@ bump = "minor"
 include = ["npm", "pypi"]
 exclude = []
 description = "Monorepo conversion with three independent packages (selfdoc, selfdoc-core, selfblog)."
+candidate_sha = "75213efede49df9943140667d40d7c79a61fd79f"
+
+[tree_hashes]
+selfdoc = "240a197abf82eb2f7f5d69bbf7211e0d9a75bbfd"

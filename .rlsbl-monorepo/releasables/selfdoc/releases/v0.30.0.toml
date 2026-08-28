@@ -11,3 +11,7 @@ bump = "minor"
 include = ["npm", "pypi"]
 exclude = []
 description = "gen-index descriptions: correct project naming, legacy wrong descriptions self-heal; no more phantom STALE/DRIFT on generated pages."
+candidate_sha = "022c44841286dfad7697ef868d4add840ed575b2"
+
+[tree_hashes]
+selfdoc = "bc7467f4d9a1e5e95bbc31b817134772b7e4a273"

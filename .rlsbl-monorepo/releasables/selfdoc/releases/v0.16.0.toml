@@ -1,3 +1,5 @@
+# strictspec document version gate (do not remove)
+format_version = 1
 # Version bump type: patch, minor, or major
 bump = "minor"
 # Short description of this release (required)
@@ -14,3 +16,7 @@ DQ001 (description restates symbol name), DQ002 (description too short), and DQ0
 Several base extractor utilities were refactored into shared helpers to reduce duplication across extractors."""
 include = ["npm", "pypi"]
 exclude = []
+candidate_sha = "62d39e48d1cc3f0d05cd6d97d904645eb40041e4"
+
+[tree_hashes]
+selfdoc = "612d430d7d6fe1d6b9f360a5d9065b7226b04f10"

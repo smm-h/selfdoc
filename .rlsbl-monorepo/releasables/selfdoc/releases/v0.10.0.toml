@@ -1,4 +1,10 @@
+# strictspec document version gate (do not remove)
+format_version = 1
 # Version bump type: patch, minor, or major
 bump = "minor"
 include = ["npm", "pypi", "docs"]
 exclude = []
+candidate_sha = "5d1abd990f16bb89ba0fbcad635048a9f83b0894"
+
+[tree_hashes]
+selfdoc = "89f5b003d3a21a95d03cc6879fea1be0c568f676"

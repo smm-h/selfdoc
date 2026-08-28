@@ -11,3 +11,7 @@ bump = "minor"
 include = ["pypi"]
 exclude = []
 description = "Multi-source project name config key; skeleton pages exempt from staleness holds (update_hashes now requires skeleton_pages)."
+candidate_sha = "c06e1a80b67dc369d943e206846d13d53c7cab99"
+
+[tree_hashes]
+selfdoc_core = "35a324cc0665da11db2cdd61d970b99781ff0049"

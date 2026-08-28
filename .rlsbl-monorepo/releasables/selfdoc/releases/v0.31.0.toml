@@ -12,3 +12,7 @@ include = ["npm", "pypi"]
 exclude = []
 description = "New `name` config key, gen-index naming fix, legacy description reseed, CLI defaults are now complete sentences, and the list-features directive is removed (migrated to list-modules)."
 context = "Descriptions are handwritten-first with machine placeholders: auto-seeded page and CLI\ndescriptions are recognizable so they can be reseeded, while hand-authored frontmatter is\nleft verbatim. The old 155-character truncation produced mid-sentence cuts, so machine\nplaceholders are now complete first sentences. list-features is superseded by list-modules,\nwhich yields richer module summaries."
+candidate_sha = "e6d466c0c12bf3d2efb20ec28c2097b8f26c9b9b"
+
+[tree_hashes]
+selfdoc = "243bdab874b7118bf5d099ef43d2fc207b378f3d"

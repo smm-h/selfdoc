@@ -12,3 +12,7 @@ include = ["pypi"]
 exclude = []
 description = "Directive attribute enforcement: unknown or missing attributes are hard errors; attribute keys may contain hyphens"
 context = "Phase 9.5 coordinated breaking release. selfdoc-core gains validate_directive_attrs, which enforces that a directive only uses attributes its catalog spec declares (an unknown or missing attribute is a hard error), and the attribute-key character class now permits hyphens (e.g. schema-dir). This is the mechanism the selfdoc CLI surfaces as strict gen/check behavior, and it underpins the table-commands schema-dir attribute.\n\nThe eight external consumer repositories using table-commands were migrated to the new directive syntax in lockstep with this release."
+candidate_sha = "cdd13c1e9cd74b359dd7300f7312c3080d949230"
+
+[tree_hashes]
+selfdoc_core = "9f5d3235ae9253a6dda274caccaeb06587d524e7"

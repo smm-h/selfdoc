@@ -8,3 +8,7 @@ bump = "patch"
 include = ["npm", "pypi"]
 exclude = []
 description = "Repairs the assembly deploy: no unreachable per-project 404 page and no canonical on the site's own error page, and the wheel declares its dependency floors."
+candidate_sha = "12bf613b43152f5ccffdce763b79225905ef281c"
+
+[tree_hashes]
+selfblog = "37f6039269034a7735551858edd0946b3fa9b9df"

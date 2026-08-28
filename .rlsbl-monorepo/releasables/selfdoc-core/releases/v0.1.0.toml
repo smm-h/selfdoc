@@ -11,3 +11,7 @@ bump = "minor"
 include = ["pypi"]
 exclude = []
 description = "Initial release of the selfdoc core library."
+candidate_sha = "1340ea56f39612b7a6850bb60f21fe3088601163"
+
+[tree_hashes]
+selfdoc_core = "091c03ce9e570e41b7e4612f1c0da3927f28a6bf"

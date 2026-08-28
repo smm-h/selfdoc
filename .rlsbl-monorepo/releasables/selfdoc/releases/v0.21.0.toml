@@ -1,3 +1,5 @@
+# strictspec document version gate (do not remove)
+format_version = 1
 # Version bump type: patch, minor, or major
 bump = "minor"
 # Short description of this release (required)
@@ -8,3 +10,7 @@ context = "This release introduces a complete blog/posts system integrated with 
 # blog = false
 include = ["npm", "pypi"]
 exclude = []
+candidate_sha = "8b19cf3701783a11704a831f49170e998e80cd99"
+
+[tree_hashes]
+selfdoc = "506a43b53e4a22d405cf86f7d7d3efa4b13478f5"

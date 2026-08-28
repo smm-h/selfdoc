@@ -12,3 +12,7 @@ include = ["pypi"]
 exclude = []
 description = "Summary truncation abolished: complete first sentences and paragraphs everywhere, soft-wrap normalization across all extractors, and feed summaries carry the full first paragraph."
 context = "Truncation produced mid-sentence garbage in llms.txt, Atom feeds, and SEO meta descriptions.\nExtracted summaries now use a first-sentence / first-paragraph unit picker with soft-wrapped\nlines joined, so no output is cut mid-sentence or capped at 155 characters."
+candidate_sha = "9f58cf53d580c82c166143df55ded603d6fbb8f2"
+
+[tree_hashes]
+selfdoc_core = "0fbb6002174fceb08d16447551303a7421f6e6cb"

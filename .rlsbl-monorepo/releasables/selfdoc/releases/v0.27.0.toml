@@ -1,3 +1,5 @@
+# strictspec document version gate (do not remove)
+format_version = 1
 # Version bump type: patch, minor, major, hotfix, or prerelease
 bump = "minor"
 # Short description of this release (required)
@@ -18,3 +20,7 @@ contract with centralized compatibility checks for forward-compatible schema evo
 # blog = false
 include = ["npm", "pypi"]
 exclude = []
+candidate_sha = "537049493a9582d50cd1915d4c74d7ed31224517"
+
+[tree_hashes]
+selfdoc = "da8df6a5d4809ded00f5a396920a9431f94a25a8"
