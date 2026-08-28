@@ -32,27 +32,25 @@ jobs:
         filters: |
           selfdoc-core:
             - 'selfdoc_core/**'
-            - 'selfdoc_core/**'
             - 'pyproject.toml'
             - 'uv.lock'
+            - '.github/workflows/ci-router.yml'
             - '.rlsbl-monorepo/releasables/selfdoc-core/CHANGELOG.md'
           selfblog:
             - 'selfblog/**'
-            - 'selfblog/**'
+            - 'selfdoc_core/**'
             - 'pyproject.toml'
             - 'uv.lock'
+            - '.github/workflows/ci-router.yml'
             - '.rlsbl-monorepo/releasables/selfblog/CHANGELOG.md'
           selfdoc:
             - 'selfdoc/**'
-            - 'selfdoc/**'
-            - 'docs/**'
-            - 'scripts/**'
-            - 'tests/**'
-            - 'selfdoc.json'
+            - 'selfdoc_core/**'
             - 'pyproject.toml'
             - 'uv.lock'
-            - 'LICENSE'
+            - '.github/workflows/ci-router.yml'
             - '.rlsbl-monorepo/releasables/selfdoc/CHANGELOG.md'
+        predicate-quantifier: some-with-excludes
   selfdoc-core-ci-test:
     runs-on: ubuntu-latest
     strategy:
