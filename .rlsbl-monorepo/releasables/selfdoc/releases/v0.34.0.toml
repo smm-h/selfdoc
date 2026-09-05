@@ -10,6 +10,10 @@ Breaking changes in this batch: the `selfdoc post` and `selfdoc assembly` subcom
 Features: a new `selfdoc quality` command scoring documentation on a 0-5 tier scale, a configurable `coverage_threshold` in selfdoc.json, the `gen --version-override` release handshake, and new directives/quality/blog guides. Fixes tighten `ref` coverage accounting (re-exports and module constants are now counted, docstring-less and pydantic classes are no longer dropped), make manifest generation idempotent so `--no-allow-dirty` releases stop looping, honour package-level excludes, and add remediation hints to DRIFT001/STALE001.
 """
 candidate_sha = "f6e5b5c7999e7da405bcdae897dfabd976be6e69"
+include = ["npm", "pypi"]
+exclude = []
 
 [tree_hashes]
 selfdoc = "6f918a588a90acc73e435f4550601ad5a9b3e966"
+# include reconstructed by `rlsbl release backfill` from the targets detected at backfill time
+# exclude reconstructed by `rlsbl release backfill` from the default: nothing excluded
