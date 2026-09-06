@@ -100,3 +100,57 @@ class TestDetectProjectVersion:
         version_file = tmp_path / "VERSION"
         version_file.write_text("")
         assert detect_project_version(str(tmp_path), fallback="x") == "x"
+
+    def test_declared_go_language_reads_version_file(self, tmp_path):
+        """A declared Go source language picks VERSION over an incidental package.json.
+
+        A polyglot Go repository often carries a private package.json at its
+        root (a browser-test harness), whose version field is conventionally
+        0.0.0 and is never the project's version. The declared source language
+        in selfdoc.json picks the manifest, exactly as it does for the project
+        name.
+        """
+        (tmp_path / "selfdoc.json").write_text(
+            json.dumps({"source": [{"language": "go", "path": "."}]})
+        )
+        (tmp_path / "package.json").write_text(
+            json.dumps({"name": "harness", "private": True, "version": "0.0.0"})
+        )
+        (tmp_path / "VERSION").write_text("0.3.0\n")
+        assert detect_project_version(str(tmp_path)) == "0.3.0"
+
+    def test_declared_python_language_reads_pyproject(self, tmp_path):
+        """A declared Python source language picks pyproject.toml."""
+        (tmp_path / "selfdoc.json").write_text(
+            json.dumps({"source": [{"language": "python", "path": "."}]})
+        )
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "foo"\nversion = "1.2.3"\n'
+        )
+        (tmp_path / "package.json").write_text(
+            json.dumps({"name": "foo", "version": "9.9.9"})
+        )
+        assert detect_project_version(str(tmp_path)) == "1.2.3"
+
+    def test_declared_js_language_reads_package_json(self, tmp_path):
+        """A declared JS source language picks package.json over pyproject.toml."""
+        (tmp_path / "selfdoc.json").write_text(
+            json.dumps({"source": [{"language": "javascript", "path": "."}]})
+        )
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "foo"\nversion = "1.2.3"\n'
+        )
+        (tmp_path / "package.json").write_text(
+            json.dumps({"name": "foo", "version": "9.9.9"})
+        )
+        assert detect_project_version(str(tmp_path)) == "9.9.9"
+
+    def test_declared_language_without_its_manifest_falls_through(self, tmp_path):
+        """A declared language whose manifest is absent uses the original chain."""
+        (tmp_path / "selfdoc.json").write_text(
+            json.dumps({"source": [{"language": "go", "path": "."}]})
+        )
+        (tmp_path / "package.json").write_text(
+            json.dumps({"name": "foo", "version": "9.9.9"})
+        )
+        assert detect_project_version(str(tmp_path)) == "9.9.9"

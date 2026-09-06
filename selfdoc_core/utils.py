@@ -100,49 +100,84 @@ def atomic_write(filepath, content, permissions=None):
 def detect_project_version(base_dir: str, fallback: str = "") -> str:
     """Detect project version from manifest files.
 
-    Checks sources in order:
+    A source language declared in base_dir's selfdoc.json picks the manifest
+    the version is read from (go -> VERSION, python -> pyproject.toml,
+    js/node -> package.json), so a polyglot repo's incidental manifests --
+    e.g. a private browser-test-harness package.json at the root of a Go
+    project, whose version field is conventionally 0.0.0 -- cannot win. This
+    is the version counterpart of the same rule ``_read_project_field``
+    applies to the project name.
+
+    Without a declaration, or when the picked manifest is absent or carries
+    no version, the original lookup chain applies:
     1. pyproject.toml [project].version
     2. package.json "version"
     3. VERSION file (plain text)
 
     Returns *fallback* if no version is found.
     """
-    # Try pyproject.toml
-    pyproject_path = os.path.join(base_dir, "pyproject.toml")
-    if os.path.isfile(pyproject_path):
-        try:
-            with open(pyproject_path, "rb") as f:
-                data = tomllib.load(f)
-            version = data.get("project", {}).get("version")
-            if version:
-                return version
-        except (OSError, tomllib.TOMLDecodeError, KeyError):
-            pass
+    lang = _declared_source_language(base_dir)
+    if lang:
+        if lang == "python":
+            version = _read_pyproject_version(base_dir)
+        elif lang == "go":
+            version = _read_version_file(base_dir)
+        elif lang in ("js", "javascript", "node", "typescript"):
+            version = _read_package_json_version(base_dir)
+        else:
+            version = ""
+        if version:
+            return version
+        # Declared language without a readable version: fall through.
 
-    # Try package.json
-    package_path = os.path.join(base_dir, "package.json")
-    if os.path.isfile(package_path):
-        try:
-            with open(package_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            version = data.get("version")
-            if version:
-                return version
-        except (OSError, json.JSONDecodeError, KeyError):
-            pass
-
-    # Try VERSION file
-    version_path = os.path.join(base_dir, "VERSION")
-    if os.path.isfile(version_path):
-        try:
-            with open(version_path, "r", encoding="utf-8") as f:
-                version = f.read().strip()
-            if version:
-                return version
-        except OSError:
-            pass
+    for reader in (
+        _read_pyproject_version,
+        _read_package_json_version,
+        _read_version_file,
+    ):
+        version = reader(base_dir)
+        if version:
+            return version
 
     return fallback
+
+
+def _read_pyproject_version(base_dir: str) -> str:
+    """The [project].version of base_dir's pyproject.toml, or "" if unreadable."""
+    path = os.path.join(base_dir, "pyproject.toml")
+    if not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        return data.get("project", {}).get("version") or ""
+    except (OSError, tomllib.TOMLDecodeError, KeyError):
+        return ""
+
+
+def _read_package_json_version(base_dir: str) -> str:
+    """The "version" of base_dir's package.json, or "" if unreadable."""
+    path = os.path.join(base_dir, "package.json")
+    if not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("version") or ""
+    except (OSError, json.JSONDecodeError, KeyError):
+        return ""
+
+
+def _read_version_file(base_dir: str) -> str:
+    """The stripped contents of base_dir's VERSION file, or "" if unreadable."""
+    path = os.path.join(base_dir, "VERSION")
+    if not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
 
 
 def _declared_source_language(base_dir: str) -> str:
