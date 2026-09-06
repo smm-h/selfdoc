@@ -1,6 +1,5 @@
 """Auto-generate documentation pages from project structure."""
 
-import fnmatch
 import os
 import stat
 from dataclasses import dataclass, field
@@ -25,6 +24,11 @@ from selfdoc.ownership import (
 from selfdoc_core.staleness import load_hashes, save_hashes
 
 from selfdoc_core import effects
+from selfdoc_core.excludes import (
+    exclude_patterns_for as _exclude_patterns_for,
+    is_excluded as _is_excluded,
+    should_skip_dir as _should_skip_dir,
+)
 
 
 @dataclass
@@ -33,35 +37,6 @@ class GenResult:
 
     written: list[str] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
-
-
-# Default exclusion patterns (always applied in addition to user-configured ones).
-# These are matched against both the full relative path and the basename,
-# so ``test_*`` will match ``test_core.py`` at any depth.
-_DEFAULT_EXCLUDES = [
-    "test_*",
-    "*_test.*",
-    "__pycache__",
-    "tests",
-]
-
-# Directories that should ALWAYS be pruned from os.walk during source walks.
-# Modifying dirs[:] in-place prevents os.walk from descending into these.
-_SKIP_DIRS = {
-    ".venv", "venv", "node_modules", "__pycache__", ".git", ".hg",
-    ".svn", "dist", "build", "_build", ".tox", ".mypy_cache",
-    ".pytest_cache", ".ruff_cache", ".zig-cache", "zig-cache",
-}
-
-
-def _should_skip_dir(dirname):
-    """Return True if a directory name should be pruned during source walks."""
-    if dirname in _SKIP_DIRS:
-        return True
-    # Also skip directories ending in .egg-info (e.g. mylib.egg-info)
-    if dirname.endswith(".egg-info"):
-        return True
-    return False
 
 
 def _has_generated_marker(filepath):
@@ -248,39 +223,6 @@ def _collect_go_packages(source_paths, base_dir, exclude_patterns):
                     packages[module_path] = os.path.abspath(dirpath)
 
     return sorted(packages.items(), key=lambda t: t[0])
-
-
-def _is_excluded(rel_path, exclude_patterns):
-    """Check whether a relative path matches any exclusion glob pattern.
-
-    Supports ``**/`` prefix as "match at any depth" by stripping the
-    prefix and testing against every path component and the basename.
-    Plain patterns are matched against the full path, the basename, and
-    each directory component.
-    """
-    # Normalise to forward slashes for consistent matching
-    normalized = rel_path.replace(os.sep, "/")
-    parts = normalized.split("/")
-    basename = parts[-1]
-    dir_parts = parts[:-1]
-    for pattern in exclude_patterns:
-        # Strip leading **/ for "any depth" semantics
-        stripped = pattern
-        while stripped.startswith("**/"):
-            stripped = stripped[3:]
-
-        if fnmatch.fnmatch(normalized, stripped):
-            return True
-        if fnmatch.fnmatch(basename, stripped):
-            return True
-        # Check each directory component
-        for part in dir_parts:
-            if fnmatch.fnmatch(part, stripped):
-                return True
-        # Also try the original pattern against the full path
-        if pattern != stripped and fnmatch.fnmatch(normalized, pattern):
-            return True
-    return False
 
 
 def _read_existing_description(filepath, module_name=None, seed_hash=None):
@@ -732,9 +674,7 @@ def _generate_docs_for_dir(config, base_dir, language, extractor,
     extensions = set(extractor.file_extensions())
 
     # Build exclusion patterns: defaults + user-configured
-    gen_config = config.get("gen") or {}
-    user_excludes = gen_config.get("exclude", [])
-    exclude_patterns = list(_DEFAULT_EXCLUDES) + list(user_excludes)
+    exclude_patterns = _exclude_patterns_for(config)
 
     # Collect (module_path, module_name, md_filename, src_path_or_pkg_dir) tuples.
     # For Go, src_path_or_pkg_dir is the package directory; for others it is

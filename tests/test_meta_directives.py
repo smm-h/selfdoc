@@ -205,6 +205,55 @@ class TestListModules:
         assert "_test.go" not in result
         assert "**pkg**" in result
 
+    def test_gen_exclude_prunes_go_packages(self, tmp_path):
+        """A gen.exclude pattern removes the matching Go packages from the listing.
+
+        The generated pages honor selfdoc.json's gen.exclude, so a listing that
+        does not honor the same patterns advertises modules the site has no page
+        for -- e.g. an analyzer's testdata fixture tree, which is source code by
+        extension and never a module of the project.
+        """
+        real = tmp_path / "internal" / "engine"
+        real.mkdir(parents=True)
+        (real / "engine.go").write_text(
+            "// Package engine renders things.\npackage engine\n"
+        )
+        fixture = tmp_path / "internal" / "lint" / "testdata" / "src" / "fix"
+        fixture.mkdir(parents=True)
+        (fixture / "fix.go").write_text(
+            "// Package fix is an analyzer fixture.\npackage fix\n"
+        )
+
+        config = {
+            "source": [{"path": "internal/", "language": "go"}],
+            "gen": {"exclude": ["testdata"]},
+        }
+        result = resolve_list_modules(
+            {"path": "internal/"}, config, str(tmp_path),
+        )
+        assert "**internal/engine**" in result
+        assert "testdata" not in result
+
+    def test_gen_exclude_prunes_python_modules(self, tmp_path):
+        """A gen.exclude pattern removes the matching modules from a Python listing."""
+        pkg = tmp_path / "mylib"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text('"""My library."""\n')
+        (pkg / "core.py").write_text('"""Core module."""\n')
+        fixture = pkg / "testdata"
+        fixture.mkdir()
+        (fixture / "sample.py").write_text('"""A fixture."""\n')
+
+        config = {
+            "source": [{"path": "mylib/", "language": "python"}],
+            "gen": {"exclude": ["testdata"]},
+        }
+        result = resolve_list_modules(
+            {"path": "mylib/"}, config, str(tmp_path),
+        )
+        assert "core.py" in result
+        assert "testdata" not in result
+
     def test_python_test_files_excluded(self, tmp_path):
         """Python test files (test_*.py, *_test.py) are excluded."""
         pkg_dir = tmp_path / "mylib"

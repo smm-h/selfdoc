@@ -12,6 +12,11 @@ import json
 import os
 import re
 
+from selfdoc_core.excludes import (
+    exclude_patterns_for,
+    is_excluded,
+    should_skip_dir,
+)
 from selfdoc_core.prose import first_sentence
 from selfdoc_core.tables import render_markdown_table
 from selfdoc_core.utils import _read_project_field, resolve_directive_path
@@ -298,6 +303,12 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
     language = matched_entry.language
     extractor = EXTRACTORS.get(language)
 
+    # A listing covers exactly what the generated pages cover: the same
+    # defaults plus the project's own gen.exclude patterns. Without this a
+    # listing advertises modules -- an analyzer's testdata fixture tree, a
+    # vendored copy -- that the site has no page for.
+    exclude_patterns = exclude_patterns_for(config)
+
     # files=true: old per-file behavior (escape hatch)
     use_files = attrs.get("files", "").lower() == "true"
 
@@ -306,6 +317,7 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
             # Per-file listing with no docstrings for unsupported languages
             return _list_modules_files(
                 full_path, base_dir, language, matched_entry.extractor,
+                exclude_patterns,
             )
         raise ValueError(
             f"language '{language}' has no module extractor"
@@ -313,35 +325,44 @@ def resolve_list_modules(attrs: dict, config: dict, base_dir: str) -> str:
         )
 
     if use_files:
-        return _list_modules_files(full_path, base_dir, language, extractor)
+        return _list_modules_files(
+            full_path, base_dir, language, extractor, exclude_patterns,
+        )
 
     # Per-language grouped listing
     if language in _PACKAGE_LANGUAGES:
         return _list_modules_by_package(
-            full_path, base_dir, path, language, extractor,
+            full_path, base_dir, path, language, extractor, exclude_patterns,
         )
     if language in _DIR_GROUP_LANGUAGES:
         return _list_modules_by_dir_group(
-            full_path, base_dir, language, extractor,
+            full_path, base_dir, language, extractor, exclude_patterns,
         )
     # Default: per-file (Python and others)
-    return _list_modules_per_file(full_path, base_dir, language, extractor)
+    return _list_modules_per_file(
+        full_path, base_dir, language, extractor, exclude_patterns,
+    )
 
 
 def _list_modules_files(
     full_path: str, base_dir: str, language: str,
-    extractor: object,
+    extractor: object, exclude_patterns: list[str],
 ) -> str:
     """Old per-file listing behavior (files=true escape hatch)."""
     extensions = set(extractor.file_extensions())  # type: ignore[union-attr]
 
     modules: list[tuple[str, str, str | None]] = []
-    for dirpath, _dirnames, filenames in os.walk(full_path):
+    for dirpath, dirnames, filenames in os.walk(full_path):
+        dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
         for fname in sorted(filenames):
             _root, ext = os.path.splitext(fname)
             if ext not in extensions:
                 continue
             file_path = os.path.join(dirpath, fname)
+            if is_excluded(
+                os.path.relpath(file_path, full_path), exclude_patterns
+            ):
+                continue
             rel_path = os.path.relpath(file_path, base_dir)
             module_name = _file_to_module_name(rel_path, language)
             if module_name is None:
@@ -368,7 +389,7 @@ def _list_modules_files(
 
 def _list_modules_per_file(
     full_path: str, base_dir: str, language: str,
-    extractor: object,
+    extractor: object, exclude_patterns: list[str],
 ) -> str:
     """Per-file listing with test file exclusion and extractor docstrings.
 
@@ -378,7 +399,8 @@ def _list_modules_per_file(
     extensions = set(extractor.file_extensions())  # type: ignore[union-attr]
 
     modules: list[tuple[str, str, str | None]] = []
-    for dirpath, _dirnames, filenames in os.walk(full_path):
+    for dirpath, dirnames, filenames in os.walk(full_path):
+        dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
         for fname in sorted(filenames):
             if _is_test_file(fname, language):
                 continue
@@ -386,6 +408,10 @@ def _list_modules_per_file(
             if ext not in extensions:
                 continue
             file_path = os.path.join(dirpath, fname)
+            if is_excluded(
+                os.path.relpath(file_path, full_path), exclude_patterns
+            ):
+                continue
             rel_path = os.path.relpath(file_path, base_dir)
             module_name = _file_to_module_name(rel_path, language)
             if module_name is None:
@@ -412,7 +438,7 @@ def _list_modules_per_file(
 
 def _list_modules_by_package(
     full_path: str, base_dir: str, directive_path: str,
-    language: str, extractor: object,
+    language: str, extractor: object, exclude_patterns: list[str],
 ) -> str:
     """Group by package directory (Go).
 
@@ -423,13 +449,22 @@ def _list_modules_by_package(
 
     # Collect directories that contain source files (excluding test files)
     packages: dict[str, list[str]] = {}  # dir_path -> list of source filenames
-    for dirpath, _dirnames, filenames in os.walk(full_path):
+    for dirpath, dirnames, filenames in os.walk(full_path):
+        dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
+        rel_dir = os.path.relpath(dirpath, full_path)
+        if rel_dir != "." and is_excluded(rel_dir, exclude_patterns):
+            continue
         source_files = []
         for fname in sorted(filenames):
             if _is_test_file(fname, language):
                 continue
             _root, ext = os.path.splitext(fname)
             if ext not in extensions:
+                continue
+            if is_excluded(
+                os.path.join(rel_dir, fname) if rel_dir != "." else fname,
+                exclude_patterns,
+            ):
                 continue
             source_files.append(fname)
         if source_files:
@@ -460,7 +495,7 @@ def _list_modules_by_package(
 
 def _list_modules_by_dir_group(
     full_path: str, base_dir: str, language: str,
-    extractor: object,
+    extractor: object, exclude_patterns: list[str],
 ) -> str:
     """Per-file listing grouped by directory (TypeScript/JavaScript).
 
@@ -471,7 +506,8 @@ def _list_modules_by_dir_group(
 
     # Collect files grouped by directory
     dir_files: dict[str, list[tuple[str, str, str | None]]] = {}
-    for dirpath, _dirnames, filenames in os.walk(full_path):
+    for dirpath, dirnames, filenames in os.walk(full_path):
+        dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
         for fname in sorted(filenames):
             if _is_test_file(fname, language):
                 continue
@@ -479,6 +515,10 @@ def _list_modules_by_dir_group(
             if ext not in extensions:
                 continue
             file_path = os.path.join(dirpath, fname)
+            if is_excluded(
+                os.path.relpath(file_path, full_path), exclude_patterns
+            ):
+                continue
             rel_path = os.path.relpath(file_path, base_dir)
             module_name = _file_to_module_name(rel_path, language)
             if module_name is None:
