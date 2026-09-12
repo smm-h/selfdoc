@@ -231,7 +231,7 @@ func RefreshRegions(pageHTML string, context SiteContext, source string) (string
 		}
 		return "", errorf(
 			"%sthe site-level region(s) %s open and never close. A region is "+
-				"written by selfblog and delimited by a pair of sentinel "+
+				"written by selfdoc and delimited by a pair of sentinel "+
 				"comments; an unpaired one means the emitted page was edited "+
 				"by hand.",
 			where, strings.Join(quoted, ", "),

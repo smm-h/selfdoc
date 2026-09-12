@@ -65,8 +65,8 @@ func RunPagefind(outputDir string, h *effects.Handle) error {
 			result.ExitCode, result.StderrString())
 	}
 	return errors.New(
-		"Pagefind is not installed. Install it with: uv add pagefind\n" +
-			"Or install the standalone binary: npm install -g pagefind")
+		"Pagefind is not installed. Install with: pip install 'pagefind[bin]' " +
+			"or npm install -g pagefind")
 }
 
 // isExecutableMissing reports whether err says the command does not exist,

@@ -19,10 +19,10 @@ import (
 // page the assembly published shipped as bare HTML. There is no styling
 // without it and nothing to fall back to.
 var ErrCSSURLRequired = errors.New(
-	"wrap_shared_page needs a css_url: a shared page carries the " +
+	"WrapSharedPage needs a css_url: a shared page carries the " +
 		"site-level chrome stylesheet like every other page on the " +
 		"site, and with none it renders as unstyled HTML. Pass the " +
-		"page's reference to the asset selfblog.chrome writes.",
+		"page's reference to the asset chrome.AssetRel names.",
 )
 
 // WrapSharedPage wraps an HTML fragment in a complete HTML page.
@@ -127,7 +127,7 @@ func GenerateHomepage(manifests []map[string]any, siteHop string, homeSlug strin
 			"the home project %s declares a curated listing, so the "+
 				"/projects/ page is rendered from it; there is no listing "+
 				"here to render. Load it with "+
-				"selfblog.assembly.load_listing_for, which names the file "+
+				"site.LoadListingFor, which names the file "+
 				"and the deploy step when it is missing.",
 			util.PythonRepr(homeSlug),
 		)

@@ -25,7 +25,7 @@ const BareNotFound = "<!DOCTYPE html>\n<html lang=\"en\"><head><title>404</title
 	"</body></html>\n"
 
 // ServerVersion is the identity the preview server answers under.
-const ServerVersion = "selfblog-preview"
+const ServerVersion = "selfdoc-preview"
 
 // PreviewHandler answers one request against the preview tree.
 //

@@ -18,7 +18,7 @@ func (c *cli) registerCheck() {
 		strictcli.WithFlags(
 			strictcli.StringFlag("ignore", "Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)", strictcli.Optional()),
 			strictcli.BoolFlag("auto-commit", "Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted", strictcli.Optional()),
-			strictcli.StringFlag("version-override", "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump", strictcli.Optional()),
+			strictcli.StringFlag("version-override", "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in the project manifest (VERSION, pyproject.toml or package.json). Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump", strictcli.Optional()),
 		),
 	)
 }

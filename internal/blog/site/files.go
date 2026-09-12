@@ -41,7 +41,7 @@ func ParseFilesManifest(raw string, source string) (map[string][]string, error) 
 	version := data["schema_version"]
 	if !isRecordVersion(version, FilesRecordVersion) {
 		return nil, errorf(
-			"%s is a version %s published-file record; this selfblog writes "+
+			"%s is a version %s published-file record; this selfdoc writes "+
 				"and reads version %d. Version 1 addressed every path from the "+
 				"project's own subtree and put posts at '<slug>/posts/...'; "+
 				"version 2 addresses every path from site/ and posts are "+

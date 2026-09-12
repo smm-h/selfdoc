@@ -160,7 +160,7 @@ func LoadListingFor(manifestsDir, homeSlug string) (*listing.Listing, error) {
 		return nil, errorf(
 			"%s does not exist, so the assembly carries no curated project "+
 				"listing for its home project %s. The listing is authored in "+
-				"that project as %s and copied here by its deploy ('selfblog "+
+				"that project as %s and copied here by its deploy ('selfdoc "+
 				"assembly integrate' with scope 'full' or 'docs'), which is "+
 				"what should have written this file. Add %s to %s if it has "+
 				"none, then deploy %s once before generating the shared files.",

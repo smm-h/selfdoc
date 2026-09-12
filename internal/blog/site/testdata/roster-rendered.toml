@@ -3,7 +3,7 @@
 # This file is the declaration; the deploy reconciles the site to it and can
 # never add to it. A project with no [[project]] block here has its subtree,
 # its manifests, its membership record and its search-index entries removed at
-# the next deploy -- which is what `selfblog assembly retire <slug>` does in
+# the next deploy -- which is what `selfdoc assembly retire <slug>` does in
 # one operation.
 #
 # `home` names the one declared project that IS the front page: its pages are

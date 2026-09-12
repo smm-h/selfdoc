@@ -1,12 +1,12 @@
 # selfdoc lint-code registry -- the single source of truth for every lint code
-# selfdoc and selfblog can emit. Governed by
-# .strictspec/lint-registry.schema.toml and validated at load time by the
-# generated lint_registry_validator.py (see selfdoc_core/lints.py).
+# selfdoc can emit. Governed by .strictspec/lint-registry.schema.toml and
+# validated at load time by the generated validator
+# (internal/lints/selfdoc_lint_registry_gen.go).
 #
 # A lint's severity lives here and nowhere else: LintResult derives it from
 # this document, so a construction site cannot state a severity and cannot
 # emit an unregistered code. The lint-code enum in selfdoc's declared check
-# payload schema (selfdoc/payload_schemas.py) and the lint-rule table in
+# payload schema (internal/payloadschemas) and the lint-rule table in
 # docs/check-guide.md are both pinned to this document by tests.
 #
 # Entries are in documentation order (the order the table renders in), which
@@ -208,7 +208,7 @@ code = "SPELL001"
 severity = "error"
 description = "A word in page prose is in neither the vendored English word list nor the accept list. Fix the misspelling, or add the term to ~/Projects/ark/spelling-accept.txt if it is genuine."
 
-# -- Blog posts (selfblog) ----------------------------------------------------
+# -- Blog posts --------------------------------------------------------------
 
 [[lints]]
 code = "POST001"
@@ -252,7 +252,7 @@ code = "LINK001"
 severity = "error"
 description = "An emitted reference -- a link, a canonical, a sitemap entry or a feed link -- names a file the build did not write."
 
-# -- Unified multi-project sites (selfblog) -----------------------------------
+# -- Unified multi-project sites ----------------------------------------------
 
 [[lints]]
 code = "UNIFIED001"

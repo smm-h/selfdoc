@@ -33,7 +33,7 @@ func (c *cli) registerGen() {
 		strictcli.WithEffect(strictcli.EffectMutating),
 		strictcli.WithFlags(
 			strictcli.BoolFlag("auto-commit", "Automatically commit generated documentation pages and root files to git. Omitted, it commits; pass --no-auto-commit to leave them uncommitted", strictcli.Optional()),
-			strictcli.StringFlag("version-override", "Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed)", strictcli.Optional()),
+			strictcli.StringFlag("version-override", "Project version to stamp into version-bearing generated content instead of the version currently recorded in the project manifest (VERSION, pyproject.toml or package.json). Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed)", strictcli.Optional()),
 		),
 	)
 }

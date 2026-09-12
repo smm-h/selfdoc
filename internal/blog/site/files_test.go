@@ -308,7 +308,7 @@ func TestAFalsyOwnersValueIsAnEmptyMapping(t *testing.T) {
 func TestParseFilesManifestRefusals(t *testing.T) {
 	t.Parallel()
 	const versionOne = "p.json is a version 1 published-file record; this " +
-		"selfblog writes and reads version 2. Version 1 addressed every path " +
+		"selfdoc writes and reads version 2. Version 1 addressed every path " +
 		"from the project's own subtree and put posts at '<slug>/posts/...'; " +
 		"version 2 addresses every path from site/ and posts are site-level, " +
 		"at 'blog/<post-slug>/...'. The two cannot be told apart by reading " +

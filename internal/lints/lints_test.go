@@ -102,7 +102,7 @@ func TestLintResultRefusesAnUnregisteredCode(t *testing.T) {
 func TestLintSeverityRefusesAnUnregisteredCode(t *testing.T) {
 	_, err := LintSeverity("NOPE001")
 	want := "lint code 'NOPE001' is not in the registry. Every emittable code " +
-		"must be declared in selfdoc_core/lints.toml with its severity and description."
+		"must be declared in the lint registry (internal/lints/lints.toml) with its severity and description."
 	if err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %q", err, want)
 	}
@@ -214,8 +214,8 @@ func TestValidateLintCodesRefusals(t *testing.T) {
 			source: "lint_ignore",
 			kind:   "unknown",
 			want: "lint_ignore names lint code(s) the registry does not carry: " +
-				"'NOPE001', 'NOPE002'. Every suppressible code is declared in " +
-				"selfdoc_core/lints.toml; known codes are: " + knownCodes + ".",
+				"'NOPE001', 'NOPE002'. Every suppressible code is declared in the lint " +
+				"registry (internal/lints/lints.toml); known codes are: " + knownCodes + ".",
 		},
 		{
 			label:  "an error-severity code cannot be silenced",
@@ -244,8 +244,8 @@ func TestValidateLintCodesRefusals(t *testing.T) {
 			source: "--ignore",
 			kind:   "unknown",
 			want: "--ignore names lint code(s) the registry does not carry: " +
-				"'NOPE001'. Every suppressible code is declared in " +
-				"selfdoc_core/lints.toml; known codes are: " + knownCodes + ".",
+				"'NOPE001'. Every suppressible code is declared in the lint " +
+				"registry (internal/lints/lints.toml); known codes are: " + knownCodes + ".",
 		},
 	}
 

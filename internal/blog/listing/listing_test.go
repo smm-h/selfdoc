@@ -469,17 +469,17 @@ func TestSidecarRefusals(t *testing.T) {
 		{
 			name: "no format version at all",
 			text: `{"categories": []}`,
-			want: "home-listing.json declares format_version None; this selfblog reads 1. Re-deploy the home project to rewrite the sidecar.",
+			want: "home-listing.json declares format_version None; this selfdoc reads 1. Re-deploy the home project to rewrite the sidecar.",
 		},
 		{
 			name: "another format version",
 			text: `{"format_version": 2, "categories": []}`,
-			want: "home-listing.json declares format_version 2; this selfblog reads 1. Re-deploy the home project to rewrite the sidecar.",
+			want: "home-listing.json declares format_version 2; this selfdoc reads 1. Re-deploy the home project to rewrite the sidecar.",
 		},
 		{
 			name: "a format version that is a string",
 			text: `{"format_version": "1"}`,
-			want: "home-listing.json declares format_version '1'; this selfblog reads 1. Re-deploy the home project to rewrite the sidecar.",
+			want: "home-listing.json declares format_version '1'; this selfdoc reads 1. Re-deploy the home project to rewrite the sidecar.",
 		},
 	}
 

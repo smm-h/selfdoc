@@ -138,7 +138,7 @@ func RenderDirectiveBody(name string, attrs map[string]string, context SiteConte
 		return ResolveBlogHighlights(attrs, context)
 	}
 	return "", errorf(
-		"unknown site-level directive %s; selfblog resolves %s.",
+		"unknown site-level directive %s; selfdoc resolves %s.",
 		util.PythonRepr(name), strings.Join(SiteDirectives, ", "),
 	)
 }
@@ -156,7 +156,7 @@ func ResolveForBuild(name string, attrs map[string]string, context *SiteContext)
 		return "", errorf(
 			"directive '%s' is site-level: it renders from the assembled "+
 				"site's manifests, which no single project's build can see on "+
-				"its own. Build the home project with `selfblog build "+
+				"its own. Build the home project with `selfdoc build "+
 				"--target home --site-manifests <dir>`, which supplies them.",
 			name,
 		)

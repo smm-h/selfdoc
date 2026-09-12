@@ -19,7 +19,7 @@ const secondsPerDay = 86400
 const outboundTimeout = 15 * time.Second
 
 // outboundUserAgent identifies the verification to the servers it asks.
-const outboundUserAgent = "selfblog-assembly-verify"
+const outboundUserAgent = "selfdoc-assembly-verify"
 
 // Fetcher fetches a URL and returns its status and the error text, which is
 // empty when there was none.

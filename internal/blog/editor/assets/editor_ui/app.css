@@ -1,4 +1,4 @@
-/* selfblog editor — the app's own layout, on top of tinymoon's frame.
+/* selfdoc editor — the app's own layout, on top of tinymoon's frame.
  *
  * Every colour, radius, gap and font here is a tinymoon token. Nothing
  * restates a palette value: the editor inherits light/dark and every theme

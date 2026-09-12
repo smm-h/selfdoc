@@ -210,7 +210,7 @@ var Schema = []FieldSpec{
 		Required:    false,
 		Default:     nil,
 		Pattern:     `^\d+\.\d+\.\d+`,
-		Description: "Project version. When present, used by deploy instead of reading from pyproject.toml/package.json.",
+		Description: "Project version. When present, used by deploy instead of reading from the project manifest (VERSION, pyproject.toml or package.json).",
 	},
 	{
 		Name:        "docs",

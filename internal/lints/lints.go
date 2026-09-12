@@ -195,8 +195,8 @@ func LintSeverity(code string) (string, error) {
 	if !ok {
 		return "", &UnknownLintCodeError{Message: fmt.Sprintf(
 			"lint code '%s' is not in the registry. Every emittable code "+
-				"must be declared in selfdoc_core/%s with its "+
-				"severity and description.", code, registryDocumentName)}
+				"must be declared in the lint registry (internal/lints/%s) "+
+				"with its severity and description.", code, registryDocumentName)}
 	}
 	return spec.Severity, nil
 }
@@ -232,8 +232,8 @@ func ValidateLintCodes(codes []string, source string) error {
 		}
 		return &UnknownLintCodeError{Message: fmt.Sprintf(
 			"%s names lint code(s) the registry does not carry: "+
-				"%s. Every suppressible code is declared in selfdoc_core/"+
-				"%s; known codes are: %s.",
+				"%s. Every suppressible code is declared in the lint "+
+				"registry (internal/lints/%s); known codes are: %s.",
 			source, strings.Join(quoted, ", "), registryDocumentName,
 			strings.Join(sortedCodes(reg), ", "))}
 	}

@@ -93,7 +93,7 @@ func ParseSidecar(text string, source string) (Listing, error) {
 	}
 	if !isFormatVersion(data["format_version"]) {
 		return Listing{}, errorf(
-			"%s declares format_version %s; this selfblog reads %d. Re-deploy "+
+			"%s declares format_version %s; this selfdoc reads %d. Re-deploy "+
 				"the home project to rewrite the sidecar.",
 			source, util.PythonRepr(jsonValue(data["format_version"])), FormatVersion,
 		)

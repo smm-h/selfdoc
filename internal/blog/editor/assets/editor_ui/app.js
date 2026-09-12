@@ -1,4 +1,4 @@
-// selfblog editor — the authoring shell.
+// selfdoc editor — the authoring shell.
 //
 // A tinymoon app: mountShell builds the frame (sidebar, topbar, theme, router),
 // one route per registry entry, and each route's view is a post list beside a
@@ -666,8 +666,8 @@ async function boot() {
   mountShell({
     root: document.body,
     brand: {
-      name: "selfblog",
-      logoHTML: '<div class="wordmark">self<b>blog</b></div>'
+      name: "selfdoc",
+      logoHTML: '<div class="wordmark">self<b>doc</b></div>'
         + '<div class="tagline">editor</div>',
     },
     routes,

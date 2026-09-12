@@ -1,10 +1,11 @@
 # selfdoc built-in directive catalogue -- the single source of truth for the
 # shipped ("core") directives. Governed by
-# .strictspec/directive-descriptor.schema.toml and validated at load time by the
-# generated directive_descriptor_validator.py (see selfdoc_core/catalog.py).
+# .strictspec/directive-descriptor.schema.toml and validated at load time by
+# the generated validator
+# (internal/catalog/selfdoc_directive_catalogue_gen.go).
 #
-# This document replaces the former CORE_DIRECTIVES dict literal in catalog.py.
-# Edit directives here; catalog.py builds the runtime catalogue from this file.
+# Edit directives here; package catalog builds the runtime catalogue from this
+# file.
 #
 # Every code-category directive lists "lang" among its optional attributes: the
 # multi-language resolver reads it to disambiguate which extractor handles a

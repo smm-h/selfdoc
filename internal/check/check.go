@@ -199,7 +199,8 @@ func CheckDocs(
 		result.Lints = append(result.Lints, lints.MustLintResult(
 			"selfdoc.json", nil, "SEARCH001",
 			"pagefind is not installed, so the build cannot index this "+
-				"site. Install with: uv add 'pagefind[bin]'",
+				"site. Install with: pip install 'pagefind[bin]' or "+
+				"npm install -g pagefind",
 		))
 	}
 

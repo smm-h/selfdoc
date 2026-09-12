@@ -254,7 +254,7 @@ func RequirePagefind(t TB) {
 	if pagefindCommand == nil {
 		t.Skipf("pagefind is not installed: the build indexes its output with " +
 			"'python3 -m pagefind' or 'pagefind', and neither answered. " +
-			"Install it with 'uv add pagefind' or 'npm install -g pagefind'.")
+			"Install with 'pip install pagefind[bin]' or 'npm install -g pagefind'.")
 		return
 	}
 	if len(pagefindCommand) == 1 && pagefindCommand[0] == "pagefind" {

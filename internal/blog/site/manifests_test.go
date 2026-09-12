@@ -140,7 +140,7 @@ func TestLoadListingForRefusesWhenTheSidecarIsAbsent(t *testing.T) {
 	want := ListingSidecarPath(dir, "home") + " does not exist, so the assembly " +
 		"carries no curated project listing for its home project 'home'. The " +
 		"listing is authored in that project as docs/projects.toml and copied " +
-		"here by its deploy ('selfblog assembly integrate' with scope 'full' or " +
+		"here by its deploy ('selfdoc assembly integrate' with scope 'full' or " +
 		"'docs'), which is what should have written this file. Add " +
 		"docs/projects.toml to 'home' if it has none, then deploy 'home' once " +
 		"before generating the shared files."
