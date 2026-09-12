@@ -5,9 +5,7 @@
   "env_file": "~/Projects/.env",
   "publish_gate_check_regex": "^(root-ci) / ",
   "targets": [
-    "go",
-    "npm",
-    "pypi"
+    "go"
   ],
   "pipelines": {
     "go": {
@@ -18,25 +16,6 @@
       "install_paths": [
         "./cmd/selfdoc"
       ]
-    },
-    "npm": {
-      "type": "npm",
-      "local": false,
-      "target": "npm",
-      "provenance": true,
-      "artifact": "launcher",
-      "wraps": "go",
-      "binary_source": "github-release",
-      "download": "first-run"
-    },
-    "pypi": {
-      "type": "pypi",
-      "local": false,
-      "target": "pypi",
-      "artifact": "launcher",
-      "wraps": "go",
-      "binary_source": "github-release",
-      "download": "first-run"
     }
   },
   "batch_limits": {
