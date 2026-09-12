@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "name": "R\u00e9cord Project",
+  "slug": "record-project",
+  "version": "1.2.3",
+  "description": "A project with a \"quoted\" description \u2014 and an em dash.",
+  "language": "python",
+  "base_url": "https://example.com",
+  "pages": [
+    {
+      "path": "api.md",
+      "title": "API R\u00e9ference",
+      "type": "doc",
+      "headings": []
+    },
+    {
+      "path": "guide.md",
+      "title": "Guide",
+      "type": "tutorial",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Guide",
+          "anchor": "guide"
+        },
+        {
+          "level": 2,
+          "text": "Setup",
+          "anchor": "setup"
+        },
+        {
+          "level": 2,
+          "text": "Setup",
+          "anchor": "setup-1"
+        },
+        {
+          "level": 3,
+          "text": "D\u00e9eper",
+          "anchor": "deeper"
+        }
+      ]
+    }
+  ],
+  "posts": [
+    {
+      "path": "posts/hello.md",
+      "title": "Hello, w\u00f6rld",
+      "date": "2026-01-02",
+      "slug": "hello-world",
+      "tags": [
+        "news",
+        "release"
+      ]
+    },
+    {
+      "path": "posts/bare.md",
+      "title": "Bare",
+      "date": "2026-01-03",
+      "slug": "bare",
+      "tags": []
+    }
+  ],
+  "last_gen": "2026-09-12T16:39:00.245843+00:00",
+  "theme": "brutalist"
+}
