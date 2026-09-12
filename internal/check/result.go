@@ -145,3 +145,13 @@ func CheckResultExitCode(result *CheckResult, config map[string]any) int {
 		config,
 	)
 }
+
+// CoverageBelowThreshold reports whether a run's documented coverage is under
+// the project's configured threshold.
+//
+// It is the adapter over lints.CoverageBelowThreshold for a caller holding a
+// full result, which is what the command layer needs to decide whether to
+// print the below-threshold note beside the report.
+func CoverageBelowThreshold(result *CheckResult, config map[string]any) bool {
+	return lints.CoverageBelowThreshold(coverageOf(result.Coverage), config)
+}

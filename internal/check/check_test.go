@@ -484,3 +484,19 @@ func TestFilterLints(t *testing.T) {
 		t.Error("an empty suppression list changed the diagnostics")
 	}
 }
+
+func TestCoverageBelowThreshold(t *testing.T) {
+	isolate(t)
+	result := &CheckResult{
+		Coverage: &CoverageStats{Total: 4, ReferencedCount: 4, DocumentedCount: 2},
+	}
+	if !CoverageBelowThreshold(result, nil) {
+		t.Error("half coverage passed the default threshold")
+	}
+	if CoverageBelowThreshold(result, map[string]any{"coverage_threshold": 0.5}) {
+		t.Error("half coverage failed a threshold of one half")
+	}
+	if CoverageBelowThreshold(&CheckResult{}, nil) {
+		t.Error("a run that measured no coverage was reported below threshold")
+	}
+}
