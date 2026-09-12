@@ -11,11 +11,11 @@ import (
 
 // breakEverything injects one defect per asserted property, in a fixed order.
 //
-// The order and the exact content are shared with
-// testdata/record_python_report.py, which builds the same tree under the
-// Python this package replaces: the recording it produced is what
-// TestTheReportIsByteIdenticalToThePython compares against, so a change here
-// is a re-recording rather than an edit.
+// The order and the exact content produced testdata/failing-tree-report.txt,
+// recorded from the Python this package replaces and now the only copy of that
+// output: it is what TestTheReportIsByteIdenticalToThePython compares against,
+// and the Python that produced it is gone, so a change here invalidates the
+// comparison instead of re-recording it.
 func breakEverything(t *testing.T, root string) {
 	t.Helper()
 	siteDir := filepath.Join(root, "site")
