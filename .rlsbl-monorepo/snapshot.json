@@ -1,87 +1,34 @@
 {
-  "generated_at": "2026-09-12T01:04:44Z",
-  "package_count": 4,
+  "generated_at": "2026-09-12T20:00:58Z",
+  "package_count": 1,
   "packages": {
-    "selfdoc-core": {
-      "path": "selfdoc_core",
+    "root": {
+      "path": ".",
       "targets": [
-        "pypi"
-      ],
-      "version": "0.10.2",
-      "description": null,
-      "deps": [],
-      "rdeps": [
-        "selfblog",
-        "selfdoc"
-      ],
-      "library": true,
-      "dev_only": false,
-      "releasable_flag": true,
-      "test_only": false
-    },
-    "selfblog": {
-      "path": "selfblog",
-      "targets": [
-        "npm",
-        "pypi"
-      ],
-      "version": "0.5.0",
-      "description": null,
-      "deps": [
-        "selfdoc-core"
-      ],
-      "rdeps": [],
-      "library": false,
-      "dev_only": false,
-      "releasable_flag": true,
-      "test_only": false
-    },
-    "selfdoc": {
-      "path": "selfdoc",
-      "targets": [
+        "go",
         "npm",
         "pypi"
       ],
       "version": "0.38.1",
       "description": null,
-      "deps": [
-        "selfdoc-core"
-      ],
+      "deps": [],
       "rdeps": [],
       "library": false,
       "dev_only": false,
       "releasable_flag": true,
       "test_only": false
-    },
-    "root": {
-      "path": ".",
-      "targets": [],
-      "version": null,
-      "description": null,
-      "deps": [],
-      "rdeps": [],
-      "library": false,
-      "dev_only": true,
-      "releasable_flag": false,
-      "test_only": false
     }
   },
   "graph": {
     "leaf_nodes": [
-      "root",
-      "selfdoc-core"
+      "root"
     ],
     "root_nodes": [
-      "root",
-      "selfblog",
-      "selfdoc"
+      "root"
     ],
-    "max_depth": 1,
+    "max_depth": 0,
     "topological_order": [
-      "root",
-      "selfdoc-core",
-      "selfblog",
-      "selfdoc"
+      "root"
     ]
   }
 }
