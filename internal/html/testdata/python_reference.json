@@ -1,0 +1,424 @@
+{
+ "md_inputs": {
+  "headings": "# Title\n\nIntro text.\n\n## Setup\n\nFirst.\n\n## Setup\n\nSecond.\n\n### Deep `code` heading\n",
+  "inline": "A **bold** word, ``code``, *em*, and [a link](https://example.com).\n\nWrite `` ` `` for that.\n\nA stray `` tick.\n",
+  "inline_spans": "Reap the `returncode` here.\nReap the ``returncode`` here.\nReap the ```returncode``` here.\nWrite ``a ` b`` for that.\nWrite ``a  b`` for that.\nLook at ``<b>**x**</b>`` here.\n",
+  "images": "![first](a.png)\n\n![second](b.png)\n\n![third](c.png)\n",
+  "no_images": "# Title\n\nJust text.\n",
+  "stats": "Uptime is ==99.9%== guaranteed. There are ==42== modules. Set a = b. Check x == y.\n\nIt runs ==1.5x faster== than before.\n",
+  "table": "# Home\n\n## Data Summary\n\n| Name | Value | Right |\n| :--- | :---: | ----: |\n| A | 1 | x |\n| B \\| C | 2 | y |\n",
+  "table_nosep": "| a | b |\n| c | d |\n",
+  "table_plain": "| Name | Value |\n| --- | --- |\n| alpha | 1 |\n",
+  "lists": "- one\n- two `x`\n\n1. first\n2. second\n",
+  "blockquote": "> plain quote\n> second line\n\n> [!WARNING]\n> Careful **now**.\n>\n> Second para.\n",
+  "admon_all": "> [!NOTE]\n> n\n\n> [!TIP]\n> t\n\n> [!IMPORTANT]\n> i\n\n> [!CAUTION]\n> c\n",
+  "admon_unknown": "> [!BOGUS]\n> body\n",
+  "deflist": "Term One\n: Definition of term one\n: Second definition\n\nTerm Two\n: Another\n",
+  "deflist_paras": "This is a regular paragraph.\n\nTerm\n: Definition\n\nAnother regular paragraph.\n",
+  "hr": "Above the break.\n\n---\n\nBelow the break.\n",
+  "hr_bare": "---",
+  "diff": "```diff\n+ added\n- removed\n  same\n```\n",
+  "diff_implicit": "```\n+ added\n  same\n```\n",
+  "steps": "## Step one\n\n1. Do this\n2. Do that\n",
+  "steps_guide": "## Guide to things\n\n1. a\n2. b\n",
+  "steps_off_heading": "## Overview\n\n1. Do this\n",
+  "steps_intervening": "## Step one\n\n## Other\n\n1. Do this\n",
+  "explicit_steps": "## Getting Started\n\n<ol class=\"steps\">\n<li>Do this</li>\n<li>Do that</li>\n</ol>\n",
+  "unicode_headings": "## Déploiement\n\n## Deploiement\n\n## 设置\n\n## parse_directives\n\n## Hello <code>World</code>\n",
+  "nolang_code": "```\n==42==\n<b>x</b>\n```\n",
+  "code_annotations": "```\nvalue = 1  # [1]\n```\n[1]: the note\n",
+  "code_linenumbers": "```text lines=5\nalpha\nbeta\n```\n",
+  "cv_header": "<div class=\"cv-header\"><div class=\"cv-photo\"><img src=\"pic.jpg\" alt=\"Profile picture\"></div><div class=\"cv-identity\"><h2 class=\"cv-name\">Ada Lovelace</h2><div class=\"cv-subtitle\"><span>Analyst</span><span>London</span><a href=\"mailto:a@b.c\">a@b.c</a></div></div></div>\n\nA summary sentence.\n\n## Skills\n\n- **Languages:** Go, Python\n\n## Education\n\n### BSc\n\n- **Year:** 2020\n",
+  "dfn": "<p>A <dfn>widget</dfn> is a thing.</p>\n\nAnother <dfn>widget</dfn> here.\n",
+  "dfn_collide": "## Widget\n\n<p>A <dfn>Widget</dfn> is a thing.</p>\n\n<p>And a <dfn>widget</dfn> again.</p>\n",
+  "ol_with_attr": "## Step one\n\n<ol start=\"3\">\n<li>x</li>\n</ol>\n",
+  "ol_already_classed": "## Step one\n\n<ol class=\"x\">\n<li>y</li>\n</ol>\n",
+  "ol_far_from_heading": "## Step one\n\nFiller prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. \n\n1. a\n2. b\n",
+  "ol_unicode_lookback": "## Шаг первый\n\nПример текста для проверки окна просмотра назад. Пример текста для проверки окна просмотра назад. Пример текста для проверки окна просмотра назад. \n\n1. a\n",
+  "two_ols_after_step": "## Steps here\n\n1. a\n\nSome prose.\n\n1. b\n",
+  "ol_tutorial": "### Tutorial: first\n\n1. a\n",
+  "api_like_no_opt_in": "### build\n\n```text\nbuild()\n```\n\nDoes it.\n",
+  "long_code_no_api": "### build\n\n```text\na\nb\nc\nd\n```\n\nDoes it.\n",
+  "nested_lists": "- a\n  - b\n- c\n",
+  "escaped_pipe_table": "| a \\\\| b | c |\n| --- | --- |\n| x | y |\n",
+  "dfn_in_glossary_para": "Widget\n: A thing.\n\n<p>Outside <dfn>gadget</dfn> here.</p>\n",
+  "empty": "",
+  "only_blank": "\n\n\n"
+ },
+ "md": {
+  "headings": "<p>Intro text.</p>\n<h2 id=\"setup\"><a class=\"heading-link\" href=\"#setup\" aria-label=\"Link to section: Setup\">#</a>Setup</h2>\n<p>First.</p>\n<h2 id=\"setup-1\"><a class=\"heading-link\" href=\"#setup-1\" aria-label=\"Link to section: Setup\">#</a>Setup</h2>\n<p>Second.</p>\n<h3 id=\"deep-code-heading\"><a class=\"heading-link\" href=\"#deep-code-heading\" aria-label=\"Link to section: Deep code heading\">#</a>Deep <code>code</code> heading</h3>",
+  "inline": "<p>A <strong>bold</strong> word, <code>code</code>, <em>em</em>, and <a href=\"https://example.com\">a link</a>.</p>\n<p>Write <code>`</code> for that.</p>\n<p>A stray `` tick.</p>",
+  "inline_spans": "<p>Reap the <code>returncode</code> here. Reap the <code>returncode</code> here. Reap the <code>returncode</code> here. Write <code>a ` b</code> for that. Write <code>a  b</code> for that. Look at <code>&lt;b&gt;**x**&lt;/b&gt;</code> here.</p>",
+  "images": "<p><img src=\"a.png\" alt=\"first\" fetchpriority=\"high\" loading=\"eager\"></p>\n<p><img src=\"b.png\" alt=\"second\" loading=\"lazy\"></p>\n<p><img src=\"c.png\" alt=\"third\" loading=\"lazy\"></p>",
+  "no_images": "<p>Just text.</p>",
+  "stats": "<p>Uptime is <data value=\"99.9%\">99.9%</data> guaranteed. There are <data value=\"42\">42</data> modules. Set a = b. Check x == y.</p>\n<p>It runs <data value=\"1.5x faster\">1.5x faster</data> than before.</p>",
+  "table": "<h2 id=\"data-summary\"><a class=\"heading-link\" href=\"#data-summary\" aria-label=\"Link to section: Data Summary\">#</a>Data Summary</h2>\n<div class=\"table-wrap\"><table class=\"data tm-table\" role=\"grid\"><caption class=\"sr-only\">Data Summary</caption>\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\" style=\"text-align: left\">Name</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\" style=\"text-align: center\">Value</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\" style=\"text-align: right\">Right</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\" style=\"text-align: left\">A</td><td role=\"gridcell\" style=\"text-align: center\">1</td><td role=\"gridcell\" style=\"text-align: right\">x</td></tr>\n<tr role=\"row\"><td role=\"gridcell\" style=\"text-align: left\">B | C</td><td role=\"gridcell\" style=\"text-align: center\">2</td><td role=\"gridcell\" style=\"text-align: right\">y</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table></div>",
+  "table_nosep": "<div class=\"table-wrap\"><table class=\"data tm-table\" role=\"grid\">\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">a</td><td role=\"gridcell\">b</td></tr>\n<tr role=\"row\"><td role=\"gridcell\">c</td><td role=\"gridcell\">d</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table></div>",
+  "table_plain": "<div class=\"table-wrap\"><table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">Name</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">Value</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">alpha</td><td role=\"gridcell\">1</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table></div>",
+  "lists": "<ul><li>one</li><li>two <code>x</code></li></ul>\n<ol><li>first</li><li>second</li></ol>",
+  "blockquote": "<blockquote><p>plain quote second line</p></blockquote>\n<div class=\"tm-callout tm-callout-warn\" role=\"note\">\n<div class=\"tm-callout-title\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 3L2 21h20z\"/><path d=\"M12 10v5M12 18v.5\"/></svg>Warning</div>\n<div class=\"tm-callout-body\"><p>Careful <strong>now</strong>.</p>\n<p>Second para.</p></div>\n</div>",
+  "admon_all": "<div class=\"tm-callout tm-callout-note\" role=\"note\">\n<div class=\"tm-callout-title\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M17 3l4 4L8 20H4v-4z\"/></svg>Note</div>\n<div class=\"tm-callout-body\"><p>n</p></div>\n</div>\n<div class=\"tm-callout tm-callout-tip\" role=\"note\">\n<div class=\"tm-callout-title\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M4 12.5l5 5L20 6\"/></svg>Tip</div>\n<div class=\"tm-callout-body\"><p>t</p></div>\n</div>\n<div class=\"tm-callout tm-callout-info\" role=\"note\">\n<div class=\"tm-callout-title\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\"/><path d=\"M12 10v6M12 7v.5\"/></svg>Important</div>\n<div class=\"tm-callout-body\"><p>i</p></div>\n</div>\n<div class=\"tm-callout tm-callout-danger\" role=\"alert\">\n<div class=\"tm-callout-title\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 3L2 21h20z\"/><path d=\"M12 10v5M12 18v.5\"/></svg>Caution</div>\n<div class=\"tm-callout-body\"><p>c</p></div>\n</div>",
+  "admon_unknown": "<blockquote><p>[!BOGUS] body</p></blockquote>",
+  "deflist": "<div class=\"glossary\">\n<dl>\n<dt><dfn id=\"term-term-one\">Term One</dfn></dt>\n<dd>Definition of term one</dd>\n<dd>Second definition</dd>\n<dt><dfn id=\"term-term-two\">Term Two</dfn></dt>\n<dd>Another</dd>\n</dl>\n</div>",
+  "deflist_paras": "<p>This is a regular paragraph.</p>\n<div class=\"glossary\">\n<dl>\n<dt><dfn id=\"term-term\">Term</dfn></dt>\n<dd>Definition</dd>\n</dl>\n</div>\n<p>Another regular paragraph.</p>",
+  "hr": "<p>Above the break.</p>\n<hr>\n<p>Below the break.</p>",
+  "hr_bare": "<hr>",
+  "diff": "<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">diff</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: diff\"><code class=\"language-diff\"><span class=\"tm-code-line tm-code-add\"> added</span>\n<span class=\"tm-code-line tm-code-del\"> removed</span>\n<span class=\"tm-code-line\">  same</span></code></pre></figure>",
+  "diff_implicit": "<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\"></span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code block\"><code><span class=\"tm-code-line tm-code-add\"> added</span>\n<span class=\"tm-code-line\">  same</span></code></pre></figure>",
+  "steps": "<h2 id=\"step-one\"><a class=\"heading-link\" href=\"#step-one\" aria-label=\"Link to section: Step one\">#</a>Step one</h2>\n<ol class=\"steps\"><li>Do this</li><li>Do that</li></ol>",
+  "steps_guide": "<h2 id=\"guide-to-things\"><a class=\"heading-link\" href=\"#guide-to-things\" aria-label=\"Link to section: Guide to things\">#</a>Guide to things</h2>\n<ol class=\"steps\"><li>a</li><li>b</li></ol>",
+  "steps_off_heading": "<h2 id=\"overview\"><a class=\"heading-link\" href=\"#overview\" aria-label=\"Link to section: Overview\">#</a>Overview</h2>\n<ol><li>Do this</li></ol>",
+  "steps_intervening": "<h2 id=\"step-one\"><a class=\"heading-link\" href=\"#step-one\" aria-label=\"Link to section: Step one\">#</a>Step one</h2>\n<h2 id=\"other\"><a class=\"heading-link\" href=\"#other\" aria-label=\"Link to section: Other\">#</a>Other</h2>\n<ol><li>Do this</li></ol>",
+  "explicit_steps": "<h2 id=\"getting-started\"><a class=\"heading-link\" href=\"#getting-started\" aria-label=\"Link to section: Getting Started\">#</a>Getting Started</h2>\n<p><ol class=\"steps\"> <li>Do this</li> <li>Do that</li> </ol></p>",
+  "unicode_headings": "<h2 id=\"deploiement\"><a class=\"heading-link\" href=\"#deploiement\" aria-label=\"Link to section: Déploiement\">#</a>Déploiement</h2>\n<h2 id=\"deploiement-1\"><a class=\"heading-link\" href=\"#deploiement-1\" aria-label=\"Link to section: Deploiement\">#</a>Deploiement</h2>\n<h2 id=\"设置\"><a class=\"heading-link\" href=\"#设置\" aria-label=\"Link to section: 设置\">#</a>设置</h2>\n<h2 id=\"parse_directives\"><a class=\"heading-link\" href=\"#parse_directives\" aria-label=\"Link to section: parse directives\">#</a>parse_directives</h2>\n<h2 id=\"hello-world\"><a class=\"heading-link\" href=\"#hello-world\" aria-label=\"Link to section: Hello World\">#</a>Hello <code>World</code></h2>",
+  "nolang_code": "<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\"></span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code block\"><code>==42==\n&lt;b&gt;x&lt;/b&gt;</code></pre></figure>",
+  "code_annotations": "<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\"></span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code block\"><code>value = 1  <span class=\"code-annotation\" data-note=\"the note\" tabindex=\"0\">1</span></code></pre></figure>",
+  "code_linenumbers": "<figure class=\"tm-code tm-code-numbered\" style=\"counter-reset:tm-code-line 4\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\" data-line-start=\"5\"><code class=\"language-text\"><span class=\"tm-code-line\">alpha</span>\n<span class=\"tm-code-line\">beta</span></code></pre></figure>",
+  "cv_header": "<p><div class=\"cv-header\"><div class=\"cv-photo\"><img src=\"pic.jpg\" alt=\"Profile picture\"></div><div class=\"cv-identity\"><h2 class=\"cv-name\">Ada Lovelace</h2><div class=\"cv-subtitle\"><span>Analyst</span><span>London</span><a href=\"mailto:a@b.c\">a@b.c</a></div></div></div></p>\n<p>A summary sentence.</p>\n<h2 id=\"skills\"><a class=\"heading-link\" href=\"#skills\" aria-label=\"Link to section: Skills\">#</a>Skills</h2>\n<ul><li><strong>Languages:</strong> Go, Python</li></ul>\n<h2 id=\"education\"><a class=\"heading-link\" href=\"#education\" aria-label=\"Link to section: Education\">#</a>Education</h2>\n<h3 id=\"bsc\"><a class=\"heading-link\" href=\"#bsc\" aria-label=\"Link to section: BSc\">#</a>BSc</h3>\n<ul><li><strong>Year:</strong> 2020</li></ul>",
+  "dfn": "<p><p>A <dfn id=\"term-widget\">widget</dfn> is a thing.</p></p>\n<p>Another <dfn id=\"term-widget-1\">widget</dfn> here.</p>",
+  "dfn_collide": "<h2 id=\"widget\"><a class=\"heading-link\" href=\"#widget\" aria-label=\"Link to section: Widget\">#</a>Widget</h2>\n<p><p>A <dfn id=\"term-widget\">Widget</dfn> is a thing.</p></p>\n<p><p>And a <dfn id=\"term-widget-1\">widget</dfn> again.</p></p>",
+  "ol_with_attr": "<h2 id=\"step-one\"><a class=\"heading-link\" href=\"#step-one\" aria-label=\"Link to section: Step one\">#</a>Step one</h2>\n<p><ol class=\"steps\" start=\"3\"> <li>x</li> </ol></p>",
+  "ol_already_classed": "<h2 id=\"step-one\"><a class=\"heading-link\" href=\"#step-one\" aria-label=\"Link to section: Step one\">#</a>Step one</h2>\n<p><ol class=\"x\"> <li>y</li> </ol></p>",
+  "ol_far_from_heading": "<h2 id=\"step-one\"><a class=\"heading-link\" href=\"#step-one\" aria-label=\"Link to section: Step one\">#</a>Step one</h2>\n<p>Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. Filler prose sentence that pushes the list well past the lookback window. </p>\n<ol><li>a</li><li>b</li></ol>",
+  "ol_unicode_lookback": "<h2 id=\"шаг-первыи\"><a class=\"heading-link\" href=\"#шаг-первыи\" aria-label=\"Link to section: Шаг первый\">#</a>Шаг первый</h2>\n<p>Пример текста для проверки окна просмотра назад. Пример текста для проверки окна просмотра назад. Пример текста для проверки окна просмотра назад. </p>\n<ol><li>a</li></ol>",
+  "two_ols_after_step": "<h2 id=\"steps-here\"><a class=\"heading-link\" href=\"#steps-here\" aria-label=\"Link to section: Steps here\">#</a>Steps here</h2>\n<ol><li>a</li></ol>\n<p>Some prose.</p>\n<ol><li>b</li></ol>",
+  "ol_tutorial": "<h3 id=\"tutorial-first\"><a class=\"heading-link\" href=\"#tutorial-first\" aria-label=\"Link to section: Tutorial: first\">#</a>Tutorial: first</h3>\n<ol class=\"steps\"><li>a</li></ol>",
+  "api_like_no_opt_in": "<h3 id=\"build\"><a class=\"heading-link\" href=\"#build\" aria-label=\"Link to section: build\">#</a>build</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">build()</code></pre></figure>\n<p>Does it.</p>",
+  "long_code_no_api": "<h3 id=\"build\"><a class=\"heading-link\" href=\"#build\" aria-label=\"Link to section: build\">#</a>build</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">a\nb\nc\nd</code></pre></figure>\n<p>Does it.</p>",
+  "nested_lists": "<ul><li>a</li></ul>\n<p>  - b</p>\n<ul><li>c</li></ul>",
+  "escaped_pipe_table": "<div class=\"table-wrap\"><table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">a \\| b</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">c</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">x</td><td role=\"gridcell\">y</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table></div>",
+  "dfn_in_glossary_para": "<div class=\"glossary\">\n<dl>\n<dt><dfn id=\"term-widget\">Widget</dfn></dt>\n<dd>A thing.</dd>\n</dl>\n</div>\n<p><p>Outside <dfn id=\"term-gadget\">gadget</dfn> here.</p></p>",
+  "empty": "",
+  "only_blank": ""
+ },
+ "md_steps_off": {
+  "explicit_steps": "<h2 id=\"getting-started\"><a class=\"heading-link\" href=\"#getting-started\" aria-label=\"Link to section: Getting Started\">#</a>Getting Started</h2>\n<p><ol class=\"steps\"> <li>Do this</li> <li>Do that</li> </ol></p>",
+  "steps": "<h2 id=\"step-one\"><a class=\"heading-link\" href=\"#step-one\" aria-label=\"Link to section: Step one\">#</a>Step one</h2>\n<ol><li>Do this</li><li>Do that</li></ol>"
+ },
+ "md_api_input": "### build\n\n```text\nbuild(project)\n```\n\nBuilds the project.\n\n### Not An Identifier Heading\n\n```text\nx()\n```\n\nNope.\n",
+ "md_api_on": "<div class=\"api-entry\"><h3 id=\"build\"><a class=\"heading-link\" href=\"#build\" aria-label=\"Link to section: build\">#</a>build</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">build(project)</code></pre></figure>\n<p>Builds the project.</p></div>\n<h3 id=\"not-an-identifier-heading\"><a class=\"heading-link\" href=\"#not-an-identifier-heading\" aria-label=\"Link to section: Not An Identifier Heading\">#</a>Not An Identifier Heading</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">x()</code></pre></figure>\n<p>Nope.</p>",
+ "md_api_off": "<h3 id=\"build\"><a class=\"heading-link\" href=\"#build\" aria-label=\"Link to section: build\">#</a>build</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">build(project)</code></pre></figure>\n<p>Builds the project.</p>\n<h3 id=\"not-an-identifier-heading\"><a class=\"heading-link\" href=\"#not-an-identifier-heading\" aria-label=\"Link to section: Not An Identifier Heading\">#</a>Not An Identifier Heading</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">x()</code></pre></figure>\n<p>Nope.</p>",
+ "minify_js_inputs": {
+  "comments": "/* header */\nvar x = 1;\n// set y\nvar y = 2;\n",
+  "apostrophe": "// the framework's combobox shape\n(function() { window.ran = true; })();\n",
+  "urls": "var url = 'https://example.com/path';\n",
+  "trailing": "var a = 1;  // plain trailing\nvar b = 2;  // with 'quote'\n",
+  "block_brace": "function f(){ return 1; }  // done\n",
+  "blank_runs": "a;\n\n\n\nb;\n",
+  "identifiers": "var  a   =  1 ;\nlet b = a  +  2;\n",
+  "no_trailing_newline": "var a = 1;  // c",
+  "brace_then_comment": "}// tight\nnext();\n",
+  "quote_after_brace": "};  // it's fine\nnext();\n",
+  "nested_block": "/* a /* b */ c */\nx;\n",
+  "nbsp": "var a = 1;\n"
+ },
+ "minify_js": {
+  "comments": "var x=1;var y=2;",
+  "apostrophe": "(function(){window.ran=true;})();",
+  "urls": "var url='https://example.com/path';",
+  "trailing": "var a=1;var b=2;// with 'quote'",
+  "block_brace": "function f(){return 1;}",
+  "blank_runs": "a;b;",
+  "identifiers": "var a=1;let b=a + 2;",
+  "no_trailing_newline": "var a=1;",
+  "brace_then_comment": "}next();",
+  "quote_after_brace": "};// it's fine\nnext();",
+  "nested_block": "c */\nx;",
+  "nbsp": "var a=1;"
+ },
+ "slugify": {
+  "Hello World": "hello-world",
+  "Déploiement": "deploiement",
+  "设置": "设置",
+  "parse_directives": "parse_directives",
+  "Hello <code>World</code>": "hello-world",
+  "  --Spaced--  ": "spaced",
+  "A -- B": "a-b",
+  "İstanbul": "istanbul",
+  "café & bar": "cafe-bar",
+  "The `build` command": "the-build-command",
+  "Заголовок": "заголовок",
+  "": "",
+  "---": "",
+  "  ": "",
+  "a—b": "ab",
+  "ß": "ß",
+  "Ⅷ": "viii",
+  "x y": "x-y"
+ },
+ "first_sentence": {
+  "First sentence. Second one.": "First sentence.",
+  "No terminator here": "No terminator here",
+  "<p>Tagged <b>text</b>. More.</p>": "Tagged text.",
+  "  Spaced   out.  Then more.": "Spaced out.",
+  "Ends with question? Yes.": "Ends with question?"
+ },
+ "paths": {
+  "md_to_html": {
+   "index.md": "index.html",
+   "guide.md": "guide/index.html",
+   "api/endpoints.md": "api/endpoints/index.html",
+   "a/b/c.md": "a/b/c/index.html"
+  },
+  "html_to_url": {
+   "index.html": "index.html",
+   "guide/index.html": "guide/",
+   "a/b/index.html": "a/b/",
+   "raw.html": "raw.html"
+  },
+  "html_to_md": {
+   "index.html": "index.md",
+   "guide/index.html": "guide.md",
+   "api/endpoints/index.html": "api/endpoints.md",
+   "raw.html": "raw.md"
+  }
+ },
+ "rewrite": [
+  {
+   "md_path": "index.md",
+   "body": "Root page linking <a href=\"guide.md\">the guide</a>, <a href=\"guide.md#section-two\">a section</a> and <a href=\"reference/api.md\">the API</a>.",
+   "legacy": false,
+   "want": "Root page linking <a href=\"guide/\">the guide</a>, <a href=\"guide/#section-two\">a section</a> and <a href=\"reference/api/\">the API</a>."
+  },
+  {
+   "md_path": "guide.md",
+   "body": "A sibling: <a href=\"checks.md\">checks</a>. With an anchor: <a href=\"checks.md#detail\">detail</a>. Itself: <a href=\"#section-two\">below</a>. Home: <a href=\"index.md\">index</a>. Down: <a href=\"reference/deep/notes.md\">notes</a>.",
+   "legacy": false,
+   "want": "A sibling: <a href=\"../checks/\">checks</a>. With an anchor: <a href=\"../checks/#detail\">detail</a>. Itself: <a href=\"#section-two\">below</a>. Home: <a href=\"../index.html\">index</a>. Down: <a href=\"../reference/deep/notes/\">notes</a>."
+  },
+  {
+   "md_path": "reference/api.md",
+   "body": "Up: <a href=\"../guide.md\">guide</a>. Down: <a href=\"deep/notes.md\">notes</a>.",
+   "legacy": false,
+   "want": "Up: <a href=\"../../guide/\">guide</a>. Down: <a href=\"../deep/notes/\">notes</a>."
+  },
+  {
+   "md_path": "reference/deep/notes.md",
+   "body": "Up: <a href=\"../api.md\">api</a>. Root: <a href=\"../../index.md\">index</a>.",
+   "legacy": false,
+   "want": "Up: <a href=\"../../api/\">api</a>. Root: <a href=\"../../../index.html\">index</a>."
+  },
+  {
+   "md_path": "guide.md",
+   "body": "Off site: <a href=\"https://x.example/a.md\">x</a>, <a href=\"/abs.md\">abs</a>, <a href=\"mailto:a@b.c\">m</a>.",
+   "legacy": false,
+   "want": "Off site: <a href=\"https://x.example/a.md\">x</a>, <a href=\"/abs.md\">abs</a>, <a href=\"mailto:a@b.c\">m</a>."
+  },
+  {
+   "md_path": "guide.md",
+   "body": "Escaping: <a href=\"../../../outside.md\">out</a>.",
+   "legacy": false,
+   "want": "Escaping: <a href=\"../../../outside.md\">out</a>."
+  },
+  {
+   "md_path": "guide.md",
+   "body": "Legacy: <a href=\"checks.html\">checks</a>, <a href=\"checks.html#detail\">d</a>, <a href=\"index.html\">i</a>, <a href=\"reference/deep/notes.html\">n</a>.",
+   "legacy": true,
+   "want": "Legacy: <a href=\"../checks/\">checks</a>, <a href=\"../checks/#detail\">d</a>, <a href=\"../index.html\">i</a>, <a href=\"../reference/deep/notes/\">n</a>."
+  },
+  {
+   "md_path": "guide.md",
+   "body": "Legacy off: <a href=\"checks.html\">checks</a>.",
+   "legacy": false,
+   "want": "Legacy off: <a href=\"checks.html\">checks</a>."
+  },
+  {
+   "md_path": "index.md",
+   "body": "Image <img src=\"pic.md\"> and text checks.md in prose.",
+   "legacy": false,
+   "want": "Image <img src=\"pic/\"> and text checks.md in prose."
+  },
+  {
+   "md_path": "guide.md",
+   "body": "Self dir: <a href=\"guide.md\">self</a>.",
+   "legacy": false,
+   "want": "Self dir: <a href=\"./\">self</a>."
+  }
+ ],
+ "parse_table": [
+  {
+   "lines": [
+    "| a | b |",
+    "| - | - |",
+    "| 1 | 2 |"
+   ],
+   "want": "<table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">a</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">b</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">1</td><td role=\"gridcell\">2</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table>"
+  },
+  {
+   "lines": [
+    "| a | b |",
+    "| :- | -: |",
+    "| 1 | 2 |"
+   ],
+   "want": "<table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\" style=\"text-align: left\">a</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\" style=\"text-align: right\">b</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\" style=\"text-align: left\">1</td><td role=\"gridcell\" style=\"text-align: right\">2</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table>"
+  },
+  {
+   "lines": [
+    "| a | b |",
+    "| :-: | |",
+    "| 1 | 2 |"
+   ],
+   "want": "<table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\" style=\"text-align: center\">a</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">b</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\" style=\"text-align: center\">1</td><td role=\"gridcell\">2</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table>"
+  },
+  {
+   "lines": [
+    "| a \\| b | c |",
+    "| --- | --- |",
+    "| x | y |"
+   ],
+   "want": "<table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">a | b</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">c</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">x</td><td role=\"gridcell\">y</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table>"
+  },
+  {
+   "lines": [
+    "a | b",
+    "--- | ---",
+    "1 | 2"
+   ],
+   "want": "<table class=\"data tm-table\" role=\"grid\">\n<thead>\n<tr role=\"row\"><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">a</th><th class=\"sortable\" role=\"columnheader\" aria-sort=\"none\">b</th></tr>\n</thead>\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">1</td><td role=\"gridcell\">2</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table>"
+  },
+  {
+   "lines": [
+    "| only |"
+   ],
+   "want": "<table class=\"data tm-table\" role=\"grid\">\n<tbody>\n<tr role=\"row\"><td role=\"gridcell\">only</td></tr>\n</tbody>\n<tfoot></tfoot>\n</table>"
+  },
+  {
+   "lines": [],
+   "want": ""
+  }
+ ],
+ "heading_anchors_inputs": {
+  "dupes": "# Guide\n\n## Setup\n\n## Setup\n\n## Setup\n",
+  "fence": "# Guide\n\n```python\n# not a heading\n```\n\n## Real Heading\n",
+  "no_h1": "## Overview\n\n### Detail\n"
+ },
+ "heading_anchors": {
+  "dupes": [
+   {
+    "index": 0,
+    "level": 1,
+    "text": "Guide",
+    "anchor": "guide",
+    "is_page_title": true
+   },
+   {
+    "index": 2,
+    "level": 2,
+    "text": "Setup",
+    "anchor": "setup",
+    "is_page_title": false
+   },
+   {
+    "index": 4,
+    "level": 2,
+    "text": "Setup",
+    "anchor": "setup-1",
+    "is_page_title": false
+   },
+   {
+    "index": 6,
+    "level": 2,
+    "text": "Setup",
+    "anchor": "setup-2",
+    "is_page_title": false
+   }
+  ],
+  "fence": [
+   {
+    "index": 0,
+    "level": 1,
+    "text": "Guide",
+    "anchor": "guide",
+    "is_page_title": true
+   },
+   {
+    "index": 4,
+    "level": 2,
+    "text": "Real Heading",
+    "anchor": "real-heading",
+    "is_page_title": false
+   }
+  ],
+  "no_h1": [
+   {
+    "index": 0,
+    "level": 2,
+    "text": "Overview",
+    "anchor": "overview",
+    "is_page_title": false
+   },
+   {
+    "index": 2,
+    "level": 3,
+    "text": "Detail",
+    "anchor": "detail",
+    "is_page_title": false
+   }
+  ]
+ },
+ "heading_anchors_titled": [
+  {
+   "index": 0,
+   "level": 1,
+   "text": "Guide",
+   "anchor": "from-frontmatter",
+   "is_page_title": true
+  },
+  {
+   "index": 2,
+   "level": 2,
+   "text": "Setup",
+   "anchor": "setup",
+   "is_page_title": false
+  },
+  {
+   "index": 4,
+   "level": 2,
+   "text": "Setup",
+   "anchor": "setup-1",
+   "is_page_title": false
+  },
+  {
+   "index": 6,
+   "level": 2,
+   "text": "Setup",
+   "anchor": "setup-2",
+   "is_page_title": false
+  }
+ ],
+ "page_title_anchor": {
+  "My Page": "my-page",
+  "The `build` command": "the-build-command",
+  "API Reference": "api-reference"
+ },
+ "term_anchor": {
+  "Widget": "term-widget",
+  "two words": "term-two-words",
+  "Café": "term-cafe"
+ },
+ "collect_terms_body": "<p><p>A <dfn id=\"term-widget\">widget</dfn> is a thing. And more.</p></p>\n<div class=\"glossary\">\n<dl>\n<dt><dfn id=\"term-term\">Term</dfn></dt>\n<dd>Its definition here. Extra.</dd>\n</dl>\n</div>",
+ "collect_terms": [
+  {
+   "term": "Term",
+   "anchor": "term-term",
+   "definition": "Its definition here. Extra."
+  },
+  {
+   "term": "widget",
+   "anchor": "term-widget",
+   "definition": "A widget is a thing. And more."
+  }
+ ],
+ "cross_page": {
+  "body": "<p>The widget is here. A widget again.</p>\n<h2 id=\"x\">widget in a heading</h2>\n<p>Inside <code>widget</code> code.</p>",
+  "want": "<p>The <a href=\"../other/#term-widget\" class=\"term-link\" data-tooltip=\"Defined in: Other\">widget</a> is here. A widget again.</p>\n<h2 id=\"x\">widget in a heading</h2>\n<p>Inside <code>widget</code> code.</p>"
+ },
+ "link_sites": {
+  "body": "<p>A <dfn id=\"term-widget\">widget</dfn> is a thing. More text.</p>",
+  "want": "<p>A <dfn id=\"term-widget\" data-tooltip=\"A widget is a thing.\"><a class=\"term-def-link\" href=\"../glossary/#term-widget\">widget</a></dfn> is a thing. More text.</p>"
+ },
+ "md_api_input2": "### build\n\n```text\nbuild()\n```\n\nDoes it.\n",
+ "md_api_on2": "<div class=\"api-entry\"><h3 id=\"build\"><a class=\"heading-link\" href=\"#build\" aria-label=\"Link to section: build\">#</a>build</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">build()</code></pre></figure>\n<p>Does it.</p></div>",
+ "md_api_input3": "### build\n\n```text\na\nb\nc\nd\n```\n\nDoes it.\n",
+ "md_api_on3": "<h3 id=\"build\"><a class=\"heading-link\" href=\"#build\" aria-label=\"Link to section: build\">#</a>build</h3>\n<figure class=\"tm-code\"><figcaption class=\"tm-code-bar\"><span class=\"tm-code-label\">text</span><span class=\"tm-code-actions\"></span></figcaption><pre tabindex=\"0\" aria-label=\"Code: text\"><code class=\"language-text\">a\nb\nc\nd</code></pre></figure>\n<p>Does it.</p>"
+}
