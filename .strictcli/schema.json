@@ -441,7 +441,7 @@
         },
         {
           "name": "version-override",
-          "help": "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump",
+          "help": "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in the project manifest (VERSION, pyproject.toml or package.json). Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump",
           "value_schema": {
             "type": "string"
           },
@@ -465,7 +465,7 @@
         },
         {
           "name": "version-override",
-          "help": "Project version to stamp into version-bearing generated content instead of the version currently recorded in pyproject.toml/package.json. Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed)",
+          "help": "Project version to stamp into version-bearing generated content instead of the version currently recorded in the project manifest (VERSION, pyproject.toml or package.json). Release orchestrators pass the about-to-be-released version here so generated root files are not one release behind (generation runs before the version bump is committed)",
           "value_schema": {
             "type": "string"
           },
