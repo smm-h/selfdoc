@@ -44,3 +44,6 @@ docs/_build/
 coverage/
 
 .rlsbl-monorepo/lock
+
+# Go build output (the repository root's ./selfdoc is a Python package)
+/bin/
