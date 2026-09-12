@@ -476,6 +476,19 @@ func TestEveryProseTokenTypeIsScanned(t *testing.T) {
 	}
 }
 
+// TestASuperscriptIsPartOfTheWordItFollows pins the word class against
+// Python's `[^\W\d_]`, which is every word character that is neither a
+// decimal digit nor the underscore -- letters, but also the letterlike and
+// other numerals (Nl and No). A superscript two is No, so "m²" is one word
+// and is reported unknown; a class of letters alone would find the word "m"
+// instead, and a lone letter is accepted as an enumeration marker.
+func TestASuperscriptIsPartOfTheWordItFollows(t *testing.T) {
+	got := words(t, "The m² area here.\n", LoadWordlist(), Vocab{})
+	if len(got) != 1 || got[0] != "m²" {
+		t.Errorf("reported %v, want [m²]", got)
+	}
+}
+
 func TestHyphenatedCompoundsAreCheckedPartByPart(t *testing.T) {
 	// Each part is checked honestly; only the bad part is reported.
 	got := words(t, "A well-knwon compound.\n", LoadWordlist(), Vocab{})

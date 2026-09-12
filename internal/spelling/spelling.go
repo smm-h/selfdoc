@@ -351,8 +351,14 @@ var RendererVocabulary = Vocab{
 // -- Word scanning ----------------------------------------------------------
 
 // letterClass is the character class Python spells `[^\W\d_]`: a word
-// character that is neither a digit nor an underscore.
-const letterClass = `\p{L}`
+// character that is neither a decimal digit nor an underscore.
+//
+// Python's `\w` is every character str.isalnum accepts plus the underscore,
+// and `\d` is the decimal digits alone, so subtracting them leaves the
+// letters together with the letterlike and other numerals -- Nl and No. A
+// superscript two is No, which is why "m²" is one word rather than the word
+// "m" beside a character no pattern claims.
+const letterClass = `[\p{L}\p{Nl}\p{No}]`
 
 // spaceClass and nonSpaceClass are this package's short spellings of Python's
 // Unicode-aware `\s` and `\S`, which Go's own `\s` does not reproduce:
