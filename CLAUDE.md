@@ -215,4 +215,4 @@ The suite needs Chromium through playwright-go, Pagefind, and python3 (the versi
 - **internal/themes**: Package themes is the theme registry: the stylesheets a built site can be painted with, and the metadata each one carries.
 - **internal/tokenizer**: Package tokenizer is a standalone Markdown block tokenizer.
 - **internal/urls**: Package urls builds absolute URLs from relative paths, decoupling URL generation from a hardcoded base_url and supporting locale-prefixed and versioned paths.
-- **internal/util**
+- **internal/util**: Package util holds the small shared helpers the rest of selfdoc builds on: frontmatter parsing, project manifest and version detection, HTML escaping, path joining, date formatting, title casing, and the Python-compatible string, number and JSON spellings the emitted documents are pinned to.

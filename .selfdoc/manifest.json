@@ -5444,6 +5444,16 @@
         },
         {
           "level": 3,
+          "text": "`GoToolchainIgnoresDir`",
+          "anchor": "gotoolchainignoresdir"
+        },
+        {
+          "level": 3,
+          "text": "`GoToolchainIgnoresPath`",
+          "anchor": "gotoolchainignorespath"
+        },
+        {
+          "level": 3,
           "text": "`IsExcluded`",
           "anchor": "isexcluded"
         },
@@ -9716,6 +9726,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-12T19:40:11.912888+00:00",
+  "last_gen": "2026-09-12T20:23:38.091077+00:00",
   "theme": "minimal"
 }

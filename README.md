@@ -186,7 +186,7 @@ Dispatch order is content directives, then custom directives, then the language 
 | --- | --- | --- |
 | `source` | no | List of source entries to extract documentation from. |
 | `base_url` | yes | Base URL of the generated site, used for canonical links and SEO. |
-| `version` | no | Project version. When present, used by deploy instead of reading from pyproject.toml/package.json. |
+| `version` | no | Project version. When present, used by deploy instead of reading from the project manifest (VERSION, pyproject.toml or package.json). |
 | `docs` | no | Directory containing Markdown documentation templates. |
 | `output` | no | Output directory for generated HTML files. |
 | `changelog` | no | Path to the changelog document published as the site's changelog page, relative to the project root. Absent means the project root's CHANGELOG.md is used if it exists; declare it when that file is not this site's changelog. |
