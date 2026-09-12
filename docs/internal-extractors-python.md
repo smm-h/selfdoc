@@ -1,6 +1,6 @@
 ---
 title: internal/extractors/python
-description: "Resolving selfdoc's directives against Python source through an embedded driver run under python3, which parses with the standard library's ast module."
+description: "Resolving selfdoc's directives against Python source with a pure-Go parse of the file, reproducing what the standard library's ast module reports."
 generated: true
 nav_group: "API Reference"
 nav_order: 33

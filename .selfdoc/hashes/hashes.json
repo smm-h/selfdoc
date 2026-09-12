@@ -85,7 +85,7 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "45d2be6230abbcf36a266a950ffea017ff273332e9d67d033880e4c3b05f486c",
+    "content": "cfea8bacbad59cf10b008a982ab51251cb57397fdae5fdb08c738a13a362796a",
     "description": "1c58798b3a1f60d72b4fd53229086fd1fab2f7b2179745c69ac2e8002c5cbd0b"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
@@ -107,6 +107,12 @@
     "description": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a",
     "schema_hash": "c51e58d4f9897a447e066cf014387d900cbd156bf7dbc248f88e5694ce4349d1",
     "seed_hash": "23dacc6a507ddbae1b28943eaa285afc7b6bc28370eeda974843a76a4194da1a"
+  },
+  "en/cli-blog.md": {
+    "content": "6bb6d3a4d69f57cfb15bb6f4c9ad7cefa4efbe8d3e4fe90b7a4f1e8f163f6fa3",
+    "description": "648bda44bb9968432c2880b596964dd427405c9e36c554d39b3e2659acd7ee46",
+    "schema_hash": "19bff4896d240dd8f37ec335795b04bfe521d424318dbbf44d26b8f01097f864",
+    "seed_hash": "648bda44bb9968432c2880b596964dd427405c9e36c554d39b3e2659acd7ee46"
   },
   "en/cli-build.md": {
     "content": "6092614478fc66447ed334e945c5dd8170e835c690501aa34d91f29c0bf2d4c2",
@@ -146,8 +152,8 @@
     "schema_hash": "806779b013a5e275c0d03ad141b4c4d807782d52bb3994e3c0e4a2cfb2bb559f"
   },
   "en/cli-index.md": {
-    "content": "344a5f9695fda2cb59bbdb720c4b34130b532ae6afdd666662cae06897c87293",
-    "description": "c30342a2cd66cf7bfb9c53315e71bfff9e51498aaa457679673189ccaff05b1d"
+    "content": "a4f8ca39df8efa3899616f781d4d7f1c61db16cb0adcf5bb614f8c6fc9fbf8b4",
+    "description": "724db89f86f422c6d4f6edce194686ba7f6d8460094aef06b0daebc495476948"
   },
   "en/cli-init.md": {
     "content": "56201d3e8c8fc0331ac7f80e14882aaca081736b7e0a70f084e64a96aa77bc06",
@@ -211,7 +217,7 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/editor-guide.md": {
-    "content": "b65cc35581d11cd924ee5e3c34be934b4e286f04aa9ee99926ce37a376bd04b7",
+    "content": "d818d1dbb5533e473e6da9ee5bcb871c3e550b39fd91648881f8d8978854d26d",
     "description": "38a476c5f710dadace70dd593f9813b47d8a180564628ed6f6f06bfaaaf1516b"
   },
   "en/feeds.md": {
@@ -227,7 +233,7 @@
     "description": "d58994b3d23a44d56e7a9f15969ee04b15d5ad5547515b76a4d6c7ad7b53d7e1"
   },
   "en/getting-started.md": {
-    "content": "c4676131a39ee1ae0df88cd44015cf35272ebebcaa647ec1638d1431eb78597c",
+    "content": "9f78b9da523e0f14e74b9b57d9362874f5c7bfc3b3bc0d6e23df4e7d23035220",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -394,8 +400,8 @@
   },
   "en/internal-extractors-python.md": {
     "content": "acfa97aa0ffb434f882c333bb4386fbe88b18c8028b0c6d4200bd06f155e5efa",
-    "description": "9df8dae65d9ae20e674dd6f3365c25d0b431a659d28ecd5ed20e8b2eb8f776a2",
-    "source_docstring": "f6da2ec4562a3d55fc5500988484dfb8377284ec8bdf58bb9a739409fb5c1c26"
+    "description": "9d9808260bcc745d7c711d396de81e2f75b0c5a97cbb292439eebbd32a90004d",
+    "source_docstring": "e5a9a4c714dfdf22cdcd303ab41d2e2c76c25fada5025c642d930e259f8778a5"
   },
   "en/internal-extractors-sql.md": {
     "content": "51b9726ba443ee607749144a099c38f6c527c3bc364359cf7c0e4c83943a2a25",
@@ -593,7 +599,7 @@
     "source_docstring": "5479db471b64fae176fa884d74337d3666fea96998a5766e113656b246e394f7"
   },
   "en/internals.md": {
-    "content": "997e89456696be38f30109f0c0a0e5c271e03dcae85d3597cf9db9a11cbae594",
+    "content": "0ebf6674503ef042186b3f3b3f6e7ad8e69f1e49628ab8e5695fa184d9d135c4",
     "description": "368283e2ae5434b431437461e25c722f4ddc31083b2720fe7794ada67c517418"
   },
   "en/llms-txt.md": {
@@ -613,7 +619,7 @@
     "description": "dc4d5de0f56b7095a07fb4de44f00a9bf5d9d3cb6459cdc6a326bb67de529d74"
   },
   "en/rlsbl-integration.md": {
-    "content": "86896175573e7aa8321a1b266acb3af4153b773b9cb893bcdab07deb72b6d8b0",
+    "content": "77d86501fff7fa78b23adba5f22961ce702f7323f558628295e389ec635824f3",
     "description": "2a2e8455084ba7b525b477d733a74361fb3c90fff9e8a53519214a655aa87e8f"
   },
   "en/root-files.md": {

@@ -478,6 +478,28 @@
       ]
     },
     {
+      "path": "cli-blog.md",
+      "title": "selfdoc blog",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc blog",
+          "anchor": "selfdoc-blog"
+        },
+        {
+          "level": 2,
+          "text": "blog publish-docs",
+          "anchor": "blog-publish-docs"
+        },
+        {
+          "level": 3,
+          "text": "Grants",
+          "anchor": "grants"
+        }
+      ]
+    },
+    {
       "path": "cli-build.md",
       "title": "selfdoc build",
       "type": "doc",
@@ -525,60 +547,6 @@
           "level": 2,
           "text": "Grants",
           "anchor": "grants"
-        }
-      ]
-    },
-    {
-      "path": "cli-docs.md",
-      "title": "selfdoc docs",
-      "type": "doc",
-      "headings": [
-        {
-          "level": 1,
-          "text": "selfdoc docs",
-          "anchor": "selfdoc-docs"
-        },
-        {
-          "level": 2,
-          "text": "docs publish",
-          "anchor": "docs-publish"
-        },
-        {
-          "level": 3,
-          "text": "Grants",
-          "anchor": "grants"
-        }
-      ]
-    },
-    {
-      "path": "cli-editor.md",
-      "title": "selfdoc editor",
-      "type": "doc",
-      "headings": [
-        {
-          "level": 1,
-          "text": "selfdoc editor",
-          "anchor": "selfdoc-editor"
-        },
-        {
-          "level": 2,
-          "text": "editor list-repos",
-          "anchor": "editor-list-repos"
-        },
-        {
-          "level": 3,
-          "text": "Flags",
-          "anchor": "flags"
-        },
-        {
-          "level": 2,
-          "text": "editor serve",
-          "anchor": "editor-serve"
-        },
-        {
-          "level": 3,
-          "text": "Flags",
-          "anchor": "flags-1"
         }
       ]
     },
@@ -657,53 +625,6 @@
           "level": 2,
           "text": "Flags",
           "anchor": "flags"
-        }
-      ]
-    },
-    {
-      "path": "cli-post.md",
-      "title": "selfdoc post",
-      "type": "doc",
-      "headings": [
-        {
-          "level": 1,
-          "text": "selfdoc post",
-          "anchor": "selfdoc-post"
-        },
-        {
-          "level": 2,
-          "text": "post new",
-          "anchor": "post-new"
-        },
-        {
-          "level": 3,
-          "text": "Flags",
-          "anchor": "flags"
-        },
-        {
-          "level": 2,
-          "text": "post list",
-          "anchor": "post-list"
-        },
-        {
-          "level": 2,
-          "text": "post generate",
-          "anchor": "post-generate"
-        },
-        {
-          "level": 3,
-          "text": "Flags",
-          "anchor": "flags-1"
-        },
-        {
-          "level": 2,
-          "text": "post publish",
-          "anchor": "post-publish"
-        },
-        {
-          "level": 3,
-          "text": "Grants",
-          "anchor": "grants"
         }
       ]
     },
@@ -5672,13 +5593,18 @@
         },
         {
           "level": 3,
-          "text": "Why python3 runs",
-          "anchor": "why-python3-runs"
+          "text": "What the pages are built from",
+          "anchor": "what-the-pages-are-built-from"
         },
         {
           "level": 3,
           "text": "`Extractor`",
           "anchor": "extractor"
+        },
+        {
+          "level": 3,
+          "text": "`FirstSyntaxErrorLine`",
+          "anchor": "firstsyntaxerrorline"
         },
         {
           "level": 3,
@@ -9059,6 +8985,21 @@
           "level": 3,
           "text": "`TitleCase`",
           "anchor": "titlecase"
+        },
+        {
+          "level": 3,
+          "text": "`DecodeTOML`",
+          "anchor": "decodetoml"
+        },
+        {
+          "level": 3,
+          "text": "`DecodeTOMLFile`",
+          "anchor": "decodetomlfile"
+        },
+        {
+          "level": 3,
+          "text": "`DecodeTOMLOrdered`",
+          "anchor": "decodetomlordered"
         }
       ]
     },
@@ -9391,11 +9332,6 @@
           "anchor": "post-release-build-and-deploy"
         },
         {
-          "level": 3,
-          "text": "Skip flag",
-          "anchor": "skip-flag"
-        },
-        {
           "level": 2,
           "text": "Credential Handling",
           "anchor": "credential-handling"
@@ -9726,6 +9662,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-12T20:23:38.091077+00:00",
+  "last_gen": "2026-09-12T23:33:45.406029+00:00",
   "theme": "minimal"
 }

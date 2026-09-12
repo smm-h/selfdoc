@@ -1,6 +1,6 @@
 ---
 title: selfdoc CLI Reference
-description: "CLI reference for selfdoc -- all commands (init, build, serve, deploy, check, gen, gen-data, quality), the baseline group, and the framework flags."
+description: "CLI reference for selfdoc: every top-level command, every command group the binary carries, and the framework flags that work on all of them."
 generated: true
 nav_group: "CLI Reference"
 nav_order: 0
@@ -29,10 +29,8 @@ Version: :-: var key="project.version"
 ## Command Groups
 
 - [baseline](../cli-baseline/) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check
-- [post](../cli-post/) -- Manage blog posts and chronological content for the documentation site
-- [docs](../cli-docs/) -- Publish this project's documentation to the unified assembly without a release
 - [assembly](../cli-assembly/) -- Manage the unified multi-project documentation assembly and deployment
-- [editor](../cli-editor/) -- Run and inspect the local authoring app for blog posts
+- [blog](../cli-blog/) -- Blog posts, the authoring app, and publishing this project's documentation to the unified site
 
 ## Framework flags
 
