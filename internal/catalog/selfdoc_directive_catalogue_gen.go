@@ -22,19 +22,19 @@ const SchemaFormatVersion = 1
 var embeddedSchema = map[string]string{
 	"directive-descriptor.schema.toml": `# strictspec schema -- selfdoc built-in directive catalogue.
 #
-# Governs selfdoc_core/directives.toml: the declarative descriptor document that
-# is the single source of truth for the ~20 shipped ("core") built-in directives.
-# The generated validator (directive_descriptor_validator.py) gates the document
-# at load time in selfdoc_core.catalog; a malformed catalogue is a hard error at
-# import, before any directive is dispatched.
+# Governs internal/catalog/directives.toml: the declarative descriptor document
+# that is the single source of truth for the shipped ("core") built-in
+# directives. The generated validator (selfdoc_directive_catalogue_gen.go)
+# validates the document at load time in package catalog; a malformed catalogue
+# is a hard error at startup, before any directive is dispatched.
 #
 # SCOPE (honest subset): this schema owns the raw DOCUMENT SHAPE of the catalogue
 # -- the name grammar, the code/content category enum, required/optional attr
 # lists, per-descriptor required fields, unknown-key rejection, and unique names.
 # It does NOT model the RUNTIME couplings selfdoc keeps native: which resolver
-# runs for which name (the resolve_content dispatch + extractor path), custom and
-# future directive names (which carry no descriptor and skip attr enforcement by
-# design), and the catalog-vs-resolver attribute-consistency oracle (a curated
+# runs for which name (the content-resolution dispatch + extractor path),
+# custom and future directive names (which carry no descriptor and skip attr
+# enforcement by design), and the catalog-vs-resolver attribute-consistency oracle (a curated
 # test). Those remain selfdoc-native by declaration.
 
 name = "selfdoc-directive-catalogue"

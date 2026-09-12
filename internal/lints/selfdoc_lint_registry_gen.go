@@ -22,12 +22,12 @@ const SchemaFormatVersion = 1
 var embeddedSchema = map[string]string{
 	"lint-registry.schema.toml": `# strictspec schema -- selfdoc lint-code registry.
 #
-# Governs selfdoc_core/lints.toml: the declarative document that is the single
-# source of truth for every lint code selfdoc and selfblog can emit, with its
-# severity and its one-line description. The generated validator
-# (lint_registry_validator.py) validates the document at load time in
-# selfdoc_core.lints; a malformed registry is a hard error at import, before
-# any check runs.
+# Governs internal/lints/lints.toml: the declarative document that is the single
+# source of truth for every lint code selfdoc can emit, with its severity and
+# its one-line description. The generated validator
+# (selfdoc_lint_registry_gen.go) validates the document at load time in package
+# lints; a malformed registry is a hard error at startup, before any check
+# runs.
 #
 # SCOPE (honest subset): this schema owns the raw DOCUMENT SHAPE of the registry
 # -- the code grammar, the severity enum, per-entry required fields,
