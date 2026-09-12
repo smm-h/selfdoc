@@ -12,7 +12,7 @@
 //
 //   - Build time, when the home project is built for the assembly. The build
 //     needs the assembly's manifests to know any project's live version, so it
-//     is run as "selfblog build --target home --site-manifests <dir>", which
+//     is run as "selfdoc build --target home --site-manifests <dir>", which
 //     is [BuildHomeProject]. Without that context the command refuses to build
 //     at all, naming what is missing. A plain build of the home project refuses
 //     too: the catalog has no "projects-cards", so it stops at an unknown
@@ -37,7 +37,7 @@
 // # The region wrapper
 //
 // The region wrapper is the whole mechanism. It is a custom element,
-// "<selfblog-region data-directive=...>", and not an HTML comment: the build
+// "<selfdoc-region data-directive=...>", and not an HTML comment: the build
 // minifies its output and strips every comment, so a comment-delimited region
 // would survive the markdown conversion and then vanish on the way to disk. A
 // custom element survives both, carries its directive's attributes as data

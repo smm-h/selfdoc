@@ -20,7 +20,7 @@ import (
 var SiteDirectives = []string{"projects-cards", "blog-highlights"}
 
 // RegionTag is the element one region is wrapped in.
-const RegionTag = "selfblog-region"
+const RegionTag = "selfdoc-region"
 
 // nameAttr is the attribute naming which directive wrote a region.
 const nameAttr = "data-directive"

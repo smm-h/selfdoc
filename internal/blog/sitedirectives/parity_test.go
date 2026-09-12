@@ -144,8 +144,8 @@ func TestRefreshedPagesMatchTheRecordedBytes(t *testing.T) {
 		{
 			file: "refreshed_paragraph.html",
 			page: "<p>\n  " +
-				`<selfblog-region data-directive="projects-cards">old` +
-				"</selfblog-region>\n</p>",
+				`<selfdoc-region data-directive="projects-cards">old` +
+				"</selfdoc-region>\n</p>",
 		},
 		{
 			file: "refreshed_page.html",

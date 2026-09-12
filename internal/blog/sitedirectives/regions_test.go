@@ -143,13 +143,13 @@ func TestAParagraphWrapperAroundARegionIsAbsorbed(t *testing.T) {
 		Listing:   curated(t, "alpha"),
 		HomeSlug:  "home",
 	}
-	wrapped := `<p><selfblog-region data-directive="projects-cards">old` +
-		"</selfblog-region></p>"
+	wrapped := `<p><selfdoc-region data-directive="projects-cards">old` +
+		"</selfdoc-region></p>"
 	refreshed := mustRefresh(t, wrapped, context)
 	if strings.HasPrefix(refreshed, "<p>") {
 		t.Errorf("the paragraph wrapper stayed:\n%s", refreshed)
 	}
-	if !strings.HasSuffix(refreshed, "</selfblog-region>") {
+	if !strings.HasSuffix(refreshed, "</selfdoc-region>") {
 		t.Errorf("the closing paragraph stayed:\n%s", refreshed)
 	}
 	wants(t, refreshed, "Does the alpha thing.")
@@ -161,8 +161,8 @@ func TestAParagraphWrapperWithWhitespaceIsAbsorbed(t *testing.T) {
 		Listing:   curated(t, "alpha"),
 		HomeSlug:  "home",
 	}
-	wrapped := "<p>\n  " + `<selfblog-region data-directive="projects-cards">` +
-		"old</selfblog-region>\n</p>"
+	wrapped := "<p>\n  " + `<selfdoc-region data-directive="projects-cards">` +
+		"old</selfdoc-region>\n</p>"
 	refreshed := mustRefresh(t, wrapped, context)
 	if !strings.HasPrefix(refreshed, "<"+RegionTag+" ") {
 		t.Errorf("the opening paragraph and its whitespace stayed:\n%s", refreshed)
@@ -205,7 +205,7 @@ func TestARegionCarriesItsAttributesAsDataAttributes(t *testing.T) {
 	context := SiteContext{Manifests: []map[string]any{}}
 	rendered := mustRender(t, "blog-highlights", map[string]string{"limit": "3"}, context)
 	wants(t, rendered,
-		`<selfblog-region data-directive="blog-highlights" data-arg-limit="3">`)
+		`<selfdoc-region data-directive="blog-highlights" data-arg-limit="3">`)
 	regions := FindRegions(rendered)
 	if len(regions) != 1 {
 		t.Fatalf("found %d regions", len(regions))
@@ -218,8 +218,8 @@ func TestARegionCarriesItsAttributesAsDataAttributes(t *testing.T) {
 func TestARegionsAttributesAreEscapedAndReadBack(t *testing.T) {
 	// A region's attributes are HTML, so a value with a quote in it has to
 	// come back out of the page as it went in -- the re-render uses them.
-	rendered := `<selfblog-region data-directive="blog-highlights" ` +
-		`data-arg-limit="&quot;3&quot;">body</selfblog-region>`
+	rendered := `<selfdoc-region data-directive="blog-highlights" ` +
+		`data-arg-limit="&quot;3&quot;">body</selfdoc-region>`
 	regions := FindRegions(rendered)
 	if len(regions) != 1 {
 		t.Fatalf("found %d regions", len(regions))
@@ -231,8 +231,8 @@ func TestARegionsAttributesAreEscapedAndReadBack(t *testing.T) {
 
 func TestARegionBodyIsReportedVerbatim(t *testing.T) {
 	// The verifier reads the body to notice a region that holds nothing.
-	page := `<selfblog-region data-directive="projects-cards">` +
-		"\n  \n</selfblog-region>"
+	page := `<selfdoc-region data-directive="projects-cards">` +
+		"\n  \n</selfdoc-region>"
 	regions := FindRegions(page)
 	if len(regions) != 1 {
 		t.Fatalf("found %d regions", len(regions))
@@ -246,7 +246,7 @@ func TestARegionBodyIsReportedVerbatim(t *testing.T) {
 }
 
 func TestARegionWithNoDirectiveAttributeNamesNothing(t *testing.T) {
-	page := "<selfblog-region>body</selfblog-region>"
+	page := "<selfdoc-region>body</selfdoc-region>"
 	if names := RegionNames(page); !reflect.DeepEqual(names, []string{""}) {
 		t.Fatalf("region names: %v", names)
 	}
@@ -254,8 +254,8 @@ func TestARegionWithNoDirectiveAttributeNamesNothing(t *testing.T) {
 
 func TestARegionNeverAbsorbsAnotherRegionsBody(t *testing.T) {
 	// The body is non-greedy, so two regions on one page are two regions.
-	page := `<selfblog-region data-directive="projects-cards">a</selfblog-region>` +
-		`<selfblog-region data-directive="blog-highlights">b</selfblog-region>`
+	page := `<selfdoc-region data-directive="projects-cards">a</selfdoc-region>` +
+		`<selfdoc-region data-directive="blog-highlights">b</selfdoc-region>`
 	if names := RegionNames(page); !reflect.DeepEqual(
 		names, []string{"projects-cards", "blog-highlights"},
 	) {
@@ -267,7 +267,7 @@ func TestARegionNeverAbsorbsAnotherRegionsBody(t *testing.T) {
 
 func TestARegionThatNeverClosesIsAHardError(t *testing.T) {
 	_, err := RefreshRegions(
-		`<selfblog-region data-directive="projects-cards">`, SiteContext{}, "page",
+		`<selfdoc-region data-directive="projects-cards">`, SiteContext{}, "page",
 	)
 	if err == nil {
 		t.Fatal("an unclosed region must be refused")
@@ -276,8 +276,8 @@ func TestARegionThatNeverClosesIsAHardError(t *testing.T) {
 }
 
 func TestUnclosedRegionsAreTheTrailingOpenings(t *testing.T) {
-	page := `<selfblog-region data-directive="projects-cards">a</selfblog-region>` +
-		`<selfblog-region data-directive="blog-highlights">`
+	page := `<selfdoc-region data-directive="projects-cards">a</selfdoc-region>` +
+		`<selfdoc-region data-directive="blog-highlights">`
 	if names := FindUnclosedRegions(page); !reflect.DeepEqual(
 		names, []string{"blog-highlights"},
 	) {
@@ -286,16 +286,16 @@ func TestUnclosedRegionsAreTheTrailingOpenings(t *testing.T) {
 }
 
 func TestAPageWhoseRegionsAllCloseHasNoUnclosedOnes(t *testing.T) {
-	page := `<selfblog-region data-directive="projects-cards">a</selfblog-region>`
+	page := `<selfdoc-region data-directive="projects-cards">a</selfdoc-region>`
 	if names := FindUnclosedRegions(page); len(names) != 0 {
 		t.Fatalf("unclosed: %v", names)
 	}
 }
 
 func TestAnUnclosedRegionIsNamedOnceAndSorted(t *testing.T) {
-	page := `<selfblog-region data-directive="projects-cards">` +
-		`<selfblog-region data-directive="blog-highlights">` +
-		`<selfblog-region data-directive="blog-highlights">`
+	page := `<selfdoc-region data-directive="projects-cards">` +
+		`<selfdoc-region data-directive="blog-highlights">` +
+		`<selfdoc-region data-directive="blog-highlights">`
 	if names := FindUnclosedRegions(page); !reflect.DeepEqual(
 		names, []string{"blog-highlights", "projects-cards"},
 	) {
@@ -375,7 +375,7 @@ func TestTheOutputPassRefreshesEveryPageAgainstItsOwnHop(t *testing.T) {
 func TestTheOutputPassNamesThePageAnUnclosedRegionIsOn(t *testing.T) {
 	output := t.TempDir()
 	write(t, output+"/cv/index.html",
-		`<selfblog-region data-directive="projects-cards">`)
+		`<selfdoc-region data-directive="projects-cards">`)
 	_, err := RefreshOutputRegions(output, SiteContext{}, handle())
 	if err == nil {
 		t.Fatal("an unclosed region in the output must be refused")

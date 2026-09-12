@@ -579,9 +579,9 @@ func TestTheHomeProjectsRegionsAreRefreshedOnEveryDeploy(t *testing.T) {
 			`<link rel="canonical" href="`+sharedCanonicalBase+`/">`+"\n"+
 			`<link rel="stylesheet" href="style.css">`+"\n"+
 			"</head>\n<body>\n"+
-			`<selfblog-region data-directive="projects-cards">`+
+			`<selfdoc-region data-directive="projects-cards">`+
 			"<p>stale</p>"+
-			"</selfblog-region>\n</body>\n</html>\n")
+			"</selfdoc-region>\n</body>\n</html>\n")
 
 	written := tree.Generate("home")
 	front := tree.Read("index.html")

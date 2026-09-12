@@ -1103,8 +1103,8 @@ func TestAnEmptyRegionOnAPublishedPageIsNamed(t *testing.T) {
 	root := newAssembly(t)
 	writeFile(t, filepath.Join(root, "site", "index.html"),
 		page("Front page", canonicalBase+"/", pageOptions{
-			Body: `<selfblog-region data-directive="projects-cards">` +
-				`</selfblog-region>`,
+			Body: `<selfdoc-region data-directive="projects-cards">` +
+				`</selfdoc-region>`,
 		}))
 	report := verifyTree(t, root)
 	requireFailure(t, report, "home-project", "empty site-level region")
@@ -1114,7 +1114,7 @@ func TestAnUnclosedRegionOnAPublishedPageIsNamed(t *testing.T) {
 	root := newAssembly(t)
 	writeFile(t, filepath.Join(root, "site", "index.html"),
 		page("Front page", canonicalBase+"/", pageOptions{
-			Body: `<selfblog-region data-directive="projects-cards">`,
+			Body: `<selfdoc-region data-directive="projects-cards">`,
 		}))
 	report := verifyTree(t, root)
 	requireFailure(t, report, "home-project", "never close")

@@ -575,7 +575,7 @@ Two directives are available to the home project's pages:
 
 They resolve twice, from the same code. Once at build time -- which is why the home project builds through `selfdoc build --target home --site-manifests <dir>` rather than through `selfdoc build`: a version badge is read from the assembly's manifests, and no project's own repository holds them. Without that context the command refuses to build at all, naming what is missing; a plain `selfdoc build` refuses too, on the unknown directive. Neither ever emits an empty region.
 
-Then again on **every** deploy, including deploys the home project has nothing to do with. Each resolved region is left in the emitted HTML inside a `<selfblog-region>` element, and the shared-element generator rewrites its contents from the current manifests. That is what keeps a front-page version badge current when the project it names releases: the prose and the design stay authored, the mechanical parts cannot go stale.
+Then again on **every** deploy, including deploys the home project has nothing to do with. Each resolved region is left in the emitted HTML inside a `<selfdoc-region>` element, and the shared-element generator rewrites its contents from the current manifests. That is what keeps a front-page version badge current when the project it names releases: the prose and the design stay authored, the mechanical parts cannot go stale.
 
 `projects.json` beside it is **derived** state, rewritten by every deploy: it records what each declared project last deployed (`repo`, `ref`, `version`) and is what `selfdoc assembly rebuild` replays. It cannot gain a key on its own -- a dispatch for a slug the roster does not declare is refused, and a slug the roster declares under a different repository is refused too.
 
