@@ -488,6 +488,48 @@ func TestListRemotePathsPinsTheTreeMethodToGET(t *testing.T) {
 	}
 }
 
+func TestTheTreeListingAsksForTheWholeTree(t *testing.T) {
+	// A non-recursive listing returns only the top level, silently -- and an
+	// unchanged-file check made against half a tree re-uploads the other half.
+	gh := newFakeGH(t)
+	gh.Blobs(map[string][]byte{"site/a/b/c.html": []byte("deep")})
+	if _, err := remoteBlobSHAs(effects.Unbound(), "owner/repo", "basetree"); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	calls := gh.Calls()
+	if len(calls) != 1 {
+		t.Fatalf("the listing made %d call(s)", len(calls))
+	}
+	if !strings.Contains(calls[0].Joined(), "recursive=1") {
+		t.Fatalf("the listing is not recursive: %q", calls[0].Joined())
+	}
+}
+
+func TestTheTreeListingReturnsBlobsOnly(t *testing.T) {
+	// The response carries a tree entry per directory as well; only the blobs
+	// are files a push can compare against.
+	gh := newFakeGH(t)
+	gh.Script(ghResponse{Stdout: `{"sha": "deadbeef", "truncated": false, ` +
+		`"tree": [{"path": "site/index.html", "type": "blob", "sha": "aaa"}, ` +
+		`{"path": "site", "type": "tree", "sha": "bbb"}]}`})
+	shas, err := remoteBlobSHAs(effects.Unbound(), "owner/repo", "deadbeef")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if !reflect.DeepEqual(shas, map[string]string{"site/index.html": "aaa"}) {
+		t.Fatalf("the listing returned %v", shas)
+	}
+}
+
+func TestAnUnparseableTreeResponseIsNamed(t *testing.T) {
+	gh := newFakeGH(t)
+	gh.Script(ghResponse{Stdout: "{not json"})
+	_, err := remoteBlobSHAs(effects.Unbound(), "owner/repo", "deadbeef")
+	if err == nil || !strings.Contains(err.Error(), "unparseable response") {
+		t.Fatalf("err = %v, want the unparseable-response refusal", err)
+	}
+}
+
 func TestGHAPIReportsTheStepAndWhatGHSaid(t *testing.T) {
 	gh := newFakeGH(t)
 	gh.Script(ghResponse{Code: 1, Stderr: "gh: API rate limit exceeded (HTTP 403)\n"})
