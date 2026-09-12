@@ -234,16 +234,16 @@ func TestSpellingIsTheSharedEngine(t *testing.T) {
 	})
 
 	t.Run("the machine-local accept list is consulted", func(t *testing.T) {
-		content := analysisPost("# Hello World\n\nThe selfblog editor runs here.\n")
-		if words := wordsOf(spellingOf(t, content)); strings.Join(words, ",") != "selfblog" {
-			t.Errorf("words = %v, want only selfblog", words)
+		content := analysisPost("# Hello World\n\nThe frobnitz editor runs here.\n")
+		if words := wordsOf(spellingOf(t, content)); strings.Join(words, ",") != "frobnitz" {
+			t.Errorf("words = %v, want only frobnitz", words)
 		}
 
 		accept := spelling.AcceptListPath()
 		if err := os.MkdirAll(filepath.Dir(accept), 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
-		if err := os.WriteFile(accept, []byte("selfblog\n"), 0o644); err != nil {
+		if err := os.WriteFile(accept, []byte("frobnitz\n"), 0o644); err != nil {
 			t.Fatalf("writing the accept list: %v", err)
 		}
 		if words := wordsOf(spellingOf(t, content)); len(words) != 0 {
