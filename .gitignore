@@ -41,3 +41,6 @@ coverage/
 
 # Go build output
 /bin/
+
+# fleet-diff scratch root (clones, snapshots, normalized trees, report)
+/.fleet-diff/
