@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the vendored English word list under ``selfdoc_core/wordlist/``.
+"""Regenerate the vendored English word list under ``internal/spelling/wordlist/``.
 
 The spelling checker's acceptance oracle is a pinned snapshot of the English
 Speller Database (ESDB, formerly SCOWL), retrieved from the project's own
@@ -8,7 +8,7 @@ parameters recorded below.  This script is the only sanctioned way to
 refresh that snapshot: it writes the three vendored files together, so the
 words, the upstream copyright and the retrieval record can never disagree.
 
-What it writes into ``selfdoc_core/wordlist/``:
+What it writes into ``internal/spelling/wordlist/``:
 
 - ``words.txt`` -- one word per line, upstream order, no header.
 - ``COPYRIGHT.txt`` -- the upstream ``Copyright`` file, verbatim, fetched
@@ -84,7 +84,7 @@ _HEADER_SEPARATOR = "---"
 _TIMEOUT = 180
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_WORDLIST_DIR = os.path.join(_REPO_ROOT, "selfdoc_core", "wordlist")
+_WORDLIST_DIR = os.path.join(_REPO_ROOT, "internal", "spelling", "wordlist")
 
 
 def _generator_url() -> str:
