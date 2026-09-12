@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // SourceFile is the file, relative to the home project's root, that declares
@@ -180,7 +181,7 @@ func Parse(text string, source string) (Listing, error) {
 			return Listing{}, errorf(
 				"%s repeats the category name %s, which an earlier block "+
 					"already declares.",
-				where, pyRepr(name),
+				where, util.PythonRepr(name),
 			)
 		}
 		seenCategories[name] = true
@@ -190,14 +191,14 @@ func Parse(text string, source string) (Listing, error) {
 			return Listing{}, errorf(
 				"%s (%s) declares no [[category.project]] block. An empty "+
 					"category would render as a heading over nothing.",
-				where, pyRepr(name),
+				where, util.PythonRepr(name),
 			)
 		}
 
 		projects := make([]Project, 0, len(rawProjects))
 		for position, itemAny := range rawProjects {
 			spot := fmt.Sprintf(
-				"%s (%s): [[category.project]] #%d", where, pyRepr(name), position+1,
+				"%s (%s): [[category.project]] #%d", where, util.PythonRepr(name), position+1,
 			)
 			item, ok := asTable(itemAny)
 			if !ok {
@@ -222,8 +223,8 @@ func Parse(text string, source string) (Listing, error) {
 					spot, slug,
 				)
 			}
-			url := strings.TrimSpace(pyStr(item["url"]))
-			entryName := strings.TrimSpace(pyStr(item["name"]))
+			url := strings.TrimSpace(util.PythonStrOrEmpty(item["url"]))
+			entryName := strings.TrimSpace(util.PythonStrOrEmpty(item["name"]))
 			if url != "" && entryName == "" {
 				return Listing{}, errorf(
 					"%s (%s) declares a url, so it is a project this site does "+
@@ -240,7 +241,7 @@ func Parse(text string, source string) (Listing, error) {
 					spot, slug,
 				)
 			}
-			repo := strings.TrimSpace(pyStr(item["repo"]))
+			repo := strings.TrimSpace(util.PythonStrOrEmpty(item["repo"]))
 			if repo != "" && repo == url {
 				return Listing{}, errorf(
 					"%s (%s) declares the same address as 'url' and 'repo', so "+
@@ -253,7 +254,7 @@ func Parse(text string, source string) (Listing, error) {
 				return Listing{}, errorf(
 					"%s repeats the slug %s, already listed under %s. One "+
 						"project, one card.",
-					spot, pyRepr(slug), pyRepr(earlier),
+					spot, util.PythonRepr(slug), util.PythonRepr(earlier),
 				)
 			}
 			seenSlugs[slug] = name
@@ -293,7 +294,7 @@ func unknownKeys(table map[string]any, allowed []string) []string {
 func joinReprs(keys []string) string {
 	parts := make([]string, 0, len(keys))
 	for _, key := range keys {
-		parts = append(parts, pyRepr(key))
+		parts = append(parts, util.PythonRepr(key))
 	}
 	return strings.Join(parts, ", ")
 }

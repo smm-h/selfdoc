@@ -114,7 +114,7 @@ func ComputeDefaultCLIDescription(kind PageKind, name, appName, helpText string)
 			appName, name, name, appName,
 		), nil
 	}
-	return "", fmt.Errorf("unknown CLI page kind: %s", pyReprString(string(kind)))
+	return "", fmt.Errorf("unknown CLI page kind: %s", util.PythonRepr(string(kind)))
 }
 
 // IsDefaultCLIDescription reports whether value is a machine-generated default
@@ -165,7 +165,7 @@ func IsDefaultCLIDescription(value string, kind PageKind, name, appName, helpTex
 			return true, nil
 		}
 	default:
-		return false, fmt.Errorf("unknown CLI page kind: %s", pyReprString(string(kind)))
+		return false, fmt.Errorf("unknown CLI page kind: %s", util.PythonRepr(string(kind)))
 	}
 
 	if helpText != "" && (kind == KindCommand || kind == KindGroup) {

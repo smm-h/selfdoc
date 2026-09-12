@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/smm-h/selfdoc/internal/util"
 
 	"github.com/smm-h/selfdoc/internal/directives"
 	"github.com/smm-h/selfdoc/internal/icons"
@@ -130,7 +131,7 @@ func renderTable(token tokenizer.Table, tokens []tokenizer.Token, idx int) strin
 			continue
 		}
 		rendered := inlineFormat(prevHeading.Text)
-		captionText = pyStrip(tagRE.ReplaceAllString(rendered, ""))
+		captionText = util.PythonStrip(tagRE.ReplaceAllString(rendered, ""))
 		break
 	}
 	if captionText != "" {
@@ -518,7 +519,7 @@ func groupCodeTabs(html string) string {
 			// takes the text node after any SVG.
 			lang := "Tab " + strconv.Itoa(idx+1)
 			if m := codeLabelTextRE.FindStringSubmatch(blockHTML); m != nil {
-				lang = pyStrip(m[1])
+				lang = util.PythonStrip(m[1])
 			}
 			langID := strings.ReplaceAll(strings.ToLower(lang), " ", "-")
 			active := ""
@@ -616,7 +617,7 @@ func applyStepGuides(html string) string {
 			innerStart := strings.Index(headingHTML, ">") + 1
 			innerEnd := strings.LastIndex(headingHTML, "<")
 			innerHTML := headingHTML[innerStart:innerEnd]
-			plainText := pyStrip(strings.TrimLeft(tagRE.ReplaceAllString(innerHTML, ""), "#"))
+			plainText := util.PythonStrip(strings.TrimLeft(tagRE.ReplaceAllString(innerHTML, ""), "#"))
 			if kwStartRE.MatchString(plainText) {
 				kwMatches = append(kwMatches, m)
 			}
@@ -665,7 +666,7 @@ func wrapAPIEntries(html string) string {
 		innerStart := strings.Index(headingHTML, ">") + 1
 		innerEnd := strings.LastIndex(headingHTML, "<")
 		innerHTML := headingHTML[innerStart:innerEnd]
-		plainText := pyStrip(strings.TrimLeft(tagRE.ReplaceAllString(innerHTML, ""), "#"))
+		plainText := util.PythonStrip(strings.TrimLeft(tagRE.ReplaceAllString(innerHTML, ""), "#"))
 
 		if !identifierRE.MatchString(plainText) {
 			continue
@@ -686,7 +687,7 @@ func wrapAPIEntries(html string) string {
 // splitTableCells splits a markdown table line on its unescaped pipes,
 // turning each cell's "\|" back into a literal pipe.
 func splitTableCells(line string) []string {
-	stripped := pyStrip(line)
+	stripped := util.PythonStrip(line)
 	stripped = strings.TrimPrefix(stripped, "|")
 	// A trailing "\|" is an escaped pipe, not the row's closing delimiter.
 	if strings.HasSuffix(stripped, "|") && !strings.HasSuffix(stripped, "\\|") {
@@ -695,7 +696,7 @@ func splitTableCells(line string) []string {
 	parts := splitUnescapedPipes(stripped)
 	out := make([]string, len(parts))
 	for i, p := range parts {
-		out[i] = strings.ReplaceAll(pyStrip(p), "\\|", "|")
+		out[i] = strings.ReplaceAll(util.PythonStrip(p), "\\|", "|")
 	}
 	return out
 }
@@ -848,16 +849,16 @@ func parseBlockquote(bqLines []string) string {
 	if len(bqLines) == 0 {
 		return ""
 	}
-	if m := admonitionMarkerRE.FindStringSubmatch(pyStrip(bqLines[0])); m != nil {
+	if m := admonitionMarkerRE.FindStringSubmatch(util.PythonStrip(bqLines[0])); m != nil {
 		admonitionType := strings.ToUpper(m[1])
 		if callout, ok := calloutKinds[admonitionType]; ok {
 			bodyLines := bqLines[1:]
-			for len(bodyLines) > 0 && pyStrip(bodyLines[0]) == "" {
+			for len(bodyLines) > 0 && util.PythonStrip(bodyLines[0]) == "" {
 				bodyLines = bodyLines[1:]
 			}
 			var bodyParts []string
 			for _, para := range strings.Split(strings.Join(bodyLines, "\n"), "\n\n") {
-				para = pyStrip(para)
+				para = util.PythonStrip(para)
 				if para != "" {
 					bodyParts = append(bodyParts, "<p>"+inlineFormat(para)+"</p>")
 				}
@@ -874,7 +875,7 @@ func parseBlockquote(bqLines []string) string {
 
 	var kept []string
 	for _, line := range bqLines {
-		if pyStrip(line) != "" {
+		if util.PythonStrip(line) != "" {
 			kept = append(kept, line)
 		}
 	}
@@ -914,7 +915,7 @@ func renderDiffLines(codeLines []string) string {
 // hold a literal backtick at an edge: the three-character span "“ ` “"
 // is one tick, not a tick with spaces around it.
 func codeSpanContent(raw string) string {
-	if len(raw) >= 2 && raw[0] == ' ' && raw[len(raw)-1] == ' ' && pyStrip(raw) != "" {
+	if len(raw) >= 2 && raw[0] == ' ' && raw[len(raw)-1] == ' ' && util.PythonStrip(raw) != "" {
 		return raw[1 : len(raw)-1]
 	}
 	return raw

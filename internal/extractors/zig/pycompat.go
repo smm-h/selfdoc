@@ -3,9 +3,9 @@ package zig
 import (
 	"regexp"
 	"strings"
-	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // pySpace and pyWord are the in-package spellings of the base package's
@@ -18,16 +18,12 @@ const (
 )
 
 // pyNonWord is the complement of pyWord, which is what a word boundary is
-// made of.
-const pyNonWord = `[^\p{L}\p{N}_]`
-
-// isPySpace reports whether r is whitespace by Python's str.isspace rule.
-func isPySpace(r rune) bool {
-	return unicode.IsSpace(r) || (r >= 0x1c && r <= 0x1f)
-}
+// made of. It is built from the same members pyWord is, so the two cannot
+// drift apart.
+const pyNonWord = "[^" + util.PythonWordChars + "]"
 
 // pyStrip is Python's str.strip() with no argument.
-func pyStrip(s string) string { return strings.TrimFunc(s, isPySpace) }
+func pyStrip(s string) string { return util.PythonStrip(s) }
 
 // baseName is the last element of path, reproducing Python's
 // posixpath.basename.

@@ -137,23 +137,15 @@ func copyObject(o *Object) *Object {
 // f-string interpolation -- renders it. Every cell of every generated table
 // that interpolates a schema value goes through here, so a declared integer
 // default prints "3" rather than Go's own spelling of an int64.
+//
+// A container is answered by pyRepr, because this package's object type
+// remembers its key order and [util.PythonRepr] cannot see it.
 func pyStr(v any) string {
-	switch t := v.(type) {
-	case nil:
-		return "None"
-	case bool:
-		if t {
-			return "True"
-		}
-		return "False"
-	case string:
-		return t
-	case int64:
-		return strconv.FormatInt(t, 10)
-	case float64:
-		return util.PythonFloatRepr(t)
-	default:
+	switch v.(type) {
+	case []any, *Object:
 		return pyRepr(v)
+	default:
+		return util.PythonStr(v)
 	}
 }
 
@@ -164,10 +156,12 @@ func pyStr(v any) string {
 // -- renders as JSON instead. It exists so a schema that declares a container
 // where the renderer expects a scalar prints something a reader recognizes as
 // the container it is.
+//
+// An object's keys keep the order the document declared them, which is why
+// this is not [util.PythonRepr]: that one sorts a Go map's keys, having no
+// order to preserve.
 func pyRepr(v any) string {
 	switch t := v.(type) {
-	case string:
-		return pyReprString(t)
 	case []any:
 		parts := make([]string, 0, len(t))
 		for _, item := range t {
@@ -181,43 +175,12 @@ func pyRepr(v any) string {
 		parts := make([]string, 0, t.Len())
 		for _, key := range t.Keys() {
 			value, _ := t.Get(key)
-			parts = append(parts, pyReprString(key)+": "+pyRepr(value))
+			parts = append(parts, util.PythonRepr(key)+": "+pyRepr(value))
 		}
 		return "{" + strings.Join(parts, ", ") + "}"
 	default:
-		return pyStr(v)
+		return util.PythonRepr(v)
 	}
-}
-
-// pyReprString quotes s the way Python's repr() quotes a string: single quotes,
-// switching to double quotes for a string that carries a single quote and no
-// double quote.
-func pyReprString(s string) string {
-	quote := byte('\'')
-	if strings.Contains(s, "'") && !strings.Contains(s, `"`) {
-		quote = '"'
-	}
-	var b strings.Builder
-	b.WriteByte(quote)
-	for _, r := range s {
-		switch r {
-		case '\\':
-			b.WriteString(`\\`)
-		case '\n':
-			b.WriteString(`\n`)
-		case '\r':
-			b.WriteString(`\r`)
-		case '\t':
-			b.WriteString(`\t`)
-		case rune(quote):
-			b.WriteByte('\\')
-			b.WriteByte(quote)
-		default:
-			b.WriteRune(r)
-		}
-	}
-	b.WriteByte(quote)
-	return b.String()
 }
 
 // pyJSONDumps renders a decoded value the way Python's json.dumps(value) does

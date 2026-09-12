@@ -168,10 +168,10 @@ func ToKebab(name string) string {
 // extractTitle returns a page's title: its frontmatter title, else the text
 // of its first Markdown heading, else the empty string.
 func extractTitle(frontmatter util.Frontmatter, rawContent string) string {
-	if title := pyStr(frontmatter["title"]); title != "" {
+	if title := util.PythonStrOrEmpty(frontmatter["title"]); title != "" {
 		return title
 	}
-	for _, line := range splitLines(rawContent) {
+	for _, line := range util.PythonSplitLines(rawContent) {
 		stripped := strings.TrimSpace(line)
 		if strings.HasPrefix(stripped, "#") {
 			return strings.TrimSpace(strings.TrimLeft(stripped, "#"))
@@ -192,7 +192,7 @@ func pageHeadings(frontmatter util.Frontmatter, content string) []Heading {
 	// Without one the H1's own text is the title, which is what the anchor
 	// assignment falls back to.
 	var pageTitle *string
-	if title := pyStr(frontmatter["title"]); title != "" {
+	if title := util.PythonStrOrEmpty(frontmatter["title"]); title != "" {
 		pageTitle = &title
 	}
 	headings := []Heading{}
@@ -226,7 +226,7 @@ func Generate(
 	}
 
 	// Name: from the config, else the directory's own name.
-	name := pyStr(projectConfig["name"])
+	name := util.PythonStrOrEmpty(projectConfig["name"])
 	if name == "" {
 		name = filepath.Base(absolute)
 	}
@@ -234,14 +234,14 @@ func Generate(
 	// Slug: from the topology config, else the kebab-cased name.
 	slug := ""
 	if topology, ok := projectConfig["topology"].(map[string]any); ok {
-		slug = pyStr(topology["slug"])
+		slug = util.PythonStrOrEmpty(topology["slug"])
 	}
 	if slug == "" {
 		slug = ToKebab(name)
 	}
 
 	// Version: from the config, else detected from the project's manifests.
-	version := pyStr(projectConfig["version"])
+	version := util.PythonStrOrEmpty(projectConfig["version"])
 	if version == "" {
 		version = util.DetectProjectVersion(absolute, "")
 	}
@@ -250,12 +250,12 @@ func Generate(
 	language := ""
 	if source, ok := projectConfig["source"].([]any); ok && len(source) > 0 {
 		if first, ok := source[0].(map[string]any); ok {
-			language = pyStr(first["language"])
+			language = util.PythonStrOrEmpty(first["language"])
 		}
 	}
 
 	// Theme: what the chrome asset for this project's pages is built from.
-	theme := pyStr(projectConfig["theme"])
+	theme := util.PythonStrOrEmpty(projectConfig["theme"])
 	if theme == "" {
 		theme = DefaultTheme
 	}
@@ -265,7 +265,7 @@ func Generate(
 		doc := allDocs[relPath]
 		pageType := "doc"
 		if declared, ok := doc.Frontmatter["type"]; ok {
-			pageType = pyStr(declared)
+			pageType = util.PythonStrOrEmpty(declared)
 		}
 		pages = append(pages, Page{
 			Path:  relPath,
@@ -290,9 +290,9 @@ func Generate(
 		Name:          name,
 		Slug:          slug,
 		Version:       version,
-		Description:   pyStr(projectConfig["description"]),
+		Description:   util.PythonStrOrEmpty(projectConfig["description"]),
 		Language:      language,
-		BaseURL:       pyStr(projectConfig["base_url"]),
+		BaseURL:       util.PythonStrOrEmpty(projectConfig["base_url"]),
 		Pages:         pages,
 		Posts:         recorded,
 		LastGen:       isoUTC(time.Now()),
@@ -430,7 +430,7 @@ func Compat(data map[string]any, source string) (*Manifest, error) {
 		Pages:         pagesOf(data["pages"]),
 		Posts:         postsOf(data["posts"]),
 		LastGen:       stringOf(data["last_gen"]),
-		Theme:         pyStr(data["theme"]),
+		Theme:         util.PythonStrOrEmpty(data["theme"]),
 	}, nil
 }
 
@@ -772,19 +772,6 @@ func isoUTC(moment time.Time) string {
 	return moment.Format("2006-01-02T15:04:05.000000+00:00")
 }
 
-// splitLines splits text into lines the way Python's str.splitlines() does
-// for the line terminators a Markdown document carries, and drops a trailing
-// empty line rather than reporting it.
-func splitLines(text string) []string {
-	text = strings.ReplaceAll(text, "\r\n", "\n")
-	text = strings.ReplaceAll(text, "\r", "\n")
-	lines := strings.Split(text, "\n")
-	if len(lines) > 0 && lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
-	}
-	return lines
-}
-
 // sortedKeys returns the keys of m in ascending order, which is the order the
 // pages are recorded in.
 func sortedKeys[V any](m map[string]V) []string {
@@ -794,33 +781,4 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// pyStr renders a config or frontmatter value as Python's str() would, with
-// the falsy values Python's `or ""` idiom collapses -- an absent key, a null,
-// an empty string, a false -- answering "".
-func pyStr(value any) string {
-	switch typed := value.(type) {
-	case nil:
-		return ""
-	case string:
-		return typed
-	case bool:
-		if typed {
-			return "True"
-		}
-		return ""
-	case int64:
-		if typed == 0 {
-			return ""
-		}
-		return strconv.FormatInt(typed, 10)
-	case float64:
-		if typed == 0 {
-			return ""
-		}
-		return util.PythonFloatRepr(typed)
-	default:
-		return fmt.Sprintf("%v", typed)
-	}
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // memberFuncPattern matches a function declaration by name, whether or not it
@@ -60,7 +61,7 @@ func parseParams(paramStr string) []parsedParam {
 		namePart := strip(part[:colonIdx])
 		typePart := strip(part[colonIdx+1:])
 
-		tokens := strings.FieldsFunc(namePart, isPySpace)
+		tokens := util.PythonFields(namePart)
 		var name string
 		switch {
 		case len(tokens) == 2:

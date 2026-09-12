@@ -34,7 +34,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"bytes"
 
@@ -232,7 +231,7 @@ func rejectUnknown(where string, block map[string]any, known []string) error {
 	sort.Strings(unknown)
 	quoted := make([]string, len(unknown))
 	for index, key := range unknown {
-		quoted[index] = reprString(key)
+		quoted[index] = util.PythonRepr(key)
 	}
 	return fmt.Errorf(
 		"%s declares unknown key(s) %s. It carries %s.",
@@ -249,15 +248,15 @@ func textField(where string, block map[string]any, key string, required bool) (s
 	value, present := block[key]
 	if !present || value == nil {
 		if required {
-			return "", fmt.Errorf("%s is missing a non-empty %s.", where, reprString(key))
+			return "", fmt.Errorf("%s is missing a non-empty %s.", where, util.PythonRepr(key))
 		}
 		return "", nil
 	}
 	text, ok := value.(string)
-	if !ok || strip(text) == "" {
-		return "", fmt.Errorf("%s is missing a non-empty %s.", where, reprString(key))
+	if !ok || util.PythonStrip(text) == "" {
+		return "", fmt.Errorf("%s is missing a non-empty %s.", where, util.PythonRepr(key))
 	}
-	return strip(text), nil
+	return util.PythonStrip(text), nil
 }
 
 // stringsField returns the stripped strings a block declares at key.
@@ -271,7 +270,7 @@ func stringsField(where string, block map[string]any, key string, required bool)
 		if required {
 			return nil, fmt.Errorf(
 				"%s is missing %s, a non-empty list of strings.",
-				where, reprString(key),
+				where, util.PythonRepr(key),
 			)
 		}
 		return nil, nil
@@ -279,19 +278,19 @@ func stringsField(where string, block map[string]any, key string, required bool)
 	list, ok := asList(value)
 	if !ok || len(list) == 0 {
 		return nil, fmt.Errorf(
-			"%s: %s must be a non-empty list of strings.", where, reprString(key),
+			"%s: %s must be a non-empty list of strings.", where, util.PythonRepr(key),
 		)
 	}
 	out := make([]string, 0, len(list))
 	for _, item := range list {
 		text, isText := item.(string)
-		if !isText || strip(text) == "" {
+		if !isText || util.PythonStrip(text) == "" {
 			return nil, fmt.Errorf(
 				"%s: every entry of %s must be a non-empty string.",
-				where, reprString(key),
+				where, util.PythonRepr(key),
 			)
 		}
-		out = append(out, strip(text))
+		out = append(out, util.PythonStrip(text))
 	}
 	return out, nil
 }
@@ -308,7 +307,7 @@ func rejectRepeat(where string, seen map[string]bool, key []string, label, kind 
 	// different tuples can never collide into one identity.
 	identifier := strings.Join(key, "\x00")
 	if seen[identifier] {
-		return fmt.Errorf("%s repeats the %s %s.", where, kind, reprString(label))
+		return fmt.Errorf("%s repeats the %s %s.", where, kind, util.PythonRepr(label))
 	}
 	seen[identifier] = true
 	return nil
@@ -365,7 +364,7 @@ func ParseCV(text string, source string) (*CV, error) {
 	if !ok || version != CVFormatVersion {
 		return nil, fmt.Errorf(
 			"%s declares format_version %s; this selfdoc reads %d.",
-			source, repr(data["format_version"]), CVFormatVersion,
+			source, util.PythonRepr(data["format_version"]), CVFormatVersion,
 		)
 	}
 
@@ -838,7 +837,7 @@ func CVPersonJSONLD(cv *CV, author map[string]any) (identity.Entity, error) {
 	if author != nil {
 		if declared, ok := asList(author["same_as"]); ok {
 			for _, entry := range declared {
-				sameAs = append(sameAs, pythonStr(entry))
+				sameAs = append(sameAs, util.PythonStr(entry))
 			}
 		}
 	}
@@ -1210,87 +1209,4 @@ func truthy(value any) bool {
 	default:
 		return true
 	}
-}
-
-// pythonStr renders value the way Python's str() would, which is what the
-// declared same_as entries went through.
-func pythonStr(value any) string {
-	switch typed := value.(type) {
-	case string:
-		return typed
-	case nil:
-		return "None"
-	case bool:
-		if typed {
-			return "True"
-		}
-		return "False"
-	case int64:
-		return strconv.FormatInt(typed, 10)
-	case float64:
-		return util.PythonFloatRepr(typed)
-	default:
-		return fmt.Sprint(value)
-	}
-}
-
-// repr renders value the way Python's repr() would, for the diagnostics that
-// quote a declaration back to whoever wrote it.
-func repr(value any) string {
-	switch typed := value.(type) {
-	case nil:
-		return "None"
-	case string:
-		return reprString(typed)
-	case bool:
-		if typed {
-			return "True"
-		}
-		return "False"
-	case int64:
-		return strconv.FormatInt(typed, 10)
-	case float64:
-		return util.PythonFloatRepr(typed)
-	default:
-		return fmt.Sprint(value)
-	}
-}
-
-// reprString renders text the way Python's repr() of a string does: single
-// quotes, unless the text carries one and no double quote.
-func reprString(text string) string {
-	quote := byte('\'')
-	if strings.Contains(text, "'") && !strings.Contains(text, `"`) {
-		quote = '"'
-	}
-	var out strings.Builder
-	out.WriteByte(quote)
-	for _, r := range text {
-		switch r {
-		case '\\':
-			out.WriteString(`\\`)
-		case '\n':
-			out.WriteString(`\n`)
-		case '\r':
-			out.WriteString(`\r`)
-		case '\t':
-			out.WriteString(`\t`)
-		case rune(quote):
-			out.WriteByte('\\')
-			out.WriteByte(quote)
-		default:
-			out.WriteRune(r)
-		}
-	}
-	out.WriteByte(quote)
-	return out.String()
-}
-
-// strip trims the whitespace Python's str.strip() trims: Go's own
-// unicode.IsSpace omits the C0 information separators, which Python's
-// str.isspace() carries.
-func strip(text string) string {
-	return strings.TrimFunc(text, func(r rune) bool {
-		return unicode.IsSpace(r) || (r >= 0x1C && r <= 0x1F)
-	})
 }

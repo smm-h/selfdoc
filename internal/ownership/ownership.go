@@ -26,10 +26,8 @@ package ownership
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/strictclisupport"
@@ -300,23 +298,14 @@ func isTrue(value any) bool {
 
 // pyStr renders a frontmatter value as Python's str() would, so a title or a
 // description written as a bare number or boolean is classified on the text
-// it renders as. An absent key is the empty string.
+// it renders as.
+//
+// An absent key is the empty string rather than [util.PythonStr]'s "None":
+// the Python read every one of these keys through `.get(key, "")`, so a key
+// that is not there carries no text to classify.
 func pyStr(value any) string {
-	switch typed := value.(type) {
-	case nil:
+	if value == nil {
 		return ""
-	case string:
-		return typed
-	case bool:
-		if typed {
-			return "True"
-		}
-		return "False"
-	case int64:
-		return strconv.FormatInt(typed, 10)
-	case float64:
-		return util.PythonFloatRepr(typed)
-	default:
-		return fmt.Sprintf("%v", typed)
 	}
+	return util.PythonStr(value)
 }

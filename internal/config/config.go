@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // Config is a loaded selfdoc.json: every top-level name in [Schema] is a
@@ -101,7 +103,7 @@ func ValidateConfig(raw any) (Config, error) {
 	}
 	for _, key := range sortedKeys(document) {
 		if !known[key] {
-			return nil, configErrorf("unknown config key %s", pythonRepr(key))
+			return nil, configErrorf("unknown config key %s", util.PythonRepr(key))
 		}
 	}
 
@@ -140,7 +142,7 @@ func ValidateConfig(raw any) (Config, error) {
 					"source[%d] is a plain string (%s). "+
 						"Source entries must be objects with 'path' and 'language': "+
 						`{"path": "src/", "language": "python"}`,
-					i, pythonRepr(text))
+					i, util.PythonRepr(text))
 			}
 		}
 	}
@@ -216,7 +218,7 @@ func validateField(spec *FieldSpec, value any, path string) (any, error) {
 		if !ok {
 			if len(spec.Choices) > 0 {
 				return nil, configErrorf("invalid %s value %s; must be one of: %s",
-					path, pythonRepr(value), strings.Join(spec.Choices, ", "))
+					path, util.PythonRepr(value), strings.Join(spec.Choices, ", "))
 			}
 			return nil, configErrorf("'%s' must be a string", path)
 		}
@@ -225,15 +227,15 @@ func validateField(spec *FieldSpec, value any, path string) (any, error) {
 		}
 		if len(spec.Choices) > 0 && !containsString(spec.Choices, text) {
 			return nil, configErrorf("invalid %s value %s; must be one of: %s",
-				path, pythonRepr(text), strings.Join(spec.Choices, ", "))
+				path, util.PythonRepr(text), strings.Join(spec.Choices, ", "))
 		}
 		if spec.Pattern != "" && !matchPattern(spec.Pattern, text) {
 			return nil, configErrorf("invalid %s %s; must match pattern %s",
-				path, pythonRepr(text), spec.Pattern)
+				path, util.PythonRepr(text), spec.Pattern)
 		}
 		if spec.MustContain != "" && !strings.Contains(text, spec.MustContain) {
 			return nil, configErrorf("invalid %s %s; must contain %s",
-				path, pythonRepr(text), pythonRepr(spec.MustContain))
+				path, util.PythonRepr(text), util.PythonRepr(spec.MustContain))
 		}
 		if spec.Transform != nil {
 			return spec.Transform(text), nil
@@ -316,7 +318,7 @@ func validateField(spec *FieldSpec, value any, path string) (any, error) {
 				for _, key := range sortedKeys(object) {
 					if !matchPattern(spec.KeyPattern, key) {
 						return nil, configErrorf("invalid %s key %s; must match pattern %s",
-							spec.Name, pythonRepr(key), spec.KeyPattern)
+							spec.Name, util.PythonRepr(key), spec.KeyPattern)
 					}
 				}
 			}
@@ -342,7 +344,7 @@ func validateField(spec *FieldSpec, value any, path string) (any, error) {
 			for _, key := range sortedKeys(object) {
 				if !containsString(knownKeys, key) {
 					return nil, configErrorf("invalid %s key %s; must be one of: %s",
-						spec.Name, pythonRepr(key), strings.Join(knownKeys, ", "))
+						spec.Name, util.PythonRepr(key), strings.Join(knownKeys, ", "))
 				}
 			}
 		}
@@ -368,7 +370,7 @@ func validateField(spec *FieldSpec, value any, path string) (any, error) {
 	}
 
 	// Unreachable for valid FieldType values
-	return nil, configErrorf("unknown field type %s for '%s'", pythonRepr(string(spec.Type)), path)
+	return nil, configErrorf("unknown field type %s for '%s'", util.PythonRepr(string(spec.Type)), path)
 }
 
 // rangeSuffix renders the " between X and Y" a type-mismatch diagnostic
@@ -425,7 +427,7 @@ func postValidate(config Config) error {
 			locale, _ := entry.(map[string]any)
 			code, _ := locale["code"].(string)
 			if seenCodes[code] {
-				return configErrorf("duplicate locale code %s in 'locales'", pythonRepr(code))
+				return configErrorf("duplicate locale code %s in 'locales'", util.PythonRepr(code))
 			}
 			seenCodes[code] = true
 		}
@@ -468,7 +470,7 @@ func postValidate(config Config) error {
 			version, _ := entry.(map[string]any)
 			name, _ := version["version"].(string)
 			if seenVersions[name] {
-				return configErrorf("duplicate version string %s in 'versions'", pythonRepr(name))
+				return configErrorf("duplicate version string %s in 'versions'", util.PythonRepr(name))
 			}
 			seenVersions[name] = true
 		}
@@ -501,7 +503,7 @@ func postValidate(config Config) error {
 				slug = posixBasename(strings.TrimRight(path, "/"))
 			}
 			if seenSlugs[slug] {
-				return configErrorf("duplicate project slug %s in 'unified.projects'", pythonRepr(slug))
+				return configErrorf("duplicate project slug %s in 'unified.projects'", util.PythonRepr(slug))
 			}
 			seenSlugs[slug] = true
 		}

@@ -154,7 +154,7 @@ func extractType(schema *object, spec *object) string {
 		if declared, isString := jsonGet(schema, "type").(string); isString {
 			schemaType = declared
 		} else {
-			schemaType = pyStr(jsonGet(schema, "type"))
+			schemaType = util.PythonStr(jsonGet(schema, "type"))
 		}
 	}
 	if schemaType == "array" {

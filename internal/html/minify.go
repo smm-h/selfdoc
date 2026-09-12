@@ -3,6 +3,8 @@ package html
 import (
 	"regexp"
 	"strings"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 var (
@@ -39,7 +41,7 @@ func MinifyJS(jsText string) string {
 	jsText = jsSpaceRunRE.ReplaceAllString(jsText, " ")
 	jsText = jsStructuralRE.ReplaceAllString(jsText, "${1}")
 	jsText = jsBlankRunRE.ReplaceAllString(jsText, "\n")
-	return pyStrip(jsText)
+	return util.PythonStrip(jsText)
 }
 
 // stripTrailingLineComments removes a "//" comment that follows code on the

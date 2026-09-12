@@ -3,6 +3,8 @@ package kotlin
 import (
 	"regexp"
 	"strings"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // The KDoc patterns: the links a doc comment writes, and the tags it carries.
@@ -244,7 +246,7 @@ func nextTagIndex(text string, start int) int {
 // collapseWhitespace joins the words of s with single spaces, which is what
 // Python's " ".join(s.split()) does.
 func collapseWhitespace(s string) string {
-	return strings.Join(strings.FieldsFunc(s, isPySpace), " ")
+	return strings.Join(util.PythonFields(s), " ")
 }
 
 // parseKDoc renders a KDoc comment as Markdown.

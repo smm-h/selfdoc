@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // EscapePipes escapes pipe characters in text, preserving pipes inside
@@ -78,7 +80,7 @@ func RenderMarkdownTable(headers []string, rows [][]string, align []string, pret
 		if a != "left" && a != "center" && a != "right" {
 			return "", fmt.Errorf(
 				"invalid alignment %s, must be one of: left, center, right",
-				pythonRepr(a),
+				util.PythonRepr(a),
 			)
 		}
 	}

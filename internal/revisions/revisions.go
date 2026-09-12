@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -91,8 +90,8 @@ func ComputePostContentHash(body string) string {
 func normalizeBody(body string) string {
 	var result []string
 	previousBlank := false
-	for _, line := range splitLines(body) {
-		trimmed := trimSpace(line)
+	for _, line := range util.PythonSplitLines(body) {
+		trimmed := util.PythonStrip(line)
 		if trimmed == "" {
 			if !previousBlank {
 				result = append(result, "")
@@ -104,50 +103,7 @@ func normalizeBody(body string) string {
 		previousBlank = false
 	}
 	// Strip leading and trailing blank lines from the whole result.
-	return trimSpace(strings.Join(result, "\n"))
-}
-
-// lineBreaks are the characters Python's str.splitlines() ends a line on. The
-// full set is reproduced because the hash is computed over the split, so a
-// body carrying a form feed must normalize to the same bytes it always did.
-var lineBreaks = map[rune]bool{
-	'\n': true, '\r': true, '\v': true, '\f': true,
-	0x1C: true, 0x1D: true, 0x1E: true, 0x85: true,
-	0x2028: true, 0x2029: true,
-}
-
-// splitLines splits text the way Python's str.splitlines() does: on every
-// character in [lineBreaks], counting "\r\n" once, and with a trailing
-// terminator producing no final empty line.
-func splitLines(text string) []string {
-	var lines []string
-	var current strings.Builder
-	runes := []rune(text)
-	for index := 0; index < len(runes); index++ {
-		r := runes[index]
-		if !lineBreaks[r] {
-			current.WriteRune(r)
-			continue
-		}
-		if r == '\r' && index+1 < len(runes) && runes[index+1] == '\n' {
-			index++
-		}
-		lines = append(lines, current.String())
-		current.Reset()
-	}
-	if current.Len() > 0 {
-		lines = append(lines, current.String())
-	}
-	return lines
-}
-
-// trimSpace trims the whitespace Python's str.strip() trims: Go's own
-// unicode.IsSpace omits the C0 information separators, which Python's
-// str.isspace() carries.
-func trimSpace(text string) string {
-	return strings.TrimFunc(text, func(r rune) bool {
-		return unicode.IsSpace(r) || (r >= 0x1C && r <= 0x1F)
-	})
+	return util.PythonStrip(strings.Join(result, "\n"))
 }
 
 // LoadRevisions loads revisions.json from dirPath's .selfdoc directory.

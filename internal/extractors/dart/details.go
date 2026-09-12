@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // isWordRune reports whether r is a word character by Python's \w rule for
@@ -120,7 +121,7 @@ func extractFuncSignature(lines []string, startIdx int) string {
 		sig = sig[:closePos+1]
 	}
 
-	return strings.TrimRightFunc(sig, isPySpace)
+	return util.PythonRStrip(sig)
 }
 
 // splitParams splits a parameter list on the commas that separate parameters,

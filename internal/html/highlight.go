@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/styles"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // PygmentsScope is the selector every highlight rule is written under. It
@@ -168,7 +169,7 @@ func pygmentsRules(style *chroma.Style, scope string) []hlRule {
 // a reader meets in the rule says which token it paints:
 // ".tm-code code .kd" plus "color" becomes "--sd-hl-kd-color".
 func pygmentsVar(selector, prop, scope string) string {
-	tail := pyStrip(strings.TrimPrefix(selector, scope))
+	tail := util.PythonStrip(strings.TrimPrefix(selector, scope))
 	if tail == "" {
 		tail = "base"
 	}

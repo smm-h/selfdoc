@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // TermAnchor returns the id a definition site carries for term.
@@ -142,13 +144,13 @@ func CollectDeclaredTerms(bodyHTML string) []DeclaredTerm {
 	if strings.Contains(bodyHTML, `<div class="glossary">`) {
 		for _, m := range glossaryEntryRE.FindAllStringSubmatch(bodyHTML, -1) {
 			attrs, rawTerm, definition := m[1], m[2], m[3]
-			term := pyStrip(tagRE.ReplaceAllString(rawTerm, ""))
+			term := util.PythonStrip(tagRE.ReplaceAllString(rawTerm, ""))
 			if term == "" {
 				continue
 			}
 			anchor := dfnAnchor(attrs, term)
 			seenAnchors[anchor] = true
-			terms = append(terms, DeclaredTerm{term, anchor, pyStrip(definition)})
+			terms = append(terms, DeclaredTerm{term, anchor, util.PythonStrip(definition)})
 		}
 	}
 
@@ -168,7 +170,7 @@ func CollectDeclaredTerms(bodyHTML string) []DeclaredTerm {
 			}
 		}
 		attrs, rawTerm := dfnMatch[1], dfnMatch[2]
-		term := pyStrip(tagRE.ReplaceAllString(rawTerm, ""))
+		term := util.PythonStrip(tagRE.ReplaceAllString(rawTerm, ""))
 		if term == "" {
 			continue
 		}
@@ -178,7 +180,7 @@ func CollectDeclaredTerms(bodyHTML string) []DeclaredTerm {
 		}
 		seenAnchors[anchor] = true
 		terms = append(terms, DeclaredTerm{
-			term, anchor, pyStrip(tagRE.ReplaceAllString(pContent, "")),
+			term, anchor, util.PythonStrip(tagRE.ReplaceAllString(pContent, "")),
 		})
 	}
 
@@ -197,7 +199,7 @@ func dfnAnchor(attrs, term string) string {
 // firstSentence returns the first sentence of text, for a definition
 // tooltip. Text with no sentence terminator is returned whole.
 func firstSentence(text string) string {
-	plain := pyStrip(pySpaceRunRE.ReplaceAllString(tagRE.ReplaceAllString(text, ""), " "))
+	plain := util.PythonStrip(pySpaceRunRE.ReplaceAllString(tagRE.ReplaceAllString(text, ""), " "))
 	if m := firstSentenceRE.FindStringSubmatch(plain); m != nil {
 		return m[1]
 	}
@@ -224,7 +226,7 @@ func assignDefinitionIDs(html string) string {
 		if strings.Contains(attrs, "id=") {
 			return whole
 		}
-		term := pyStrip(tagRE.ReplaceAllString(inner, ""))
+		term := util.PythonStrip(tagRE.ReplaceAllString(inner, ""))
 		if term == "" {
 			return whole
 		}

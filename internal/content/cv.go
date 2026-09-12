@@ -3,7 +3,6 @@ package content
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/smm-h/selfdoc/internal/cv"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -28,7 +27,7 @@ func ResolveCV(attrs map[string]string, config map[string]any, baseDir string) (
 		return "", fmt.Errorf(
 			"directive 'cv': %s is not a file. The CV is declared in a TOML "+
 				"document at that path, relative to the project root.",
-			reprString(path),
+			util.PythonRepr(path),
 		)
 	}
 	document, err := cv.LoadCV(fullPath)
@@ -37,34 +36,4 @@ func ResolveCV(attrs map[string]string, config map[string]any, baseDir string) (
 	}
 	author, _ := config["author"].(map[string]any)
 	return cv.RenderCVPage(document, author)
-}
-
-// reprString quotes s the way Python's repr() quotes a string, which is how
-// every !r interpolation in the ported diagnostics renders a path.
-func reprString(s string) string {
-	quote := byte('\'')
-	if strings.Contains(s, "'") && !strings.Contains(s, `"`) {
-		quote = '"'
-	}
-	var out strings.Builder
-	out.WriteByte(quote)
-	for _, r := range s {
-		switch r {
-		case '\\':
-			out.WriteString(`\\`)
-		case '\n':
-			out.WriteString(`\n`)
-		case '\r':
-			out.WriteString(`\r`)
-		case '\t':
-			out.WriteString(`\t`)
-		case rune(quote):
-			out.WriteByte('\\')
-			out.WriteByte(quote)
-		default:
-			out.WriteRune(r)
-		}
-	}
-	out.WriteByte(quote)
-	return out.String()
 }

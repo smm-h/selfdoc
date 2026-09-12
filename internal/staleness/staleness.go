@@ -484,7 +484,7 @@ func ComputeCurrentHashes(
 		}
 		current[relPath] = Entry{
 			Content:     ComputeContentHash(doc.Raw),
-			Description: ComputeDescriptionHash(pyStr(description)),
+			Description: ComputeDescriptionHash(util.PythonStr(description)),
 		}
 	}
 
@@ -717,28 +717,4 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// pyStr renders a frontmatter value as Python's str() would, which is what
-// the description hash covers: a description is normally a string, and a
-// document that writes a bare number or boolean there is hashed on the text
-// that value renders as.
-func pyStr(value any) string {
-	switch typed := value.(type) {
-	case nil:
-		return "None"
-	case string:
-		return typed
-	case bool:
-		if typed {
-			return "True"
-		}
-		return "False"
-	case int64:
-		return fmt.Sprintf("%d", typed)
-	case float64:
-		return util.PythonFloatRepr(typed)
-	default:
-		return fmt.Sprintf("%v", typed)
-	}
 }

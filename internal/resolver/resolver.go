@@ -242,7 +242,7 @@ func (r *Resolver) Resolve(name string, attrs map[string]string, body []string) 
 		}
 		return "", fmt.Errorf(
 			"Ambiguous directive :::%s path=%s resolves in multiple languages: %s",
-			name, reprString(pathArg), strings.Join(languages, ", "),
+			name, util.PythonRepr(pathArg), strings.Join(languages, ", "),
 		)
 	}
 
@@ -256,7 +256,7 @@ func (r *Resolver) Resolve(name string, attrs map[string]string, body []string) 
 		}
 		return fmt.Sprintf(
 			"> *[selfdoc: lang=%s not found in configured source languages: %s]*",
-			reprString(langFilter), strings.Join(configured, ", "),
+			util.PythonRepr(langFilter), strings.Join(configured, ", "),
 		), nil
 	}
 
@@ -340,34 +340,4 @@ func stringList(body []string) []any {
 		out = append(out, line)
 	}
 	return out
-}
-
-// reprString quotes s the way Python's repr() quotes a string, which is how
-// the ported diagnostics render a path or a language name.
-func reprString(s string) string {
-	quote := byte('\'')
-	if strings.Contains(s, "'") && !strings.Contains(s, `"`) {
-		quote = '"'
-	}
-	var out strings.Builder
-	out.WriteByte(quote)
-	for _, r := range s {
-		switch r {
-		case '\\':
-			out.WriteString(`\\`)
-		case '\n':
-			out.WriteString(`\n`)
-		case '\r':
-			out.WriteString(`\r`)
-		case '\t':
-			out.WriteString(`\t`)
-		case rune(quote):
-			out.WriteByte('\\')
-			out.WriteByte(quote)
-		default:
-			out.WriteRune(r)
-		}
-	}
-	out.WriteByte(quote)
-	return out.String()
 }

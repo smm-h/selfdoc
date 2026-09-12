@@ -371,7 +371,7 @@ type NoSchemaError struct {
 func (e *NoSchemaError) Error() string {
 	return fmt.Sprintf(
 		"No .strictcli/schema.json found in %s. Run '<app> --dump-schema' to generate it.",
-		pyReprString(e.BaseDir),
+		util.PythonRepr(e.BaseDir),
 	)
 }
 

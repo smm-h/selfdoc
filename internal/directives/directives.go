@@ -6,6 +6,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // directiveNamePattern is the directive-name grammar: a letter, then word
@@ -211,7 +213,7 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 
 	for lineIdx, line := range lines {
 		lineNum := lineIdx + 1
-		stripped := pyStrip(line)
+		stripped := util.PythonStrip(line)
 
 		// Fence tracking applies in idle and in_fence only; inside a block, a
 		// fence line is an unexpected line.
@@ -339,7 +341,7 @@ func closedBlock(name string, attrs map[string]string, body []string, lineNum in
 func unexpectedLine(lineNum int, stripped string) error {
 	return directiveErrorf(
 		"Unexpected line inside directive block at line %d: %s",
-		lineNum, pyRepr(stripped))
+		lineNum, util.PythonRepr(stripped))
 }
 
 // ParseDirectives extracts every directive from markdown content, in document
@@ -378,7 +380,7 @@ func ParseDirectives(content string, validNames NameSet) ([]Directive, error) {
 		fenceChar := byte(0)
 		fenceLen := 0
 		for lineIdx, line := range strings.Split(content, "\n") {
-			stripped := pyStrip(line)
+			stripped := util.PythonStrip(line)
 			if m := fenceRe.FindStringSubmatch(stripped); m != nil {
 				marker := m[1]
 				if fenceChar == 0 {
@@ -479,7 +481,7 @@ func FindDirectiveMarkers(content string) []Marker {
 	}
 
 	for lineIdx, line := range lines {
-		stripped := pyStrip(line)
+		stripped := util.PythonStrip(line)
 		if m := fenceRe.FindStringSubmatch(stripped); m != nil {
 			fence := m[1]
 			if fenceChar == 0 {
@@ -498,7 +500,7 @@ func FindDirectiveMarkers(content string) []Marker {
 		masked, _ := MaskBacktickSpans(line)
 		lineNum := lineIdx + 1
 
-		if m := markerLineRe.FindStringSubmatch(pyStrip(masked)); m != nil {
+		if m := markerLineRe.FindStringSubmatch(util.PythonStrip(masked)); m != nil {
 			markers = append(markers, Marker{LineNumber: lineNum, Marker: m[1]})
 			continue
 		}
@@ -550,7 +552,7 @@ func resolveInlinePass(output []string, resolver Resolver) ([]string, error) {
 
 	for i, line := range output {
 		n := i + 1
-		stripped := pyStrip(line)
+		stripped := util.PythonStrip(line)
 
 		if m := fenceRe.FindStringSubmatch(stripped); m != nil {
 			marker := m[1]

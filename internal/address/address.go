@@ -52,6 +52,8 @@ package address
 import (
 	"fmt"
 	"strings"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // ArchivePrefix is the URL segment every archived (superseded) version is
@@ -291,7 +293,7 @@ func NewPageAddress(pagePath string, coords Coordinates) (PageAddress, error) {
 	if strings.HasPrefix(pagePath, "/") {
 		return PageAddress{}, fmt.Errorf(
 			"page_path must be relative to the mount root, got %s",
-			pythonRepr(pagePath),
+			util.PythonRepr(pagePath),
 		)
 	}
 	firstSegment := pagePath
@@ -302,7 +304,7 @@ func NewPageAddress(pagePath string, coords Coordinates) (PageAddress, error) {
 		return PageAddress{}, fmt.Errorf(
 			"page path %s starts with the reserved segment %s/, which is "+
 				"where superseded versions are emitted. Rename the page.",
-			pythonRepr(pagePath), pythonRepr(ArchivePrefix),
+			util.PythonRepr(pagePath), util.PythonRepr(ArchivePrefix),
 		)
 	}
 	if coords.Archived && coords.Version == "" {

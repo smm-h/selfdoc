@@ -1,15 +1,9 @@
 package registry
 
 import (
-	"fmt"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
-	"unicode"
-
-	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // expandUser reproduces Python's os.path.expanduser for the two spellings a
@@ -69,116 +63,4 @@ func asList(value any) ([]any, bool) {
 	default:
 		return nil, false
 	}
-}
-
-// pyTypeName renders the name Python's type(value).__name__ gives a
-// tomllib-decoded value, because two refusals report the type they were handed
-// instead of the one they wanted.
-func pyTypeName(value any) string {
-	switch value.(type) {
-	case nil:
-		return "NoneType"
-	case string:
-		return "str"
-	case bool:
-		return "bool"
-	case int64:
-		return "int"
-	case float64:
-		return "float"
-	case []any, []map[string]any:
-		return "list"
-	case map[string]any:
-		return "dict"
-	case time.Time:
-		return "datetime"
-	default:
-		return fmt.Sprintf("%T", value)
-	}
-}
-
-// pyRepr renders value the way Python's repr() does, because the refusals
-// quote the declarations they name and the quoting is part of the message.
-func pyRepr(value any) string {
-	switch typed := value.(type) {
-	case nil:
-		return "None"
-	case string:
-		return pyReprString(typed)
-	case bool:
-		if typed {
-			return "True"
-		}
-		return "False"
-	case int64:
-		return strconv.FormatInt(typed, 10)
-	case float64:
-		return util.PythonFloatRepr(typed)
-	case []any:
-		parts := make([]string, 0, len(typed))
-		for _, item := range typed {
-			parts = append(parts, pyRepr(item))
-		}
-		return "[" + strings.Join(parts, ", ") + "]"
-	case []map[string]any:
-		parts := make([]string, 0, len(typed))
-		for _, item := range typed {
-			parts = append(parts, pyRepr(item))
-		}
-		return "[" + strings.Join(parts, ", ") + "]"
-	case map[string]any:
-		keys := make([]string, 0, len(typed))
-		for key := range typed {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		parts := make([]string, 0, len(keys))
-		for _, key := range keys {
-			parts = append(parts, pyReprString(key)+": "+pyRepr(typed[key]))
-		}
-		return "{" + strings.Join(parts, ", ") + "}"
-	default:
-		return fmt.Sprint(typed)
-	}
-}
-
-// pyReprString quotes s the way Python's repr(str) does: single quotes unless
-// the text holds a single quote and no double quote, a backslash escape for
-// the backslash and the chosen quote, the short escapes for the newline,
-// carriage return and tab, and a numeric escape for every other
-// non-printable character.
-func pyReprString(s string) string {
-	quote := byte('\'')
-	if strings.Contains(s, "'") && !strings.Contains(s, `"`) {
-		quote = '"'
-	}
-	var out strings.Builder
-	out.WriteByte(quote)
-	for _, r := range s {
-		switch {
-		case r == rune(quote):
-			out.WriteByte('\\')
-			out.WriteRune(r)
-		case r == '\\':
-			out.WriteString(`\\`)
-		case r == '\n':
-			out.WriteString(`\n`)
-		case r == '\r':
-			out.WriteString(`\r`)
-		case r == '\t':
-			out.WriteString(`\t`)
-		case r < 0x20 || r == 0x7f:
-			out.WriteString(fmt.Sprintf(`\x%02x`, r))
-		case r > 0x7f && !unicode.IsPrint(r):
-			if r > 0xffff {
-				out.WriteString(fmt.Sprintf(`\U%08x`, r))
-			} else {
-				out.WriteString(fmt.Sprintf(`\u%04x`, r))
-			}
-		default:
-			out.WriteRune(r)
-		}
-	}
-	out.WriteByte(quote)
-	return out.String()
 }

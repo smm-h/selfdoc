@@ -6,24 +6,30 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
-// The three character classes below stand in for Python's \s, \S and \w in a
-// ported regexp. Go's versions of all three are ASCII-only, where Python's are
-// Unicode-aware for text patterns, so a pattern copied across unchanged would
-// quietly stop matching a non-breaking space or a non-Latin identifier. Every
-// extractor ports Python regexes, so they are exported rather than restated.
+// The three character classes below are the exported spellings of Python's
+// \s, \S and \w for a ported regexp. Go's versions of all three are
+// ASCII-only, where Python's are Unicode-aware for text patterns, so a
+// pattern copied across unchanged would quietly stop matching a no-break
+// space or a non-Latin identifier. Every extractor ports Python regexes, so
+// the classes are exported here rather than restated in each one.
+//
+// The values are [util]'s: one authority for what Python's classes denote,
+// aliased under the names the extractors were written against.
 const (
 	// PySpaceClass is Python's \s: the ASCII whitespace characters, the four
 	// ASCII separator controls, and the Unicode whitespace code points.
-	PySpaceClass = `[\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}]`
+	PySpaceClass = util.PythonSpaceClass
 
 	// PyNonSpaceClass is Python's \S, the complement of PySpaceClass.
-	PyNonSpaceClass = `[^\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}]`
+	PyNonSpaceClass = util.PythonNonSpaceClass
 
 	// PyWordClass is Python's \w where it matches an identifier character: a
 	// letter, a digit or an underscore, in any script.
-	PyWordClass = `[\p{L}\p{N}_]`
+	PyWordClass = util.PythonWordClass
 )
 
 // pySpaceClass and pyWordClass are the in-package spellings of the two classes
@@ -33,20 +39,14 @@ const (
 	pyWordClass  = PyWordClass
 )
 
-// isPySpace reports whether r is whitespace by Python's str.isspace rule, which
-// is Unicode whitespace plus the four ASCII separator control characters.
-func isPySpace(r rune) bool {
-	return unicode.IsSpace(r) || (r >= 0x1c && r <= 0x1f)
-}
-
 // pyStrip is Python's str.strip() with no argument.
-func pyStrip(s string) string { return strings.TrimFunc(s, isPySpace) }
+func pyStrip(s string) string { return util.PythonStrip(s) }
 
 // pyLStrip is Python's str.lstrip() with no argument.
-func pyLStrip(s string) string { return strings.TrimLeftFunc(s, isPySpace) }
+func pyLStrip(s string) string { return util.PythonLStrip(s) }
 
 // pyRStrip is Python's str.rstrip() with no argument.
-func pyRStrip(s string) string { return strings.TrimRightFunc(s, isPySpace) }
+func pyRStrip(s string) string { return util.PythonRStrip(s) }
 
 // indentOf counts the leading whitespace characters of s, the quantity every
 // docstring-section scanner compares indentation with.

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -77,7 +76,7 @@ func ResolveVar(attrs map[string]string, config map[string]any, baseDir string) 
 
 	case "project.version":
 		if override := config[VersionOverrideKey]; truthy(override) {
-			return pyStr(override), nil
+			return util.PythonStr(override), nil
 		}
 		return util.ReadProjectField(baseDir, "version"), nil
 
@@ -170,29 +169,5 @@ func truthy(value any) bool {
 		return len(typed) > 0
 	default:
 		return true
-	}
-}
-
-// pyStr renders a decoded value the way Python's str() renders it, which is
-// what an f-string interpolation of a config value produced.
-func pyStr(value any) string {
-	switch typed := value.(type) {
-	case nil:
-		return "None"
-	case bool:
-		if typed {
-			return "True"
-		}
-		return "False"
-	case string:
-		return typed
-	case int64:
-		return strconv.FormatInt(typed, 10)
-	case int:
-		return strconv.Itoa(typed)
-	case float64:
-		return util.PythonFloatRepr(typed)
-	default:
-		return fmt.Sprint(value)
 	}
 }

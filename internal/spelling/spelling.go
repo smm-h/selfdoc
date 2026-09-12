@@ -82,6 +82,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/directives"
 	"github.com/smm-h/selfdoc/internal/tokenizer"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // wordlistFS carries the vendored word list, its retrieval record and
@@ -302,43 +303,12 @@ func LoadAcceptList(path string) (Vocab, error) {
 					"or a '#' comment. Split a hyphenated compound into its "+
 					"parts and give each its own line -- the checker checks "+
 					"the parts, so a hyphenated entry would accept nothing.",
-				target, index+1, pythonRepr(entry),
+				target, index+1, util.PythonRepr(entry),
 			)}
 		}
 		accepted[entry] = struct{}{}
 	}
 	return accepted, nil
-}
-
-// pythonRepr renders text the way Python's repr() of a string does: single
-// quotes unless the text carries one and no double quote, with backslashes and
-// the quote character escaped.
-func pythonRepr(text string) string {
-	quote := byte('\'')
-	if strings.Contains(text, "'") && !strings.Contains(text, `"`) {
-		quote = '"'
-	}
-	var out strings.Builder
-	out.WriteByte(quote)
-	for _, r := range text {
-		switch r {
-		case '\\':
-			out.WriteString(`\\`)
-		case '\n':
-			out.WriteString(`\n`)
-		case '\r':
-			out.WriteString(`\r`)
-		case '\t':
-			out.WriteString(`\t`)
-		case rune(quote):
-			out.WriteByte('\\')
-			out.WriteByte(quote)
-		default:
-			out.WriteRune(r)
-		}
-	}
-	out.WriteByte(quote)
-	return out.String()
 }
 
 // -- The renderer vocabulary ------------------------------------------------
@@ -384,12 +354,13 @@ var RendererVocabulary = Vocab{
 // character that is neither a digit nor an underscore.
 const letterClass = `\p{L}`
 
-// spaceClass and nonSpaceClass reproduce Python's Unicode-aware `\s` and `\S`,
-// which Go's own `\s` does not: Python's class carries the C0 separators, the
-// next-line control, and every Unicode separator category.
+// spaceClass and nonSpaceClass are this package's short spellings of Python's
+// Unicode-aware `\s` and `\S`, which Go's own `\s` does not reproduce:
+// Python's class carries the C0 separators, the next-line control, and every
+// Unicode separator category.
 const (
-	spaceClass    = `[\t\n\v\f\r \x{1C}-\x{1F}\x{85}\p{Z}]`
-	nonSpaceClass = `[^\t\n\v\f\r \x{1C}-\x{1F}\x{85}\p{Z}]`
+	spaceClass    = util.PythonSpaceClass
+	nonSpaceClass = util.PythonNonSpaceClass
 )
 
 // attrTokenClass is the character class Python spells `[\w-]`: a Unicode word
@@ -566,7 +537,8 @@ func blankBlockMarkers(text string) string {
 				continue
 			}
 			after := start + len(marker)
-			if after == len(text) || isSpaceAt(text, after) {
+			next, _ := utf8.DecodeRuneInString(text[after:])
+			if after == len(text) || util.IsPythonSpace(next) {
 				blankRange(buffer, start, after)
 			}
 			break
@@ -578,20 +550,6 @@ func blankBlockMarkers(text string) string {
 		start += newline + 1
 	}
 	return string(buffer)
-}
-
-// isSpaceAt reports whether the character at offset is whitespace under
-// Python's Unicode `\s`.
-func isSpaceAt(text string, offset int) bool {
-	r, _ := utf8.DecodeRuneInString(text[offset:])
-	switch r {
-	case '\t', '\n', '\v', '\f', '\r', ' ', 0x85:
-		return true
-	}
-	if r >= 0x1C && r <= 0x1F {
-		return true
-	}
-	return unicode.Is(unicode.Z, r)
 }
 
 // blankRange overwrites buffer[start:end) with one space per byte.

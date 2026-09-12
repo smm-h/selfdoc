@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -104,91 +102,6 @@ func asFloat(v any) (float64, bool) {
 	}
 }
 
-// pythonRepr renders v the way Python's repr does, for the diagnostics that
-// quote an offending value.
-//
-// A map's keys are rendered in sorted order rather than insertion order: Go
-// maps carry no insertion order, and a diagnostic that names an object has
-// to be reproducible.
-func pythonRepr(v any) string {
-	switch t := v.(type) {
-	case nil:
-		return "None"
-	case bool:
-		if t {
-			return "True"
-		}
-		return "False"
-	case string:
-		return pythonStrRepr(t)
-	case int:
-		return strconv.Itoa(t)
-	case int64:
-		return strconv.FormatInt(t, 10)
-	case float64:
-		return util.PythonFloatRepr(t)
-	case []any:
-		parts := make([]string, len(t))
-		for i, item := range t {
-			parts[i] = pythonRepr(item)
-		}
-		return "[" + strings.Join(parts, ", ") + "]"
-	case map[string]any:
-		keys := make([]string, 0, len(t))
-		for k := range t {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		parts := make([]string, len(keys))
-		for i, k := range keys {
-			parts[i] = pythonStrRepr(k) + ": " + pythonRepr(t[k])
-		}
-		return "{" + strings.Join(parts, ", ") + "}"
-	default:
-		return fmt.Sprintf("%v", v)
-	}
-}
-
-// pythonStrRepr quotes s the way Python's repr(str) does: single quotes
-// unless the string contains a single quote and no double quote, the short
-// escapes for backslash, tab, newline and carriage return, a \xNN escape for
-// every other non-printable below U+0100, and \uXXXX or \UXXXXXXXX above it.
-func pythonStrRepr(s string) string {
-	quote := byte('\'')
-	if strings.Contains(s, "'") && !strings.Contains(s, `"`) {
-		quote = '"'
-	}
-	var b strings.Builder
-	b.WriteByte(quote)
-	for _, r := range s {
-		switch {
-		case r == rune(quote) || r == '\\':
-			b.WriteByte('\\')
-			b.WriteRune(r)
-		case r == '\t':
-			b.WriteString(`\t`)
-		case r == '\n':
-			b.WriteString(`\n`)
-		case r == '\r':
-			b.WriteString(`\r`)
-		case r < 0x20 || r == 0x7f:
-			fmt.Fprintf(&b, `\x%02x`, r)
-		case r < 0x7f:
-			b.WriteRune(r)
-		case unicode.IsPrint(r):
-			b.WriteRune(r)
-		case r < 0x100:
-			fmt.Fprintf(&b, `\x%02x`, r)
-		case r < 0x10000:
-			fmt.Fprintf(&b, `\u%04x`, r)
-		default:
-			fmt.Fprintf(&b, `\U%08x`, r)
-		}
-	}
-	b.WriteByte(quote)
-	return b.String()
-}
-
 // formatBound renders a numeric bound for a diagnostic the way Python
 // renders it inside an f-string, including "None" for an absent bound --
 // which the integer range message prints verbatim when only one bound is
@@ -197,7 +110,7 @@ func formatBound(v any) string {
 	if v == nil {
 		return "None"
 	}
-	return pythonRepr(v)
+	return util.PythonRepr(v)
 }
 
 var patternCache sync.Map // Python pattern string -> *regexp.Regexp

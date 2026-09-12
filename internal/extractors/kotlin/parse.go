@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/tables"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // The two character classes the ported patterns are written against.
@@ -14,24 +15,17 @@ import (
 // \w matches a letter, a digit or an underscore in any script and whose \s adds
 // the four ASCII separators to the Unicode whitespace set.
 const (
-	wordChars  = `\p{L}\p{N}_`
-	spaceChars = `\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}` +
-		`\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}`
+	wordChars  = util.PythonWordChars
+	spaceChars = util.PythonSpaceChars
 	wordClass  = "[" + wordChars + "]"
 	spaceClass = "[" + spaceChars + "]"
 )
 
-// isPySpace reports whether r is whitespace by Python's str.isspace rule, which
-// is Unicode whitespace plus the four ASCII separator control characters.
-func isPySpace(r rune) bool {
-	return unicode.IsSpace(r) || (r >= 0x1c && r <= 0x1f)
-}
-
 // strip is Python's str.strip() with no argument.
-func strip(s string) string { return strings.TrimFunc(s, isPySpace) }
+func strip(s string) string { return util.PythonStrip(s) }
 
 // rstrip is Python's str.rstrip() with no argument.
-func rstrip(s string) string { return strings.TrimRightFunc(s, isPySpace) }
+func rstrip(s string) string { return util.PythonRStrip(s) }
 
 // modifiers matches the run of Kotlin modifiers a declaration keyword can
 // carry. None of them says anything about visibility, so they are consumed

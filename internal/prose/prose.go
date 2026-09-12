@@ -21,6 +21,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // abbreviations are the words whose trailing period must NOT be treated as a
@@ -53,7 +55,7 @@ func findSentenceEnd(text string) (int, bool) {
 		// Must be followed by whitespace or end-of-text.
 		if next := i + utf8.RuneLen(ch); next < len(text) {
 			r, _ := utf8.DecodeRuneInString(text[next:])
-			if !isSpace(r) {
+			if !util.IsPythonSpace(r) {
 				continue
 			}
 		}
@@ -62,7 +64,7 @@ func findSentenceEnd(text string) (int, bool) {
 			k := i
 			for k > 0 {
 				r, size := utf8.DecodeLastRuneInString(text[:k])
-				if isSpace(r) {
+				if util.IsPythonSpace(r) {
 					break
 				}
 				k -= size
@@ -89,7 +91,7 @@ func FirstParagraph(text string) string {
 	}
 	var para []string
 	for _, line := range strings.Split(text, "\n") {
-		stripped := trimSpace(line)
+		stripped := util.PythonStrip(line)
 		if stripped == "" {
 			if len(para) > 0 {
 				break
@@ -159,7 +161,7 @@ func isATXHeading(stripped string) bool {
 		return true
 	}
 	r, _ := utf8.DecodeRuneInString(rest)
-	return isSpace(r)
+	return util.IsPythonSpace(r)
 }
 
 // JoinWrappedLines joins soft-wrapped physical lines within the paragraphs of
@@ -195,7 +197,7 @@ func JoinWrappedLines(text string) string {
 	}
 
 	for _, line := range strings.Split(text, "\n") {
-		stripped := trimSpace(line)
+		stripped := util.PythonStrip(line)
 
 		if strings.HasPrefix(stripped, "```") || strings.HasPrefix(stripped, "~~~") {
 			flush()
@@ -223,7 +225,7 @@ func JoinWrappedLines(text string) string {
 		indented := false
 		if line != "" {
 			r, _ := utf8.DecodeRuneInString(line)
-			indented = isSpace(r)
+			indented = util.IsPythonSpace(r)
 		}
 		isDoctest := strings.HasPrefix(stripped, ">>>") || strings.HasPrefix(stripped, "...")
 		if indented || isListItem(stripped) || isDoctest {

@@ -2,9 +2,9 @@ package svelte
 
 import (
 	"strings"
-	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // pySpace and pyWord are the in-package spellings of the base package's
@@ -16,16 +16,11 @@ const (
 	pyWord  = extractors.PyWordClass
 )
 
-// isPySpace reports whether r is whitespace by Python's str.isspace rule.
-func isPySpace(r rune) bool {
-	return unicode.IsSpace(r) || (r >= 0x1c && r <= 0x1f)
-}
-
 // pyStrip is Python's str.strip() with no argument.
-func pyStrip(s string) string { return strings.TrimFunc(s, isPySpace) }
+func pyStrip(s string) string { return util.PythonStrip(s) }
 
 // pyRStrip is Python's str.rstrip() with no argument.
-func pyRStrip(s string) string { return strings.TrimRightFunc(s, isPySpace) }
+func pyRStrip(s string) string { return util.PythonRStrip(s) }
 
 // splitExt splits path into its stem and its extension, reproducing Python's
 // posixpath.splitext: the extension starts at the last dot of the last path

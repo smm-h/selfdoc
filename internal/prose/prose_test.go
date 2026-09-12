@@ -244,24 +244,3 @@ func TestWrappedGoCommentYieldsAWholeSentence(t *testing.T) {
 		t.Errorf("FirstSentence(JoinWrappedLines()) = %q, want %q", got, want)
 	}
 }
-
-// TestIsSpaceCoversPythonsInformationSeparators pins the one place Go's own
-// whitespace predicate is narrower than Python's.
-func TestIsSpaceCoversPythonsInformationSeparators(t *testing.T) {
-	t.Parallel()
-	for _, r := range []rune{0x1c, 0x1d, 0x1e, 0x1f} {
-		if !isSpace(r) {
-			t.Errorf("isSpace(%#U) = false, want true", r)
-		}
-	}
-	for _, r := range []rune{' ', '\t', '\n', '\r', '\v', '\f', 0x85, 0xa0, 0x2028, 0x3000} {
-		if !isSpace(r) {
-			t.Errorf("isSpace(%#U) = false, want true", r)
-		}
-	}
-	for _, r := range []rune{'a', '0', '.', 0x200b} {
-		if isSpace(r) {
-			t.Errorf("isSpace(%#U) = true, want false", r)
-		}
-	}
-}

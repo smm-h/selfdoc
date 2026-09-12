@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"unicode"
 
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/tables"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // The two character classes the ported patterns are written against.
@@ -18,21 +18,14 @@ import (
 // spelled out as their members so a pattern can compose them with further
 // characters, which a nested class cannot do.
 const (
-	wordChars  = `\p{L}\p{N}_`
-	spaceChars = `\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}` +
-		`\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}`
+	wordChars  = util.PythonWordChars
+	spaceChars = util.PythonSpaceChars
 	wordClass  = "[" + wordChars + "]"
 	spaceClass = "[" + spaceChars + "]"
 )
 
-// isPySpace reports whether r is whitespace by Python's str.isspace rule, which
-// is Unicode whitespace plus the four ASCII separator control characters.
-func isPySpace(r rune) bool {
-	return unicode.IsSpace(r) || (r >= 0x1c && r <= 0x1f)
-}
-
 // strip is Python's str.strip() with no argument.
-func strip(s string) string { return strings.TrimFunc(s, isPySpace) }
+func strip(s string) string { return util.PythonStrip(s) }
 
 // The library-level directives a file can carry.
 var (
@@ -479,7 +472,7 @@ func makeDecl(
 func cleanDartSignature(line string) string {
 	line = bodyOpenerRe.ReplaceAllString(line, "")
 	line = strings.TrimRight(line, ";")
-	return strings.TrimRightFunc(line, isPySpace)
+	return util.PythonRStrip(line)
 }
 
 // extractClassFields lists the classes in Dart source that have fields, with

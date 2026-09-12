@@ -3,6 +3,8 @@ package listing
 import (
 	"sort"
 	"strings"
+
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // CheckAgainst returns an error unless every listed slug can actually be
@@ -14,7 +16,7 @@ import (
 func CheckAgainst(listing Listing, manifests []map[string]any, homeSlug string, source string) error {
 	known := map[string]bool{}
 	for _, manifest := range manifests {
-		known[pyStr(manifest["slug"])] = true
+		known[util.PythonStrOrEmpty(manifest["slug"])] = true
 	}
 	missing := make([]string, 0)
 	for _, entry := range listing.Entries() {
@@ -49,7 +51,7 @@ func CheckAgainst(listing Listing, manifests []map[string]any, homeSlug string, 
 					"%s lists %s, which is the home project -- the page the "+
 						"listing appears on. The home project is left out of "+
 						"the listing it renders.",
-					source, pyRepr(homeSlug),
+					source, util.PythonRepr(homeSlug),
 				)
 			}
 		}
@@ -81,7 +83,7 @@ func RenderHTML(listing Listing, manifests []map[string]any, siteHop string, hom
 	}
 	bySlug := map[string]map[string]any{}
 	for _, manifest := range manifests {
-		bySlug[pyStr(manifest["slug"])] = manifest
+		bySlug[util.PythonStrOrEmpty(manifest["slug"])] = manifest
 	}
 
 	parts := []string{`<section class="project-list">`}
@@ -99,12 +101,12 @@ func RenderHTML(listing Listing, manifests []map[string]any, siteHop string, hom
 				href = project.URL
 			} else {
 				manifest := bySlug[project.Slug]
-				name = pyStr(manifest["name"])
+				name = util.PythonStrOrEmpty(manifest["name"])
 				if name == "" {
 					name = project.Slug
 				}
 				href = siteHop + project.Slug + "/"
-				version = pyStr(manifest["version"])
+				version = util.PythonStrOrEmpty(manifest["version"])
 			}
 			parts = append(parts, `      <article class="card project-card">`)
 			parts = append(parts, `        <div class="card-title-row">`)

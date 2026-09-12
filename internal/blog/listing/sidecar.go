@@ -95,7 +95,7 @@ func ParseSidecar(text string, source string) (Listing, error) {
 		return Listing{}, errorf(
 			"%s declares format_version %s; this selfblog reads %d. Re-deploy "+
 				"the home project to rewrite the sidecar.",
-			source, pyRepr(jsonValue(data["format_version"])), FormatVersion,
+			source, util.PythonRepr(jsonValue(data["format_version"])), FormatVersion,
 		)
 	}
 	rawCategories, _ := data["categories"].([]any)
@@ -113,15 +113,15 @@ func ParseSidecar(text string, source string) (Listing, error) {
 				continue
 			}
 			projects = append(projects, Project{
-				Slug:  pyStr(jsonValue(project["slug"])),
-				Blurb: pyStr(jsonValue(project["blurb"])),
-				URL:   pyStr(jsonValue(project["url"])),
-				Name:  pyStr(jsonValue(project["name"])),
-				Repo:  pyStr(jsonValue(project["repo"])),
+				Slug:  util.PythonStrOrEmpty(jsonValue(project["slug"])),
+				Blurb: util.PythonStrOrEmpty(jsonValue(project["blurb"])),
+				URL:   util.PythonStrOrEmpty(jsonValue(project["url"])),
+				Name:  util.PythonStrOrEmpty(jsonValue(project["name"])),
+				Repo:  util.PythonStrOrEmpty(jsonValue(project["repo"])),
 			})
 		}
 		categories = append(categories, Category{
-			Name:     pyStr(jsonValue(category["name"])),
+			Name:     util.PythonStrOrEmpty(jsonValue(category["name"])),
 			Projects: projects,
 		})
 	}

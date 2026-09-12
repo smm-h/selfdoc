@@ -7,14 +7,14 @@ import (
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
-// pySpace is the character class of Python's str-mode \s, which every pattern
-// below was written against: Go's own \s plus the four information separators
-// U+001C through U+001F, which Python counts as whitespace and Go does not.
-const pySpace = `[\x09-\x0d\x20\x{1c}-\x{1f}\x{85}\p{Z}]`
-
-// pyWord is the character class of Python's str-mode \w: a letter, a number
-// or an underscore.
-const pyWord = `[\p{L}\p{N}_]`
+// pySpace and pyWord are this package's short spellings of Python's str-mode
+// \s and \w, which every pattern below was written against. Go's own two are
+// narrower: its \s omits the four information separators U+001C through
+// U+001F, and its \w is ASCII-only.
+const (
+	pySpace = util.PythonSpaceClass
+	pyWord  = util.PythonWordClass
+)
 
 // pyDigit is the character class of Python's str-mode \d: a Unicode decimal
 // digit.
@@ -57,7 +57,7 @@ func Tokenize(content string) []Token {
 		// 1. Fenced code block.
 		if strings.HasPrefix(line, "```") {
 			start := i
-			infoParts := fields(trimSpace(line[3:]))
+			infoParts := util.PythonFields(util.PythonStrip(line[3:]))
 			lang := ""
 			if len(infoParts) > 0 {
 				lang = infoParts[0]
@@ -161,11 +161,11 @@ func Tokenize(content string) []Token {
 		}
 
 		// 5. Table.
-		if reTableRow.MatchString(trimSpace(line)) {
+		if reTableRow.MatchString(util.PythonStrip(line)) {
 			start := i
 			var rows []string
-			for i < n && reTableRow.MatchString(trimSpace(lines[i])) {
-				rows = append(rows, trimSpace(lines[i]))
+			for i < n && reTableRow.MatchString(util.PythonStrip(lines[i])) {
+				rows = append(rows, util.PythonStrip(lines[i]))
 				i++
 			}
 			tokens = append(tokens, Table{
@@ -228,7 +228,7 @@ func Tokenize(content string) []Token {
 		}
 
 		// 9. Blank line.
-		if trimSpace(line) == "" {
+		if util.PythonStrip(line) == "" {
 			tokens = append(tokens, BlankLine{
 				Span: Span{StartLine: i + 1, EndLine: i + 1},
 			})
@@ -237,20 +237,20 @@ func Tokenize(content string) []Token {
 		}
 
 		// 10. Definition list.
-		if trimSpace(line) != "" && i+1 < n && strings.HasPrefix(lines[i+1], ": ") {
+		if util.PythonStrip(line) != "" && i+1 < n && strings.HasPrefix(lines[i+1], ": ") {
 			start := i
 			var entries []DefinitionEntry
 			for i < n {
-				termLine := trimSpace(lines[i])
+				termLine := util.PythonStrip(lines[i])
 				if termLine == "" {
 					// A blank line might separate groups: skip the blanks
 					// and see whether the next non-blank line starts
 					// another term-and-definition pair.
 					j := i
-					for j < n && trimSpace(lines[j]) == "" {
+					for j < n && util.PythonStrip(lines[j]) == "" {
 						j++
 					}
-					if j < n && j+1 < n && trimSpace(lines[j]) != "" &&
+					if j < n && j+1 < n && util.PythonStrip(lines[j]) != "" &&
 						strings.HasPrefix(lines[j+1], ": ") {
 						i = j
 						continue
@@ -284,7 +284,7 @@ func Tokenize(content string) []Token {
 		var paraLines []string
 		for i < n {
 			current := lines[i]
-			if trimSpace(current) == "" {
+			if util.PythonStrip(current) == "" {
 				break
 			}
 			if strings.HasPrefix(current, "```") {
@@ -302,7 +302,7 @@ func Tokenize(content string) []Token {
 			if reOrdered.MatchString(current) {
 				break
 			}
-			if reTableRow.MatchString(trimSpace(current)) {
+			if reTableRow.MatchString(util.PythonStrip(current)) {
 				break
 			}
 			if strings.HasPrefix(current, ">") {

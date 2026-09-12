@@ -44,6 +44,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // DefaultPath returns where the registry lives. Machine-local by design --
@@ -180,7 +181,7 @@ func (r *Registry) Get(name string) (Entry, error) {
 	}
 	return nil, errorf(
 		"No repository named %s in %s. Known repositories: %s.",
-		pyRepr(name), r.Path, known,
+		util.PythonRepr(name), r.Path, known,
 	)
 }
 
@@ -258,7 +259,7 @@ func Load(path string) (*Registry, error) {
 		if _, declared := document["repo"]; declared {
 			return nil, errorf(
 				"%s: 'repo' must be an array of tables ([[repo]]), got %s.",
-				path, pyTypeName(document["repo"]),
+				path, util.PythonTypeName(document["repo"]),
 			)
 		}
 	}
@@ -275,7 +276,7 @@ func Load(path string) (*Registry, error) {
 			return nil, errorf(
 				"%s: duplicate repository name %s, declared by entry #%d and "+
 					"entry #%d.",
-				path, pyRepr(entry.Name()), earlier+1, index+1,
+				path, util.PythonRepr(entry.Name()), earlier+1, index+1,
 			)
 		}
 		seen[entry.Name()] = index
@@ -293,7 +294,7 @@ func parseEntry(raw any, index int, path string) (Entry, error) {
 	if !ok {
 		return nil, errorf(
 			"%s: each 'repo' element must be a table ([[repo]]), got %s.",
-			where, pyTypeName(raw),
+			where, util.PythonTypeName(raw),
 		)
 	}
 
@@ -306,11 +307,11 @@ func parseEntry(raw any, index int, path string) (Entry, error) {
 		return nil, errorf(
 			"%s: 'name' must be a URL-addressable identifier (letters, "+
 				"digits, dot, dash, underscore; no slashes, no spaces), got %s.",
-			where, pyRepr(rawName),
+			where, util.PythonRepr(rawName),
 		)
 	}
 
-	where = fmt.Sprintf("%s: repository %s", path, pyRepr(name))
+	where = fmt.Sprintf("%s: repository %s", path, util.PythonRepr(name))
 
 	rawKind, declared := table["kind"]
 	if !declared {
@@ -329,7 +330,7 @@ func parseEntry(raw any, index int, path string) (Entry, error) {
 	}
 	return nil, errorf(
 		"%s: unknown kind %s. Valid kinds are \"local\" and \"remote\".",
-		where, pyRepr(rawKind),
+		where, util.PythonRepr(rawKind),
 	)
 }
 
@@ -351,13 +352,13 @@ func rejectUnknownKeys(table map[string]any, allowed []string, where, kind strin
 func requireString(table map[string]any, key, where string) (string, error) {
 	value, declared := table[key]
 	if !declared {
-		return "", errorf("%s: %s is required.", where, pyRepr(key))
+		return "", errorf("%s: %s is required.", where, util.PythonRepr(key))
 	}
 	text, isString := value.(string)
 	if !isString || strings.TrimSpace(text) == "" {
 		return "", errorf(
 			"%s: %s must be a non-empty string, got %s.",
-			where, pyRepr(key), pyRepr(value),
+			where, util.PythonRepr(key), util.PythonRepr(value),
 		)
 	}
 	return text, nil
@@ -423,7 +424,7 @@ func parseRemote(table map[string]any, name, where string) (Entry, error) {
 	if !isBool {
 		return nil, errorf(
 			"%s: 'render' must be true or false, got %s.",
-			where, pyRepr(rawRender),
+			where, util.PythonRepr(rawRender),
 		)
 	}
 
