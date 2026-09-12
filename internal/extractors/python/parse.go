@@ -51,8 +51,8 @@ func parseDocument(displayPath string, source []byte) (*document, error) {
 
 	r := &reader{lang: pythonGrammar(), source: source}
 
-	if root.HasErrorOrMissing() {
-		message := fmt.Sprintf("invalid syntax (%s, line %d)", displayPath, r.firstErrorLine(root))
+	if line, failed := r.firstSyntaxProblem(root); failed {
+		message := fmt.Sprintf("invalid syntax (%s, line %d)", displayPath, line)
 		return &document{SyntaxError: &message}, nil
 	}
 
@@ -89,16 +89,37 @@ func FirstSyntaxErrorLine(source []byte) (line int, failed bool, err error) {
 	if root == nil {
 		return 0, false, fmt.Errorf("the Python parser produced no tree")
 	}
-	if !root.HasErrorOrMissing() {
-		return 0, false, nil
-	}
 	r := &reader{lang: pythonGrammar(), source: source}
-	return r.firstErrorLine(root), true, nil
+	line, failed = r.firstSyntaxProblem(root)
+	return line, failed, nil
 }
 
-// firstErrorLine is the one-based line of the first error or missing node,
-// which is the closest this parser comes to the line the interpreter named.
-func (r *reader) firstErrorLine(root *gotreesitter.Node) int {
+// firstSyntaxProblem reports the one-based line of the first thing that makes
+// the file unparseable, and whether there is one at all.
+//
+// Two things count. An error or a missing node is the grammar's own verdict.
+// A decorator that no definition follows is not -- the grammar admits one,
+// and an example that ends with a bare @decorator line is a common way to
+// write one -- but CPython refuses it, so it is reported here too.
+func (r *reader) firstSyntaxProblem(root *gotreesitter.Node) (line int, failed bool) {
+	first := r.firstErrorNode(root)
+	if dangling := r.firstDanglingDecorator(root); dangling != nil {
+		if first == nil || dangling.StartByte() < first.StartByte() {
+			first = dangling
+		}
+	}
+	if first == nil {
+		return 0, false
+	}
+	return lineOf(first), true
+}
+
+// firstErrorNode is the first error or missing node in the tree, nil when the
+// grammar accepted everything.
+func (r *reader) firstErrorNode(root *gotreesitter.Node) *gotreesitter.Node {
+	if !root.HasErrorOrMissing() {
+		return nil
+	}
 	var found *gotreesitter.Node
 	var walk func(n *gotreesitter.Node)
 	walk = func(n *gotreesitter.Node) {
@@ -118,9 +139,36 @@ func (r *reader) firstErrorLine(root *gotreesitter.Node) int {
 	}
 	walk(root)
 	if found == nil {
-		return 1
+		// The tree reports an error it will not point at; the file still does
+		// not parse, so the first line is the honest answer.
+		return root
 	}
-	return int(found.StartPoint().Row) + 1
+	return found
+}
+
+// firstDanglingDecorator is the first decorator no definition follows, nil
+// when every decorator decorates something.
+func (r *reader) firstDanglingDecorator(root *gotreesitter.Node) *gotreesitter.Node {
+	var found *gotreesitter.Node
+	var walk func(n *gotreesitter.Node)
+	walk = func(n *gotreesitter.Node) {
+		if found != nil {
+			return
+		}
+		if r.kind(n) == "decorator" {
+			parent := n.Parent()
+			if parent == nil || r.kind(parent) != "decorated_definition" ||
+				r.field(parent, "definition") == nil {
+				found = n
+				return
+			}
+		}
+		for _, child := range r.named(n) {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
 }
 
 // statements are a module's or a block's statements in source order, with the

@@ -236,6 +236,34 @@ func TestDeclarationRenderings(t *testing.T) {
 	}
 }
 
+// TestADanglingDecoratorIsASyntaxError pins the one refusal the grammar does
+// not make for us: it accepts a decorator that no definition follows, and
+// CPython does not, so a snippet that ends with a bare @decorator line is
+// reported rather than silently accepted.
+func TestADanglingDecoratorIsASyntaxError(t *testing.T) {
+	hygiene.Isolate(t)
+
+	source := "def positive(value):\n    return value > 0\n\n@flag(\"port\", validate=positive)\n"
+	line, failed, err := FirstSyntaxErrorLine([]byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !failed {
+		t.Fatal("a decorator with nothing to decorate was accepted")
+	}
+	if line != 4 {
+		t.Errorf("line = %d, want 4", line)
+	}
+
+	line, failed, err = FirstSyntaxErrorLine([]byte("@flag(\"port\")\ndef run():\n    pass\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if failed {
+		t.Errorf("a decorated definition was reported as a syntax error at line %d", line)
+	}
+}
+
 // TestSyntaxErrorNamesTheFileAndLine pins what a file that does not parse
 // answers, which every directive turns into its own marker.
 //
