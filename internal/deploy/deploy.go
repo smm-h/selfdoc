@@ -184,10 +184,11 @@ func ResolveCloudflareEnv() {
 func GitHubPages(outputDir, version, target string, h *effects.Handle) error {
 	if target == "" {
 		return &Error{
-			"deploy_github_pages requires an explicit push target: pass " +
-				"either a git remote URL or the path to the repository whose " +
-				"'origin' remote should be used. This deploy force-pushes the " +
-				"gh-pages branch, so the target is never inferred.",
+			"selfdoc deploy requires an explicit push target for GitHub " +
+				"Pages: pass either a git remote URL or the path to the " +
+				"repository whose 'origin' remote should be used. This deploy " +
+				"force-pushes the gh-pages branch, so the target is never " +
+				"inferred.",
 		}
 	}
 
@@ -196,7 +197,7 @@ func GitHubPages(outputDir, version, target string, h *effects.Handle) error {
 		info, err := os.Stat(target)
 		if err != nil || !info.IsDir() {
 			return &Error{fmt.Sprintf(
-				"deploy_github_pages target '%s' is neither a git "+
+				"selfdoc deploy target '%s' is neither a git "+
 					"remote URL nor an existing directory.", target,
 			)}
 		}

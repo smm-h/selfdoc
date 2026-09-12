@@ -125,6 +125,9 @@ func siteTree(t *testing.T) string {
 // force-pushes a gh-pages branch, so the target is never inferred from the
 // process's working directory: an empty one is refused, and a path that is
 // neither a remote URL nor a directory is refused by name.
+//
+// Every refusal names the command the reader ran, "selfdoc deploy", rather
+// than the internal function that produced it.
 func TestGitHubPagesTarget(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -134,14 +137,14 @@ func TestGitHubPagesTarget(t *testing.T) {
 		{
 			name:    "an empty target is refused",
 			target:  func(*testing.T, string) string { return "" },
-			wantErr: "requires an explicit push target",
+			wantErr: "selfdoc deploy requires an explicit push target",
 		},
 		{
 			name: "a path that does not exist is refused",
 			target: func(t *testing.T, dir string) string {
 				return filepath.Join(dir, "nope")
 			},
-			wantErr: "is neither a git remote URL nor an existing directory",
+			wantErr: "selfdoc deploy target",
 		},
 		{
 			name: "a file is not a repository directory",
