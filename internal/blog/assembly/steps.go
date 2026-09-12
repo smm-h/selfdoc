@@ -110,8 +110,9 @@ type BuildOptions struct {
 // come from are the assembly's, not its own.
 //
 // The build runs in this process rather than as a subprocess. The Python shelled
-// out to two other commands because selfblog never imported selfdoc; one binary
-// carries both, so the build is a call. Nothing about which build runs changed:
+// out to two other commands because the former blog package never imported the
+// docs generator; one binary carries both, so the build is a call. Nothing
+// about which build runs changed:
 // a posts-scope dispatch builds the posts alone, the home project builds with
 // the assembly's manifests in scope, and every other project builds its newest
 // declared version.

@@ -1,5 +1,5 @@
-// Package serving carries the static-file primitives shared by selfblog's two
-// local servers.
+// Package serving carries the static-file primitives shared by the two local
+// servers.
 //
 // The authoring app and the assembly preview both hand bytes off a disk tree
 // to a browser on loopback. Two questions are the same in both -- what content

@@ -9,9 +9,10 @@
 //
 // # Post checks are here too
 //
-// The Python this ports split post validation (POST001-POST007) out into
-// selfblog and reached it back through a registered hook, because the two
-// packages shipped as separate installs and selfdoc could not import selfblog.
+// The Python this ports split post validation (POST001-POST007) out into the
+// former blog package and reached it back through a registered hook, because
+// the two packages shipped as separate installs and the docs generator could
+// not import it.
 // One binary has no such boundary: [CheckPosts] and [PostErrorLint] live beside
 // the rules that consume them and [CheckDocs] calls them directly.
 //

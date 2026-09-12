@@ -438,9 +438,10 @@ func RenderLintTable() string {
 //
 // The concrete coverage type is the check package's, which measures far more
 // than this; declaring the dependency as an interface here keeps this package
-// below check in the import graph, as the Python module it ports was (selfblog
-// depends on selfdoc-core but not on selfdoc, so a posts-only install must
-// reach the verdict without the check module present).
+// below check in the import graph, as the Python module it ports was (the
+// former blog package depended on selfdoc-core but not on selfdoc, so a
+// posts-only install must reach the verdict without the check module
+// present).
 //
 // Pass a nil Coverage for a run that measured no coverage. A non-nil
 // interface holding a nil pointer is not the same thing and will panic.

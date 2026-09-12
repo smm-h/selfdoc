@@ -54,8 +54,9 @@ func GoProxyURL(version string) string {
 // an upper bound a human wrote once and forgot.
 //
 // One selfdoc version covers the whole toolchain now. The Python installed two
-// distributions -- selfdoc and selfblog -- and pinned each; one binary carries
-// both, so there is one pin and one flag for it.
+// distributions -- the docs generator and the former blog package -- and
+// pinned each; one binary carries both, so there is one pin and one flag for
+// it.
 //
 // Every field is required. [ResolveToolchainPins] is what turns an environment
 // into a set of pins; this type only carries them.
