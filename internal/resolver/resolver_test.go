@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -513,4 +514,116 @@ func TestANonCustomDirectiveFallsThrough(t *testing.T) {
 	rendered := mustResolve(t, resolver, "ref",
 		map[string]string{"path": "nonexistent.module"}, nil)
 	rejects(t, rendered, "custom directive")
+}
+
+// -- Directives compiled into the binary ----------------------------------
+
+func TestABuiltinDirectiveResolvesInProcess(t *testing.T) {
+	isolate(t)
+	base := t.TempDir()
+	config := makeConfig(map[string]any{
+		"directives": map[string]any{
+			"projects-cards": BuiltinDirective(
+				func(attrs map[string]string, body []string) (string, error) {
+					return "cards for " + attrs["slug"] +
+						" with " + strings.Join(body, "|"), nil
+				},
+			),
+		},
+	})
+	resolver := newResolver(t, config, base)
+	got := mustResolve(t, resolver, "projects-cards",
+		map[string]string{"slug": "alpha"}, []string{"a", "b"})
+	if got != "cards for alpha with a|b" {
+		t.Fatalf("rendered %q", got)
+	}
+}
+
+func TestABuiltinDirectivesErrorIsTheResolversError(t *testing.T) {
+	isolate(t)
+	config := makeConfig(map[string]any{
+		"directives": map[string]any{
+			"blog-highlights": BuiltinDirective(
+				func(map[string]string, []string) (string, error) {
+					return "", errors.New("requires limit")
+				},
+			),
+		},
+	})
+	resolver := newResolver(t, config, t.TempDir())
+	_, err := resolver.Resolve("blog-highlights", nil, nil)
+	if err == nil {
+		t.Fatal("a built-in directive that refuses must refuse the resolve")
+	}
+	wants(t, err.Error(), "requires limit")
+}
+
+func TestABuiltinDirectiveIsCheckedBeforeAContentDirective(t *testing.T) {
+	isolate(t)
+	config := makeConfig(map[string]any{
+		"directives": map[string]any{
+			"list-tree": BuiltinDirective(
+				func(map[string]string, []string) (string, error) {
+					return "not a tree", nil
+				},
+			),
+		},
+	})
+	resolver := newResolver(t, config, t.TempDir())
+	// The content directives are resolved first, so a registered name that
+	// collides with one never reaches the registration -- which is what
+	// keeps a project from redefining the framework's own vocabulary.
+	got := mustResolve(t, resolver, "list-tree",
+		map[string]string{"path": "."}, nil)
+	rejects(t, got, "not a tree")
+}
+
+func TestABuiltinDirectiveIsCheckedBeforeASameNamedScript(t *testing.T) {
+	isolate(t)
+	base := t.TempDir()
+	write(t, filepath.Join(base, "shim.py"),
+		"def resolve(attrs, config, body):\n    return 'from the script'\n")
+	config := makeConfig(map[string]any{
+		"directives": map[string]any{
+			"projects-cards": BuiltinDirective(
+				func(map[string]string, []string) (string, error) {
+					return "from the binary", nil
+				},
+			),
+		},
+	})
+	// One name, both spellings: the mapping holds the function, and a
+	// script of the same name declared beside it cannot shadow it.
+	config["directives"].(map[string]any)["blog-highlights"] = "shim.py"
+	resolver := newResolver(t, config, base)
+	if got := mustResolve(t, resolver, "projects-cards", nil, nil); got != "from the binary" {
+		t.Fatalf("rendered %q", got)
+	}
+}
+
+func TestAScriptBesideABuiltinStillGetsItsPayload(t *testing.T) {
+	isolate(t)
+	requirePython3(t)
+	base := t.TempDir()
+	write(t, filepath.Join(base, "shim.py"),
+		"import json\n\n\n"+
+			"def resolve(attrs, config, body):\n"+
+			"    return json.dumps(sorted(config['directives']))\n")
+	config := makeConfig(map[string]any{
+		"directives": map[string]any{
+			"projects-cards": BuiltinDirective(
+				func(map[string]string, []string) (string, error) {
+					return "from the binary", nil
+				},
+			),
+			"names": "shim.py",
+		},
+	})
+	resolver := newResolver(t, config, base)
+	// A function has no JSON form, so the payload names the scripts alone.
+	// Encoding the registration would fail the script that asked for none
+	// of it.
+	got := mustResolve(t, resolver, "names", nil, nil)
+	wants(t, got, `["names"]`)
+	rejects(t, got, "projects-cards")
 }

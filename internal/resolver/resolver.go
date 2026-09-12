@@ -25,6 +25,16 @@
 // an inline note on the page; a page that says "custom directive 'api'
 // failed" where its API reference belongs is not a page anybody wanted
 // published, and the note was as easy to miss as any other paragraph.
+//
+// # Directives compiled into the binary
+//
+// The same config key also accepts a [BuiltinDirective]: a function this
+// binary carries, registered by the caller that owns it and resolved in
+// process at the point a script would have been. The registrars are the
+// site-level directives an assembled site's home project carries, which render
+// from the assembly's manifests -- state a build is handed and no config
+// document can hold. They arrived as shipped Python shim scripts before there
+// was one binary to compile them into.
 package resolver
 
 import (
@@ -81,12 +91,32 @@ type Resolver struct {
 	// coverage measurement reads it to learn which source a page covered.
 	LastSourceEntry *extractors.SourceEntry
 
-	config  map[string]any
-	baseDir string
-	custom  map[string]string
-	groups  []languageGroup
-	handle  *effects.Handle
+	config        map[string]any
+	payloadConfig map[string]any
+	baseDir       string
+	custom        map[string]string
+	builtin       map[string]BuiltinDirective
+	groups        []languageGroup
+	handle        *effects.Handle
 }
+
+// BuiltinDirective resolves one directive in process, from whatever state the
+// registering caller captured.
+//
+// It is the second value the "directives" config key accepts. A string names a
+// script, which the Python driver loads and calls; a BuiltinDirective is a
+// directive compiled into this binary and handed to [MakeResolver] by the
+// caller that owns it, at the one point in the dispatch order the scripts
+// occupy. The site-level directives of an assembled site's home project are
+// the registrars: they render from the assembly's manifests, which the home
+// project's build receives and no config document can hold.
+//
+// Both values live under one key because a directive name is either known to
+// the catalog or declared there, and the name set the config declares is what
+// decides which markers a page may carry. A separate key would leave a
+// registered directive unknown to that check and refused before it ever
+// reached a resolver.
+type BuiltinDirective func(attrs map[string]string, body []string) (string, error)
 
 // MakeResolver builds the resolver for a project.
 //
@@ -100,10 +130,14 @@ func MakeResolver(config map[string]any, baseDir string, handle *effects.Handle)
 	}
 
 	custom := map[string]string{}
+	builtin := map[string]BuiltinDirective{}
 	if declared, isObject := config["directives"].(map[string]any); isObject {
 		for name, script := range declared {
-			if path, isString := script.(string); isString {
-				custom[name] = path
+			switch value := script.(type) {
+			case string:
+				custom[name] = value
+			case BuiltinDirective:
+				builtin[name] = value
 			}
 		}
 	}
@@ -131,12 +165,46 @@ func MakeResolver(config map[string]any, baseDir string, handle *effects.Handle)
 	}
 
 	return &Resolver{
-		config:  config,
-		baseDir: absolute,
-		custom:  custom,
-		groups:  groups,
-		handle:  handle,
+		config:        config,
+		payloadConfig: scriptOnlyConfig(config, builtin),
+		baseDir:       absolute,
+		custom:        custom,
+		builtin:       builtin,
+		groups:        groups,
+		handle:        handle,
 	}, nil
+}
+
+// scriptOnlyConfig is config as a custom directive's script payload names it:
+// the same document with every [BuiltinDirective] entry dropped from its
+// "directives" mapping.
+//
+// The payload is JSON, and a Go function has no JSON form -- so a project that
+// registers a built-in directive beside a script one would otherwise fail the
+// script's encoding. A built-in has no script to name, so a script that reads
+// config["directives"] to find its siblings sees the scripts, which is what
+// the key meant before a built-in could be registered under it.
+func scriptOnlyConfig(config map[string]any, builtin map[string]BuiltinDirective) map[string]any {
+	if len(builtin) == 0 {
+		return config
+	}
+	declared, isObject := config["directives"].(map[string]any)
+	if !isObject {
+		return config
+	}
+	scripts := make(map[string]any, len(declared))
+	for name, script := range declared {
+		if _, isBuiltin := builtin[name]; isBuiltin {
+			continue
+		}
+		scripts[name] = script
+	}
+	trimmed := make(map[string]any, len(config))
+	for key, value := range config {
+		trimmed[key] = value
+	}
+	trimmed["directives"] = scripts
+	return trimmed
 }
 
 // Resolve resolves one directive into the Markdown that replaces it.
@@ -160,6 +228,14 @@ func (r *Resolver) Resolve(name string, attrs map[string]string, body []string) 
 	}
 	if isContent {
 		return rendered, nil
+	}
+
+	// A directive registered by the caller, resolved in process. It sits
+	// where a script sits -- ahead of every catalog name that extracts from
+	// source code, behind the content directives -- because that is where
+	// the shim scripts these replaced were dispatched from.
+	if resolve, isBuiltin := r.builtin[name]; isBuiltin {
+		return resolve(attrs, body)
 	}
 
 	// A custom directive takes priority over a built-in name.
@@ -281,7 +357,7 @@ func (r *Resolver) runCustomDirective(
 
 	payload, err := util.PythonJSON(map[string]any{
 		"attrs":    stringMap(attrs),
-		"config":   r.config,
+		"config":   r.payloadConfig,
 		"body":     stringList(body),
 		"base_dir": r.baseDir,
 	})
