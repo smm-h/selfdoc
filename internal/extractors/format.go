@@ -8,16 +8,30 @@ import (
 	"unicode"
 )
 
-// pySpaceClass is a regexp character class equal to Python's \s for text
-// patterns: the ASCII whitespace characters, the four ASCII separators, and the
-// Unicode whitespace code points. Go's own \s is ASCII-only, so a ported
-// pattern that wrote \s gets this instead.
-const pySpaceClass = `[\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}]`
+// The three character classes below stand in for Python's \s, \S and \w in a
+// ported regexp. Go's versions of all three are ASCII-only, where Python's are
+// Unicode-aware for text patterns, so a pattern copied across unchanged would
+// quietly stop matching a non-breaking space or a non-Latin identifier. Every
+// extractor ports Python regexes, so they are exported rather than restated.
+const (
+	// PySpaceClass is Python's \s: the ASCII whitespace characters, the four
+	// ASCII separator controls, and the Unicode whitespace code points.
+	PySpaceClass = `[\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}]`
 
-// pyWordClass is a regexp character class equal to Python's \w for text
-// patterns where it is used to match an identifier: a letter, a digit or an
-// underscore, in any script. Go's own \w is ASCII-only.
-const pyWordClass = `[\p{L}\p{N}_]`
+	// PyNonSpaceClass is Python's \S, the complement of PySpaceClass.
+	PyNonSpaceClass = `[^\t\n\v\f\r \x{001c}-\x{001f}\x{0085}\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}]`
+
+	// PyWordClass is Python's \w where it matches an identifier character: a
+	// letter, a digit or an underscore, in any script.
+	PyWordClass = `[\p{L}\p{N}_]`
+)
+
+// pySpaceClass and pyWordClass are the in-package spellings of the two classes
+// this file's own patterns are built from.
+const (
+	pySpaceClass = PySpaceClass
+	pyWordClass  = PyWordClass
+)
 
 // isPySpace reports whether r is whitespace by Python's str.isspace rule, which
 // is Unicode whitespace plus the four ASCII separator control characters.
