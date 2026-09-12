@@ -225,6 +225,52 @@ func TestHandle(t *testing.T) {}
 	}
 }
 
+func TestGoCoverageSkipsToolchainIgnoredDirectories(t *testing.T) {
+	// A directory the Go toolchain ignores is not part of the package
+	// graph, so its exported names are not a public surface coverage can
+	// hold the docs to -- and no page is generated for one either.
+	isolate(t)
+	root := t.TempDir()
+	writeConfig(t, root, configForSource(
+		map[string]any{"path": "pkg/", "language": "go"},
+	))
+	write(t, filepath.Join(root, "pkg", "handler.go"),
+		`// Package pkg handles things.
+package pkg
+
+// Handle handles one thing.
+func Handle(name string) string { return name }
+`)
+	write(t, filepath.Join(root, "pkg", "testdata", "fixture", "fixture.go"),
+		`// Package fixture is test data.
+package fixture
+
+// Fixture is not a public symbol of this project.
+func Fixture() {}
+`)
+	write(t, filepath.Join(root, "pkg", "vendor", "dep", "dep.go"),
+		`// Package dep is vendored.
+package dep
+
+// Dep is not a public symbol of this project.
+func Dep() {}
+`)
+	write(t, filepath.Join(root, "docs", "api.md"),
+		"---\ndescription: Every exported name of the handler package, in one page.\n---\n"+
+			"# API\n\n:-: ref path=\"pkg\"\n")
+
+	result := checkFixture(t, root)
+
+	if result.Coverage == nil {
+		t.Fatal("coverage was not measured")
+	}
+	if result.Coverage.Total != 1 {
+		t.Errorf("total = %d, want 1 (Handle alone): referenced %v, unreferenced %v",
+			result.Coverage.Total, result.Coverage.ReferencedSymbols,
+			result.Coverage.UnreferencedSymbols)
+	}
+}
+
 func TestTypeScriptCoverageSkipsSpecFiles(t *testing.T) {
 	isolate(t)
 	root := t.TempDir()

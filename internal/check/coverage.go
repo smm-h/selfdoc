@@ -97,7 +97,7 @@ func computeCoverage(
 			if !isDir(srcDir) {
 				continue
 			}
-			files, err := walkSourceFiles(srcDir, extensions)
+			files, err := walkSourceFiles(srcDir, extensions, group.language)
 			if err != nil {
 				return nil, err
 			}
@@ -257,8 +257,11 @@ func computeCoverage(
 // directories are pruned, and a test file is not part of a project's public
 // surface. Go names one "*_test.go", TypeScript and JavaScript name one
 // "*.test.*" or "*.spec.*", Python names one "test_*.py" or "conftest.py", and
-// any language puts them in a tests, test or __tests__ directory.
-func walkSourceFiles(srcDir string, extensions []string) ([]string, error) {
+// any language puts them in a tests, test or __tests__ directory. For Go the
+// toolchain's own ignored directories are pruned too -- a package under
+// testdata, vendor, or a "." or "_" prefixed directory is not built, not
+// documented by a generated page, and therefore not a surface to measure.
+func walkSourceFiles(srcDir string, extensions []string, language string) ([]string, error) {
 	var files []string
 	err := filepath.WalkDir(srcDir, func(walked string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -271,6 +274,9 @@ func walkSourceFiles(srcDir string, extensions []string) ([]string, error) {
 			return nil
 		}
 		if walked != srcDir && excludes.ShouldSkipDir(entry.Name()) {
+			return fs.SkipDir
+		}
+		if walked != srcDir && language == "go" && excludes.GoToolchainIgnoresDir(entry.Name()) {
 			return fs.SkipDir
 		}
 		relToSrc, err := filepath.Rel(srcDir, walked)
