@@ -1,0 +1,309 @@
+
+@@@
+
+
+@@@
+
+
+
+
+@@@
+   
+@@@
+# Title
+@@@
+###### Deep heading
+@@@
+####### seven hashes is a paragraph
+@@@
+#no space after hash
+@@@
+#    lots of space
+@@@
+---
+@@@
+***
+@@@
+___
+@@@
+----------
+@@@
+--
+@@@
+```python
+print('hi')
+```
+@@@
+```
+foo
+```
+@@@
+```js
+let x = 1; // [1]
+```
+[1]: assign x
+@@@
+```py
+# not a heading
+print('hello')
+```
+@@@
+```a
+foo
+```
+```b
+bar
+```
+@@@
+```python validate
+print('hi')
+```
+@@@
+```python run validate lines=5
+print('hi')
+```
+@@@
+```validate
+foo
+```
+@@@
+```python nonsense validate
+print('hi')
+```
+@@@
+```python lines
+x
+```
+@@@
+```python lines=
+x
+```
+@@@
+```python lines=abc
+x
+```
+@@@
+```python lines=-3
+x
+```
+@@@
+```python   run   lines=12  
+x
+```
+@@@
+```go
+unterminated fence
+@@@
+```py
+x
+```
+[1]: one
+[2]: two
+[1]: one again
+not an annotation
+@@@
+```py
+x
+```
+[a]: not numeric
+@@@
+| A | B |
+| --- | --- |
+| 1 | 2 |
+@@@
+  | A | B |  
+| --- | --- |
+@@@
+||
+@@@
+|x|
+@@@
+- alpha
+- beta
+@@@
+* one
+* two
+* three
+@@@
+-nospace
+@@@
+1. first
+2. second
+3. third
+@@@
+10. ten
+11. eleven
+@@@
+1.nospace
+@@@
+> hello
+> world
+@@@
+> [!WARNING]
+> Be careful
+@@@
+> [!DANGER]
+> watch out
+@@@
+>no space
+@@@
+>
+@@@
+> [!not_a_word!]
+> body
+@@@
+Term
+: Definition
+@@@
+Word
+: Meaning one
+: Meaning two
+@@@
+Alpha
+: First letter
+
+Beta
+: Second letter
+@@@
+Alpha
+: First letter
+
+
+Beta
+: Second letter
+@@@
+Alpha
+: First letter
+
+not a term
+@@@
+Some intro text
+Term
+: Definition
+@@@
+Hello world
+this is a paragraph
+@@@
+:::cli rlsbl.commands.release
+:::
+@@@
+:::module mylib.config
+some body line
+another line
+:::
+@@@
+:::config
+:::
+@@@
+:::test
+:::
+@@@
+:::unclosed
+body
+@@@
+:::name   spaced   arg   
+:::
+@@@
+:::
+:::
+@@@
+::::weird
+:::
+@@@
+Intro paragraph.
+:::cli my.module
+:::
+@@@
+## Section
+
+:::cli my.module
+:::
+@@@
+Some intro text.
+
+:::module foo
+:::
+
+More text.
+@@@
+# Welcome
+
+A paragraph of text
+spanning two lines.
+
+---
+
+## Code Example
+
+```python
+# a comment
+x = 1
+```
+
+| Col1 | Col2 |
+| ---- | ---- |
+| a    | b    |
+
+- item one
+- item two
+
+1. first
+2. second
+
+> [!NOTE]
+> Take note
+
+:::cli my.module
+:::
+
+Term
+: Its definition
+@@@
+# Title
+
+Some text.
+
+```go
+// comment
+func main() {}
+```
+[1]: annotation
+
+---
+
+| A | B |
+| - | - |
+
+- x
+- y
+
+1. a
+2. b
+
+> quote
+
+:::cli my.mod
+:::
+
+Term
+: def
+@@@
+Ünïcödé heading text
+
+# Ünïcödé
+
+- Ünï item
+
+> Ünï quote
+@@@
+para line one
+para line two
+# heading interrupts
+para again
+@@@
+text
+| not | a | table | row
+more text
+@@@
+trailing spaces   
+next line
