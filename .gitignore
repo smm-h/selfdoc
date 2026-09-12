@@ -4,7 +4,10 @@ __pycache__/
 *$py.class
 *.egg-info/
 dist/
-build/
+# Anchored: the Python build directory is the one at the repository root, and
+# an unanchored pattern also matched the Go build pipeline's package at
+# internal/build/.
+/build/
 *.egg
 .venv/
 venv/
