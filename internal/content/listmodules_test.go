@@ -4,8 +4,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/smm-h/selfdoc/internal/effects"
 )
 
 // pythonProject writes a small Python package and returns its base directory.
@@ -290,7 +288,7 @@ func TestListModulesUnsupportedLanguage(t *testing.T) {
 
 	t.Run("is a hard error naming the escape hatch", func(t *testing.T) {
 		_, _, err := ResolveContent("list-modules",
-			map[string]string{"path": "src/"}, nil, base, config, effects.Unbound())
+			map[string]string{"path": "src/"}, nil, base, config)
 		if err == nil {
 			t.Fatal("a language with no extractor must be refused")
 		}
@@ -323,7 +321,7 @@ func TestListModulesCodelessProjectIsAHardError(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, _, err := ResolveContent("list-modules",
 				map[string]string{"path": "src/"}, nil, directory,
-				map[string]any{}, effects.Unbound())
+				map[string]any{})
 			if err == nil {
 				t.Fatal("a codeless project must be refused")
 			}

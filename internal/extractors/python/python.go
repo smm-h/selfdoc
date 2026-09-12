@@ -28,7 +28,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/prose"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -42,12 +41,9 @@ type Extractor struct {
 	analyses map[string]*analysis
 }
 
-// New builds the Python extractor.
-//
-// The handle is unused: reading a Python file is a file read and a parse, and
-// neither spawns anything. It stays in the signature because every extractor is
-// built through the same factory.
-func New(_ *effects.Handle) extractors.Extractor {
+// New builds the Python extractor. Reading a Python file is a file read and a
+// parse, and neither spawns anything.
+func New() extractors.Extractor {
 	extractor := &Extractor{analyses: map[string]*analysis{}}
 	extractor.Base = extractors.NewBase("python", map[string]extractors.Handler{
 		"ref":          extractor.handleModule,

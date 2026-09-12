@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/smm-h/selfdoc/internal/effects"
 )
 
 // fakeExtractor stands in for a language package in the registry tests. It
@@ -17,7 +15,7 @@ type fakeExtractor struct {
 }
 
 func newFake(language, marker string) Factory {
-	return func(*effects.Handle) Extractor {
+	return func() Extractor {
 		fake := &fakeExtractor{marker: marker}
 		fake.Base = NewBase(language, map[string]Handler{
 			"ref": func(path string, _ *string, _ []string, _ []string, _ string, _ map[string]string) (string, error) {
@@ -170,7 +168,7 @@ func TestRegisteredListsWhatIsLinkedIn(t *testing.T) {
 func TestLookup(t *testing.T) {
 	withRegistry(t, map[string]Factory{"zig": newFake("zig", "build.zig")})
 
-	extractor, ok, err := Lookup("zig", effects.Unbound())
+	extractor, ok, err := Lookup("zig")
 	if err != nil || !ok {
 		t.Fatalf("Lookup(zig) = (_, %v, %v), want (_, true, nil)", ok, err)
 	}
@@ -178,11 +176,11 @@ func TestLookup(t *testing.T) {
 		t.Fatalf("extractor name = %q, want zig", extractor.Name())
 	}
 
-	if _, ok, err := Lookup("rust", effects.Unbound()); ok || err != nil {
+	if _, ok, err := Lookup("rust"); ok || err != nil {
 		t.Fatalf("Lookup(rust) = (_, %v, %v), want (_, false, nil)", ok, err)
 	}
 
-	if _, _, err := Lookup("python", effects.Unbound()); err == nil {
+	if _, _, err := Lookup("python"); err == nil {
 		t.Fatal("a known language with no registered factory was answered without an error")
 	}
 }
@@ -236,7 +234,7 @@ func TestDetectLanguage(t *testing.T) {
 
 func assertDetect(t *testing.T, dir, want string) {
 	t.Helper()
-	got, err := DetectLanguage(dir, effects.Unbound())
+	got, err := DetectLanguage(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +249,7 @@ func TestDetectLanguages(t *testing.T) {
 	t.Run("a single language", func(t *testing.T) {
 		dir := t.TempDir()
 		touch(t, dir, "pyproject.toml")
-		got, err := DetectLanguages(dir, effects.Unbound())
+		got, err := DetectLanguages(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -265,7 +263,7 @@ func TestDetectLanguages(t *testing.T) {
 		touch(t, dir, "pyproject.toml")
 		touch(t, dir, "go.mod")
 		touch(t, dir, "tsconfig.json")
-		got, err := DetectLanguages(dir, effects.Unbound())
+		got, err := DetectLanguages(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -279,7 +277,7 @@ func TestDetectLanguages(t *testing.T) {
 	})
 
 	t.Run("an empty directory detects nothing", func(t *testing.T) {
-		got, err := DetectLanguages(t.TempDir(), effects.Unbound())
+		got, err := DetectLanguages(t.TempDir())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -296,7 +294,7 @@ func TestResolveSourceEntries(t *testing.T) {
 		config := map[string]any{"source": []any{
 			map[string]any{"path": "mylib/", "language": "python"},
 		}}
-		entries, err := ResolveSourceEntries(config, effects.Unbound())
+		entries, err := ResolveSourceEntries(config)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -316,7 +314,7 @@ func TestResolveSourceEntries(t *testing.T) {
 			map[string]any{"path": "src/", "language": "python"},
 			map[string]any{"path": "lib/", "language": "python"},
 		}}
-		entries, err := ResolveSourceEntries(config, effects.Unbound())
+		entries, err := ResolveSourceEntries(config)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -329,7 +327,7 @@ func TestResolveSourceEntries(t *testing.T) {
 		config := map[string]any{"source": []any{
 			map[string]any{"path": "lib/", "language": "ruby"},
 		}}
-		entries, err := ResolveSourceEntries(config, effects.Unbound())
+		entries, err := ResolveSourceEntries(config)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -346,7 +344,7 @@ func TestResolveSourceEntries(t *testing.T) {
 	})
 
 	t.Run("no source key yields no entries", func(t *testing.T) {
-		entries, err := ResolveSourceEntries(map[string]any{}, effects.Unbound())
+		entries, err := ResolveSourceEntries(map[string]any{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -357,11 +355,11 @@ func TestResolveSourceEntries(t *testing.T) {
 
 	t.Run("a malformed entry is an error", func(t *testing.T) {
 		config := map[string]any{"source": []any{map[string]any{"path": "lib/"}}}
-		if _, err := ResolveSourceEntries(config, effects.Unbound()); err == nil {
+		if _, err := ResolveSourceEntries(config); err == nil {
 			t.Fatal("a source entry with no language was accepted")
 		}
 		config = map[string]any{"source": "lib/"}
-		if _, err := ResolveSourceEntries(config, effects.Unbound()); err == nil {
+		if _, err := ResolveSourceEntries(config); err == nil {
 			t.Fatal("a non-array source was accepted")
 		}
 	})

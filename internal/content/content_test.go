@@ -10,7 +10,6 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/catalog"
 	"github.com/smm-h/selfdoc/internal/config"
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/stricttest/go/hygiene"
 
 	// The language packages register their extractors, which is what links
@@ -53,7 +52,7 @@ func resolve(
 ) (string, bool) {
 	t.Helper()
 	rendered, ok, err := ResolveContent(
-		name, attrs, body, baseDir, config, effects.Unbound(),
+		name, attrs, body, baseDir, config,
 	)
 	if err != nil {
 		t.Fatalf("ResolveContent(%q): %v", name, err)

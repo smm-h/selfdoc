@@ -27,7 +27,7 @@ func writeTree(t *testing.T, files map[string]string) string {
 }
 
 // newExtractor builds the extractor under test.
-func newExtractor() extractors.Extractor { return New(nil) }
+func newExtractor() extractors.Extractor { return New() }
 
 // extract resolves one directive against a fixture root.
 func extract(t *testing.T, root, directive string, attrs map[string]string, sourcePaths ...string) string {
@@ -140,7 +140,7 @@ func TestNameAndFileExtensions(t *testing.T) {
 func TestRegisteredFactory(t *testing.T) {
 	t.Parallel()
 
-	extractor, ok, err := extractors.Lookup("kotlin", nil)
+	extractor, ok, err := extractors.Lookup("kotlin")
 	if err != nil || !ok {
 		t.Fatalf("Lookup(kotlin) = %v, %v, %v", extractor, ok, err)
 	}

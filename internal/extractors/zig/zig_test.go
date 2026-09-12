@@ -7,14 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 )
 
-// newExtractor builds the extractor under test. The effects handle is unused
-// by every path in this package, so an unbound one is enough.
+// newExtractor builds the extractor under test.
 func newExtractor() extractors.Extractor {
-	return New(effects.Unbound())
+	return New()
 }
 
 // writeTree writes files into dir, creating the directories each one needs.
@@ -812,7 +810,7 @@ func TestResolvePathIgnoresADirectoryWithNoZigSource(t *testing.T) {
 func TestRegistered(t *testing.T) {
 	t.Parallel()
 
-	extractor, ok, err := extractors.Lookup("zig", effects.Unbound())
+	extractor, ok, err := extractors.Lookup("zig")
 	if err != nil {
 		t.Fatal(err)
 	}

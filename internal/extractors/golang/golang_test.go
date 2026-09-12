@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
@@ -198,7 +197,7 @@ func fixture(t *testing.T) string {
 	return base
 }
 
-func newExtractor() extractors.Extractor { return New(effects.Unbound()) }
+func newExtractor() extractors.Extractor { return New() }
 
 // TestRefRendersTheWholePackage is the strongest parity check in this file: one
 // package across two files, whose doc comment, const block, single const,

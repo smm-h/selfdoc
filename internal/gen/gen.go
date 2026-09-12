@@ -94,7 +94,7 @@ func GenerateDocs(config map[string]any, baseDir, versionOverride string, handle
 		config[content.VersionOverrideKey] = versionOverride
 	}
 
-	srcEntries, err := extractors.ResolveSourceEntries(config, handle)
+	srcEntries, err := extractors.ResolveSourceEntries(config)
 	if err != nil {
 		return GenResult{}, err
 	}

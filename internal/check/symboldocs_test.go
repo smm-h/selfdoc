@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/lints"
 )
@@ -14,7 +13,7 @@ import (
 // resolve their directive through.
 func pythonSourceEntry(t *testing.T) *extractors.SourceEntry {
 	t.Helper()
-	extractor, present, err := extractors.Lookup("python", effects.Unbound())
+	extractor, present, err := extractors.Lookup("python")
 	if err != nil {
 		t.Fatalf("Lookup python: %v", err)
 	}

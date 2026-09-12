@@ -4,18 +4,14 @@ import (
 	"fmt"
 	"sort"
 	"sync"
-
-	"github.com/smm-h/selfdoc/internal/effects"
 )
 
-// Factory builds an extractor bound to an effects handle.
+// Factory builds an extractor.
 //
-// The handle is a constructor argument rather than a per-call one because it
-// was one extractor's need rather than every handler's, and threading it
-// through eight signatures that ignore it would say the opposite of what is
-// true. No extractor reads it today: the Python one used to run an interpreter
-// through it and now parses in-process.
-type Factory func(handle *effects.Handle) Extractor
+// It takes nothing: every extractor answers by reading and parsing files, and
+// none of them needs an effects handle. The Python one used to run an
+// interpreter through one and now parses in-process.
+type Factory func() Extractor
 
 // knownLanguages is the authority on which languages selfdoc ships an
 // extractor for. A name on this list with no registered factory is a wiring
@@ -119,12 +115,12 @@ func Registered() []string {
 // would blame the project for a wiring mistake in selfdoc. A language selfdoc
 // does not support is not an error -- it returns false, and the caller
 // substitutes NewStub.
-func Lookup(name string, handle *effects.Handle) (Extractor, bool, error) {
+func Lookup(name string) (Extractor, bool, error) {
 	registryMu.RLock()
 	factory, ok := registry[name]
 	registryMu.RUnlock()
 	if ok {
-		return factory(handle), true, nil
+		return factory(), true, nil
 	}
 	if IsKnownLanguage(name) {
 		return nil, false, fmt.Errorf(
@@ -144,9 +140,9 @@ type DetectedLanguage struct {
 
 // DetectLanguage auto-detects a project's language from the marker files in
 // dir, returning the empty string when none is detected.
-func DetectLanguage(dir string, handle *effects.Handle) (string, error) {
+func DetectLanguage(dir string) (string, error) {
 	for _, name := range detectionOrder {
-		extractor, ok, err := Lookup(name, handle)
+		extractor, ok, err := Lookup(name)
 		if err != nil {
 			return "", err
 		}
@@ -162,10 +158,10 @@ func DetectLanguage(dir string, handle *effects.Handle) (string, error) {
 
 // DetectLanguages reports every language detected in dir, not just the first.
 // A polyglot repository answers with several, in detection-priority order.
-func DetectLanguages(dir string, handle *effects.Handle) ([]DetectedLanguage, error) {
+func DetectLanguages(dir string) ([]DetectedLanguage, error) {
 	var results []DetectedLanguage
 	for _, name := range detectionOrder {
-		extractor, ok, err := Lookup(name, handle)
+		extractor, ok, err := Lookup(name)
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +192,7 @@ type SourceEntry struct {
 //
 // A project that publishes no code declares no source entries, so an absent or
 // empty source key yields none.
-func ResolveSourceEntries(config map[string]any, handle *effects.Handle) ([]SourceEntry, error) {
+func ResolveSourceEntries(config map[string]any) ([]SourceEntry, error) {
 	items, err := sourceItems(config)
 	if err != nil {
 		return nil, err
@@ -211,7 +207,7 @@ func ResolveSourceEntries(config map[string]any, handle *effects.Handle) ([]Sour
 		if err != nil {
 			return nil, err
 		}
-		extractor, ok, err := Lookup(language, handle)
+		extractor, ok, err := Lookup(language)
 		if err != nil {
 			return nil, err
 		}

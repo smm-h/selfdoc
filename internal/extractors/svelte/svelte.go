@@ -14,7 +14,6 @@
 package svelte
 
 import (
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -24,10 +23,9 @@ type extractor struct {
 	extractors.Base
 }
 
-// New builds the Svelte extractor. It takes the effects handle every factory
-// takes and uses none of it: this extractor spawns nothing and writes nothing,
-// it only reads source files.
-func New(*effects.Handle) extractors.Extractor {
+// New builds the Svelte extractor. It spawns nothing and writes nothing, it
+// only reads source files.
+func New() extractors.Extractor {
 	e := &extractor{}
 	e.Base = extractors.NewBase("svelte", map[string]extractors.Handler{
 		"ref":          handleRef,

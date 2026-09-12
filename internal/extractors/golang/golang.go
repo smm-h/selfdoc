@@ -16,7 +16,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/prose"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -47,9 +46,9 @@ type Extractor struct {
 	extractors.Base
 }
 
-// New builds the Go extractor. It takes no effects handle: every answer comes
-// from reading files, which is not an effect.
-func New(*effects.Handle) extractors.Extractor {
+// New builds the Go extractor. Every answer comes from reading files, which
+// is not an effect.
+func New() extractors.Extractor {
 	extractor := &Extractor{}
 	extractor.Base = extractors.NewBase("go", map[string]extractors.Handler{
 		"ref":          extractor.handleModule,

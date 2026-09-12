@@ -578,7 +578,7 @@ func TestExtractModuleDocstring(t *testing.T) {
 	requirePython3(t)
 	hygiene.Isolate(t)
 	base := t.TempDir()
-	extractor := pythonextractor.New(effects.Unbound())
+	extractor := pythonextractor.New()
 	tests := []struct {
 		name   string
 		file   string
@@ -643,7 +643,7 @@ func TestComputeSourceDocstringHash(t *testing.T) {
 	requirePython3(t)
 	hygiene.Isolate(t)
 	base := t.TempDir()
-	extractor := pythonextractor.New(effects.Unbound())
+	extractor := pythonextractor.New()
 	write := func(name, source string) string {
 		t.Helper()
 		path := filepath.Join(base, name)
@@ -1031,7 +1031,7 @@ func TestSourceDocstringDriftIsMeasuredThroughTheExtractor(t *testing.T) {
 		}
 	}
 
-	_, drift, err := UpdateHashes(pages, base, false, directivesWith(pythonextractor.New(handle)), nil, nil, handle)
+	_, drift, err := UpdateHashes(pages, base, false, directivesWith(pythonextractor.New()), nil, nil, handle)
 	if err != nil {
 		t.Fatalf("the baseline pass: %v", err)
 	}
@@ -1049,7 +1049,7 @@ func TestSourceDocstringDriftIsMeasuredThroughTheExtractor(t *testing.T) {
 	if err := os.WriteFile(source, []byte("\"\"\"Updated docstring with new info.\"\"\"\n\ndef foo(): pass\n"), 0o644); err != nil {
 		t.Fatalf("rewriting the source: %v", err)
 	}
-	_, drift, err = UpdateHashes(pages, base, false, directivesWith(pythonextractor.New(handle)), nil, nil, handle)
+	_, drift, err = UpdateHashes(pages, base, false, directivesWith(pythonextractor.New()), nil, nil, handle)
 	if err != nil {
 		t.Fatalf("the drift pass: %v", err)
 	}

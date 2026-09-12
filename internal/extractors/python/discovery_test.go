@@ -347,7 +347,7 @@ func TestAnalysisIsCachedPerFile(t *testing.T) {
 	hygiene.Isolate(t)
 
 	path := writeFile(t, "mod.py", "\"\"\"Doc.\"\"\"\n\n\ndef f():\n    pass\n")
-	extractor := New(nil).(*Extractor)
+	extractor := New().(*Extractor)
 
 	if _, err := extractor.ModuleDocstring(path); err != nil {
 		t.Fatal(err)

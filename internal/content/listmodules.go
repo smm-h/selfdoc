@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/excludes"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/prose"
@@ -71,7 +70,6 @@ func ResolveListModules(
 	attrs map[string]string,
 	config map[string]any,
 	baseDir string,
-	handle *effects.Handle,
 ) (string, error) {
 	directivePath := attrs["path"]
 	if directivePath == "" {
@@ -80,7 +78,7 @@ func ResolveListModules(
 
 	// This check runs before the directory check on purpose: see
 	// ErrNoSourceEntries.
-	sourceEntries, err := extractors.ResolveSourceEntries(config, handle)
+	sourceEntries, err := extractors.ResolveSourceEntries(config)
 	if err != nil {
 		return "", err
 	}

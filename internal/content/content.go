@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/smm-h/selfdoc/internal/effects"
 )
 
 // boldTermRE matches the bold term a glossary line opens with, so the markers
@@ -111,15 +109,12 @@ func ResolveGlossary(body []string) string {
 //
 // config is the loaded selfdoc.json and may be nil, which several directives
 // report in band because a build without a config still renders its pages.
-// handle is the effects handle the source-reading directives run their
-// extractors under.
 func ResolveContent(
 	name string,
 	attrs map[string]string,
 	body []string,
 	baseDir string,
 	config map[string]any,
-	handle *effects.Handle,
 ) (string, bool, error) {
 	if title, isCallout := calloutTitles[name]; isCallout {
 		return resolveCallout(name, title, body), true, nil
@@ -135,7 +130,7 @@ func ResolveContent(
 		if config == nil {
 			return "> *[selfdoc: list-modules requires project config]*", true, nil
 		}
-		rendered, err := ResolveListModules(attrs, config, baseDir, handle)
+		rendered, err := ResolveListModules(attrs, config, baseDir)
 		return rendered, true, err
 	case "table-directives":
 		rendered, err := ResolveTableDirectives()

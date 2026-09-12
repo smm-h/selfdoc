@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/extractors/golang"
 	"github.com/smm-h/selfdoc/internal/extractors/python"
@@ -23,8 +22,8 @@ import (
 
 // compileTimeAssertions pin that both ported extractors satisfy the protocol.
 var (
-	_ extractors.Extractor = python.New(effects.Unbound())
-	_ extractors.Extractor = golang.New(effects.Unbound())
+	_ extractors.Extractor = python.New()
+	_ extractors.Extractor = golang.New()
 )
 
 func TestRegisteredLanguages(t *testing.T) {
@@ -41,7 +40,7 @@ func TestRegisteredLanguages(t *testing.T) {
 
 func TestLookupBuildsTheRightExtractor(t *testing.T) {
 	for _, name := range []string{"python", "go"} {
-		extractor, ok, err := extractors.Lookup(name, effects.Unbound())
+		extractor, ok, err := extractors.Lookup(name)
 		if err != nil || !ok {
 			t.Fatalf("Lookup(%q) = (_, %v, %v)", name, ok, err)
 		}
@@ -70,7 +69,7 @@ func TestDetectLanguageWithRealPackages(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			got, err := extractors.DetectLanguage(dir, effects.Unbound())
+			got, err := extractors.DetectLanguage(dir)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,7 +84,7 @@ func TestDetectLanguageWithRealPackages(t *testing.T) {
 // built for: reaching a known language whose package is absent is a wiring
 // mistake, and it is reported rather than skipped over.
 func TestDetectionReportsAnUnlinkedLanguage(t *testing.T) {
-	_, err := extractors.DetectLanguage(t.TempDir(), effects.Unbound())
+	_, err := extractors.DetectLanguage(t.TempDir())
 	if err == nil {
 		t.Skip("every known language is linked in now: this test has served its purpose")
 	}
@@ -101,7 +100,7 @@ func TestResolveSourceEntriesWithRealPackages(t *testing.T) {
 		map[string]any{"path": "lib/", "language": "ruby"},
 	}}
 
-	entries, err := extractors.ResolveSourceEntries(config, effects.Unbound())
+	entries, err := extractors.ResolveSourceEntries(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +127,7 @@ func TestResolveSourceEntriesWithRealPackages(t *testing.T) {
 func TestFileExtensionsAreDisjoint(t *testing.T) {
 	owner := map[string]string{}
 	for _, name := range extractors.Registered() {
-		extractor, ok, err := extractors.Lookup(name, effects.Unbound())
+		extractor, ok, err := extractors.Lookup(name)
 		if err != nil || !ok {
 			t.Fatalf("Lookup(%q) = (_, %v, %v)", name, ok, err)
 		}

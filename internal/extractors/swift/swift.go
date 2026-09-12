@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -37,9 +36,8 @@ type Extractor struct {
 	extractors.Base
 }
 
-// New builds the Swift extractor. It runs no external process, so the effects
-// handle the registry hands every factory is unused here.
-func New(*effects.Handle) extractors.Extractor {
+// New builds the Swift extractor.
+func New() extractors.Extractor {
 	extractor := &Extractor{}
 	extractor.Base = extractors.NewBase("swift", map[string]extractors.Handler{
 		"ref":          handleRef,

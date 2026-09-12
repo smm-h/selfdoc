@@ -121,8 +121,8 @@ type BuiltinDirective func(attrs map[string]string, body []string) (string, erro
 // MakeResolver builds the resolver for a project.
 //
 // config is the loaded selfdoc.json, baseDir the project root every relative
-// path is resolved against, and handle the effects handle the extractors and
-// the custom-directive driver run under.
+// path is resolved against, and handle the effects handle the custom-directive
+// driver runs under.
 func MakeResolver(config map[string]any, baseDir string, handle *effects.Handle) (*Resolver, error) {
 	absolute := baseDir
 	if resolved, err := filepath.Abs(baseDir); err == nil {
@@ -142,7 +142,7 @@ func MakeResolver(config map[string]any, baseDir string, handle *effects.Handle)
 		}
 	}
 
-	entries, err := extractors.ResolveSourceEntries(config, handle)
+	entries, err := extractors.ResolveSourceEntries(config)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (r *Resolver) Resolve(name string, attrs map[string]string, body []string) 
 	// Content directives first: callouts, the glossary, the tree, the
 	// dependency and endpoint tables, the listings, var and cv.
 	rendered, isContent, err := content.ResolveContent(
-		name, attrs, body, r.baseDir, r.config, r.handle,
+		name, attrs, body, r.baseDir, r.config,
 	)
 	if err != nil {
 		return "", err

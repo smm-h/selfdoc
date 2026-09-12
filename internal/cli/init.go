@@ -162,7 +162,7 @@ func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.O
 	// a config with no 'source' key at all -- an empty array would declare
 	// the same thing more verbosely -- and a starter page with no
 	// code-extraction directive.
-	detected, err := extractors.DetectLanguages(dir, handle)
+	detected, err := extractors.DetectLanguages(dir)
 	if err != nil {
 		return c.fail(err)
 	}

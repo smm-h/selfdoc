@@ -136,7 +136,7 @@ func CheckDocs(
 	}
 
 	// Coverage, language-agnostic through the extractor protocol.
-	srcEntries, err := extractors.ResolveSourceEntries(projectConfig, handle)
+	srcEntries, err := extractors.ResolveSourceEntries(projectConfig)
 	if err != nil {
 		return nil, err
 	}

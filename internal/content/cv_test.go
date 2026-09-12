@@ -3,8 +3,6 @@ package content
 import (
 	"path/filepath"
 	"testing"
-
-	"github.com/smm-h/selfdoc/internal/effects"
 )
 
 // cvDocument is a complete CV declaration: every section is required and
@@ -70,7 +68,7 @@ func TestResolveCV(t *testing.T) {
 		write(t, filepath.Join(base, "docs", "cv.toml"), cvDocument)
 		rendered, ok, err := ResolveContent("cv",
 			map[string]string{"path": "docs/cv.toml"}, nil, base,
-			cvConfig(), effects.Unbound())
+			cvConfig())
 		if err != nil || !ok {
 			t.Fatalf("ResolveContent: ok=%v err=%v", ok, err)
 		}

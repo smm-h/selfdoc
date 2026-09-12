@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/strictclisupport"
 )
 
@@ -138,7 +137,7 @@ func TestTableCommands(t *testing.T) {
 		writeSchema(t, base)
 		rendered, ok, err := ResolveContent(
 			"table-commands", map[string]string{"schema-dir": "."}, nil,
-			base, map[string]any{}, effects.Unbound(),
+			base, map[string]any{},
 		)
 		if err != nil || !ok {
 			t.Fatalf("ResolveContent: ok=%v err=%v", ok, err)
