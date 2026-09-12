@@ -1,0 +1,18 @@
+{
+  "_hash_version": 3,
+  "cmd-myapp.md": {
+    "seed_hash": "51e8d50305963b3bfc23ccd032848583e2943c4053b23c05ac643490a38a7f70"
+  },
+  "gen-index.md": {
+    "seed_hash": "84947651b31d9306dbc15346e4819f64f875dd8d8ef240b24c9816a7f7a86b37"
+  },
+  "internal-commit.md": {
+    "seed_hash": "35d938f1e220b114afbd766c0a731be569ed88b4b4db8dbb4aa76f68954e4a26"
+  },
+  "internal-models.md": {
+    "seed_hash": "7cdc151472549933bf15f750e0b6caea4068c3473270c5ca44de3a1c679faaed"
+  },
+  "mygoapp.md": {
+    "seed_hash": "36373218ce8c3dd75cbdce87087b7bc53794ea8a87743af1fab829a334fe257a"
+  }
+}

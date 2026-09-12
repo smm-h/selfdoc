@@ -1,0 +1,7 @@
+{
+  "source": [{"path": ".", "language": "go"}],
+  "docs": "docs/",
+  "output": "docs/_build/",
+  "base_url": "https://example.com",
+  "search_engine": "pagefind"
+}

@@ -1,0 +1,7 @@
+{
+  "source": [{"path": "mylib/", "language": "python"}],
+  "docs": "docs/",
+  "output": "docs/_build/",
+  "base_url": "https://example.com",
+  "search_engine": "pagefind"
+}

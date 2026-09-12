@@ -1,0 +1,9 @@
+{
+  "source": [{"path": "mylib/", "language": "python"}],
+  "docs": "docs/",
+  "output": "docs/_build/",
+  "base_url": "https://example.com",
+  "search_engine": "pagefind",
+  "root_files": ["docs/_TEST.md"],
+  "topology": {"docs_base": "https://docs.example.dev", "slug": "mylib", "posts_base": "https://docs.example.dev/blog"}
+}

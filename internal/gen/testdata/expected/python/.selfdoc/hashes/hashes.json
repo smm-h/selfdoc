@@ -1,0 +1,21 @@
+{
+  "_hash_version": 3,
+  "gen-index.md": {
+    "seed_hash": "67790e3642035309d91f9bacf50c69519d44b6b79a60e0e307d766fb23dc25c9"
+  },
+  "mylib-core.md": {
+    "seed_hash": "9ba4799777e7295613a4f564e74c8551f95c388cc14a84b313f03cd989cbad49"
+  },
+  "mylib-longdoc.md": {
+    "seed_hash": "52d936afb1522849a6501ba860ada921b8073ef20882af3406621b1289437753"
+  },
+  "mylib-nodoc.md": {
+    "seed_hash": "0e4d5aadde2f86901ac2947ab5163c160cecc54e112d03e368ff2f0930389103"
+  },
+  "mylib-utils.md": {
+    "seed_hash": "27450d68342c87af7c8c93e2e9a8ada7279654b9c070f7adbcec8648d4d1b0a3"
+  },
+  "mylib.md": {
+    "seed_hash": "c0b9a89effd44589b0af3125409e32fae9f21763b473e3d230d7f4f293c261a1"
+  }
+}
