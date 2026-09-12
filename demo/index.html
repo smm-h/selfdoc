@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../selfdoc/themes/minimal.css" id="theme-css">
+<link rel="stylesheet" href="../internal/themes/minimal.css" id="theme-css">
 <style id="design-settings-styles">
 /* === Design Settings Panel (demo-only) === */
 
@@ -1843,11 +1843,11 @@ requestAnimationFrame(function() {
   var saved = localStorage.getItem('selfdoc-demo-theme');
   if (saved && (saved === 'minimal' || saved === 'clean')) {
     switcher.value = saved;
-    link.href = '../selfdoc/themes/' + saved + '.css';
+    link.href = '../internal/themes/' + saved + '.css';
   }
   switcher.addEventListener('change', function() {
     var theme = switcher.value;
-    link.href = '../selfdoc/themes/' + theme + '.css';
+    link.href = '../internal/themes/' + theme + '.css';
     localStorage.setItem('selfdoc-demo-theme', theme);
   });
 })();

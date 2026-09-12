@@ -2,8 +2,12 @@
   "version": "0.38.1",
   "source": [
     {
-      "path": "selfdoc/",
-      "language": "python"
+      "path": "internal/",
+      "language": "go"
+    },
+    {
+      "path": "cmd/",
+      "language": "go"
     }
   ],
   "docs": "docs/",
@@ -33,29 +37,8 @@
   "search_engine": "pagefind",
   "gen": {
     "exclude": [
-      "selfdoc.staleness",
-      "selfdoc.git",
-      "selfdoc.catalog",
-      "selfdoc.content",
-      "selfdoc.extractors.base",
-      "selfdoc.extractors.protocol",
-      "selfdoc.themes"
-    ]
-  },
-  "directives": {
-    "catalog": "scripts/catalog-directive.py",
-    "config-schema": "scripts/config-schema-directive.py"
-  },
-  "gen_data": {
-    "scripts": [
-      {
-        "command": "python3 scripts/gen-directive-stats.py",
-        "output": "directive-stats.json",
-        "mounts": [
-          "selfdoc_core/",
-          "scripts/"
-        ]
-      }
+      "internal/e2e",
+      "internal/testproject"
     ]
   },
   "root_files": [
@@ -73,11 +56,11 @@
       },
       {
         "title": "Multi-Language Support",
-        "description": "Python (AST-based), Go, and TypeScript extractors handle all five built-in directive types out of the box."
+        "description": "Extractors for Go, Python, TypeScript, Svelte, Zig, Dart, Kotlin, Swift and SQL feed the same directive vocabulary, so one template works across a polyglot repository."
       },
       {
-        "title": "Pure Python",
-        "description": "Two direct runtime dependencies, both pure Python, nothing to compile. No JavaScript frameworks, no build tools, no configuration overhead."
+        "title": "One Static Binary",
+        "description": "Written in Go and distributed as a single executable. No runtime, no virtualenv, no JavaScript toolchain -- install it with `go install`, npm, or pip and run it."
       },
       {
         "title": "SEO & AI Optimized",

@@ -1,17 +1,9 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
+# Build output
 dist/
-# Anchored: the Python build directory is the one at the repository root, and
-# an unanchored pattern also matched the Go build pipeline's package at
+# Anchored: the release artifact directory is the one at the repository root,
+# and an unanchored pattern also matched the Go build pipeline's package at
 # internal/build/.
 /build/
-*.egg
-.venv/
-venv/
-.eggs/
 
 # Node
 node_modules/
@@ -42,11 +34,10 @@ docs/_build/
 .env.local
 *.local-only
 
-*.pyc
 *.log
 coverage/
 
 .rlsbl-monorepo/lock
 
-# Go build output (the repository root's ./selfdoc is a Python package)
+# Go build output
 /bin/
