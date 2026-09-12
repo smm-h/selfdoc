@@ -104,8 +104,13 @@ func (e *InlineOutputError) Error() string {
 // without a nil check. Column is set only for an inline directive, and is a
 // CHARACTER offset into its line.
 type Directive struct {
-	Name       string
-	Attrs      map[string]string
+	Name  string
+	Attrs map[string]string
+	// AttrOrder names every key in Attrs in the order the source wrote it,
+	// first appearance winning for a repeated key. A Go map has no order,
+	// and the check report quotes a directive back to its author, who reads
+	// the quote against the template they typed.
+	AttrOrder  []string
 	Body       []string
 	LineNumber int
 	Inline     bool
@@ -123,14 +128,19 @@ type NameSet = map[string]struct{}
 // resolution -- this is the Python resolver callable's raise.
 type Resolver func(name string, attrs map[string]string, body []string) (string, error)
 
-// parseAttrs extracts every key="value" pair from text. A repeated key keeps
-// its last value, as Python's dict(findall(...)) does.
-func parseAttrs(text string) map[string]string {
+// parseAttrs extracts every key="value" pair from text, with the keys in
+// source order. A repeated key keeps its last value and its first position,
+// as Python's dict(findall(...)) does.
+func parseAttrs(text string) (map[string]string, []string) {
 	attrs := map[string]string{}
+	var order []string
 	for _, m := range attrKVRe.FindAllStringSubmatch(text, -1) {
+		if _, seen := attrs[m[1]]; !seen {
+			order = append(order, m[1])
+		}
 		attrs[m[1]] = m[2]
 	}
-	return attrs
+	return attrs, order
 }
 
 // validateDirectiveName refuses name when validNames is non-nil and does not
@@ -170,12 +180,13 @@ const (
 // event is one logical unit walkBlocks produced: a pass-through line, a
 // complete directive, or a block left open at EOF.
 type event struct {
-	kind    eventKind
-	line    string
-	name    string
-	attrs   map[string]string
-	body    []string
-	lineNum int
+	kind      eventKind
+	line      string
+	name      string
+	attrs     map[string]string
+	attrOrder []string
+	body      []string
+	lineNum   int
 }
 
 // walkBlocks is the shared state machine for fence tracking and directive
@@ -208,6 +219,7 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 	// Block accumulation.
 	blockName := ""
 	blockAttrs := map[string]string{}
+	var blockAttrOrder []string
 	var blockBody []string
 	blockLine := 0
 
@@ -249,12 +261,14 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 				if err := validateDirectiveName(name, validNames, lineNum); err != nil {
 					return nil, err
 				}
+				attrs, order := parseAttrs(m[2])
 				events = append(events, event{
-					kind:    evDirective,
-					name:    name,
-					attrs:   parseAttrs(m[2]),
-					body:    []string{},
-					lineNum: lineNum,
+					kind:      evDirective,
+					name:      name,
+					attrs:     attrs,
+					attrOrder: order,
+					body:      []string{},
+					lineNum:   lineNum,
 				})
 				continue
 			}
@@ -264,7 +278,7 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 				if err := validateDirectiveName(blockName, validNames, lineNum); err != nil {
 					return nil, err
 				}
-				blockAttrs = parseAttrs(m[2])
+				blockAttrs, blockAttrOrder = parseAttrs(m[2])
 				blockBody = []string{}
 				blockLine = lineNum
 				state = stateInBlockAttrs
@@ -275,8 +289,12 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 
 		case stateInBlockAttrs:
 			if m := attrLineRe.FindStringSubmatch(stripped); m != nil {
-				for k, v := range parseAttrs(m[1]) {
-					blockAttrs[k] = v
+				lineAttrs, lineOrder := parseAttrs(m[1])
+				for _, k := range lineOrder {
+					if _, seen := blockAttrs[k]; !seen {
+						blockAttrOrder = append(blockAttrOrder, k)
+					}
+					blockAttrs[k] = lineAttrs[k]
 				}
 				continue
 			}
@@ -287,7 +305,7 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 			}
 
 			if blockCloseRe.MatchString(stripped) {
-				events = append(events, closedBlock(blockName, blockAttrs, blockBody, blockLine))
+				events = append(events, closedBlock(blockName, blockAttrs, blockAttrOrder, blockBody, blockLine))
 				state = stateIdle
 				continue
 			}
@@ -305,7 +323,7 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 			}
 
 			if blockCloseRe.MatchString(stripped) {
-				events = append(events, closedBlock(blockName, blockAttrs, blockBody, blockLine))
+				events = append(events, closedBlock(blockName, blockAttrs, blockAttrOrder, blockBody, blockLine))
 				state = stateIdle
 				continue
 			}
@@ -322,19 +340,22 @@ func walkBlocks(content string, validNames NameSet) ([]event, error) {
 
 // closedBlock snapshots the accumulated block state into a directive event,
 // so a later block cannot mutate an already-reported one.
-func closedBlock(name string, attrs map[string]string, body []string, lineNum int) event {
+func closedBlock(name string, attrs map[string]string, attrOrder []string, body []string, lineNum int) event {
 	snapAttrs := make(map[string]string, len(attrs))
 	for k, v := range attrs {
 		snapAttrs[k] = v
 	}
+	snapOrder := make([]string, len(attrOrder))
+	copy(snapOrder, attrOrder)
 	snapBody := make([]string, len(body))
 	copy(snapBody, body)
 	return event{
-		kind:    evDirective,
-		name:    name,
-		attrs:   snapAttrs,
-		body:    snapBody,
-		lineNum: lineNum,
+		kind:      evDirective,
+		name:      name,
+		attrs:     snapAttrs,
+		attrOrder: snapOrder,
+		body:      snapBody,
+		lineNum:   lineNum,
 	}
 }
 
@@ -364,6 +385,7 @@ func ParseDirectives(content string, validNames NameSet) ([]Directive, error) {
 			out = append(out, Directive{
 				Name:       ev.name,
 				Attrs:      ev.attrs,
+				AttrOrder:  ev.attrOrder,
 				Body:       ev.body,
 				LineNumber: ev.lineNum,
 			})
@@ -423,11 +445,12 @@ func FindInlineDirectives(line string, lineNum int, validNames NameSet) ([]Direc
 		if err := validateDirectiveName(name, validNames, lineNum); err != nil {
 			return nil, err
 		}
-		attrs := parseAttrs(masked[loc[4]:loc[5]])
+		attrs, attrOrder := parseAttrs(masked[loc[4]:loc[5]])
 		col := utf8.RuneCountInString(line[:originalOffset(masked, placeholders, loc[0])])
 		out = append(out, Directive{
 			Name:       name,
 			Attrs:      attrs,
+			AttrOrder:  attrOrder,
 			Body:       []string{},
 			LineNumber: lineNum,
 			Inline:     true,
@@ -522,7 +545,7 @@ func resolveLineInline(line string, resolver Resolver) (string, error) {
 	prev := 0
 	for _, loc := range inlineRe.FindAllStringSubmatchIndex(masked, -1) {
 		name := masked[loc[2]:loc[3]]
-		attrs := parseAttrs(masked[loc[4]:loc[5]])
+		attrs, _ := parseAttrs(masked[loc[4]:loc[5]])
 		result, err := resolver(name, attrs, []string{})
 		if err != nil {
 			return "", err

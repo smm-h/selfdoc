@@ -362,6 +362,13 @@ func TestParseDirectives(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := mustParse(t, tc.content, tc.valid)
+			// Attribute order has its own table (TestAttrOrderFollowsTheSource),
+			// which also asserts AttrOrder and Attrs name the same keys. This
+			// table is about everything else, so it compares without it rather
+			// than restating a derived list on every case.
+			for i := range got {
+				got[i].AttrOrder = nil
+			}
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("ParseDirectives = %#v, want %#v", got, tc.want)
 			}

@@ -65,7 +65,7 @@ func validateDirectives(
 		for _, directive := range parsed {
 			fileLine := directive.LineNumber + doc.FrontmatterLines
 			directiveStr := strings.TrimSpace(
-				directive.Name + " " + renderAttrs(directive.Attrs),
+				directive.Name + " " + renderAttrs(directive.Attrs, directive.AttrOrder),
 			)
 			// A hard error (exit 1) on an unknown or a missing
 			// required attribute. Distinct from the resolution
@@ -128,20 +128,34 @@ func validateDirectives(
 	return directiveResults, resolvedDirectives, nil
 }
 
-// renderAttrs renders a directive's attributes as the report shows them.
+// renderAttrs renders a directive's attributes as the report shows them, in
+// the order the source wrote them.
 //
-// The keys are sorted. The Python rendered them in the order the source wrote
-// them, which the parser no longer carries -- a Go map has no order -- so the
-// choice is between a stable spelling and an arbitrary one.
-func renderAttrs(attrs map[string]string) string {
+// The report quotes a directive back to its author, who reads the quote
+// against the template they typed, so `ref path="." lang="go"` must not come
+// back re-alphabetized. A key the order does not name -- which the parser does
+// not produce, but a hand-built map could -- is rendered after the ordered
+// ones, sorted, rather than dropped.
+func renderAttrs(attrs map[string]string, order []string) string {
 	if len(attrs) == 0 {
 		return ""
 	}
 	keys := make([]string, 0, len(attrs))
-	for key := range attrs {
-		keys = append(keys, key)
+	seen := make(map[string]bool, len(attrs))
+	for _, key := range order {
+		if _, ok := attrs[key]; ok && !seen[key] {
+			keys = append(keys, key)
+			seen[key] = true
+		}
 	}
-	sort.Strings(keys)
+	rest := make([]string, 0, len(attrs)-len(keys))
+	for key := range attrs {
+		if !seen[key] {
+			rest = append(rest, key)
+		}
+	}
+	sort.Strings(rest)
+	keys = append(keys, rest...)
 	parts := make([]string, 0, len(keys))
 	for _, key := range keys {
 		parts = append(parts, key+`="`+attrs[key]+`"`)
