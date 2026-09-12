@@ -82,10 +82,7 @@ type fakeGH struct {
 // mutates process-wide variables.
 func newFakeGH(t *testing.T) *fakeGH {
 	t.Helper()
-	hygiene.Isolate(t)
-	bin := t.TempDir()
-	t.Setenv("PATH", bin+":/usr/bin:/bin")
-
+	bin := isolate(t)
 	state := t.TempDir()
 	binary, err := os.Executable()
 	if err != nil {
@@ -99,6 +96,22 @@ func newFakeGH(t *testing.T) *fakeGH {
 		t.Fatalf("writing the fake gh: %v", err)
 	}
 	return &fakeGH{t: t, dir: state}
+}
+
+// isolate binds the environment isolation floor -- a throwaway HOME, an empty
+// global git config with a throwaway identity, only the file:// git transport,
+// no ambient credentials -- and returns a directory at the FRONT of PATH, so a
+// fake tool written there shadows any real one. The system directories stay
+// behind it, so git stays reachable.
+//
+// Nothing that calls this may call t.Parallel: hygiene mutates process-wide
+// variables.
+func isolate(t *testing.T) string {
+	t.Helper()
+	hygiene.Isolate(t)
+	bin := t.TempDir()
+	t.Setenv("PATH", bin+":/usr/bin:/bin")
+	return bin
 }
 
 // shellQuote single-quotes a token for the fake gh's shell wrapper.
