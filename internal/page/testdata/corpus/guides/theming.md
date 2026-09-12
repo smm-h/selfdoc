@@ -46,7 +46,7 @@ To see a theme on real pages without editing any project's configuration, pass `
 selfdoc build --no-auto-commit --theme tinymoon
 ```
 
-The override applies to that build only and is never written back to `selfdoc.json`. `selfblog build` takes the same flag, and `selfblog assembly preview --theme <name>` applies it to every checkout in an assembled preview at once -- which is the point: judging a theme means seeing the whole site under it, not one page. An unknown name is refused against the theme registry. With `--no-build`, where the override cannot reach the builds themselves, the preview checks that each checkout's existing build output really was produced under that theme -- an equality against the stylesheet a build writes, not a guess -- and hard-errors naming any checkout that was not.
+The override applies to that build only and is never written back to `selfdoc.json`. `selfdoc build` takes the same flag, and `selfdoc assembly preview --theme <name>` applies it to every checkout in an assembled preview at once -- which is the point: judging a theme means seeing the whole site under it, not one page. An unknown name is refused against the theme registry. With `--no-build`, where the override cannot reach the builds themselves, the preview checks that each checkout's existing build output really was produced under that theme -- an equality against the stylesheet a build writes, not a guess -- and hard-errors naming any checkout that was not.
 
 ## CSS Custom Properties
 
