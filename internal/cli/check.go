@@ -1,0 +1,108 @@
+package cli
+
+import (
+	"github.com/smm-h/selfdoc/internal/blog/unifiedcheck"
+	"github.com/smm-h/selfdoc/internal/check"
+	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/gitcommit"
+	"github.com/smm-h/selfdoc/internal/lints"
+	"github.com/smm-h/selfdoc/internal/payloadschemas"
+	"github.com/smm-h/strictcli/go/strictcli"
+)
+
+func (c *cli) registerCheck() {
+	c.app.Command("check", "Check documentation coverage, directive resolution, and lint rules",
+		c.cmdCheck,
+		strictcli.WithEffect(strictcli.EffectMutating),
+		strictcli.PayloadSchema(payloadschemas.Check()),
+		strictcli.WithFlags(
+			strictcli.StringFlag("ignore", "Comma-separated SEO codes to suppress (e.g., SEO007,SEO008)", strictcli.Optional()),
+			strictcli.BoolFlag("auto-commit", "Automatically commit updated content hash tracking files to git after checking. Omitted, it commits; pass --no-auto-commit to leave them uncommitted", strictcli.Optional()),
+			strictcli.StringFlag("version-override", "Project version that version-bearing generated content is expected to embed (VER004), instead of the version currently recorded in pyproject.toml/package.json. Pass the same value given to 'selfdoc gen --version-override' so the check runs correctly in the release window between generation and the version bump", strictcli.Optional()),
+		),
+	)
+}
+
+func (c *cli) cmdCheck(ctx *strictcli.Context, kwargs map[string]any) strictcli.Outcome {
+	autoCommit := absentMeans(kwargs, "auto_commit", true)
+	ignore := optString(kwargs, "ignore")
+	versionOverride := optString(kwargs, "version_override")
+	handle := effects.FromContext(ctx)
+
+	// Validated before any work is done: a mistyped code suppresses nothing,
+	// a check run that silently ignored the typo would report lints the
+	// caller believes it silenced, and an error-severity code is not
+	// suppressible at all.
+	flagIgnoreCodes, err := lints.ParseIgnoreCodes(ignore, "--ignore")
+	if err != nil {
+		return c.fail(err)
+	}
+
+	cfg, outcome, ok := c.loadConfig()
+	if !ok {
+		return outcome
+	}
+
+	// No dryRun is threaded into the check: under --dry-run the hash write is
+	// RECORDED by the effects chokepoint rather than executed, which both
+	// preserves the old "report staleness without writing" behavior and makes
+	// the preview honest about the write a real run would perform.
+	//
+	// The project's kind decides which check runs. There is no refusal here
+	// any more: one binary answers for a unified docs-site and for an
+	// ordinary project alike, and a project's posts are checked either way.
+	var result *check.CheckResult
+	if cfg != nil && cfg["unified"] != nil {
+		result, err = unifiedcheck.CheckUnified(cfg, c.dir(), false, handle)
+	} else {
+		result, err = check.CheckDocs(c.dir(), cfg, false, "", versionOverride, handle)
+	}
+	if err != nil {
+		return c.fail(err)
+	}
+
+	if autoCommit {
+		if _, _, err := gitcommit.AutoCommit(
+			[]string{hashStorePath}, hashStoreMessage, c.dir(), handle,
+		); err != nil {
+			return c.fail(err)
+		}
+	}
+
+	// The combined suppression set: the flag's codes and the project's own
+	// lint_ignore, both already validated against the registry.
+	result.Lints = check.FilterLints(result.Lints, ignoreCodesFrom(flagIgnoreCodes, cfg))
+
+	belowThreshold := check.CoverageBelowThreshold(result, cfg)
+	exitCode := check.CheckResultExitCode(result, cfg)
+
+	// The payload is supplied in both modes -- the framework decides what to
+	// do with it -- and the human report is written only outside machine
+	// mode, where stdout carries the envelope and nothing else.
+	ctx.Payload(check.SerializeCheckResult(result, exitCode))
+
+	if !ctx.JSON() {
+		check.PrintResults(c.out(), result, c.color())
+
+		if belowThreshold {
+			coverage := result.Coverage
+			threshold := lints.DefaultCoverageThreshold
+			if cfg != nil {
+				if declared, ok := cfg["coverage_threshold"].(float64); ok {
+					threshold = declared
+				}
+			}
+			percent := 0.0
+			if coverage.TotalPublic() > 0 {
+				percent = float64(coverage.Documented()) * 100 / float64(coverage.TotalPublic())
+			}
+			c.printf("Coverage: %d/%d symbols documented (%.0f%%). Threshold is %.0f%%.\n",
+				coverage.Documented(), coverage.TotalPublic(), percent, threshold*100)
+		}
+	}
+
+	if exitCode != 0 {
+		return strictcli.Exit(1)
+	}
+	return strictcli.Exit(0)
+}

@@ -2,20 +2,14 @@
 // generator: it builds documentation sites from Markdown templates and source
 // code, and publishes them.
 //
-// The command tree is registered by internal/cli; until that package exists
-// this entry point builds the bare application so the framework-owned surface
-// (--help, --version, --dump-schema and the reserved quartet) is reachable.
+// The command tree, and the language extractors every code directive is
+// resolved through, are registered by internal/cli.
 package main
 
 import (
-	"github.com/smm-h/selfdoc"
-	"github.com/smm-h/strictcli/go/strictcli"
+	"github.com/smm-h/selfdoc/internal/cli"
 )
 
-// appHelp is the one-line description shown by selfdoc --help.
-const appHelp = "Code-aware static site generator with directive-based content extraction"
-
 func main() {
-	app := strictcli.NewApp("selfdoc", selfdoc.Version, appHelp)
-	app.Run()
+	cli.New(cli.Options{}).Run()
 }
