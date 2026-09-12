@@ -19,17 +19,20 @@ import (
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
+// defaultPostsDirRel is where a project keeps its posts when it declares no
+// "posts" block: the convention every post surface reads.
+const defaultPostsDirRel = ".selfdoc/posts/"
+
 // postsDirRel reads the configured posts directory, relative to the project
 // root.
 //
-// fallback is what an undeclared "posts" block answers, and the two callers
-// want different things there: the lint slice and the validation pass default
-// to the conventional directory, while [CheckPosts] treats an undeclared block
-// as "this project has no posts" -- the asymmetry the Python had, kept because
-// the check surface must not invent a posts directory for a project that never
-// mentioned one.
-func postsDirRel(projectConfig map[string]any, fallback string) string {
-	return configString(configDict(projectConfig, "posts"), "dir", fallback)
+// An undeclared "posts" block answers the conventional directory, for every
+// caller. The check's surfaces must agree on where a post is: a validation
+// pass that answered "this project has no posts" while the lint slice read
+// the conventional directory made an invalid post there a hard error instead
+// of the POST diagnostic it is.
+func postsDirRel(projectConfig map[string]any) string {
+	return configString(configDict(projectConfig, "posts"), "dir", defaultPostsDirRel)
 }
 
 // postsDirectory returns the configured posts directory relative to the
@@ -40,7 +43,7 @@ func postsDirRel(projectConfig map[string]any, fallback string) string {
 // and the lint slice -- so neither can look somewhere the other does not, and
 // both look where the build looks.
 func postsDirectory(projectConfig map[string]any, dirPath string) (string, string) {
-	relative := postsDirRel(projectConfig, ".selfdoc/posts/")
+	relative := postsDirRel(projectConfig)
 	absolute := util.PathJoin(dirPath, relative)
 	if relative == "" || !isDir(absolute) {
 		return relative, ""
@@ -90,21 +93,17 @@ func PostErrorLint(err *posts.PostError, postsDirRelative string) lints.LintResu
 // CheckPosts checks a project's blog posts for validation errors
 // (POST001-POST007), returning one diagnostic for the first invalid post.
 //
-// The result is empty when the project declares no posts directory, when the
-// declared one is not on disk, and when every post is valid. Each diagnostic
+// The result is empty when the posts directory is not on disk and when every
+// post is valid. A project that declares no "posts" block is read at the
+// conventional .selfdoc/posts/, which is where the post lints read it. Each diagnostic
 // is positioned at the offending post -- its path relative to the project, and
 // its line where the defect has one -- taken from the refusal the detection
 // site raised.
 func CheckPosts(
 	projectConfig map[string]any, dirPath string, handle *effects.Handle,
 ) ([]lints.LintResult, error) {
-	postsDirRelative := postsDirRel(projectConfig, "")
-	if postsDirRelative == "" {
-		return nil, nil
-	}
-
-	postsDir := util.PathJoin(dirPath, postsDirRelative)
-	if !isDir(postsDir) {
+	postsDirRelative, postsDir := postsDirectory(projectConfig, dirPath)
+	if postsDir == "" {
 		return nil, nil
 	}
 

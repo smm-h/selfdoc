@@ -32,7 +32,7 @@ func checkManifestFreshness(config map[string]any, dirPath string) ([]lints.Lint
 	}
 
 	docsDir := filepath.Join(dirPath, configString(config, "docs", "docs/"))
-	postsDir := filepath.Join(dirPath, postsDirRel(config, ".selfdoc/posts/"))
+	postsDir := filepath.Join(dirPath, postsDirRel(config))
 
 	// Pages on disk, excluding the underscore-prefixed templates.
 	diskPages := map[string]bool{}

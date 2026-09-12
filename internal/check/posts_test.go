@@ -337,6 +337,31 @@ func TestCheckPostsWithNoPostsDirectory(t *testing.T) {
 	}
 }
 
+func TestCheckPostsReadsTheConventionalDirectoryWithNoPostsBlock(t *testing.T) {
+	// A project with no "posts" block still keeps its posts at the
+	// conventional .selfdoc/posts/, which is where the post-lint slice
+	// reads them from. An invalid one there is a POST diagnostic, not a
+	// hard error raised past the check's own reporting.
+	isolate(t)
+	root := t.TempDir()
+	writePostFrontmatter(t,
+		filepath.Join(root, ".selfdoc", "posts"), "p.md",
+		[]string{"title: No Date"}, "",
+	)
+
+	results, err := CheckPosts(map[string]any{}, root, handle())
+	if err != nil {
+		t.Fatalf("CheckPosts: %v", err)
+	}
+	if len(results) != 1 || results[0].Code() != "POST001" {
+		t.Fatalf("diagnostics = %v, want one POST001", messagesOf(results))
+	}
+	want := filepath.Join(".selfdoc", "posts", "p.md")
+	if results[0].File() != want {
+		t.Errorf("file = %q, want %q", results[0].File(), want)
+	}
+}
+
 func TestCheckDocsReportsPostValidation(t *testing.T) {
 	requirePython(t)
 	root := postsProject(t, map[string]string{
