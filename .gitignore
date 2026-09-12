@@ -51,9 +51,5 @@ coverage/
 
 __pycache__/
 *.pyc
-build/
 target/
 *.egg-info/
-.rlsbl-monorepo/lock
-.rlsbl-monorepo/releasables/*/releases/in-progress.json
-.rlsbl-monorepo/releasables/*/releases/scrub-result.json
