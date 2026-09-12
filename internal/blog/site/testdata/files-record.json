@@ -1,0 +1,13 @@
+{
+  "owners": {
+    "posts": [
+      "blog/x/index.html"
+    ],
+    "release": [
+      "a.html",
+      "b.html"
+    ]
+  },
+  "schema_version": 2,
+  "slug": "alpha"
+}

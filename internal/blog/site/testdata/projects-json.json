@@ -1,0 +1,12 @@
+{
+  "alpha": {
+    "ref": "v1.0.0",
+    "repo": "owner/alpha",
+    "version": "1.0.0"
+  },
+  "home": {
+    "ref": "v0.1.0",
+    "repo": "owner/home",
+    "version": "0.1.0"
+  }
+}

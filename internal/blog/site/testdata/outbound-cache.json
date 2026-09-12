@@ -1,0 +1,15 @@
+{
+  "entries": {
+    "https://a.example/": {
+      "checked": 1.5,
+      "error": "404",
+      "status": 404
+    },
+    "https://b.example/": {
+      "checked": 5.0,
+      "error": "",
+      "status": 200
+    }
+  },
+  "schema_version": 1
+}

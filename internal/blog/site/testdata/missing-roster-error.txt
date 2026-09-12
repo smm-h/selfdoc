@@ -1,0 +1,23 @@
+/nonexistent-dir-xyz/roster.toml does not exist, so the assembly declares no membership. Membership is a declared list the deploy reconciles to, never something a deploy accumulates, so there is no empty default. Create the file in the assembly repository with one block per project the site serves:
+
+# The assembly's membership: every project the unified site serves.
+#
+# This file is the declaration; the deploy reconciles the site to it and can
+# never add to it. A project with no [[project]] block here has its subtree,
+# its manifests, its membership record and its search-index entries removed at
+# the next deploy -- which is what `selfblog assembly retire <slug>` does in
+# one operation.
+#
+# `home` names the one declared project that IS the front page: its pages are
+# emitted at the site root instead of under site/<slug>/, it is left out of the
+# generated project listing, and it is required -- a site needs a front page,
+# so there is no default and no more than one.
+#
+# projects.json next to this file is derived state, rewritten by every deploy.
+# Edit this file, never that one.
+
+home = "example"
+
+[[project]]
+slug = "example"
+repo = "owner/example"
