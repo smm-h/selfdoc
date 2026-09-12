@@ -115,6 +115,25 @@ func TestBuildUnifiedCleansUpTheInjectedPostsWhenTheBuildFails(t *testing.T) {
 	assertNoInjectedPosts(t, filepath.Join(docsSite, "docs"))
 }
 
+func TestBuildUnifiedCleansUpTheInjectedPostsWhenSetupFails(t *testing.T) {
+	hygiene.Isolate(t)
+
+	// The second constituent's config is unreadable, so the setup loop
+	// fails after the first constituent's posts were already injected --
+	// before the build body, which the other cleanup path wraps, ever runs.
+	docsSite := testproject.MakeUnified(t, twoProjects, nil)
+	coreDir := projectDirOf(docsSite, "core")
+	cliDir := projectDirOf(docsSite, "cli")
+	writePost(t, coreDir, "core-post.md", post("Core Post", "2024-01-15", "core-post", false))
+	testproject.WriteText(t, filepath.Join(cliDir, "selfdoc.json"), "{ not json\n")
+
+	if _, err := BuildUnified(docsSite, nil, "", false, effects.Unbound()); err == nil {
+		t.Fatal("an unreadable constituent config was accepted")
+	}
+
+	assertNoInjectedPosts(t, filepath.Join(coreDir, "docs"))
+}
+
 func TestBuildUnifiedLeavesADocsTreeAloneWhenThereAreNoPosts(t *testing.T) {
 	hygiene.Isolate(t)
 	testproject.RequirePagefind(t)

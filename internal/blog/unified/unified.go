@@ -51,7 +51,7 @@ type sitePageOwner struct {
 // afterwards whether the build succeeded or failed.
 func BuildUnified(
 	dirPath string, cfg config.Config, theme string, includeDrafts bool, h *effects.Handle,
-) (map[string]bool, error) {
+) (written map[string]bool, err error) {
 	if cfg == nil {
 		loaded, err := config.Load(dirPath)
 		if err != nil {
@@ -148,6 +148,23 @@ func BuildUnified(
 
 	var allInjected []injectedPosts
 
+	// Every page injection wrote is removed whatever happens next. The
+	// setup below injects one constituent at a time and can fail on a
+	// later one -- an unreadable config, an unresolvable path -- so a
+	// cleanup that only wrapped the build body would leave the earlier
+	// constituents' generated docs/blog/*.md and docs/blog.md behind in
+	// their source trees. A cleanup failure is reported only when the
+	// build itself had nothing to say: its own error is the informative
+	// one.
+	defer func() {
+		for _, entry := range allInjected {
+			cleanupErr := build.CleanupInjectedPosts(entry.files, entry.docsDir, h)
+			if cleanupErr != nil && err == nil {
+				err = cleanupErr
+			}
+		}
+	}()
+
 	// The pages of every constituent, partitioned by how they mount.
 	projectPagePartitions := map[string]build.Partition{}
 	projectSitePages := map[string]sitePageOwner{}
@@ -226,20 +243,7 @@ func BuildUnified(
 		written:               newWrittenSet(),
 		handle:                h,
 	}
-	bodyErr := body.run()
-
-	var cleanupErr error
-	for _, entry := range allInjected {
-		if err := build.CleanupInjectedPosts(entry.files, entry.docsDir, h); err != nil && cleanupErr == nil {
-			cleanupErr = err
-		}
-	}
-	if bodyErr != nil {
-		// The build's own error is the informative one; a cleanup failure
-		// on top of it would say less about what went wrong.
-		return body.written.paths, bodyErr
-	}
-	return body.written.paths, cleanupErr
+	return body.written.paths, body.run()
 }
 
 // unifiedBuild is one unified build in progress: everything [BuildUnified]
