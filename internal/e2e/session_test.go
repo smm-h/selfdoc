@@ -5,7 +5,6 @@ package e2e
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"runtime/debug"
 	"sort"
 	"sync"
@@ -225,7 +224,6 @@ func requireDeps(t *testing.T) {
 	t.Helper()
 	hygiene.Isolate(t)
 	testproject.RequirePagefind(t)
-	requirePython3(t)
 	requireBrowser(t)
 }
 
@@ -235,16 +233,6 @@ func requireBrowser(t *testing.T) {
 	if browserErr != nil {
 		t.Skipf("the Playwright browser is not available (%v). Install it "+
 			"once with: %s", browserErr, setupCommand())
-	}
-}
-
-// requirePython3 skips the test when the Python extractor's interpreter is
-// missing, which every build of the versioned checkout needs.
-func requirePython3(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("python3 is not installed: the build extracts the versioned " +
-			"fixture project's Python source through it")
 	}
 }
 

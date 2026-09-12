@@ -30,10 +30,8 @@
 // The browser is a Chromium build under ~/.cache/ms-playwright/chromium-<revision>/,
 // where <revision> is what that playwright-core's browsers.json names.
 //
-// The suite also needs Pagefind (the search index every fixture tree carries)
-// and python3 (the Python extractor the versioned fixture project is built
-// through). Each missing dependency skips the tests that need it, naming what
-// to install.
+// The suite also needs Pagefind, the search index every fixture tree carries.
+// A missing dependency skips the tests that need it, naming what to install.
 //
 // # What it asserts
 //
