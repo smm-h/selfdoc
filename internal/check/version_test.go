@@ -29,7 +29,6 @@ func versionProject(
 }
 
 func TestVersionConsistencyRules(t *testing.T) {
-	requirePython(t)
 	for _, testCase := range []struct {
 		name             string
 		configVersion    string
@@ -100,7 +99,6 @@ func TestVersionConsistencyRules(t *testing.T) {
 }
 
 func TestVER004GeneratedRootFileVersion(t *testing.T) {
-	requirePython(t)
 	for _, testCase := range []struct {
 		name            string
 		template        string
@@ -238,7 +236,6 @@ func multiVersionProject(t *testing.T) string {
 }
 
 func TestVersionFilterControlsVER001(t *testing.T) {
-	requirePython(t)
 
 	t.Run("without a filter VER001 fires", func(t *testing.T) {
 		root := multiVersionProject(t)

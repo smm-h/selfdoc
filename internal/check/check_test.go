@@ -20,7 +20,6 @@ func checkFixture(t *testing.T, root string) *CheckResult {
 }
 
 func TestAllDirectivesOK(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"),
 		"# API\n\n:-: ref path=\"mylib\"\n")
@@ -50,7 +49,6 @@ func TestAllDirectivesOK(t *testing.T) {
 }
 
 func TestMultipleDirectivesAllOK(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"),
 		"# API\n\n:-: ref path=\"mylib\"\n\n:-: ref path=\"mylib.utils\"\n")
@@ -69,7 +67,6 @@ func TestMultipleDirectivesAllOK(t *testing.T) {
 }
 
 func TestFailedDirectiveReported(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"),
 		"# API\n\n:-: ref path=\"mylib.nonexistent\"\n")
@@ -89,7 +86,6 @@ func TestFailedDirectiveReported(t *testing.T) {
 }
 
 func TestDirectivesAcrossMultipleFiles(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "a.md"), "# A\n\n:-: ref path=\"mylib\"\n")
 	write(t, filepath.Join(root, "docs", "b.md"), "# B\n\n:-: ref path=\"mylib.utils\"\n")
@@ -107,7 +103,6 @@ func TestDirectivesAcrossMultipleFiles(t *testing.T) {
 }
 
 func TestCoverageFull(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"),
 		"# API\n\n:-: ref path=\"mylib\"\n\n:-: ref path=\"mylib.utils\"\n")
@@ -131,7 +126,6 @@ func TestCoverageFull(t *testing.T) {
 }
 
 func TestCoveragePartial(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"), "# API\n\n:-: ref path=\"mylib\"\n")
 
@@ -150,7 +144,6 @@ func TestCoveragePartial(t *testing.T) {
 }
 
 func TestCoverageNoneDocumented(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"), "# Guide\n\nNo directives here.\n")
 
@@ -196,7 +189,6 @@ func TestNoConfigRaises(t *testing.T) {
 }
 
 func TestRootTemplateDirectivesValidated(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	config := pythonProjectConfig()
 	config["root_files"] = []any{"docs/_README.md"}
@@ -216,7 +208,6 @@ func TestRootTemplateDirectivesValidated(t *testing.T) {
 }
 
 func TestRootTemplateMissingFileSkipped(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	config := pythonProjectConfig()
 	config["root_files"] = []any{"docs/_MISSING.md"}
@@ -230,7 +221,6 @@ func TestRootTemplateMissingFileSkipped(t *testing.T) {
 }
 
 func TestRootTemplateWithFrontmatter(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	config := pythonProjectConfig()
 	config["root_files"] = []any{"docs/_README.md"}
@@ -321,7 +311,6 @@ func TestSerializeCheckResultNoCoverage(t *testing.T) {
 }
 
 func TestStrictcliCodeHelpIsAHardError(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, ".strictcli", "schema.json"), `{
   "schema_version": 2,
@@ -387,7 +376,6 @@ func TestThemeCSSAnswersEveryShippedTheme(t *testing.T) {
 }
 
 func TestCheckDocsWritesHashStore(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"),
 		"---\ndescription: A guide to the library and everything in it.\n---\n# Guide\n\nText.\n")
@@ -401,7 +389,6 @@ func TestCheckDocsWritesHashStore(t *testing.T) {
 }
 
 func TestCheckDocsDryRunLeavesHashStoreAlone(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"),
 		"---\ndescription: A guide to the library and everything in it.\n---\n# Guide\n\nText.\n")
@@ -417,7 +404,6 @@ func TestCheckDocsDryRunLeavesHashStoreAlone(t *testing.T) {
 }
 
 func TestLINK001OverTheBuiltTree(t *testing.T) {
-	requirePython(t)
 
 	t.Run("a project with no build output has nothing to check", func(t *testing.T) {
 		root := pythonProject(t)

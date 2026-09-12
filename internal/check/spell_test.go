@@ -84,7 +84,6 @@ func cvProject(t *testing.T, document string) string {
 }
 
 func TestAMisspellingOnAPageIsReported(t *testing.T) {
-	requirePython(t)
 	root := spellProject(t, map[string]string{
 		"index.md": "---\ntitle: Home\ndescription: A page of ordinary prose " +
 			"that says something concrete about the project and its " +
@@ -113,7 +112,6 @@ func TestAMisspellingOnAPageIsReported(t *testing.T) {
 }
 
 func TestCleanProseProducesNoSpellingDiagnostic(t *testing.T) {
-	requirePython(t)
 	root := spellProject(t, map[string]string{
 		"index.md": "---\ntitle: Home\ndescription: A page of ordinary prose " +
 			"that says something concrete about the project and its " +
@@ -129,7 +127,6 @@ func TestCleanProseProducesNoSpellingDiagnostic(t *testing.T) {
 }
 
 func TestAMisspellingInTheCVDocumentIsReported(t *testing.T) {
-	requirePython(t)
 	document := strings.ReplaceAll(cvDocument,
 		"Imagination is the discovering faculty.",
 		"Imagination is the discovring faculty.")
@@ -168,7 +165,6 @@ func TestAMisspellingInTheCVDocumentIsReported(t *testing.T) {
 }
 
 func TestACleanCVDocumentProducesNoSpellingDiagnostic(t *testing.T) {
-	requirePython(t)
 	root := cvProject(t, cvDocument)
 
 	result := checkFixture(t, root)
@@ -179,7 +175,6 @@ func TestACleanCVDocumentProducesNoSpellingDiagnostic(t *testing.T) {
 }
 
 func TestADocumentIsReportedOnceHoweverItWasFound(t *testing.T) {
-	requirePython(t)
 	// The docs walk finds docs/cv.toml, and the directive's own path names
 	// the same file: a document reached both ways is held once.
 	document := strings.ReplaceAll(cvDocument, "Analyst", "Analsyt")
@@ -197,7 +192,6 @@ func TestADocumentIsReportedOnceHoweverItWasFound(t *testing.T) {
 }
 
 func TestACopyInTheBuildOutputIsNotReported(t *testing.T) {
-	requirePython(t)
 	document := strings.ReplaceAll(cvDocument, "Analyst", "Analsyt")
 	root := cvProject(t, document)
 	// A generated copy is overwritten by the next build; it is not a source
@@ -216,7 +210,6 @@ func TestACopyInTheBuildOutputIsNotReported(t *testing.T) {
 }
 
 func TestASymbolNameADirectiveExtractedIsNotAMisspelling(t *testing.T) {
-	requirePython(t)
 	root := spellProject(t, map[string]string{
 		"api.md": "---\ntitle: API\ndescription: The API reference for this " +
 			"project's one example package, listing every public symbol it " +
@@ -235,7 +228,6 @@ func TestASymbolNameADirectiveExtractedIsNotAMisspelling(t *testing.T) {
 }
 
 func TestThePagesOwnProseIsNotReportedTwice(t *testing.T) {
-	requirePython(t)
 	page := strings.ReplaceAll(cvPage,
 		":-: cv path=\"docs/cv.toml\"",
 		"The page says recieve.\n\n:-: cv path=\"docs/cv.toml\"")

@@ -42,7 +42,6 @@ func skeletonPage(title, modulePath string) string {
 }
 
 func TestTwoTierCoverage(t *testing.T) {
-	requirePython(t)
 	for _, testCase := range []struct {
 		name           string
 		pages          map[string]string
@@ -117,7 +116,6 @@ func TestTwoTierCoverage(t *testing.T) {
 }
 
 func TestCoverageExcludesTestFiles(t *testing.T) {
-	requirePython(t)
 	for _, testCase := range []struct {
 		name      string
 		files     map[string]string
@@ -166,7 +164,6 @@ func TestCoverageExcludesTestFiles(t *testing.T) {
 }
 
 func TestCoverageRespectsGenExclude(t *testing.T) {
-	requirePython(t)
 	root := twoTierProject(t)
 	config := pythonProjectConfig()
 	config["gen"] = map[string]any{"exclude": []any{"mylib.utils"}}
@@ -328,7 +325,6 @@ func TestLANG001ForUnsupportedLanguage(t *testing.T) {
 }
 
 func TestSupportedLanguageHasNoLANG001(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"),
 		"---\ndescription: A guide covering everything the project does for a reader.\n---\n"+
@@ -342,7 +338,6 @@ func TestSupportedLanguageHasNoLANG001(t *testing.T) {
 }
 
 func TestXREF002MissingSourceFile(t *testing.T) {
-	requirePython(t)
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"),
 		"---\ndescription: Every public function of the library, with its signature.\n---\n"+

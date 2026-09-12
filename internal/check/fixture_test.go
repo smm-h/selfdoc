@@ -219,11 +219,15 @@ func hasCode(diagnostics []lints.LintResult, code string) bool {
 	return len(withCode(diagnostics, code)) > 0
 }
 
-// requirePython skips the test when python3 is not on this machine, which is
-// what the Python extractor and the EXAMPLE001 syntax tier both need.
+// requirePython skips the test when python3 is not on this machine.
+//
+// Nothing this package checks needs an interpreter any more -- the Python
+// extractor and the example-syntax rule both parse in-process. What still
+// needs one is the pair of conformance tests that run CPython as the oracle
+// they are measured against.
 func requirePython(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("python3 is not installed, so the Python-backed checks cannot run")
+		t.Skip("python3 is not installed, so the CPython conformance tests cannot run")
 	}
 }

@@ -67,6 +67,35 @@ func parseDocument(displayPath string, source []byte) (*document, error) {
 	return doc, nil
 }
 
+// FirstSyntaxErrorLine reports whether source fails to parse, and the one-based
+// line the first failure sits on.
+//
+// It is the syntax question on its own, for a caller that wants nothing else
+// out of the file -- the documentation-example check, which asks it of a fenced
+// code block rather than of a module.
+//
+// Indentation is not a failure here. The grammar admits a fragment lifted out
+// of a function, an unexpected indent, a dedent matching no outer level and a
+// block that was never indented at all, where CPython raises IndentationError
+// for each. The example check exempted those anyway, so the exemption is now
+// structural rather than a case it has to recognize.
+func FirstSyntaxErrorLine(source []byte) (line int, failed bool, err error) {
+	parser := gotreesitter.NewParser(pythonGrammar())
+	tree, parseErr := parser.Parse(source)
+	if parseErr != nil {
+		return 0, false, fmt.Errorf("parsing Python: %w", parseErr)
+	}
+	root := tree.RootNode()
+	if root == nil {
+		return 0, false, fmt.Errorf("the Python parser produced no tree")
+	}
+	if !root.HasErrorOrMissing() {
+		return 0, false, nil
+	}
+	r := &reader{lang: pythonGrammar(), source: source}
+	return r.firstErrorLine(root), true, nil
+}
+
 // firstErrorLine is the one-based line of the first error or missing node,
 // which is the closest this parser comes to the line the interpreter named.
 func (r *reader) firstErrorLine(root *gotreesitter.Node) int {

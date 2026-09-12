@@ -618,7 +618,6 @@ func TestDescriptionQualityRules(t *testing.T) {
 }
 
 func TestEXAMPLE001SyntaxTier(t *testing.T) {
-	requirePython(t)
 	runLintCases(t, []lintCase{
 		{
 			name: "valid Python is silent",
@@ -633,8 +632,9 @@ func TestEXAMPLE001SyntaxTier(t *testing.T) {
 			want: []string{"EXAMPLE001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				diagnostic := onlyMessage(t, results, "EXAMPLE001")
-				if !strings.Contains(diagnostic.Message(), "Python syntax error") {
-					t.Errorf("message = %q", diagnostic.Message())
+				want := "Python syntax error in code block: invalid syntax"
+				if diagnostic.Message() != want {
+					t.Errorf("message = %q, want %q", diagnostic.Message(), want)
 				}
 				if diagnostic.Line() == nil {
 					t.Error("EXAMPLE001 carries no line")
@@ -654,9 +654,27 @@ func TestEXAMPLE001SyntaxTier(t *testing.T) {
 			absent: []string{"EXAMPLE001"},
 		},
 		{
-			name: "an indentation error is exempt",
+			name: "an indented fragment is exempt",
 			page: "---\ndescription: test\n---\n# Title\n\n" +
 				"```python\n    return value\n    value += 1\n    print(value)\n```\n",
+			absent: []string{"EXAMPLE001"},
+		},
+		{
+			name: "an unexpected indent is exempt",
+			page: "---\ndescription: test\n---\n# Title\n\n" +
+				"```python\nvalue = 1\n    value += 1\n    print(value)\n```\n",
+			absent: []string{"EXAMPLE001"},
+		},
+		{
+			name: "a dedent matching no outer level is exempt",
+			page: "---\ndescription: test\n---\n# Title\n\n" +
+				"```python\ndef f():\n        a = 1\n    b = 2\n    return a\n```\n",
+			absent: []string{"EXAMPLE001"},
+		},
+		{
+			name: "a block that was never indented is exempt",
+			page: "---\ndescription: test\n---\n# Title\n\n" +
+				"```python\nif ready:\nrun()\nstop()\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
@@ -777,7 +795,6 @@ func TestExampleValidationLeavesNoScratchFiles(t *testing.T) {
 }
 
 func TestEXAMPLE003FallsBackToTheSyntaxTier(t *testing.T) {
-	requirePython(t)
 	runLintCases(t, []lintCase{
 		{
 			name: "an unconfigured validate marker still gets its syntax verdict",

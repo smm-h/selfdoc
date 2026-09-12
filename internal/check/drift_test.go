@@ -26,7 +26,6 @@ def greet(name):
 }
 
 func TestDRIFT001SourceDocstringChanged(t *testing.T) {
-	requirePython(t)
 	isolate(t)
 	root := t.TempDir()
 
@@ -54,7 +53,6 @@ func TestDRIFT001SourceDocstringChanged(t *testing.T) {
 }
 
 func TestDRIFT001HintNamesAWorkingRemedy(t *testing.T) {
-	requirePython(t)
 	isolate(t)
 	root := t.TempDir()
 
@@ -100,7 +98,6 @@ func dualDriftProject(t *testing.T, root, firstDoc, secondDoc string) {
 }
 
 func TestDRIFT001SkeletonExemptionIsScoped(t *testing.T) {
-	requirePython(t)
 	isolate(t)
 	root := t.TempDir()
 
@@ -128,7 +125,6 @@ func TestDRIFT001SkeletonExemptionIsScoped(t *testing.T) {
 }
 
 func TestDRIFT001Silences(t *testing.T) {
-	requirePython(t)
 	for _, testCase := range []struct {
 		name string
 		// setup writes the project's first state, and rewrite its
@@ -179,7 +175,6 @@ func TestDRIFT001Silences(t *testing.T) {
 }
 
 func TestDRIFT001FirstRunIsSilent(t *testing.T) {
-	requirePython(t)
 	isolate(t)
 	root := t.TempDir()
 	driftProject(t, root, "Initial docstring.", "Desc")

@@ -29,7 +29,6 @@ func enforcementProject(t *testing.T, pageBody string) string {
 var pageLineReference = regexp.MustCompile(`index\.md:\d+`)
 
 func TestDirectiveAttributeEnforcement(t *testing.T) {
-	requirePython(t)
 
 	t.Run("an unknown attribute is a hard error", func(t *testing.T) {
 		root := enforcementProject(t, `:-: ref path="mylib" bogus="1"`)

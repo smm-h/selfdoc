@@ -68,7 +68,6 @@ const cliIndexPage = "---\ndescription: CLI index page for the application\n---\
 	"# CLI\n\nOverview.\n"
 
 func TestCLI001(t *testing.T) {
-	requirePython(t)
 
 	t.Run("a missing page for a command", func(t *testing.T) {
 		root := strictcliProject(t,
@@ -165,7 +164,6 @@ func TestCLI001(t *testing.T) {
 }
 
 func TestCLI002HelpLength(t *testing.T) {
-	requirePython(t)
 
 	t.Run("a command with short help", func(t *testing.T) {
 		root := strictcliProject(t,

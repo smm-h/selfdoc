@@ -40,7 +40,6 @@ func staleCount(result *CheckResult) int {
 }
 
 func TestStaleFreezeIsSticky(t *testing.T) {
-	requirePython(t)
 	root := baselineProject(t, nil)
 
 	writePage(t, root, "Original description", "Original content here.", "page.md")
@@ -61,7 +60,6 @@ func TestStaleFreezeIsSticky(t *testing.T) {
 }
 
 func TestAcceptClearsStaleness(t *testing.T) {
-	requirePython(t)
 	root := baselineProject(t, nil)
 	writePage(t, root, "Original description", "Original content here.", "page.md")
 	checkFixture(t, root)
@@ -84,7 +82,6 @@ func TestAcceptClearsStaleness(t *testing.T) {
 }
 
 func TestAcceptAdvancesBaselineToCurrentHashes(t *testing.T) {
-	requirePython(t)
 	root := baselineProject(t, nil)
 	writePage(t, root, "Original description", "Original content here.", "page.md")
 	checkFixture(t, root)
@@ -111,7 +108,6 @@ func TestAcceptAdvancesBaselineToCurrentHashes(t *testing.T) {
 }
 
 func TestAcceptRefusals(t *testing.T) {
-	requirePython(t)
 	for _, testCase := range []struct {
 		name string
 		// establishBaseline runs a check before accepting, recording a
@@ -173,7 +169,6 @@ func TestAcceptRefusals(t *testing.T) {
 }
 
 func TestAcceptIsAllOrNothing(t *testing.T) {
-	requirePython(t)
 	root := baselineProject(t, nil)
 	writePage(t, root, "Original description", "Original content here.", "page.md")
 	checkFixture(t, root)
@@ -201,7 +196,6 @@ func TestAcceptIsAllOrNothing(t *testing.T) {
 }
 
 func TestAcceptMultiplePagesInOneCall(t *testing.T) {
-	requirePython(t)
 	root := baselineProject(t, nil)
 	writePage(t, root, "Desc A original", "Body A original.", "a.md")
 	writePage(t, root, "Desc B original", "Body B original.", "b.md")
@@ -230,7 +224,6 @@ func TestAcceptMultiplePagesInOneCall(t *testing.T) {
 }
 
 func TestAcceptUsesLocalePrefixedIdentifiers(t *testing.T) {
-	requirePython(t)
 	locales := []any{map[string]any{"code": "en", "label": "English", "default": true}}
 	root := baselineProject(t, locales)
 	writePage(t, root, "Original description", "Original content here.", "page.md")
@@ -262,7 +255,6 @@ func TestAcceptUsesLocalePrefixedIdentifiers(t *testing.T) {
 }
 
 func TestComputeStalenessStateWritesNothing(t *testing.T) {
-	requirePython(t)
 	root := baselineProject(t, nil)
 	writePage(t, root, "Original description", "Original content here.", "page.md")
 	checkFixture(t, root)

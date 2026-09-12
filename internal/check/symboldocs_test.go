@@ -45,7 +45,6 @@ type symbolDocsCase struct {
 
 func runSymbolDocsCases(t *testing.T, cases []symbolDocsCase) {
 	t.Helper()
-	requirePython(t)
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := lintProject(t)

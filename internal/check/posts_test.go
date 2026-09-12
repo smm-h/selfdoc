@@ -53,7 +53,6 @@ func postPath(name string) string {
 }
 
 func TestAPostIsHeldToThePageRules(t *testing.T) {
-	requirePython(t)
 	post := postFrontmatter + "Intro paragraph.\n\n![](/img/x.png)\n"
 	root := postsProject(t, map[string]string{"hello.md": post})
 
@@ -86,7 +85,6 @@ func TestAPostIsHeldToThePageRules(t *testing.T) {
 }
 
 func TestACleanPostProducesNoDiagnostics(t *testing.T) {
-	requirePython(t)
 	post := postFrontmatter +
 		"# Hello World\n\nA paragraph of ordinary prose with nothing wrong " +
 		"with it at all, long enough that the paragraph-length rule is " +
@@ -109,7 +107,6 @@ func TestACleanPostProducesNoDiagnostics(t *testing.T) {
 }
 
 func TestAPostMissingADescriptionIsAnError(t *testing.T) {
-	requirePython(t)
 	post := "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
 		"draft: false\ndirectives: false\n---\n# Hello World\n\nBody.\n"
 	root := postsProject(t, map[string]string{"hello.md": post})
@@ -129,7 +126,6 @@ func TestAPostMissingADescriptionIsAnError(t *testing.T) {
 }
 
 func TestADraftIsNotLinted(t *testing.T) {
-	requirePython(t)
 	draft := strings.ReplaceAll(
 		strings.ReplaceAll(postFrontmatter, "draft: false", "draft: true"),
 		"slug: hello-world", "slug: draft-post",
@@ -144,7 +140,6 @@ func TestADraftIsNotLinted(t *testing.T) {
 }
 
 func TestTheGeneratedListingPageIsNotLinted(t *testing.T) {
-	requirePython(t)
 	post := postFrontmatter + "# Hello World\n\nBody prose.\n"
 	root := postsProject(t, map[string]string{"hello.md": post})
 
@@ -159,7 +154,6 @@ func TestTheGeneratedListingPageIsNotLinted(t *testing.T) {
 }
 
 func TestAProjectWithNoPostsIsUnaffected(t *testing.T) {
-	requirePython(t)
 	root := postsProject(t, nil)
 
 	result := checkFixture(t, root)
@@ -363,7 +357,6 @@ func TestCheckPostsReadsTheConventionalDirectoryWithNoPostsBlock(t *testing.T) {
 }
 
 func TestCheckDocsReportsPostValidation(t *testing.T) {
-	requirePython(t)
 	root := postsProject(t, map[string]string{
 		"broken.md": "---\ntitle: No Date\ndirectives: false\n---\nBody.\n",
 	})
@@ -376,7 +369,6 @@ func TestCheckDocsReportsPostValidation(t *testing.T) {
 }
 
 func TestLintPostBuffer(t *testing.T) {
-	requirePython(t)
 	root := postsProject(t, map[string]string{
 		"hello.md": postFrontmatter + "# Hello World\n\nBody prose.\n",
 	})
@@ -399,7 +391,6 @@ func TestLintPostBuffer(t *testing.T) {
 }
 
 func TestLintPostBufferJudgesDrafts(t *testing.T) {
-	requirePython(t)
 	root := postsProject(t, nil)
 
 	draft := strings.ReplaceAll(postFrontmatter, "draft: false", "draft: true") +
@@ -415,7 +406,6 @@ func TestLintPostBufferJudgesDrafts(t *testing.T) {
 }
 
 func TestLintPostBufferWithoutAPostsDirectory(t *testing.T) {
-	requirePython(t)
 	isolate(t)
 	root := t.TempDir()
 	writeConfig(t, root, configForSource(
