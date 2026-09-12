@@ -10,10 +10,11 @@ import (
 
 // Factory builds an extractor bound to an effects handle.
 //
-// The handle is a constructor argument rather than a per-call one because only
-// one extractor needs it -- the Python extractor runs an embedded driver under
-// python3 -- and threading it through eight signatures that ignore it would say
-// the opposite of what is true.
+// The handle is a constructor argument rather than a per-call one because it
+// was one extractor's need rather than every handler's, and threading it
+// through eight signatures that ignore it would say the opposite of what is
+// true. No extractor reads it today: the Python one used to run an interpreter
+// through it and now parses in-process.
 type Factory func(handle *effects.Handle) Extractor
 
 // knownLanguages is the authority on which languages selfdoc ships an

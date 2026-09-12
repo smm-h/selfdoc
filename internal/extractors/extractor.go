@@ -7,11 +7,10 @@ package extractors
 // questions the coverage, quality and staleness measurements ask.
 //
 // Three methods return an error where the Python protocol they replace returned
-// an empty result: the Python extractor answers them by running an embedded
-// driver under python3, and a missing interpreter or a crashed driver is a
-// broken installation, not a file with no symbols in it. A file that cannot be
-// read, or whose contents do not parse, still answers empty -- that is a
-// property of the file and every extractor reports it that way.
+// an empty result: a parser that cannot run at all is a broken installation,
+// not a file with no symbols in it. A file that cannot be read, or whose
+// contents do not parse, still answers empty -- that is a property of the file
+// and every extractor reports it that way.
 type Extractor interface {
 	// Name is the language's registry name, as selfdoc.json spells it.
 	Name() string
