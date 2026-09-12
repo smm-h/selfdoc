@@ -39,8 +39,13 @@ coverage/
 
 .rlsbl-monorepo/lock
 
-# Go build output
-/bin/
+# Go build output -- except the npm launcher stub, which is a tracked
+# source file the wrapper package ships.
+/bin/*
+!/bin/launcher.cjs
 
 # fleet-diff scratch root (clones, snapshots, normalized trees, report)
 /.fleet-diff/
+
+# uv/virtualenv
+/.venv/
