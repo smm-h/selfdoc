@@ -1,9 +1,0 @@
-[[releasables]]
-name = "selfdoc"
-tag_format = "v{version}"
-
-[[projects]]
-path = "."
-name = "root"
-releasable = "selfdoc"
-import_name = "selfdoc"
