@@ -326,7 +326,11 @@ func asConfigErr(err error, target **config.ConfigError) bool {
 	return ok
 }
 
-func TestLoadProjectConfigRefusesTheSanitizedRetryUnderAPreview(t *testing.T) {
+// TestLoadProjectConfigCompletesTheSanitizedRetryUnderAPreview covers the one
+// write this package performs outside the effects handle. The copy exists only
+// to be read back by the loader, so a preview performs it and answers what a
+// real run answers, rather than reporting a loadable project unloadable.
+func TestLoadProjectConfigCompletesTheSanitizedRetryUnderAPreview(t *testing.T) {
 	root := t.TempDir()
 	cfg := defaultConfig()
 	cfg["versions"] = []any{map[string]any{"version": "1.0.0", "indexed": true}}
@@ -338,22 +342,16 @@ func TestLoadProjectConfigRefusesTheSanitizedRetryUnderAPreview(t *testing.T) {
 			t.Fatal("the dispatch did not hand a previewing handle")
 		}
 		loaded, sanitized, err := LoadProjectConfig(h, path, scratch)
-		if err == nil {
-			t.Fatalf("a preview completed the sanitized retry: %#v", loaded)
+		if err != nil {
+			t.Fatalf("a preview refused the sanitized retry: %v", err)
 		}
-		if sanitized || loaded != nil {
-			t.Fatalf("a refused retry returned a config: %#v", loaded)
-		}
-		if !strings.Contains(err.Error(), "--dry-run") {
-			t.Fatalf("the refusal does not say why: %v", err)
+		if !sanitized || loaded == nil {
+			t.Fatalf("sanitized = %v, config = %#v", sanitized, loaded)
 		}
 	})
-	entries, err := os.ReadDir(scratch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 0 {
-		t.Fatalf("a preview wrote into the scratch directory: %#v", entries)
+	copyPath := filepath.Join(scratch, "stale", "selfdoc.json")
+	if _, err := os.Stat(copyPath); err != nil {
+		t.Fatalf("a preview did not write the sanitized copy to %s: %v", copyPath, err)
 	}
 }
 

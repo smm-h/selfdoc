@@ -19,7 +19,6 @@ package fleet
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -91,10 +90,13 @@ func ProjectDirs(root string) []string {
 // the original diagnosis. Callers that enumerate the fleet should use
 // [DiscoverFleet], which reports such a failure instead of returning it.
 //
-// A previewing effects handle refuses the sanitized retry rather than
-// reporting the project broken: the copy is the only way to read that
-// config, and a preview that silently answered "unloadable" would be a
-// different answer from the one a real run gives.
+// The copy is written directly rather than through the effects handle, and
+// the reason is the one the Python recorded when it marked the same two
+// writes exempt: the file exists only to be read back by the loader on the
+// next line, it lands in the caller's scratch directory rather than in any
+// project, and nothing outside this function ever sees it. Recording it as
+// an effect would make a preview answer "unloadable" for a project that
+// loads, which is a different answer from the one a real run gives.
 func LoadProjectConfig(h *effects.Handle, projectDir, scratchDir string) (config.Config, bool, error) {
 	loaded, err := config.Load(projectDir)
 	if err == nil {
@@ -134,21 +136,19 @@ func LoadProjectConfig(h *effects.Handle, projectDir, scratchDir string) (config
 		return nil, false, err
 	}
 
-	if h.Previewing() {
-		return nil, false, fmt.Errorf(
-			"%s declares a retired schema key, and loading it needs a sanitized "+
-				"copy written to a scratch directory, which a preview does not "+
-				"perform; run this outside --dry-run", projectDir)
-	}
 	shadow := filepath.Join(scratchDir, filepath.Base(strings.TrimRight(projectDir, "/")))
-	if err := h.MkdirAll(shadow); err != nil {
+	// effects: exempt -- the caller's own scratch directory, never the project
+	// being read.
+	if err := os.MkdirAll(shadow, 0o755); err != nil {
 		return nil, false, err
 	}
 	encoded, err := util.PythonJSON(document)
 	if err != nil {
 		return nil, false, err
 	}
-	if err := h.AtomicWrite(filepath.Join(shadow, "selfdoc.json"), encoded, effects.ModeDefault); err != nil {
+	// effects: exempt -- a scratch copy of a config, written and read back to
+	// load it, and never read by anything else.
+	if err := os.WriteFile(filepath.Join(shadow, "selfdoc.json"), encoded, 0o644); err != nil {
 		return nil, false, err
 	}
 	sanitized, err := config.Load(shadow)
