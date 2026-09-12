@@ -1,0 +1,22 @@
+the assembled tree failed verification: 11 problem(s) across 10 check(s).
+  roster-agreement:
+    site/gamma: a subtree no [[project]] block declares. Membership is declared, never accumulated: add 'gamma' to the roster or retire it.
+  manifest-identity:
+    site/beta/index.html: was built at version 1.9.0, but manifests/beta.json says 2.0.0. The manifest and the tree come from different builds.
+  manifest-pages-emitted:
+    alpha:guide.md: is listed in the manifest but site/alpha/guide/index.html was not emitted, so every listing linking to it is a 404.
+  shared-artifacts:
+    site/robots.txt: robots.txt is missing from the assembled tree.
+  internal-references:
+    site/alpha/index.html: href="guide/" -> alpha/guide/index.html, which this build did not write
+  sitemap-entries:
+    site/sitemap.xml: sitemap entry https://docs.example.com/alpha/guide/ -> alpha/guide/index.html, which this build did not write
+    site/sitemap.xml: lists https://old.example.net/alpha/, which is not under the site's canonical base https://docs.example.com. A sitemap declares this site's own pages, so an entry on another host submits an address this site does not serve.
+  page-metadata:
+    site/cv/index.html: has no title, so every listing, tab and search result showing it is blank.
+  site-chrome:
+    site/blog/index.html: links no page-chrome stylesheet, so it is served as unstyled HTML.
+  unresolved-directives:
+    site/blog/hello/index.html: carries an unresolved directive: [selfdoc: python_ref target=x — not yet resolved]
+  routing-artifacts:
+    site/alpha/_headers: is a per-project deploy artifact. The assembly serves one set of routing files for the whole site.
