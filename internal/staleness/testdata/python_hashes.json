@@ -1,0 +1,18 @@
+{
+  "_hash_version": 3,
+  "en/cli-build.md": {
+    "content": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "description": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "schema_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "seed_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "en/index.md": {
+    "content": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "description": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "en/r\u00e9f\u00e9rence.md": {
+    "content": "1111111111111111111111111111111111111111111111111111111111111111",
+    "description": "2222222222222222222222222222222222222222222222222222222222222222",
+    "source_docstring": "3333333333333333333333333333333333333333333333333333333333333333"
+  }
+}
