@@ -246,6 +246,14 @@ var (
 // directory prepended to PATH -- which is the second thing the build tries, so
 // nothing about the build changes.
 //
+// Every candidate is probed with HOME and the XDG base directories pointed at
+// a directory that does not exist, because the isolation floor repoints them
+// before the build runs. A Pagefind installed into the user site directory
+// answers "python3 -m pagefind" in the developer's own shell and then
+// disappears once HOME moves, so a probe run under the real HOME would report
+// a Pagefind the build cannot reach and the test would fail instead of
+// skipping.
+//
 // It must be called before the test calls T.Parallel, because it sets an
 // environment variable.
 func RequirePagefind(t TB) {
@@ -273,8 +281,8 @@ func RequirePagefind(t TB) {
 	t.Setenv("PATH", shimDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
-// findPagefind returns an argv prefix that runs Pagefind, or nil when none
-// does.
+// findPagefind returns an argv prefix that runs Pagefind under the isolation
+// floor's environment, or nil when none does.
 func findPagefind() []string {
 	candidates := [][]string{
 		{"python3", "-m", "pagefind"},
@@ -285,11 +293,44 @@ func findPagefind() []string {
 	}
 	for _, candidate := range candidates {
 		cmd := exec.Command(candidate[0], append(candidate[1:], "--version")...)
+		cmd.Env = homelessEnv()
 		if err := cmd.Run(); err == nil {
 			return candidate
 		}
 	}
 	return nil
+}
+
+// unreachableHome is a path no home directory occupies. It is what the
+// Pagefind probe points HOME at, so that a user-site installation is invisible
+// to it exactly as it is invisible to an isolated test's build.
+const unreachableHome = "/nonexistent/selfdoc-pagefind-probe"
+
+// homelessEnv is the current environment with HOME, USERPROFILE and the four
+// XDG base directories pointed at [unreachableHome], which is what the
+// isolation floor does to them before a test builds anything.
+func homelessEnv() []string {
+	moved := map[string]string{
+		"HOME":            unreachableHome,
+		"USERPROFILE":     unreachableHome,
+		"XDG_CONFIG_HOME": filepath.Join(unreachableHome, ".config"),
+		"XDG_DATA_HOME":   filepath.Join(unreachableHome, ".local", "share"),
+		"XDG_CACHE_HOME":  filepath.Join(unreachableHome, ".cache"),
+		"XDG_STATE_HOME":  filepath.Join(unreachableHome, ".local", "state"),
+	}
+	environment := make([]string, 0, len(os.Environ())+len(moved))
+	for _, entry := range os.Environ() {
+		if name, _, found := strings.Cut(entry, "="); found {
+			if _, moving := moved[name]; moving {
+				continue
+			}
+		}
+		environment = append(environment, entry)
+	}
+	for name, value := range moved {
+		environment = append(environment, name+"="+value)
+	}
+	return environment
 }
 
 // uvToolInterpreters lists the Python interpreters uv installed for its tools,
