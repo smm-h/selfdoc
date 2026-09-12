@@ -443,7 +443,7 @@ td, th { border: 1px solid var(--border); }
 
 <p>This paragraph contains <strong>bold text</strong>, <em>italicized text</em>, and <code>inline code</code> like <code>parse_directives()</code>. You can also use <a href="https://github.com/smm-h/selfdoc">external links</a> and <a href="#typography">internal links</a> to navigate the documentation.</p>
 
-<p>selfdoc resolves <code>:-:</code> directives in Markdown templates into content extracted from source code. It supports <strong>Python</strong>, <strong>Go</strong>, and <strong>TypeScript/JavaScript</strong> through language-specific extractors that handle all five built-in directives: <code>ref</code>, <code>table-schema</code>, <code>code-test</code>, <code>code-help</code>, and <code>table-config</code>.</p>
+<p>selfdoc resolves <code>:-:</code> directives in Markdown templates into content extracted from source code. It reads <strong>Go</strong>, <strong>Python</strong>, <strong>TypeScript/JavaScript</strong>, <strong>Svelte</strong>, <strong>Zig</strong>, <strong>Dart</strong>, <strong>Kotlin</strong>, <strong>Swift</strong> and <strong>SQL</strong> through language-specific extractors that handle the code-extraction directives: <code>ref</code>, <code>table-schema</code>, <code>code-test</code>, <code>code-help</code>, and <code>table-config</code>.</p>
 
 <hr>
 
@@ -482,7 +482,7 @@ td, th { border: 1px solid var(--border); }
 <h3 id="step-guide"><a class="heading-link" href="#step-guide" aria-label="Link to section: Step Guide">#</a>Step Guide</h3>
 
 <ol class="steps">
-<li>Install selfdoc using <code>pip install selfdoc</code> or <code>npm install -g selfdoc</code>. The npm package is a thin Node wrapper that delegates to <code>python3 -m selfdoc</code>.</li>
+<li>Install selfdoc using <code>go install github.com/smm-h/selfdoc/cmd/selfdoc@v0</code>, or through <code>npm install -g selfdocumenting</code> or <code>pip install selfdocumenting</code> &mdash; both of those are thin launchers that download the matching release binary on first run.</li>
 <li>Initialize your project with <code>selfdoc init</code>. This creates a <code>selfdoc.json</code> config file and a <code>docs/</code> directory with a starter template.</li>
 <li>Run the development server with <code>selfdoc serve</code>. It uses SSE-based live reload with mtime polling so you see changes instantly as you edit templates.</li>
 </ol>
@@ -619,7 +619,7 @@ export function extractModule(sourcePath: string): string {
 
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Use <code>selfdoc check --coverage</code> to see how many of your public symbols are documented. The coverage report only works for Python projects using the <code>ast</code>-based extractor.</p>
+<p>Run <code>selfdoc check</code> to see how many of your public symbols are documented. Coverage is measured for every declared source entry, through that entry's own extractor.</p>
 </div>
 
 <div class="admonition warning">
@@ -706,7 +706,7 @@ export function extractModule(sourcePath: string): string {
 <dd>A <code>:-: name</code> one-liner or <code>:&lt;: name</code> / <code>:&gt;:</code> block in a Markdown template that selfdoc replaces with content extracted from source code during the build process.</dd>
 
 <dt><dfn>Extractor</dfn></dt>
-<dd>A language-specific module that reads source files and returns structured content for a given directive. Python uses <code>ast</code>; Go and TypeScript use regex-based parsing.</dd>
+<dd>A language-specific component that reads source files and returns structured content for a given directive. Python is parsed with the standard library's <code>ast</code> through an embedded driver; the other languages are read by pattern-based scanners.</dd>
 
 <dt><dfn>Resolver</dfn></dt>
 <dd>The component that maps a directive name and argument to the correct extractor, checking custom directives from <code>selfdoc.json</code> before falling back to built-in extractors.</dd>
