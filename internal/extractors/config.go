@@ -42,19 +42,40 @@ func NewJSONObject() *JSONObject {
 }
 
 // Keys lists the object's keys in the order they appeared.
-func (o *JSONObject) Keys() []string { return o.keys }
+//
+// A nil object has no keys, which is what a decoder that answered "no object
+// here" means. Has, Get, Keys and Len all read a nil receiver as the empty
+// object, so a caller that took an object out of a document does not have to
+// know whether the document carried one.
+func (o *JSONObject) Keys() []string {
+	if o == nil {
+		return nil
+	}
+	return o.keys
+}
 
-// Len is the number of keys.
-func (o *JSONObject) Len() int { return len(o.keys) }
+// Len is the number of keys. A nil object has none.
+func (o *JSONObject) Len() int {
+	if o == nil {
+		return 0
+	}
+	return len(o.keys)
+}
 
-// Has reports whether the object carries key.
+// Has reports whether the object carries key. A nil object carries nothing.
 func (o *JSONObject) Has(key string) bool {
+	if o == nil {
+		return false
+	}
 	_, ok := o.values[key]
 	return ok
 }
 
-// Get reports the value at key.
+// Get reports the value at key. A nil object reports nothing.
 func (o *JSONObject) Get(key string) (any, bool) {
+	if o == nil {
+		return nil, false
+	}
 	v, ok := o.values[key]
 	return v, ok
 }

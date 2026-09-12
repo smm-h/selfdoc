@@ -296,3 +296,22 @@ func TestJSONObjectSetKeepsFirstPosition(t *testing.T) {
 func hasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
+
+// TestNilJSONObjectReadsAsEmpty covers the readers on a nil object. A decoder
+// that found no object answers nil, and a caller that asks such an object what
+// it carries gets "nothing" rather than a panic.
+func TestNilJSONObjectReadsAsEmpty(t *testing.T) {
+	var obj *JSONObject
+	if got := obj.Keys(); got != nil {
+		t.Errorf("Keys() = %#v, want nil", got)
+	}
+	if got := obj.Len(); got != 0 {
+		t.Errorf("Len() = %d, want 0", got)
+	}
+	if obj.Has("anything") {
+		t.Error("Has() = true, want false")
+	}
+	if value, ok := obj.Get("anything"); ok || value != nil {
+		t.Errorf("Get() = (%#v, %v), want (nil, false)", value, ok)
+	}
+}
