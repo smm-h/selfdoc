@@ -1,0 +1,25 @@
+{
+  "name": "selfdocumenting",
+  "version": "0.38.1",
+  "description": "Code-aware static site generator with directive-based content extraction",
+  "bin": {
+    "selfdoc": "bin/launcher.cjs"
+  },
+  "files": [
+    "bin"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "documentation",
+    "static-site-generator",
+    "selfdoc",
+    "rlsbl"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smm-h/selfdoc"
+  }
+}
