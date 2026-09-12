@@ -12,7 +12,7 @@ description = "Code-aware static site generator with directive-based content ext
 license = "MIT"
 authors = [{ name = "smm-h" }]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 keywords = ["documentation", "static-site-generator", "docstring", "jsdoc", "selfdoc", "rlsbl"]
 
 [project.urls]

@@ -1,5 +1,10 @@
 version: 2
 
+# The asset names the npm and PyPI launchers reconstruct are
+# "<project_name>_<version>_<os>_<arch>.<ext>", so the project name is
+# declared rather than inferred from the repository directory.
+project_name: selfdoc
+
 builds:
   - main: ./cmd/selfdoc
     env:
