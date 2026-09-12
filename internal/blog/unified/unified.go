@@ -357,16 +357,10 @@ func (b *unifiedBuild) run() error {
 		return err
 	}
 
-	compressCount, hasBrotli, err := build.CompressOutput(b.outputDir, b.handle)
+	compressCount, err := build.CompressOutput(b.outputDir, b.handle)
 	if err != nil {
 		return err
 	}
-	if hasBrotli {
-		fmt.Fprintf(os.Stdout, "Pre-compressed %d files (gzip + brotli)\n", compressCount)
-	} else {
-		fmt.Fprintf(os.Stdout,
-			"Pre-compressed %d files (gzip only, install brotli for better compression)\n",
-			compressCount)
-	}
+	fmt.Fprintf(os.Stdout, "Pre-compressed %d files (gzip + brotli)\n", compressCount)
 	return nil
 }

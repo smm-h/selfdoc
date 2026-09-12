@@ -22,57 +22,54 @@ var compressibleExtensions = map[string]bool{
 }
 
 // CompressOutput writes a gzip and a brotli companion beside every
-// compressible file under outputDir, and returns how many files it compressed
-// and whether brotli was available.
+// compressible file under outputDir, and returns how many files it
+// compressed.
 //
-// brotli is compiled into this binary, so the second return value is always
-// true -- it stays in the signature because the caller prints a different line
-// for each case and the Python it replaces really could be installed without
-// it.
+// brotli is compiled into this binary, so both companions are always written.
 //
 // The tree is walked in sorted order, so a preview names the companions in the
 // same order on every run.
-func CompressOutput(outputDir string, h *effects.Handle) (count int, hasBrotli bool, err error) {
+func CompressOutput(outputDir string, h *effects.Handle) (count int, err error) {
 	paths, err := compressibleFiles(outputDir)
 	if err != nil {
-		return 0, true, err
+		return 0, err
 	}
 	for _, path := range paths {
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
-			return count, true, readErr
+			return count, readErr
 		}
 
 		var gzipped bytes.Buffer
 		writer, levelErr := gzip.NewWriterLevel(&gzipped, gzip.BestCompression)
 		if levelErr != nil {
-			return count, true, levelErr
+			return count, levelErr
 		}
 		if _, writeErr := writer.Write(data); writeErr != nil {
-			return count, true, writeErr
+			return count, writeErr
 		}
 		if closeErr := writer.Close(); closeErr != nil {
-			return count, true, closeErr
+			return count, closeErr
 		}
 		if writeErr := h.Write(path+".gz", gzipped.Bytes(), effects.ModeDefault); writeErr != nil {
-			return count, true, writeErr
+			return count, writeErr
 		}
 
 		var brotlied bytes.Buffer
 		brotliWriter := brotli.NewWriter(&brotlied)
 		if _, writeErr := brotliWriter.Write(data); writeErr != nil {
-			return count, true, writeErr
+			return count, writeErr
 		}
 		if closeErr := brotliWriter.Close(); closeErr != nil {
-			return count, true, closeErr
+			return count, closeErr
 		}
 		if writeErr := h.Write(path+".br", brotlied.Bytes(), effects.ModeDefault); writeErr != nil {
-			return count, true, writeErr
+			return count, writeErr
 		}
 
 		count++
 	}
-	return count, true, nil
+	return count, nil
 }
 
 // compressibleFiles lists every compressible file under root, sorted.

@@ -700,15 +700,12 @@ func TestCompressOutput(t *testing.T) {
 		t.Fatalf("writing the fixture image: %v", err)
 	}
 
-	count, hasBrotli, err := CompressOutput(dir, effects.Unbound())
+	count, err := CompressOutput(dir, effects.Unbound())
 	if err != nil {
 		t.Fatalf("CompressOutput: %v", err)
 	}
 	if count != 1 {
 		t.Errorf("CompressOutput compressed %d files, want only the one text file", count)
-	}
-	if !hasBrotli {
-		t.Error("brotli is compiled in, so it is always available")
 	}
 	for _, companion := range []string{"index.html.gz", "index.html.br"} {
 		if _, err := os.Stat(filepath.Join(dir, companion)); err != nil {

@@ -641,17 +641,11 @@ func buildBody(in bodyInputs, h *effects.Handle) (map[string]bool, error) {
 		return written, err
 	}
 
-	compressCount, hasBrotli, err := CompressOutput(in.outputDir, h)
+	compressCount, err := CompressOutput(in.outputDir, h)
 	if err != nil {
 		return written, err
 	}
-	if hasBrotli {
-		fmt.Fprintf(in.stdout, "Pre-compressed %d files (gzip + brotli)\n", compressCount)
-	} else {
-		fmt.Fprintf(in.stdout,
-			"Pre-compressed %d files (gzip only, install brotli for better compression)\n",
-			compressCount)
-	}
+	fmt.Fprintf(in.stdout, "Pre-compressed %d files (gzip + brotli)\n", compressCount)
 
 	fmt.Fprintln(in.stdout, "OG cards: basic")
 
