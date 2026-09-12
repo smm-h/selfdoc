@@ -9,7 +9,7 @@ nav_order: 19
 
 selfdoc includes a blog system for publishing chronological content alongside your documentation. Blog posts are Markdown files with YAML frontmatter, stored in a dedicated directory within your project. Posts are unversioned -- they exist outside the multi-version docs system -- and are published to the unified documentation assembly alongside your API reference and guides.
 
-The blog system is part of the `selfdoc` binary, which carries the post commands (`selfdoc post new`, `selfdoc post list`, `selfdoc post publish`, and the rest) alongside the assembly infrastructure for multi-project documentation sites.
+The blog system is part of the `selfdoc` binary, which carries the post commands (`selfdoc blog post new`, `selfdoc blog post list`, `selfdoc blog post publish`, and the rest) alongside the assembly infrastructure for multi-project documentation sites.
 
 ## Configuration
 
@@ -44,10 +44,10 @@ You also need `topology.slug` configured so that posts are attributed to your pr
 
 ### Manual creation
 
-Use `selfdoc post new` to scaffold a new post file:
+Use `selfdoc blog post new` to scaffold a new post file:
 
 ```bash
-selfdoc post new --title "My First Post"
+selfdoc blog post new --title "My First Post"
 ```
 
 This creates a file like `.selfdoc/posts/2026-07-29-my-first-post.md` with a frontmatter template:
@@ -67,10 +67,10 @@ The filename is date-prefixed (`YYYY-MM-DD-slug.md`). The command errors if a fi
 
 ### Release-generated posts
 
-`selfdoc post generate` creates posts automatically from release metadata. This is typically called by release tooling (e.g., rlsbl post-release hooks) rather than manually:
+`selfdoc blog post generate` creates posts automatically from release metadata. This is typically called by release tooling (e.g., rlsbl post-release hooks) rather than manually:
 
 ```bash
-selfdoc post generate \
+selfdoc blog post generate \
   --from-release \
   --version 1.2.0 \
   --prev-version 1.1.0 \
@@ -113,7 +113,7 @@ Documentation pages carry no such key. The whole `docs/` tree is directive terri
 
 ### Release-specific fields
 
-These fields are set by `selfdoc post generate --from-release` and are not typically written by hand:
+These fields are set by `selfdoc blog post generate --from-release` and are not typically written by hand:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -132,7 +132,7 @@ Once a post is published (appears in the manifest), its slug cannot change. The 
 View all discovered posts with:
 
 ```bash
-selfdoc post list
+selfdoc blog post list
 ```
 
 Output shows each post's date, title, slug, and draft status:
@@ -148,10 +148,10 @@ Posts are sorted newest-first, with same-date posts sorted alphabetically by slu
 
 ## Publishing Posts
 
-`selfdoc post publish` pushes non-draft posts to the documentation assembly:
+`selfdoc blog post publish` pushes non-draft posts to the documentation assembly:
 
 ```bash
-selfdoc post publish
+selfdoc blog post publish
 ```
 
 The publish flow:
@@ -168,7 +168,7 @@ Publishing is separate from a full documentation release. You can publish new po
 
 ## Revision Tracking
 
-selfdoc tracks content revisions for blog posts via a sidecar file at `.selfdoc/revisions.json`. Revision tracking is automatic -- it happens during `selfdoc post publish`.
+selfdoc tracks content revisions for blog posts via a sidecar file at `.selfdoc/revisions.json`. Revision tracking is automatic -- it happens during `selfdoc blog post publish`.
 
 ### How it works
 
@@ -232,7 +232,7 @@ Blog posts integrate into the unified multi-project documentation site through t
 
 1. **Per-project build**: `selfdoc build --target posts` builds post HTML and generates a `post-manifest.json` containing metadata for all non-draft posts.
 
-2. **Assembly push**: `selfdoc post publish` pushes each built post into `site/blog/{post-slug}/` in the assembly repo -- the site level, under no project slug -- and the post-manifest into `manifests/{slug}-posts.json`. The listing page the build renders for the project's own standalone site is not pushed: the assembled site's blog index is generated from every project's manifests.
+2. **Assembly push**: `selfdoc blog post publish` pushes each built post into `site/blog/{post-slug}/` in the assembly repo -- the site level, under no project slug -- and the post-manifest into `manifests/{slug}-posts.json`. The listing page the build renders for the project's own standalone site is not pushed: the assembled site's blog index is generated from every project's manifests.
 
 3. **Shared regeneration**: The assembly workflow runs `selfdoc assembly integrate`, which grafts the dispatched build into the assembly tree and then regenerates the shared cross-project elements from all per-project manifests and post overlays:
    - A blog index page listing all posts across all projects, sorted newest-first
@@ -460,11 +460,11 @@ Every scope reconciles membership first: whatever else a dispatch is doing, it m
 Two commands put content on the live site with no tag and no release. Both build locally, push straight into the assembly repository through the Git Data API, and then dispatch a shared-only rebuild.
 
 ```bash
-selfdoc post publish    # non-draft posts
-selfdoc docs publish    # the project's documentation
+selfdoc blog post publish    # non-draft posts
+selfdoc blog publish-docs    # the project's documentation
 ```
 
-`docs publish` builds the docs the same way the deploy does, applies the same deploy-artifact exclusions (`_headers`, `_redirects`, `_worker.js`, `.gz`, `.br`), and pushes the project's subtree, its manifest, its published-file record and its membership entry in one commit. Content travels as bytes, so images and fonts survive intact. Deletions travel with it: a page the project published before and no longer builds is removed in the same commit.
+`blog publish-docs` builds the docs the same way the deploy does, applies the same deploy-artifact exclusions (`_headers`, `_redirects`, `_worker.js`, `.gz`, `.br`), and pushes the project's subtree, its manifest, its published-file record and its membership entry in one commit. Content travels as bytes, so images and fonts survive intact. Deletions travel with it: a page the project published before and no longer builds is removed in the same commit.
 
 Both commands are consequential -- they make locally-authored writing publicly readable -- so they prompt unless `--approve-consequential` is passed. Neither can create membership: publishing into a slug `roster.toml` does not declare is a hard error naming the block that would have to exist.
 
@@ -472,7 +472,7 @@ Both commands are consequential -- they make locally-authored writing publicly r
 
 A full build used to replace `site/{slug}/` wholesale, which meant a release destroyed anything published into that subtree since the last one. It prunes to its own output instead.
 
-Every publisher -- the release-time integrate, `docs publish`, `post publish` -- records the paths it produced in `manifests/{slug}-files.json`:
+Every publisher -- the release-time integrate, `blog publish-docs`, `blog post publish` -- records the paths it produced in `manifests/{slug}-files.json`:
 
 ```json
 {

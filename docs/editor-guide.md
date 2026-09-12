@@ -7,7 +7,7 @@ nav_order: 20
 
 # Editor Guide
 
-`selfdoc editor serve` runs a local authoring app for blog posts. It opens in a browser, lists the repositories a hand-written registry declares, shows each one's posts, and puts the post source in an editor beside a live preview.
+`selfdoc blog editor serve` runs a local authoring app for blog posts. It opens in a browser, lists the repositories a hand-written registry declares, shows each one's posts, and puts the post source in an editor beside a live preview.
 
 Two properties are worth stating before anything else, because the whole design follows from them:
 
@@ -94,8 +94,8 @@ The registry is read strictly. There is no shape that is quietly skipped, becaus
 ## Listing what is registered
 
 ```bash
-selfdoc editor list-repos
-selfdoc editor list-repos --registry ./my-registry.toml
+selfdoc blog editor list-repos
+selfdoc blog editor list-repos --registry ./my-registry.toml
 ```
 
 Read-only. It validates the whole file -- so it doubles as the way to check a registry before serving from it -- and prints one line per entry:
@@ -108,7 +108,7 @@ afar     remote  smm-h/afar@v1.2.3 [render, not served yet]
 ## Running the app
 
 ```bash
-selfdoc editor serve --port 4173
+selfdoc blog editor serve --port 4173
 ```
 
 `--port` is required and has no default. The editor occupies a port on the machine you work on and writes working trees through it; which port that is belongs in the command line rather than in a default nobody reads.
@@ -139,7 +139,7 @@ Neither is a fallback for the other. If no path is given and no tinymoon is inst
 The editor component, its completion popup and its stylesheet are newer than the released tinymoon package, so a checkout is currently the only complete source:
 
 ```bash
-selfdoc editor serve --port 4173 --tinymoon-assets ~/Projects/tinymoon/assets
+selfdoc blog editor serve --port 4173 --tinymoon-assets ~/Projects/tinymoon/assets
 ```
 
 The command prints which source it used on startup, so a session never has to guess.
@@ -202,7 +202,7 @@ One case the editor cannot know about: the roster names one project served at th
 
 The **Publish repository…** button is the only action in the whole app that reaches the world, and it never fires from a keystroke. Everything else the editor does stops at this machine: a preview is rendered in memory, an analysis reads the buffer, and a save writes one file into a working tree you already have.
 
-Pressing it asks the server what `selfdoc post publish` declares itself to be and renders that declaration: its effect classification, that it is consequential, the grants it holds, and the list of posts -- computed from the project's own discovery -- that this publish will make public, with the drafts that will not. The scope sentence is the command's, not the button's: **it publishes every non-draft post in the repository, not the post open in the editor**, and a published post cannot be unpublished from the reader's side.
+Pressing it asks the server what `selfdoc blog post publish` declares itself to be and renders that declaration: its effect classification, that it is consequential, the grants it holds, and the list of posts -- computed from the project's own discovery -- that this publish will make public, with the drafts that will not. The scope sentence is the command's, not the button's: **it publishes every non-draft post in the repository, not the post open in the editor**, and a published post cannot be unpublished from the reader's side.
 
 Confirming sends the consent you just gave, and the command runs through strictcli's programmatic path carrying it. A call that carries no consent is refused by the framework itself -- not by a condition in the editor -- and the refusal is shown to you word for word, as is everything the publish prints.
 

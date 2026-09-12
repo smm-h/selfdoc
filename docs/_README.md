@@ -171,7 +171,7 @@ Dispatch order is content directives, then custom directives, then the language 
 
 ## Blog and multi-project assembly
 
-Blog posts and the unified multi-project documentation assembly are part of the same binary. `selfdoc post new|list|generate|publish` manages posts, `selfdoc editor serve` runs the local authoring app, and `selfdoc assembly ...` initializes, pushes, rebuilds and verifies an assembly that mounts every project under its own slug.
+Blog posts and the unified multi-project documentation assembly are part of the same binary. `selfdoc blog post new|list|generate|publish` manages posts, `selfdoc blog editor serve` runs the local authoring app, and `selfdoc assembly ...` initializes, pushes, rebuilds and verifies an assembly that mounts every project under its own slug.
 
 ## Deploy
 
