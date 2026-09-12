@@ -58,10 +58,7 @@ Documentation *pages* need no override -- they keep the `var` directive in their
 
 ### Docs checks during release
 
-If a project has a `selfdoc.json` in its root, rlsbl can run `selfdoc check` as part of its pre-release validation. This catches broken directives, coverage regressions, and SEO errors before the release is tagged. The check runs alongside rlsbl's built-in tests and lint.
-
-> [!TIP]
-> Add `selfdoc check` to your `.rlsbl/hooks/pre-checks.sh` to enforce documentation quality on every release. The pre-checks hook runs before tests and lint, so doc issues are caught early.
+A `selfdoc.json` in the project root is all the wiring there is. rlsbl's release flow runs `selfdoc gen --no-auto-commit` and then `selfdoc check` as built-in steps, before the version bump, so broken directives, coverage regressions and SEO errors stop the release before anything is tagged. Neither step needs a hook, and a machine with no `selfdoc` on `PATH` skips both with a note rather than failing.
 
 ### Post-release build and deploy
 
@@ -83,10 +80,6 @@ selfdoc deploy
 
 This runs after rlsbl has pushed the release tag and created the GitHub Release. Even if the deploy fails, it does not affect the release itself (post-release hooks are non-fatal).
 
-### Skip flag
-
-If you need to release without running docs checks or builds, rlsbl provides `--skip-docs` to bypass the documentation step. This is useful for hotfix releases where the docs have not changed.
-
 ## Credential Handling
 
 For Cloudflare Pages deploys, selfdoc reads 2 environment variables (`CF_PAGES_API_TOKEN` and `CF_ACCOUNT_ID`). These credentials are not stored in the repository or in GitHub secrets since the deploy runs locally inside the post-release hook. In rlsbl-managed projects, the hook sources them from the shared environment file:
@@ -101,7 +94,7 @@ No GitHub secrets are needed for this flow -- the deploy runs locally in the hoo
 
 ## Setting It Up
 
-If your project already has both `selfdoc.json` and `.rlsbl/`, the integration is automatic since the tools detect each other at runtime. For new projects, the setup takes 4 steps: initialize selfdoc, add the docs check hook, configure post-release deploy, and set the deploy provider in your config. Here is the minimal setup:
+If your project already has both `selfdoc.json` and `.rlsbl/`, the integration is automatic since the tools detect each other at runtime. A new project needs the config file, the post-release deploy, and a deploy provider named in the config -- the generation and check steps come for free once `selfdoc.json` exists. Here is the minimal setup:
 
 1. **Initialize selfdoc** in an rlsbl-managed project:
 
@@ -109,13 +102,7 @@ If your project already has both `selfdoc.json` and `.rlsbl/`, the integration i
 selfdoc init
 ```
 
-2. **Add docs check to pre-checks** (optional but recommended):
-
-```bash
-echo 'selfdoc check' >> .rlsbl/hooks/pre-checks.sh
-```
-
-3. **Add build and deploy to post-release** (for auto-deploy):
+2. **Add build and deploy to post-release** (for auto-deploy):
 
 ```bash
 cat >> .rlsbl/hooks/post-release.sh << 'EOF'
@@ -125,7 +112,7 @@ selfdoc deploy
 EOF
 ```
 
-4. **Configure deploy provider** in `selfdoc.json`:
+3. **Configure deploy provider** in `selfdoc.json`:
 
 ```json
 {
@@ -141,4 +128,4 @@ That is it. On the next `rlsbl release`, docs are checked before release and reb
 > [!WARNING]
 > Make sure the post-release hook has `source ~/Projects/.env` before `selfdoc deploy`. Without it, the Cloudflare API token is missing and the deploy will fail silently (post-release hooks are non-fatal).
 
-Next: [Atom Feeds](../feeds/) -->
+Next: [Atom Feeds](../feeds/)

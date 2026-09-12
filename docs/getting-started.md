@@ -20,14 +20,9 @@ Install with the Go toolchain:
 go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 ```
 
-Or through a package manager you already have. Both packages are thin launchers that download the matching release binary from the GitHub Release on first run and cache it per user:
+On a machine with no Go toolchain, take the archive for your platform from the [latest GitHub Release](https://github.com/smm-h/selfdoc/releases/latest). Every release publishes prebuilt binaries for Linux, macOS and Windows on amd64 and arm64; unpack the archive and put `selfdoc` somewhere on your `PATH`.
 
-```bash
-npm install -g selfdocumenting
-pip install selfdocumenting
-```
-
-Two dependencies are optional, and each is needed only by the feature that uses it: `python3` for the Python extractor and for custom directives, and [Pagefind](https://pagefind.app/) for the search index.
+Two dependencies are optional, and each is needed only by the feature that uses it: [Pagefind](https://pagefind.app/) for the search index, and `python3` for custom directives. Every built-in extractor parses in process -- documenting a Python project needs no interpreter.
 
 Verify the installation:
 

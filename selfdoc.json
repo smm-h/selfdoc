@@ -60,7 +60,7 @@
       },
       {
         "title": "One Static Binary",
-        "description": "Written in Go and distributed as a single executable. No runtime, no virtualenv, no JavaScript toolchain -- install it with `go install`, npm, or pip and run it."
+        "description": "Written in Go and distributed as a single executable. No runtime, no virtualenv, no JavaScript toolchain -- `go install` it, or download the archive for your platform from the GitHub Release, and run it."
       },
       {
         "title": "SEO & AI Optimized",
@@ -68,7 +68,7 @@
       },
       {
         "title": "Themeable & Accessible",
-        "description": "Two built-in themes with dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation."
+        "description": "Every built-in theme ships dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation."
       }
     ]
   },

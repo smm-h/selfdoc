@@ -89,7 +89,7 @@ type Extractor interface {
 
 The methods split into three groups. `Name` and `Detect` identify the language. `Extract` resolves one directive into Markdown. The rest answer the discovery questions the coverage, quality and staleness measurements ask.
 
-`Extract` returns an error marker as its Markdown, and a nil error, when a directive cannot be resolved -- a missing file, a syntax error, an unknown directive name -- so one bad directive degrades one region of one page instead of failing the build. The error return is for a broken toolchain. Three of the discovery methods can return an error where an empty result would be a lie: the Python extractor answers them by running an embedded driver under `python3`, and a missing interpreter or a crashed driver is a broken installation, not a file with no symbols in it.
+`Extract` returns an error marker as its Markdown, and a nil error, when a directive cannot be resolved -- a missing file, a syntax error, an unknown directive name -- so one bad directive degrades one region of one page instead of failing the build. The error return is for a broken toolchain. Three of the discovery methods can return an error where an empty result would be a lie: a parser that will not run at all is a broken installation, not a file with no symbols in it. A file the parser rejects is a different answer -- that is a property of the file, and the caller renders a marker for it.
 
 ### Implementations
 
@@ -97,7 +97,7 @@ Each language package registers its factory with the registry at init, so the se
 
 | Extractor | Language | Parsing strategy |
 |-----------|----------|-----------------|
-| `internal/extractors/python` | Python | An embedded driver run under `python3` that parses with the stdlib `ast` module and returns JSON |
+| `internal/extractors/python` | Python | A real parse, in process, over the Python grammar's tables embedded in the binary |
 | `internal/extractors/golang` | Go | Pattern-based scanner over the package's files |
 | `internal/extractors/typescript` | TypeScript, JavaScript | Pattern-based -- matches exports, interfaces, type aliases |
 | `internal/extractors/svelte` | Svelte | Script-block exports and component props |
@@ -107,7 +107,7 @@ Each language package registers its factory with the registry at init, so the se
 | `internal/extractors/dart` | Dart | Public declarations and doc comments; nothing from the Dart toolchain is required |
 | `internal/extractors/sql` | PostgreSQL DDL | Tables, views, types and `COMMENT ON` statements |
 
-Python is the one extractor that parses rather than scans, because Python's grammar makes pattern matching unreliable (decorators, multiline signatures, nested classes). The others have simpler export conventions that a scanner handles reliably. Running the Python parser out of process is what keeps the binary free of cgo and of a vendored grammar.
+Python is the one extractor that parses rather than scans, because Python's grammar makes pattern matching unreliable (decorators, multiline signatures, nested classes). The others have simpler export conventions that a scanner handles reliably. The parse is pure Go and reads the grammar's tables out of the binary, so documenting a Python project needs no interpreter on the machine and the build needs no cgo. What the pages read like still follows CPython's own `ast`: the tree is reshaped into what `ast` reports, and the rendering of an annotation, a default value or a base class reproduces `ast.unparse`, because every Python reference page selfdoc has ever produced was written against it.
 
 ### Language detection
 

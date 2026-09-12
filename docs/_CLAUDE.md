@@ -1,17 +1,17 @@
 ---
 title: CLAUDE.md
 ---
-# selfdocumenting
+# selfdoc
 
 Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, blog posts, a unified multi-project assembly, and deploy to Cloudflare Pages or GitHub Pages. Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL.
 
 ## Conventions
 
 - Pure Go, one module (`github.com/smm-h/selfdoc`) and one binary (`cmd/selfdoc`). Every engine package is under `internal/`.
-- Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `go-toml-edit` (TOML parsing), `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
-- Install: `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`. The npm and PyPI packages are thin launchers that download the matching release binary from the GitHub Release on first run.
-- No cgo, no tree-sitter, no runtime asset directory: stylesheets, JS, the word list, the directive catalogue and the lint registry are all `go:embed`ed.
-- python3 is needed for two things only, and only when they are used: the Python extractor (an embedded driver that runs the stdlib `ast`) and custom directives (see below). Neither is a build dependency.
+- Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `go-toml-edit` (TOML parsing), `gotreesitter` (the pure-Go parser the Python extractor reads its trees from), `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
+- Install: `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`, or the platform archive from the GitHub Release on a machine with no Go toolchain. Go is the only distribution channel: there is no npm package and no PyPI package.
+- No cgo and no runtime asset directory: stylesheets, JS, the word list, the directive catalogue, the lint registry and the Python grammar's tables are all embedded in the binary. The release build passes `-tags=grammar_subset,grammar_subset_python` so only the Python grammar is compiled in.
+- python3 is needed for one thing only, and only when it is used: a custom directive written as a `.py` script (see below). Every built-in extractor, the Python one included, parses in process, so it is not a build dependency and not a documenting dependency either.
 - Effects: every mutation, subprocess and network call goes through an explicit `*effects.Handle` threaded from the command. There is no package-level handle.
 - File writes to shared state are atomic (write to a temp file, then rename).
 - External calls (subprocess, network) must have timeouts.
@@ -24,10 +24,8 @@ Code-aware static site generator. Builds full documentation sites from Markdown 
 
 - top level: `init`, `build`, `serve`, `deploy`, `check`, `gen`, `gen-data`, `spell-corpus`, `quality`
 - `baseline` -- accept the content and description hash baselines that drive STALE001 and DRIFT001
-- `post` -- create, list, generate and publish blog posts
-- `docs` -- publish this project's documentation to the unified assembly without a release
+- `blog` -- everything about writing: `blog post` creates, lists, generates and publishes posts, `blog editor` runs the local authoring app, and `blog publish-docs` publishes this project's documentation to the unified assembly without a release
 - `assembly` -- initialize, push, inspect, rebuild, retire and verify the unified multi-project site
-- `editor` -- the local authoring app for posts
 
 ### Stable addresses, archived versions
 
@@ -110,7 +108,7 @@ This project uses [rlsbl](https://github.com/smm-h/rlsbl) for release orchestrat
 
 - `selfdoc check` runs during release (validates directives, coverage, lint)
 - Deploy to the unified assembly via post-release hook
-- CI handles the release binaries and the launcher packages automatically
+- CI builds and uploads the per-platform release archives with goreleaser
 - Never publish manually -- always use `rlsbl release`
 
 ## Testing
@@ -135,7 +133,7 @@ What it asserts, each mapped to a defect class: sticky table headers and the pin
 
 Everything theme-sensitive runs across every built-in theme.
 
-The suite needs Chromium through playwright-go, Pagefind, and python3 (the versioned fixture project is built through the Python extractor). Each missing dependency skips the tests that need it, naming what to install; `internal/e2e/doc.go` carries the one-time setup.
+The suite needs Chromium through playwright-go and Pagefind. Each missing dependency skips the tests that need it, naming what to install; `internal/e2e/doc.go` carries the one-time setup.
 
 ## Important config fields
 

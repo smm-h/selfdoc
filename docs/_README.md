@@ -1,7 +1,7 @@
 ---
 title: README.md
 ---
-# selfdocumenting
+# selfdoc
 
 Code-aware documentation site generator. Builds full static sites from Markdown templates and source code. Your code is the documentation -- directives in Markdown pull live content from your codebase at build time.
 
@@ -13,16 +13,9 @@ Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin
 go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 ```
 
-or through a package manager you already have -- both packages are thin launchers that download the matching release binary on first run:
+On a machine with no Go toolchain, download the archive for your platform from the [latest GitHub Release](https://github.com/smm-h/selfdoc/releases/latest) -- prebuilt binaries are published for Linux, macOS and Windows on amd64 and arm64 -- and put `selfdoc` on your `PATH`.
 
-```
-npm install -g selfdocumenting
-pip install selfdocumenting
-```
-
-The npm and PyPI packages are named `selfdocumenting` (npm blocks `selfdoc` due to name similarity). The CLI command is `selfdoc`.
-
-Two optional dependencies, needed only by the features that use them: `python3` for the Python extractor and for custom directives, and [Pagefind](https://pagefind.app/) for the search index.
+Two optional dependencies, needed only by the features that use them: [Pagefind](https://pagefind.app/) for the search index, and `python3` for custom directives (a `.py` directive script is the only thing selfdoc runs an interpreter for; every built-in extractor, the Python one included, parses in process).
 
 ## Quick start
 
@@ -63,7 +56,7 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
 - **Multi-version docs** -- build from git tags, cached builds, version picker UI
 - **Localization** -- parallel locale directories, hreflang tags, locale picker, per-locale sitemaps
 - **Monorepo support** -- unified site builder combines multiple projects into one docs site
-- **Blog posts** -- `selfdoc post` for authoring, listing pages, feeds, and a local editor app
+- **Blog posts** -- `selfdoc blog post` for authoring, listing pages, feeds, and a local editor app
 - **Faceted search** -- key=value filter syntax, 7 dimensions, chip UI, auto-injected version default
 - **Sandboxed data generation** -- run scripts in bubblewrap isolation (`selfdoc gen-data`)
 - **Theming** -- dark mode, accent colors, custom CSS overrides
