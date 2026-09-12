@@ -278,6 +278,42 @@ func ReadSchemaJSON(baseDir string) (*Structure, error) {
 	return result, nil
 }
 
+// CommandName is the name a command or group entry declares.
+//
+// The entries of a Structure are decoded objects rather than typed records --
+// see the type's own documentation for why -- so these accessors are how a
+// consumer reads the fields every consumer reads, without each one restating
+// how a missing or wrongly-typed field degrades.
+func CommandName(entry *Object) string { return getString(entry, "name") }
+
+// CommandHelp is the help text a command or group entry declares, "" when it
+// declares none.
+func CommandHelp(entry *Object) string { return getString(entry, "help") }
+
+// CommandFlags are a command's flag declarations, in declaration order. Each
+// element is a decoded object, which is what IterFlagTokens and IterFlagHelp
+// read.
+func CommandFlags(entry *Object) []any { return getList(entry, "flags") }
+
+// CommandArgs are a command's positional-argument declarations, in declaration
+// order.
+func CommandArgs(entry *Object) []any { return getList(entry, "args") }
+
+// GroupCommands are a group's subcommands, in declaration order.
+func GroupCommands(group *Object) []*Object {
+	raw := getList(group, "commands")
+	commands := make([]*Object, 0, len(raw))
+	for _, entry := range raw {
+		commands = append(commands, asObject(entry))
+	}
+	return commands
+}
+
+// Field is the string value of one declared field of any schema entry -- a
+// flag's env var, an argument's help -- and "" when the entry omits it or
+// declares it as something other than a string.
+func Field(entry *Object, key string) string { return getString(entry, key) }
+
 // keysOf are an object's keys in declaration order, and none for a nil object.
 func keysOf(o *Object) []string {
 	if o == nil {
