@@ -1,7 +1,0 @@
-{
-  "fonts_url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
-  "fonts_preconnect": ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
-  "accent_color": "#0969da",
-  "pygments_light": "default",
-  "pygments_dark": "monokai"
-}
