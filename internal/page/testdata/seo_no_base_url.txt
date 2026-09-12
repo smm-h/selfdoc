@@ -1,0 +1,24 @@
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "None/guide/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "pt"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "SoftwareSourceCode", "name": "A Page", "programmingLanguage": "python"}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:description" content="Body.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="Body.">
+<meta property="og:image" content="None/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A Page">
+<meta property="og:url" content="None/guide/">
+<meta name="twitter:image" content="None/og-guide.png">
+<link rel="canonical" href="None/guide/">
+### security

@@ -1,0 +1,21 @@
+'intro.md' {'type': 'tutorial'} '' -> tutorial
+'changelog.md' {'type': 'post'} '' -> post
+'glossary.md' {'type': 'reference'} '' -> reference
+'api.md' {'generated': True, 'type': 'reference'} 'API Reference' -> reference
+'cli.md' {'generated': True, 'type': 'tutorial'} 'CLI Reference' -> tutorial
+'blog.md' {'type': 'post'} '' -> post
+'page.md' {'type': 'cookbook'} '' -> cookbook
+'page.md' {'title': 'Page'} '' -> guide
+'page.md' {} '' -> guide
+'changelog.md' {} '' -> changelog
+'glossary.md' {} '' -> glossary
+'api.md' {'generated': True} 'API Reference' -> api
+'cli.md' {'generated': True} 'CLI Reference' -> cli
+'changelog.md' {'type': ''} '' -> changelog
+'glossary.md' {'type': None} '' -> glossary
+'page.md' {'type': 'tutorial', 'tags': ['python']} '' -> tutorial
+'api.md' {'generated': True, 'type': 'reference'} '' -> reference
+'api.md' {'generated': True} 'Guides' -> guide
+'api.md' {'generated': 'yes'} 'API Reference' -> guide
+'docs/CHANGELOG.md' {} '' -> changelog
+'Glossary.md' {} '' -> glossary

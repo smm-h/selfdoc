@@ -1,0 +1,195 @@
+## plain
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "label": "User Guide",
+    "md_path": "guide.md",
+    "path": "guide/index.html"
+  }
+]
+## ordered
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "label": "c",
+    "md_path": "c.md",
+    "path": "c/index.html"
+  },
+  {
+    "label": "b",
+    "md_path": "b.md",
+    "path": "b/index.html"
+  },
+  {
+    "label": "a",
+    "md_path": "a.md",
+    "path": "a/index.html"
+  }
+]
+## groups
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "label": "guide",
+    "md_path": "guide.md",
+    "path": "guide/index.html"
+  },
+  {
+    "group": "API Reference",
+    "items": [
+      {
+        "label": "api / auth",
+        "md_path": "api/auth.md",
+        "path": "api/auth/index.html"
+      },
+      {
+        "label": "api / endpoints",
+        "md_path": "api/endpoints.md",
+        "path": "api/endpoints/index.html"
+      }
+    ],
+    "slug": "api-reference"
+  },
+  {
+    "group": "User Guide",
+    "items": [
+      {
+        "label": "user_guide / quickstart",
+        "md_path": "user_guide/quickstart.md",
+        "path": "user_guide/quickstart/index.html"
+      }
+    ],
+    "slug": "user-guide"
+  },
+  {
+    "group": "Zed Things",
+    "items": [
+      {
+        "label": "zed-things / x",
+        "md_path": "zed-things/x.md",
+        "path": "zed-things/x/index.html"
+      }
+    ],
+    "slug": "zed-things"
+  }
+]
+## unversioned
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "label": "User Guide",
+    "md_path": "guide.md",
+    "path": "guide/index.html"
+  },
+  {
+    "group": "Posts",
+    "items": [
+      {
+        "label": "Second",
+        "md_path": "p2.md",
+        "path": "p2/index.html",
+        "unversioned": true
+      },
+      {
+        "label": "First",
+        "md_path": "p1.md",
+        "path": "p1/index.html",
+        "unversioned": true
+      }
+    ],
+    "slug": "posts",
+    "unversioned": true
+  },
+  {
+    "group": "General",
+    "items": [
+      {
+        "label": "Terms of Service",
+        "md_path": "terms.md",
+        "path": "terms/index.html",
+        "unversioned": true
+      },
+      {
+        "label": "About Us",
+        "md_path": "about.md",
+        "path": "about/index.html",
+        "unversioned": true
+      }
+    ],
+    "slug": "general",
+    "unversioned": true
+  }
+]
+## unversioned only posts
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "group": "General",
+    "items": [
+      {
+        "label": "about",
+        "md_path": "about.md",
+        "path": "about/index.html",
+        "unversioned": true
+      }
+    ],
+    "slug": "general",
+    "unversioned": true
+  }
+]
+## empty unversioned
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "label": "guide",
+    "md_path": "guide.md",
+    "path": "guide/index.html"
+  }
+]
+## flatten
+[
+  {
+    "label": "Home",
+    "md_path": "index.md",
+    "path": "index.html"
+  },
+  {
+    "label": "z",
+    "md_path": "z.md",
+    "path": "z/index.html"
+  },
+  {
+    "label": "api / a",
+    "md_path": "api/a.md",
+    "path": "api/a/index.html"
+  },
+  {
+    "label": "api / b",
+    "md_path": "api/b.md",
+    "path": "api/b/index.html"
+  }
+]

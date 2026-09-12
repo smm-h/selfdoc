@@ -1,0 +1,468 @@
+--- page_type='guide' schema_types=None page_tags=None page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='tutorial' schema_types=None page_tags=None page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='post' schema_types=None page_tags=['python', 'testing', 'ci'] page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en", "keywords": "python, testing, ci"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='post' schema_types=None page_tags=[] page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='changelog' schema_types=None page_tags=None page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebPage", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='fieldnote' schema_types=None page_tags=None page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Article", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type=None schema_types=None page_tags=None page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='guide' schema_types={'guide': 'HowTo'} page_tags=None page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "HowTo", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='news' schema_types={'news': 'BlogPosting'} page_tags=['breaking', 'update'] page_path='guide/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en", "keywords": "breaking, update"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='cv' schema_types=None page_tags=None page_path='cv/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "ProfilePage", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/cv/", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Body of the page.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="Body of the page.">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-cv.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A Page">
+<meta property="og:url" content="https://example.com/en/cv/">
+<meta name="twitter:image" content="https://example.com/og-cv.png">
+<link rel="canonical" href="https://example.com/en/cv/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/cv/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/cv/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/cv/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='guide' schema_types={} page_tags=None page_path='index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "mypackage", "url": "https://example.com/"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Body of the page.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="Body of the page.">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-index.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A Page">
+<meta property="og:url" content="https://example.com/en/">
+<meta name="twitter:image" content="https://example.com/og-index.png">
+<link rel="canonical" href="https://example.com/en/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='guide' schema_types=None page_tags=None page_path='api/auth/index.html' lang='en'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/api/auth/", "description": "Nested page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "Api", "item": "https://example.com/en/api/"}, {"@type": "ListItem", "position": 3, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Nested page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="Nested page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-api/auth.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Nested page">
+<meta property="og:url" content="https://example.com/en/api/auth/">
+<meta name="twitter:image" content="https://example.com/og-api/auth.png">
+<link rel="canonical" href="https://example.com/en/api/auth/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/api/auth/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/api/auth/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/api/auth/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='guide' schema_types=None page_tags=None page_path='guide/index.html' lang='pt-BR'
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "pt-BR"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="pt-BR_PT-BR">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">
+--- page_type='guide' schema_types=None page_tags=None page_path='guide/index.html' lang=''
+
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A Page", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/en/guide/", "description": "A test page", "dateModified": "2026-01-01", "datePublished": "2024-01-01", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": ""}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/en/"}, {"@type": "ListItem", "position": 2, "name": "A Page"}]}
+</script>
+<meta property="og:title" content="A Page - mypackage">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="mypackage">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="A test page">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:description" content="A test page">
+<meta name="twitter:site" content="@mypackage">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A test page">
+<meta property="og:url" content="https://example.com/en/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-BR/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+### security
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'">

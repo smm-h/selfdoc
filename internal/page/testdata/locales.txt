@@ -1,0 +1,291 @@
+===== KEY fr/guide/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide - TestProject</title>
+<meta name="description" content="Text.">
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="../../style.css" as="style">
+<link rel="stylesheet" href="../../style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="../../style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Guide", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/fr/guide/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/fr/"}, {"@type": "ListItem", "position": 2, "name": "Guide"}]}
+</script>
+<meta property="og:title" content="Guide - TestProject">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Text.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Guide - TestProject">
+<meta name="twitter:description" content="Text.">
+<meta property="og:image" content="https://example.com/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Guide">
+<meta property="og:url" content="https://example.com/fr/guide/">
+<meta name="twitter:image" content="https://example.com/og-guide.png">
+<link rel="canonical" href="https://example.com/fr/guide/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/guide/">
+<link rel="alternate" hreflang="fr" href="https://example.com/fr/guide/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/guide/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="../../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../../pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="../index.html">TestProject</a>
+<div class="tagline"><span class="badge badge-neutral version-badge">v1.0.0</span></div>
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item" href="../index.html"><span class="nav-label">Home</span></a><a class="nav-item active" href="../guide/" aria-current="page"><span class="nav-label">guide</span></a>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">Guide</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<div class="sel locale-picker"><button class="sel-btn" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-label="Language" aria-controls="tm-sel-2-listbox"><span class="sel-label">French</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></button><div class="sel-menu" id="tm-sel-2-listbox" role="listbox"><div class="sel-opt" id="tm-sel-2-opt-0" role="option" aria-selected="false" data-value="en" data-href="../../en/guide/">English</div><div class="sel-opt" id="tm-sel-2-opt-1" role="option" aria-selected="true" data-value="fr" data-href="../../fr/guide/">French</div></div></div>
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="version:1.0.0"></span><span class="pagefind-facet" data-pagefind-filter="locale:fr"></span><span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+<nav class="tm-crumbs-nav" aria-label="Breadcrumb"><ol class="tm-crumbs"><li class="tm-crumb"><a class="tm-crumb-link" href="../index.html">Home</a></li><li class="tm-crumb"><span class="tm-crumb-current" aria-current="page">Guide</span></li></ol></nav>
+
+
+<h1 id="guide"><a class="heading-link" href="#guide" aria-label="Link to section: Guide">#</a>Guide</h1>
+<p>Text.</p>
+
+<footer class="page-footer"><nav class="page-nav"><a class="page-nav-prev" href="../index.html"><span class="page-nav-label">Previous</span>&larr; Home</a><span class="page-progress">Page 2 of 2</span></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();(function(){var open=null;function options(root){return Array.prototype.slice.call(root.querySelectorAll('.sel-opt'));}function close(root){var btn=root.querySelector('.sel-btn');root.classList.remove('open');if(btn)btn.setAttribute('aria-expanded','false');if(open===root)open=null;}function show(root){if(open && open !==root)close(open);var btn=root.querySelector('.sel-btn');root.classList.add('open');if(btn)btn.setAttribute('aria-expanded','true');open=root;var selected=root.querySelector('.sel-opt[aria-selected="true"]');if(selected)selected.classList.add('hover');}function go(option){var href=option && option.getAttribute('data-href');if(href)window.location.href=href;}function move(root,delta){var opts=options(root);if(!opts.length)return;var current=-1;for(var i=0;i < opts.length;i++){if(opts[i].classList.contains('hover')){current=i;break;}}if(current < 0){for(var j=0;j < opts.length;j++){if(opts[j].getAttribute('aria-selected')==='true'){current=j;break;}}}var next=(current + delta + opts.length)% opts.length;for(var k=0;k < opts.length;k++){opts[k].classList.toggle('hover',k===next);}opts[next].scrollIntoView({block: 'nearest'});}function wire(root){var btn=root.querySelector('.sel-btn');if(!btn)return;btn.addEventListener('click',function(e){e.stopPropagation();if(root.classList.contains('open'))close(root);else show(root);});btn.addEventListener('keydown',function(e){if(e.key==='ArrowDown' || e.key==='ArrowUp'){e.preventDefault();if(!root.classList.contains('open'))show(root);move(root,e.key==='ArrowDown' ? 1 : -1);}else if(e.key==='Enter'){if(root.classList.contains('open')){e.preventDefault();go(root.querySelector('.sel-opt.hover'));}}else if(e.key==='Escape'){close(root);}});options(root).forEach(function(option){option.addEventListener('click',function(e){e.stopPropagation();go(option);});option.addEventListener('mousemove',function(){options(root).forEach(function(o){o.classList.toggle('hover',o===option);});});});}var pickers=document.querySelectorAll('.sel.version-picker,.sel.locale-picker');for(var p=0;p < pickers.length;p++)wire(pickers[p]);document.addEventListener('click',function(){if(open)close(open);});document.addEventListener('keydown',function(e){if(e.key==='Escape' && open)close(open);});})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>
+===== KEY fr/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test - TestProject</title>
+<meta name="description" content="Hello.">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="../style.css" as="style">
+<link rel="stylesheet" href="../style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="../style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Test", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "https://example.com/fr/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "TestProject", "url": "https://example.com/"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}
+</script>
+<meta property="og:title" content="Test - TestProject">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Hello.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Test - TestProject">
+<meta name="twitter:description" content="Hello.">
+<meta property="og:image" content="https://example.com/og-index.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Test">
+<meta property="og:url" content="https://example.com/fr/">
+<meta name="twitter:image" content="https://example.com/og-index.png">
+<link rel="canonical" href="https://example.com/fr/">
+<link rel="alternate" hreflang="en" href="https://example.com/en/">
+<link rel="alternate" hreflang="fr" href="https://example.com/fr/">
+<link rel="alternate" hreflang="x-default" href="https://example.com/en/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="index.html">TestProject</a>
+<div class="tagline"><span class="badge badge-neutral version-badge">v1.0.0</span></div>
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item active" href="index.html" aria-current="page"><span class="nav-label">Home</span></a><a class="nav-item" href="guide/"><span class="nav-label">guide</span></a>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">Test</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<div class="sel locale-picker"><button class="sel-btn" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-label="Language" aria-controls="tm-sel-1-listbox"><span class="sel-label">French</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></button><div class="sel-menu" id="tm-sel-1-listbox" role="listbox"><div class="sel-opt" id="tm-sel-1-opt-0" role="option" aria-selected="false" data-value="en" data-href="../en/">English</div><div class="sel-opt" id="tm-sel-1-opt-1" role="option" aria-selected="true" data-value="fr" data-href="../fr/">French</div></div></div>
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="version:1.0.0"></span><span class="pagefind-facet" data-pagefind-filter="locale:fr"></span><span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+
+
+
+<h1 id="test"><a class="heading-link" href="#test" aria-label="Link to section: Test">#</a>Test</h1>
+<p>Hello.</p>
+
+<footer class="page-footer"><nav class="page-nav"><span class="page-progress">Page 1 of 2</span><a class="page-nav-next" href="guide/"><span class="page-nav-label">Next</span>guide &rarr;</a></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();(function(){var open=null;function options(root){return Array.prototype.slice.call(root.querySelectorAll('.sel-opt'));}function close(root){var btn=root.querySelector('.sel-btn');root.classList.remove('open');if(btn)btn.setAttribute('aria-expanded','false');if(open===root)open=null;}function show(root){if(open && open !==root)close(open);var btn=root.querySelector('.sel-btn');root.classList.add('open');if(btn)btn.setAttribute('aria-expanded','true');open=root;var selected=root.querySelector('.sel-opt[aria-selected="true"]');if(selected)selected.classList.add('hover');}function go(option){var href=option && option.getAttribute('data-href');if(href)window.location.href=href;}function move(root,delta){var opts=options(root);if(!opts.length)return;var current=-1;for(var i=0;i < opts.length;i++){if(opts[i].classList.contains('hover')){current=i;break;}}if(current < 0){for(var j=0;j < opts.length;j++){if(opts[j].getAttribute('aria-selected')==='true'){current=j;break;}}}var next=(current + delta + opts.length)% opts.length;for(var k=0;k < opts.length;k++){opts[k].classList.toggle('hover',k===next);}opts[next].scrollIntoView({block: 'nearest'});}function wire(root){var btn=root.querySelector('.sel-btn');if(!btn)return;btn.addEventListener('click',function(e){e.stopPropagation();if(root.classList.contains('open'))close(root);else show(root);});btn.addEventListener('keydown',function(e){if(e.key==='ArrowDown' || e.key==='ArrowUp'){e.preventDefault();if(!root.classList.contains('open'))show(root);move(root,e.key==='ArrowDown' ? 1 : -1);}else if(e.key==='Enter'){if(root.classList.contains('open')){e.preventDefault();go(root.querySelector('.sel-opt.hover'));}}else if(e.key==='Escape'){close(root);}});options(root).forEach(function(option){option.addEventListener('click',function(e){e.stopPropagation();go(option);});option.addEventListener('mousemove',function(){options(root).forEach(function(o){o.classList.toggle('hover',o===option);});});});}var pickers=document.querySelectorAll('.sel.version-picker,.sel.locale-picker');for(var p=0;p < pickers.length;p++)wire(pickers[p]);document.addEventListener('click',function(){if(open)close(open);});document.addEventListener('keydown',function(e){if(e.key==='Escape' && open)close(open);});})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>

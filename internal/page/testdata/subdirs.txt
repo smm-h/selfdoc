@@ -1,0 +1,703 @@
+===== KEY api/auth/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth - TestProject</title>
+<meta name="description" content="Tokens.">
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="../../style.css" as="style">
+<link rel="stylesheet" href="../../style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="../../style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Auth", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "None/api/auth/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "None/"}, {"@type": "ListItem", "position": 2, "name": "Api", "item": "None/api/"}, {"@type": "ListItem", "position": 3, "name": "Auth"}]}
+</script>
+<meta property="og:title" content="Auth - TestProject">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Tokens.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Auth - TestProject">
+<meta name="twitter:description" content="Tokens.">
+<meta property="og:image" content="None/og-api/auth.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Auth">
+<meta property="og:url" content="None/api/auth/">
+<meta name="twitter:image" content="None/og-api/auth.png">
+<link rel="canonical" href="None/api/auth/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="../../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../../pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="../../index.html">TestProject</a>
+
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item" href="../../index.html"><span class="nav-label">Home</span></a><a class="nav-item" href="../../guide/"><span class="nav-label">User Guide</span></a><details class="tm-tree-details" open><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">API Reference</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested active" href="../../api/auth/" aria-current="page"><span class="nav-label">api / auth</span></a><a class="nav-item nav-item-nested" href="../../api/endpoints/"><span class="nav-label">api / endpoints</span></a></div></details><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">User Guide</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="../../user_guide/quick-start/"><span class="nav-label">user_guide / quick-start</span></a></div></details>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">Auth</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="group:API Reference"></span><span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+<nav class="tm-crumbs-nav" aria-label="Breadcrumb"><ol class="tm-crumbs"><li class="tm-crumb"><a class="tm-crumb-link" href="../../index.html">Home</a></li><li class="tm-crumb"><span class="tm-crumb-static">Api</span></li><li class="tm-crumb"><span class="tm-crumb-current" aria-current="page">Auth</span></li></ol></nav>
+
+
+<h1 id="auth"><a class="heading-link" href="#auth" aria-label="Link to section: Auth">#</a>Auth</h1>
+<p>Tokens.</p>
+
+<footer class="page-footer"><nav class="page-nav"><a class="page-nav-prev" href="../../guide/"><span class="page-nav-label">Previous</span>&larr; User Guide</a><span class="page-progress">Page 3 of 5</span><a class="page-nav-next" href="../../api/endpoints/"><span class="page-nav-label">Next</span>api / endpoints &rarr;</a></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>
+===== KEY api/endpoints/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endpoints - TestProject</title>
+<meta name="description" content="List.">
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="../../style.css" as="style">
+<link rel="stylesheet" href="../../style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="../../style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Endpoints", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "None/api/endpoints/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "None/"}, {"@type": "ListItem", "position": 2, "name": "Api", "item": "None/api/"}, {"@type": "ListItem", "position": 3, "name": "Endpoints"}]}
+</script>
+<meta property="og:title" content="Endpoints - TestProject">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="List.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Endpoints - TestProject">
+<meta name="twitter:description" content="List.">
+<meta property="og:image" content="None/og-api/endpoints.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Endpoints">
+<meta property="og:url" content="None/api/endpoints/">
+<meta name="twitter:image" content="None/og-api/endpoints.png">
+<link rel="canonical" href="None/api/endpoints/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="../../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../../pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="../../index.html">TestProject</a>
+
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item" href="../../index.html"><span class="nav-label">Home</span></a><a class="nav-item" href="../../guide/"><span class="nav-label">User Guide</span></a><details class="tm-tree-details" open><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">API Reference</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="../../api/auth/"><span class="nav-label">api / auth</span></a><a class="nav-item nav-item-nested active" href="../../api/endpoints/" aria-current="page"><span class="nav-label">api / endpoints</span></a></div></details><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">User Guide</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="../../user_guide/quick-start/"><span class="nav-label">user_guide / quick-start</span></a></div></details>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">Endpoints</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="group:API Reference"></span><span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+<nav class="tm-crumbs-nav" aria-label="Breadcrumb"><ol class="tm-crumbs"><li class="tm-crumb"><a class="tm-crumb-link" href="../../index.html">Home</a></li><li class="tm-crumb"><span class="tm-crumb-static">Api</span></li><li class="tm-crumb"><span class="tm-crumb-current" aria-current="page">Endpoints</span></li></ol></nav>
+
+
+<h1 id="endpoints"><a class="heading-link" href="#endpoints" aria-label="Link to section: Endpoints">#</a>Endpoints</h1>
+<p>List.</p>
+
+<footer class="page-footer"><nav class="page-nav"><a class="page-nav-prev" href="../../api/auth/"><span class="page-nav-label">Previous</span>&larr; api / auth</a><span class="page-progress">Page 4 of 5</span><a class="page-nav-next" href="../../user_guide/quick-start/"><span class="page-nav-label">Next</span>user_guide / quick-start &rarr;</a></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>
+===== KEY guide/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Guide - TestProject</title>
+<meta name="description" content="Content.">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="../style.css" as="style">
+<link rel="stylesheet" href="../style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="../style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "User Guide", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "None/guide/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "None/"}, {"@type": "ListItem", "position": 2, "name": "User Guide"}]}
+</script>
+<meta property="og:title" content="User Guide - TestProject">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Content.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="User Guide - TestProject">
+<meta name="twitter:description" content="Content.">
+<meta property="og:image" content="None/og-guide.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="User Guide">
+<meta property="og:url" content="None/guide/">
+<meta name="twitter:image" content="None/og-guide.png">
+<link rel="canonical" href="None/guide/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="../index.html">TestProject</a>
+
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item" href="../index.html"><span class="nav-label">Home</span></a><a class="nav-item active" href="../guide/" aria-current="page"><span class="nav-label">User Guide</span></a><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">API Reference</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="../api/auth/"><span class="nav-label">api / auth</span></a><a class="nav-item nav-item-nested" href="../api/endpoints/"><span class="nav-label">api / endpoints</span></a></div></details><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">User Guide</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="../user_guide/quick-start/"><span class="nav-label">user_guide / quick-start</span></a></div></details>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">User Guide</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+<nav class="tm-crumbs-nav" aria-label="Breadcrumb"><ol class="tm-crumbs"><li class="tm-crumb"><a class="tm-crumb-link" href="../index.html">Home</a></li><li class="tm-crumb"><span class="tm-crumb-current" aria-current="page">User Guide</span></li></ol></nav>
+
+
+<h1 id="user-guide"><a class="heading-link" href="#user-guide" aria-label="Link to section: User Guide">#</a>User Guide</h1>
+<p>Content.</p>
+
+<footer class="page-footer"><nav class="page-nav"><a class="page-nav-prev" href="../index.html"><span class="page-nav-label">Previous</span>&larr; Home</a><span class="page-progress">Page 2 of 5</span><a class="page-nav-next" href="../api/auth/"><span class="page-nav-label">Next</span>api / auth &rarr;</a></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>
+===== KEY index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home - TestProject</title>
+<meta name="description" content="Welcome.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="style.css" as="style">
+<link rel="stylesheet" href="style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Home", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "None/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "TestProject", "url": "None/"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}
+</script>
+<meta property="og:title" content="Home - TestProject">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Welcome.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Home - TestProject">
+<meta name="twitter:description" content="Welcome.">
+<meta property="og:image" content="None/og-index.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Home">
+<meta property="og:url" content="None/">
+<meta name="twitter:image" content="None/og-index.png">
+<link rel="canonical" href="None/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="index.html">TestProject</a>
+
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item active" href="index.html" aria-current="page"><span class="nav-label">Home</span></a><a class="nav-item" href="guide/"><span class="nav-label">User Guide</span></a><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">API Reference</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="api/auth/"><span class="nav-label">api / auth</span></a><a class="nav-item nav-item-nested" href="api/endpoints/"><span class="nav-label">api / endpoints</span></a></div></details><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">User Guide</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="user_guide/quick-start/"><span class="nav-label">user_guide / quick-start</span></a></div></details>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">Home</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+
+
+
+<h1 id="home"><a class="heading-link" href="#home" aria-label="Link to section: Home">#</a>Home</h1>
+<p>Welcome.</p>
+
+<footer class="page-footer"><nav class="page-nav"><span class="page-progress">Page 1 of 5</span><a class="page-nav-next" href="guide/"><span class="page-nav-label">Next</span>User Guide &rarr;</a></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>
+===== KEY user_guide/quick-start/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quickstart - TestProject</title>
+<meta name="description" content="Steps.">
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+<link rel="preload" href="../../style.css" as="style">
+<link rel="stylesheet" href="../../style.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="../../style.css"></noscript>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Quickstart", "author": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "url": "None/user_guide/quick-start/", "publisher": {"@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}, "inLanguage": "en"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "None/"}, {"@type": "ListItem", "position": 2, "name": "User_guide", "item": "None/user_guide/"}, {"@type": "ListItem", "position": 3, "name": "Quickstart"}]}
+</script>
+<meta property="og:title" content="Quickstart - TestProject">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TestProject">
+<meta property="og:locale" content="en_US">
+<meta property="og:description" content="Steps.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Quickstart - TestProject">
+<meta name="twitter:description" content="Steps.">
+<meta property="og:image" content="None/og-user_guide/quick-start.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Quickstart">
+<meta property="og:url" content="None/user_guide/quick-start/">
+<meta name="twitter:image" content="None/og-user_guide/quick-start.png">
+<link rel="canonical" href="None/user_guide/quick-start/">
+<script>(function(){var saved=localStorage.getItem('selfdoc-theme');if(saved==='light'||saved==='dark'){document.documentElement.setAttribute('data-theme',saved);}document.documentElement.style.scrollBehavior='auto';})();</script>
+<link href="../../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../../pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+<a class="tm-skip-link" href="#tm-content">Skip to content</a>
+<div class="reading-progress" id="reading-progress"></div>
+<div id="tm-app">
+<aside id="tm-sidebar">
+<div id="tm-logo">
+<a class="wordmark project-name" href="../../index.html">TestProject</a>
+
+</div>
+<nav id="tm-nav" aria-label="Site navigation">
+<a class="nav-item" href="../../index.html"><span class="nav-label">Home</span></a><a class="nav-item" href="../../guide/"><span class="nav-label">User Guide</span></a><details class="tm-tree-details"><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">API Reference</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested" href="../../api/auth/"><span class="nav-label">api / auth</span></a><a class="nav-item nav-item-nested" href="../../api/endpoints/"><span class="nav-label">api / endpoints</span></a></div></details><details class="tm-tree-details" open><summary class="tm-tree-row"><span class="tm-tree-twist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span><span class="tm-tree-label">User Guide</span></summary><div class="tm-tree-group"><a class="nav-item nav-item-nested active" href="../../user_guide/quick-start/" aria-current="page"><span class="nav-label">user_guide / quick-start</span></a></div></details>
+</nav>
+</aside>
+<div id="tm-main">
+<header id="tm-topbar">
+<button class="tm-hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<span id="tm-page-title">Quickstart</span>
+<span id="tm-page-sub"></span>
+<div id="tm-topbar-actions">
+<button class="theme-toggle" type="button" aria-label="Toggle theme">
+<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="icon-auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/></svg>
+</button>
+<button class="search-trigger" aria-label="Search documentation" data-tooltip="Search (Cmd+K)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+</button>
+</div>
+</header>
+<main id="tm-content" class="content">
+
+<div class="docs-layout">
+<div class="docs-main">
+<article data-pagefind-body class="doc-body">
+<span class="pagefind-facet" data-pagefind-filter="group:User Guide"></span><span class="pagefind-facet" data-pagefind-filter="type:guide"></span><span class="pagefind-facet" data-pagefind-filter="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="project:TestProject"></span><span class="pagefind-facet" data-pagefind-meta="type:guide"></span>
+<nav class="tm-crumbs-nav" aria-label="Breadcrumb"><ol class="tm-crumbs"><li class="tm-crumb"><a class="tm-crumb-link" href="../../index.html">Home</a></li><li class="tm-crumb"><span class="tm-crumb-static">User_guide</span></li><li class="tm-crumb"><span class="tm-crumb-current" aria-current="page">Quickstart</span></li></ol></nav>
+
+
+<h1 id="quickstart"><a class="heading-link" href="#quickstart" aria-label="Link to section: Quickstart">#</a>Quickstart</h1>
+<p>Steps.</p>
+
+<footer class="page-footer"><nav class="page-nav"><a class="page-nav-prev" href="../../api/endpoints/"><span class="page-nav-label">Previous</span>&larr; api / endpoints</a><span class="page-progress">Page 5 of 5</span></nav></footer>
+</article>
+</div>
+
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+
+</footer>
+</main>
+</div>
+<div class="tm-sr-only" aria-live="polite" aria-atomic="true"></div>
+</div>
+<script>(function(){var btn=document.querySelector('.theme-toggle');var states=['system','light','dark'];function getState(){var s=localStorage.getItem('selfdoc-theme');return(s==='light' || s==='dark')? s : 'system';}function apply(state){if(state==='light' || state==='dark'){document.documentElement.setAttribute('data-theme',state);localStorage.setItem('selfdoc-theme',state);}else{document.documentElement.removeAttribute('data-theme');localStorage.removeItem('selfdoc-theme');}btn.setAttribute('data-state',state);var labels={system: 'Theme: system. Click for light mode',light: 'Theme: light. Click for dark mode',dark: 'Theme: dark. Click for system theme'};btn.setAttribute('aria-label',labels[state]);}apply(getState());btn.addEventListener('click',function(){var cur=getState();var next=states[(states.indexOf(cur)+ 1)% states.length];apply(next);});})();(function(){var toggle=document.querySelector('.tm-hamburger');var sidebar=document.getElementById('tm-sidebar');var app=document.getElementById('tm-app');if(!toggle || !sidebar || !app)return;function openSidebar(){app.classList.add('sidebar-open');toggle.setAttribute('aria-expanded','true');var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(focusable.length){focusable[0].focus();sidebar.addEventListener('keydown',trapFocus);}}function closeSidebar(){app.classList.remove('sidebar-open');toggle.setAttribute('aria-expanded','false');sidebar.removeEventListener('keydown',trapFocus);toggle.focus();}function trapFocus(e){if(e.key !=='Tab')return;var focusable=sidebar.querySelectorAll('a,button,input,[tabindex]');if(!focusable.length)return;var first=focusable[0];var last=focusable[focusable.length - 1];if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}}toggle.addEventListener('click',function(){if(app.classList.contains('sidebar-open')){closeSidebar();}else{openSidebar();}});document.addEventListener('keydown',function(e){if(e.key==='Escape' && app.classList.contains('sidebar-open')){closeSidebar();}});document.addEventListener('click',function(e){if(app.classList.contains('sidebar-open')&&
+ !sidebar.contains(e.target)&& !toggle.contains(e.target)){closeSidebar();}});sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){closeSidebar();});});})();(function(){var groups=document.querySelectorAll('#tm-nav details.tm-tree-details');if(!groups.length)return;groups.forEach(function(d){var slug=d.querySelector('.tm-tree-label');if(!slug)return;var key='selfdoc-nav-' + slug.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');var saved=localStorage.getItem(key);if(saved==='closed'){d.removeAttribute('open');}d.addEventListener('toggle',function(){localStorage.setItem(key,d.open ? 'open' : 'closed');});});})();(function(){function setup(container,scroller){if(scroller.scrollWidth <=scroller.clientWidth)return;container.classList.add('has-overflow');function check(){var max=scroller.scrollWidth - scroller.clientWidth;container.classList.toggle('scrolled-start',scroller.scrollLeft <=2);container.classList.toggle('scrolled-end',scroller.scrollLeft >=max - 2);if(container===scroller){container.style.setProperty('--scroll-x',scroller.scrollLeft + 'px');}}scroller.addEventListener('scroll',check,{passive: true});check();}function init(){document.querySelectorAll('.tm-code').forEach(function(el){var pre=el.querySelector('pre');if(pre)setup(el,pre);});document.querySelectorAll('.table-wrap').forEach(function(el){setup(el,el);});}init();if(window.ResizeObserver){new ResizeObserver(function(){document.querySelectorAll('.has-overflow').forEach(function(el){el.classList.remove('has-overflow','scrolled-start','scrolled-end');});init();}).observe(document.documentElement);}})();(function(){var bar=document.getElementById('reading-progress');var scroller=document.getElementById('tm-content');if(!bar || !scroller)return;function update(){var height=scroller.scrollHeight - scroller.clientHeight;if(height <=0){bar.style.width='100%';return;}var progress=Math.min(scroller.scrollTop / height * 100,100);bar.style.width=progress + '%';}scroller.addEventListener('scroll',update,{passive: true});update();})();requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.style.scrollBehavior='';});});</script>
+<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
+<div class="search-inner">
+<div class="search-header">
+<span class="search-header-title">Search</span>
+<button class="search-close" aria-label="Close search" type="button">X</button>
+</div>
+<div id="pagefind-container"></div>
+</div>
+</dialog>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  new PagefindUI({ element: "#pagefind-container", showSubResults: true, showImages: false });
+  var dialog = document.getElementById("search-dialog");
+  function openSearch() {
+    if (dialog.open) return;
+    dialog.showModal();
+    var input = dialog.querySelector(".pagefind-ui__search-input");
+    if (input) input.focus();
+  }
+  var triggers = document.querySelectorAll(".search-trigger, .search-bar-trigger");
+  for (var i = 0; i < triggers.length; i++) {
+    triggers[i].addEventListener("click", openSearch);
+  }
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (dialog.open) { dialog.close(); } else {
+        dialog.showModal();
+        var input = dialog.querySelector(".pagefind-ui__search-input");
+        if (input) input.focus();
+      }
+    }
+    if (e.key === "Escape" && dialog.open) { dialog.close(); }
+  });
+  var closeBtn = dialog.querySelector(".search-close");
+  if (closeBtn) closeBtn.addEventListener("click", function() { dialog.close(); });
+  dialog.addEventListener("click", function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+});
+</script>
+</body>
+</html>
