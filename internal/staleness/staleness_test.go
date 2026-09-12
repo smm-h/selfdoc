@@ -1176,3 +1176,60 @@ func TestStripFrontmatter(t *testing.T) {
 		})
 	}
 }
+
+// -- Recorded parity with the Python's own digests --------------------------
+
+// TestRecordedDigests pins three digests the Python implementation printed
+// for the same inputs. They cover the two places a divergence would be
+// invisible until every project's baseline had silently reset: the canonical
+// JSON the schema hash is computed over, and the frontmatter-stripped,
+// marker-canonicalized body the content hash is computed over.
+func TestRecordedDigests(t *testing.T) {
+	schemaSlice := map[string]any{
+		"name": "build",
+		"help": "Build – it",
+		"flags": []any{
+			map[string]any{"name": "verbose", "default": true},
+			map[string]any{"name": "n", "default": 1.5},
+		},
+		"args": []any{},
+	}
+	got, err := ComputeSchemaHash(schemaSlice)
+	if err != nil {
+		t.Fatalf("hashing the schema slice: %v", err)
+	}
+	const wantSchema = "51e76ba786dfaef02515675a21d8833084e491dede320e9cb745a1e4a7657ef3"
+	if got != wantSchema {
+		t.Errorf("schema digest %s, want the Python's %s", got, wantSchema)
+	}
+
+	const wantContent = "0f9cdd2107863b5332a13206b66c3ae3ba5621ca4c2d2b8b3ac9a397b1321cdb"
+	if got := ComputeContentHash("---\nx: 1\n---\n\n# T\n\n:-: ref path=\"q\"\n"); got != wantContent {
+		t.Errorf("content digest %s, want the Python's %s", got, wantContent)
+	}
+}
+
+// TestAnIndentedMarkerLineIsStillCanonicalized covers the leading-whitespace
+// reading: a marker inside a list item is a marker, so its attribute values
+// are blanked like any other's.
+func TestAnIndentedMarkerLineIsStillCanonicalized(t *testing.T) {
+	tests := []struct{ name, before, after string }{
+		{
+			name:   "space-indented",
+			before: "  :-: ref path=\"a\"\n",
+			after:  "  :-: ref path=\"b\"\n",
+		},
+		{
+			name:   "tab-indented",
+			before: "\t:@: path=\"a\"\n",
+			after:  "\t:@: path=\"b\"\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if ComputeContentHash(test.before) != ComputeContentHash(test.after) {
+				t.Error("an indented marker line's attribute value reached the hash")
+			}
+		})
+	}
+}
