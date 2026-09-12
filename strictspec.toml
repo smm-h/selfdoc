@@ -1,0 +1,28 @@
+# strictspec manifest -- the Go boundary validators for selfdoc's two declarative
+# documents: the built-in directive catalogue and the lint-code registry.
+#
+# Regenerate with: strictspec gen   (run from the repository root)
+# `strictspec check` verifies schema authoring validity and generated-code
+# freshness. The generated validators are committed and read-only (chmod 444);
+# never edit one by hand -- edit the schema under .strictspec/ and rerun gen.
+#
+# Each validator is generated INTO the package that loads the document it
+# governs, so the embedded document, its validator and its loader sit together
+# and nothing else can bind an unvalidated document.
+format_version = 1
+
+[[schemas]]
+path = ".strictspec/directive-descriptor.schema.toml"
+
+  [[schemas.targets]]
+  lang    = "go"
+  output  = "internal/catalog/selfdoc_directive_catalogue_gen.go"
+  package = "catalog"
+
+[[schemas]]
+path = ".strictspec/lint-registry.schema.toml"
+
+  [[schemas.targets]]
+  lang    = "go"
+  output  = "internal/lints/selfdoc_lint_registry_gen.go"
+  package = "lints"

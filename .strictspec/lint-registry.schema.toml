@@ -1,0 +1,73 @@
+# strictspec schema -- selfdoc lint-code registry.
+#
+# Governs selfdoc_core/lints.toml: the declarative document that is the single
+# source of truth for every lint code selfdoc and selfblog can emit, with its
+# severity and its one-line description. The generated validator
+# (lint_registry_validator.py) validates the document at load time in
+# selfdoc_core.lints; a malformed registry is a hard error at import, before
+# any check runs.
+#
+# SCOPE (honest subset): this schema owns the raw DOCUMENT SHAPE of the registry
+# -- the code grammar, the severity enum, per-entry required fields,
+# unknown-key rejection, and unique codes. It does NOT model where a code is
+# emitted from, which condition raises it, or whether the JSON output schema
+# and the documentation table agree with it. Those are selfdoc-native: the
+# emission side is enforced structurally (LintResult derives severity from this
+# registry and refuses an unregistered code), and the two derived surfaces are
+# pinned to the registry by tests.
+
+name = "selfdoc-lint-registry"
+meta_version = 1
+format_version = 1
+document_syntax = "toml"
+role = "schema"
+root = "LintRegistry"
+description = "The selfdoc lint-code registry: one entry per emittable lint code (code, severity, description)."
+
+[types.LintRegistry]
+type = "record"
+
+[types.LintRegistry.fields.format_version]
+type = "integer"
+required = true
+description = "Document format-version gate. v1 documents carry 1."
+
+[types.LintRegistry.fields.lints]
+type = "array"
+required = true
+min_len = 1
+description = "The registered lint codes, in documentation order."
+[types.LintRegistry.fields.lints.item]
+type = "LintDescriptor"
+
+# Codes are unique across the registry (the loader keys a dict by them).
+[[types.LintRegistry.constraints]]
+form = "unique-by"
+collection = "lints"
+field = "code"
+normalization = "none"
+
+# --- named types ---
+
+[types.LintDescriptor]
+type = "record"
+description = "Registry entry for a single lint code."
+
+[types.LintDescriptor.fields.code]
+type = "string"
+required = true
+non_empty = true
+regex = '^[A-Z][A-Z0-9]*[0-9]{3}$'
+description = "Lint code. Grammar: an uppercase family name followed by a three-digit number (SEO001, DRIFT001, POST005)."
+
+[types.LintDescriptor.fields.severity]
+type = "enum"
+required = true
+values = ["error", "warning"]
+description = "\"error\" fails the check run; \"warning\" is informational and never changes the exit code."
+
+[types.LintDescriptor.fields.description]
+type = "string"
+required = true
+non_empty = true
+description = "One-line description of what the rule checks, rendered verbatim into the documentation's lint-rule table."
