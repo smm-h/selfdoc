@@ -875,8 +875,8 @@ dev = [
 requires-dist = [
     { name = "brotli", marker = "extra == 'perf'", specifier = ">=1.1" },
     { name = "predraw", marker = "extra == 'og'", specifier = ">=0.2.1" },
-    { name = "strictcli", specifier = ">=0.36.0" },
-    { name = "strictspec", specifier = ">=0.2.1" },
+    { name = "strictcli", specifier = ">=0.41.0" },
+    { name = "strictspec", specifier = ">=0.2.3" },
     { name = "tinymoon", specifier = ">=0.10.0" },
 ]
 provides-extras = ["perf", "og"]
