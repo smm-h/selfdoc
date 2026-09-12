@@ -145,6 +145,9 @@ export PYTHONPATH="$PYREF:$SITE_PACKAGES"
 #   N5  mask the interior of <code class="language-...">...</code>
 #   N6  drop the highlight stylesheet (chroma replaced pygments)
 #   N7  split HTML/XML at tag boundaries so diffs are line-oriented
+#   N8  drop __pycache__ (the two sides run different python3 interpreters)
+#   N9  console output: python traceback frames stripped, the `Error: ` prefix
+#       stripped, and the clone's own absolute path masked
 # ---------------------------------------------------------------------------
 NORMALIZER="$ROOT/bin/normalize.py"
 cat > "$NORMALIZER" <<'PYEOF'
@@ -158,6 +161,15 @@ import sys
 CODE_RE = re.compile(r'(<code class="language-[^"]*">)(.*?)(</code>)', re.S)
 STYLE_RE = re.compile(r'(<style[^>]*>)(.*?)(</style>)', re.S)
 HL_DECL_RE = re.compile(r'--sd-hl-[A-Za-z0-9_-]+\s*:[^;}]*;?')
+EXC_CLASS_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*(Error|Exception): ')
+
+
+def is_og_image(path):
+    """N3: an og image is og-<page>.png, or any png under an og-<group>/ dir."""
+    parts = path.split(os.sep)
+    if parts[-1].startswith('og-'):
+        return True
+    return any(part.startswith('og-') for part in parts[:-1])
 
 
 def png_dimensions(path):
@@ -220,12 +232,12 @@ def normalize_html(text):
     return text.replace('><', '>\n<')  # N7
 
 
-def normalize_file(src, dst):
+def normalize_file(src, dst, clone_path=''):
     base = os.path.basename(src)
     if base.endswith('.gz') or base.endswith('.br'):
         return  # N1
     os.makedirs(os.path.dirname(dst), exist_ok=True)
-    if base.startswith('og-') and base.endswith('.png'):
+    if base.endswith('.png') and is_og_image(src):
         with open(dst, 'w') as fh:  # N3
             fh.write(png_dimensions(src) + '\n')
         return
@@ -247,7 +259,9 @@ def normalize_file(src, dst):
         with open(dst, 'w') as fh:
             fh.write('binary %d bytes\n' % len(raw))
         return
-    if base.endswith('.html'):
+    if base.startswith('stdout-') or base.startswith('stderr-'):
+        text = normalize_console(text, clone_path)  # N9
+    elif base.endswith('.html'):
         text = normalize_html(text)
     elif base.endswith('.css'):
         text = strip_highlight(text)
@@ -258,18 +272,45 @@ def normalize_file(src, dst):
         fh.write(text)
 
 
+def normalize_console(text, clone_path):
+    """N9: make one side's console output comparable with the other's.
+
+    Python raises through to a traceback and Go prints one line, and each side
+    runs out of its own clone directory, so the frames, the exception class and
+    the absolute path are removed. What is left is the message both sides own.
+    """
+    lines = []
+    in_traceback = False
+    for line in text.splitlines():
+        if line.startswith('Traceback (most recent call last):'):
+            in_traceback = True
+            continue
+        if in_traceback and (line.startswith('  ') or line.startswith('\t')):
+            continue
+        in_traceback = False
+        line = EXC_CLASS_RE.sub('', line)
+        if line.startswith('Error: '):
+            line = line[len('Error: '):]
+        if clone_path:
+            line = line.replace(clone_path + '/', '<REPO>/').replace(clone_path, '<REPO>')
+        lines.append(line)
+    return '\n'.join(lines) + '\n'
+
+
 def main():
     src_root, dst_root = sys.argv[1], sys.argv[2]
+    clone_path = sys.argv[3] if len(sys.argv) > 3 else ''
     if not os.path.isdir(src_root):
         return
     for dirpath, dirnames, filenames in os.walk(src_root):
-        dirnames[:] = [d for d in dirnames if d != 'pagefind']  # N2
+        dirnames[:] = [d for d in dirnames
+                       if d != 'pagefind' and d != '__pycache__']  # N2, N8
         for name in sorted(filenames):
             src = os.path.join(dirpath, name)
             if os.path.islink(src) or not os.path.isfile(src):
                 continue
             rel = os.path.relpath(src, src_root)
-            normalize_file(src, os.path.join(dst_root, rel))
+            normalize_file(src, os.path.join(dst_root, rel), clone_path)
 
 
 main()
@@ -348,6 +389,8 @@ SUMMARY="$RUN/summary.tsv"
   echo "| N5 | the interior of \`<code class=\"language-...\">...</code>\` masked |"
   echo "| N6 | the generated highlight stylesheet dropped (chroma replaced pygments) |"
   echo "| N7 | HTML/XML split at tag boundaries, so diffs are line-oriented |"
+  echo "| N8 | \`__pycache__\` dropped (the two sides spawn different python3 interpreters) |"
+  echo "| N9 | console output: python traceback frames stripped, a leading \`Error: \` stripped, the clone's own absolute path masked |"
   echo
   echo "Both sides run with PYTHONPATH=\`$PYREF:$SITE_PACKAGES\`, so a custom"
   echo "directive script imports the same modules whether the engine loads it"
@@ -421,11 +464,17 @@ for name in $REPOS; do
     fi
     EXITS[$side.check]=$(run_cmd "$dir" "$bin" "$side-check" "$logs" check --json --no-auto-commit)
     python3 "$PAYLOAD_READER" "$logs/$side-check.out" > "$snap/meta/check-payload.json" || true
+    for tag in gen build check; do
+      cp --remove-destination "$logs/$side-$tag.err" "$snap/meta/stderr-$tag.txt"
+      if [ "$tag" != check ]; then
+        cp --remove-destination "$logs/$side-$tag.out" "$snap/meta/stdout-$tag.txt"
+      fi
+    done
   done
 
   for side in py go; do
     for part in gen root build meta; do
-      python3 "$NORMALIZER" "$RUN/snap/$name/$side/$part" "$RUN/norm/$name/$side/$part"
+      python3 "$NORMALIZER" "$RUN/snap/$name/$side/$part" "$RUN/norm/$name/$side/$part" "$work/$side/$name"
     done
   done
 
@@ -462,8 +511,11 @@ def category(rel):
     if part == 'root':
         return 'root files'
     if part == 'meta':
-        if os.path.basename(rel) == 'manifest.json':
+        base = os.path.basename(rel)
+        if base == 'manifest.json':
             return 'manifest'
+        if base.startswith('stdout-') or base.startswith('stderr-'):
+            return 'console output'
         return 'check payload'
     base = os.path.basename(rel)
     if base.endswith('.html'):
@@ -509,7 +561,7 @@ for rel in allrel:
 
 order = ['gen pages', 'root files', 'HTML',
          'sitemap/feed/llms/robots/headers/redirects',
-         'other build output', 'manifest', 'check payload']
+         'other build output', 'manifest', 'check payload', 'console output']
 for cat in counts:
     if cat not in order:
         order.append(cat)
