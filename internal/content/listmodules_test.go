@@ -192,6 +192,30 @@ func TestListModulesGoExcludePrunesPackages(t *testing.T) {
 	rejects(t, rendered, "testdata")
 }
 
+func TestListModulesSkipsGoToolchainIgnoredDirectories(t *testing.T) {
+	// cmd/go never builds a directory named testdata or vendor, nor one
+	// whose name begins with "." or "_", so no listing advertises one --
+	// with no gen.exclude entry naming it.
+	isolate(t)
+	base := t.TempDir()
+	write(t, filepath.Join(base, "internal", "engine", "engine.go"),
+		"// Package engine renders things.\npackage engine\n")
+	write(t, filepath.Join(base, "internal", "lint", "testdata", "fix", "fix.go"),
+		"// Package fix is an analyzer fixture.\npackage fix\n")
+	write(t, filepath.Join(base, "internal", "vendor", "dep", "dep.go"),
+		"// Package dep is vendored.\npackage dep\n")
+	write(t, filepath.Join(base, "internal", "_scratch", "scratch.go"),
+		"// Package scratch is ignored.\npackage scratch\n")
+
+	config := map[string]any{
+		"source": []any{map[string]any{"path": "internal/", "language": "go"}},
+	}
+	rendered, _ := resolve(t, "list-modules",
+		map[string]string{"path": "internal/"}, nil, base, config)
+	wants(t, rendered, "**internal/engine**")
+	rejects(t, rendered, "testdata", "vendor", "_scratch")
+}
+
 func TestListModulesPicksTheEntryMatchingThePath(t *testing.T) {
 	isolate(t)
 	requirePython3(t)

@@ -1517,3 +1517,32 @@ func TestStrictcliPagesJoinTheRun(t *testing.T) {
 		}
 	}
 }
+
+func TestGoToolchainIgnoredDirectoriesProduceNoPages(t *testing.T) {
+	// The Go toolchain never builds a directory named testdata or vendor,
+	// nor one whose name begins with "." or "_", so documenting one
+	// advertises a package "go build ./..." does not compile.
+	isolate(t)
+	dir, cfg := goProject(t)
+	write(t, filepath.Join(dir, "internal", "commit", "testdata", "fixture.go"),
+		"// Package fixture is test data.\npackage fixture\n\nfunc Fixture() {}\n")
+	write(t, filepath.Join(dir, "vendor", "example.com", "dep", "dep.go"),
+		"// Package dep is vendored.\npackage dep\n\nfunc Dep() {}\n")
+	write(t, filepath.Join(dir, "_scratch", "scratch.go"),
+		"// Package scratch is ignored.\npackage scratch\n\nfunc Scratch() {}\n")
+	write(t, filepath.Join(dir, ".hidden", "hidden.go"),
+		"// Package hidden is ignored.\npackage hidden\n\nfunc Hidden() {}\n")
+
+	result := generate(t, cfg, dir)
+
+	for _, name := range result.Written {
+		for _, ignored := range []string{"testdata", "vendor", "scratch", "hidden"} {
+			if strings.Contains(name, ignored) {
+				t.Errorf("a toolchain-ignored directory produced a page: %s", name)
+			}
+		}
+	}
+	if !names(result.Written)["internal-commit.md"] {
+		t.Errorf("a real package lost its page: %v", result.Written)
+	}
+}

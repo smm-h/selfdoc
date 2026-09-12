@@ -48,6 +48,38 @@ func ShouldSkipDir(dirname string) bool {
 	return strings.HasSuffix(dirname, ".egg-info")
 }
 
+// GoToolchainIgnoresDir reports whether the Go toolchain ignores a directory
+// of this name, so nothing under it is part of any Go package.
+//
+// cmd/go never builds a directory named "testdata" or "vendor", nor one whose
+// name begins with "." or "_". Documenting such a directory as a package
+// advertises code that "go build ./..." does not compile.
+func GoToolchainIgnoresDir(name string) bool {
+	if name == "testdata" || name == "vendor" {
+		return true
+	}
+	return strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
+}
+
+// GoToolchainIgnoresPath reports whether any component of a slash-separated
+// relative directory path is ignored by the Go toolchain.
+//
+// A path of "." names the walk's own root, which no component test applies to.
+func GoToolchainIgnoresPath(relDir string) bool {
+	if relDir == "" || relDir == "." {
+		return false
+	}
+	for _, part := range strings.Split(filepath.ToSlash(relDir), "/") {
+		if part == "" || part == "." {
+			continue
+		}
+		if GoToolchainIgnoresDir(part) {
+			return true
+		}
+	}
+	return false
+}
+
 // IsExcluded reports whether a relative path matches any exclusion glob.
 //
 // A "**/" prefix means "match at any depth": the prefix is stripped and the

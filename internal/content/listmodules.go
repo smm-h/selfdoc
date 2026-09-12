@@ -299,6 +299,12 @@ func listModulesByPackage(
 		if relDir != "." && excludes.IsExcluded(relDir, excludePatterns) {
 			return nil
 		}
+		// The Go toolchain ignores testdata, vendor, and any directory
+		// whose name begins with "." or "_", so no package is there to
+		// list.
+		if language == "go" && excludes.GoToolchainIgnoresPath(relDir) {
+			return nil
+		}
 		for _, entry := range entries {
 			name := entry.Name()
 			if isTestFile(name, language) {

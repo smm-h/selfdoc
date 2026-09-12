@@ -948,6 +948,14 @@ func collectGoPackages(sourcePaths []string, baseDir string, excludePatterns []s
 		}
 
 		err := walkSourceDirs(sourceRoot, func(dirPath string, fileNames []string) error {
+			// A directory the Go toolchain ignores holds no package: a
+			// page for it would document code "go build ./..." never
+			// compiles.
+			if relToRoot, err := filepath.Rel(sourceRoot, dirPath); err == nil {
+				if excludes.GoToolchainIgnoresPath(relToRoot) {
+					return nil
+				}
+			}
 			hasGoFile := false
 			for _, fname := range fileNames {
 				if !strings.HasSuffix(fname, ".go") {

@@ -190,3 +190,32 @@ func TestPatternsForDoesNotAliasTheDefaults(t *testing.T) {
 	}
 	_ = patterns
 }
+
+func TestGoToolchainIgnoresDir(t *testing.T) {
+	cases := map[string]bool{
+		"testdata": true, "vendor": true, ".git": true, "_scratch": true,
+		"internal": false, "cmd": false, "vendored": false, "mytestdata": false,
+	}
+	for name, want := range cases {
+		if got := GoToolchainIgnoresDir(name); got != want {
+			t.Errorf("GoToolchainIgnoresDir(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestGoToolchainIgnoresPath(t *testing.T) {
+	cases := map[string]bool{
+		".":                      false,
+		"":                       false,
+		"internal/lint":          false,
+		"internal/lint/testdata": true,
+		"vendor/example.com/dep": true,
+		"a/_b/c":                 true,
+		"a/.b":                   true,
+	}
+	for relDir, want := range cases {
+		if got := GoToolchainIgnoresPath(relDir); got != want {
+			t.Errorf("GoToolchainIgnoresPath(%q) = %v, want %v", relDir, got, want)
+		}
+	}
+}
