@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-08-16T12:52:57Z",
-  "package_count": 3,
+  "generated_at": "2026-09-12T01:04:44Z",
+  "package_count": 4,
   "packages": {
     "selfdoc-core": {
       "path": "selfdoc_core",
       "targets": [
         "pypi"
       ],
-      "version": "0.10.1",
+      "version": "0.10.2",
       "description": null,
       "deps": [],
       "rdeps": [
@@ -52,18 +52,33 @@
       "dev_only": false,
       "releasable_flag": true,
       "test_only": false
+    },
+    "root": {
+      "path": ".",
+      "targets": [],
+      "version": null,
+      "description": null,
+      "deps": [],
+      "rdeps": [],
+      "library": false,
+      "dev_only": true,
+      "releasable_flag": false,
+      "test_only": false
     }
   },
   "graph": {
     "leaf_nodes": [
+      "root",
       "selfdoc-core"
     ],
     "root_nodes": [
+      "root",
       "selfblog",
       "selfdoc"
     ],
     "max_depth": 1,
     "topological_order": [
+      "root",
       "selfdoc-core",
       "selfblog",
       "selfdoc"
