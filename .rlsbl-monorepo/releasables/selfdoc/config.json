@@ -1,10 +1,36 @@
 {
   "changelog_format_version_enforced": true,
-  "internal_dep_floors": [
-    "strictcli",
-    "strictspec",
-    "selfdoc-core",
-    "tinymoon",
-    "predraw"
-  ]
+  "publish_mode": "ci",
+  "push_timeout": 120,
+  "env_file": "~/Projects/.env",
+  "publish_gate_check_regex": "^(root-ci) / ",
+  "targets": ["go", "npm", "pypi"],
+  "pipelines": {
+    "go": {
+      "type": "go",
+      "local": false,
+      "target": "go",
+      "artifact": "binary",
+      "install_paths": ["./cmd/selfdoc"]
+    },
+    "npm": {
+      "type": "npm",
+      "local": false,
+      "target": "npm",
+      "provenance": true,
+      "artifact": "launcher",
+      "wraps": "go",
+      "binary_source": "github-release",
+      "download": "first-run"
+    },
+    "pypi": {
+      "type": "pypi",
+      "local": false,
+      "target": "pypi",
+      "artifact": "launcher",
+      "wraps": "go",
+      "binary_source": "github-release",
+      "download": "first-run"
+    }
+  }
 }
