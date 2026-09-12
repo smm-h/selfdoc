@@ -23,6 +23,10 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
+// removeFile deletes a file, which is how a fixture states what a project
+// does not declare.
+func removeFile(path string) error { return os.Remove(path) }
+
 // read returns a file's contents, failing the test when it cannot be read.
 func read(t *testing.T, path string) string {
 	t.Helper()
