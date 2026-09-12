@@ -11,8 +11,8 @@ import (
 
 // tagVersionPattern splits a version tag into its family prefix and its
 // version. The prefix is lazy under the end anchor, so the optional "v" is
-// taken by the version half wherever one is there: "selfblog@v0.3.1" is the
-// family "selfblog@" at version "0.3.1", not the family "selfblog@v".
+// taken by the version half wherever one is there: "demo@v0.3.1" is the
+// family "demo@" at version "0.3.1", not the family "demo@v".
 var tagVersionPattern = regexp.MustCompile(
 	`^(.*?)v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.\-+]+)?)$`,
 )
@@ -21,7 +21,7 @@ var tagVersionPattern = regexp.MustCompile(
 // reporting false when it is not a version tag at all.
 //
 //	"v1.2.3"            -> "", "1.2.3"
-//	"selfblog@v0.3.1"   -> "selfblog@", "0.3.1"
+//	"demo@v0.3.1"       -> "demo@", "0.3.1"
 //	"mypkg/v2.0.0-rc.1" -> "mypkg/", "2.0.0-rc.1"
 func ParseVersionTag(tag string) (family, version string, ok bool) {
 	match := tagVersionPattern.FindStringSubmatch(util.PythonStrip(tag))

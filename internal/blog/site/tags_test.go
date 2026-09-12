@@ -13,10 +13,10 @@ import (
 // first, as `git for-each-ref --sort=-creatordate` reports it. The sibling's
 // tag is the newest one in the repo; the docs target's is not.
 var multiReleasableTags = []string{
-	"selfblog@v0.3.1",
+	"demo@v0.3.1",
 	"selfdoc-core@v0.8.1",
 	"v0.36.0",
-	"selfblog@v0.3.0",
+	"demo@v0.3.0",
 	"v0.35.0",
 }
 
@@ -30,7 +30,7 @@ func TestParseVersionTag(t *testing.T) {
 	}{
 		{tag: "v1.2.3", wantVersion: "1.2.3", wantOK: true},
 		{tag: "1.2.3", wantVersion: "1.2.3", wantOK: true},
-		{tag: "selfblog@v0.3.1", wantFamily: "selfblog@", wantVersion: "0.3.1", wantOK: true},
+		{tag: "demo@v0.3.1", wantFamily: "demo@", wantVersion: "0.3.1", wantOK: true},
 		{tag: "packages/core/v2.0.0", wantFamily: "packages/core/", wantVersion: "2.0.0", wantOK: true},
 		{tag: "v1.0.0-rc.1", wantVersion: "1.0.0-rc.1", wantOK: true},
 		{tag: "v1.0.0+build.7", wantVersion: "1.0.0+build.7", wantOK: true},
@@ -58,7 +58,7 @@ func TestParseVersionTag(t *testing.T) {
 // the wrong answer in a repository that releases more than one thing.
 func TestTheNewestTagByDateBelongsToASibling(t *testing.T) {
 	t.Parallel()
-	if multiReleasableTags[0] != "selfblog@v0.3.1" {
+	if multiReleasableTags[0] != "demo@v0.3.1" {
 		t.Fatalf("the fixture no longer puts a sibling's tag first")
 	}
 }
@@ -81,7 +81,7 @@ func TestResolveProjectTag(t *testing.T) {
 			name:    "a prefixed family member",
 			tags:    multiReleasableTags,
 			version: "0.3.1",
-			want:    "selfblog@v0.3.1",
+			want:    "demo@v0.3.1",
 		},
 		{
 			name:    "an older version of the right family",
@@ -139,7 +139,7 @@ func TestResolveProjectTagRefusals(t *testing.T) {
 			tags:    multiReleasableTags,
 			version: "0.37.0",
 			want: "no git tag names version 0.37.0. Tag families in this repo: " +
-				"'', 'selfblog@', 'selfdoc-core@'. Release this project before " +
+				"'', 'demo@', 'selfdoc-core@'. Release this project before " +
 				"dispatching an assembly rebuild -- the assembly builds the " +
 				"tag, so an untagged version would publish the wrong docs.",
 		},
@@ -181,7 +181,7 @@ func multiReleasableRepo(t *testing.T) string {
 	runGit(t, repo, "tag", "v0.36.0")
 	write(t, filepath.Join(repo, "README.md"), "y\n")
 	runGit(t, repo, "commit", "-am", "more")
-	runGit(t, repo, "tag", "selfblog@v0.3.1")
+	runGit(t, repo, "tag", "demo@v0.3.1")
 	return repo
 }
 
@@ -191,11 +191,11 @@ func TestListRepoTagsIsNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(tags) == 0 || tags[0] != "selfblog@v0.3.1" {
+	if len(tags) == 0 || tags[0] != "demo@v0.3.1" {
 		t.Errorf("tags = %v, want the sibling's tag first", tags)
 	}
 	got := sortedStrings(tags)
-	if !reflect.DeepEqual(got, []string{"selfblog@v0.3.1", "v0.36.0"}) {
+	if !reflect.DeepEqual(got, []string{"demo@v0.3.1", "v0.36.0"}) {
 		t.Errorf("tags = %v", got)
 	}
 }
