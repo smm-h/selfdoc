@@ -311,3 +311,75 @@ func uvToolInterpreters() []string {
 	}
 	return matches
 }
+
+// UnifiedProject is one constituent project a unified fixture carries: its
+// directory name, which is also its mount slug, and the language its source
+// entry declares. An empty language means Python.
+type UnifiedProject struct {
+	Name     string
+	Language string
+}
+
+// MakeUnified creates a monorepo whose docs-site unifies several constituent
+// projects, and returns the docs-site's path.
+//
+// The layout is the one a real rlsbl workspace has: every project, the
+// docs-site included, is a directory under "monorepo/packages/", so each
+// constituent is addressed from the docs-site as "../<name>" -- which is what
+// the unified config's relative paths are resolved against. Each constituent
+// carries its own selfdoc.json with its own base URL and one docs page; the
+// docs-site carries the "unified" block naming them all, plus the versions and
+// locales arrays the unified build's passes are driven by.
+//
+// overrides are applied over the docs-site's config, so a test can state a
+// different base URL, extra versions or a per-version project pinning without
+// rebuilding the whole fixture.
+func MakeUnified(t TB, projects []UnifiedProject, overrides map[string]any) string {
+	t.Helper()
+	packagesDir := filepath.Join(t.TempDir(), "monorepo", "packages")
+	MkdirAll(t, packagesDir)
+
+	unifiedEntries := make([]any, 0, len(projects))
+	for _, project := range projects {
+		language := project.Language
+		if language == "" {
+			language = "python"
+		}
+		projectDir := filepath.Join(packagesDir, project.Name)
+		WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), map[string]any{
+			"source":        []any{map[string]any{"path": "src/", "language": language}},
+			"base_url":      "https://example.com/" + project.Name,
+			"search_engine": "pagefind",
+			"author":        Author(),
+			"version":       "1.0.0",
+		})
+		WriteText(t, filepath.Join(projectDir, "src", "__init__.py"),
+			`"""`+project.Name+` package."""`+"\n")
+		WriteText(t, filepath.Join(projectDir, "docs", "index.md"),
+			fmt.Sprintf("# %s\n\nDocs for %s.\n", project.Name, project.Name))
+		unifiedEntries = append(unifiedEntries, map[string]any{"path": "../" + project.Name})
+	}
+
+	docsSiteDir := filepath.Join(packagesDir, "docs-site")
+	docsSiteConfig := map[string]any{
+		"source":        []any{map[string]any{"path": "src/", "language": "python"}},
+		"base_url":      "https://example.com",
+		"search_engine": "pagefind",
+		"author":        Author(),
+		"unified":       map[string]any{"projects": unifiedEntries},
+		"version":       "1.0.0",
+		"versions":      []any{map[string]any{"version": "1.0.0"}},
+		"locales":       []any{map[string]any{"code": "en", "label": "English", "default": true}},
+	}
+	for key, value := range overrides {
+		docsSiteConfig[key] = value
+	}
+	WriteJSON(t, filepath.Join(docsSiteDir, "selfdoc.json"), docsSiteConfig)
+	// The docs-site needs a source entry of its own: the config requires
+	// one, and it is a project like any other.
+	WriteText(t, filepath.Join(docsSiteDir, "src", "__init__.py"),
+		`"""Docs-site placeholder."""`+"\n")
+	WriteText(t, filepath.Join(docsSiteDir, "docs", "index.md"),
+		"# Unified Docs\n\nLanding page for the monorepo.\n")
+	return docsSiteDir
+}
