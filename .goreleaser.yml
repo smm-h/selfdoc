@@ -1,11 +1,25 @@
 version: 2
 
+# The archive names are "<project_name>_<version>_<os>_<arch>.<ext>", so the
+# project name is declared rather than inferred from the checkout directory.
+project_name: selfdoc
+
 builds:
   - main: ./cmd/selfdoc
+    # These build tags embed only the Python grammar of gotreesitter instead of
+    # every grammar it ships, which halves the binary. Every other language's
+    # extraction goes through its own toolchain, so nothing else needs a
+    # compiled-in grammar.
+    flags:
+      - -tags=grammar_subset,grammar_subset_python
     env:
       - CGO_ENABLED=0
+    # No -X main.Version: the binary reads its version from the repository's
+    # VERSION file, embedded at compile time by version.go's //go:embed. The
+    # tree goreleaser builds is the release commit, so VERSION is already the
+    # released version and an ldflag would only shadow it with a second answer.
     ldflags:
-      - -s -w -X main.Version={{.Version}}
+      - -s -w
     goos:
       - linux
       - darwin

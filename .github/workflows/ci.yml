@@ -23,4 +23,18 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go vet ./...
+      # The suite needs python3 for two reasons: the Python extractor runs its
+      # driver through it, and the build indexes its output with Pagefind,
+      # which is installed here as a Python distribution. Without Pagefind on
+      # the runner every build-touching test skips itself, so this step is what
+      # makes them run at all.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install 'pagefind[bin]'
+      - run: python3 -m pagefind --version
+      # -short, and the browser assertions sit behind the `e2e` build tag, so
+      # this runs neither. The e2e suite drives a real headless Chromium that
+      # playwright-go downloads at run time; CI does not pay for that download.
+      # Run it locally with `go test -tags e2e ./internal/e2e/...`.
       - run: go test ./... -race -short -timeout=10m
