@@ -117,7 +117,7 @@ func (e *Extractor) moduleTarget(parsed *analysis, path, target string) (string,
 // purpose: membership in a literal __all__ is the requirement, so an incidental
 // "import os" cannot reach the page. A module with no literal __all__ emits
 // nothing here.
-func formatReexports(document *driverDocument, emitted map[string]bool) []string {
+func formatReexports(document *document, emitted map[string]bool) []string {
 	if len(document.AllNames) == 0 {
 		return nil
 	}

@@ -2,7 +2,6 @@ package python
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -129,16 +128,6 @@ __version__ = "1.2.3"
 __all__ = ["Foo", "Baz", "__version__"]
 `
 
-// requirePython3 skips the test when no interpreter is on PATH. The Python
-// extractor reads every tree through python3 on purpose (see the package doc),
-// so without one there is nothing here to exercise.
-func requirePython3(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("python3 is not on PATH: the Python extractor reads every tree through it")
-	}
-}
-
 // fixture writes the sample project every test in this file reads and returns
 // its base directory.
 func fixture(t *testing.T) string {
@@ -180,7 +169,6 @@ var sourcePaths = []string{"mylib/"}
 // module whose docstring, public function, documented private function, class
 // and methods all reach the page, compared byte for byte.
 func TestRefRendersTheWholeModule(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 
@@ -246,7 +234,6 @@ func TestRefRendersTheWholeModule(t *testing.T) {
 }
 
 func TestRefExactRenderings(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 	extractor := newExtractor()
@@ -323,7 +310,6 @@ func TestRefExactRenderings(t *testing.T) {
 }
 
 func TestOtherDirectivesExactRenderings(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 	extractor := newExtractor()
@@ -398,7 +384,6 @@ func TestOtherDirectivesExactRenderings(t *testing.T) {
 }
 
 func TestErrorMarkers(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 	extractor := newExtractor()
@@ -443,7 +428,6 @@ func TestErrorMarkers(t *testing.T) {
 }
 
 func TestSyntaxErrorRendersAMarker(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 
@@ -457,7 +441,6 @@ func TestSyntaxErrorRendersAMarker(t *testing.T) {
 }
 
 func TestConfigDirectives(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 	extractor := newExtractor()
@@ -518,7 +501,6 @@ func TestConfigDirectives(t *testing.T) {
 }
 
 func TestNameDetectAndExtensions(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	extractor := newExtractor()
 
@@ -552,7 +534,6 @@ func TestNameDetectAndExtensions(t *testing.T) {
 }
 
 func TestResolvePath(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	base := fixture(t)
 	extractor := newExtractor()

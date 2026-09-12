@@ -1,43 +1,32 @@
 // Package python resolves selfdoc's directives against Python source.
 //
-// # Why python3 runs
+// # What the pages are built from
 //
 // Every Python reference page selfdoc has ever produced was rendered from the
 // stdlib ast module: ast.unparse decides how an annotation, a default value and
 // a base class read, and the tree's child order decides what order the page
-// lists symbols in. A re-implementation would have to reproduce both, forever,
-// against a language whose syntax moves every release.
+// lists symbols in. Both are reproduced here over a tree-sitter parse -- a
+// pure-Go one, with the Python grammar's tables read from the parser library's
+// embedded blob -- so documenting a Python project needs no interpreter on the
+// machine and no cgo in the build.
 //
-// So the tree is still read by Python. An embedded driver (driver.py) is run
-// under python3 with the file's source on standard input, and prints one JSON
-// document carrying what came out of the tree: the docstrings, the rendered
-// signatures, the unparsed field types and defaults, the __all__ literal, the
-// module-level re-export statements, the declarations' line spans, and the two
-// syntactic predicates (dataclass, pydantic model). This package does
-// everything a reader sees: which symbols are skipped, how the Markdown is
-// assembled, how docstring sections are formatted, and which parameters the
-// documentation covers.
+// The split inside the package follows that: parse.go reads the tree into the
+// shape ast has (docstrings, signatures, line spans, __all__, re-export
+// statements, the dataclass and pydantic predicates), unparse.go reproduces
+// ast.unparse's rendering of an expression, and handlers.go does everything a
+// reader sees -- which symbols are skipped, how the Markdown is assembled, how
+// docstring sections are formatted, which parameters count as documented.
 //
-// The driver runs as a declared read through the effects handle, so a --dry-run
-// still renders pages. Its output is cached per file for the life of the
-// extractor, because one page asks about the same module several times.
-//
-// A missing python3, a crashed driver or an unusable document is an error, not
-// an empty answer: a Python project whose pages silently lost every symbol
-// because the interpreter was absent is worse than a build that stops and says
-// so. A file that cannot be read or does not parse is a different thing -- that
-// is a property of the file, and it answers empty or renders an error marker,
-// as it always has.
+// A parse is cached per file for the life of the extractor, because one page
+// asks about the same module several times. A file that cannot be read or does
+// not parse answers empty or renders an error marker, as it always has: that is
+// a property of the file, not of the machine.
 package python
 
 import (
-	"embed"
-	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
@@ -45,39 +34,21 @@ import (
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
-//go:embed driver.py
-var driverFS embed.FS
-
-// driverSource is the program python3 is handed on its command line.
-var driverSource = func() string {
-	data, err := driverFS.ReadFile("driver.py")
-	if err != nil {
-		panic("python: the embedded driver is missing: " + err.Error())
-	}
-	return string(data)
-}()
-
-// driverTimeout bounds one driver run. Parsing one file is milliseconds of
-// work, so a run that reaches this bound is a hung interpreter rather than a
-// large file.
-const driverTimeout = 30 * time.Second
-
-// Extractor reads Python source through the embedded python3 driver.
+// Extractor reads Python source through an in-process tree-sitter parse.
 type Extractor struct {
 	extractors.Base
-
-	handle *effects.Handle
 
 	mu       sync.Mutex
 	analyses map[string]*analysis
 }
 
-// New builds the Python extractor. The handle is what the driver runs through.
-func New(handle *effects.Handle) extractors.Extractor {
-	if handle == nil {
-		handle = effects.Unbound()
-	}
-	extractor := &Extractor{handle: handle, analyses: map[string]*analysis{}}
+// New builds the Python extractor.
+//
+// The handle is unused: reading a Python file is a file read and a parse, and
+// neither spawns anything. It stays in the signature because every extractor is
+// built through the same factory.
+func New(_ *effects.Handle) extractors.Extractor {
+	extractor := &Extractor{analyses: map[string]*analysis{}}
 	extractor.Base = extractors.NewBase("python", map[string]extractors.Handler{
 		"ref":          extractor.handleModule,
 		"code-test":    extractor.handleTest,
@@ -209,14 +180,14 @@ func cutLast(s, sep string) (before, after string, found bool) {
 }
 
 // analysis is one file as this package sees it: the bytes it read and the
-// document the driver printed for them.
+// document read out of their syntax tree.
 type analysis struct {
 	// Source is the file's text, empty when ReadError is set.
 	Source string
 	// ReadError is why the file could not be read, nil when it was.
 	ReadError error
-	// Document is what the driver printed, nil when ReadError is set.
-	Document *driverDocument
+	// Document is what the tree said, nil when ReadError is set.
+	Document *document
 }
 
 // usable reports whether the file was read and parsed, which is the
@@ -225,11 +196,11 @@ func (a *analysis) usable() bool {
 	return a.ReadError == nil && a.Document != nil && a.Document.SyntaxError == nil
 }
 
-// analyze reads a file and parses it through the driver, caching the result.
+// analyze reads a file and parses it, caching the result.
 //
 // The cache is per extractor and keyed by the path as the caller spelled it.
 // One reference page asks about the same module for its docstring, its symbol
-// list and each symbol's details, and a fresh interpreter per question would
+// list and each symbol's details, and a fresh parse per question would
 // dominate the build.
 func (e *Extractor) analyze(filePath string) (*analysis, error) {
 	e.mu.Lock()
@@ -246,11 +217,11 @@ func (e *Extractor) analyze(filePath string) (*analysis, error) {
 		return result, nil
 	}
 
-	document, err := e.runDriver(filePath, string(data))
+	parsed, err := parseDocument(filePath, data)
 	if err != nil {
 		return nil, err
 	}
-	result := &analysis{Source: string(data), Document: document}
+	result := &analysis{Source: string(data), Document: parsed}
 	e.remember(filePath, result)
 	return result, nil
 }
@@ -261,98 +232,69 @@ func (e *Extractor) remember(filePath string, result *analysis) {
 	e.mu.Unlock()
 }
 
-// runDriver runs the embedded driver over source and decodes its document.
-func (e *Extractor) runDriver(displayPath, source string) (*driverDocument, error) {
-	result, err := e.handle.Run(
-		[]string{"python3", "-c", driverSource, displayPath},
-		effects.Read(),
-		effects.CaptureOutput(),
-		effects.Stdin([]byte(source)),
-		effects.Timeout(driverTimeout),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: running python3: %w", displayPath, err)
-	}
-	if result.ExitCode != 0 {
-		return nil, fmt.Errorf(
-			"reading %s: the embedded python3 driver exited %d: %s",
-			displayPath, result.ExitCode, strings.TrimSpace(string(result.Stderr)),
-		)
-	}
-
-	var document driverDocument
-	if err := json.Unmarshal(result.Stdout, &document); err != nil {
-		return nil, fmt.Errorf(
-			"reading %s: the embedded python3 driver printed no usable document: %w",
-			displayPath, err,
-		)
-	}
-	return &document, nil
-}
-
-// driverDocument is what driver.py prints for one file.
-type driverDocument struct {
-	// SyntaxError is Python's own rendering of the parse failure, nil when the
-	// file parsed.
-	SyntaxError *string `json:"syntax_error"`
+// document is what one file's syntax tree says about it.
+type document struct {
+	// SyntaxError is the rendering of the parse failure, nil when the file
+	// parsed.
+	SyntaxError *string
 	// Docstring is the module docstring, nil when the module has none.
-	Docstring *string `json:"docstring"`
+	Docstring *string
 	// AllNames is the module's __all__ when it is a literal list or tuple of
 	// strings. It is nil both when there is no __all__ and when there is one
 	// that is not such a literal -- the two cases the heuristic covers alike.
-	AllNames []string `json:"all_names"`
+	AllNames []string
 	// Declarations are the module's top-level functions and classes, in source
 	// order.
-	Declarations []declaration `json:"declarations"`
+	Declarations []declaration
 	// Reexports are the module-level re-export statements and constants, in
 	// source order, including the ones nested one level inside a top-level try
 	// or if.
-	Reexports []reexport `json:"reexports"`
+	Reexports []reexport
 	// CLIConstants are the module-level HELP and USAGE string constants.
-	CLIConstants []cliConstant `json:"cli_constants"`
+	CLIConstants []cliConstant
 }
 
 // docstring is the module docstring, empty when there is none.
-func (d *driverDocument) docstring() string {
+func (d *document) docstring() string {
 	if d.Docstring == nil {
 		return ""
 	}
 	return *d.Docstring
 }
 
-// declaration is one function or class the driver read out of the tree.
+// declaration is one function or class read out of the tree.
 type declaration struct {
 	// Kind is "function" or "class".
-	Kind string `json:"kind"`
+	Kind string
 	// Name is the declared name.
-	Name string `json:"name"`
+	Name string
 	// IsAsync reports an "async def", which the rendered signature spells out.
-	IsAsync bool `json:"is_async"`
+	IsAsync bool
 	// Doc is the declaration's own docstring, nil when it has none.
-	Doc *string `json:"doc"`
+	Doc *string
 	// Signature is the parenthesized parameter list and return annotation, as
 	// ast.unparse renders their parts. Functions only.
-	Signature string `json:"signature"`
+	Signature string
 	// ClassSignature is the "class Name(Base):" line. Classes only.
-	ClassSignature string `json:"class_signature"`
+	ClassSignature string
 	// Lineno and EndLineno are the declaration's inclusive one-based line span,
 	// which is what a code-test directive slices out of the source.
-	Lineno    int `json:"lineno"`
-	EndLineno int `json:"end_lineno"`
+	Lineno    int
+	EndLineno int
 	// IsDataclass and IsPydantic are the two syntactic predicates that decide
 	// whether a docstring-less class renders a field table. Classes only.
-	IsDataclass bool `json:"is_dataclass"`
-	IsPydantic  bool `json:"is_pydantic"`
+	IsDataclass bool
+	IsPydantic  bool
 	// Fields are the class's annotated assignments. Classes only.
-	Fields []field `json:"fields"`
+	Fields []field
 	// Members are the class's own functions and classes, in source order.
 	// Classes only.
-	Members []declaration `json:"members"`
+	Members []declaration
 	// Params are the parameters a symbol-details report names. Functions only.
-	Params []driverParam `json:"params"`
+	Params []paramInfo
 	// ReturnType is the declared return annotation, nil when there is none.
 	// Functions only.
-	ReturnType *string `json:"return_type"`
+	ReturnType *string
 }
 
 // documented is the declaration's docstring, empty when it has none. An empty
@@ -368,36 +310,36 @@ func (d *declaration) documented() string {
 // field is one annotated assignment in a class body.
 type field struct {
 	// Name is the field name.
-	Name string `json:"name"`
+	Name string
 	// Type is the unparsed annotation.
-	Type string `json:"type"`
+	Type string
 	// Default is the unparsed default value, empty when the field has none.
-	Default string `json:"default"`
+	Default string
 	// Lineno is the field's one-based line, which is where an inline comment
 	// documenting it would be.
-	Lineno int `json:"lineno"`
+	Lineno int
 }
 
 // reexport is one module-level re-export or constant, with the source line that
 // declares it.
 type reexport struct {
-	Name string `json:"name"`
-	Stub string `json:"stub"`
+	Name string
+	Stub string
 }
 
 // cliConstant is one module-level HELP or USAGE string.
 type cliConstant struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string
+	Value string
 }
 
-// driverParam is one parameter as the driver read it, before this package
+// paramInfo is one parameter as the tree declares it, before this package
 // decides whether the documentation covers it.
-type driverParam struct {
+type paramInfo struct {
 	// Name carries the variadic or keyword prefix the signature writes.
-	Name string `json:"name"`
+	Name string
 	// Type is the unparsed annotation, nil when the parameter has none.
-	Type *string `json:"type"`
+	Type *string
 }
 
 // buildSymbolDetails reports a function's parameters and return value, marking

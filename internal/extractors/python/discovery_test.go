@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/smm-h/selfdoc/internal/extractors"
@@ -26,7 +25,6 @@ func writeFile(t *testing.T, name, content string) string {
 }
 
 func TestPublicSymbols(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	extractor := newExtractor()
 
@@ -101,7 +99,6 @@ func TestPublicSymbols(t *testing.T) {
 }
 
 func TestModuleDocstring(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	extractor := newExtractor()
 
@@ -164,7 +161,6 @@ def load():
 }
 
 func TestSymbolDetails(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 	extractor := newExtractor()
 
@@ -348,7 +344,6 @@ func TestSymbolDetails(t *testing.T) {
 // TestAnalysisIsCachedPerFile pins the property that keeps a build from
 // spawning one interpreter per question about the same module.
 func TestAnalysisIsCachedPerFile(t *testing.T) {
-	requirePython3(t)
 	hygiene.Isolate(t)
 
 	path := writeFile(t, "mod.py", "\"\"\"Doc.\"\"\"\n\n\ndef f():\n    pass\n")
@@ -411,33 +406,4 @@ func showParams(params []extractors.SymbolParam) string {
 		}
 	}
 	return out + "]"
-}
-
-// TestAMissingInterpreterIsAnError pins the ruling this package is built on: a
-// Python project whose pages quietly lost every symbol because python3 was
-// absent is worse than a build that stops and names the file.
-func TestAMissingInterpreterIsAnError(t *testing.T) {
-	hygiene.Isolate(t)
-	t.Setenv("PATH", "")
-
-	path := writeFile(t, "mod.py", "\"\"\"Doc.\"\"\"\n")
-	extractor := newExtractor()
-
-	if _, err := extractor.ModuleDocstring(path); err == nil {
-		t.Error("ModuleDocstring answered empty with no interpreter available")
-	} else if !strings.Contains(err.Error(), "mod.py") {
-		t.Errorf("error does not name the file: %v", err)
-	}
-
-	if _, err := extractor.PublicSymbols(path); err == nil {
-		t.Error("PublicSymbols answered empty with no interpreter available")
-	}
-
-	if _, err := extractor.SymbolDetails(path, "anything"); err == nil {
-		t.Error("SymbolDetails answered nil with no interpreter available")
-	}
-
-	if _, err := extractor.Extract("ref", map[string]string{"path": "mod.py"}, nil, nil, filepath.Dir(path)); err == nil {
-		t.Error("Extract rendered a page with no interpreter available")
-	}
 }
