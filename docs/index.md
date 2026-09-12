@@ -86,7 +86,7 @@ selfdoc ships with everything you need to build, check, and deploy a documentati
 
 - **Code-aware directives** -- Embed live API references, schemas, tests, and CLI help directly from source code. Content stays in sync automatically.
 - **Multi-language support** -- extractors for Go, Python, TypeScript, Svelte, Zig, Dart, Kotlin, Swift and SQL, all feeding the same directive vocabulary. One project can declare several.
-- **One static binary** -- written in Go, with stylesheets, scripts, themes and the word list compiled in. No runtime, no virtualenv, no JavaScript toolchain, no configuration overhead.
+- **One static binary** -- written in Go, with stylesheets, scripts, themes and the word list compiled in. No runtime to install, no virtual environment, no JavaScript toolchain, no configuration overhead.
 - **SEO and AI optimized** -- Structured data, meta tags, sitemaps, llms.txt, Atom feeds, and 50+ SEO best practices built into every generated page.
 - **Themeable and accessible** -- built-in themes with dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation.
 

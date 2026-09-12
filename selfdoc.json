@@ -38,7 +38,8 @@
   "gen": {
     "exclude": [
       "internal/e2e",
-      "internal/testproject"
+      "internal/testproject",
+      "testdata"
     ]
   },
   "root_files": [

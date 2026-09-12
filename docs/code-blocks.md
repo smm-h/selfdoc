@@ -23,7 +23,7 @@ def greet(name: str) -> str:
 If the language is not recognized, the code renders as plain text. A theme declares a light style and a dark style by name, and the generated stylesheet defines each token's colour three times over -- the light scheme, the dark one, and the system fallback for a reader who has recorded no preference -- so the two schemes cannot drift apart rule by rule.
 
 > [!NOTE]
-> The highlighter is compiled into the binary. There is nothing to install and no mode in which code blocks come out unhighlighted because a dependency was missing.
+> The highlighter is compiled into the binary. There is nothing to install, and no mode in which a code block comes out plain because a dependency was missing.
 
 ## Language Icons
 
@@ -152,11 +152,11 @@ When you place two or more fenced code blocks with different languages next to e
 
 ````markdown
 ```bash
-go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
+pip install requests
 ```
 
 ```shell
-npm install -g selfdocumenting
+npm install -g typescript
 ```
 ````
 
