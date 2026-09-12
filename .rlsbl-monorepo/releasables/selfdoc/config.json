@@ -4,14 +4,20 @@
   "push_timeout": 120,
   "env_file": "~/Projects/.env",
   "publish_gate_check_regex": "^(root-ci) / ",
-  "targets": ["go", "npm", "pypi"],
+  "targets": [
+    "go",
+    "npm",
+    "pypi"
+  ],
   "pipelines": {
     "go": {
       "type": "go",
       "local": false,
       "target": "go",
       "artifact": "binary",
-      "install_paths": ["./cmd/selfdoc"]
+      "install_paths": [
+        "./cmd/selfdoc"
+      ]
     },
     "npm": {
       "type": "npm",
@@ -32,5 +38,90 @@
       "binary_source": "github-release",
       "download": "first-run"
     }
+  },
+  "batch_limits": {
+    "exclusions": [
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 2
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 3
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 4
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 5
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 6
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 9
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 11
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 13
+          }
+        ]
+      },
+      {
+        "reason": "non-user-facing batch",
+        "entries": [
+          {
+            "version": "unreleased",
+            "line": 14
+          }
+        ]
+      }
+    ]
   }
 }
