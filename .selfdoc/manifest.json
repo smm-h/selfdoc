@@ -2616,11 +2616,6 @@
         },
         {
           "level": 3,
-          "text": "`_should_skip_dir`",
-          "anchor": "_should_skip_dir"
-        },
-        {
-          "level": 3,
           "text": "`_has_generated_marker`",
           "anchor": "_has_generated_marker"
         },
@@ -2653,11 +2648,6 @@
           "level": 3,
           "text": "`_collect_go_packages`",
           "anchor": "_collect_go_packages"
-        },
-        {
-          "level": 3,
-          "text": "`_is_excluded`",
-          "anchor": "_is_excluded"
         },
         {
           "level": 3,
@@ -3595,6 +3585,6 @@
       ]
     }
   ],
-  "last_gen": "2026-08-16T12:52:52.714778+00:00",
+  "last_gen": "2026-09-12T01:03:50.520201+00:00",
   "theme": "minimal"
 }
