@@ -157,7 +157,7 @@ The suite needs Chromium through playwright-go, Pagefind, and python3 (the versi
 - **internal/blog/listing**: Package listing carries the home project's curated project listing: one declared source, two renderings.
 - **internal/blog/posts**: Package posts discovers and validates a project's blog posts.
 - **internal/blog/preview**: Package preview builds the whole assembly from local checkouts and serves it on loopback.
-- **internal/blog/serving**: Package serving carries the static-file primitives shared by selfblog's two local servers.
+- **internal/blog/serving**: Package serving carries the static-file primitives shared by the two local servers.
 - **internal/blog/shared**: Package shared generates the elements of an assembled documentation site that belong to the site rather than to any one project.
 - **internal/blog/site**: Package site carries the assembly's model: what the unified documentation site declares, what each project published into it, and where a build's output lands once it is grafted in.
 - **internal/blog/sitedirectives**: Package sitedirectives carries the site-level directives: the generated parts of the home project's authored pages.

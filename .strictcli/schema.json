@@ -1323,7 +1323,7 @@
           "flags": [
             {
               "name": "registry",
-              "help": "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.",
+              "help": "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfdoc-registry.toml is read.",
               "value_schema": {
                 "type": "string"
               },
@@ -1348,7 +1348,7 @@
             },
             {
               "name": "registry",
-              "help": "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.",
+              "help": "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfdoc-registry.toml is read.",
               "value_schema": {
                 "type": "string"
               },

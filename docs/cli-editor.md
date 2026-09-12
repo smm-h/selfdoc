@@ -22,7 +22,7 @@ List every repository the editor registry declares, with its kind and where it p
 
 | Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--registry` |  | str | optional |  | Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read. |
+| `--registry` |  | str | optional |  | Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfdoc-registry.toml is read. |
 
 ## editor serve
 
@@ -37,5 +37,5 @@ Run the local authoring app: a browser UI over the registry's repositories, with
 | Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
 | `--port` |  | int | required |  | Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits. |
-| `--registry` |  | str | optional |  | Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read. |
+| `--registry` |  | str | optional |  | Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfdoc-registry.toml is read. |
 | `--tinymoon-assets` |  | str | optional |  | Path to a tinymoon checkout's 'assets' directory. Omitted, the installed tinymoon package is used. The editor tier (js/editor.js, js/completion.js, css/editor.css) is newer than the released package, so a checkout is currently the only complete source. |
