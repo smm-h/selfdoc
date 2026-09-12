@@ -38,6 +38,10 @@ docs/_build/
 coverage/
 
 .rlsbl-monorepo/lock
+.rlsbl/releases/in-progress.json
+.rlsbl/releases/scrub-result.json
+.rlsbl-monorepo/releasables/*/releases/in-progress.json
+.rlsbl-monorepo/releasables/*/releases/scrub-result.json
 
 # Go build output -- except the npm launcher stub, which is a tracked
 # source file the wrapper package ships.
