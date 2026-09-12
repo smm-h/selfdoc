@@ -29,7 +29,7 @@ The app opens the repositories one file names. That file is hand-written, machin
 Its default location is:
 
 ```
-~/Projects/ark/selfblog-registry.toml
+~/Projects/ark/selfdoc-registry.toml
 ```
 
 Override it with `--registry <path>` on either editor command.
@@ -68,7 +68,7 @@ name = "afar"
 kind = "remote"
 repo = "smm-h/afar"
 ref = "v1.2.3"
-cache = "~/.cache/selfblog/afar"
+cache = "~/.cache/selfdoc/afar"
 render = true
 ```
 

@@ -23,7 +23,7 @@ func isolate(t *testing.T) {
 // write puts a registry document in dir and returns its path.
 func write(t *testing.T, dir, text string) string {
 	t.Helper()
-	path := filepath.Join(dir, "selfblog-registry.toml")
+	path := filepath.Join(dir, "selfdoc-registry.toml")
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatalf("writing the registry: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestTheDefaultIsTheMachineLocalFile(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	want := filepath.Join(home, "Projects", "ark", "selfblog-registry.toml")
+	want := filepath.Join(home, "Projects", "ark", "selfdoc-registry.toml")
 	if got := DefaultPath(); got != want {
 		t.Errorf("DefaultPath() = %q, want %q", got, want)
 	}
@@ -202,7 +202,7 @@ name = "afar"
 kind = "remote"
 repo = "smm-h/afar"
 ref = "main"
-cache = "~/.cache/selfblog/afar"
+cache = "~/.cache/selfdoc/afar"
 render = false
 `))
 	if err != nil {
@@ -212,7 +212,7 @@ render = false
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	want := filepath.Join(home, ".cache", "selfblog", "afar")
+	want := filepath.Join(home, ".cache", "selfdoc", "afar")
 	if got := entry.(*RemoteRepo).Cache(); got != want {
 		t.Errorf("Cache() = %q, want %q", got, want)
 	}

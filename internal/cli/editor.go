@@ -17,7 +17,7 @@ func (c *cli) registerEditor() {
 		c.cmdEditorListRepos,
 		strictcli.WithEffect(strictcli.EffectReadOnly),
 		strictcli.WithFlags(
-			strictcli.StringFlag("registry", "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.", strictcli.Optional()),
+			strictcli.StringFlag("registry", "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfdoc-registry.toml is read.", strictcli.Optional()),
 		),
 	)
 
@@ -43,7 +43,7 @@ func (c *cli) registerEditor() {
 				"it without --dry-run, and preview a save by not pressing save."),
 		strictcli.WithFlags(
 			strictcli.IntFlag("port", "Port to bind on 127.0.0.1. Required and has no default: the editor writes working trees and answers without authentication, so which port it occupies is a decision the caller states rather than inherits.", strictcli.Required()),
-			strictcli.StringFlag("registry", "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfblog-registry.toml is read.", strictcli.Optional()),
+			strictcli.StringFlag("registry", "Path to the editor registry TOML. Omitted, the machine-local registry at ~/Projects/ark/selfdoc-registry.toml is read.", strictcli.Optional()),
 			strictcli.StringFlag("tinymoon-assets", "Path to a tinymoon checkout's 'assets' directory. Omitted, the installed tinymoon package is used. The editor tier (js/editor.js, js/completion.js, css/editor.css) is newer than the released package, so a checkout is currently the only complete source.", strictcli.Optional()),
 		),
 	)

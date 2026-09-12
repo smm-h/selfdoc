@@ -25,7 +25,7 @@
 //	kind = "remote"
 //	repo = "smm-h/afar"
 //	ref = "v1.2.3"
-//	cache = "~/.cache/selfblog/afar"
+//	cache = "~/.cache/selfdoc/afar"
 //	render = true
 //
 // A remote entry is validated in full but not served yet: the server refuses
@@ -56,7 +56,7 @@ import (
 // out of the environment, which the Python module it replaces did once at
 // import time.
 func DefaultPath() string {
-	return filepath.Join(expandUser("~"), "Projects", "ark", "selfblog-registry.toml")
+	return filepath.Join(expandUser("~"), "Projects", "ark", "selfdoc-registry.toml")
 }
 
 // nameRE is the shape of a registry name. A name is a URL path segment
