@@ -1,0 +1,12 @@
+# Documentation
+
+> Every project's documentation is published here. Each entry below links to that project's own llms.txt, which lists its pages.
+
+## Projects
+
+- [Alpha](https://docs.example.com/alpha/llms.txt): Does the alpha thing.
+- [Zebra](https://docs.example.com/zebra/llms.txt): Does the zebra thing.
+
+## Blog
+
+- [Blog](https://docs.example.com/blog/): posts from every project, newest first.

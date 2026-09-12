@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Framework</title>
+    <link rel="stylesheet" href="../_chrome/tinymoon-abcdef012345/css/style.css">
+</head>
+<body>
+<div class="shared-page">
+<p>x</p>
+</div>
+<footer class="site-footer">
+<p>Built with <a href="https://github.com/smm-h/selfdoc">selfdoc</a></p>
+</footer>
+
+<script type="module">
+import { openPalette, registerPaletteSource } from "../_chrome/tinymoon-abcdef012345/js/palette.js";
+let index = null;
+async function search(query) {
+  if (!query) return [];
+  if (!index) {
+    index = await import("../pagefind/pagefind.js");
+    await index.init();
+  }
+  const found = await index.search(query);
+  const top = await Promise.all(
+    found.results.slice(0, 8).map((r) => r.data())
+  );
+  return top.map((d) => {
+    const excerpt = String(d.excerpt || "").replace(/<[^>]*>/g, "");
+    return {
+      label: d.meta && d.meta.title
+        ? d.meta.title + " \u2014 " + excerpt
+        : excerpt,
+      hint: d.url,
+      run: () => { window.location.href = d.url; },
+    };
+  });
+}
+registerPaletteSource(search);
+function open() { openPalette(); }
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    e.preventDefault();
+    open();
+  }
+});
+for (const t of document.querySelectorAll(
+  ".search-trigger, .search-bar-trigger"
+)) t.addEventListener("click", open);
+</script>
+</body>
+</html>

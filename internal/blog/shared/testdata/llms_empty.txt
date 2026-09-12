@@ -1,0 +1,11 @@
+# Documentation
+
+> Every project's documentation is published here. Each entry below links to that project's own llms.txt, which lists its pages.
+
+## Projects
+
+- No projects are published yet.
+
+## Blog
+
+- [Blog](https://docs.example.com/blog/): posts from every project, newest first.

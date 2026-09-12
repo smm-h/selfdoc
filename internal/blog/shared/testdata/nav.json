@@ -1,0 +1,20 @@
+{
+  "projects": [
+    {
+      "name": "Alpha",
+      "slug": "alpha",
+      "version": "1.0.0"
+    },
+    {
+      "name": "Home",
+      "slug": "home",
+      "version": "0.1.0"
+    },
+    {
+      "name": "Zebra",
+      "slug": "zebra",
+      "version": "0.0.0"
+    }
+  ],
+  "blog": "/blog/"
+}
