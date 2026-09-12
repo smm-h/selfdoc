@@ -29,4 +29,7 @@ build-backend = "hatchling.build"
 packages = ["selfdoc"]
 
 [tool.hatch.build.targets.sdist]
-include = ["selfdoc", "README.md", "LICENSE"]
+# only-include, not include: hatchling include patterns are gitignore-style
+# and match a path COMPONENT at any depth, so "selfdoc" also pulled in
+# cmd/selfdoc and the whole .rlsbl-monorepo/releasables/selfdoc tree.
+only-include = ["selfdoc", "README.md", "LICENSE"]
