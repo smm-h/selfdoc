@@ -29,6 +29,10 @@ Version: :-: var key="project.version"
 ## Command Groups
 
 - [baseline](../cli-baseline/) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check
+- [post](../cli-post/) -- Manage blog posts and chronological content for the documentation site
+- [docs](../cli-docs/) -- Publish this project's documentation to the unified assembly without a release
+- [assembly](../cli-assembly/) -- Manage the unified multi-project documentation assembly and deployment
+- [editor](../cli-editor/) -- Run and inspect the local authoring app for blog posts
 
 ## Framework flags
 

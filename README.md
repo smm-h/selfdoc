@@ -4,23 +4,24 @@
 
 Code-aware documentation site generator. Builds full static sites from Markdown templates and source code. Your code is the documentation -- directives in Markdown pull live content from your codebase at build time.
 
-Supports Python, Go, and TypeScript/JavaScript. Pure Python: two direct runtime dependencies, `strictcli` and `selfdoc-core` (which brings `strictspec` and shares the same `strictcli`). Nothing to compile.
+Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL. selfdoc is one Go binary with no runtime to install: stylesheets, scripts, themes and the word list are compiled into it.
 
 ## Install
 
 ```
-pip install selfdocumenting
+go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 ```
 
-or via npm (delegates to Python under the hood):
+or through a package manager you already have -- both packages are thin launchers that download the matching release binary on first run:
 
 ```
 npm install -g selfdocumenting
+pip install selfdocumenting
 ```
 
-Requires Python 3.11+.
+The npm and PyPI packages are named `selfdocumenting` (npm blocks `selfdoc` due to name similarity). The CLI command is `selfdoc`.
 
-The npm package is named `selfdocumenting` (npm blocks `selfdoc` due to name similarity). The CLI command remains `selfdoc`.
+Two optional dependencies, needed only by the features that use them: `python3` for the Python extractor and for custom directives, and [Pagefind](https://pagefind.app/) for the search index.
 
 ## Quick start
 
@@ -43,12 +44,11 @@ selfdoc check
 selfdoc serve
 ```
 
-Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version, single-locale project:
+Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version, single-locale project. Each source entry names its own path and language:
 
 ```json
 {
-  "language": "python",
-  "source": ["src/"],
+  "source": [{"path": "internal/", "language": "go"}],
   "base_url": "https://my-project.example.com",
   "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}]
@@ -62,13 +62,14 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
 - **Multi-version docs** -- build from git tags, cached builds, version picker UI
 - **Localization** -- parallel locale directories, hreflang tags, locale picker, per-locale sitemaps
 - **Monorepo support** -- unified site builder combines multiple projects into one docs site
+- **Blog posts** -- `selfdoc post` for authoring, listing pages, feeds, and a local editor app
 - **Faceted search** -- key=value filter syntax, 7 dimensions, chip UI, auto-injected version default
 - **Sandboxed data generation** -- run scripts in bubblewrap isolation (`selfdoc gen-data`)
 - **Theming** -- dark mode, accent colors, custom CSS overrides
 - **Search** -- Pagefind, indexed at build time, no network at read time
-- **SEO** -- 15+ lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
-- **Coverage tracking** -- per-symbol documentation coverage with configurable thresholds
-- **Syntax highlighting** -- build-time Pygments, code tabs, sortable tables
+- **SEO** -- lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
+- **Coverage tracking** -- per-symbol documentation coverage with a configurable threshold
+- **Syntax highlighting** -- build-time highlighting via chroma, code tabs, sortable tables
 - **Performance** -- CSS/JS/HTML minification, critical CSS inlining, gzip and Brotli pre-compression
 - **Feeds and AI** -- Atom feed, `robots.txt` with AI crawler controls, `llms.txt` / `llms-full.txt`
 - **Landing page** -- hero section, tagline, and feature cards
@@ -111,23 +112,23 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 | `table-schema` | Extract dataclass/struct fields as a markdown table |
 | `var` | Interpolate project metadata value |
 
-Example -- embed the API docs for a Python module:
+Example -- embed the API docs for a package:
 
 ```markdown
 ## API Reference
 
-:-: ref path="selfdoc.config"
+:-: ref path="internal/config"
 ```
 
-Example -- show a JSON schema as a table:
+Example -- show a struct's fields as a table:
 
 ```markdown
-:-: table-schema path="selfdoc.json"
+:-: table-schema path="internal/config.Field"
 ```
 
 ## Custom directives
 
-Register custom directives in `selfdoc.json` under the `directives` key. Each entry maps a directive name to a Python script (relative to project root) that exports a `resolve(attrs, config, body)` function returning a Markdown string.
+Register custom directives in `selfdoc.json` under the `directives` key. Each entry maps a directive name to a Python script (relative to project root) that defines a `resolve(attrs, config, body)` function returning a Markdown string.
 
 ```json
 {
@@ -157,7 +158,9 @@ Use in templates:
 :-: changelog path="v1.0.0"
 ```
 
-Custom directives take priority over built-in names.
+The script runs out of process: selfdoc hands an embedded driver to `python3`, passes the script's path, and sends `attrs`, `config` and `body` as one JSON object on standard input. What the script prints on standard output replaces the directive. A script that will not load, one with no callable `resolve`, one that raises, and a machine with no `python3` are each a hard error that stops the build -- never a note on the published page.
+
+Dispatch order is content directives, then custom directives, then the language extractors -- so a custom name overrides a code-extraction directive such as `ref`, but not a content directive such as `callout-note`.
 
 ## Configuration
 
@@ -165,8 +168,7 @@ Custom directives take priority over built-in names.
 
 ```json
 {
-  "language": "python",
-  "source": ["selfdoc/"],
+  "source": [{"path": "internal/", "language": "go"}],
   "docs": "docs/",
   "output": "docs/_build/",
   "base_url": "https://my-project.example.com",
@@ -226,7 +228,7 @@ Custom directives take priority over built-in names.
 | `topology` | no | Deployment topology for multi-project unified sites. |
 | `assembly` | no | Assembly configuration for unified site deployment. |
 
-`selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json), and takes the site's own address as `--base-url`. A project with no detectable language is initialized as a codeless project: no `source` key, and no code-extraction directive in the starter page.
+`selfdoc init` auto-detects language and source paths from project files (go.mod, pyproject.toml, tsconfig.json, package.json), and takes the site's own address as `--base-url`. A project with no detectable language is initialized as a codeless project: no `source` key, and no code-extraction directive in the starter page.
 
 ## Commands
 
@@ -243,10 +245,32 @@ Custom directives take priority over built-in names.
 | `quality` | Show documentation quality tier and metrics for the current project |
 | **baseline** | Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check |
 | `baseline accept` | Accept a reviewed staleness or drift dead-end by advancing a page's stored content and description hash baseline to its current values. Use this only after a human has confirmed the page's content changed but its existing frontmatter description was reviewed and is still accurate. Each named page must currently be reporting a STALE001 or DRIFT001 error; accepting clears that error so selfdoc check passes without rewriting an already-correct description. |
+| **post** | Manage blog posts and chronological content for the documentation site |
+| `post new` | Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists. |
+| `post list` | List all discovered blog posts with date, title, slug, and draft status. Scans the configured posts directory for markdown files with frontmatter, parses their metadata, and prints a formatted summary showing each post's publication date, title, slug identifier, and whether it is marked as a draft. |
+| `post generate` | Generate a blog post markdown file from structured release metadata. Takes version, bump type, description, changelog, and registry URLs as inputs, produces a frontmatter-bearing post with title, date, tags, and body content, and updates the project manifest with the new post entry. |
+| `post publish` | Publish non-draft blog posts to the documentation assembly. Builds posts locally, pushes built HTML and manifest to the assembly repo via the Git Data API, then dispatches a shared-only workflow to regenerate cross-project elements. |
+| **docs** | Publish this project's documentation to the unified assembly without a release |
+| `docs publish` | Publish this project's documentation to the assembly without a release. Builds the docs locally, pushes the built site, its manifest and its membership record into the assembly repo via the Git Data API -- deleting the pages this project published before and no longer produces -- then dispatches a shared-only workflow to regenerate cross-project elements. |
+| **assembly** | Manage the unified multi-project documentation assembly and deployment |
+| `assembly init` | Create and initialize the assembly GitHub repository with workflow and configuration files. Creates a private GitHub repo, pushes initial files via the Contents API, creates a Cloudflare Pages project if credentials are available, and sets GitHub secrets for deployment authentication. |
+| `assembly push` | Dispatch a GitHub Actions workflow to rebuild this project in the documentation assembly. Detects the source repository, resolves the latest git tag as the version reference, and sends a repository dispatch event to the assembly repo with the project slug, version, and commit SHA. |
+| `assembly status` | Show the status of recent assembly build workflow runs on GitHub. Queries the assembly repository for recent workflow runs using the GitHub CLI and displays their status, conclusion, and timing information for monitoring deployment progress. |
+| `assembly rebuild` | Dispatch rebuild workflows for every project registered in the assembly. Fetches the projects.json manifest from the assembly repository, then sends a separate GitHub Actions repository dispatch event for each registered project to trigger a full documentation rebuild. |
+| `assembly retire` | Retire a project from the unified assembly: remove its [[project]] block from the roster and, in the same commit, delete its whole site subtree, all of its manifests and its membership record, then dispatch a shared-only rebuild so the listing, feed, sitemap and search index stop naming it. |
+| `assembly redirects` | Generate a Cloudflare Pages _redirects file for this project that redirects standalone documentation URLs to the corresponding paths on the unified assembly site. Requires a project slug and assembly base URL as inputs, prints the redirect rules to stdout. |
+| `assembly generate-shared` | Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page, a security headers file and the redirect worker in the site output directory. |
+| `assembly integrate` | Integrate one dispatched project into the assembly repository checkout and push the result. Builds the cloned source project, replaces its subtree under site/, refreshes its manifest and membership record, regenerates the shared cross-project elements, rebuilds the search index, then commits and pushes with a re-sync retry loop so concurrent deploys converge instead of clobbering each other. This is the whole body of the generated deploy workflow. |
+| `assembly verify` | Assert every property a built assembly tree has to have before it is deployed: that the roster, the site subtrees and the manifests name the same projects, that each manifest's pages and posts were actually emitted, that the shared cross-project artifacts exist and parse, that every internal reference, sitemap entry, feed link and cross-project link resolves, that every page has a title and a canonical, and that no unresolved directive or per-project routing file survived. The deploy runs this itself before it pushes; this command is how you run the same assertions by hand against a checkout. |
+| `assembly preview` | Assemble every named local checkout into a preview tree and serve it on loopback. Builds each project with the toolchain running this command, grafts the output exactly as the deploy does -- the home project at the site root, everybody else under their slug -- writes the roster, membership record and manifests the assembly keeps, generates the shared cross-project files and the site chrome, rebuilds the search index, runs the real pre-deploy verification and prints its report, then serves the result with a working 404. Nothing leaves the machine and nothing is published: this is the look-before-you-ship step. |
+| `assembly sync-workflow` | Regenerate the assembly repository's deploy workflow from this project's configuration and push it. The deployed workflow is a generated artifact like any other: without this it stays frozen at whatever the template said when 'assembly init' ran. Pushes only when the content actually differs. |
+| **editor** | Run and inspect the local authoring app for blog posts |
+| `editor list-repos` | List every repository the editor registry declares, with its kind and where it points. Reads the hand-written registry TOML, validates every entry in full, and prints one line per entry -- a local entry's working tree, or a remote entry's repository, ref and whether it declares that rendering runs against a checkout. |
+| `editor serve` | Run the local authoring app: a browser UI over the registry's repositories, with the tinymoon editor component on the left and a live preview on the right. The preview is the publish renderer over the unsaved buffer, so what you approve is byte-for-byte what publishing produces, and rendering a preview writes nothing. Saving writes the buffer into the repository's working tree. Binds 127.0.0.1 only. |
 
 ## Blog and multi-project assembly
 
-Blog posts and the unified multi-project documentation assembly live in **selfblog**, a sibling package built on `selfdoc-core`. Install it with `pip install selfblog`, then use `selfblog post ...` to manage posts and `selfblog assembly ...` to manage the assembly.
+Blog posts and the unified multi-project documentation assembly are part of the same binary. `selfdoc post new|list|generate|publish` manages posts, `selfdoc editor serve` runs the local authoring app, and `selfdoc assembly ...` initializes, pushes, rebuilds and verifies an assembly that mounts every project under its own slug.
 
 ## Deploy
 

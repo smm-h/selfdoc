@@ -2,20 +2,31 @@
 
 # selfdocumenting
 
-Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, and deploy to Cloudflare Pages or GitHub Pages. Supports Python, Go, and TypeScript/JavaScript.
+Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, blog posts, a unified multi-project assembly, and deploy to Cloudflare Pages or GitHub Pages. Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL.
 
 ## Conventions
 
-- Pure Python. The `selfdoc` package depends on `strictcli` and `selfdoc-core`; `selfdoc-core` in turn depends on `strictspec` and `strictcli` (the effects chokepoint in `selfdoc_core/effects.py` mints on strictcli's `ctx.effects` handle). Nothing else is required at runtime.
-- Build system: hatchling
-- Development: `uv` for all Python tooling (`uv sync`, `uv run`, `uv add`)
-- Local development install: `uv pip install -e .`
-- npm package is a thin Node wrapper (`bin/cli.js`) that delegates to `python3 -m selfdoc`
-- JS files live in `selfdoc/js/`, loaded at build time via `importlib.resources` (never inline JS in Python)
-- File writes to shared state use atomic write (write to tmp, then `os.replace`)
-- External calls (subprocess, network) must have timeouts
+- Pure Go, one module (`github.com/smm-h/selfdoc`) and one binary (`cmd/selfdoc`). Every engine package is under `internal/`.
+- Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `BurntSushi/toml`, `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
+- Install: `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`. The npm and PyPI packages are thin launchers that download the matching release binary from the GitHub Release on first run.
+- No cgo, no tree-sitter, no runtime asset directory: stylesheets, JS, the word list, the directive catalogue and the lint registry are all `go:embed`ed.
+- python3 is needed for two things only, and only when they are used: the Python extractor (an embedded driver that runs the stdlib `ast`) and custom directives (see below). Neither is a build dependency.
+- Effects: every mutation, subprocess and network call goes through an explicit `*effects.Handle` threaded from the command. There is no package-level handle.
+- File writes to shared state are atomic (write to a temp file, then rename).
+- External calls (subprocess, network) must have timeouts.
 
 ## Key concepts
+
+### One binary, one command tree
+
+`selfdoc` carries every command the three former Python packages exposed:
+
+- top level: `init`, `build`, `serve`, `deploy`, `check`, `gen`, `gen-data`, `spell-corpus`, `quality`
+- `baseline` -- accept the content and description hash baselines that drive STALE001 and DRIFT001
+- `post` -- create, list, generate and publish blog posts
+- `docs` -- publish this project's documentation to the unified assembly without a release
+- `assembly` -- initialize, push, inspect, rebuild, retire and verify the unified multi-project site
+- `editor` -- the local authoring app for posts
 
 ### Stable addresses, archived versions
 
@@ -64,7 +75,7 @@ Parallel `docs/<locale>/` directories with per-locale templates. Generates hrefl
 
 ### Monorepo unified sites
 
-`selfdoc/unified.py` orchestrates building a single documentation site from multiple constituent projects plus a docs-site's own cross-cutting content. Configured via the `unified` section in `selfdoc.json`. The unified project is effectively the (N+1)th docs-site project.
+`internal/blog/unified` orchestrates building a single documentation site from multiple constituent projects plus a docs-site's own cross-cutting content. Configured via the `unified` section in `selfdoc.json`. The unified project is effectively the (N+1)th docs-site project.
 
 ### Search filters
 
@@ -80,6 +91,10 @@ Pagefind indexes the built HTML and ships its own UI. Pages emit filter attribut
 - `:::` -- section content
 - `:>:` -- block close
 
+### Custom directives
+
+The `directives` config key maps a directive name to a script, and the contract is Python's: the script defines `resolve(attrs, config, body)` and returns Markdown. selfdoc keeps that contract by running the script out of process -- an embedded driver is handed to `python3`, the script's path as its one argument and one JSON object (`attrs`, `config`, `body`, `base_dir`) on standard input, and what the script prints on standard output replaces the directive. A script that will not load, one with no callable `resolve`, one that raises, and a machine with no python3 are each a hard error naming the directive and the script -- never an inline note on the published page.
+
 ### gen_data
 
 Sandboxed script execution via bubblewrap (bwrap). Runs scripts in isolated environments to generate data files used by the build.
@@ -93,32 +108,33 @@ Sandboxed script execution via bubblewrap (bwrap). Runs scripts in isolated envi
 This project uses [rlsbl](https://github.com/smm-h/rlsbl) for release orchestration.
 
 - `selfdoc check` runs during release (validates directives, coverage, lint)
-- Deploy to Cloudflare Pages via post-release hook
-- CI handles PyPI and npm publishing automatically
+- Deploy to the unified assembly via post-release hook
+- CI handles the release binaries and the launcher packages automatically
 - Never publish manually -- always use `rlsbl release`
-- Requires NPM_TOKEN secret on GitHub (Settings > Secrets > Actions)
 
 ## Testing
 
 ```bash
-uv run pytest                        # everything
-uv run pytest -m e2e_rendered        # only the rendered-reality suite
-uv run pytest -m 'not e2e_rendered'  # everything else, no browser needed
+go build ./...
+go test ./...                    # every package's tests
+go test -tags e2e ./internal/e2e/  # the rendered-reality suite, needs a browser
 ```
 
-5000+ tests in `tests/` covering config loading, directive parsing, the build pipeline, language-specific extractors (Python, Go, TypeScript), check command, gen command, gendata, unified builder, context dataclasses, search, pickers, filters, localization, and multi-version builds.
+Tests live beside the package they cover, as table tests. They cover config loading, directive parsing, the build pipeline, every language extractor, the check command, gen, gen-data, the unified builder, search, pickers, filters, localization, multi-version builds, posts, the assembly and the editor.
 
 ### The rendered-reality suite
 
-`tests/test_rendered_reality.py`, with its fixture in `tests/rendered_site.py`, asserts against real pages in a real headless browser. It exists because six user-visible defects shipped while 4,600 unit tests and every grep-level check passed: a sticky table header overlapping the first data row, a table of contents visible only inside one band of viewport widths, a shared page served with no stylesheet, a duplicated "Last updated" element, absolute links that left the site, and a glossary term no page had defined. None of those is visible to a test that asserts on a string of HTML; every one is obvious to a browser.
+`internal/e2e` asserts against real pages in a real headless browser, behind an `e2e` build tag so `go test ./...` skips it. It exists because six user-visible defects shipped while thousands of unit tests and every grep-level check passed: a sticky table header overlapping the first data row, a table of contents visible only inside one band of viewport widths, a shared page served with no stylesheet, a duplicated "Last updated" element, absolute links that left the site, and a glossary term no page had defined. None of those is visible to a test that asserts on a string of HTML; every one is obvious to a browser.
 
-**The pipeline is never mocked.** That is the suite's design principle. The fixture writes three source checkouts and hands them to `selfblog.preview.preview_assembly` -- the production path: the real `selfdoc build` and `selfblog build`, the real `split_build_output` graft, the real `generate_shared_files`, a real Pagefind index, the production preview server on an ephemeral loopback port, and the production `verify_assembly` as a precondition on the tree. Dependency injection is for genuine external seams -- the network, the clock, another repository -- and for nothing else. Mocked-flow tests are how the defects above shipped.
+**The pipeline is never mocked.** That is the suite's design principle. The fixture writes source checkouts and hands them to the production preview path: the real build, the real graft, the real shared-file generation, a real Pagefind index, the production preview server on an ephemeral loopback port, and the production assembly verification as a precondition on the tree. Dependency injection is for genuine external seams -- the network, the clock, another repository -- and for nothing else. Mocked-flow tests are how the defects above shipped.
 
 Two trees are built and served per theme, because a project has two published shapes: the **assembled site**, where every project mounts under its slug and only the current version is published, and the **standalone site** a project deploys on its own, which is where the archive under `v/<version>/` lives.
 
-What it asserts, each mapped to a defect class: sticky table headers and the pinned first column measured as painted; exactly one visible "Last updated" per page; table-of-contents presence swept across five viewport widths (and its total absence from posts, at every width); every page's computed body style differing from the browser default, with network capture on stylesheet requests; every visible link resolving on-origin and answering below 400; glossary Source links landing on a definition element scrolled into view; Ctrl+K opening the dialog and the real index answering a query from every mount depth; the theme toggle changing what is painted; the archive notice, its dismissal across a reload, and the version picker; a monotonicity guard that fails any layout element visible only in a middle band of widths; the CV portrait decoding and its header laid out as a row; and axe on every page class of every theme.
+What it asserts, each mapped to a defect class: sticky table headers and the pinned first column measured as painted; one visible "Last updated" per page and no more; table-of-contents presence swept across a range of viewport widths (and its total absence from posts, at every width); every page's computed body style differing from the browser default, with network capture on stylesheet requests; every visible link resolving on-origin and answering below 400; glossary Source links landing on a definition element scrolled into view; Ctrl+K opening the dialog and the real index answering a query from every mount depth; the theme toggle changing what is painted; the archive notice, its dismissal across a reload, and the version picker; a monotonicity guard that fails any layout element visible only in a middle band of widths; the CV portrait decoding and its header laid out as a row; and axe on every page class of every theme.
 
-Everything theme-sensitive runs across all three themes. A session builds six sites and runs 408 browser assertions in about four minutes.
+Everything theme-sensitive runs across every built-in theme.
+
+The suite needs Chromium through playwright-go, Pagefind, and python3 (the versioned fixture project is built through the Python extractor). Each missing dependency skips the tests that need it, naming what to install; `internal/e2e/doc.go` carries the one-time setup.
 
 ## Important config fields
 
@@ -132,47 +148,71 @@ Everything theme-sensitive runs across all three themes. A session builds six si
 
 ## Architecture
 
-- **selfdoc** (`selfdoc/__init__.py`): selfdoc: Code-aware static site generator with directive-based content extraction.
-- **selfdoc.__main__** (`selfdoc/__main__.py`)
-- **selfdoc._version** (`selfdoc/_version.py`): Version detection for the selfdoc package -- resolves the current version string from pyproject.toml or installed metadata at import time.
-- **selfdoc.build** (`selfdoc/build.py`): Build pipeline for selfdoc -- scans docs/ templates, resolves directives against source code, and generates static HTML output.
-- **selfdoc.catalog** (`selfdoc/catalog.py`): Directive catalog: defines all built-in directive names and their status.
-- **selfdoc.check** (`selfdoc/check.py`): Check command -- validates directive resolution, measures documentation coverage, runs SEO lint rules, and detects stale or drifted descriptions.
-- **selfdoc.cli** (`selfdoc/cli.py`): CLI interface for selfdoc -- defines the command-line entry point, argument parsing via strictcli, and subcommand dispatch for all commands.
-- **selfdoc.config** (`selfdoc/config.py`): Config loader for selfdoc.json -- reads project settings, validates required fields, and resolves paths for the build pipeline.
-- **selfdoc.content** (`selfdoc/content.py`): Content directives -- re-export shim + table-commands registration.
-- **selfdoc.deploy** (`selfdoc/deploy.py`): Deploy providers for selfdoc documentation sites -- supports Cloudflare Pages and GitHub Pages with atomic uploads and cache invalidation.
-- **selfdoc.directives** (`selfdoc/directives.py`): Directive parser for selfdoc's structured marker syntax -- tokenizes the 6 marker types into typed directive objects for resolution.
-- **selfdoc.docs** (`selfdoc/docs.py`): Shared resolution pipeline for docs/ templates -- walks the docs directory, parses frontmatter, and resolves all directives.
-- **selfdoc.extractors** (`selfdoc/extractors/__init__.py`): Language extractor registry and auto-detection -- discovers and loads extractors for Python, Go, TypeScript, and other supported languages.
-- **selfdoc.extractors.base** (`selfdoc/extractors/base.py`): Re-export shim: actual implementation in selfdoc_core.extractors.base.
-- **selfdoc.extractors.dart** (`selfdoc/extractors/dart.py`): Dart source extractor for selfdoc -- parses .dart files to extract public declarations, doc comments, and exports for documentation pages.
-- **selfdoc.extractors.go** (`selfdoc/extractors/go.py`): Go source extractor for selfdoc -- parses .go files to extract public declarations, doc comments, and struct schemas for documentation pages.
-- **selfdoc.extractors.kotlin** (`selfdoc/extractors/kotlin.py`): Kotlin source extractor for selfdoc -- parses .kt files to extract public declarations, KDoc comments, and data class schemas for documentation.
-- **selfdoc.extractors.protocol** (`selfdoc/extractors/protocol.py`): Re-export shim: actual implementation in selfdoc_core.extractors.protocol.
-- **selfdoc.extractors.python** (`selfdoc/extractors/python.py`): Python source extractor for selfdoc -- parses .py files using stdlib ast to extract functions, classes, docstrings, and type annotations.
-- **selfdoc.extractors.sql** (`selfdoc/extractors/sql.py`): SQL schema extractor for selfdoc -- parses PostgreSQL DDL files to extract table definitions, views, types, and COMMENT ON documentation.
-- **selfdoc.extractors.svelte** (`selfdoc/extractors/svelte.py`): Svelte source extractor for selfdoc -- parses .svelte files to extract component props, exports, and documentation for reference pages.
-- **selfdoc.extractors.swift** (`selfdoc/extractors/swift.py`): Swift source extractor for selfdoc -- parses .swift files to extract public declarations, doc comments, and struct schemas for documentation.
-- **selfdoc.extractors.typescript** (`selfdoc/extractors/typescript.py`): TypeScript and JavaScript source extractor for selfdoc -- parses .ts and .js files to extract functions, classes, and JSDoc comments.
-- **selfdoc.extractors.zig** (`selfdoc/extractors/zig.py`): Zig source extractor for selfdoc -- parses .zig files to extract public declarations, doc comments, and test blocks for documentation pages.
-- **selfdoc.gen** (`selfdoc/gen.py`): Auto-generate documentation pages from project structure.
-- **selfdoc.gendata** (`selfdoc/gendata.py`): Generate data files by running sandboxed scripts via bubblewrap (bwrap), producing JSON or CSV outputs consumed by directives.
-- **selfdoc.git** (`selfdoc/git.py`): Auto-commit helper for selfdoc commands.
-- **selfdoc.html** (`selfdoc/html.py`): Convert Markdown files to static HTML with a built-in minimal converter -- handles headings, code blocks, tables, and inline formatting.
-- **selfdoc.icons** (`selfdoc/icons.py`): Language icons for code blocks -- provides small inline SVG icons for Python, Go, TypeScript, and other supported languages.
-- **selfdoc.js** (`selfdoc/js/__init__.py`)
-- **selfdoc.js.loader** (`selfdoc/js/loader.py`): Loader for selfdoc JS files using importlib.resources -- provides runtime access to bundled JavaScript for search, theming, and navigation.
-- **selfdoc.manifest** (`selfdoc/manifest.py`): Manifest generation and loading for selfdoc projects, producing JSON metadata for pages, posts, slugs, and version info.
-- **selfdoc.ownership** (`selfdoc/ownership.py`): Description ownership predicate: machine-owned vs handwritten.
-- **selfdoc.payload_schemas** (`selfdoc/payload_schemas.py`): Declared payload schemas for selfdoc's machine-mode commands.
-- **selfdoc.quality** (`selfdoc/quality.py`): Documentation quality scoring -- computes maturity tiers (0-5) and content grades (A-F) based on feature adoption and doc-to-source ratio.
-- **selfdoc.resolver** (`selfdoc/resolver.py`): Resolver factory -- dispatches directives to language-specific extractors based on file extension and configured source paths.
-- **selfdoc.spell_corpus** (`selfdoc/spell_corpus.py`): The corpus-wide spelling run: the same engine, every sibling project.
-- **selfdoc.staleness** (`selfdoc/staleness.py`): Description staleness detection via content hashing.
-- **selfdoc.strictcli_support** (`selfdoc/strictcli_support.py`): First-class support for strictcli-based projects.
-- **selfdoc.tables** (`selfdoc/tables.py`): Render data as Markdown tables with column alignment, pretty-printing, and pipe escaping for use in generated documentation pages.
-- **selfdoc.themes** (`selfdoc/themes/__init__.py`): Theme registry for selfdoc.
-- **selfdoc.tokenizer** (`selfdoc/tokenizer.py`): Standalone Markdown block tokenizer -- splits Markdown source into typed block tokens for headings, code, paragraphs, and lists.
-- **selfdoc.urls** (`selfdoc/urls.py`): URL builder interface for decoupling URL generation from hardcoded base_url usage, supporting locale-prefixed and versioned paths.
-- **selfdoc.utils** (`selfdoc/utils.py`): Shared utility functions for selfdoc -- file I/O helpers, path normalization, atomic writes, and common string operations.
+- **internal/address**: Package address is the single addressing authority for built pages.
+- **internal/blog/assembly**: Package assembly carries the assembly's operations: the deploy workflow it generates, the dispatches it sends, the build-and-graft body that deploy runs, and the two publishers that write into it without cloning it.
+- **internal/blog/chrome**: Package chrome is the assembly's one set of page-chrome assets.
+- **internal/blog/editor**: Package editor is the authoring app's local server: registry, documents, preview, stream.
+- **internal/blog/editor/assets**: Package assets decides where the editor's front-end comes from, declared rather than discovered.
+- **internal/blog/editor/registry**: Package registry reads the authoring app's repository registry: a hand-written TOML file.
+- **internal/blog/listing**: Package listing carries the home project's curated project listing: one declared source, two renderings.
+- **internal/blog/posts**: Package posts discovers and validates a project's blog posts.
+- **internal/blog/preview**: Package preview builds the whole assembly from local checkouts and serves it on loopback.
+- **internal/blog/serving**: Package serving carries the static-file primitives shared by selfblog's two local servers.
+- **internal/blog/shared**: Package shared generates the elements of an assembled documentation site that belong to the site rather than to any one project.
+- **internal/blog/site**: Package site carries the assembly's model: what the unified documentation site declares, what each project published into it, and where a build's output lands once it is grafted in.
+- **internal/blog/sitedirectives**: Package sitedirectives carries the site-level directives: the generated parts of the home project's authored pages.
+- **internal/blog/unified**: Package unified builds one documentation site out of several constituent projects plus a docs-site's own cross-cutting content.
+- **internal/blog/unifiedcheck**: Package unifiedcheck checks every constituent project of a unified documentation site in one pass.
+- **internal/blog/verify**: Package verify answers whether a built assembly tree is fit to deploy.
+- **internal/catalog**: Package catalog is selfdoc's directive catalogue: every built-in directive name and its status.
+- **internal/check**: Package check validates a project's documentation: every directive resolves, every public symbol is covered, and every lint rule holds.
+- **internal/cli**: Package cli registers selfdoc's whole command tree on one strictcli application.
+- **internal/config**: Package config loads and validates a project's selfdoc.json.
+- **internal/content**: Package content resolves the content directives: the ones that need no language extractor.
+- **internal/cv**: Package cv holds the CV as data: one declared document, rendered as a page and as a Person.
+- **internal/deploy**: Package deploy publishes a built documentation site.
+- **internal/directives**: Package directives is selfdoc's structured-marker parser.
+- **internal/docs**: Package docs is the shared resolution pipeline for a project's docs/ templates: it walks the docs directory, parses each page's frontmatter, and resolves every directive the page carries.
+- **internal/e2e**: Package e2e is the rendered-reality suite: the built site, in a real browser, asserted as painted.
+- **internal/effects**: Package effects is the single authorized surface for effectful calls in selfdoc production code.
+- **internal/excludes**: Package excludes is the single authority for which source paths a project's docs cover.
+- **internal/extractors**: Package extractors defines the language-extractor protocol, the shared behavior every extractor embeds, and the registry that resolves a language name to its extractor.
+- **internal/extractors/dart**: Package dart resolves selfdoc's directives against Dart source.
+- **internal/extractors/golang**: Package golang resolves selfdoc's directives against Go source.
+- **internal/extractors/kotlin**: Package kotlin resolves selfdoc's directives against Kotlin source.
+- **internal/extractors/python**: Package python resolves selfdoc's directives against Python source.
+- **internal/extractors/sql**: Package sql resolves selfdoc's directives against PostgreSQL DDL.
+- **internal/extractors/svelte**: Package svelte reads Svelte component source for selfdoc.
+- **internal/extractors/swift**: Package swift resolves selfdoc's directives against Swift source.
+- **internal/extractors/typescript**: Package typescript reads TypeScript and JavaScript source for selfdoc.
+- **internal/extractors/zig**: Package zig reads Zig source for selfdoc.
+- **internal/fleet**: Package fleet enumerates the selfdoc projects that live beside this one.
+- **internal/gen**: Package gen auto-generates documentation pages from a project's structure.
+- **internal/gendata**: Package gendata generates data files by running sandboxed scripts via bubblewrap (bwrap).
+- **internal/gitcommit**: Package gitcommit commits the files a selfdoc command generated.
+- **internal/html**: Package html converts Markdown to the HTML a built page's body carries.
+- **internal/icons**: Package icons provides the language icons drawn beside a code block's language label.
+- **internal/identity**: Package identity holds the site's declared author, as the one Person its structured data names.
+- **internal/js**: Package js carries the browser scripts a built page ships and assembles the body bundle each page needs.
+- **internal/lints**: Package lints owns the lint-code registry and the verdict rules every check entry point shares.
+- **internal/manifest**: Package manifest generates and reads a project's manifest: the JSON record of what a build published -- the project's identity and version, its pages with their heading anchors, and its posts.
+- **internal/ownership**: Package ownership decides whether a generated page's frontmatter description is machine-owned -- a placeholder selfdoc emitted and may freely overwrite -- or handwritten, and must never be overwritten.
+- **internal/page**: Package page builds the chrome a converted Markdown body is wrapped in.
+- **internal/payloadschemas**: Package payloadschemas declares the JSON Schemas of selfdoc's machine-mode payloads.
+- **internal/prose**: Package prose holds the shared unit-pickers that extract complete linguistic units from text.
+- **internal/quality**: Package quality scores a project's documentation: a maturity tier (0-5) and a content grade (A-F).
+- **internal/render**: Package render renders a page from content held in memory, writing nothing.
+- **internal/resolution**: Package resolution answers whether every reference a build emitted resolves to a file it wrote.
+- **internal/resolver**: Package resolver dispatches one directive to whatever can answer it.
+- **internal/revisions**: Package revisions tracks post revisions in a sidecar revisions.json.
+- **internal/robots**: Package robots holds the crawler policy, declared once for every robots.txt this repository writes.
+- **internal/spellcorpus**: Package spellcorpus is the corpus-wide spelling run: the same engine, every sibling project.
+- **internal/spelling**: Package spelling is the spelling engine: one word checker serving every surface that needs one.
+- **internal/staleness**: Package staleness detects descriptions that no longer describe what they sit on, by hashing what a description is about and comparing that hash against the one recorded the last time the description was written.
+- **internal/strictclisupport**: Package strictclisupport is first-class support for strictcli-based projects.
+- **internal/tables**: Package tables renders data as Markdown tables with per-column alignment, optional pretty-printing, and pipe escaping that leaves inline code alone.
+- **internal/testproject**: Package testproject builds the fixture projects the engine's tests run against.
+- **internal/themes**: Package themes is the theme registry: the stylesheets a built site can be painted with, and the metadata each one carries.
+- **internal/tokenizer**: Package tokenizer is a standalone Markdown block tokenizer.
+- **internal/urls**: Package urls builds absolute URLs from relative paths, decoupling URL generation from a hardcoded base_url and supporting locale-prefixed and versioned paths.
+- **internal/util**
