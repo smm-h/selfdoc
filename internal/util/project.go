@@ -6,8 +6,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-
-	"github.com/BurntSushi/toml"
 )
 
 // UnknownField is the value [ReadProjectField] returns when no manifest
@@ -121,15 +119,19 @@ func readPyprojectVersion(baseDir string) string {
 	if !isFile(path) {
 		return ""
 	}
-	var doc struct {
-		Project struct {
-			Version string `toml:"version"`
-		} `toml:"project"`
-	}
-	if _, err := toml.DecodeFile(path, &doc); err != nil {
+	document, err := DecodeTOMLFile(path)
+	if err != nil {
 		return ""
 	}
-	return doc.Project.Version
+	project, ok := document["project"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	version, ok := project["version"].(string)
+	if !ok {
+		return ""
+	}
+	return version
 }
 
 // readPackageJSONVersion is the "version" of baseDir's package.json, or ""
@@ -234,8 +236,8 @@ func readGoModName(baseDir string) string {
 // readTOMLField is a field of path's [project] table rendered as text, or
 // [UnknownField].
 func readTOMLField(path, field string) string {
-	var doc map[string]any
-	if _, err := toml.DecodeFile(path, &doc); err != nil {
+	doc, err := DecodeTOMLFile(path)
+	if err != nil {
 		return UnknownField
 	}
 	project, ok := doc["project"].(map[string]any)

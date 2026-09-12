@@ -6,8 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -34,8 +32,8 @@ func validateRlsblWorkspace(docsSiteDir string, unifiedConfig map[string]any) er
 	}
 	monorepoRoot := filepath.Dir(filepath.Dir(workspaceTOML))
 
-	var workspace map[string]any
-	if _, err := toml.DecodeFile(workspaceTOML, &workspace); err != nil {
+	workspace, err := util.DecodeTOMLFile(workspaceTOML)
+	if err != nil {
 		return err
 	}
 	workspaceProjects := workspaceProjectList(workspace["projects"])

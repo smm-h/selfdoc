@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -112,18 +111,16 @@ func readProjectDescription(baseDir string) string {
 		if err != nil {
 			return "unknown"
 		}
-		var document struct {
-			Project struct {
-				Description string `toml:"description"`
-			} `toml:"project"`
-		}
-		if _, err := toml.Decode(string(raw), &document); err != nil {
+		document, err := util.DecodeTOML(raw)
+		if err != nil {
 			return "unknown"
 		}
-		if document.Project.Description == "" {
+		project, _ := document["project"].(map[string]any)
+		description, _ := project["description"].(string)
+		if description == "" {
 			return "unknown"
 		}
-		return document.Project.Description
+		return description
 	}
 
 	packageJSON := filepath.Join(baseDir, "package.json")

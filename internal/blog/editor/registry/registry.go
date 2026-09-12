@@ -43,7 +43,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -241,8 +240,8 @@ func Load(path string) (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	var document map[string]any
-	if _, err := toml.Decode(string(text), &document); err != nil {
+	document, err := util.DecodeTOML(text)
+	if err != nil {
 		return nil, errorf("%s is not valid TOML: %s", path, err)
 	}
 

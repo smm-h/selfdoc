@@ -37,7 +37,6 @@ import (
 
 	"bytes"
 
-	"github.com/BurntSushi/toml"
 	"github.com/smm-h/selfdoc/internal/identity"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -351,8 +350,8 @@ func blocks(source string, data map[string]any, key string) ([]blockRef, error) 
 // key, a missing or empty required field, an empty section, a repeated entry,
 // or a format version this package does not read.
 func ParseCV(text string, source string) (*CV, error) {
-	var data map[string]any
-	if _, err := toml.Decode(text, &data); err != nil {
+	data, err := util.DecodeTOML([]byte(text))
+	if err != nil {
 		return nil, fmt.Errorf("%s is not valid TOML: %s", source, err)
 	}
 

@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -134,8 +133,8 @@ func (l Listing) Entries() []Entry {
 // no entries, a duplicate category name and a duplicate slug are each a hard
 // error naming the offending declaration.
 func Parse(text string, source string) (Listing, error) {
-	var data map[string]any
-	if _, err := toml.Decode(text, &data); err != nil {
+	data, err := util.DecodeTOML([]byte(text))
+	if err != nil {
 		return Listing{}, errorf("%s is not valid TOML: %s", source, err)
 	}
 

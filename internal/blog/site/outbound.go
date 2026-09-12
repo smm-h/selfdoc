@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -54,8 +53,8 @@ func ParseOutbound(text string, source string) (OutboundConfig, error) {
 	if source == "" {
 		source = OutboundPath
 	}
-	var data map[string]any
-	if _, err := toml.Decode(text, &data); err != nil {
+	data, err := util.DecodeTOML([]byte(text))
+	if err != nil {
 		return OutboundConfig{}, errorf("%s is not valid TOML: %s", source, err)
 	}
 

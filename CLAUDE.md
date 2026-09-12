@@ -7,7 +7,7 @@ Code-aware static site generator. Builds full documentation sites from Markdown 
 ## Conventions
 
 - Pure Go, one module (`github.com/smm-h/selfdoc`) and one binary (`cmd/selfdoc`). Every engine package is under `internal/`.
-- Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `BurntSushi/toml`, `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
+- Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `go-toml-edit` (TOML parsing), `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
 - Install: `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`. The npm and PyPI packages are thin launchers that download the matching release binary from the GitHub Release on first run.
 - No cgo, no tree-sitter, no runtime asset directory: stylesheets, JS, the word list, the directive catalogue and the lint registry are all `go:embed`ed.
 - python3 is needed for two things only, and only when they are used: the Python extractor (an embedded driver that runs the stdlib `ast`) and custom directives (see below). Neither is a build dependency.

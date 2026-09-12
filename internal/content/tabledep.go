@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/smm-h/selfdoc/internal/tables"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -16,10 +15,45 @@ var depSpecifierRE = regexp.MustCompile(`^([A-Za-z0-9_\-.\[\]]+)\s*(.*)`)
 
 // pyprojectDeps is the part of a pyproject.toml this directive reads.
 type pyprojectDeps struct {
-	Project struct {
-		Dependencies         []string            `toml:"dependencies"`
-		OptionalDependencies map[string][]string `toml:"optional-dependencies"`
-	} `toml:"project"`
+	Dependencies         []string
+	OptionalDependencies map[string][]string
+}
+
+// readPyprojectDeps narrows a decoded pyproject.toml to the two dependency
+// declarations this directive renders.
+//
+// Anything that is not a list of strings is not a dependency declaration and
+// is passed over: the directive renders what a document states, and a table
+// whose [project] says something else has no dependencies to show.
+func readPyprojectDeps(document map[string]any) pyprojectDeps {
+	deps := pyprojectDeps{OptionalDependencies: map[string][]string{}}
+	project, _ := document["project"].(map[string]any)
+	deps.Dependencies, _ = dependencyList(project["dependencies"])
+	groups, _ := project["optional-dependencies"].(map[string]any)
+	for name, value := range groups {
+		if specifiers, ok := dependencyList(value); ok {
+			deps.OptionalDependencies[name] = specifiers
+		}
+	}
+	return deps
+}
+
+// dependencyList narrows a decoded value to the list of specifier strings it
+// states, dropping every element that is not one. The second result reports
+// whether the value was a list at all, which is what tells a declared but
+// empty group apart from a key declaring something else entirely.
+func dependencyList(value any) ([]string, bool) {
+	items, ok := value.([]any)
+	if !ok {
+		return nil, false
+	}
+	specifiers := make([]string, 0, len(items))
+	for _, item := range items {
+		if specifier, ok := item.(string); ok {
+			specifiers = append(specifiers, specifier)
+		}
+	}
+	return specifiers, true
 }
 
 // ResolveTableDep parses a pyproject.toml and produces a Markdown dependency
@@ -41,21 +75,21 @@ func ResolveTableDep(attrs map[string]string, baseDir string) string {
 	if err != nil {
 		return marker("cannot parse '%s': %s", path, err)
 	}
-	var document pyprojectDeps
-	metadata, err := toml.Decode(string(raw), &document)
+	decoded, keys, err := util.DecodeTOMLOrdered(raw)
 	if err != nil {
 		return marker("cannot parse '%s': %s", path, err)
 	}
+	document := readPyprojectDeps(decoded)
 
 	var rows [][]string
-	for _, spec := range document.Project.Dependencies {
+	for _, spec := range document.Dependencies {
 		name, constraint := parseDepSpecifier(spec)
 		rows = append(rows, []string{"`" + name + "`", constraint})
 	}
 
-	for _, group := range optionalGroupOrder(metadata, document) {
+	for _, group := range optionalGroupOrder(keys, document) {
 		rows = append(rows, []string{"**[" + group + "]**", ""})
-		for _, spec := range document.Project.OptionalDependencies[group] {
+		for _, spec := range document.OptionalDependencies[group] {
 			name, constraint := parseDepSpecifier(spec)
 			rows = append(rows, []string{"`" + name + "`", constraint})
 		}
@@ -80,11 +114,10 @@ func ResolveTableDep(attrs map[string]string, baseDir string) string {
 // A Go map has no order, so the order comes from the decoder's own record of
 // the keys it saw. Reordering a project's extras would misreport the document
 // the page claims to show.
-func optionalGroupOrder(metadata toml.MetaData, document pyprojectDeps) []string {
-	groups := make([]string, 0, len(document.Project.OptionalDependencies))
+func optionalGroupOrder(keys [][]string, document pyprojectDeps) []string {
+	groups := make([]string, 0, len(document.OptionalDependencies))
 	seen := map[string]bool{}
-	for _, key := range metadata.Keys() {
-		parts := []string(key)
+	for _, parts := range keys {
 		if len(parts) != 3 || parts[0] != "project" ||
 			parts[1] != "optional-dependencies" {
 			continue
@@ -93,7 +126,7 @@ func optionalGroupOrder(metadata toml.MetaData, document pyprojectDeps) []string
 		if seen[name] {
 			continue
 		}
-		if _, declared := document.Project.OptionalDependencies[name]; !declared {
+		if _, declared := document.OptionalDependencies[name]; !declared {
 			continue
 		}
 		seen[name] = true

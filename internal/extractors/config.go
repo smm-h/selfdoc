@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
-
 	"github.com/smm-h/selfdoc/internal/tables"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -383,13 +381,12 @@ func ConfigFromTOML(fullPath, displayPath string, excludeKeys []string) (string,
 	if err != nil {
 		return FormatError("cannot parse '" + displayPath + "': " + err.Error()), nil
 	}
-	var decoded map[string]any
-	meta, err := toml.Decode(string(raw), &decoded)
+	decoded, keys, err := util.DecodeTOMLOrdered(raw)
 	if err != nil {
 		return FormatError("cannot parse '" + displayPath + "': " + err.Error()), nil
 	}
 
-	data := orderedFromTOML(decoded, meta.Keys())
+	data := orderedFromTOML(decoded, keys)
 
 	filtered, errMarkdown := ApplyExcludeKeys(data, excludeKeys, displayPath)
 	if errMarkdown != "" {
@@ -406,10 +403,10 @@ func ConfigFromTOML(fullPath, displayPath string, excludeKeys []string) (string,
 // restored, driven by the key list the decoder recorded.
 //
 // The decoder hands back Go maps, which have no order, and the rendered table's
-// row order is document order. The metadata's key list is in document order, so
+// row order is document order. The decoder's key list is in document order, so
 // replaying it over the decoded values reconstructs the tree the Python
 // tomllib-backed renderer walked.
-func orderedFromTOML(decoded map[string]any, keys []toml.Key) *JSONObject {
+func orderedFromTOML(decoded map[string]any, keys [][]string) *JSONObject {
 	root := NewJSONObject()
 
 	for _, key := range keys {

@@ -3,7 +3,7 @@ module github.com/smm-h/selfdoc
 go 1.26.3
 
 require (
-	github.com/BurntSushi/toml v1.6.0
+	github.com/smm-h/go-toml-edit v0.3.0
 	github.com/smm-h/strictcli/go v0.33.0
 	github.com/smm-h/stricttest/go v0.2.0
 )
@@ -28,5 +28,4 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/odvcencio/gotreesitter v0.52.0 // indirect
 	github.com/playwright-community/playwright-go v0.6000.0 // indirect
-	github.com/smm-h/go-toml-edit v0.3.0 // indirect
 )
