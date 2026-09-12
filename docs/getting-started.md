@@ -12,19 +12,22 @@ This guide walks you through installing selfdoc, setting up a project, writing y
 
 ## Installation
 
-selfdoc requires **Python 3.11 or later** and has 2 direct runtime dependencies: `strictcli` (its CLI framework) and `selfdoc-core` (the extraction engine), which between them add `strictspec` and `tomlkit`. All 4 are pure Python, so nothing compiles at install time and it works on Linux, macOS, and Windows with no platform-specific setup. Install it via pip from PyPI, or via npm as a thin Node wrapper around the Python package.
+selfdoc is a single Go binary. Stylesheets, scripts, themes, the directive catalogue and the word list are compiled into it, so there is no runtime to install, nothing to compile at install time, and no platform-specific setup on Linux, macOS or Windows.
 
-Install via pip:
-
-```bash
-pip install selfdoc
-```
-
-Or via npm (a thin wrapper that delegates to `python3 -m selfdoc`):
+Install with the Go toolchain:
 
 ```bash
-npm install -g selfdoc
+go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 ```
+
+Or through a package manager you already have. Both packages are thin launchers that download the matching release binary from the GitHub Release on first run and cache it per user:
+
+```bash
+npm install -g selfdocumenting
+pip install selfdocumenting
+```
+
+Two dependencies are optional, and each is needed only by the feature that uses it: `python3` for the Python extractor and for custom directives, and [Pagefind](https://pagefind.app/) for the search index.
 
 Verify the installation:
 
@@ -66,12 +69,14 @@ your-project/
 
 ### selfdoc.json
 
-The configuration file controls how selfdoc finds your source code, where to look for documentation templates, and where to write the generated HTML output. Only `language` and `source` are required -- everything else has sensible defaults that work for most projects:
+The configuration file controls how selfdoc finds your source code, where to look for documentation templates, and where to write the generated HTML output. `source`, `base_url`, `versions` and `locales` are required; everything else has defaults that work for most projects. Each source entry carries its own language, so one project can mix them:
 
 ```json
 {
-  "language": "python",
-  "source": ["mypackage/"],
+  "source": [{"path": "mypackage/", "language": "python"}],
+  "base_url": "https://my-project.example.com",
+  "versions": [{"version": "1.0.0"}],
+  "locales": [{"code": "en", "label": "English", "default": true}],
   "docs": "docs/",
   "output": "docs/_build/"
 }
@@ -79,8 +84,10 @@ The configuration file controls how selfdoc finds your source code, where to loo
 
 | Field | Required | Description |
 | ----- | -------- | ----------- |
-| `language` | yes | One of `python`, `go`, `typescript`, or `javascript` |
-| `source` | yes | List of directories containing source code to extract from |
+| `source` | yes | List of `{path, language}` objects naming the source directories to extract from. There is no top-level `language` key -- the language belongs to the entry |
+| `base_url` | yes | The address the site is served from; every canonical link, sitemap entry and feed URL is built from it |
+| `versions` | yes | Array of `{version}` objects, unless the project declares `"unversioned": true` |
+| `locales` | yes | Array of `{code, label, default}` objects |
 | `docs` | no | Directory containing Markdown templates (default: `docs/`) |
 | `output` | no | Directory for generated HTML output (default: `docs/_build/`) |
 | `deploy` | no | Deploy provider config -- see the deployment docs |
@@ -155,7 +162,7 @@ The line `:-: ref path="myproject"` is a self-closing directive. At build time, 
 
 ### Adding more directives
 
-selfdoc ships with 5 built-in directives for common documentation patterns, from extracting module-level API references to rendering configuration schemas as tables. Each directive uses a `path` attribute to identify the source file or module, and some accept additional attributes like `target` for specific symbols. Here are examples of each:
+selfdoc ships with a catalogue of built-in directives for common documentation patterns, from extracting module-level API references to rendering configuration schemas as tables. Each directive uses a `path` attribute to identify the source file or module, and some accept additional attributes like `target` for specific symbols. Here are examples of each:
 
 **Module reference** -- extract docstrings and public API:
 
@@ -258,7 +265,7 @@ selfdoc check
 This runs three checks:
 
 1. **Directive validation** -- attempts to resolve every directive in your templates and reports any that fail (missing modules, invalid paths, etc.).
-2. **Coverage analysis** -- for Python projects, counts how many public symbols in your source are referenced by directives versus how many exist. For Go and TypeScript, coverage is reported based on exported symbols.
+2. **Coverage analysis** -- counts how many of your source's public symbols are referenced by directives versus how many exist. `coverage_threshold` in `selfdoc.json` is the fraction that must be documented for the check to pass.
 3. **SEO linting** -- checks frontmatter, heading structure, meta descriptions, and other best practices.
 
 Example output:
@@ -291,5 +298,5 @@ selfdoc check --json
 Now that you have a working documentation site with live directives, full-text search, and dark mode, explore these topics to learn about advanced configuration, theming, deployment to production hosting, and the full directive reference:
 
 - **[Directives Reference](../directives/)** -- complete reference for all built-in directives, block syntax, and custom directives.
-- **[Configuration](../selfdoc-config/)** -- all `selfdoc.json` options including deploy providers, coverage thresholds, and lint suppression.
+- **[Configuration](../configuration/)** -- all `selfdoc.json` options including deploy providers, the coverage threshold, and lint suppression.
 - **[CLI Reference](../cli-index/)** -- detailed documentation for every CLI command and flag.

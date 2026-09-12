@@ -9,7 +9,7 @@ nav_order: 19
 
 selfdoc includes a blog system for publishing chronological content alongside your documentation. Blog posts are Markdown files with YAML frontmatter, stored in a dedicated directory within your project. Posts are unversioned -- they exist outside the multi-version docs system -- and are published to the unified documentation assembly alongside your API reference and guides.
 
-The blog system is part of the `selfblog` package, which provides the CLI commands (`selfblog post new`, `selfblog post list`, `selfblog post publish`, etc.) and the assembly infrastructure for multi-project documentation sites.
+The blog system is part of the `selfdoc` binary, which carries the post commands (`selfdoc post new`, `selfdoc post list`, `selfdoc post publish`, and the rest) alongside the assembly infrastructure for multi-project documentation sites.
 
 ## Configuration
 
@@ -44,10 +44,10 @@ You also need `topology.slug` configured so that posts are attributed to your pr
 
 ### Manual creation
 
-Use `selfblog post new` to scaffold a new post file:
+Use `selfdoc post new` to scaffold a new post file:
 
 ```bash
-selfblog post new --title "My First Post"
+selfdoc post new --title "My First Post"
 ```
 
 This creates a file like `.selfdoc/posts/2026-07-29-my-first-post.md` with a frontmatter template:
@@ -67,10 +67,10 @@ The filename is date-prefixed (`YYYY-MM-DD-slug.md`). The command errors if a fi
 
 ### Release-generated posts
 
-`selfblog post generate` creates posts automatically from release metadata. This is typically called by release tooling (e.g., rlsbl post-release hooks) rather than manually:
+`selfdoc post generate` creates posts automatically from release metadata. This is typically called by release tooling (e.g., rlsbl post-release hooks) rather than manually:
 
 ```bash
-selfblog post generate \
+selfdoc post generate \
   --from-release \
   --version 1.2.0 \
   --prev-version 1.1.0 \
@@ -113,7 +113,7 @@ Documentation pages carry no such key. The whole `docs/` tree is directive terri
 
 ### Release-specific fields
 
-These fields are set by `selfblog post generate --from-release` and are not typically written by hand:
+These fields are set by `selfdoc post generate --from-release` and are not typically written by hand:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -125,14 +125,14 @@ These fields are set by `selfblog post generate --from-release` and are not typi
 
 ### Slug immutability
 
-Once a post is published (appears in the manifest), its slug cannot change. The `selfblog check` command enforces this: if a post file's slug differs from what was recorded in the manifest, it raises a `POST005` error. This prevents broken URLs in the unified site.
+Once a post is published (appears in the manifest), its slug cannot change. The `selfdoc check` command enforces this: if a post file's slug differs from what was recorded in the manifest, it raises a `POST005` error. This prevents broken URLs in the unified site.
 
 ## Listing Posts
 
 View all discovered posts with:
 
 ```bash
-selfblog post list
+selfdoc post list
 ```
 
 Output shows each post's date, title, slug, and draft status:
@@ -148,10 +148,10 @@ Posts are sorted newest-first, with same-date posts sorted alphabetically by slu
 
 ## Publishing Posts
 
-`selfblog post publish` pushes non-draft posts to the documentation assembly:
+`selfdoc post publish` pushes non-draft posts to the documentation assembly:
 
 ```bash
-selfblog post publish
+selfdoc post publish
 ```
 
 The publish flow:
@@ -168,7 +168,7 @@ Publishing is separate from a full documentation release. You can publish new po
 
 ## Revision Tracking
 
-selfdoc tracks content revisions for blog posts via a sidecar file at `.selfdoc/revisions.json`. Revision tracking is automatic -- it happens during `selfblog post publish`.
+selfdoc tracks content revisions for blog posts via a sidecar file at `.selfdoc/revisions.json`. Revision tracking is automatic -- it happens during `selfdoc post publish`.
 
 ### How it works
 
@@ -206,7 +206,7 @@ The revisions sidecar is published to the assembly alongside the post-manifest, 
 
 ## Post Validation
 
-`selfblog check` runs five post-specific validation checks:
+`selfdoc check` runs five post-specific validation checks:
 
 | Code | Description |
 | --- | --- |
@@ -216,12 +216,12 @@ The revisions sidecar is published to the assembly alongside the post-manifest, 
 | `POST004` | Duplicate slug across posts |
 | `POST005` | Slug changed after publication (immutability violation) |
 
-These checks run as part of `selfblog check` for standalone blog projects. For unified docs-site projects, post checks run alongside the full documentation validation suite.
+These checks run as part of `selfdoc check` for standalone blog projects. For unified docs-site projects, post checks run alongside the full documentation validation suite.
 
 Suppress specific checks with `--ignore`:
 
 ```bash
-selfblog check --ignore POST003
+selfdoc check --ignore POST003
 ```
 
 ## Integration with the Assembly
@@ -230,11 +230,11 @@ Blog posts integrate into the unified multi-project documentation site through t
 
 ### How posts reach the unified site
 
-1. **Per-project build**: `selfblog build --target posts` builds post HTML and generates a `post-manifest.json` containing metadata for all non-draft posts.
+1. **Per-project build**: `selfdoc build --target posts` builds post HTML and generates a `post-manifest.json` containing metadata for all non-draft posts.
 
-2. **Assembly push**: `selfblog post publish` pushes each built post into `site/blog/{post-slug}/` in the assembly repo -- the site level, under no project slug -- and the post-manifest into `manifests/{slug}-posts.json`. The listing page the build renders for the project's own standalone site is not pushed: the assembled site's blog index is generated from every project's manifests.
+2. **Assembly push**: `selfdoc post publish` pushes each built post into `site/blog/{post-slug}/` in the assembly repo -- the site level, under no project slug -- and the post-manifest into `manifests/{slug}-posts.json`. The listing page the build renders for the project's own standalone site is not pushed: the assembled site's blog index is generated from every project's manifests.
 
-3. **Shared regeneration**: The assembly workflow runs `selfblog assembly integrate`, which grafts the dispatched build into the assembly tree and then regenerates the shared cross-project elements from all per-project manifests and post overlays:
+3. **Shared regeneration**: The assembly workflow runs `selfdoc assembly integrate`, which grafts the dispatched build into the assembly tree and then regenerates the shared cross-project elements from all per-project manifests and post overlays:
    - A blog index page listing all posts across all projects, sorted newest-first
    - An Atom RSS feed aggregating posts from every project
    - An XML sitemap including all post URLs
@@ -261,7 +261,7 @@ A Cloudflare Pages project can carry several custom domains, and all of them ser
 
 The retired blog subdomain is the one host that does not map to the same path: its whole document space was the blog, so `blog.example.com/hello/` is `<docs_base>/blog/hello/`. Mapping it to the same path would send every live post link to the site root, where nothing answers.
 
-Every redirect is single-hop and is implemented in the `_worker.js` that the shared-element generator writes into the site output (`selfblog assembly integrate` during a deploy, `selfblog assembly generate-shared` when run by hand). The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base` to `integrate`) and its retired-subdomain prefix from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
+Every redirect is single-hop and is implemented in the `_worker.js` that the shared-element generator writes into the site output (`selfdoc assembly integrate` during a deploy, `selfdoc assembly generate-shared` when run by hand). The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base` to `integrate`) and its retired-subdomain prefix from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
 
 #### Historical addresses
 
@@ -283,7 +283,7 @@ The shared homepage and blog index also carry a `rel="canonical"` link pointing 
 
 Set `topology.posts_base` to the same canonical blog URL. It is a path on the docs site, not a separate host.
 
-#### Operator steps (outside selfblog)
+#### Operator steps (outside selfdoc)
 
 Two pieces of this topology live on platform dashboards and are not automated:
 
@@ -295,7 +295,7 @@ Two pieces of this topology live on platform dashboards and are not automated:
 Every constituent build writes a `robots.txt`, an `llms.txt`, a `sitemap.xml` and a `404.html` at its own output root, where the graft buries them under `<slug>/` and no crawler reads them. The four the site serves are generated once, for the whole site, by the shared-element generator.
 
 * **`sitemap.xml`** lists every project's pages and every post. Each `<loc>` is absolute under the canonical base -- the sitemap protocol has no relative form -- and an empty or root-relative base is refused.
-* **`robots.txt`** names that sitemap by absolute URL, and carries the same crawler policy the per-project template declares. Both read one declaration (`selfdoc_core.build.ROBOTS_AGENTS`), so a crawler the site allows cannot be one its projects disallow.
+* **`robots.txt`** names that sitemap by absolute URL, and carries the same crawler policy the per-project template declares. Both read one declaration (`internal/robots.Agents`), so a crawler the site allows cannot be one its projects disallow.
 * **`llms.txt`** composes the per-project files **by reference**: one line per project, with its name, a link to its own `llms.txt`, and the one-line description from its manifest, plus a link to the blog. It never inlines their contents -- an inlined copy would be a second, staler rendering of a document its owner republishes on its own deploys.
 * **`404.html`** is what Cloudflare Pages serves, with a 404 status, for an address that matches no asset. Its body is deliberately not the front page's: an unknown address that renders the home page is a soft 404, which a crawler indexes as a duplicate of the site root and a reader mistakes for having arrived somewhere. It links home, the project listing and the blog -- relatively, like every other link a reader clicks, so a dead address on a preview offers its way back into the preview.
 
@@ -306,37 +306,38 @@ The home project is left out of `llms.txt` for the same reason it is left out of
 The assembly repo's `.github/workflows/deploy.yml` is generated from the
 project's `selfdoc.json`, not hand-written. It is deliberately thin: check
 out the assembly, install the toolchain, clone the dispatched project, run
-`selfblog assembly integrate`, deploy the result to Cloudflare Pages. Every
+`selfdoc assembly integrate`, deploy the result to Cloudflare Pages. Every
 decision the deploy makes lives in the command, so it can be tested without
 dispatching a real deploy.
 
-`selfblog assembly init` writes that file when the assembly repo is created,
-and **`selfblog assembly sync-workflow` rewrites it afterwards**. Run it (or
-let the release path run it) whenever selfblog changes: it regenerates the
+`selfdoc assembly init` writes that file when the assembly repo is created,
+and **`selfdoc assembly sync-workflow` rewrites it afterwards**. Run it (or
+let the release path run it) whenever selfdoc changes: it regenerates the
 workflow, compares it against the deployed copy, and pushes only when the
 bytes differ. Without it the deployed workflow stays frozen at whatever the
 template said the day the repo was created.
 
-The workflow's install line pins **every** tool it installs -- selfdoc,
-selfblog and pagefind. Each pin is rewritten by every `sync-workflow` run, so
-they track releases rather than capping them, and a deploy can never pick up a
-tool whose behavior the deployed workflow does not know about. selfblog is
-pinned to the selfblog that generated the file and selfdoc to the selfdoc
-installed alongside it; pagefind is a CI-only tool that nothing here installs,
-so its pin is PyPI's current release at sync time. `--pin-version`,
-`--pin-selfdoc` and `--pin-pagefind` name any of them explicitly.
+The workflow's install line pins **both** tools it installs. selfdoc is
+installed with `go install <module>@v<version>`, pinned by default to the
+version of the binary that generated the file; pagefind is `pip install
+'pagefind[bin]==<version>'`, a CI-only tool nothing here installs, so its pin
+is PyPI's current release at sync time. Each pin is rewritten by every
+`sync-workflow` run, so they track releases rather than capping them, and a
+deploy can never pick up a tool whose behavior the deployed workflow does not
+know about. `--pin-selfdoc` and `--pin-pagefind` name either one explicitly.
 
-Before writing anything, `sync-workflow` asks PyPI whether each pinned version
-is actually published, and refuses the whole run when one is not. The default
-selfblog pin is the *running* selfblog, which in a checkout is an editable
-install sitting ahead of the registry -- writing that pin would produce a
-workflow whose `pip install` cannot resolve, and the failure would surface on
-the assembly repository at the next dispatch instead of here.
+Before writing anything, `sync-workflow` checks that each pinned version is
+actually published -- the pagefind pin against PyPI, the selfdoc pin against
+the Go module proxy -- and refuses the whole run when one is not. The default
+selfdoc pin is the *running* binary, which in a checkout is built from an
+unreleased commit: writing that pin would produce a workflow whose `go
+install` cannot resolve, and the failure would surface on the assembly
+repository at the next dispatch instead of here.
 
 ### Verification before the deploy
 
 The deploy reads the tree it assembled before it commits or pushes any of
-it. `selfblog assembly integrate` runs the verification itself, after the
+it. `selfdoc assembly integrate` runs the verification itself, after the
 search index and before the commit, so a tree that fails is a tree that
 never reaches the site. There is no flag that turns it off.
 
@@ -353,7 +354,7 @@ What it asserts, each failure naming its offender:
 | Nothing half-built or per-project leaked in | An unresolved directive marker, or a project's own `_headers`, `_redirects`, `_worker.js` or pre-compressed copies |
 | Cross-project links land somewhere | A link from one project's page into a page no other project publishes |
 
-`selfblog assembly verify --assembly-dir <checkout> --canonical-base <url>`
+`selfdoc assembly verify --assembly-dir <checkout> --canonical-base <url>`
 runs the same assertions by hand against a checkout. It is read-only.
 
 #### Outbound links
@@ -379,12 +380,12 @@ quietly.
 
 ### Previewing the whole site before it ships
 
-`selfblog assembly preview` assembles the site from local checkouts and
+`selfdoc assembly preview` assembles the site from local checkouts and
 serves it, so the last look at a change happens before anything is
 published rather than after:
 
 ```bash
-selfblog assembly preview \
+selfdoc assembly preview \
   --home ~/Projects/portfolio \
   --repo ~/Projects/pgdesign \
   --repo ~/Projects/rlsbl \
@@ -416,7 +417,7 @@ replaced by their local equivalents rather than skipped:
 
 | Step | What runs |
 |---|---|
-| Build | Each checkout is built by the toolchain running the command -- the home project through `selfblog build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
+| Build | Each checkout is built by the toolchain running the command -- the home project through `selfdoc build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
 | Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects`, `_worker.js` and `404.html` left behind. |
 | Membership | A roster rendered from the checkouts named on the command line, and a `projects.json` written by the same `record_membership` the deploy uses. Dropping a `--repo` on a rerun retires that project from the tree. |
 | Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, `_worker.js`, the site chrome asset, and the re-pointing pass that aims every grafted page at it. |
@@ -448,7 +449,7 @@ step before it wrote.
 
 The assembly workflow distinguishes between posts-only and full documentation dispatches:
 
-- **Posts-only** (`scope: "posts"`): rebuilds only the posts subtree, preserving the rest of the project's documentation. Uses `selfblog build --target posts`.
+- **Posts-only** (`scope: "posts"`): rebuilds only the posts subtree, preserving the rest of the project's documentation. Uses `selfdoc build --target posts`.
 - **Full build**: rebuilds all documentation including posts, and folds its posts into the post overlay.
 - **Shared-only** (`scope: "shared-only"`): regenerates only cross-project elements (blog index, feed, sitemap) without rebuilding any project's documentation. Used after post publishes, documentation publishes and retirements.
 
@@ -459,8 +460,8 @@ Every scope reconciles membership first: whatever else a dispatch is doing, it m
 Two commands put content on the live site with no tag and no release. Both build locally, push straight into the assembly repository through the Git Data API, and then dispatch a shared-only rebuild.
 
 ```bash
-selfblog post publish    # non-draft posts
-selfblog docs publish    # the project's documentation
+selfdoc post publish    # non-draft posts
+selfdoc docs publish    # the project's documentation
 ```
 
 `docs publish` builds the docs the same way the deploy does, applies the same deploy-artifact exclusions (`_headers`, `_redirects`, `_worker.js`, `.gz`, `.br`), and pushes the project's subtree, its manifest, its published-file record and its membership entry in one commit. Content travels as bytes, so images and fonts survive intact. Deletions travel with it: a page the project published before and no longer builds is removed in the same commit.
@@ -524,7 +525,7 @@ repo = "owner/otherproject"
 
 ### The home project
 
-One declared project is the site's front page. `home = "<slug>"` says which, and there is no default: a roster with no `home`, or a `home` naming a slug no `[[project]]` block declares, is a hard error. A site needs a front page, and selfblog will not pick one.
+One declared project is the site's front page. `home = "<slug>"` says which, and there is no default: a roster with no `home`, or a `home` naming a slug no `[[project]]` block declares, is a hard error. A site needs a front page, and selfdoc will not pick one.
 
 The home project is an ordinary project -- a real repository that dispatches its own deploys like any other. Being home changes four things:
 
@@ -572,18 +573,18 @@ Two directives are available to the home project's pages:
 | `:-: projects-cards` | the curated listing, with each project's live version |
 | `:-: blog-highlights limit="N"` | the N most recent posts across every project |
 
-They resolve twice, from the same code. Once at build time -- which is why the home project builds through `selfblog build --target home --site-manifests <dir>` rather than through `selfdoc build`: a version badge is read from the assembly's manifests, and no project's own repository holds them. Without that context the command refuses to build at all, naming what is missing; a plain `selfdoc build` refuses too, on the unknown directive. Neither ever emits an empty region.
+They resolve twice, from the same code. Once at build time -- which is why the home project builds through `selfdoc build --target home --site-manifests <dir>` rather than through `selfdoc build`: a version badge is read from the assembly's manifests, and no project's own repository holds them. Without that context the command refuses to build at all, naming what is missing; a plain `selfdoc build` refuses too, on the unknown directive. Neither ever emits an empty region.
 
 Then again on **every** deploy, including deploys the home project has nothing to do with. Each resolved region is left in the emitted HTML inside a `<selfblog-region>` element, and the shared-element generator rewrites its contents from the current manifests. That is what keeps a front-page version badge current when the project it names releases: the prose and the design stay authored, the mechanical parts cannot go stale.
 
-`projects.json` beside it is **derived** state, rewritten by every deploy: it records what each declared project last deployed (`repo`, `ref`, `version`) and is what `selfblog assembly rebuild` replays. It cannot gain a key on its own -- a dispatch for a slug the roster does not declare is refused, and a slug the roster declares under a different repository is refused too.
+`projects.json` beside it is **derived** state, rewritten by every deploy: it records what each declared project last deployed (`repo`, `ref`, `version`) and is what `selfdoc assembly rebuild` replays. It cannot gain a key on its own -- a dispatch for a slug the roster does not declare is refused, and a slug the roster declares under a different repository is refused too.
 
 Every deploy reconciles the tree to the declaration. A project that is no longer declared loses its site subtree, all of its manifest kinds, its `projects.json` record, and -- because the search index is rebuilt from scratch whenever anything went -- its entries in the index.
 
 ### Retiring a project
 
 ```bash
-selfblog assembly retire --slug oldproject
+selfdoc assembly retire --slug oldproject
 ```
 
 One operation: the `[[project]]` block leaves the roster and, in the same commit, every path the project owns is deleted; the shared-only dispatch that follows regenerates the listing, blog index, feed, sitemap and search index without it. It is consequential -- the only command in either CLI that removes published content -- and retiring a slug the roster does not declare is a hard error naming the ones it does.
@@ -594,10 +595,10 @@ Preview posts locally before publishing:
 
 ```bash
 # Build posts only (no versioned docs)
-selfblog build --target posts
+selfdoc build --target posts
 
 # Include draft posts in the build
-selfblog build --target posts --drafts
+selfdoc build --target posts --drafts
 ```
 
 Built HTML is written to the configured output directory: each post at `docs/_build/blog/{post-slug}/`, plus a listing page at `docs/_build/blog/` for the project's own standalone site.

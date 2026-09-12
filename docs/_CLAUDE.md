@@ -3,20 +3,31 @@ title: CLAUDE.md
 ---
 # selfdocumenting
 
-Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, and deploy to Cloudflare Pages or GitHub Pages. Supports Python, Go, and TypeScript/JavaScript.
+Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, blog posts, a unified multi-project assembly, and deploy to Cloudflare Pages or GitHub Pages. Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL.
 
 ## Conventions
 
-- Pure Python. The `selfdoc` package depends on `strictcli` and `selfdoc-core`; `selfdoc-core` in turn depends on `strictspec` and `strictcli` (the effects chokepoint in `selfdoc_core/effects.py` mints on strictcli's `ctx.effects` handle). Nothing else is required at runtime.
-- Build system: hatchling
-- Development: `uv` for all Python tooling (`uv sync`, `uv run`, `uv add`)
-- Local development install: `uv pip install -e .`
-- npm package is a thin Node wrapper (`bin/cli.js`) that delegates to `python3 -m selfdoc`
-- JS files live in `selfdoc/js/`, loaded at build time via `importlib.resources` (never inline JS in Python)
-- File writes to shared state use atomic write (write to tmp, then `os.replace`)
-- External calls (subprocess, network) must have timeouts
+- Pure Go, one module (`github.com/smm-h/selfdoc`) and one binary (`cmd/selfdoc`). Every engine package is under `internal/`.
+- Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `BurntSushi/toml`, `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
+- Install: `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`. The npm and PyPI packages are thin launchers that download the matching release binary from the GitHub Release on first run.
+- No cgo, no tree-sitter, no runtime asset directory: stylesheets, JS, the word list, the directive catalogue and the lint registry are all `go:embed`ed.
+- python3 is needed for two things only, and only when they are used: the Python extractor (an embedded driver that runs the stdlib `ast`) and custom directives (see below). Neither is a build dependency.
+- Effects: every mutation, subprocess and network call goes through an explicit `*effects.Handle` threaded from the command. There is no package-level handle.
+- File writes to shared state are atomic (write to a temp file, then rename).
+- External calls (subprocess, network) must have timeouts.
 
 ## Key concepts
+
+### One binary, one command tree
+
+`selfdoc` carries every command the three former Python packages exposed:
+
+- top level: `init`, `build`, `serve`, `deploy`, `check`, `gen`, `gen-data`, `spell-corpus`, `quality`
+- `baseline` -- accept the content and description hash baselines that drive STALE001 and DRIFT001
+- `post` -- create, list, generate and publish blog posts
+- `docs` -- publish this project's documentation to the unified assembly without a release
+- `assembly` -- initialize, push, inspect, rebuild, retire and verify the unified multi-project site
+- `editor` -- the local authoring app for posts
 
 ### Stable addresses, archived versions
 
@@ -65,7 +76,7 @@ Parallel `docs/<locale>/` directories with per-locale templates. Generates hrefl
 
 ### Monorepo unified sites
 
-`selfdoc/unified.py` orchestrates building a single documentation site from multiple constituent projects plus a docs-site's own cross-cutting content. Configured via the `unified` section in `selfdoc.json`. The unified project is effectively the (N+1)th docs-site project.
+`internal/blog/unified` orchestrates building a single documentation site from multiple constituent projects plus a docs-site's own cross-cutting content. Configured via the `unified` section in `selfdoc.json`. The unified project is effectively the (N+1)th docs-site project.
 
 ### Search filters
 
@@ -81,6 +92,10 @@ Pagefind indexes the built HTML and ships its own UI. Pages emit filter attribut
 - `:::` -- section content
 - `:>:` -- block close
 
+### Custom directives
+
+The `directives` config key maps a directive name to a script, and the contract is Python's: the script defines `resolve(attrs, config, body)` and returns Markdown. selfdoc keeps that contract by running the script out of process -- an embedded driver is handed to `python3`, the script's path as its one argument and one JSON object (`attrs`, `config`, `body`, `base_dir`) on standard input, and what the script prints on standard output replaces the directive. A script that will not load, one with no callable `resolve`, one that raises, and a machine with no python3 are each a hard error naming the directive and the script -- never an inline note on the published page.
+
 ### gen_data
 
 Sandboxed script execution via bubblewrap (bwrap). Runs scripts in isolated environments to generate data files used by the build.
@@ -94,32 +109,33 @@ Sandboxed script execution via bubblewrap (bwrap). Runs scripts in isolated envi
 This project uses [rlsbl](https://github.com/smm-h/rlsbl) for release orchestration.
 
 - `selfdoc check` runs during release (validates directives, coverage, lint)
-- Deploy to Cloudflare Pages via post-release hook
-- CI handles PyPI and npm publishing automatically
+- Deploy to the unified assembly via post-release hook
+- CI handles the release binaries and the launcher packages automatically
 - Never publish manually -- always use `rlsbl release`
-- Requires NPM_TOKEN secret on GitHub (Settings > Secrets > Actions)
 
 ## Testing
 
 ```bash
-uv run pytest                        # everything
-uv run pytest -m e2e_rendered        # only the rendered-reality suite
-uv run pytest -m 'not e2e_rendered'  # everything else, no browser needed
+go build ./...
+go test ./...                    # every package's tests
+go test -tags e2e ./internal/e2e/  # the rendered-reality suite, needs a browser
 ```
 
-5000+ tests in `tests/` covering config loading, directive parsing, the build pipeline, language-specific extractors (Python, Go, TypeScript), check command, gen command, gendata, unified builder, context dataclasses, search, pickers, filters, localization, and multi-version builds.
+Tests live beside the package they cover, as table tests. They cover config loading, directive parsing, the build pipeline, every language extractor, the check command, gen, gen-data, the unified builder, search, pickers, filters, localization, multi-version builds, posts, the assembly and the editor.
 
 ### The rendered-reality suite
 
-`tests/test_rendered_reality.py`, with its fixture in `tests/rendered_site.py`, asserts against real pages in a real headless browser. It exists because six user-visible defects shipped while 4,600 unit tests and every grep-level check passed: a sticky table header overlapping the first data row, a table of contents visible only inside one band of viewport widths, a shared page served with no stylesheet, a duplicated "Last updated" element, absolute links that left the site, and a glossary term no page had defined. None of those is visible to a test that asserts on a string of HTML; every one is obvious to a browser.
+`internal/e2e` asserts against real pages in a real headless browser, behind an `e2e` build tag so `go test ./...` skips it. It exists because six user-visible defects shipped while thousands of unit tests and every grep-level check passed: a sticky table header overlapping the first data row, a table of contents visible only inside one band of viewport widths, a shared page served with no stylesheet, a duplicated "Last updated" element, absolute links that left the site, and a glossary term no page had defined. None of those is visible to a test that asserts on a string of HTML; every one is obvious to a browser.
 
-**The pipeline is never mocked.** That is the suite's design principle. The fixture writes three source checkouts and hands them to `selfblog.preview.preview_assembly` -- the production path: the real `selfdoc build` and `selfblog build`, the real `split_build_output` graft, the real `generate_shared_files`, a real Pagefind index, the production preview server on an ephemeral loopback port, and the production `verify_assembly` as a precondition on the tree. Dependency injection is for genuine external seams -- the network, the clock, another repository -- and for nothing else. Mocked-flow tests are how the defects above shipped.
+**The pipeline is never mocked.** That is the suite's design principle. The fixture writes source checkouts and hands them to the production preview path: the real build, the real graft, the real shared-file generation, a real Pagefind index, the production preview server on an ephemeral loopback port, and the production assembly verification as a precondition on the tree. Dependency injection is for genuine external seams -- the network, the clock, another repository -- and for nothing else. Mocked-flow tests are how the defects above shipped.
 
 Two trees are built and served per theme, because a project has two published shapes: the **assembled site**, where every project mounts under its slug and only the current version is published, and the **standalone site** a project deploys on its own, which is where the archive under `v/<version>/` lives.
 
-What it asserts, each mapped to a defect class: sticky table headers and the pinned first column measured as painted; exactly one visible "Last updated" per page; table-of-contents presence swept across five viewport widths (and its total absence from posts, at every width); every page's computed body style differing from the browser default, with network capture on stylesheet requests; every visible link resolving on-origin and answering below 400; glossary Source links landing on a definition element scrolled into view; Ctrl+K opening the dialog and the real index answering a query from every mount depth; the theme toggle changing what is painted; the archive notice, its dismissal across a reload, and the version picker; a monotonicity guard that fails any layout element visible only in a middle band of widths; the CV portrait decoding and its header laid out as a row; and axe on every page class of every theme.
+What it asserts, each mapped to a defect class: sticky table headers and the pinned first column measured as painted; one visible "Last updated" per page and no more; table-of-contents presence swept across a range of viewport widths (and its total absence from posts, at every width); every page's computed body style differing from the browser default, with network capture on stylesheet requests; every visible link resolving on-origin and answering below 400; glossary Source links landing on a definition element scrolled into view; Ctrl+K opening the dialog and the real index answering a query from every mount depth; the theme toggle changing what is painted; the archive notice, its dismissal across a reload, and the version picker; a monotonicity guard that fails any layout element visible only in a middle band of widths; the CV portrait decoding and its header laid out as a row; and axe on every page class of every theme.
 
-Everything theme-sensitive runs across all three themes. A session builds six sites and runs 408 browser assertions in about four minutes.
+Everything theme-sensitive runs across every built-in theme.
+
+The suite needs Chromium through playwright-go, Pagefind, and python3 (the versioned fixture project is built through the Python extractor). Each missing dependency skips the tests that need it, naming what to install; `internal/e2e/doc.go` carries the one-time setup.
 
 ## Important config fields
 
@@ -133,4 +149,4 @@ Everything theme-sensitive runs across all three themes. A session builds six si
 
 ## Architecture
 
-:-: list-modules path="selfdoc/"
+:-: list-modules path="internal/"

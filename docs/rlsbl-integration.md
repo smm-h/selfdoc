@@ -37,7 +37,7 @@ A declared path that does not exist is a build error -- the page was asked for, 
 
 ### Version from manifest
 
-selfdoc reads the project version from the language-specific manifest file (`pyproject.toml` for Python, `package.json` for npm, `go.mod` for Go). In rlsbl-managed projects, this version is bumped by `rlsbl release`, so the docs site automatically shows the current version in navigation and search metadata.
+selfdoc reads the project version from the project's own manifest: `pyproject.toml`, `package.json`, or a `VERSION` file at the project root (which is where a Go project states it, since `go.mod` carries no version). In rlsbl-managed projects, this version is bumped by `rlsbl release`, so the docs site automatically shows the current version in navigation and search metadata.
 
 ### Overriding the version during a release
 

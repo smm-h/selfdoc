@@ -5,23 +5,24 @@ title: README.md
 
 Code-aware documentation site generator. Builds full static sites from Markdown templates and source code. Your code is the documentation -- directives in Markdown pull live content from your codebase at build time.
 
-Supports Python, Go, and TypeScript/JavaScript. Pure Python: two direct runtime dependencies, `strictcli` and `selfdoc-core` (which brings `strictspec` and shares the same `strictcli`). Nothing to compile.
+Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL. selfdoc is one Go binary with no runtime to install: stylesheets, scripts, themes and the word list are compiled into it.
 
 ## Install
 
 ```
-pip install selfdocumenting
+go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 ```
 
-or via npm (delegates to Python under the hood):
+or through a package manager you already have -- both packages are thin launchers that download the matching release binary on first run:
 
 ```
 npm install -g selfdocumenting
+pip install selfdocumenting
 ```
 
-Requires Python 3.11+.
+The npm and PyPI packages are named `selfdocumenting` (npm blocks `selfdoc` due to name similarity). The CLI command is `selfdoc`.
 
-The npm package is named `selfdocumenting` (npm blocks `selfdoc` due to name similarity). The CLI command remains `selfdoc`.
+Two optional dependencies, needed only by the features that use them: `python3` for the Python extractor and for custom directives, and [Pagefind](https://pagefind.app/) for the search index.
 
 ## Quick start
 
@@ -44,12 +45,11 @@ selfdoc check
 selfdoc serve
 ```
 
-Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version, single-locale project:
+Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version, single-locale project. Each source entry names its own path and language:
 
 ```json
 {
-  "language": "python",
-  "source": ["src/"],
+  "source": [{"path": "internal/", "language": "go"}],
   "base_url": "https://my-project.example.com",
   "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}]
@@ -63,13 +63,14 @@ Your `selfdoc.json` needs `versions` and `locales` -- even for a single-version,
 - **Multi-version docs** -- build from git tags, cached builds, version picker UI
 - **Localization** -- parallel locale directories, hreflang tags, locale picker, per-locale sitemaps
 - **Monorepo support** -- unified site builder combines multiple projects into one docs site
+- **Blog posts** -- `selfdoc post` for authoring, listing pages, feeds, and a local editor app
 - **Faceted search** -- key=value filter syntax, 7 dimensions, chip UI, auto-injected version default
 - **Sandboxed data generation** -- run scripts in bubblewrap isolation (`selfdoc gen-data`)
 - **Theming** -- dark mode, accent colors, custom CSS overrides
 - **Search** -- Pagefind, indexed at build time, no network at read time
-- **SEO** -- 15+ lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
-- **Coverage tracking** -- per-symbol documentation coverage with configurable thresholds
-- **Syntax highlighting** -- build-time Pygments, code tabs, sortable tables
+- **SEO** -- lint rules, WCAG contrast validation, JSON-LD structured data, sitemaps
+- **Coverage tracking** -- per-symbol documentation coverage with a configurable threshold
+- **Syntax highlighting** -- build-time highlighting via chroma, code tabs, sortable tables
 - **Performance** -- CSS/JS/HTML minification, critical CSS inlining, gzip and Brotli pre-compression
 - **Feeds and AI** -- Atom feed, `robots.txt` with AI crawler controls, `llms.txt` / `llms-full.txt`
 - **Landing page** -- hero section, tagline, and feature cards
@@ -90,23 +91,23 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 
 :-: table-directives
 
-Example -- embed the API docs for a Python module:
+Example -- embed the API docs for a package:
 
 ```markdown
 ## API Reference
 
-:-: ref path="selfdoc.config"
+:-: ref path="internal/config"
 ```
 
-Example -- show a JSON schema as a table:
+Example -- show a struct's fields as a table:
 
 ```markdown
-:-: table-schema path="selfdoc.json"
+:-: table-schema path="internal/config.Field"
 ```
 
 ## Custom directives
 
-Register custom directives in `selfdoc.json` under the `directives` key. Each entry maps a directive name to a Python script (relative to project root) that exports a `resolve(attrs, config, body)` function returning a Markdown string.
+Register custom directives in `selfdoc.json` under the `directives` key. Each entry maps a directive name to a Python script (relative to project root) that defines a `resolve(attrs, config, body)` function returning a Markdown string.
 
 ```json
 {
@@ -136,7 +137,9 @@ Use in templates:
 :-: changelog path="v1.0.0"
 ```
 
-Custom directives take priority over built-in names.
+The script runs out of process: selfdoc hands an embedded driver to `python3`, passes the script's path, and sends `attrs`, `config` and `body` as one JSON object on standard input. What the script prints on standard output replaces the directive. A script that will not load, one with no callable `resolve`, one that raises, and a machine with no `python3` are each a hard error that stops the build -- never a note on the published page.
+
+Dispatch order is content directives, then custom directives, then the language extractors -- so a custom name overrides a code-extraction directive such as `ref`, but not a content directive such as `callout-note`.
 
 ## Configuration
 
@@ -144,8 +147,7 @@ Custom directives take priority over built-in names.
 
 ```json
 {
-  "language": "python",
-  "source": ["selfdoc/"],
+  "source": [{"path": "internal/", "language": "go"}],
   "docs": "docs/",
   "output": "docs/_build/",
   "base_url": "https://my-project.example.com",
@@ -161,7 +163,7 @@ Custom directives take priority over built-in names.
 
 :-: table-config-schema
 
-`selfdoc init` auto-detects language and source paths from project files (pyproject.toml, go.mod, tsconfig.json, package.json), and takes the site's own address as `--base-url`. A project with no detectable language is initialized as a codeless project: no `source` key, and no code-extraction directive in the starter page.
+`selfdoc init` auto-detects language and source paths from project files (go.mod, pyproject.toml, tsconfig.json, package.json), and takes the site's own address as `--base-url`. A project with no detectable language is initialized as a codeless project: no `source` key, and no code-extraction directive in the starter page.
 
 ## Commands
 
@@ -169,7 +171,7 @@ Custom directives take priority over built-in names.
 
 ## Blog and multi-project assembly
 
-Blog posts and the unified multi-project documentation assembly live in **selfblog**, a sibling package built on `selfdoc-core`. Install it with `pip install selfblog`, then use `selfblog post ...` to manage posts and `selfblog assembly ...` to manage the assembly.
+Blog posts and the unified multi-project documentation assembly are part of the same binary. `selfdoc post new|list|generate|publish` manages posts, `selfdoc editor serve` runs the local authoring app, and `selfdoc assembly ...` initializes, pushes, rebuilds and verifies an assembly that mounts every project under its own slug.
 
 ## Deploy
 

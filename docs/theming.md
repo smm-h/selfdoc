@@ -32,7 +32,7 @@ All three include full dark mode, high contrast, reduced motion, and print suppo
 
 Three things are worth knowing before choosing it.
 
-**It is not a stylesheet in this repository.** minimal and clean are single CSS files selfdoc owns. tinymoon is an *overlay* on the [tinymoon](https://github.com/smm-h/tinymoon) framework, which selfdoc-core depends on: the stylesheet a page receives is the framework's own sheets -- `tokens`, `base`, `shell`, `primitives`, `widgets`, `prose`, in that order, byte for byte out of the installed package -- with selfdoc's overlay appended. The overlay carries the parts of a selfdoc page the framework has no shape for and a *bridge* that defines selfdoc's custom-property names as references to the framework's tokens. Upgrading the framework upgrades the theme.
+**It is not a stylesheet in this repository.** minimal and clean are single CSS files selfdoc owns. tinymoon is an *overlay* on the [tinymoon](https://github.com/smm-h/tinymoon) framework, which selfdoc depends on: the stylesheet a page receives is the framework's own sheets -- `tokens`, `base`, `shell`, `primitives`, `widgets`, `prose`, in that order, byte for byte out of the dependency -- with selfdoc's overlay appended. The overlay carries the parts of a selfdoc page the framework has no shape for and a *bridge* that defines selfdoc's custom-property names as references to the framework's tokens. Upgrading the framework upgrades the theme.
 
 **It rests in dark.** The framework's `:root` is the dark palette and the light one is a reassignment, which is the reverse of the other two themes. A `custom.css` override still lands on the same custom property names, but a `:root` override will be changing the *dark* values. The light palette is in `html[data-theme="light"]` for the explicit choice, and in `html:not([data-theme])` inside a `@media (prefers-color-scheme: light)` block for the system one -- so all three toggle states resolve in CSS alone, with no JavaScript involved in painting the right scheme.
 
@@ -46,7 +46,7 @@ To see a theme on real pages without editing any project's configuration, pass `
 selfdoc build --no-auto-commit --theme tinymoon
 ```
 
-The override applies to that build only and is never written back to `selfdoc.json`. `selfblog build` takes the same flag, and `selfblog assembly preview --theme <name>` applies it to every checkout in an assembled preview at once -- which is the point: judging a theme means seeing the whole site under it, not one page. An unknown name is refused against the theme registry. With `--no-build`, where the override cannot reach the builds themselves, the preview checks that each checkout's existing build output really was produced under that theme -- an equality against the stylesheet a build writes, not a guess -- and hard-errors naming any checkout that was not.
+The override applies to that build only and is never written back to `selfdoc.json`. `selfdoc assembly preview --theme <name>` applies the same override to every checkout in an assembled preview at once -- which is the point: judging a theme means seeing the whole site under it, not one page. An unknown name is refused against the theme registry. With `--no-build`, where the override cannot reach the builds themselves, the preview checks that each checkout's existing build output really was produced under that theme -- an equality against the stylesheet a build writes, not a guess -- and hard-errors naming any checkout that was not.
 
 ## CSS Custom Properties
 

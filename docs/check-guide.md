@@ -36,25 +36,28 @@ Fix failures by correcting the directive's `path` or `target` attribute to match
 
 ## Coverage
 
-Coverage measures how much of your public API surface is documented. selfdoc walks your `source` directories, extracts public symbols using the language-specific extractor (Python, Go, or TypeScript), and checks whether each symbol appears in the resolved content of a directive.
+Coverage measures how much of your public API surface is documented. selfdoc walks your `source` directories, extracts public symbols using each entry's language extractor, and checks whether each symbol appears in the resolved content of a directive.
 
 ```
-Coverage: 15/23 public symbols documented (65%)
-Undocumented symbols:
+Coverage: 15/23 symbols documented (65%)
+          18/23 symbols referenced (78%)
+Unreferenced symbols:
   mypackage/core.py: helper_function, InternalConfig
+Skeleton-only symbols:
+  mypackage/core.py: Pipeline
 ```
+
+A symbol is **referenced** when a directive names it and **documented** when the source it came from actually says something about it. A symbol that is referenced but not documented is reported as skeleton-only: the page has a heading for it and nothing under it.
 
 ### Coverage threshold
 
-Set `min_coverage` in your `selfdoc.json` to enforce a minimum percentage of public symbols that must be referenced by directives. If coverage falls below this threshold, `selfdoc check` exits with code 1, making it useful as a CI gate to prevent coverage regressions over time:
+Set `coverage_threshold` in your `selfdoc.json` to the **fraction** of public symbols that must be documented. It is a number between `0.0` and `1.0`, and it defaults to `1.0` -- full coverage. Below the threshold, `selfdoc check` prints the shortfall and exits with code 1, which is what makes it usable as a CI check against coverage regressions:
 
 ```json
 {
-  "min_coverage": 80
+  "coverage_threshold": 0.8
 }
 ```
-
-If coverage falls below this value, `selfdoc check` exits with code 1. Useful in CI to prevent coverage regressions.
 
 ### Excluding modules
 
@@ -70,7 +73,7 @@ Modules listed in `gen.exclude` are excluded from both coverage calculations and
 
 ## Lint Rules
 
-Every `selfdoc check` invocation runs the whole lint registry: SEO and page structure, description staleness and source drift, cross-references and symbol documentation, example validation, CLI reference completeness, version consistency, blog posts, and unified sites. Each rule has a unique code, a severity, and an actionable message explaining what is wrong and how to fix it. Errors cause a non-zero exit; warnings are informational. The table below is generated from `selfdoc_core/lints.toml`, the one place a code and its severity are declared.
+Every `selfdoc check` invocation runs the whole lint registry: SEO and page structure, description staleness and source drift, cross-references and symbol documentation, example validation, CLI reference completeness, version consistency, blog posts, and unified sites. Each rule has a unique code, a severity, and an actionable message explaining what is wrong and how to fix it. Errors cause a non-zero exit; warnings are informational. Each code and its severity are declared once, in the lint registry embedded in the binary; the table below mirrors that registry.
 
 | Code | Severity | What it checks |
 | ---- | -------- | -------------- |
@@ -179,7 +182,7 @@ Suppression reaches warning-severity codes only. Naming an error-severity code -
 
 ## Staleness Detection
 
-selfdoc tracks SHA-256 hashes of each page's resolved content and frontmatter description. When the content changes but the description stays the same, it raises a STALE001 error. This catches the common case where you update a page's content but forget to revise the description that feeds into meta tags and search results.
+selfdoc tracks SHA-256 hashes of each page's raw template body (directives unresolved) and its frontmatter description. When the content changes but the description stays the same, it raises a STALE001 error. This catches the common case where you update a page's content but forget to revise the description that feeds into meta tags and search results.
 
 Hashes are stored in `.selfdoc/hashes/hashes.json` and auto-committed after each check (unless you pass `--no-auto-commit` or `--dry-run`).
 
@@ -252,11 +255,11 @@ The payload's shape is declared as a JSON Schema on the command itself and valid
 
 - A directive resolution failed
 - Any lint has severity `error`
-- Coverage is below the `min_coverage` threshold
+- Coverage is below the `coverage_threshold` fraction
 
 Warnings alone do not cause a non-zero exit. This makes it safe to use in CI -- warnings are informational, errors block the pipeline.
 
 > [!TIP]
 > Run `selfdoc check --dry-run` to see staleness results without writing hash files to disk. Useful for previewing what would change.
 
-Next: [rlsbl Integration](../rlsbl-integration/) -->
+Next: [rlsbl Integration](../rlsbl-integration/)

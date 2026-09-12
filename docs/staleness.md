@@ -19,7 +19,7 @@ This is easy to miss during normal editing. You change the content, the page loo
 
 selfdoc maintains a hash store at `.selfdoc/hashes/hashes.json` that tracks each page's content and description independently. By comparing current hashes against stored baselines on every `selfdoc check` run, it detects when content has drifted from its description. For each documentation page with a frontmatter description, it tracks two SHA-256 hashes:
 
-- **Content hash** -- computed from the page body (frontmatter stripped, directives resolved)
+- **Content hash** -- computed from the page's raw template body: frontmatter stripped, directives left unresolved, and each directive marker's attribute values canonicalized. A directive whose output changes (a version bump, a renamed symbol) therefore does not trip staleness, and neither does a mechanical `path="x"` -> `path="y"` rename
 - **Description hash** -- computed from the frontmatter `description` string
 
 On each run of `selfdoc check`, the current hashes are compared against the stored ones. The logic is straightforward:
@@ -77,7 +77,7 @@ Like `selfdoc check`, the command commits the updated `.selfdoc/hashes/hashes.js
 
 ## Hash Storage
 
-Hashes are stored in `.selfdoc/hashes/hashes.json`, a JSON file mapping each page path to its content and description SHA-256 hashes. This file is written atomically using a temporary file plus `os.replace` to prevent corruption, and should be committed to your repository as the baseline for future comparisons:
+Hashes are stored in `.selfdoc/hashes/hashes.json`, a JSON file mapping each page path to its content and description SHA-256 hashes. The file is written atomically -- to a temporary file, then renamed over the old one -- so an interrupted run cannot leave a half-written store. Commit it: it is the baseline for future comparisons.
 
 ```json
 {
@@ -88,7 +88,7 @@ Hashes are stored in `.selfdoc/hashes/hashes.json`, a JSON file mapping each pag
 }
 ```
 
-This file is written atomically (temp file + `os.replace`) and should be committed to your repo. It is the baseline for future comparisons -- without it, every page looks new and no staleness is detected.
+Without it, every page looks new and no staleness is detected.
 
 ### Store schema version
 
@@ -140,4 +140,4 @@ This is useful when you want to update hashes as part of a larger change that yo
 > [!TIP]
 > New pages (ones not yet in the hash store) never trigger STALE001. Staleness is only detected on subsequent runs after the initial hashes are recorded. Run `selfdoc check` once after adding new pages to establish the baseline.
 
-Next: [Glossary](../glossary-terms/) -->
+Next: [Glossary](../glossary-terms/)

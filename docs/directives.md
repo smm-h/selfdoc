@@ -48,7 +48,7 @@ Block directives can also include additional attributes and a body separator:
 
 The following table shows all built-in directives that selfdoc recognizes, their current implementation status (shipped or planned for a future release), and a brief description of what each directive extracts from source code or generates as content.
 
-:-: catalog
+:-: table-directives
 
 ### The `exclude` Attribute
 
@@ -59,11 +59,11 @@ The `table-schema` and `table-config` directives accept an optional `exclude` at
 :-: table-schema path="schema.json" exclude="internal_field"
 ```
 
-If any excluded key does not exist in the file, a hard error is produced (no silent skips). Works with JSON, TOML, and JSONC files. For `table-schema`, `exclude` only applies when the path points to a data file — it has no effect when extracting from a Python dataclass or Go struct.
+If any excluded key does not exist in the file, a hard error is produced (no silent skips). Works with JSON, TOML, and JSONC files. For `table-schema`, `exclude` only applies when the path points to a data file — it has no effect when extracting from a source declaration such as a Go struct or a Python dataclass.
 
 ## Custom Directives
 
-You can extend selfdoc with project-specific custom directives by registering them in your `selfdoc.json` configuration file, pointing each directive name to a Python script that implements the resolution logic. Custom directives take priority over built-in directives of the same name:
+You can extend selfdoc with project-specific custom directives by registering them in your `selfdoc.json` configuration file, pointing each directive name to a script that implements the resolution logic. A `.py` script is loaded and called by an embedded Python driver under `python3`; any other script is executed directly with the same JSON payload on standard input.
 
 ```json
 {
@@ -73,7 +73,7 @@ You can extend selfdoc with project-specific custom directives by registering th
 }
 ```
 
-Each custom directive script must export a `resolve(attrs, config, body)` function that returns a Markdown string:
+A Python script must define a `resolve(attrs, config, body)` function that returns a Markdown string:
 
 ```python
 def resolve(attrs, config, body):
@@ -83,6 +83,6 @@ def resolve(attrs, config, body):
 
 - `attrs` — dict of key-value pairs from the directive line
 - `config` — the full `selfdoc.json` configuration dict
-- `body` — list of body lines (empty list for one-liners)
+- `body` — list of body lines (empty list for one-liners); always a list, never `None`
 
-Custom directives take priority over built-in directives of the same name.
+Dispatch order is content directives, then custom directives, then the language extractors. A custom name therefore overrides a code-extraction directive such as `ref`, but not a content directive such as `callout-note`. A script that cannot be loaded, has no callable `resolve`, raises, or exits non-zero is a hard error that stops the build.

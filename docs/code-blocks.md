@@ -11,7 +11,7 @@ Fenced code blocks in selfdoc get automatic syntax highlighting, language labels
 
 ## Syntax Highlighting
 
-selfdoc uses Pygments for build-time syntax highlighting, supporting hundreds of languages out of the box with no client-side JavaScript required. Highlighting happens during the build, so the output is static HTML with CSS classes. Just specify the language after the opening fence:
+selfdoc uses [chroma](https://github.com/alecthomas/chroma) for build-time syntax highlighting, supporting hundreds of languages out of the box with no client-side JavaScript required. Highlighting happens during the build, so the output is static HTML with CSS classes. Just specify the language after the opening fence:
 
 ````markdown
 ```python
@@ -20,10 +20,10 @@ def greet(name: str) -> str:
 ```
 ````
 
-Pygments supports hundreds of languages out of the box. If the language is not recognized, the code renders as plain text. Light and dark mode get separate Pygments styles (default/monokai) that switch automatically with the theme.
+If the language is not recognized, the code renders as plain text. A theme declares a light style and a dark style by name, and the generated stylesheet defines each token's colour three times over -- the light scheme, the dark one, and the system fallback for a reader who has recorded no preference -- so the two schemes cannot drift apart rule by rule.
 
 > [!NOTE]
-> Pygments is an optional dependency. If it is not installed, code blocks render without highlighting. Install it with `pip install pygments` or `uv add pygments`.
+> The highlighter is compiled into the binary. There is nothing to install and no mode in which code blocks come out unhighlighted because a dependency was missing.
 
 ## Language Icons
 
@@ -151,16 +151,16 @@ Lines starting with `+` are highlighted green, lines starting with `-` are highl
 When you place two or more fenced code blocks with different languages next to each other with no content between them, selfdoc automatically groups them into a tabbed interface. This is useful for showing the same concept in multiple languages, alternative installation methods, or platform-specific instructions. Only blocks with language labels participate in tab grouping:
 
 ````markdown
-```python
-pip install selfdoc
+```bash
+go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 ```
 
-```bash
-npm install -g selfdoc
+```shell
+npm install -g selfdocumenting
 ```
 ````
 
-This renders as a single code block with "python" and "bash" tabs. The user clicks a tab to see that version. Only blocks with language labels participate in tab grouping -- unlabeled blocks are left standalone.
+This renders as a single code block with "bash" and "shell" tabs. The user clicks a tab to see that version. Only blocks with language labels participate in tab grouping -- unlabeled blocks are left standalone.
 
 > [!TIP]
 > Code tabs are great for showing the same concept in multiple languages, or alternative installation methods. Put the most common option first.

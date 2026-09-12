@@ -24,7 +24,13 @@ Every selfdoc site ships with full-text search out of the box. No external servi
 Pagefind itself has to be installed for the build to index anything:
 
 ```bash
-uv add 'pagefind[bin]'
+npm install -g pagefind
+```
+
+or, where a Python toolchain is already present:
+
+```bash
+pip install 'pagefind[bin]'
 ```
 
 `selfdoc check` reports `SEARCH001` when it is missing, and `selfdoc build` stops rather than writing a site whose search dialog answers nothing.

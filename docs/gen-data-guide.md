@@ -93,26 +93,30 @@ If `bwrap` is not found, `selfdoc gen-data` exits with a clear error message and
 > [!NOTE]
 > Scripts run with `--clearenv`, so they cannot access environment variables. If your script needs configuration, pass it via command-line arguments or read it from a mounted config file.
 
-## Example: selfdoc's Own Directive Stats
+## Example: a dependency inventory
 
-selfdoc dogfoods this feature to generate a JSON inventory of its directive catalog. The script `scripts/gen-directive-stats.py` reads the declarative catalogue document `selfdoc_core/directives.toml` (with the stdlib `tomllib`) for the core directives and AST-parses `selfdoc_core/catalog.py` for the planned future directives, emitting structured data at `.selfdoc/data/directive-stats.json`.
-
-The selfdoc.json config for this:
+A script that reads the project's own manifest and emits a JSON inventory the
+docs pages then render:
 
 ```json
 {
   "gen_data": {
     "scripts": [
       {
-        "command": "python3 scripts/gen-directive-stats.py",
-        "output": "directive-stats.json",
-        "mounts": ["selfdoc_core/", "scripts/"]
+        "command": "python3 scripts/dependency-inventory.py",
+        "output": "dependencies.json",
+        "mounts": ["scripts/"]
       }
     ]
   }
 }
 ```
 
-The script uses only `tomllib`, `ast`, and `json` from the standard library (no imports needed inside the sandbox), and writes the output to `.selfdoc/data/directive-stats.json`. The generated JSON contains every core directive with its description, category, and attribute requirements, plus all planned future directives grouped by prefix.
+The script is mounted read-only alongside the project root, writes its JSON to
+standard output, and selfdoc records it at `.selfdoc/data/dependencies.json`.
+Keep such a script to the standard library: the sandbox runs with `--clearenv`
+and no `PYTHONPATH`, so nothing outside the mounts is importable. That
+restriction is the point -- a data script cannot reach the network, the
+developer's environment, or any part of the repository it was not handed.
 
-Next: [Staleness Detection](../staleness/) -->
+Next: [Staleness Detection](../staleness/)

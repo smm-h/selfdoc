@@ -16,8 +16,7 @@ To enable deployment, add a `deploy` section to your `selfdoc.json` file specify
 
 ```json
 {
-  "language": "python",
-  "source": ["mypackage/"],
+  "source": [{"path": "mypackage/", "language": "python"}],
   "base_url": "https://myproject.pages.dev",
   "deploy": {
     "provider": "cloudflare-pages",

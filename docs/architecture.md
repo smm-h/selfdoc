@@ -30,11 +30,11 @@ When you write a directive like `:-: ref path="mypackage.core"`, the build pipel
 
 1. **Content directives** -- callouts (`callout-note`, `callout-warning`, etc.) and `list-glossary` are handled first. These transform body content into styled HTML without needing source code access.
 
-2. **Custom directives** -- if your `selfdoc.json` declares a `"directives"` map, the resolver loads the referenced Python script and calls its `resolve(attrs, config, body)` function.
+2. **Custom directives** -- if your `selfdoc.json` declares a `"directives"` map, the resolver runs the referenced script out of process: an embedded driver is handed to `python3`, and the script's `resolve(attrs, config, body)` is called with one JSON object on standard input. What it prints replaces the directive; any failure stops the build.
 
 3. **Language extractor** -- the built-in extractor for your project's language handles the directive. This is the most common path for directives like `ref`, `table-schema`, and `code-test`.
 
-If nothing can resolve a directive, selfdoc emits an inline error marker (`> *[selfdoc: ...]*`) in the rendered output so you can spot it immediately.
+A path that resolves nowhere leaves an inline marker (`> *[selfdoc: ...]*`) in the rendered output so you can spot it immediately. A custom directive that fails is different: a script that will not load, one with no callable `resolve`, one that raises, and a machine with no `python3` are each a hard error naming the directive and the script, because a published page reading "custom directive failed" where its content belongs is as easy to miss as any other paragraph.
 
 ### What each directive extracts
 
@@ -48,7 +48,7 @@ If nothing can resolve a directive, selfdoc emits an inline error marker (`> *[s
 
 ## How Themes Work
 
-Themes control colors, typography, layout, and component styling through CSS custom properties. selfdoc ships with two built-in themes (**minimal** and **clean**), both including full dark mode, high contrast, reduced motion, and print support.
+Themes control colors, typography, layout, and component styling through CSS custom properties. Every built-in theme includes full dark mode, high contrast, reduced motion, and print support; the registry is the set of stylesheets compiled into the binary, so `selfdoc build --theme` refuses anything that is not one of them.
 
 The theme system works in layers:
 
@@ -68,7 +68,7 @@ After the main HTML pipeline completes, the build generates 6 categories of comp
 - **Search index** (`pagefind/`) -- the Pagefind index and search UI, built from the finished HTML
 - **OG images** -- OpenGraph card PNGs for social sharing
 - **`llms.txt`** -- structured plain-text index for LLM consumption, plus `llms-full.txt` with all content
-- **Compressed companions** -- gzip (and brotli if available) pre-compressed versions for efficient serving
+- **Compressed companions** -- gzip and brotli pre-compressed versions for efficient serving; both encoders are compiled into the binary
 
 ## Post-Processors
 

@@ -20,7 +20,7 @@ Every `selfdoc build` produces a comprehensive set of SEO artifacts for each pag
 - **JSON-LD structured data** -- `TechArticle` schema on content pages, `BreadcrumbList` on non-index pages, a `WebSite` node on the homepage, and the declared author as a standalone `Person` entity on the homepage. The `WebSite` node carries no `SearchAction`: that advertised a `?q=` URL pattern which renders the same page for every query, so it published a duplicate-content address per search term. Search here is client-side and has no crawlable result URL.
 - **sitemap.xml** -- auto-generated from all indexed HTML pages, with `<lastmod>` timestamps when git dates are available. Multi-locale builds get per-locale sitemaps plus a sitemap index.
 - **robots.txt** -- allows all crawlers (including AI bots like GPTBot and ClaudeBot) and points to the sitemap.
-- **OG social cards** -- a 1200x630 PNG image generated per page with the project name and page title. Uses predraw + cairosvg when available, otherwise falls back to a basic gradient card.
+- **OG social cards** -- a 1200x630 PNG generated per page, written by hand from the theme's accent colour: a tinted background, an accent bar across the top and a striped band below. It carries no text, and it is the only card path -- there is no external renderer to install and no second shape a site can end up with depending on what happens to be present.
 
 ## What You Can Control
 
@@ -35,7 +35,7 @@ description: "Deploy your selfdoc site to Cloudflare Pages or GitHub Pages with 
 ---
 ```
 
-If you omit `description`, selfdoc auto-extracts the first sentence from the page body. The `selfdoc check` command will emit an SEO006 warning for missing descriptions and SEO009/SEO010 for descriptions that are too short or too long (aim for 120-155 characters).
+If you omit `description`, selfdoc auto-extracts the first sentence from the page body. `selfdoc check` reports SEO006 as an **error** for a missing description -- it stops the run rather than warning -- and SEO009/SEO010 as warnings for descriptions that are too short or too long (aim for 120-155 characters).
 
 ### Author metadata
 
@@ -80,7 +80,7 @@ This accepts any BCP 47 tag (e.g., `en`, `en-US`, `pt-BR`).
 
 ## Lint Rules
 
-`selfdoc check` runs 15 SEO lint rules that cover heading structure, meta descriptions, image alt text, contrast ratios, title lengths, content density, and accessibility. Each rule has a code, severity level, and actionable fix suggestion. See the [Check Guide](../check-guide/) for the full list with fix suggestions.
+`selfdoc check` runs the `SEO` family of lint rules, covering heading structure, meta descriptions, image alt text, contrast ratios, title lengths, content density, and accessibility. Each rule has a code, a severity and an actionable fix suggestion, all declared once in the lint registry embedded in the binary. Most are warnings; SEO001 (multiple H1 headings), SEO006 (missing description) and SEO013 (no title source) are errors and stop the run. See the [Check Guide](../check-guide/) for every code with its severity and message.
 
 ## llms.txt and llms-full.txt
 

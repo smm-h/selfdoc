@@ -23,12 +23,16 @@ That `:-: ref` line tells selfdoc to grab the docstrings and signatures from `my
 
 ### 2. Configure with selfdoc.json
 
-A minimal config file tells selfdoc your project's language, which directories contain source code, where your docs templates live, and where to write the built output. selfdoc infers everything else -- navigation, theming, search, SEO metadata, and deploy settings all have sensible defaults:
+A config file tells selfdoc which directories hold source code and in what language, where your docs templates live, and where to write the built output. Navigation, theming, search and SEO metadata all have defaults:
 
 ```json
 {
-  "language": "python",
-  "source": ["mypackage/"],
+  "source": [{"path": "mypackage/", "language": "python"}],
+  "base_url": "https://myproject.example.com",
+  "search_engine": "pagefind",
+  "author": {"name": "Jane Doe", "url": "https://janedoe.example"},
+  "versions": [{"version": "1.0.0"}],
+  "locales": [{"code": "en", "label": "English", "default": true}],
   "docs": "docs/",
   "output": "docs/_build/"
 }
@@ -41,7 +45,7 @@ selfdoc figures out the rest. It detects your project structure, builds navigati
 Run `selfdoc build` and you get a full static site -- HTML, CSS, search index, sitemap, the works. Serve it locally with `selfdoc serve`, or deploy anywhere that hosts static files.
 
 ```bash
-pip install selfdoc
+go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
 selfdoc init --base-url https://myproject.pages.dev
 selfdoc build
 ```
@@ -73,7 +77,7 @@ The rendered output: a styled HTML page with your welcome text, followed by a co
 
 ## Features
 
-selfdoc ships with everything you need to build, check, and deploy a documentation site from a single tool with a handful of pure-Python dependencies. Here are the core capabilities that work out of the box.
+selfdoc ships with everything you need to build, check, and deploy a documentation site, in one binary with nothing to install beside it. Here are the core capabilities that work out of the box.
 
 :<: callout-note
 :=:
@@ -81,10 +85,10 @@ selfdoc ships with everything you need to build, check, and deploy a documentati
 :>:
 
 - **Code-aware directives** -- Embed live API references, schemas, tests, and CLI help directly from source code. Content stays in sync automatically.
-- **Multi-language support** -- 3 language extractors (Python, Go, TypeScript) handle all 21 built-in directive types out of the box.
-- **Pure Python** -- Two direct runtime dependencies (`strictcli` and `selfdoc-core`), both pure Python, nothing to compile. No JavaScript frameworks, no build tools, no configuration overhead.
+- **Multi-language support** -- extractors for Go, Python, TypeScript, Svelte, Zig, Dart, Kotlin, Swift and SQL, all feeding the same directive vocabulary. One project can declare several.
+- **One static binary** -- written in Go, with stylesheets, scripts, themes and the word list compiled in. No runtime, no virtualenv, no JavaScript toolchain, no configuration overhead.
 - **SEO and AI optimized** -- Structured data, meta tags, sitemaps, llms.txt, Atom feeds, and 50+ SEO best practices built into every generated page.
-- **Themeable and accessible** -- Two built-in themes with dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation.
+- **Themeable and accessible** -- built-in themes with dark mode, WCAG AA contrast, print stylesheets, and full keyboard navigation.
 
 ## Get started
 

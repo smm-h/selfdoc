@@ -7,7 +7,7 @@ nav_order: 2
 
 # Comparisons
 
-selfdoc takes a different angle from most documentation generators: it extracts content directly from source code via 21 built-in directive types, supports 3 languages in a single tool, and produces a complete static site with search, SEO, and theming -- all from pure Python with 2 direct runtime dependencies and nothing to compile.
+selfdoc takes a different angle from most documentation generators: it extracts content directly from source code through a catalogue of built-in directives, reads nine languages in a single tool, and produces a complete static site with search, SEO, and theming -- out of one Go binary with no runtime to install beside it.
 
 Here is how it stacks up against the popular alternatives.
 
@@ -15,12 +15,12 @@ Here is how it stacks up against the popular alternatives.
 
 | Feature | selfdoc | Sphinx | MkDocs | Docusaurus | VitePress | Rustdoc | Godoc | TypeDoc |
 | ------- | ------- | ------ | ------ | ---------- | --------- | ------- | ----- | ------- |
-| Language support | Python, Go, TS/JS | Python | Any | Any | Any | Rust | Go | TS/JS |
+| Language support | Go, Python, TS/JS, Svelte, Zig, Dart, Kotlin, Swift, SQL | Python | Any | Any | Any | Rust | Go | TS/JS |
 | Source code extraction | Directive-based, multi-language | Autodoc (Python only) | None (plugin-based) | None | None | Built-in | Built-in | Built-in |
 | Markdown-native | Yes | RST (Markdown via plugin) | Yes | MDX | Yes | No (doc comments) | No (doc comments) | No |
 | Zero config | Near-zero (`selfdoc init`) | No (conf.py required) | Minimal (mkdocs.yml) | No (Node project) | Minimal | Zero for Rust | Zero for Go | Minimal |
 | Built-in search | Pagefind, indexed at build time | Yes | Yes (lunr.js) | Yes (Algolia/local) | Yes (local) | Yes | No | Yes |
-| Theming | 2 themes + CSS properties | Many themes | Many themes | Many themes | Customizable | One | One | Themes |
+| Theming | Built-in themes + CSS properties | Many themes | Many themes | Many themes | Customizable | One | One | Themes |
 | Versioning | Built-in multi-version builds | Via extensions | mike plugin | Built-in | Via config | Per crate | Per module | No |
 | i18n | Built-in multi-locale builds | Sphinx-intl | i18n plugin | Built-in | Built-in | No | No | No |
 | Static output | Yes | Yes | Yes | Yes (SSG mode) | Yes | Yes | Server or static | Yes |
@@ -58,6 +58,6 @@ API documentation generator for TypeScript and JavaScript projects. TypeDoc read
 
 ### selfdoc
 
-selfdoc fits a niche that the others do not cover well: projects that want source-extracted documentation across Python, Go, and TypeScript without switching tools. The directive system keeps docs in sync with code automatically, and the built-in SEO, search, and deploy pipeline means fewer moving parts. The tradeoff is fewer themes and a smaller community than Sphinx or Docusaurus.
+selfdoc fits a niche that the others do not cover well: a polyglot repository that wants source-extracted documentation for every language it contains, without switching tools or running one generator per component. The directive system keeps docs in sync with code automatically, and the built-in SEO, search, blog and deploy pipeline means fewer moving parts. The tradeoff is fewer themes and a smaller community than Sphinx or Docusaurus.
 
-Next: [Getting Started](../getting-started/) -->
+Next: [Getting Started](../getting-started/)

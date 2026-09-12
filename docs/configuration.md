@@ -10,7 +10,18 @@ nav_order: 1
 
 selfdoc is configured via a `selfdoc.json` file in your project root. Run `selfdoc init` to generate a starter config interactively, or create one manually.
 
-`base_url` is the only required field. `source` is optional -- a codeless project (a portfolio or personal site that is nothing but Markdown pages) declares none, and directives that extract from source code are then a hard error rather than an empty section. Everything else is optional and has sensible defaults.
+Five fields are required and nothing is inferred for them: `base_url`, `search_engine`, `author`, `locales`, and `versions` (or `"unversioned": true` in its place). `source` is optional -- a codeless project (a portfolio or personal site that is nothing but Markdown pages) declares none, and directives that extract from source code are then a hard error rather than an empty section. Everything else is optional and has defaults.
+
+There is no top-level `language` key. Every source entry is an object naming its own path and language, so a polyglot repository declares one entry per language:
+
+```json
+{
+  "source": [
+    {"path": "internal/", "language": "go"},
+    {"path": "web/src/", "language": "typescript"}
+  ]
+}
+```
 
 :<: callout-warning
 :=:
@@ -21,7 +32,7 @@ selfdoc is configured via a `selfdoc.json` file in your project root. Run `selfd
 
 The table below lists every field recognized by `selfdoc.json`, including the field type, whether it is required, and a description of what it controls. Required fields have no default and must be provided explicitly.
 
-:-: config-schema
+:-: table-config-schema
 
 ## Common Configurations
 
@@ -29,9 +40,12 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
 
 ```json
 {
-  "language": "python",
-  "source": ["src/"],
-  "base_url": "https://myproject.pages.dev"
+  "source": [{"path": "src/", "language": "python"}],
+  "base_url": "https://myproject.pages.dev",
+  "search_engine": "pagefind",
+  "author": {"name": "Jane Doe", "url": "https://janedoe.example"},
+  "versions": [{"version": "1.0.0"}],
+  "locales": [{"code": "en", "label": "English", "default": true}]
 }
 ```
 
@@ -39,9 +53,15 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
 
 ```json
 {
-  "language": "go",
-  "source": ["pkg/", "internal/"],
+  "source": [
+    {"path": "pkg/", "language": "go"},
+    {"path": "internal/", "language": "go"}
+  ],
   "base_url": "https://myproject.pages.dev",
+  "search_engine": "pagefind",
+  "author": {"name": "Jane Doe", "url": "https://janedoe.example"},
+  "versions": [{"version": "1.0.0"}],
+  "locales": [{"code": "en", "label": "English", "default": true}],
   "repo": "https://github.com/user/myproject",
   "branch": "main",
   "deploy": {
@@ -55,9 +75,10 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
 
 ```json
 {
-  "language": "python",
-  "source": ["mylib/"],
+  "source": [{"path": "mylib/", "language": "python"}],
   "base_url": "https://mylib.dev",
+  "versions": [{"version": "1.0.0"}],
+  "locales": [{"code": "en", "label": "English", "default": true}],
   "docs": "docs/",
   "output": "docs/_build/",
   "description": "A toolkit for building great things.",
@@ -67,7 +88,7 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
   "theme": "minimal",
   "search": "bar",
   "search_engine": "pagefind",
-  "min_coverage": 80,
+  "coverage_threshold": 0.8,
   "author": {
     "name": "Jane Doe",
     "url": "https://janedoe.example",
@@ -89,7 +110,7 @@ The table below lists every field recognized by `selfdoc.json`, including the fi
       },
       {
         "title": "Flexible",
-        "description": "Works with Python, Go, and TypeScript projects."
+        "description": "Works with Go, Python, TypeScript and six more languages."
       }
     ]
   },

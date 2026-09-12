@@ -39,14 +39,17 @@ One-liners are used when the directive needs only attributes and no body content
 
 ### Block directive
 
-Block directives span multiple lines and can carry body content. They open with `:<:` and close with `:>:`:
+Block directives span multiple lines and can carry body content. They open with `:<:`, close with `:>:`, and put `:=:` between the attributes and the body -- even when there are no attributes:
 
 ```markdown
 :<: callout-note
+:=:
 ::: This is important information.
 ::: It can span multiple lines.
 :>:
 ```
+
+A `:::` body line that appears before any `:=:` is a hard error naming the line: without the separator the parser is still reading attributes, and a body line is not one.
 
 ### Block with attributes and body separator
 
@@ -61,7 +64,7 @@ For directives that need both extra attributes and body content, use `:@:` for a
 :>:
 ```
 
-The `:@:` lines add key-value pairs to the directive's attribute dict. The `:=:` marker signals the transition from attributes to body lines. If a block has no `:=:`, all lines between `:<:` and `:>:` must be either `:@:` attribute lines or `:::` body lines (the parser determines context from which state it is in).
+The `:@:` lines add key-value pairs to the directive's attribute dict. The `:=:` marker signals the transition from attributes to body lines. A block with no `:=:` carries no body, so every line between `:<:` and `:>:` has to be a `:@:` attribute line.
 
 ### Block with no body
 
@@ -99,7 +102,7 @@ Selfdoc ships with 21 built-in directives in two categories: **code extraction**
 
 ### Code Extraction Directives
 
-These directives read source files through language-specific extractors (Python, Go, TypeScript, and others). They all accept a `path` attribute pointing to a source file or module, and an optional `lang` attribute to disambiguate in multi-language projects.
+These directives read source files through language-specific extractors (Go, Python, TypeScript, Svelte, Zig, Dart, Kotlin, Swift and SQL). They all accept a `path` attribute pointing to a source file or module, and an optional `lang` attribute to disambiguate in multi-language projects.
 
 #### `ref`
 
@@ -471,11 +474,11 @@ The page also emits a `Person`: the site's declared `author` -- name, url, `same
 
 ## Custom Directives
 
-When the 21 built-in directives do not cover your needs, you can write custom directives as Python scripts that generate Markdown content at build time.
+When the built-in directives do not cover your needs, you can write custom directives as scripts that generate Markdown content at build time. A `.py` script is loaded and called by an embedded Python driver under `python3`; any other script is executed directly with the same JSON payload on standard input.
 
 ### The resolve Interface
 
-A custom directive is a Python script that exports a `resolve` function with the following signature:
+A Python custom directive defines a `resolve` function with the following signature:
 
 ```python
 def resolve(attrs, config, body):
@@ -503,7 +506,7 @@ The function must return a string of Markdown. Selfdoc processes the returned co
 
 ### Registering Custom Directives
 
-Register custom directives in the `directives` section of `selfdoc.json`. Each entry maps a directive name to a Python script path (relative to the project root):
+Register custom directives in the `directives` section of `selfdoc.json`. Each entry maps a directive name to a script path (relative to the project root):
 
 ```json
 {
@@ -532,42 +535,33 @@ Or with attributes and body:
 
 ### Resolution Priority
 
-Custom directives take priority over built-in directives of the same name. If you register a directive named `ref`, your custom script handles all `ref` directives instead of the built-in extractor. This lets you override built-in behavior when needed.
-
 The full resolution order is:
 
-1. Content directives (callouts, glossary, tree, deps, modules, commands, directives table, config-schema, var)
+1. Content directives (callouts, glossary, tree, deps, modules, commands, the directives table, the config-schema table, `var`, `cv`)
 2. Custom directives registered in `selfdoc.json`
-3. Language-specific code extractors (Python, Go, TypeScript, etc.)
+3. Language-specific code extractors
 
-### Example: Dynamic Catalog Table
+So a custom directive overrides a code-extraction name: register one called `ref` and your script handles every `ref` directive instead of the extractor. It cannot override a content directive -- `callout-note` and its kin are answered before your script is reached.
 
-This example (used in selfdoc's own documentation) generates a directive reference table from selfdoc's internal catalog:
+### Example: a table from a data file
+
+A directive that renders a JSON file the project already maintains:
 
 ```python
-from selfdoc.catalog import CORE_DIRECTIVES
+"""Render endpoints.json as a Markdown table."""
+
+import json
+
 
 def resolve(attrs, config, body):
-    categories = {}
-    for name, spec in CORE_DIRECTIVES.items():
-        categories.setdefault(spec.category, []).append((name, spec))
-
-    for cat in categories:
-        categories[cat].sort(key=lambda x: x[0])
-
-    lines = []
-    for cat_key in ("code", "content"):
-        if cat_key not in categories:
-            continue
-        lines.append(f"### {cat_key.title()}")
-        lines.append("")
-        lines.append("| Directive | Description |")
-        lines.append("|-----------|-------------|")
-        for name, spec in categories[cat_key]:
-            lines.append(f"| `{name}` | {spec.description} |")
-        lines.append("")
-
-    return "\n".join(lines)
+    with open(attrs.get("path", "endpoints.json"), encoding="utf-8") as handle:
+        rows = json.load(handle)
+    columns = sorted({key for row in rows for key in row})
+    out = ["| " + " | ".join(columns) + " |",
+           "| " + " | ".join("---" for _ in columns) + " |"]
+    for row in rows:
+        out.append("| " + " | ".join(str(row.get(c, "")) for c in columns) + " |")
+    return "\n".join(out)
 ```
 
 Registered in `selfdoc.json`:
@@ -575,7 +569,7 @@ Registered in `selfdoc.json`:
 ```json
 {
   "directives": {
-    "catalog": "scripts/catalog-directive.py"
+    "endpoints": "scripts/endpoints-directive.py"
   }
 }
 ```
@@ -583,18 +577,18 @@ Registered in `selfdoc.json`:
 Used in a template:
 
 ```markdown
-:-: catalog
+:-: endpoints path="api/endpoints.json"
 ```
 
 ### Error Handling
 
-If a custom directive script raises an exception, the error is caught and rendered as an inline warning in the output:
+A custom directive that fails stops the build. A script that cannot be found or imported, one with no callable `resolve`, one that raises, one that exits non-zero, and a machine with no `python3` are each a hard error naming the directive and the script, with the script's own message on standard error carried through:
 
 ```
-> *[selfdoc: custom directive 'my-stats' failed: FileNotFoundError(...)]*
+Error: custom directive 'my-stats' failed: [Errno 2] No such file or directory: 'stats.json'
 ```
 
-If the script file does not exist, a `FileNotFoundError` is raised. If the script has no `resolve` callable, an `AttributeError` is raised.
+Nothing is substituted inline, because a published page reading "custom directive failed" where its content belongs is as easy to miss as any other paragraph.
 
 ## Best Practices
 
@@ -608,7 +602,7 @@ If the script file does not exist, a `FileNotFoundError` is raised. If the scrip
 
 **Use `exclude` to focus tables.** The `table-schema` and `table-config` directives accept `exclude` to omit keys that are too large or irrelevant for the documentation context. This keeps rendered tables focused.
 
-**Leverage `lang` in multi-language projects.** When a project has Python, Go, and TypeScript sources, the resolver normally auto-detects which extractor handles a `path`. If auto-detection is ambiguous (the same relative path exists in multiple language groups), add `lang="python"` to disambiguate.
+**Leverage `lang` in multi-language projects.** When a project declares source entries in several languages, the resolver works out which extractor owns a `path`. A path that resolves under more than one entry is an ambiguity error naming the languages it matched; add `lang="python"` (or whichever language is meant) to settle it.
 
 **Directive names follow `[a-zA-Z][\w-]*`.** Names must start with a letter and can contain word characters and hyphens. Names like `my-directive` and `tableV2` are valid; names like `2table` or `my.directive` are not.
 
