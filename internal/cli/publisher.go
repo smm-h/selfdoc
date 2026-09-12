@@ -14,7 +14,7 @@ import (
 
 // publishCommandPath is the dotted path of the command the editor's publish
 // button reaches.
-const publishCommandPath = "post.publish"
+const publishCommandPath = "blog.post.publish"
 
 // publisher is the editor's door into this command tree.
 //

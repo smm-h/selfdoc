@@ -57,20 +57,20 @@ var commandEffects = map[string]string{
 	// reads the tree and prints metrics
 	"quality": "read_only",
 	// writes the scaffolded post file
-	"post.new": "mutating",
+	"blog.post.new": "mutating",
 	// reads the posts directory and prints
-	"post.list": "read_only",
+	"blog.post.list": "read_only",
 	// writes the generated post and updates the manifest
-	"post.generate": "mutating",
+	"blog.post.generate": "mutating",
 	// pushes built HTML to the assembly repo via the Git Data API and
 	// dispatches a workflow that republishes the live site
-	"post.publish": "mutating",
+	"blog.post.publish": "mutating",
 	// builds this project's docs into its local output tree, then pushes that
 	// tree, its manifest and its membership record into the assembly repo via
 	// the Git Data API -- deleting, in the same commit, every page the project
 	// published before and no longer builds -- and dispatches a shared-only
 	// workflow that republishes the live site
-	"docs.publish": "mutating",
+	"blog.publish-docs": "mutating",
 	// creates a GitHub repo, a Cloudflare Pages project, and repo secrets
 	"assembly.init": "mutating",
 	// repository_dispatch against the assembly repo
@@ -100,14 +100,14 @@ var commandEffects = map[string]string{
 	// commits the regenerated deploy workflow to the assembly repo
 	"assembly.sync-workflow": "mutating",
 	// reads the editor registry and prints one line per entry
-	"editor.list-repos": "read_only",
+	"blog.editor.list-repos": "read_only",
 	// serves the authoring app on loopback, whose PUT writes an edited post
 	// into the registered repository's working tree. Previews write nothing --
 	// they go through the in-memory render path -- so the save is the whole of
 	// the mutation, and it is deliberately not consequential: a save is an
 	// interactive act the author has just performed, not something to
 	// interrupt them for at launch
-	"editor.serve": "mutating",
+	"blog.editor.serve": "mutating",
 }
 
 // consequentialCommands is the reviewed consent set. A command belongs here
@@ -124,12 +124,12 @@ var consequentialCommands = map[string]bool{
 	// remote. Neither is undone by rerunning.
 	"deploy": true,
 	// Locally-authored, previously-private posts become publicly readable.
-	"post.publish": true,
-	// Same line as `post publish`, for documentation instead of posts: the
+	"blog.post.publish": true,
+	// Same line as `blog post publish`, for documentation instead of posts: the
 	// working tree becomes publicly readable with no tag and no release in
 	// between, and it also deletes -- a page the project no longer builds
 	// disappears for readers in the same commit.
-	"docs.publish": true,
+	"blog.publish-docs": true,
 	// Creates a GitHub repository, claims a *.pages.dev subdomain, and writes
 	// deployment credentials into repo secrets -- three named external
 	// resources, none of them un-created by a rerun.
@@ -225,7 +225,7 @@ func TestRoutineMutatingCommandsDoNotPrompt(t *testing.T) {
 	commands := walk(t)
 	for _, path := range []string{
 		"gen", "check", "build", "baseline.accept",
-		"post.new", "assembly.push",
+		"blog.post.new", "assembly.push",
 	} {
 		entry, ok := commands[path]
 		if !ok {
@@ -269,7 +269,7 @@ func TestOnlyTheThreeUnpreviewableCommandsRefuseDryRun(t *testing.T) {
 	expected := map[string]string{
 		"assembly.integrate": "reads what the step before it wrote",
 		"assembly.preview":   "look at",
-		"editor.serve":       "at the keyboard",
+		"blog.editor.serve":  "at the keyboard",
 	}
 	for path, entry := range walk(t) {
 		supported, declared := entry["dry_run_supported"]

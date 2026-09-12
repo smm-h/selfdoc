@@ -271,10 +271,8 @@ func New(opts Options) *strictcli.App {
 	c.registerGenData()
 	c.registerSpellCorpus()
 	c.registerQuality()
-	c.registerPost()
-	c.registerDocs()
 	c.registerAssembly()
-	c.registerEditor()
+	c.registerBlog()
 
 	return c.app
 }

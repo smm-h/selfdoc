@@ -11,14 +11,12 @@ import (
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
-func (c *cli) registerDocs() {
-	group := c.app.Group("docs", "Publish this project's documentation to the unified assembly without a release")
-
-	group.Command("publish",
+func (c *cli) registerPublishDocs(group *strictcli.Group) {
+	group.Command("publish-docs",
 		"Publish this project's documentation to the assembly without a release. Builds the docs locally, pushes the built site, its manifest and its membership record into the assembly repo via the Git Data API -- deleting the pages this project published before and no longer produces -- then dispatches a shared-only workflow to regenerate cross-project elements.",
-		c.cmdDocsPublish,
+		c.cmdPublishDocs,
 		strictcli.WithEffect(strictcli.EffectMutating),
-		// Consequential for the same reason `post publish` is:
+		// Consequential for the same reason `blog post publish` is:
 		// locally-authored content becomes publicly readable at the moment
 		// this runs, with no tag and no release standing between the working
 		// tree and the live site. It also deletes: a page this project
@@ -29,7 +27,7 @@ func (c *cli) registerDocs() {
 	)
 }
 
-func (c *cli) cmdDocsPublish(ctx *strictcli.Context, kwargs map[string]any) strictcli.Outcome {
+func (c *cli) cmdPublishDocs(ctx *strictcli.Context, kwargs map[string]any) strictcli.Outcome {
 	handle := effects.FromContext(ctx)
 	dir := c.dir()
 

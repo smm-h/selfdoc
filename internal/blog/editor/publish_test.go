@@ -34,7 +34,7 @@ import (
 // The refusal a consent regime answers an unconsented call with. The wording
 // is the framework's in production; here it stands in for it, and the
 // assertions are that it reaches the author unchanged.
-const fakeRefusal = "post.publish is consequential and requires confirmation: " +
+const fakeRefusal = "blog.post.publish is consequential and requires confirmation: " +
 	"pass --approve-consequential"
 
 // fakePublisher is the command layer's publish surface, recorded instead of
@@ -443,7 +443,7 @@ func TestAConsentedCallRuns(t *testing.T) {
 		publisher.output = "   \n"
 		_, err := RunPublish(entry, publisher, true)
 		editorError := wantEditorError(t, err)
-		if editorError.Message != "post.publish exited 3 without saying why" {
+		if editorError.Message != "blog.post.publish exited 3 without saying why" {
 			t.Errorf("message = %q", editorError.Message)
 		}
 	})
@@ -608,7 +608,7 @@ func TestThePublishEndpoint(t *testing.T) {
 	t.Run("the surface's body is the Python's own spelling", func(t *testing.T) {
 		port := serveWith(t, newPublisher())
 		_, text := request(t, port, "GET", "/api/repos/proj/publish", "")
-		if !strings.HasPrefix(text, `{"descriptor": {"command": "post.publish", `) {
+		if !strings.HasPrefix(text, `{"descriptor": {"command": "blog.post.publish", `) {
 			t.Errorf("the body opens with %q", text[:min(len(text), 80)])
 		}
 		var decoded map[string]any

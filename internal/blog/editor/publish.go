@@ -45,7 +45,7 @@ import (
 
 // PublishCommand is the command the surface drives, as strictcli addresses
 // it.
-const PublishCommand = "post.publish"
+const PublishCommand = "blog.post.publish"
 
 // Scope is what the publish reaches, stated the way the surface has to state
 // it.

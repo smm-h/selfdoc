@@ -9,8 +9,8 @@ import (
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
-func (c *cli) registerEditor() {
-	group := c.app.Group("editor", "Run and inspect the local authoring app for blog posts")
+func (c *cli) registerEditor(parent *strictcli.Group) {
+	group := parent.Group("editor", "Run and inspect the local authoring app for blog posts")
 
 	group.Command("list-repos",
 		"List every repository the editor registry declares, with its kind and where it points. Reads the hand-written registry TOML, validates every entry in full, and prints one line per entry -- a local entry's working tree, or a remote entry's repository, ref and whether it declares that rendering runs against a checkout.",

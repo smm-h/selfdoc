@@ -28,15 +28,15 @@ func registryFile(t *testing.T, body string) string {
 
 func TestTheEditorGroupCarriesBothCommands(t *testing.T) {
 	commands := walk(t)
-	for _, path := range []string{"editor.serve", "editor.list-repos"} {
+	for _, path := range []string{"blog.editor.serve", "blog.editor.list-repos"} {
 		if _, ok := commands[path]; !ok {
 			t.Errorf("%q is not registered", path)
 		}
 	}
-	if commands["editor.list-repos"]["effect"] != "read_only" {
-		t.Errorf("list-repos is classified %v", commands["editor.list-repos"]["effect"])
+	if commands["blog.editor.list-repos"]["effect"] != "read_only" {
+		t.Errorf("list-repos is classified %v", commands["blog.editor.list-repos"]["effect"])
 	}
-	serve := commands["editor.serve"]
+	serve := commands["blog.editor.serve"]
 	if serve["effect"] != "mutating" {
 		t.Errorf("serve is classified %v", serve["effect"])
 	}
@@ -47,7 +47,7 @@ func TestTheEditorGroupCarriesBothCommands(t *testing.T) {
 
 func TestEditorServeDeclaresThatItCannotBePreviewed(t *testing.T) {
 	// An interactive server has no set of effects to record at launch.
-	serve := walk(t)["editor.serve"]
+	serve := walk(t)["blog.editor.serve"]
 	if serve["dry_run_supported"] != false {
 		t.Error("serve does not refuse a preview")
 	}
@@ -64,7 +64,7 @@ func TestEditorServeRefusesAPreviewAtParseTime(t *testing.T) {
 	// context, so a recorded run would execute them for real.
 	isolate(t)
 	path := registryFile(t, "")
-	result := run(t, t.TempDir(), "editor", "serve",
+	result := run(t, t.TempDir(), "blog", "editor", "serve",
 		"--port", "0", "--registry", path, "--dry-run")
 	if result.ExitCode == 0 {
 		t.Fatal("the preview was accepted")
@@ -77,7 +77,7 @@ func TestEditorServeRefusesAPreviewAtParseTime(t *testing.T) {
 func TestEditorServeRefusesAPreviewBeforeItsRequiredFlags(t *testing.T) {
 	// Parse-time means it does not need a valid invocation to refuse.
 	isolate(t)
-	result := run(t, t.TempDir(), "editor", "serve", "--dry-run")
+	result := run(t, t.TempDir(), "blog", "editor", "serve", "--dry-run")
 	if result.ExitCode == 0 {
 		t.Fatal("the preview was accepted")
 	}
@@ -88,7 +88,7 @@ func TestEditorServeRefusesAPreviewBeforeItsRequiredFlags(t *testing.T) {
 
 func TestEditorServePortIsDeclaredRequired(t *testing.T) {
 	// Presence is declared, never derived -- the port is stated.
-	flags := flagsOf(t, "editor.serve")
+	flags := flagsOf(t, "blog.editor.serve")
 	port, ok := flags["port"]
 	if !ok {
 		t.Fatal("serve declares no --port")
@@ -104,7 +104,7 @@ func TestEditorServePortIsDeclaredRequired(t *testing.T) {
 
 func TestEditorServeRefusesWithoutAPort(t *testing.T) {
 	isolate(t)
-	result := run(t, t.TempDir(), "editor", "serve")
+	result := run(t, t.TempDir(), "blog", "editor", "serve")
 	if result.ExitCode == 0 {
 		t.Fatal("serve ran with no port")
 	}
@@ -125,7 +125,7 @@ func TestEditorListReposListsAHandWrittenFile(t *testing.T) {
 		"[[repo]]\nname = \"afar\"\nkind = \"remote\"\nrepo = \"smm-h/afar\"\n"+
 		"ref = \"main\"\ncache = \""+cache+"\"\nrender = false\n")
 
-	result := run(t, t.TempDir(), "editor", "list-repos", "--registry", path)
+	result := run(t, t.TempDir(), "blog", "editor", "list-repos", "--registry", path)
 	if result.ExitCode != 0 {
 		t.Fatalf("list-repos failed: %s", result.Stderr)
 	}
@@ -138,7 +138,7 @@ func TestEditorListReposListsAHandWrittenFile(t *testing.T) {
 
 func TestEditorListReposSaysSoWhenTheRegistryIsEmpty(t *testing.T) {
 	isolate(t)
-	result := run(t, t.TempDir(), "editor", "list-repos", "--registry", registryFile(t, ""))
+	result := run(t, t.TempDir(), "blog", "editor", "list-repos", "--registry", registryFile(t, ""))
 	if result.ExitCode != 0 {
 		t.Fatalf("list-repos failed: %s", result.Stderr)
 	}
@@ -150,7 +150,7 @@ func TestEditorListReposSaysSoWhenTheRegistryIsEmpty(t *testing.T) {
 func TestEditorListReposNamesAMalformedEntry(t *testing.T) {
 	isolate(t)
 	path := registryFile(t, "\n[[repo]]\nname = \"broken\"\nkind = \"local\"\n")
-	result := run(t, t.TempDir(), "editor", "list-repos", "--registry", path)
+	result := run(t, t.TempDir(), "blog", "editor", "list-repos", "--registry", path)
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -164,7 +164,7 @@ func TestEditorListReposNamesAMalformedEntry(t *testing.T) {
 func TestEditorListReposNamesAMissingRegistry(t *testing.T) {
 	isolate(t)
 	missing := filepath.Join(t.TempDir(), "nope.toml")
-	result := run(t, t.TempDir(), "editor", "list-repos", "--registry", missing)
+	result := run(t, t.TempDir(), "blog", "editor", "list-repos", "--registry", missing)
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -176,7 +176,7 @@ func TestEditorListReposNamesAMissingRegistry(t *testing.T) {
 func TestEditorServeStopsOnAMalformedRegistry(t *testing.T) {
 	isolate(t)
 	path := registryFile(t, "port = 1\n")
-	result := run(t, t.TempDir(), "editor", "serve", "--port", "0", "--registry", path)
+	result := run(t, t.TempDir(), "blog", "editor", "serve", "--port", "0", "--registry", path)
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -188,7 +188,7 @@ func TestEditorServeStopsOnAMalformedRegistry(t *testing.T) {
 func TestEditorServeStopsOnMissingTinymoonAssets(t *testing.T) {
 	isolate(t)
 	nowhere := filepath.Join(t.TempDir(), "nowhere")
-	result := run(t, t.TempDir(), "editor", "serve",
+	result := run(t, t.TempDir(), "blog", "editor", "serve",
 		"--port", "0", "--registry", registryFile(t, ""),
 		"--tinymoon-assets", nowhere)
 	if result.ExitCode != 1 {
@@ -209,7 +209,7 @@ func TestEditorServeStopsOnAnAssetTreeWithoutTheEditorTier(t *testing.T) {
 		writeText(t, filepath.Join(tree, filepath.FromSlash(rel)), "/* stub */\n")
 	}
 
-	result := run(t, t.TempDir(), "editor", "serve",
+	result := run(t, t.TempDir(), "blog", "editor", "serve",
 		"--port", "0", "--registry", registryFile(t, ""),
 		"--tinymoon-assets", tree)
 	if result.ExitCode != 1 {

@@ -29,8 +29,8 @@ var assemblyDispatchGrant = strictcli.Grant{
 	Kind: strictcli.ProcMutate,
 }
 
-func (c *cli) registerPost() {
-	group := c.app.Group("post", "Manage blog posts and chronological content for the documentation site")
+func (c *cli) registerPost(parent *strictcli.Group) {
+	group := parent.Group("post", "Manage blog posts and chronological content for the documentation site")
 
 	group.Command("new",
 		"Scaffold a new blog post markdown file with a date-prefixed filename and frontmatter template containing title, date, slug, tags, draft status, and project metadata. Creates the file in the configured posts directory and exits with an error if the file already exists.",

@@ -56,7 +56,7 @@ func TestPostNewCreatesTheFile(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 
-	result := run(t, dir, "post", "new", "--title", "My First Post")
+	result := run(t, dir, "blog", "post", "new", "--title", "My First Post")
 	if result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
@@ -73,7 +73,7 @@ func TestPostNewUsesTheConfiguredPostsDir(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, map[string]any{"posts": map[string]any{"dir": "blog/articles/"}})
 
-	if result := run(t, dir, "post", "new", "--title", "Custom Dir"); result.ExitCode != 0 {
+	if result := run(t, dir, "blog", "post", "new", "--title", "Custom Dir"); result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
 	if !exists(filepath.Join(dir, "blog", "articles", today()+"-custom-dir.md")) {
@@ -85,7 +85,7 @@ func TestPostNewFrontmatter(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 
-	if result := run(t, dir, "post", "new", "--title", "Frontmatter Check"); result.ExitCode != 0 {
+	if result := run(t, dir, "blog", "post", "new", "--title", "Frontmatter Check"); result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
 	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-frontmatter-check.md"))
@@ -119,7 +119,7 @@ func TestPostNewRefusesAnExistingFile(t *testing.T) {
 	dir := postProject(t, nil)
 	writeText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-duplicate.md"), "existing")
 
-	result := run(t, dir, "post", "new", "--title", "Duplicate")
+	result := run(t, dir, "blog", "post", "new", "--title", "Duplicate")
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -131,7 +131,7 @@ func TestPostNewRefusesAnExistingFile(t *testing.T) {
 func TestPostNewRefusesAnEmptyTitle(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	if result := run(t, dir, "post", "new", "--title", ""); result.ExitCode != 1 {
+	if result := run(t, dir, "blog", "post", "new", "--title", ""); result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
 }
@@ -141,7 +141,7 @@ func TestPostNewRefusesAnOmittedTitle(t *testing.T) {
 	// handler: the framework refuses it at parse time.
 	isolate(t)
 	dir := postProject(t, nil)
-	result := run(t, dir, "post", "new")
+	result := run(t, dir, "blog", "post", "new")
 	if result.ExitCode == 0 {
 		t.Fatal("post new ran with no title")
 	}
@@ -152,7 +152,7 @@ func TestPostNewRefusesAnOmittedTitle(t *testing.T) {
 
 func TestPostNewRefusesWithoutAConfig(t *testing.T) {
 	isolate(t)
-	result := run(t, t.TempDir(), "post", "new", "--title", "Orphan Post")
+	result := run(t, t.TempDir(), "blog", "post", "new", "--title", "Orphan Post")
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -168,7 +168,7 @@ func TestPostNewCreatesThePostsDirectory(t *testing.T) {
 	if exists(postsDir) {
 		t.Fatal("the fixture already carries a posts directory")
 	}
-	if result := run(t, dir, "post", "new", "--title", "Dir Creation Test"); result.ExitCode != 0 {
+	if result := run(t, dir, "blog", "post", "new", "--title", "Dir Creation Test"); result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
 	if !exists(filepath.Join(postsDir, today()+"-dir-creation-test.md")) {
@@ -180,7 +180,7 @@ func TestPostNewCreatesThePostsDirectory(t *testing.T) {
 
 func TestPostListRefusesWithoutAConfig(t *testing.T) {
 	isolate(t)
-	result := run(t, t.TempDir(), "post", "list")
+	result := run(t, t.TempDir(), "blog", "post", "list")
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -192,7 +192,7 @@ func TestPostListRefusesWithoutAConfig(t *testing.T) {
 func TestPostListSaysSoWhenThereAreNone(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, map[string]any{"posts": map[string]any{"dir": ".selfdoc/posts/"}})
-	result := run(t, dir, "post", "list")
+	result := run(t, dir, "blog", "post", "list")
 	if !strings.Contains(result.Stdout, "No posts found") {
 		t.Errorf("an empty posts directory is not reported:\n%s", result.Stdout)
 	}
@@ -205,7 +205,7 @@ func TestPostListReportsEveryPost(t *testing.T) {
 	writePost(t, postsDir, "a.md", []string{"title: First Post", "date: 2025-01-15"}, "")
 	writePost(t, postsDir, "b.md", []string{"title: Second Post", "date: 2025-03-20"}, "")
 
-	result := run(t, dir, "post", "list")
+	result := run(t, dir, "blog", "post", "list")
 	for _, want := range []string{"First Post", "Second Post", "2 post(s) found"} {
 		if !strings.Contains(result.Stdout, want) {
 			t.Errorf("the listing does not carry %q:\n%s", want, result.Stdout)
@@ -220,7 +220,7 @@ func TestPostListMarksDrafts(t *testing.T) {
 	writePost(t, postsDir, "a.md",
 		[]string{"title: Draft Post", "date: 2025-01-15", "draft: true"}, "")
 
-	result := run(t, dir, "post", "list")
+	result := run(t, dir, "blog", "post", "list")
 	if !strings.Contains(result.Stdout, "[DRAFT]") {
 		t.Errorf("a draft is not marked:\n%s", result.Stdout)
 	}
@@ -232,7 +232,7 @@ func TestPostListLeavesPublishedPostsUnmarked(t *testing.T) {
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
 	writePost(t, postsDir, "a.md", []string{"title: Published Post", "date: 2025-01-15"}, "")
 
-	result := run(t, dir, "post", "list")
+	result := run(t, dir, "blog", "post", "list")
 	if strings.Contains(result.Stdout, "[DRAFT]") {
 		t.Errorf("a published post is marked as a draft:\n%s", result.Stdout)
 	}
@@ -249,7 +249,7 @@ func TestPostListIsNewestFirst(t *testing.T) {
 	writePost(t, postsDir, "new.md", []string{"title: New", "date: 2025-07-01"}, "")
 	writePost(t, postsDir, "mid.md", []string{"title: Mid", "date: 2025-01-01"}, "")
 
-	result := run(t, dir, "post", "list")
+	result := run(t, dir, "blog", "post", "list")
 	var lines []string
 	for _, line := range strings.Split(strings.TrimSpace(result.Stdout), "\n") {
 		if line != "" && !strings.Contains(line, "post(s)") {
@@ -273,7 +273,7 @@ func TestPostListShowsTheSlug(t *testing.T) {
 	writePost(t, filepath.Join(dir, ".selfdoc", "posts"), "a.md",
 		[]string{"title: My Great Post", "date: 2025-01-15", "slug: custom-slug"}, "")
 
-	result := run(t, dir, "post", "list")
+	result := run(t, dir, "blog", "post", "list")
 	if !strings.Contains(result.Stdout, "(custom-slug)") {
 		t.Errorf("the slug is not shown:\n%s", result.Stdout)
 	}
@@ -309,7 +309,7 @@ func TestPostGenerateWritesEveryDeclaredField(t *testing.T) {
 	writeText(t, filepath.Join(dir, "changelog.md"), "- Fixed a bug\n- Added a feature\n")
 	writeText(t, filepath.Join(dir, "body.md"), "This is a great release!\n")
 
-	result := run(t, dir, "post", "generate", "--from-release",
+	result := run(t, dir, "blog", "post", "generate", "--from-release",
 		"--version", "2.0.0", "--prev-version", "1.0.0",
 		"--bump-type", "major", "--description", "Major release",
 		"--context", "Big changes",
@@ -353,7 +353,7 @@ func TestPostGenerateMinimalPost(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 
-	if result := run(t, dir, "post", "generate", "--from-release", "--version", "1.2.3"); result.ExitCode != 0 {
+	if result := run(t, dir, "blog", "post", "generate", "--from-release", "--version", "1.2.3"); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v1.2.3.md"))
@@ -375,7 +375,7 @@ func TestPostGenerateBodyWithoutChangelog(t *testing.T) {
 	dir := postProject(t, nil)
 	writeText(t, filepath.Join(dir, "body.md"), "Custom release notes here.\n")
 
-	if result := run(t, dir, "post", "generate", "--from-release",
+	if result := run(t, dir, "blog", "post", "generate", "--from-release",
 		"--version", "0.5.0", "--body-file", filepath.Join(dir, "body.md")); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
@@ -393,7 +393,7 @@ func TestPostGenerateChangelogWithoutBody(t *testing.T) {
 	dir := postProject(t, nil)
 	writeText(t, filepath.Join(dir, "changes.md"), "- Bug fix #42\n- Performance improvement\n")
 
-	if result := run(t, dir, "post", "generate", "--from-release",
+	if result := run(t, dir, "blog", "post", "generate", "--from-release",
 		"--version", "3.1.0", "--changelog-file", filepath.Join(dir, "changes.md")); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
@@ -418,7 +418,7 @@ func TestPostGenerateUpdatesTheManifest(t *testing.T) {
 	}
 	writeManifest(t, dir, "1.0.0", []any{existing})
 
-	if result := run(t, dir, "post", "generate", "--from-release", "--version", "1.1.0"); result.ExitCode != 0 {
+	if result := run(t, dir, "blog", "post", "generate", "--from-release", "--version", "1.1.0"); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 
@@ -454,7 +454,7 @@ func TestPostGeneratePatchPreservesTheManifestsOwnFields(t *testing.T) {
 	writeManifest(t, dir, "1.0.0", nil)
 	before := readJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"))
 
-	if result := run(t, dir, "post", "generate", "--from-release", "--version", "1.1.0"); result.ExitCode != 0 {
+	if result := run(t, dir, "blog", "post", "generate", "--from-release", "--version", "1.1.0"); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 	after := readJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"))
@@ -477,7 +477,7 @@ func TestPostGenerateDryRunRecordsTheWrites(t *testing.T) {
 	dir := postProject(t, nil)
 	writeManifest(t, dir, "1.0.0", nil)
 
-	result := run(t, dir, "post", "generate", "--from-release",
+	result := run(t, dir, "blog", "post", "generate", "--from-release",
 		"--version", "1.1.0", "--prev-version", "1.0.0",
 		"--bump-type", "minor", "--project-name", "DryTest", "--dry-run")
 	if result.ExitCode != 0 {
@@ -505,7 +505,7 @@ func TestPostGenerateDryRunRecordsTheWrites(t *testing.T) {
 func TestPostGenerateRefusesTheModeItDoesNotHave(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	result := run(t, dir, "post", "generate", "--no-from-release", "--version", "1.0.0")
+	result := run(t, dir, "blog", "post", "generate", "--no-from-release", "--version", "1.0.0")
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
@@ -517,14 +517,14 @@ func TestPostGenerateRefusesTheModeItDoesNotHave(t *testing.T) {
 func TestPostGenerateRefusesAnEmptyVersion(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	if result := run(t, dir, "post", "generate", "--from-release", "--version", ""); result.ExitCode != 1 {
+	if result := run(t, dir, "blog", "post", "generate", "--from-release", "--version", ""); result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
 }
 
 func TestPostGenerateRefusesWithoutAConfig(t *testing.T) {
 	isolate(t)
-	result := run(t, t.TempDir(), "post", "generate", "--from-release", "--version", "1.0.0")
+	result := run(t, t.TempDir(), "blog", "post", "generate", "--from-release", "--version", "1.0.0")
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code is %d, want 1", result.ExitCode)
 	}
