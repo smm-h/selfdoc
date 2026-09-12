@@ -75,7 +75,7 @@ var schemaDiscoveryExcludes = map[string]bool{
 
 // schemaRelPath is where a project's dumped schema sits, relative to the
 // directory that holds it.
-var schemaRelPath = filepath.Join(".strictcli", "schema.json")
+const schemaRelPath = ".strictcli/schema.json"
 
 // UsesStrictcli reports whether the project at baseDir has a
 // .strictcli/schema.json file.
@@ -193,7 +193,10 @@ type Structure struct {
 // carrying no project_id, or naming a different project than the manifest, is
 // a SchemaError.
 func ReadSchemaJSON(baseDir string) (*Structure, error) {
-	schemaPath := filepath.Join(baseDir, schemaRelPath)
+	// The path is joined the way the Python joined it, because it is quoted
+	// in every error below: a project read as "." names
+	// "./.strictcli/schema.json", which is the string a reader greps for.
+	schemaPath := util.PathJoin(baseDir, schemaRelPath)
 	info, err := os.Stat(schemaPath)
 	if err != nil || !info.Mode().IsRegular() {
 		return nil, nil
