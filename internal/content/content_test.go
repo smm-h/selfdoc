@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/smm-h/selfdoc/internal/catalog"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/stricttest/go/hygiene"
@@ -407,6 +408,9 @@ func TestTableConfigSchemaHidesInternalFields(t *testing.T) {
 	for _, spec := range configSchemaInternalNames() {
 		rejects(t, rendered, "`"+spec+"`")
 	}
+	// Every other field is in the table, twitter among them: it is a
+	// declared key, not a value merged in behind the reader's back.
+	wants(t, rendered, "`twitter`")
 }
 
 // -- var --------------------------------------------------------------------
@@ -576,4 +580,17 @@ func configSchemaInternalNames() []string {
 		}
 	}
 	return names
+}
+
+func TestTableDirectivesCarriesOnlyTheCoreCatalogue(t *testing.T) {
+	// A declared-but-unimplemented directive is not something a page may
+	// use, so the reference table does not advertise it.
+	isolate(t)
+	rendered, err := ResolveTableDirectives()
+	if err != nil {
+		t.Fatalf("ResolveTableDirectives: %v", err)
+	}
+	for _, name := range catalog.FutureDirectiveNames() {
+		rejects(t, rendered, "| `"+name+"` |")
+	}
 }
