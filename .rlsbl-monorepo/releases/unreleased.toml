@@ -1,10 +1,39 @@
 [releasables.selfdoc]
 # Version bump type: patch, minor, major, infra, or prerelease
-bump = ""
+bump = "minor"
 # Short description of this release (required)
-description = ""
+description = "Rewritten in Go as one binary; the selfblog command folds into selfdoc"
 # Optional context explaining why these changes were made
-context = ""
+context = """
+selfdoc, selfdoc-core and selfblog were three Python packages that had to be
+installed and upgraded together, and the two command-line tools refused each
+other's projects even though they built the same pages out of the same engine.
+This release replaces all three with one Go module, github.com/smm-h/selfdoc,
+and one binary, selfdoc, that carries the engine, the blog, the assembly and
+the editor. Every line of Python in the repository is deleted; the only
+interpreter the binary ever starts is python3, for the Python extractor and
+for a project's own custom directives.
+
+The port was verified by building every consumer in the fleet twice -- once
+with the released Python tools, once with the new binary -- and diffing the
+output trees. The output is byte-identical everywhere except where a library
+was deliberately swapped: chroma replaces pygments for syntax highlighting and
+emits its own token class names, and Open Graph cards are the basic generated
+PNG now that the rich pre-drawn path is gone.
+
+Distribution keeps all three channels. `go install
+github.com/smm-h/selfdoc/cmd/selfdoc@v0` installs the binary directly, and the
+npm and PyPI packages are thin launchers that download the matching release
+binary from the GitHub Release on first run, so an existing `npm i -g` or `uv
+tool install` keeps working.
+
+Consumers have three things to change. A post-release hook that runs
+`selfblog assembly push` becomes `selfdoc assembly push`, and every other
+`selfblog X` invocation becomes `selfdoc X`. Custom CSS written against
+pygments highlight classes must be re-pointed at chroma's. An assembly's
+deploy workflow is regenerated with `selfdoc assembly sync-workflow`, which
+now installs the Go binary and pins one version.
+"""
 # Pre-release channel: alpha, beta, rc, or stable (ordered;
 # demotion is an error). Per package, so one workspace release
 # can ship some packages stable and others as alphas. See
