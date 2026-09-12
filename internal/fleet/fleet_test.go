@@ -73,7 +73,7 @@ func names(dirs []string) []string {
 // which executes directly.
 func discover(t *testing.T, root string) map[string]FleetProject {
 	t.Helper()
-	found, err := DiscoverFleet(effects.Unbound(), root)
+	found, err := DiscoverFleet(root)
 	if err != nil {
 		t.Fatalf("DiscoverFleet: %v", err)
 	}
@@ -305,7 +305,7 @@ func TestLoadProjectConfigReturnsTheOriginalDiagnosisWhenNoRetiredKeyExplainsIt(
 	delete(cfg, "base_url")
 	path := project(t, root, "invalid", cfg, nil)
 
-	_, sanitized, err := LoadProjectConfig(effects.Unbound(), path, t.TempDir())
+	_, sanitized, err := LoadProjectConfig(path, t.TempDir())
 	if err == nil {
 		t.Fatal("expected the schema refusal")
 	}
@@ -341,7 +341,7 @@ func TestLoadProjectConfigCompletesTheSanitizedRetryUnderAPreview(t *testing.T) 
 		if !h.Previewing() {
 			t.Fatal("the dispatch did not hand a previewing handle")
 		}
-		loaded, sanitized, err := LoadProjectConfig(h, path, scratch)
+		loaded, sanitized, err := LoadProjectConfig(path, scratch)
 		if err != nil {
 			t.Fatalf("a preview refused the sanitized retry: %v", err)
 		}
@@ -362,7 +362,7 @@ func TestLoadProjectConfigWritesTheSanitizedCopyIntoTheScratchDirectory(t *testi
 	path := project(t, root, "stale", cfg, nil)
 	scratch := t.TempDir()
 
-	loaded, sanitized, err := LoadProjectConfig(effects.Unbound(), path, scratch)
+	loaded, sanitized, err := LoadProjectConfig(path, scratch)
 	if err != nil {
 		t.Fatalf("LoadProjectConfig: %v", err)
 	}

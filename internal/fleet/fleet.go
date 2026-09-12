@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/config"
-	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -97,7 +96,7 @@ func ProjectDirs(root string) []string {
 // project, and nothing outside this function ever sees it. Recording it as
 // an effect would make a preview answer "unloadable" for a project that
 // loads, which is a different answer from the one a real run gives.
-func LoadProjectConfig(h *effects.Handle, projectDir, scratchDir string) (config.Config, bool, error) {
+func LoadProjectConfig(projectDir, scratchDir string) (config.Config, bool, error) {
 	loaded, err := config.Load(projectDir)
 	if err == nil {
 		return loaded, false, nil
@@ -167,7 +166,7 @@ func LoadProjectConfig(h *effects.Handle, projectDir, scratchDir string) (config
 // here, so nothing survives the call. The only returned error is a scratch
 // directory that could not be created, which would make every sanitized
 // retry impossible.
-func DiscoverFleet(h *effects.Handle, root string) ([]FleetProject, error) {
+func DiscoverFleet(root string) ([]FleetProject, error) {
 	// effects: exempt -- this call's own scratch directory, outside every
 	// project being read, created and removed before returning.
 	scratchDir, err := os.MkdirTemp("", "selfdoc-fleet-")
@@ -179,7 +178,7 @@ func DiscoverFleet(h *effects.Handle, root string) ([]FleetProject, error) {
 	var found []FleetProject
 	for _, path := range ProjectDirs(root) {
 		name := filepath.Base(path)
-		loaded, sanitized, err := LoadProjectConfig(h, path, scratchDir)
+		loaded, sanitized, err := LoadProjectConfig(path, scratchDir)
 		if err != nil {
 			found = append(found, FleetProject{
 				Name: name, Path: path,

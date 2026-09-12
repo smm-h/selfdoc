@@ -80,7 +80,7 @@ func TestScanProjectReportsPerProjectFindings(t *testing.T) {
 		"index.md": strings.ReplaceAll(cleanPage, "spelled correctly", "spelled correclty"),
 	})
 
-	found, err := fleet.DiscoverFleet(handle(), root)
+	found, err := fleet.DiscoverFleet(root)
 	if err != nil {
 		t.Fatalf("DiscoverFleet: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestScanProjectReportsAnUnreadableProjectWithoutFailing(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "broken", "selfdoc.json"), "{ not json")
 
-	found, err := fleet.DiscoverFleet(handle(), root)
+	found, err := fleet.DiscoverFleet(root)
 	if err != nil {
 		t.Fatalf("DiscoverFleet: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestScanProjectReportsAMissingDocsDirectory(t *testing.T) {
 		t.Fatalf("remove the docs tree: %v", err)
 	}
 
-	found, err := fleet.DiscoverFleet(handle(), root)
+	found, err := fleet.DiscoverFleet(root)
 	if err != nil {
 		t.Fatalf("DiscoverFleet: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestScanProjectSurveysPostsAtTheirOwnPaths(t *testing.T) {
 		"---\ntitle: Hello\ndate: 2024-01-15\ndraft: true\ndirectives: false\n---\n"+
 			"This post says correclty.\n")
 
-	found, err := fleet.DiscoverFleet(handle(), root)
+	found, err := fleet.DiscoverFleet(root)
 	if err != nil {
 		t.Fatalf("DiscoverFleet: %v", err)
 	}

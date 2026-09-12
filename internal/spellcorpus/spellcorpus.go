@@ -245,7 +245,7 @@ func RunSpellCorpus(root string, handle *effects.Handle) (CorpusDocument, int, e
 		return CorpusDocument{}, 0, err
 	}
 
-	projects, err := fleet.DiscoverFleet(handle, root)
+	projects, err := fleet.DiscoverFleet(root)
 	if err != nil {
 		return CorpusDocument{}, 0, err
 	}
