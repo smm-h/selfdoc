@@ -21,107 +21,33 @@ jobs:
   detect:
     runs-on: ubuntu-latest
     outputs:
-      selfdoc-core: ${{ steps.changes.outputs.selfdoc-core }}
-      selfblog: ${{ steps.changes.outputs.selfblog }}
-      selfdoc: ${{ steps.changes.outputs.selfdoc }}
+      root: ${{ steps.changes.outputs.root }}
     steps:
     - uses: actions/checkout@v6
     - uses: dorny/paths-filter@v4
       id: changes
       with:
         filters: |
-          selfdoc-core:
-            - 'selfdoc_core/**'
-            - 'pyproject.toml'
-            - 'uv.lock'
-            - '.github/workflows/ci-router.yml'
-            - '.rlsbl-monorepo/releasables/selfdoc-core/CHANGELOG.md'
-          selfblog:
-            - 'selfblog/**'
-            - 'selfdoc_core/**'
-            - 'pyproject.toml'
-            - 'uv.lock'
-            - '.github/workflows/ci-router.yml'
-            - '.rlsbl-monorepo/releasables/selfblog/CHANGELOG.md'
-          selfdoc:
-            - 'selfdoc/**'
-            - 'selfdoc_core/**'
-            - 'pyproject.toml'
-            - 'uv.lock'
-            - '.github/workflows/ci-router.yml'
-            - '.rlsbl-monorepo/releasables/selfdoc/CHANGELOG.md'
+          root: '**'
         predicate-quantifier: some-with-excludes
-  selfdoc-core-ci-test:
+  root-ci-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # requires-python: >= 3.12
-        python-version: ['3.12', '3.13', '3.14']
     steps:
     - uses: actions/checkout@v6
-    - uses: astral-sh/setup-uv@v7
-    - run: uv python install ${{ matrix.python-version }}
-    - run: uv sync --locked
-    - run: uv run python -c "import selfdoc_core"
-    - name: Install gitleaks
-      run: |
-        GITLEAKS_VERSION=8.24.3
-        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - run: uv run pytest --rootdir .
+      # go.mod: go 1.26.3
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: ./go.mod
+    - run: go vet ./...
+      # -short, and the browser assertions sit behind the `e2e` build tag, so
+      # this runs neither. The e2e suite drives a real headless Chromium that
+      # playwright-go downloads at run time; CI does not pay for that download.
+      # Run it locally with `go test -tags e2e ./internal/e2e/...`.
+    - run: go test ./... -race -short -timeout=10m
     defaults:
       run:
-        working-directory: selfdoc_core
-    name: selfdoc-core-ci / test
+        working-directory: .
+    name: root-ci / test
     needs:
     - detect
-    if: (needs.detect.outputs.selfdoc-core == 'true' || inputs.run_all)
-  selfblog-ci-pypi-test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # requires-python: >= 3.12
-        python-version: ['3.12', '3.13', '3.14']
-    steps:
-    - uses: actions/checkout@v6
-    - uses: astral-sh/setup-uv@v7
-    - run: uv python install ${{ matrix.python-version }}
-    - run: uv sync --locked
-    - run: uv run python -c "import selfblog"
-    - name: Install gitleaks
-      run: |
-        GITLEAKS_VERSION=8.24.3
-        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - run: uv run playwright install chromium
-    - run: uv run pytest --rootdir .
-    defaults:
-      run:
-        working-directory: selfblog
-    name: selfblog-ci-pypi / test
-    needs:
-    - detect
-    if: (needs.detect.outputs.selfblog == 'true' || inputs.run_all)
-  selfdoc-ci-pypi-test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # requires-python: >= 3.12
-        python-version: ['3.12', '3.13', '3.14']
-    steps:
-    - uses: actions/checkout@v6
-    - uses: astral-sh/setup-uv@v7
-    - run: uv python install ${{ matrix.python-version }}
-    - run: uv sync --locked
-    - run: uv run python -c "import selfdoc"
-    - name: Install gitleaks
-      run: |
-        GITLEAKS_VERSION=8.24.3
-        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - run: uv run playwright install chromium
-    - run: uv run pytest --rootdir .
-    defaults:
-      run:
-        working-directory: selfdoc
-    name: selfdoc-ci-pypi / test
-    needs:
-    - detect
-    if: (needs.detect.outputs.selfdoc == 'true' || inputs.run_all)
+    if: (needs.detect.outputs.root == 'true' || inputs.run_all)

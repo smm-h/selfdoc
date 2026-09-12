@@ -1,7 +1,4 @@
 {
-  "__rlsbl_version__": "0.118.0",
-  "selfdoc-core": "bfa60b4f497b67e71b31336e0373a3730aca9b16e6b35d1f7a3e003ee406c01a",
-  "selfblog": "84a902c63583e07b50c3f43573ea2264f1288d5157fc8206d2bd5a61475db891",
-  "selfdoc": "84a902c63583e07b50c3f43573ea2264f1288d5157fc8206d2bd5a61475db891",
-  "root": "bdccaf4edae11f2f39e802657b23bea1027b1a76244a57d5e6057e3ce6b9c23c"
+  "__rlsbl_version__": "0.120.1",
+  "root": "124da44fb40d43bdff183b3852470f6cd5db263a6df7e539fcdfb7596402de5d"
 }

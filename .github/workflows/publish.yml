@@ -49,17 +49,11 @@ jobs:
         # with an explicit tag input also resolves the correct project.
         tag_ref="${TAG_INPUT:-$GITHUB_REF_NAME}"
         case "$tag_ref" in
-          "selfdoc-core@v"*)
-            regex='^(selfdoc\-core\-ci) / '
-            ;;
-          "selfblog@v"*)
-            regex='^(selfblog\-ci\-pypi) / '
-            ;;
           "v"*)
-            regex='^(selfdoc\-ci\-pypi) / '
+            regex='^(root-ci) / '
             ;;
           *)
-            echo "::error::Publish gate: ref '$tag_ref' matches no project tag prefix (known prefixes: selfdoc-core@v, selfblog@v, v)."
+            echo "::error::Publish gate: ref '$tag_ref' matches no project tag prefix (known prefixes: v)."
             echo "To retry a release publish, dispatch this workflow at the tag ref: gh workflow run publish.yml --ref <tag>"
             exit 1
             ;;
@@ -248,34 +242,85 @@ jobs:
     permissions: {}
     steps:
     - run: echo 'No publish target for this release tag'
-  selfdoc-core-pypi:
+  root-go:
     needs: gate
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.tag || github.event.release.tag_name }}
-    - uses: astral-sh/setup-uv@v7
+        fetch-depth: 0
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: go.mod
     - name: Install gitleaks
       run: |
         GITLEAKS_VERSION=8.24.3
         curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - run: uv build --out-dir dist
-    - name: Scan artifacts for secrets
+    - name: Check if already published
+      id: check-go
       run: |
-        gitleaks dir dist/
-    - uses: pypa/gh-action-pypi-publish@release/v1
+        TAG="${RELEASE_TAG}"
+        if git ls-remote --tags origin "${TAG}" | grep -q "${TAG}"; then
+          # Tag already pushed and goreleaser assets likely exist
+          RELEASE_ASSETS=$(gh release view "${TAG}" --json assets -q '.assets | length' 2>/dev/null || echo "0")
+          if [ "${RELEASE_ASSETS}" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Already published: ${TAG} (${RELEASE_ASSETS} assets)"
+          fi
+        fi
+      env:
+        RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Derive the bare semver tag for goreleaser
+      id: bare-tag
+      if: steps.check-go.outputs.skip != 'true'
+      run: |
+        # Strip any "<name>@" / "<path>/" prefix: keep the trailing vX.Y.Z[-pre].
+        BARE=$(printf '%s' "${RELEASE_TAG}" | sed -E 's/^.*(v[0-9]+\.[0-9]+\.[0-9]+.*)$/\1/')
+        echo "tag=${BARE}" >> "$GITHUB_OUTPUT"
+      env:
+        RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    - uses: goreleaser/goreleaser-action@v7
+      if: steps.check-go.outputs.skip != 'true'
       with:
-        skip-existing: true
-        packages-dir: selfdoc_core/dist/
+        version: ~> v2
+        args: release --clean --skip=publish,announce,validate
+      env:
+        GORELEASER_CURRENT_TAG: ${{ steps.bare-tag.outputs.tag }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Scan artifacts for secrets
+      if: steps.check-go.outputs.skip != 'true'
+      run: |
+        CONFIG_ARGS=""
+        if [ -f .gitleaks.toml ]; then
+          CONFIG_ARGS="--config ${PWD}/.gitleaks.toml"
+        fi
+        gitleaks dir dist/ ${CONFIG_ARGS}
+    - name: Upload release assets to the release tag
+      if: steps.check-go.outputs.skip != 'true'
+      run: |
+        # dist/ holds the archives plus checksums.txt (the literal filename
+        # the launcher shims verify against). --clobber keeps a re-dispatch
+        # at the same tag idempotent.
+        shopt -s nullglob
+        ASSETS=(dist/*.tar.gz dist/*.zip dist/checksums.txt)
+        if [ ${#ASSETS[@]} -eq 0 ]; then
+          echo "::error::goreleaser produced no assets in dist/"
+          exit 1
+        fi
+        gh release upload "${RELEASE_TAG}" "${ASSETS[@]}" --clobber
+      env:
+        RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     permissions:
-      contents: read
+      contents: write
       id-token: write
-    if: startsWith(inputs.tag || github.ref_name, 'selfdoc-core@v')
+    if: startsWith(inputs.tag || github.ref_name, 'v')
     defaults:
       run:
-        working-directory: selfdoc_core
-  selfblog-npm:
+        working-directory: .
+  root-npm:
     needs: gate
     runs-on: ubuntu-latest
     steps:
@@ -290,11 +335,19 @@ jobs:
       run: |
         GITLEAKS_VERSION=8.24.3
         curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - name: Scan source for secrets
-      run: |
-        gitleaks dir .
     - name: Install dependencies
       run: npm ci
+    - name: Pack the publishable artifact
+      run: |
+        mkdir -p "$RUNNER_TEMP/artifacts"
+        npm pack --pack-destination "$RUNNER_TEMP/artifacts"
+    - name: Scan artifacts for secrets
+      run: |
+        CONFIG_ARGS=""
+        if [ -f .gitleaks.toml ]; then
+          CONFIG_ARGS="--config ${PWD}/.gitleaks.toml"
+        fi
+        gitleaks dir "$RUNNER_TEMP/artifacts" ${CONFIG_ARGS}
     - name: Check if already published
       id: check-npm
       run: |
@@ -314,19 +367,18 @@ jobs:
         else
           echo "tag=" >> "$GITHUB_OUTPUT"
         fi
-    - run: npm publish --provenance --access public ${{ 
-        steps.dist-tag.outputs.tag }}
+    - run: npm publish --access public ${{ steps.dist-tag.outputs.tag }}
       if: steps.check-npm.outputs.skip != 'true'
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
-      contents: read
+      contents: write
       id-token: write
-    if: startsWith(inputs.tag || github.ref_name, 'selfblog@v')
+    if: startsWith(inputs.tag || github.ref_name, 'v')
     defaults:
       run:
-        working-directory: selfblog
-  selfblog-pypi:
+        working-directory: .
+  root-pypi:
     needs: gate
     runs-on: ubuntu-latest
     steps:
@@ -341,93 +393,19 @@ jobs:
     - run: uv build --out-dir dist
     - name: Scan artifacts for secrets
       run: |
-        gitleaks dir dist/
+        CONFIG_ARGS=""
+        if [ -f .gitleaks.toml ]; then
+          CONFIG_ARGS="--config ${PWD}/.gitleaks.toml"
+        fi
+        gitleaks dir dist/ ${CONFIG_ARGS}
     - uses: pypa/gh-action-pypi-publish@release/v1
       with:
         skip-existing: true
-        packages-dir: selfblog/dist/
+        packages-dir: dist/
     permissions:
-      contents: read
-      id-token: write
-    if: startsWith(inputs.tag || github.ref_name, 'selfblog@v')
-    defaults:
-      run:
-        working-directory: selfblog
-  selfdoc-npm:
-    needs: gate
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        ref: ${{ inputs.tag || github.event.release.tag_name }}
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 24
-        registry-url: https://registry.npmjs.org
-    - name: Install gitleaks
-      run: |
-        GITLEAKS_VERSION=8.24.3
-        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - name: Scan source for secrets
-      run: |
-        gitleaks dir .
-    - name: Install dependencies
-      run: npm ci
-    - name: Check if already published
-      id: check-npm
-      run: |
-        PKG_NAME=$(node -p "require('./package.json').name")
-        PKG_VERSION=$(node -p "require('./package.json').version")
-        if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
-          echo "skip=true" >> "$GITHUB_OUTPUT"
-          echo "Already published: ${PKG_NAME}@${PKG_VERSION}"
-        fi
-    - name: Determine dist-tag
-      id: dist-tag
-      run: |
-        PKG_VERSION=$(node -p "require('./package.json').version")
-        if echo "$PKG_VERSION" | grep -q '-'; then
-          PREID=$(echo "$PKG_VERSION" | sed 's/[^-]*-//' | sed 's/\.[^.]*$//')
-          echo "tag=--tag $PREID" >> "$GITHUB_OUTPUT"
-        else
-          echo "tag=" >> "$GITHUB_OUTPUT"
-        fi
-    - run: npm publish --provenance --access public ${{ 
-        steps.dist-tag.outputs.tag }}
-      if: steps.check-npm.outputs.skip != 'true'
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    permissions:
-      contents: read
+      contents: write
       id-token: write
     if: startsWith(inputs.tag || github.ref_name, 'v')
     defaults:
       run:
-        working-directory: selfdoc
-  selfdoc-pypi:
-    needs: gate
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        ref: ${{ inputs.tag || github.event.release.tag_name }}
-    - uses: astral-sh/setup-uv@v7
-    - name: Install gitleaks
-      run: |
-        GITLEAKS_VERSION=8.24.3
-        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
-    - run: uv build --out-dir dist
-    - name: Scan artifacts for secrets
-      run: |
-        gitleaks dir dist/
-    - uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        skip-existing: true
-        packages-dir: selfdoc/dist/
-    permissions:
-      contents: read
-      id-token: write
-    if: startsWith(inputs.tag || github.ref_name, 'v')
-    defaults:
-      run:
-        working-directory: selfdoc
+        working-directory: .
