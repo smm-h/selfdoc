@@ -1,1 +1,2 @@
 {"format_version":1,"id":"18d4ca122be8212d7a8ad8ea2ba74733aed9da50589d7538","commits":["70aded50a1965700aa6fb009eee31ea4e5bfc71c","cb2ed14c314706ec94c41b864ca8ff0bb445e4c9"],"user_facing":false}
+{"format_version":1,"id":"18d5069cf069d787677073e8845141bf8af12beab2bd3525","commits":["e985421f8344ab6e7fbda9f347bb04df0454323e"],"user_facing":true,"description":"**Install with `go install github.com/smm-h/selfdoc@v0`.** The entry point moved to the module root, so the former `.../cmd/selfdoc` path no longer exists.","type":"breaking"}
