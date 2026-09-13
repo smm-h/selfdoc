@@ -4,39 +4,55 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/smm-h/selfdoc/internal/cli/faketool"
 	"github.com/smm-h/selfdoc/internal/testproject"
 	"github.com/smm-h/strictcli/go/strictcli"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
-// fakeToolStateEnv names the directory the fake external tools keep their
-// state in. Its presence in the environment is what turns this test binary
-// into the fake tool rather than a test run -- see TestMain.
-const fakeToolStateEnv = "SELFDOC_CLI_FAKE_TOOL_STATE"
+// fakeToolBinary is the fake external tool this test binary built for itself:
+// one plain, uninstrumented executable, built once by [TestMain] and installed
+// under each tool's own name by the tests that need it.
+var fakeToolBinary string
 
-// TestMain is the fake tools' entry point as well as the suite's.
+// TestMain builds the fake external tool before any test runs.
 //
 // Every command that reaches GitHub or Cloudflare does it by running "gh" or
 // "npx", so the seam a test replaces is the executable rather than a function:
-// a script at the front of PATH shadows the real tool and re-runs this binary
-// with fakeToolStateEnv set. The call the command makes is therefore a real
-// subprocess through the real effects handle.
+// an executable at the front of PATH shadows the real tool, and the call the
+// command makes is a real subprocess through the real effects handle.
+//
+// The fake is a program of its own, in the faketool package, compiled here
+// without the race detector. It used to be this very binary re-running itself,
+// which made every call a command made pay the race runtime's start-up cost.
 func TestMain(m *testing.M) {
-	if dir := os.Getenv(fakeToolStateEnv); dir != "" {
-		os.Exit(runFakeTool(dir, os.Args[0], os.Args[1:]))
-	}
 	if os.Getenv(runAsCLIEnv) != "" {
 		New(Options{}).Run()
 		return
 	}
-	os.Exit(m.Run())
+	dir, err := os.MkdirTemp("", "selfdoc-fake-tool-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "creating the fake tool's build directory: %v\n", err)
+		os.Exit(1)
+	}
+	fakeToolBinary = filepath.Join(dir, "faketool")
+	build := exec.Command("go", "build", "-o", fakeToolBinary,
+		"github.com/smm-h/selfdoc/internal/cli/faketoolcmd")
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "building the fake tool: %v\n", err)
+		os.RemoveAll(dir)
+		os.Exit(1)
+	}
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
 }
 
 // runAsCLIEnv turns this test binary into the real command-line application,
@@ -86,24 +102,14 @@ func runCLI(t *testing.T, dir string, argv ...string) cliProcess {
 	return cliProcess{Stdout: stdout.String(), Stderr: stderr.String(), ExitCode: code}
 }
 
-// toolReply is one scripted answer. Match is a substring of the joined argv;
-// an empty Match answers anything.
-type toolReply struct {
-	Match  string `json:"match"`
-	Code   int    `json:"code"`
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-}
-
-// toolCall is one recorded invocation of a fake tool.
-type toolCall struct {
-	Tool  string   `json:"tool"`
-	Argv  []string `json:"argv"`
-	Input string   `json:"input"`
-}
-
-// Joined renders the argv the way an assertion reads it.
-func (c toolCall) Joined() string { return c.Tool + " " + strings.Join(c.Argv, " ") }
+// The fakes' protocol types, under the names the assertions read them by.
+type (
+	// toolReply is one scripted answer. Match is a substring of the joined
+	// argv; an empty Match answers anything.
+	toolReply = faketool.Reply
+	// toolCall is one recorded invocation of a fake tool.
+	toolCall = faketool.Call
+)
 
 // fakeTools is a set of fake executables at the front of PATH, plus the state
 // they record into.
@@ -113,23 +119,34 @@ type fakeTools struct {
 }
 
 // newFakeTools installs fakes for the named executables and returns the handle
-// a test drives them through.
+// a test drives them through. The state directory reaches each fake through
+// the environment the command's subprocess inherits.
 func newFakeTools(t *testing.T, names ...string) *fakeTools {
 	t.Helper()
 	bin := isolate(t)
 	state := t.TempDir()
-	binary, err := os.Executable()
-	if err != nil {
-		t.Fatalf("locating the test binary: %v", err)
-	}
 	for _, name := range names {
-		script := fmt.Sprintf("#!/bin/sh\nexport %s=%s\nexec %s \"$@\"\n",
-			fakeToolStateEnv, shellQuote(state), shellQuote(binary))
-		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755); err != nil {
-			t.Fatalf("writing the fake %s: %v", name, err)
-		}
+		installFakeTool(t, filepath.Join(bin, name))
 	}
+	t.Setenv(faketool.StateEnv, state)
 	return &fakeTools{t: t, dir: state}
+}
+
+// installFakeTool puts the prebuilt fake at path, by hard link where the two
+// paths share a filesystem and by copy otherwise. The name it is installed
+// under is the tool name it records, so each fake must be its own file.
+func installFakeTool(t *testing.T, path string) {
+	t.Helper()
+	if err := os.Link(fakeToolBinary, path); err == nil {
+		return
+	}
+	data, err := os.ReadFile(fakeToolBinary)
+	if err != nil {
+		t.Fatalf("reading the fake tool: %v", err)
+	}
+	if err := os.WriteFile(path, data, 0o755); err != nil {
+		t.Fatalf("installing the fake tool: %v", err)
+	}
 }
 
 // Reply scripts the answers, matched against each call's joined argv in order.
@@ -180,42 +197,6 @@ func (f *fakeTools) Matching(needle string) []toolCall {
 	return found
 }
 
-// runFakeTool is the fake executable's whole body: record the call, then
-// answer from the scripted replies.
-func runFakeTool(dir, program string, argv []string) int {
-	input := ""
-	for _, arg := range argv {
-		if arg == "-" {
-			data, _ := io.ReadAll(os.Stdin)
-			input = string(data)
-			break
-		}
-	}
-	tool := filepath.Base(program)
-	record := toolCall{Tool: tool, Argv: argv, Input: input}
-	if data, err := json.Marshal(record); err == nil {
-		if file, err := os.OpenFile(filepath.Join(dir, "calls.jsonl"),
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
-			_, _ = file.Write(append(data, '\n'))
-			_ = file.Close()
-		}
-	}
-
-	var replies []toolReply
-	if data, err := os.ReadFile(filepath.Join(dir, "replies.json")); err == nil {
-		_ = json.Unmarshal(data, &replies)
-	}
-	joined := record.Joined()
-	for _, reply := range replies {
-		if reply.Match == "" || strings.Contains(joined, reply.Match) {
-			fmt.Fprint(os.Stdout, reply.Stdout)
-			fmt.Fprint(os.Stderr, reply.Stderr)
-			return reply.Code
-		}
-	}
-	return 0
-}
-
 // isolate binds the environment isolation floor and returns a directory at the
 // FRONT of PATH, so a fake tool written there shadows any real one. The
 // inherited PATH stays behind it, so git and python3 stay reachable.
@@ -228,11 +209,6 @@ func isolate(t *testing.T) string {
 	bin := t.TempDir()
 	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
 	return bin
-}
-
-// shellQuote single-quotes a token for a fake tool's shell wrapper.
-func shellQuote(token string) string {
-	return "'" + strings.ReplaceAll(token, "'", `'\''`) + "'"
 }
 
 // newApp builds the application under test, pointed at dir.
