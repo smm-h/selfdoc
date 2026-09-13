@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.39.2",
+  "version": "0.39.3",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "go",
   "base_url": "https://selfdoc.smmh.dev",
@@ -671,23 +671,6 @@
           "level": 2,
           "text": "Flags",
           "anchor": "flags"
-        }
-      ]
-    },
-    {
-      "path": "cmd-selfdoc.md",
-      "title": "cmd/selfdoc",
-      "type": "doc",
-      "headings": [
-        {
-          "level": 1,
-          "text": "cmd/selfdoc",
-          "anchor": "cmdselfdoc"
-        },
-        {
-          "level": 2,
-          "text": "`cmd/selfdoc`",
-          "anchor": "cmdselfdoc"
         }
       ]
     },
@@ -9423,6 +9406,28 @@
       ]
     },
     {
+      "path": "selfdoc.md",
+      "title": "selfdoc",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc",
+          "anchor": "selfdoc"
+        },
+        {
+          "level": 2,
+          "text": "`.`",
+          "anchor": ""
+        },
+        {
+          "level": 3,
+          "text": "`Version`",
+          "anchor": "version"
+        }
+      ]
+    },
+    {
       "path": "seo.md",
       "title": "SEO",
       "type": "doc",
@@ -9662,6 +9667,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-13T04:41:23.033679+00:00",
+  "last_gen": "2026-09-13T23:41:08.419828+00:00",
   "theme": "minimal"
 }

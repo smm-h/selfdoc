@@ -229,11 +229,11 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "d34bbe304bb66a75f3f1bc15cf80abe05078f28d8d335a36193f3c7bba5bec3f",
+    "content": "e46808f9ba9e0a3a17180e289673cafd40e42c67e6019f0bedc4ea73e3f2c655",
     "description": "d58994b3d23a44d56e7a9f15969ee04b15d5ad5547515b76a4d6c7ad7b53d7e1"
   },
   "en/getting-started.md": {
-    "content": "9f78b9da523e0f14e74b9b57d9362874f5c7bfc3b3bc0d6e23df4e7d23035220",
+    "content": "6c291b4227fb73e7a2305da0eeb1c64d10466b8bce4d2e083f570a855e9f3ef4",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -245,13 +245,23 @@
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
-    "content": "3aeda07736ce941ac7c80546b334ff1a63825528840c8509840b16abe1d87bd8",
+    "content": "f5cb12c0d7d8e54fc09526e139094e6881357440314950ecc8e9bc54c2b62d0f",
     "description": "569cfc0e18516b909e82c95a48088c40064ec4f54d403bcad583907fcb4999d3"
   },
   "en/internal-address.md": {
     "content": "645a49282401a2b4fd7ccbab79ac745880d5ab20a2424d33de29f7f96570d42b",
     "description": "42da1820bfb55cc93a04dbb92ae0c5e4738d2e9abd679d536359c6b5011d6a8e",
     "source_docstring": "aeede239e4509d7a01a4c35c45690cf67b4edbf0d6d2d035aceff9cd2339fcf5"
+  },
+  "en/internal-blog-assembly-fakegh.md": {
+    "content": "3f2b8d214b2e45a81f54cf1ab77e32234e46323d5d50ed9f8ebd0ca3490d8f70",
+    "description": "b78de49b7f98a1f828f9d9a1550f555744a53a15f98fd5ccd37a84e1c8e24884",
+    "seed_hash": "b78de49b7f98a1f828f9d9a1550f555744a53a15f98fd5ccd37a84e1c8e24884"
+  },
+  "en/internal-blog-assembly-fakeghcmd.md": {
+    "content": "a350a9fbea29cd662d279a42254a724874e0edec2f232604d367fd07a183b032",
+    "description": "555990fdf2a3ac83b9b328eae55222cb0ef0b95cabe0d29a557385311f144356",
+    "seed_hash": "555990fdf2a3ac83b9b328eae55222cb0ef0b95cabe0d29a557385311f144356"
   },
   "en/internal-blog-assembly.md": {
     "content": "89b3a6a8f1a2bc594cdd8855386a50c8b56283a0fb287c9e8aa9a679ba11c0a9",
@@ -337,6 +347,16 @@
     "content": "1eb47a91376aa3c372c0a9821e6f4b79b38941750656d69279925c3d013afd57",
     "description": "b624c7cf629971ce7548bd2c16d7bb730966c44146f754f2ed68f7fb164f9923",
     "source_docstring": "2523f48dc7642dc7487a39fc93e7cc96641730fb720a8586ba6972f6ab8db875"
+  },
+  "en/internal-cli-faketool.md": {
+    "content": "3a065d30d6690969021e25f252e9b3fad501b2e57dd11c102e881b212f1c390c",
+    "description": "83e635403bd99400215753994ee3d9327388fa8331f34849c6cf463bc60afe3d",
+    "seed_hash": "83e635403bd99400215753994ee3d9327388fa8331f34849c6cf463bc60afe3d"
+  },
+  "en/internal-cli-faketoolcmd.md": {
+    "content": "cf246cfd2f448f8660b6dc9d66809285f882710e607e24da72a87f9bd0b7e6b4",
+    "description": "557049aa13ff5594fc307a80ea28241d9d27871b11ac2fcf5869701981807148",
+    "seed_hash": "557049aa13ff5594fc307a80ea28241d9d27871b11ac2fcf5869701981807148"
   },
   "en/internal-cli.md": {
     "content": "08b62e87a9077af3c52bf936736a98d7c660f1fb031128edff0f63c75be55a87",
@@ -599,7 +619,7 @@
     "source_docstring": "5479db471b64fae176fa884d74337d3666fea96998a5766e113656b246e394f7"
   },
   "en/internals.md": {
-    "content": "0ebf6674503ef042186b3f3b3f6e7ad8e69f1e49628ab8e5695fa184d9d135c4",
+    "content": "a707063e5e19025b8f11f3c70097c90a2afc9ac7c8363742c0226b3b15892278",
     "description": "368283e2ae5434b431437461e25c722f4ddc31083b2720fe7794ada67c517418"
   },
   "en/llms-txt.md": {
@@ -823,8 +843,8 @@
   },
   "en/selfdoc.md": {
     "content": "9861e93acd2222bedc379533c409623d488389ce942a919d5c7c4a7715ff9fa9",
-    "description": "573a4da6221f80fb9a00c5e2d036f39d8e41ff0b0d8e131d043a6f5311194872",
-    "source_docstring": "878a8caa74c228e469b5a7ec4f769308f83ba4b2b21b568fcb6c38756d17b8e1"
+    "description": "6237342e0eb7aab2f1cc3c880ef3eed8a3453229e89116af0f5ecf4bc4405c4b",
+    "source_docstring": "08e3de71703233dd44976e0c79149b031754700e2dcb3eca21ef01825328564d"
   },
   "en/seo.md": {
     "content": "b88484d326c102d014f930e51937368640f1aba0f4276969a20693c2be136cf4",

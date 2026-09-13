@@ -10,7 +10,6 @@ order: 90
 
 # API Reference
 
-- [cmd/selfdoc](../cmd-selfdoc/)
 - [internal/address](../internal-address/)
 - [internal/blog/assembly](../internal-blog-assembly/)
 - [internal/blog/chrome](../internal-blog-chrome/)
@@ -77,3 +76,4 @@ order: 90
 - [internal/tokenizer](../internal-tokenizer/)
 - [internal/urls](../internal-urls/)
 - [internal/util](../internal-util/)
+- [selfdoc](../selfdoc/)

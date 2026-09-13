@@ -6,9 +6,9 @@ Code-aware static site generator. Builds full documentation sites from Markdown 
 
 ## Conventions
 
-- Pure Go, one module (`github.com/smm-h/selfdoc`) and one binary (`cmd/selfdoc`). Every engine package is under `internal/`.
+- Pure Go, one module (`github.com/smm-h/selfdoc`) and one binary, whose entry point is the module root. Every engine package is under `internal/`.
 - Runtime dependencies: `strictcli` (the CLI framework, and the effects handle every mutation is minted on), `strictspec` (generates the validators for the declarative catalogue and lint-registry documents), `tinymoon` (the theme framework), `chroma` (syntax highlighting), `go-toml-edit` (TOML parsing), `gotreesitter` (the pure-Go parser the Python extractor reads its trees from), `andybalholm/brotli`, `golang.org/x/text`. Tests add `stricttest` and `playwright-go`.
-- Install: `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`, or the platform archive from the GitHub Release on a machine with no Go toolchain. Go is the only distribution channel: there is no npm package and no PyPI package.
+- Install: `go install github.com/smm-h/selfdoc@v0`, or the platform archive from the GitHub Release on a machine with no Go toolchain. Go is the only distribution channel: there is no npm package and no PyPI package.
 - No cgo and no runtime asset directory: stylesheets, JS, the word list, the directive catalogue, the lint registry and the Python grammar's tables are all embedded in the binary. The release build passes `-tags=grammar_subset,grammar_subset_python` so only the Python grammar is compiled in.
 - python3 is needed for one thing only, and only when it is used: a custom directive written as a `.py` script (see below). Every built-in extractor, the Python one included, parses in process, so it is not a build dependency and not a documenting dependency either.
 - Effects: every mutation, subprocess and network call goes through an explicit `*effects.Handle` threaded from the command. There is no package-level handle.
@@ -148,6 +148,8 @@ The suite needs Chromium through playwright-go and Pagefind. Each missing depend
 
 - **internal/address**: Package address is the single addressing authority for built pages.
 - **internal/blog/assembly**: Package assembly carries the assembly's operations: the deploy workflow it generates, the dispatches it sends, the build-and-graft body that deploy runs, and the two publishers that write into it without cloning it.
+- **internal/blog/assembly/fakegh**: Package fakegh is the fake gh the assembly suite puts at the front of PATH.
+- **internal/blog/assembly/fakeghcmd**: Command fakeghcmd is the executable the assembly suite installs as "gh" at the front of PATH.
 - **internal/blog/chrome**: Package chrome is the assembly's one set of page-chrome assets.
 - **internal/blog/editor**: Package editor is the authoring app's local server: registry, documents, preview, stream.
 - **internal/blog/editor/assets**: Package assets decides where the editor's front-end comes from, declared rather than discovered.
@@ -165,6 +167,8 @@ The suite needs Chromium through playwright-go and Pagefind. Each missing depend
 - **internal/catalog**: Package catalog is selfdoc's directive catalogue: every built-in directive name and its status.
 - **internal/check**: Package check validates a project's documentation: every directive resolves, every public symbol is covered, and every lint rule holds.
 - **internal/cli**: Package cli registers selfdoc's whole command tree on one strictcli application.
+- **internal/cli/faketool**: Package faketool is the fake external tool the cli suite puts at the front of PATH under whatever names a test asks for -- "gh", "npx", and so on.
+- **internal/cli/faketoolcmd**: Command faketoolcmd is the executable the cli suite installs at the front of PATH under each external tool's name.
 - **internal/config**: Package config loads and validates a project's selfdoc.json.
 - **internal/content**: Package content resolves the content directives: the ones that need no language extractor.
 - **internal/cv**: Package cv holds the CV as data: one declared document, rendered as a page and as a Person.
