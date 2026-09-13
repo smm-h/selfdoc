@@ -54,7 +54,6 @@ __pycache__/
 target/
 *.egg-info/
 
-build/
 .rlsbl-monorepo/lock
 .rlsbl-monorepo/releasables/*/releases/in-progress.json
 .rlsbl-monorepo/releasables/*/releases/scrub-result.json
