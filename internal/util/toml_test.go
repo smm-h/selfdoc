@@ -144,3 +144,74 @@ func TestDecodeTOMLEmptyDocument(t *testing.T) {
 		t.Fatalf("values = %#v, want an empty map", values)
 	}
 }
+
+// TestDecodeTOMLDeeplyNestedArraysOfTables pins that an array of tables nested
+// inside an array of tables nested inside another one keeps every element, and
+// that a plain table written under an element belongs to that element rather
+// than to a later one.
+func TestDecodeTOMLDeeplyNestedArraysOfTables(t *testing.T) {
+	t.Parallel()
+	values, err := DecodeTOML([]byte(
+		"[[a]]\nn = 1\n\n[[a.b]]\nn = 2\n\n[[a.b.c]]\nn = 3\n\n" +
+			"[[a.b.c]]\nn = 4\n\n[a.b.meta]\nflag = true\n\n" +
+			"[[a.b]]\nn = 5\n\n[[a]]\nn = 6\n"))
+	if err != nil {
+		t.Fatalf("DecodeTOML: %v", err)
+	}
+	want := []map[string]any{
+		{
+			"n": int64(1),
+			"b": []map[string]any{
+				{
+					"n":    int64(2),
+					"c":    []map[string]any{{"n": int64(3)}, {"n": int64(4)}},
+					"meta": map[string]any{"flag": true},
+				},
+				{"n": int64(5)},
+			},
+		},
+		{"n": int64(6)},
+	}
+	if !reflect.DeepEqual(values["a"], want) {
+		t.Fatalf("a = %#v, want %#v", values["a"], want)
+	}
+}
+
+// TestDecodeTOMLInlineTablesInsideAnArray pins the shape an array of inline
+// tables decodes into: a []any of map[string]any, not the []map[string]any an
+// array-of-tables header produces, because a caller's type assertion tells the
+// two apart. A dotted key inside such an inline table nests like any other.
+func TestDecodeTOMLInlineTablesInsideAnArray(t *testing.T) {
+	t.Parallel()
+	values, err := DecodeTOML([]byte("rows = [{a = 1}, {b.c = 2}]\n"))
+	if err != nil {
+		t.Fatalf("DecodeTOML: %v", err)
+	}
+	want := []any{
+		map[string]any{"a": int64(1)},
+		map[string]any{"b": map[string]any{"c": int64(2)}},
+	}
+	if !reflect.DeepEqual(values["rows"], want) {
+		t.Fatalf("rows = %#v, want %#v", values["rows"], want)
+	}
+}
+
+// TestDecodeTOMLLocalTimeShape pins the remaining date-time flavors the shapes
+// comment names: a local date-time and a local time are read in the machine's
+// zone, while an offset date-time keeps the offset it was written with.
+func TestDecodeTOMLLocalTimeShape(t *testing.T) {
+	t.Parallel()
+	values, err := DecodeTOML([]byte(
+		"stamp = 1979-05-27T07:32:00.5\nclock = 07:32:00\n"))
+	if err != nil {
+		t.Fatalf("DecodeTOML: %v", err)
+	}
+	wantStamp := time.Date(1979, time.May, 27, 7, 32, 0, 500000000, time.Local)
+	if !reflect.DeepEqual(values["stamp"], wantStamp) {
+		t.Fatalf("stamp = %#v, want %#v", values["stamp"], wantStamp)
+	}
+	wantClock := time.Date(0, time.January, 1, 7, 32, 0, 0, time.Local)
+	if !reflect.DeepEqual(values["clock"], wantClock) {
+		t.Fatalf("clock = %#v, want %#v", values["clock"], wantClock)
+	}
+}
