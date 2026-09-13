@@ -32,10 +32,16 @@ github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 h1:1EYB5IzjZawrrnELUi78f9fPu57Hu
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
 github.com/smm-h/go-toml-edit v0.3.0 h1:XOt0AsBYafNc8PQpJ7jpfdUiUILFuYRr8Xv8ZPit5U8=
 github.com/smm-h/go-toml-edit v0.3.0/go.mod h1:ateUuu33c4CaaB3XUQgsyuPEsIkAWRV8nahfZqpNhm4=
+github.com/smm-h/go-toml-edit v0.4.0 h1:SewwlafoSSxp2O52Ro5S/xC74vutGoUo84Sa7GcbMJQ=
+github.com/smm-h/go-toml-edit v0.4.0/go.mod h1:S54Qz/7GFldPeR7Zdv16YtBgQjNwD2xai0i/KFMOQ0Q=
 github.com/smm-h/strictcli/go v0.33.0 h1:jmzCQ+FnIIApQoVY+ilRubiDuaAwwU2Wgi3kYzOIt/E=
 github.com/smm-h/strictcli/go v0.33.0/go.mod h1:6VmdZhLUAAmlPH4lmH4wfdwIR0ituavDD7W2U+rXMA8=
+github.com/smm-h/strictcli/go v0.34.0 h1:EgqXJ5eEQQ26C1Y5oI9QKaU/9ES24JuWOTRR6GrpVrg=
+github.com/smm-h/strictcli/go v0.34.0/go.mod h1:6mGIkQYXOG1UYkwBclbTmj8Rw9fP8jjEEDXSDsH0bNI=
 github.com/smm-h/strictspec/go v0.2.3 h1:GwijMXbYan1JJ1wsmufdqw/2mfrHP5OhmdYhxyYDjhY=
 github.com/smm-h/strictspec/go v0.2.3/go.mod h1:4mp7DkOGMlzPbxKn3cDxG+avteFsa2zKDSpOajOre4Y=
+github.com/smm-h/strictspec/go v0.2.5 h1:JLX2quk+Pvibv+pW5VkIntjhXodFqTM6U6nQSlkAkQk=
+github.com/smm-h/strictspec/go v0.2.5/go.mod h1:D/rx0tstMHNDuk5aD2C5FLe2NPvmGng/fCkpNJtxEWk=
 github.com/smm-h/stricttest/go v0.2.0 h1:Yanc930kSovMdCMmB+KPbqbRZTdeWiivlOwvs0qBztM=
 github.com/smm-h/stricttest/go v0.2.0/go.mod h1:/rFaWmnLgp6wY9Ne+/kZIMUdOOGTPjjTHDgJjxyaYTs=
 github.com/smm-h/tinymoon v0.11.0 h1:I5t9RrcqTqR6+rK4cCGEyG58rpltjI2aoXSOHNdsVDM=
