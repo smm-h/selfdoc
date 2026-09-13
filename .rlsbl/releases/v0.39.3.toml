@@ -24,3 +24,7 @@ empty branch by name, so the path can no longer be rendered.
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "754601fbcb53ad31f9b65b6eac640dbde6855eec"
+
+[tree_hashes]
+"." = "c250f95529130a5927e966d5c77bc3a21c0b2637"
