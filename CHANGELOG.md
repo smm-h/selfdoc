@@ -2,6 +2,73 @@
 
 # Changelog
 
+## 0.39.0
+
+Rewritten in Go as one binary; the selfblog command folds into selfdoc
+
+<details>
+<summary>Context</summary>
+
+selfdoc, selfdoc-core and selfblog were three Python packages that had to be
+installed and upgraded together, and the two command-line tools refused each
+other's projects even though they built the same pages out of the same engine.
+This release replaces all three with one Go module, github.com/smm-h/selfdoc,
+and one binary, selfdoc, that carries the engine, the blog, the assembly and
+the editor. Every line of Python in the repository is deleted, and the
+repository itself stops being a single-member workspace and becomes an
+ordinary standalone rlsbl project. The only interpreter the binary ever
+starts is python3, and only for a project's own custom directives: Python
+source is parsed in process now, so documenting a Python project needs no
+interpreter on the machine.
+
+The port was verified by building every consumer in the fleet twice -- once
+with the released Python tools, once with the new binary -- and diffing the
+output trees. The output is byte-identical everywhere except where a library
+was deliberately swapped: chroma replaces pygments for syntax highlighting and
+emits its own token class names, and Open Graph cards are the basic generated
+PNG now that the rich pre-drawn path is gone.
+
+Distribution is the Go binary alone. `go install
+github.com/smm-h/selfdoc/cmd/selfdoc@v0` installs it directly, and every
+release publishes prebuilt archives for Linux, macOS and Windows on amd64 and
+arm64 for a machine with no Go toolchain. The npm and PyPI launcher packages
+this repository used to publish are gone and stop receiving updates.
+
+What consumers have to change: a post-release hook that runs `selfblog
+assembly push` becomes `selfdoc assembly push`, and every other `selfblog X`
+invocation becomes `selfdoc X`. Writing commands sit under one `blog` group,
+so `selfdoc post X` is `selfdoc blog post X`, `selfdoc editor X` is `selfdoc
+blog editor X`, and `selfdoc docs publish` is `selfdoc blog publish-docs`.
+Custom CSS written against pygments highlight classes must be re-pointed at
+chroma's. An assembly's deploy workflow is regenerated with `selfdoc assembly
+sync-workflow`, which now installs the Go binary and pins one version.
+
+</details>
+
+### Breaking
+
+- [root] **selfdoc is one Go binary now, and the `selfblog` command is gone.** Install it with `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`, or download the archive for your platform from the GitHub Release; every `selfblog X` invocation is now `selfdoc X`, so a post-release hook running `selfblog assembly push` must be changed to `selfdoc assembly push`.
+- [root] **One `build` builds every kind of site and one `check` checks every kind of project.** `build --target site|posts|unified|home` selects what to build, and `check` validates whichever kind of project it is pointed at, so the refusals each of the two former CLIs raised against the other kind of project are gone.
+- [root] **Custom directives run out of process through `python3`.** The `resolve(attrs, config, body)` contract is unchanged, so existing scripts keep working, but a script that fails or that defines no `resolve` is now a hard error that stops the build instead of an inline note left in the page.
+- [root] **Syntax highlighting comes from chroma, whose token class names differ from pygments.** Highlighted code carries chroma class names, so custom CSS written against the old pygments classes must be re-pointed; the stylesheet selfdoc generates follows the new names by itself.
+- [root] **Open Graph cards are the basic generated PNG only.** Every page still gets an OG image, drawn by the built-in generator; the richer pre-drawn card path is gone.
+- [root] **The assembly deploy workflow installs the Go binary and pins one version.** The generated workflow runs `go install` instead of installing two Python packages, and `assembly sync-workflow` takes `--pin-selfdoc` and `--pin-pagefind` to choose the versions it writes; regenerate the workflow with `selfdoc assembly sync-workflow` after upgrading.
+- [root] **Home-project pages wrap site-level directive output in `<selfdoc-region>` instead of `<selfblog-region>`.** The unified assembly refreshes only regions carrying the new tag, so redeploy the home project once after upgrading (`selfdoc blog publish-docs` from the home checkout, or its next release); until then its project cards and newest-post block stay as last published.
+- [root] **The editor reads its repository list from `~/Projects/ark/selfdoc-registry.toml` by default.** Move an existing `selfblog-registry.toml` to the new name, or pass `--registry` with the old path.
+- **The blog commands moved under one `blog` group.** `selfdoc post X` is now `selfdoc blog post X`, `selfdoc editor X` is now `selfdoc blog editor X`, and `selfdoc docs publish` is now `selfdoc blog publish-docs`; change any hook, script or alias that spells an old path.
+- **Go is the only distribution channel.** The `selfdocumenting` npm and PyPI packages are gone and stop receiving updates: install with `go install github.com/smm-h/selfdoc/cmd/selfdoc@v0`, or, on a machine with no Go toolchain, download the archive for your platform from the GitHub Release and put `selfdoc` on your `PATH`.
+
+### Features
+
+- [root] **`python3` is needed only for custom directives.** The build, the blog, the assembly and every language extractor -- Python included -- run inside the one binary, so a project that declares no custom directive script needs no interpreter at all.
+- [root] **The Python-only dependencies are gone.** Installing selfdoc no longer pulls a Python dependency set along with it: the themes, browser scripts, word list and document validators are compiled into the binary.
+- [root] **Documenting Python no longer needs a Python interpreter.** selfdoc reads Python source itself, so `gen`, `build` and `check` work on a machine with no `python3` installed -- reference pages, signatures and field tables render exactly as before.
+
+### Fixes
+
+- [root] **A Go package reads its documentation from a fixed file.** Package documentation no longer depends on which file the source walk reached first, so rebuilding a Go project's reference pages gives the same package text every time.
+- [root] **The check report keeps a directive's attributes in the order the template wrote them.** A directive line in `selfdoc check` output reads back the way it was written instead of in a reordered form.
+
 ## 0.38.1
 
 Fixes the CLI reference pages selfdoc generates failing selfdoc's own spell check: the entity indent on a scoped flag row and the 'Clearable' heading of a sparse update.
@@ -784,6 +851,8 @@ Multi-language project support and Zig extractor
 
 ## 0.12.0
 
+**100% coverage enforced.** `selfdoc check` now requires all public symbols to be documented on non-skeleton pages. The `min_coverage` config field is removed.
+
 ### Breaking
 
 - **100% coverage enforced.** `selfdoc check` now requires all public symbols to be documented on non-skeleton pages. The `min_coverage` config field is removed.
@@ -804,12 +873,16 @@ Multi-language project support and Zig extractor
 
 ## 0.11.0
 
+**New feature.** Config-driven redirects for renamed/deleted doc pages. Add a `redirects` list in `selfdoc.json` with `{from, to}` page slugs — the build expands across all locale/version combos, generating both Cloudflare `_redirects` rules and HTML meta-refresh pages. Existing pages in cached old versions are preserved.
+
 ### Features
 
 - **New feature.** Config-driven redirects for renamed/deleted doc pages. Add a `redirects` list in `selfdoc.json` with `{from, to}` page slugs — the build expands across all locale/version combos, generating both Cloudflare `_redirects` rules and HTML meta-refresh pages. Existing pages in cached old versions are preserved.
 - **Docs.** Added prose documentation for the `exclude` attribute on `table-schema` and `table-config` directives.
 
 ## 0.10.0
+
+**New feature.** `exclude` attribute for `table-schema` and `table-config` directives, allowing users to exclude specific top-level keys when rendering JSON/TOML/JSONC config files as tables.
 
 ### Features
 
@@ -821,11 +894,15 @@ Multi-language project support and Zig extractor
 
 ## 0.9.1
 
+**Fix.** Go gen root package now correctly uses `ref path="."` instead of the module name.
+
 ### Fixes
 
 - **Fix.** Go gen root package now correctly uses `ref path="."` instead of the module name.
 
 ## 0.9.0
+
+**New feature.** Consolidated version detection with new VER002/VER003 lint codes that error when `selfdoc.json` version drifts from the project manifest.
 
 ### Features
 
@@ -840,6 +917,8 @@ Multi-language project support and Zig extractor
 
 ## 0.8.1
 
+**Check validates all versions.** `selfdoc check` now extracts and validates old tagged versions, not just the working tree. Monorepo version pinning lets docs-site releases freeze constituent project versions.
+
 ### Features
 
 - **Check validates all versions.** `selfdoc check` now extracts and validates old tagged versions, not just the working tree. Monorepo version pinning lets docs-site releases freeze constituent project versions.
@@ -850,6 +929,8 @@ Multi-language project support and Zig extractor
 - **Fix frontmatter list parsing.** Use bracket syntax `[a, b, c]` for list values instead of comma detection, which broke description fields containing commas.
 
 ## 0.8.0
+
+**Breaking: always-prefixed URLs.** All output now uses `/<locale>/<version>/page/` URL structure. `versions` and `locales` arrays are now required in selfdoc.json. Version and locale picker dropdowns in the header.
 
 ### Breaking
 
@@ -870,6 +951,8 @@ Multi-language project support and Zig extractor
 
 ## 0.7.0
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Breaking
 
 - **strictcli dependency bumped to >=0.7.0** for `--dump-schema` support.
@@ -883,6 +966,8 @@ Multi-language project support and Zig extractor
 
 ## 0.6.0
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Features
 
 - **Declarative config schema.** Config validation is now driven by a schema (FieldType enum + FieldSpec dataclass) instead of procedural code. Unknown top-level keys in selfdoc.json are now rejected.
@@ -895,11 +980,15 @@ Multi-language project support and Zig extractor
 
 ## 0.5.2
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Fixes
 
 - **CLI page preservation fix end-to-end.** Handwritten CLI page descriptions now actually survive `selfdoc gen` (the 0.5.1 preservation logic was defeated by stale-file cleanup deleting CLI pages before they could be read for preservation).
 
 ## 0.5.1
+
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
 
 ### Features
 
@@ -911,6 +1000,8 @@ Multi-language project support and Zig extractor
 - **Sticky column visuals.** Sticky first column in tables now preserves row stripe and hover backgrounds instead of showing a flat fill.
 
 ## 0.5.0
+
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
 
 ### Breaking
 
@@ -939,6 +1030,8 @@ Multi-language project support and Zig extractor
 
 ## 0.4.5
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Breaking
 
 - Removed deprecated --warn-only flag (warnings are non-fatal by default since 0.4.0)
@@ -949,11 +1042,15 @@ Multi-language project support and Zig extractor
 
 ## 0.4.4
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Fixes
 
 - Build now cleans the output directory before writing, preventing stale files from previous builds
 
 ## 0.4.3
+
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
 
 ### Features
 
@@ -962,15 +1059,21 @@ Multi-language project support and Zig extractor
 
 ## 0.4.2
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Features
 
 - Auto-commit prefers rlsbl commit when available, marking commits with Autogenerated trailer for changelog coverage exemption
 
 ## 0.4.1
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 - No user-facing changes.
 
 ## 0.4.0
+
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
 
 ### Features
 
@@ -1046,11 +1149,15 @@ Multi-language project support and Zig extractor
 
 ## 0.3.1
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Features
 
 - npm package renamed from `selfdoc` to `selfdocumenting` (npm blocks `selfdoc` due to similarity with abandoned `self-doc` package). Install via `npm install -g selfdocumenting` or `npx selfdocumenting`. The CLI command remains `selfdoc`.
 
 ## 0.3.0
+
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
 
 ### Features
 
@@ -1110,6 +1217,8 @@ Multi-language project support and Zig extractor
 
 ## 0.2.0
 
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
+
 ### Features
 
 - Theme system with per-project theming via `"theme"` in selfdoc.json and optional `docs/custom.css` overrides
@@ -1125,6 +1234,8 @@ Multi-language project support and Zig extractor
 - CSS extracted to cacheable `style.css` instead of inlined per page
 
 ## 0.1.0
+
+RECOVERY OBLIGATION: no description was recoverable for this version (neither the GitHub Release notes nor the CHANGELOG.md section carried one). Author a real description from this version's changelog entries and regenerate.
 
 ### Features
 
