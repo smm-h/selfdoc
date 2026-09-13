@@ -34,7 +34,11 @@
   "gen": {
     "exclude": [
       "internal/e2e",
-      "internal/testproject"
+      "internal/testproject",
+      "internal/blog/assembly/fakegh",
+      "internal/blog/assembly/fakeghcmd",
+      "internal/cli/faketool",
+      "internal/cli/faketoolcmd"
     ]
   },
   "root_files": [
