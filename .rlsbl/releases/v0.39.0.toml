@@ -51,3 +51,7 @@ sync-workflow`, which now installs the Go binary and pins one version.
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "aa9be6d28a1fdb2da54fc628c1f8808d80db40ba"
+
+[tree_hashes]
+"." = "d6670ac0810d75c2bc36c49dd2622dd76c5f35e4"
