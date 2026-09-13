@@ -17,3 +17,7 @@ context = "The binary's package main moved from cmd/selfdoc to the module root, 
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "5b99f0549dd7dc9f231abf7b59d52166310a6f5b"
+
+[tree_hashes]
+"." = "c157c690faa1913de46f699fda18450be39f2a79"
