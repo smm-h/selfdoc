@@ -19,6 +19,12 @@ import (
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
+// assemblyDefaultBranch is the assembly repository branch every command
+// commits to when the caller names none. A command that resolves to an empty
+// branch does not fall back to the repository's default -- it renders
+// "/git/ref/heads/", which the GitHub API answers 404 to.
+const assemblyDefaultBranch = "main"
+
 // assemblyCommitGrant is the grant every command that writes a commit on the
 // assembly repository declares.
 var assemblyCommitGrant = strictcli.Grant{
@@ -561,7 +567,7 @@ func (c *cli) cmdAssemblyRetire(ctx *strictcli.Context, kwargs map[string]any) s
 		return outcome
 	}
 
-	summary, err := assembly.RetireProject(handle, repo, slug, "")
+	summary, err := assembly.RetireProject(handle, repo, slug, assemblyDefaultBranch)
 	if err != nil {
 		return c.fail(err)
 	}
@@ -623,7 +629,7 @@ func (c *cli) cmdAssemblyIntegrate(ctx *strictcli.Context, kwargs map[string]any
 		AssemblyDir:    absentMeans(kwargs, "assembly_dir", "."),
 		SourceDir:      optString(kwargs, "source_dir"),
 		LegacyBlogHost: optString(kwargs, "legacy_blog_host"),
-		Branch:         absentMeans(kwargs, "branch", "main"),
+		Branch:         absentMeans(kwargs, "branch", assemblyDefaultBranch),
 		Attempts:       absentMeans(kwargs, "attempts", assembly.DefaultAttempts),
 		RetryDelay:     assembly.DefaultRetryDelay,
 		Stderr:         c.errOut(),
@@ -748,7 +754,7 @@ func (c *cli) cmdAssemblySyncWorkflow(ctx *strictcli.Context, kwargs map[string]
 	label := fmt.Sprintf("selfdoc %s, pagefind %s", pins.Selfdoc, pins.Pagefind)
 	result, err := assembly.PushFilesToRepo(handle, repo,
 		map[string][]byte{site.WorkflowPath: []byte(content)},
-		"assembly: sync deploy workflow ("+label+")", "", nil)
+		"assembly: sync deploy workflow ("+label+")", assemblyDefaultBranch, nil)
 	if err != nil {
 		return c.fail(err)
 	}

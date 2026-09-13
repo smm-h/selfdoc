@@ -545,3 +545,31 @@ func TestGHAPIReportsTheStepAndWhatGHSaid(t *testing.T) {
 		t.Fatalf("err = %q, want %q", err.Error(), want)
 	}
 }
+
+// TestAPushWithNoBranchIsRefused pins that an unnamed branch is refused here
+// rather than sent. An empty branch renders "/repos/<repo>/git/ref/heads/",
+// which GitHub answers 404 to, so the caller's mistake arrives as a missing
+// repository instead of a missing argument.
+func TestAPushWithNoBranchIsRefused(t *testing.T) {
+	newFakeGH(t)
+	_, err := PushFilesToRepo(effects.Unbound(), "owner/repo",
+		map[string][]byte{"a.txt": []byte("x")}, "msg", "", nil)
+	if err == nil {
+		t.Fatal("a push with no branch was accepted")
+	}
+	if !strings.Contains(err.Error(), "branch") {
+		t.Errorf("the refusal does not name the branch: %v", err)
+	}
+}
+
+// TestAListWithNoBranchIsRefused pins the same refusal on the read side.
+func TestAListWithNoBranchIsRefused(t *testing.T) {
+	newFakeGH(t)
+	_, err := ListRemotePaths(effects.Unbound(), "owner/repo", "")
+	if err == nil {
+		t.Fatal("a listing with no branch was accepted")
+	}
+	if !strings.Contains(err.Error(), "branch") {
+		t.Errorf("the refusal does not name the branch: %v", err)
+	}
+}

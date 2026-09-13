@@ -485,7 +485,8 @@ func (c *cli) cmdPostPublish(ctx *strictcli.Context, kwargs map[string]any) stri
 			"published stay.\n", slug)
 	}
 
-	if _, err := assembly.PushFilesToRepo(handle, repo, files, "posts: "+slug, "", deletePaths); err != nil {
+	if _, err := assembly.PushFilesToRepo(handle, repo, files, "posts: "+slug,
+		assemblyDefaultBranch, deletePaths); err != nil {
 		return c.fail(err)
 	}
 
@@ -511,7 +512,8 @@ func (c *cli) cmdPostPublish(ctx *strictcli.Context, kwargs map[string]any) stri
 			}
 			postFiles[slug+"/"+post.Path] = []byte(resolved)
 		}
-		if _, err := assembly.PushFilesToRepo(handle, postsRepo, postFiles, "posts: "+slug, "", nil); err != nil {
+		if _, err := assembly.PushFilesToRepo(handle, postsRepo, postFiles, "posts: "+slug,
+			assemblyDefaultBranch, nil); err != nil {
 			return c.fail(err)
 		}
 		c.printf("Archived %d post(s) to %s\n", len(published), postsRepo)

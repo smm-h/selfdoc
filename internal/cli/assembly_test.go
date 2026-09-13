@@ -594,3 +594,105 @@ func keysOf(m map[string]string) []string {
 	}
 	return names
 }
+
+// -- assembly sync-workflow -------------------------------------------------
+
+// TestSyncWorkflowPushesToTheAssemblysBranch pins the branch the workflow sync
+// commits to. The command names no branch of its own, and a push that resolves
+// to an empty one asks GitHub for "/git/ref/heads/" -- a path the API answers
+// 404 to, which the release's post-release hook reported as "get HEAD ref: gh:
+// Not Found (HTTP 404)" while every other assembly command worked.
+func TestSyncWorkflowPushesToTheAssemblysBranch(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := assemblyProject(t, map[string]any{
+		"assembly": map[string]any{"repo": "owner/assembly", "pages_project": "site"},
+		"topology": map[string]any{"slug": "myproject", "docs_base": "https://docs.example.com"},
+	})
+	tools.Reply(
+		toolReply{Match: "git/ref/heads", Stdout: "headsha\n"},
+		toolReply{Match: "git/commits/headsha", Stdout: "treesha\n"},
+		toolReply{Match: "git/trees/treesha", Stdout: "{\"tree\":[]}\n"},
+		toolReply{Match: "git/blobs", Stdout: "blobsha\n"},
+		toolReply{Match: "git/trees --jq", Stdout: "newtreesha\n"},
+		toolReply{Match: "git/commits --jq", Stdout: "newcommitsha\n"},
+		toolReply{Match: "git/refs/heads", Stdout: "newcommitsha\n"},
+	)
+
+	result := runWith(t, Options{Dir: dir, Registry: stubRegistry()},
+		"assembly", "sync-workflow", "--pin-selfdoc", "0.1.0")
+	if result.ExitCode != 0 {
+		t.Fatalf("sync-workflow failed: exit %d\n%s\n%s",
+			result.ExitCode, result.Stdout, result.Stderr)
+	}
+
+	reads := tools.Matching("/git/ref/heads/")
+	if len(reads) != 1 {
+		t.Fatalf("expected one HEAD ref read, got %d: %v", len(reads), tools.Calls())
+	}
+	if !strings.Contains(reads[0].Joined(), "/git/ref/heads/main") {
+		t.Errorf("the HEAD ref read names no branch: %s", reads[0].Joined())
+	}
+	writes := tools.Matching("/git/refs/heads/")
+	if len(writes) != 1 {
+		t.Fatalf("expected one ref update, got %d: %v", len(writes), tools.Calls())
+	}
+	if !strings.Contains(writes[0].Joined(), "/git/refs/heads/main") {
+		t.Errorf("the ref update names no branch: %s", writes[0].Joined())
+	}
+}
+
+// TestRetireCommitsOnTheAssemblysBranch pins the branch a retirement reads and
+// writes. Retirement lists the branch's paths to work out what to delete and
+// then commits on it, and both calls take the branch from the command; an
+// empty one renders "/git/ref/heads/", which GitHub answers 404 to.
+func TestRetireCommitsOnTheAssemblysBranch(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := assemblyProject(t, map[string]any{
+		"assembly": map[string]any{"repo": "owner/assembly"},
+		"topology": map[string]any{"slug": "keeper"},
+	})
+	roster := site.RenderRoster([]site.RosterEntry{
+		{Slug: "keeper", Repo: "owner/keeper"},
+		{Slug: "goner", Repo: "owner/goner"},
+		{Slug: "home", Repo: "owner/home"},
+	}, "home")
+	tools.Reply(
+		toolReply{Match: "roster.toml", Stdout: encoded(roster)},
+		toolReply{Match: "goner-files.json", Stdout: ""},
+		toolReply{Match: "git/ref/heads", Stdout: "headsha\n"},
+		toolReply{Match: "git/commits/headsha", Stdout: "treesha\n"},
+		toolReply{
+			Match:  "git/trees/treesha",
+			Stdout: "{\"tree\":[{\"path\":\"site/goner/index.html\",\"type\":\"blob\",\"sha\":\"b1\"}]}\n",
+		},
+		toolReply{Match: "git/blobs", Stdout: "blobsha\n"},
+		toolReply{Match: "git/trees --jq", Stdout: "newtreesha\n"},
+		toolReply{Match: "git/commits --jq", Stdout: "newcommitsha\n"},
+		toolReply{Match: "git/refs/heads", Stdout: "newcommitsha\n"},
+		toolReply{Match: "", Stdout: ""},
+	)
+
+	result := runWith(t, Options{Dir: dir},
+		"assembly", "retire", "--slug", "goner", "--approve-consequential")
+	if result.ExitCode != 0 {
+		t.Fatalf("retire failed: exit %d\n%s\n%s",
+			result.ExitCode, result.Stdout, result.Stderr)
+	}
+	// Both the listing and the push read the ref, and the push writes it.
+	refCalls := 0
+	for _, call := range tools.Calls() {
+		joined := call.Joined()
+		if !strings.Contains(joined, "/git/ref/heads/") &&
+			!strings.Contains(joined, "/git/refs/heads/") {
+			continue
+		}
+		refCalls++
+		if !strings.Contains(joined, "heads/main") {
+			t.Errorf("a ref call names no branch: %s", joined)
+		}
+	}
+	if refCalls != 3 {
+		t.Errorf("expected two ref reads and one ref update, got %d calls: %v",
+			refCalls, tools.Calls())
+	}
+}

@@ -189,6 +189,9 @@ func PushFilesToRepo(
 	if len(files) == 0 && len(deletePaths) == 0 {
 		return PushResult{}, errorf("files dict is empty -- nothing to push")
 	}
+	if branch == "" {
+		return PushResult{}, errorf("no branch named for the push to %s", repo)
+	}
 
 	// 1. The current HEAD SHA.
 	headSHA, err := ghAPI(h, ghCall{
@@ -344,6 +347,9 @@ func PushFilesToRepo(
 // local build no longer produces can be deleted in the same commit that
 // uploads the ones it does.
 func ListRemotePaths(h *effects.Handle, repo, branch string) ([]string, error) {
+	if branch == "" {
+		return nil, errorf("no branch named for the listing of %s", repo)
+	}
 	headSHA, err := ghAPI(h, ghCall{
 		Args: []string{"/repos/" + repo + "/git/ref/heads/" + branch, "--jq", ".object.sha"},
 		Step: "get HEAD ref",
