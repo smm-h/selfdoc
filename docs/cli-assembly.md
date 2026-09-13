@@ -179,7 +179,7 @@ Regenerate the assembly repository's deploy workflow from this project's configu
 
 | Name | Short | Type | Presence | Env | Description |
 | --- | --- | --- | --- | --- | --- |
-| `--pin-selfdoc` |  | str | optional |  | selfdoc version the regenerated workflow pins its 'go install' to. Omitted, the running binary's own version is used, which is what the release path wants: the workflow names the selfdoc that generated it. |
+| `--pin-selfdoc` |  | str | optional |  | selfdoc version the regenerated workflow pins its 'go install' to. Omitted, the running binary's own version is used. The release path states it instead, because the binary a post-release hook finds was built before the version bump and its own version names a release the module proxy cannot serve yet. |
 | `--pin-pagefind` |  | str | optional |  | pagefind version the regenerated workflow pins its toolchain install to. Omitted, PyPI's current release is used: pagefind is a CI-only tool nothing here installs, so there is no local version to read. |
 
 ### Grants
