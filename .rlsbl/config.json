@@ -13,7 +13,7 @@
       "target": "go",
       "artifact": "binary",
       "install_paths": [
-        "./cmd/selfdoc"
+        "."
       ]
     }
   },

@@ -211,10 +211,16 @@ func isolate(t *testing.T) string {
 	return bin
 }
 
+// testVersion is the version the application under test reports. The binary
+// reads its own from the repository's VERSION file; a test states one so the
+// paths that need a real version -- the toolchain pin a generated deploy
+// workflow installs -- have one without reading the repository.
+const testVersion = "9.9.9"
+
 // newApp builds the application under test, pointed at dir.
 func newApp(t *testing.T, dir string) *strictcli.App {
 	t.Helper()
-	return New(Options{Dir: dir})
+	return New(Options{Dir: dir, Version: testVersion})
 }
 
 // run invokes the application with argv and returns the framework's result.
@@ -225,8 +231,14 @@ func run(t *testing.T, dir string, argv ...string) strictcli.Result {
 
 // runWith invokes the application built from the given options, which is how
 // a test states the stubbed registries a toolchain-pin check reads.
+//
+// A test that states no version gets testVersion, so only a test that cares
+// about the version has to name one.
 func runWith(t *testing.T, opts Options, argv ...string) strictcli.Result {
 	t.Helper()
+	if opts.Version == "" {
+		opts.Version = testVersion
+	}
 	return New(opts).Test(argv)
 }
 

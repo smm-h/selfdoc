@@ -16,7 +16,7 @@ import (
 	"github.com/smm-h/stricttest/go/hygiene"
 
 	// The language packages register their extractors, which is what links
-	// a language into a binary. A build links them in cmd/selfdoc; the
+	// a language into a binary. A build links them through internal/cli; the
 	// suite does it here.
 	_ "github.com/smm-h/selfdoc/internal/extractors/golang"
 	_ "github.com/smm-h/selfdoc/internal/extractors/python"

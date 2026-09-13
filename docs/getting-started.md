@@ -17,7 +17,7 @@ selfdoc is a single Go binary. Stylesheets, scripts, themes, the directive catal
 Install with the Go toolchain:
 
 ```bash
-go install github.com/smm-h/selfdoc/cmd/selfdoc@v0
+go install github.com/smm-h/selfdoc@v0
 ```
 
 On a machine with no Go toolchain, take the archive for your platform from the [latest GitHub Release](https://github.com/smm-h/selfdoc/releases/latest). Every release publishes prebuilt binaries for Linux, macOS and Windows on amd64 and arm64; unpack the archive and put `selfdoc` somewhere on your `PATH`.

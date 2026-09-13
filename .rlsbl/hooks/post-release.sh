@@ -29,7 +29,7 @@ if [ -f selfdoc.json ]; then
     # bump, so reinstall from the released tree: both commands below then
     # run the build this release shipped.
     echo "Installing the released selfdoc..."
-    go install ./cmd/selfdoc || echo "Warning: go install ./cmd/selfdoc failed (non-fatal)"
+    go install . || echo "Warning: go install . failed (non-fatal)"
 
     # The assembly repo's deploy workflow is a generated artifact, and this
     # is the only thing that regenerates the deployed copy. It runs before

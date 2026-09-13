@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	selfdocmodule "github.com/smm-h/selfdoc"
 )
 
 // The versions the pin tests name explicitly. They live beside the stub
@@ -46,7 +44,7 @@ func newStubRegistry() *stubRegistry {
 			"pagefind": {"1.3.0", pinnedPagefind},
 			"selfdoc":  {"0.35.0", pinnedSelfdoc},
 		},
-		GoVersions: []string{"0.35.0", pinnedSelfdoc, selfdocmodule.Version},
+		GoVersions: []string{"0.35.0", pinnedSelfdoc},
 	}
 }
 
@@ -130,6 +128,16 @@ func TestPyPIPinsNamesOnlyWhatPyPIServes(t *testing.T) {
 func TestPyPIURLTargetsTheJSONAPI(t *testing.T) {
 	if got := PyPIURL("pagefind"); got != "https://pypi.org/pypi/pagefind/json" {
 		t.Fatalf("PyPIURL = %q", got)
+	}
+}
+
+func TestGoModulePathIsTheModuleRoot(t *testing.T) {
+	// The entry point is the module root, so the generated workflow installs
+	// the module itself and the binary takes its name from the last path
+	// element. A path with a cmd/ suffix would name a package that no longer
+	// exists and the deploy's "go install" would fail at dispatch.
+	if GoModulePath != "github.com/smm-h/selfdoc" {
+		t.Fatalf("GoModulePath = %q", GoModulePath)
 	}
 }
 
@@ -298,21 +306,26 @@ func TestResolvePinsTakesExplicitValuesVerbatim(t *testing.T) {
 	}
 }
 
-func TestResolvePinsReadsTheRunningBinarysVersion(t *testing.T) {
+func TestResolvePinsRefusesAnUnstatedSelfdocVersion(t *testing.T) {
+	// The binary is the module root, so this package cannot import it to read
+	// the running version. The caller states it; an omission is refused by
+	// name rather than filled in.
 	stub := newStubRegistry()
-	pins, err := ResolveToolchainPins(PinOptions{Registry: stub.Registry()})
-	if err != nil {
-		t.Fatalf("resolve: %v", err)
+	_, err := ResolveToolchainPins(PinOptions{Registry: stub.Registry()})
+	if err == nil {
+		t.Fatal("a pin set with no selfdoc version resolved anyway")
 	}
-	if pins.Selfdoc != selfdocmodule.Version {
-		t.Fatalf("selfdoc pin = %q, want the running %q",
-			pins.Selfdoc, selfdocmodule.Version)
+	if !strings.Contains(err.Error(), "Selfdoc") {
+		t.Fatalf("err = %q, want it to name the Selfdoc field", err)
 	}
 }
 
 func TestResolvePinsAsksTheRegistryOnlyForPagefind(t *testing.T) {
 	stub := newStubRegistry()
-	pins, err := ResolveToolchainPins(PinOptions{Registry: stub.Registry()})
+	pins, err := ResolveToolchainPins(PinOptions{
+		SelfdocVersion: pinnedSelfdoc,
+		Registry:       stub.Registry(),
+	})
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -327,7 +340,11 @@ func TestResolvePinsAsksTheRegistryOnlyForPagefind(t *testing.T) {
 func TestResolvePinsPropagatesARegistryFailure(t *testing.T) {
 	stub := newStubRegistry()
 	stub.PyPIError = errorf("could not read https://pypi.org/pypi/pagefind/json: refused")
-	if _, err := ResolveToolchainPins(PinOptions{Registry: stub.Registry()}); err == nil {
+	_, err := ResolveToolchainPins(PinOptions{
+		SelfdocVersion: pinnedSelfdoc,
+		Registry:       stub.Registry(),
+	})
+	if err == nil {
 		t.Fatal("a registry failure resolved to a pin anyway")
 	}
 }

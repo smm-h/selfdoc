@@ -5,7 +5,7 @@ version: 2
 project_name: selfdoc
 
 builds:
-  - main: ./cmd/selfdoc
+  - main: .
     # These build tags embed only the Python grammar of gotreesitter instead of
     # every grammar it ships, which takes a large cut off the binary size.
     # Every other language's extraction goes through its own toolchain, so

@@ -9,12 +9,12 @@
 # Everything this hook used to do besides that is now the release flow's own
 # work: the bump-selfdoc step syncs selfdoc.json's "version" (and the last
 # entry of its versions array), and the strictcli schema dump step runs
-# `go run ./cmd/selfdoc --dump-schema` at the repository root, which is the
-# member directory now that the root is the releasable's only member.
+# `go run . --dump-schema` at the repository root, which is both the member
+# directory and the package the entry point now lives in.
 
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
 echo "pre-checks: installing the selfdoc binary from this tree"
-go install ./cmd/selfdoc
+go install .

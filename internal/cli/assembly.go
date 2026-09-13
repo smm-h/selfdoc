@@ -34,6 +34,20 @@ var assemblyCommitGrant = strictcli.Grant{
 	Kind: strictcli.ProcMutate,
 }
 
+// selfdocPin is the selfdoc version a generated deploy workflow installs: the
+// one --pin-selfdoc names, or -- when the flag is absent -- the running
+// binary's own version, which the binary hands in through Options.Version.
+//
+// An empty answer is not repaired here. It reaches the resolver, which refuses
+// it by name, so a caller that supplied no version at all is told so rather
+// than having one invented.
+func (c *cli) selfdocPin(explicit string) string {
+	if explicit != "" {
+		return explicit
+	}
+	return c.opts.Version
+}
+
 func (c *cli) registerAssembly() {
 	group := c.app.Group("assembly", "Manage the unified multi-project documentation assembly and deployment")
 
@@ -264,7 +278,10 @@ func (c *cli) cmdAssemblyInit(ctx *strictcli.Context, kwargs map[string]any) str
 	// sync-workflow rewrites later, and refuses an unpublishable pin the same
 	// way -- a fresh assembly must not start life with a deploy that cannot
 	// install its own tools.
-	pins, err := assembly.ResolveToolchainPins(assembly.PinOptions{Registry: c.opts.Registry})
+	pins, err := assembly.ResolveToolchainPins(assembly.PinOptions{
+		SelfdocVersion: c.opts.Version,
+		Registry:       c.opts.Registry,
+	})
 	if err != nil {
 		return c.fail(err)
 	}
@@ -734,7 +751,7 @@ func (c *cli) cmdAssemblySyncWorkflow(ctx *strictcli.Context, kwargs map[string]
 	// before a single byte is written. A pin that resolves nowhere would
 	// otherwise fail at the next dispatch, inside the assembly repo's CI.
 	pins, err := assembly.ResolveToolchainPins(assembly.PinOptions{
-		SelfdocVersion:  optString(kwargs, "pin_selfdoc"),
+		SelfdocVersion:  c.selfdocPin(optString(kwargs, "pin_selfdoc")),
 		PagefindVersion: optString(kwargs, "pin_pagefind"),
 		Registry:        c.opts.Registry,
 	})

@@ -18,7 +18,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/smm-h/selfdoc"
 	"github.com/smm-h/selfdoc/internal/blog/assembly"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/lints"
@@ -44,8 +43,8 @@ const AppHelp = "Code-aware static site generator with directive-based content e
 
 // Options is everything one application is built from.
 //
-// Every member has a working zero value, so New(Options{}) is the binary's
-// own application. The members exist for the two callers that are not the
+// Only Version comes from the binary itself; every other member has a working
+// zero value. Those members exist for the two callers that are not the
 // binary: the editor's publish path, which runs a command in-process against
 // a stated directory and collects its output, and the suite, which stubs the
 // two registries a toolchain pin is checked against.
@@ -61,6 +60,14 @@ type Options struct {
 	// Registry is how a toolchain pin is checked for publication. The zero
 	// value reads the real registries.
 	Registry assembly.Registry
+	// Version is the binary's own release version: what `selfdoc --version`
+	// prints, and the selfdoc pin a generated deploy workflow installs when
+	// no version is named explicitly. The binary reads it from the
+	// repository's VERSION file, embedded at compile time, and hands it in
+	// here -- nothing under internal/ reads that file. Empty states no
+	// version, and the paths that need a real one refuse rather than
+	// inventing one.
+	Version string
 }
 
 // cli is the application under construction: its options, and the strictcli
@@ -259,7 +266,7 @@ func New(opts Options) *strictcli.App {
 	config.LintCodeValidator = lints.ValidateLintCodes
 
 	c := &cli{opts: opts}
-	c.app = strictcli.NewApp("selfdoc", selfdoc.Version, AppHelp)
+	c.app = strictcli.NewApp("selfdoc", opts.Version, AppHelp)
 
 	c.registerInit()
 	c.registerBuild()

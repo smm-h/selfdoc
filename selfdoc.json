@@ -2,11 +2,7 @@
   "version": "0.39.3",
   "source": [
     {
-      "path": "internal/",
-      "language": "go"
-    },
-    {
-      "path": "cmd/",
+      "path": ".",
       "language": "go"
     }
   ],

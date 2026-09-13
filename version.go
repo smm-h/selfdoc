@@ -1,10 +1,4 @@
-// Package selfdoc holds the module-level build metadata for the selfdoc
-// binary. The version string is embedded from the repository's VERSION file,
-// which is also the file rlsbl's release flow writes.
-//
-// Only build metadata belongs here: every engine package lives under
-// internal/, and the command-line entry point under cmd/selfdoc.
-package selfdoc
+package main
 
 import (
 	_ "embed"
@@ -15,5 +9,10 @@ import (
 var versionFile string
 
 // Version is the project's release version, read from the repository's
-// VERSION file at build time with surrounding whitespace removed.
+// VERSION file at build time with surrounding whitespace removed. It is what
+// "selfdoc --version" prints, and what an unpinned toolchain pin resolves to.
+//
+// The binary is the only place the version is read from a file: every package
+// that needs it is handed it, so nothing under internal/ depends on the
+// repository's own layout.
 var Version = strings.TrimSpace(versionFile)

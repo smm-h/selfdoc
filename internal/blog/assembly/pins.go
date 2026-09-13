@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	selfdocmodule "github.com/smm-h/selfdoc"
 )
 
 // PyPIJSONURL is PyPI's JSON metadata endpoint, the registry the pagefind pin
@@ -21,12 +19,14 @@ const PyPIJSONURL = "https://pypi.org/pypi/{package}/json"
 //
 // The selfdoc pin names a Go module version rather than a PyPI distribution:
 // the workflow installs the binary with "go install
-// github.com/smm-h/selfdoc/cmd/selfdoc@v<version>", so what has to exist is a
-// tag the proxy serves, and PyPI has nothing to say about it.
+// github.com/smm-h/selfdoc@v<version>", so what has to exist is a tag the
+// proxy serves, and PyPI has nothing to say about it.
 const GoProxyInfoURL = "https://proxy.golang.org/github.com/smm-h/selfdoc/@v/v{version}.info"
 
 // GoModulePath is the module the generated workflow installs the binary from.
-const GoModulePath = "github.com/smm-h/selfdoc/cmd/selfdoc"
+// The entry point is the module root, so installing the module installs the
+// binary and the last path element names it.
+const GoModulePath = "github.com/smm-h/selfdoc"
 
 // registryTimeout bounds every registry read. A pin check that hangs would
 // hang a release.
@@ -306,11 +306,13 @@ func hasFiles(entry any) bool {
 
 // PinOptions is what [ResolveToolchainPins] takes.
 //
-// Every version field is "" for "resolve it", and a named version is taken
-// verbatim.
+// A named version is taken verbatim. PagefindVersion is "" for "resolve it";
+// SelfdocVersion has nothing to resolve from here and is required.
 type PinOptions struct {
-	// SelfdocVersion pins the binary the workflow installs. Empty means the
-	// running binary's own version.
+	// SelfdocVersion pins the binary the workflow installs. It is required:
+	// this package cannot read the running binary's version -- the binary is
+	// the module root and importing it is impossible -- so the caller states
+	// it. internal/cli passes the version the binary was built with.
 	SelfdocVersion string
 	// PagefindVersion pins the indexer. Empty means PyPI's current release.
 	PagefindVersion string
@@ -323,11 +325,10 @@ type PinOptions struct {
 //
 // An explicitly supplied version is taken verbatim. Otherwise:
 //
-//   - selfdoc is the running binary's own version, so the deployed workflow
-//     names the selfdoc that generated it. The release path does not rely on
-//     that default: it states the version it has just released, because the
-//     binary a post-release hook finds was built before the version bump and
-//     its own version names a release the module proxy cannot serve yet.
+//   - selfdoc has no fallback here: an empty SelfdocVersion is refused by
+//     [ToolchainPins.Validate], naming the field. The version of the running
+//     binary is the binary's own fact, and it is handed down through
+//     internal/cli rather than read here.
 //   - pagefind is PyPI's current release. pagefind is a CI-only tool this
 //     module does not depend on, so there is no installed distribution to read
 //     a version from -- the honest options are the registry's current release
@@ -340,9 +341,6 @@ func ResolveToolchainPins(opts PinOptions) (ToolchainPins, error) {
 	pins := ToolchainPins{
 		Selfdoc:  opts.SelfdocVersion,
 		Pagefind: opts.PagefindVersion,
-	}
-	if pins.Selfdoc == "" {
-		pins.Selfdoc = selfdocmodule.Version
 	}
 	if pins.Pagefind == "" {
 		latest, err := RegistryLatestVersion("pagefind", opts.Registry.PyPI)
