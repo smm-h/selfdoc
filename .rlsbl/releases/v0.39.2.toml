@@ -28,3 +28,7 @@ hook time predated the version bump.
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "27cfd802d8ef9adf9cdd88e57479f16b098998d6"
+
+[tree_hashes]
+"." = "792f26f8cd6b3098e21605d6e26d7578bf94488a"
