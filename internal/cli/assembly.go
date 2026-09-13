@@ -217,7 +217,7 @@ func (c *cli) registerAssembly() {
 		// generated file to match the generator, and rerunning converges.
 		strictcli.WithGrants(assemblyCommitGrant),
 		strictcli.WithFlags(
-			strictcli.StringFlag("pin-selfdoc", "selfdoc version the regenerated workflow pins its 'go install' to. Omitted, the running binary's own version is used, which is what the release path wants: the workflow names the selfdoc that generated it.", strictcli.Optional()),
+			strictcli.StringFlag("pin-selfdoc", "selfdoc version the regenerated workflow pins its 'go install' to. Omitted, the running binary's own version is used. The release path states it instead, because the binary a post-release hook finds was built before the version bump and its own version names a release the module proxy cannot serve yet.", strictcli.Optional()),
 			strictcli.StringFlag("pin-pagefind", "pagefind version the regenerated workflow pins its toolchain install to. Omitted, PyPI's current release is used: pagefind is a CI-only tool nothing here installs, so there is no local version to read.", strictcli.Optional()),
 		),
 	)

@@ -1129,7 +1129,7 @@
           "flags": [
             {
               "name": "pin-selfdoc",
-              "help": "selfdoc version the regenerated workflow pins its 'go install' to. Omitted, the running binary's own version is used, which is what the release path wants: the workflow names the selfdoc that generated it.",
+              "help": "selfdoc version the regenerated workflow pins its 'go install' to. Omitted, the running binary's own version is used. The release path states it instead, because the binary a post-release hook finds was built before the version bump and its own version names a release the module proxy cannot serve yet.",
               "value_schema": {
                 "type": "string"
               },

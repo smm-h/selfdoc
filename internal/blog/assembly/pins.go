@@ -323,8 +323,11 @@ type PinOptions struct {
 //
 // An explicitly supplied version is taken verbatim. Otherwise:
 //
-//   - selfdoc is the running binary's own version. That is the release path's
-//     whole point: the deployed workflow names the selfdoc that generated it.
+//   - selfdoc is the running binary's own version, so the deployed workflow
+//     names the selfdoc that generated it. The release path does not rely on
+//     that default: it states the version it has just released, because the
+//     binary a post-release hook finds was built before the version bump and
+//     its own version names a release the module proxy cannot serve yet.
 //   - pagefind is PyPI's current release. pagefind is a CI-only tool this
 //     module does not depend on, so there is no installed distribution to read
 //     a version from -- the honest options are the registry's current release

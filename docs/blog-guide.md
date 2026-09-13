@@ -326,6 +326,11 @@ is PyPI's current release at sync time. Each pin is rewritten by every
 deploy can never pick up a tool whose behavior the deployed workflow does not
 know about. `--pin-selfdoc` and `--pin-pagefind` name either one explicitly.
 
+The release path names the selfdoc pin rather than taking the default: the
+binary a post-release hook finds on PATH was built before the release's own
+version bump, so its version names a release the module proxy has never been
+asked for.
+
 Before writing anything, `sync-workflow` checks that each pinned version is
 actually published -- the pagefind pin against PyPI, the selfdoc pin against
 the Go module proxy -- and refuses the whole run when one is not. The default

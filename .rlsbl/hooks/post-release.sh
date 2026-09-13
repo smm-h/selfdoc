@@ -25,13 +25,20 @@ fi
 # Push to assembly for unified documentation site
 if [ -f selfdoc.json ]; then
   if python3 -c "import json; c=json.load(open('selfdoc.json')); exit(0 if (c.get('assembly') or {}).get('repo') else 1)" 2>/dev/null; then
+    # Whatever selfdoc is on PATH was built before this release's version
+    # bump, so reinstall from the released tree: both commands below then
+    # run the build this release shipped.
+    echo "Installing the released selfdoc..."
+    go install ./cmd/selfdoc || echo "Warning: go install ./cmd/selfdoc failed (non-fatal)"
+
     # The assembly repo's deploy workflow is a generated artifact, and this
     # is the only thing that regenerates the deployed copy. It runs before
     # the dispatch so the deploy this release triggers uses the workflow
-    # this release wrote. No pin is passed: the default is the running
-    # selfdoc's version, which is the one the workflow must install.
+    # this release wrote. The pin is the version just released: the module
+    # proxy serves that one, and it is the selfdoc whose generator wrote
+    # the workflow.
     echo "Syncing the assembly deploy workflow..."
-    selfdoc assembly sync-workflow || echo "Warning: assembly sync-workflow failed (non-fatal)"
+    selfdoc assembly sync-workflow --pin-selfdoc "$RLSBL_VERSION" || echo "Warning: assembly sync-workflow failed (non-fatal)"
 
     echo "Pushing to documentation assembly..."
     # Bare: `assembly push` is mutating but not consequential -- it re-derives
