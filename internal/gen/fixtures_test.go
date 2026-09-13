@@ -15,10 +15,10 @@ import (
 // produces.
 //
 // The fixture projects under testdata/fixture/ are the shared input: the
-// recorder (testdata/record.py) copies one into a scratch directory, runs the
-// Python implementation, and commits everything it produced under
-// testdata/expected/<fixture>/. This test copies the SAME fixture, runs the Go
-// implementation, and compares byte for byte -- frontmatter, the em dash in a
+// Python implementation was run over a copy of each one once, and everything
+// it produced is committed under testdata/expected/<fixture>/ (the recorder
+// that did so needed the retired Python packages and is gone). This test
+// copies the SAME fixture, runs the Go implementation, and compares byte for byte -- frontmatter, the em dash in a
 // description template, the seed hashes in the store, all of it.
 //
 // The scratch directory is named "project" in both, because a source path of
