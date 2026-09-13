@@ -20,3 +20,7 @@ A guard test walks every path in the module and fails on any component whose nam
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "bafe3c4fab6b35d10286016cca89cf168eb8fe58"
+
+[tree_hashes]
+"." = "995a74e374f17fb37d6f09ccf8addd1281767b6a"
