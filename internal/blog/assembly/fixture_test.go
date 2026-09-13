@@ -5,67 +5,66 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/smm-h/selfdoc/internal/blog/site"
+	"github.com/smm-h/selfdoc/internal/blog/assembly/fakegh"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
-// fakeGHStateEnv names the directory the fake gh keeps its state in. Its
-// presence in the environment is what turns this test binary into the fake gh
-// rather than a test run -- see [TestMain].
-const fakeGHStateEnv = "SELFDOC_ASSEMBLY_FAKE_GH_STATE"
+// fakeGHBinary is the fake gh this test binary built for itself: one plain,
+// uninstrumented executable, built once by [TestMain] and installed as "gh" by
+// every test that needs one.
+var fakeGHBinary string
 
-// TestMain is the fake gh's entry point as well as the suite's.
+// TestMain builds the fake gh before any test runs.
 //
 // Every operation in this package that reaches GitHub does it by running "gh
 // api", so the seam a test replaces is the executable rather than a function:
-// a script at the front of PATH shadows the real gh, and that script re-runs
-// this binary with [fakeGHStateEnv] set. The fake is therefore ordinary Go
-// code with the whole Git Data API's bookkeeping in it -- persistent blobs, a
-// real git blob hash per path, base64 payloads -- rather than a shell script
-// pretending to be one, and the call the code under test makes is a real
-// subprocess through the real effects handle.
+// an executable at the front of PATH shadows the real gh, and the call the
+// code under test makes is a real subprocess through the real effects handle.
+// The fake is therefore ordinary Go code with the whole Git Data API's
+// bookkeeping in it -- persistent blobs, a real git blob hash per path, base64
+// payloads -- rather than a shell script pretending to be one.
+//
+// That Go code is a program of its own, in the fakegh package, compiled here
+// without the race detector. It used to be this very binary re-running itself,
+// which made every one of the suite's hundreds of gh calls pay the race
+// runtime's start-up cost and took `go test -race` on this package to the edge
+// of the per-binary timeout.
 func TestMain(m *testing.M) {
-	if dir := os.Getenv(fakeGHStateEnv); dir != "" {
-		os.Exit(runFakeGH(dir, os.Args[1:]))
+	dir, err := os.MkdirTemp("", "selfdoc-fake-gh-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "creating the fake gh's build directory: %v\n", err)
+		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	fakeGHBinary = filepath.Join(dir, "gh")
+	build := exec.Command("go", "build", "-o", fakeGHBinary,
+		"github.com/smm-h/selfdoc/internal/blog/assembly/fakeghcmd")
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "building the fake gh: %v\n", err)
+		os.RemoveAll(dir)
+		os.Exit(1)
+	}
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
 }
 
-// ghCallRecord is one recorded invocation of the fake gh.
-type ghCallRecord struct {
-	// Argv is everything after the program name.
-	Argv []string `json:"argv"`
-	// Input is the request body the call wrote to standard input.
-	Input string `json:"input"`
-}
-
-// Joined renders the argv the way an assertion reads it.
-func (r ghCallRecord) Joined() string { return strings.Join(r.Argv, " ") }
-
-// ghResponse is one scripted answer.
-type ghResponse struct {
-	// Code is the exit status.
-	Code int `json:"code"`
-	// Stdout and Stderr are the streams the call writes.
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-}
-
-// ghFailure injects a failure into repo mode for every call whose argv
-// contains Match.
-type ghFailure struct {
-	// Match is the substring of the joined argv this failure applies to.
-	Match string `json:"match"`
-	// Code is the exit status to answer with.
-	Code int `json:"code"`
-	// Stderr is what the call writes to standard error.
-	Stderr string `json:"stderr"`
-}
+// The fake's protocol types, under the names the assertions read them by.
+type (
+	// ghCallRecord is one recorded invocation of the fake gh.
+	ghCallRecord = fakegh.CallRecord
+	// ghResponse is one scripted answer.
+	ghResponse = fakegh.Response
+	// ghFailure injects a failure into repo mode for every call whose argv
+	// contains its Match.
+	ghFailure = fakegh.Failure
+)
 
 // fakeGH is a fake gh at the front of PATH, with the state the fake keeps.
 type fakeGH struct {
@@ -79,23 +78,31 @@ type fakeGH struct {
 // It binds the environment isolation floor first: a throwaway HOME, an empty
 // global git config with a throwaway identity, only the file:// git transport,
 // and no ambient credentials. Nothing here calls t.Parallel, because hygiene
-// mutates process-wide variables.
+// mutates process-wide variables. The state directory reaches the fake through
+// the environment the code under test's subprocess inherits.
 func newFakeGH(t *testing.T) *fakeGH {
 	t.Helper()
 	bin := isolate(t)
 	state := t.TempDir()
-	binary, err := os.Executable()
-	if err != nil {
-		t.Fatalf("locating the test binary: %v", err)
-	}
-	script := fmt.Sprintf(
-		"#!/bin/sh\nexport %s=%s\nexec %s \"$@\"\n",
-		fakeGHStateEnv, shellQuote(state), shellQuote(binary),
-	)
-	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(script), 0o755); err != nil {
-		t.Fatalf("writing the fake gh: %v", err)
-	}
+	installFakeGH(t, filepath.Join(bin, "gh"))
+	t.Setenv(fakegh.StateEnv, state)
 	return &fakeGH{t: t, dir: state}
+}
+
+// installFakeGH puts the prebuilt fake gh at path, by hard link where the two
+// paths share a filesystem and by copy otherwise.
+func installFakeGH(t *testing.T, path string) {
+	t.Helper()
+	if err := os.Link(fakeGHBinary, path); err == nil {
+		return
+	}
+	data, err := os.ReadFile(fakeGHBinary)
+	if err != nil {
+		t.Fatalf("reading the fake gh: %v", err)
+	}
+	if err := os.WriteFile(path, data, 0o755); err != nil {
+		t.Fatalf("installing the fake gh: %v", err)
+	}
 }
 
 // isolate binds the environment isolation floor -- a throwaway HOME, an empty
@@ -114,7 +121,7 @@ func isolate(t *testing.T) string {
 	return bin
 }
 
-// shellQuote single-quotes a token for the fake gh's shell wrapper.
+// shellQuote single-quotes a token for a fake tool's shell wrapper.
 func shellQuote(token string) string {
 	return "'" + strings.ReplaceAll(token, "'", `'\''`) + "'"
 }
@@ -280,299 +287,5 @@ func (f *fakeGH) counter(name string) int {
 	if _, err := fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &count); err != nil {
 		f.t.Fatalf("decoding the %s counter: %v", name, err)
 	}
-	return count
-}
-
-// -- the fake gh itself ------------------------------------------------------
-
-// runFakeGH answers one gh invocation and returns its exit status.
-//
-// Two modes, chosen by what the state directory holds. A "script.json" answers
-// each call from a list in order, which is how a test asserts the exact
-// sequence of API calls a push makes and how it injects a failure at one step.
-// Otherwise the fake is a repository: it holds blobs, reports their real git
-// blob hashes to the Trees API, applies a tree the way the API does -- an
-// uploaded blob per entry, a null sha as a deletion -- and answers the
-// Contents API from the same table. That is what makes an idempotence
-// assertion mean anything: the second run reads back the bytes the first one
-// wrote.
-func runFakeGH(dir string, argv []string) int {
-	input := readAllStdinIfRequested(argv)
-	recordCall(dir, argv, input)
-	joined := strings.Join(argv, " ")
-
-	if responses, ok := loadScript(dir); ok {
-		index := bumpCounter(dir, "script")
-		if index > len(responses) {
-			fmt.Fprintf(os.Stderr,
-				"fake gh: call %d has no scripted answer: %s\n", index, joined)
-			return 99
-		}
-		answer := responses[index-1]
-		os.Stdout.WriteString(answer.Stdout)
-		os.Stderr.WriteString(answer.Stderr)
-		return answer.Code
-	}
-
-	for _, failure := range loadFailures(dir) {
-		if strings.Contains(joined, failure.Match) {
-			os.Stderr.WriteString(failure.Stderr)
-			return failure.Code
-		}
-	}
-	return repoModeAnswer(dir, argv, joined, input)
-}
-
-// repoModeAnswer answers one call against the fake repository's own state.
-func repoModeAnswer(dir string, argv []string, joined, input string) int {
-	switch {
-	case strings.Contains(joined, "/git/ref/heads/"):
-		fmt.Print("headsha")
-		return 0
-	case strings.Contains(joined, "/git/commits/headsha"):
-		fmt.Print("basetree")
-		return 0
-	case strings.Contains(joined, "/git/trees/basetree"):
-		return answerTree(dir)
-	case strings.Contains(joined, "/git/blobs"):
-		return acceptBlob(dir, input)
-	case strings.Contains(joined, "/git/trees"):
-		return applyTree(dir, input)
-	case strings.Contains(joined, "/git/commits"):
-		bumpCounter(dir, "commits")
-		fmt.Print("newcommit")
-		return 0
-	case strings.Contains(joined, "/git/refs/heads/"):
-		fmt.Print("newcommit")
-		return 0
-	case strings.Contains(joined, "/contents/"):
-		return answerContents(dir, argv)
-	case strings.Contains(joined, "/actions/runs"):
-		fmt.Print("{\"status\":\"completed\"}")
-		return 0
-	case strings.Contains(joined, "/dispatches"):
-		return 0
-	}
-	fmt.Fprintf(os.Stderr, "fake gh: unrouted call: %s\n", joined)
-	return 98
-}
-
-// answerTree reports every blob the branch holds, with its real git hash.
-func answerTree(dir string) int {
-	type entry struct {
-		Path string `json:"path"`
-		Type string `json:"type"`
-		Mode string `json:"mode"`
-		SHA  string `json:"sha"`
-	}
-	blobs := readBlobs(dir)
-	paths := make([]string, 0, len(blobs))
-	for path := range blobs {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-	entries := make([]entry, 0, len(paths))
-	for _, path := range paths {
-		data, _ := base64.StdEncoding.DecodeString(blobs[path])
-		entries = append(entries, entry{
-			Path: path, Type: "blob", Mode: "100644",
-			SHA: site.GitBlobSHA1(data),
-		})
-	}
-	document := map[string]any{
-		"truncated": readFlag(dir, "truncated.json"),
-		"tree":      entries,
-	}
-	encoded, err := json.Marshal(document)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "fake gh: %v\n", err)
-		return 97
-	}
-	os.Stdout.Write(encoded)
-	return 0
-}
-
-// acceptBlob stores one uploaded blob under a fresh sha and answers with it.
-func acceptBlob(dir, input string) int {
-	var payload struct {
-		Content  string `json:"content"`
-		Encoding string `json:"encoding"`
-	}
-	if err := json.Unmarshal([]byte(input), &payload); err != nil {
-		fmt.Fprintf(os.Stderr, "fake gh: unreadable blob payload: %v\n", err)
-		return 96
-	}
-	index := bumpCounter(dir, "uploads")
-	sha := fmt.Sprintf("newblob%d", index)
-	pending := readTable(dir, "pending.json")
-	pending[sha] = payload.Content
-	writeTable(dir, "pending.json", pending)
-	fmt.Print(sha)
-	return 0
-}
-
-// applyTree applies a tree request to the fake repository: an entry naming an
-// uploaded blob writes it, and an entry with a null sha deletes the path.
-func applyTree(dir, input string) int {
-	var payload struct {
-		BaseTree string `json:"base_tree"`
-		Tree     []struct {
-			Path string  `json:"path"`
-			SHA  *string `json:"sha"`
-		} `json:"tree"`
-	}
-	if err := json.Unmarshal([]byte(input), &payload); err != nil {
-		fmt.Fprintf(os.Stderr, "fake gh: unreadable tree payload: %v\n", err)
-		return 95
-	}
-	blobs := readBlobs(dir)
-	pending := readTable(dir, "pending.json")
-	for _, item := range payload.Tree {
-		if item.SHA == nil {
-			delete(blobs, item.Path)
-			continue
-		}
-		content, ok := pending[*item.SHA]
-		if !ok {
-			fmt.Fprintf(os.Stderr,
-				"fake gh: tree names blob %s, which was never uploaded\n", *item.SHA)
-			return 94
-		}
-		blobs[item.Path] = content
-	}
-	writeTable(dir, "blobs.json", blobs)
-	fmt.Print("newtree")
-	return 0
-}
-
-// answerContents answers the Contents API from the same file table, with an
-// absent path reported the way gh reports one.
-func answerContents(dir string, argv []string) int {
-	path := ""
-	for _, arg := range argv {
-		if index := strings.Index(arg, "/contents/"); index >= 0 {
-			path = arg[index+len("/contents/"):]
-		}
-	}
-	blobs := readBlobs(dir)
-	encoded, ok := blobs[path]
-	if !ok {
-		fmt.Fprintf(os.Stderr, "gh: Not Found (HTTP 404)\n")
-		return 1
-	}
-	fmt.Print(encoded)
-	return 0
-}
-
-// readAllStdinIfRequested reads the request body, but only for a call that
-// declared one: a call with no "--input -" has no body, and reading an
-// inherited standard input would block.
-func readAllStdinIfRequested(argv []string) string {
-	wants := false
-	for _, arg := range argv {
-		if arg == "--input" {
-			wants = true
-		}
-	}
-	if !wants {
-		return ""
-	}
-	var builder strings.Builder
-	buffer := make([]byte, 4096)
-	for {
-		read, err := os.Stdin.Read(buffer)
-		builder.Write(buffer[:read])
-		if err != nil {
-			break
-		}
-	}
-	return builder.String()
-}
-
-// recordCall appends one invocation to the call log.
-func recordCall(dir string, argv []string, input string) {
-	encoded, err := json.Marshal(ghCallRecord{Argv: argv, Input: input})
-	if err != nil {
-		return
-	}
-	file, err := os.OpenFile(
-		filepath.Join(dir, "calls.jsonl"),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644,
-	)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	file.Write(append(encoded, '\n'))
-}
-
-// loadScript reads the scripted answers, reporting whether the fake is in
-// scripted mode at all.
-func loadScript(dir string) ([]ghResponse, bool) {
-	data, err := os.ReadFile(filepath.Join(dir, "script.json"))
-	if err != nil {
-		return nil, false
-	}
-	var responses []ghResponse
-	if err := json.Unmarshal(data, &responses); err != nil {
-		return nil, false
-	}
-	return responses, true
-}
-
-// loadFailures reads the injected failures.
-func loadFailures(dir string) []ghFailure {
-	data, err := os.ReadFile(filepath.Join(dir, "failures.json"))
-	if err != nil {
-		return nil
-	}
-	var failures []ghFailure
-	json.Unmarshal(data, &failures)
-	return failures
-}
-
-// readBlobs is the fake repository's file table, path -> base64 content.
-func readBlobs(dir string) map[string]string {
-	return readTable(dir, "blobs.json")
-}
-
-// readTable reads one string-to-string state file.
-func readTable(dir, name string) map[string]string {
-	table := map[string]string{}
-	data, err := os.ReadFile(filepath.Join(dir, name))
-	if err != nil {
-		return table
-	}
-	json.Unmarshal(data, &table)
-	return table
-}
-
-// writeTable writes one string-to-string state file.
-func writeTable(dir, name string, table map[string]string) {
-	data, err := json.Marshal(table)
-	if err != nil {
-		return
-	}
-	os.WriteFile(filepath.Join(dir, name), data, 0o644)
-}
-
-// readFlag reads a boolean state file.
-func readFlag(dir, name string) bool {
-	data, err := os.ReadFile(filepath.Join(dir, name))
-	if err != nil {
-		return false
-	}
-	return strings.TrimSpace(string(data)) == "true"
-}
-
-// bumpCounter increments a counter file and returns its new value.
-func bumpCounter(dir, name string) int {
-	path := filepath.Join(dir, name+".count")
-	count := 0
-	if data, err := os.ReadFile(path); err == nil {
-		fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &count)
-	}
-	count++
-	os.WriteFile(path, []byte(fmt.Sprintf("%d", count)), 0o644)
 	return count
 }
