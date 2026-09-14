@@ -40,6 +40,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 import shutil
@@ -262,50 +263,75 @@ def rewrite_map(docs_rel: str, output_rel: str, posts_rel: str) -> list[tuple[st
     return [(old, new) for old, new in pairs if old != new]
 
 
-def rewritable_files(project: Path) -> list[Path]:
-    """The files whose text may name a moved path."""
-    found = [project / "selfdoc.json"]
-    gitignore = project / ".gitignore"
-    if gitignore.is_file():
-        found.append(gitignore)
+REWRITABLE_SUFFIXES = {".md", ".toml", ".json", ".txt"}
+
+
+def rewritable_files(project: Path, moves: list[tuple[str, str]]) -> list[tuple[Path, str]]:
+    """The files whose text may name a moved path, each as (file to read, the
+    name it will have once the moves are done).
+
+    A dry run reads the moved content where it still sits, and reports the
+    rewrite under the name the move gives it, so the preview covers every file
+    the apply run will touch rather than only the ones that never move.
+    """
+    found = []
+    for name in ("selfdoc.json", ".gitignore", "README.md", "CLAUDE.md"):
+        path = project / name
+        if path.is_file():
+            found.append((path, name))
+    moved = {new for _, new in moves}
+    for old, new in moves:
+        if Path(new).suffix not in REWRITABLE_SUFFIXES:
+            continue
+        source = project / old
+        if not source.is_file():
+            source = project / new
+        if source.is_file():
+            found.append((source, new))
+    # A file that already sits at its final place and was not moved.
     for prefix in (DOCS_REL, GENERATED_PAGES_REL, POSTS_REL):
         root = project / prefix
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*")):
-            if path.is_file() and path.suffix in {".md", ".toml", ".json", ".txt"}:
-                found.append(path)
-    for name in ("README.md", "CLAUDE.md"):
-        path = project / name
-        if path.is_file():
-            found.append(path)
+            relative = path.relative_to(project).as_posix()
+            if path.is_file() and path.suffix in REWRITABLE_SUFFIXES and relative not in moved:
+                found.append((path, relative))
     return found
 
 
-def plan_rewrites(project: Path, pairs: list[tuple[str, str]]) -> list[tuple[Path, str, str]]:
-    """Every (file, before, after) rewrite, one entry per changed file."""
+def plan_rewrites(
+    project: Path, pairs: list[tuple[str, str]], moves: list[tuple[str, str]], output_rel: str
+) -> list[tuple[str, str, str]]:
+    """Every (name, before, after) rewrite, one entry per changed file."""
     planned = []
-    for path in rewritable_files(project):
+    for path, name in rewritable_files(project, moves):
         try:
             before = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
         after = before
+        if name == ".gitignore":
+            # The root ignore file's line for the old build output goes
+            # rather than being rewritten: the derived ignore file inside the
+            # tool-state directory covers the new one.
+            after = drop_stale_ignore_lines(after, output_rel)
         for old, new in pairs:
             after = after.replace(old, new)
         if after != before:
-            planned.append((path, before, after))
+            planned.append((name, before, after))
     return planned
 
 
-def changed_lines(before: str, after: str) -> list[tuple[int, str, str]]:
-    lines_before = before.split("\n")
-    lines_after = after.split("\n")
-    changed = []
-    for number, (old, new) in enumerate(zip(lines_before, lines_after), start=1):
-        if old != new:
-            changed.append((number, old, new))
-    return changed
+def changed_lines(before: str, after: str) -> list[str]:
+    """The rewrite as a unified diff, body lines only.
+
+    A line-by-line pairing would misreport every line after a dropped one, so
+    the report is a real diff.
+    """
+    diff = difflib.unified_diff(
+        before.split("\n"), after.split("\n"), lineterm="", n=0)
+    return [line for line in diff if not line.startswith(("---", "+++"))]
 
 
 def drop_stale_ignore_lines(text: str, output_rel: str) -> str:
@@ -383,18 +409,13 @@ def move(project: Path, args) -> int:
     if args.apply:
         perform_moves(project, moves)
 
-    # The rewrites are planned against the tree the moves produced, so a dry
-    # run plans them against the paths as they stand and reports what it would
-    # rewrite once the files are in their new places.
-    rewrites = plan_rewrites(project, pairs)
+    rewrites = plan_rewrites(project, pairs, moves, output_rel)
     print(f"files to rewrite: {len(rewrites)}")
-    for path, before, after in rewrites:
-        relative = path.relative_to(project).as_posix()
-        lines = changed_lines(before, after)
-        print(f"  {relative}: {len(lines)} line(s)")
-        for number, old, new in lines[:20]:
-            print(f"    {number}: {old.strip()}")
-            print(f"     -> {new.strip()}")
+    for relative, before, after in rewrites:
+        diff = changed_lines(before, after)
+        print(f"  {relative}: {len(diff)} diff line(s)")
+        for line in diff[:30]:
+            print(f"    {line}")
 
     if not args.apply:
         print("dry run: nothing was moved and nothing was written.")
@@ -417,18 +438,9 @@ def perform_moves(project: Path, moves: list[tuple[str, str]]) -> None:
 
 def perform_rewrites(project: Path, rewrites, output_rel: str) -> None:
     written = []
-    for path, _, after in rewrites:
-        if path.name == ".gitignore" and path.parent == project:
-            after = drop_stale_ignore_lines(after, output_rel)
-        path.write_text(after, encoding="utf-8")
-        written.append(path.relative_to(project).as_posix())
-    gitignore = project / ".gitignore"
-    if gitignore.is_file() and gitignore.relative_to(project).as_posix() not in written:
-        text = gitignore.read_text(encoding="utf-8")
-        trimmed = drop_stale_ignore_lines(text, output_rel)
-        if trimmed != text:
-            gitignore.write_text(trimmed, encoding="utf-8")
-            written.append(".gitignore")
+    for name, _, after in rewrites:
+        (project / name).write_text(after, encoding="utf-8")
+        written.append(name)
     # The ownership grant is part of the repository, so it travels with the
     # move rather than being left untracked beside it.
     owners = f"{ROOT_DIR}/{OWNERS_FILE}"

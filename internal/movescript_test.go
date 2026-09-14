@@ -154,6 +154,7 @@ func TestTheMoveScriptDryRunChangesNothing(t *testing.T) {
 		".selfdoc/manifest.json -> .stricttools/docs-state/manifest.json",
 		".selfdoc/hashes/hashes.json -> .stricttools/docs-state/hashes/hashes.json",
 		"sitemap URLs captured: 2",
+		"files to rewrite:",
 		"dry run: nothing was moved",
 	} {
 		if !strings.Contains(out, want) {
