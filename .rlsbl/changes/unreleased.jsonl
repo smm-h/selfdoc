@@ -6,3 +6,4 @@
 {"format_version":1,"id":"18d53f20fa983840ac376999579541839c87b8e70e016fa2","commits":["e536bf3ecb16bdd3eb89490185a68308b014ab16"],"user_facing":false}
 {"format_version":1,"id":"18d53f4429078791a39869a27af14e8482d1280a4ae55ed5","commits":["bb70af9e4e56e59811e7b2a304ff00bb2c36b2d0"],"user_facing":true,"description":"**The frontmatter converter can convert generated pages too.** `--include-generated` converts pages marked generated (lifting and restoring their write protection), which a project needs once before the first `selfdoc gen` that writes TOML, because gen keeps a generated page's handwritten description by reading the page.","type":"feature"}
 {"format_version":1,"id":"18d53f60095f26478a1a147f029545ac998514fc4496ea1c","commits":["d28eed0b602c39b83b130bf11c323565bab325ad"],"user_facing":false}
+{"format_version":1,"id":"18d540558afa1b0db6ea55daaf2f44e4a6187fc846bef3b4","commits":["ec3c2c9365c5d0d2d19827bb624ba87c5ace475c"],"user_facing":false}
