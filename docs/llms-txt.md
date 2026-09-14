@@ -56,15 +56,13 @@ This gives AI systems the full content in a single fetch -- useful for context-h
 
 ## AI Crawler Access
 
-selfdoc's generated `robots.txt` explicitly allows the AI crawlers listed below, naming each user agent with `Allow: /`. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
+selfdoc's generated `robots.txt` writes an `Allow: /` stanza for each user agent below, which is every crawler the policy names. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
 
-- **GPTBot** and **ChatGPT-User** (OpenAI)
-- **ClaudeBot** and **Claude-SearchBot** (Anthropic)
-- **PerplexityBot** (Perplexity)
-- **Google-Extended** and **Googlebot** (Google)
-- **OAI-SearchBot** (OpenAI search)
+:-: list-crawlers
 
-This means AI assistants can freely crawl your docs, read the sitemap, and fetch `llms.txt` or `llms-full.txt` without being blocked.
+`*` is the wildcard stanza, which covers every crawler not named on its own. The rest are the crawlers the major AI assistants and search-augmented models run. This means AI assistants can freely crawl your docs, read the sitemap, and fetch `llms.txt` or `llms-full.txt` without being blocked.
+
+The list above is rendered from the one declaration every `robots.txt` selfdoc writes reads, so it says what your build actually emits rather than a copy of it.
 
 ## Why It Matters
 

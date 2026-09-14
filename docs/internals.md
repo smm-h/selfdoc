@@ -117,7 +117,7 @@ Python is the one extractor that parses rather than scans, because Python's gram
 
 **Package:** `internal/resolver` -- a resolver is built for a project and called once per directive, processing it through a dispatch chain and stopping at the first match:
 
-1. **Content directives** -- callouts, `list-glossary`, `list-tree`, `table-dep`, `list-modules`, `table-commands`, `table-directives`, `table-config-schema`, `table-endpoint`, `var` and `cv`. These are language-agnostic and need no source access.
+1. **Content directives** -- callouts, `list-glossary`, `list-tree`, `table-dep`, `list-modules`, `table-commands`, `table-directives`, `table-config-schema`, `table-endpoint`, `list-crawlers`, `var` and `cv`. These are language-agnostic and need no source access.
 
 2. **Custom directives** -- if `selfdoc.json` declares a `"directives"` map, the named script is run out of process. An embedded driver is handed to `python3` with the script's path as its one argument and a JSON object (`attrs`, `config`, `body`, `base_dir`) on standard input; what the script prints on standard output replaces the directive. The same config key also accepts a directive compiled into the binary, which is how an assembled site's home project renders from the assembly's manifests -- state a build is handed and no config document can hold.
 

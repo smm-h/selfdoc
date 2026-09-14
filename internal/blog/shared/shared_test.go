@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/selfdoc/internal/blog/listing"
+	"github.com/smm-h/selfdoc/internal/robots"
 )
 
 const canonicalBase = "https://docs.example.com"
@@ -720,12 +721,41 @@ func TestRobotsNamesTheRootSitemapAbsolutely(t *testing.T) {
 	if want := "Sitemap: " + canonicalBase + "/" + SitemapPath; !strings.Contains(got, want) {
 		t.Errorf("robots.txt does not carry %q:\n%s", want, got)
 	}
-	for _, agent := range []string{
-		"*", "GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-		"ClaudeBot", "Googlebot", "OAI-SearchBot", "Claude-SearchBot",
-	} {
+	for _, agent := range robots.Agents {
 		if want := "User-agent: " + agent + "\nAllow: /"; !strings.Contains(got, want) {
 			t.Errorf("robots.txt does not allow %q:\n%s", agent, got)
+		}
+	}
+}
+
+// TestRobotsReferencesAgreeWithTheDeclaredPolicy keeps the recorded files from
+// drifting away from the policy silently.
+//
+// The two testdata files are recordings: the byte-for-byte test above compares
+// the generator's output against them, and a crawler added to the policy makes
+// that comparison fail, which is the point. What it cannot say is which side
+// moved. This one reads the agent lines back out of each recording and names
+// the declaration they have to agree with, so re-recording a file with an
+// agent the policy never gained fails here instead of passing quietly.
+func TestRobotsReferencesAgreeWithTheDeclaredPolicy(t *testing.T) {
+	t.Parallel()
+	for _, file := range []string{"robots.txt", "robots_trailing_slash.txt"} {
+		var recorded []string
+		for _, line := range strings.Split(reference(t, file), "\n") {
+			if agent, found := strings.CutPrefix(line, "User-agent: "); found {
+				recorded = append(recorded, strings.TrimSpace(agent))
+			}
+		}
+		if len(recorded) != len(robots.Agents) {
+			t.Errorf("%s names %d agents, the policy declares %d: %q vs %q",
+				file, len(recorded), len(robots.Agents), recorded, robots.Agents)
+			continue
+		}
+		for i, agent := range robots.Agents {
+			if recorded[i] != agent {
+				t.Errorf("%s names %q where the policy declares %q",
+					file, recorded[i], agent)
+			}
 		}
 	}
 }

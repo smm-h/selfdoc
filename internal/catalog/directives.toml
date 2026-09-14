@@ -166,6 +166,14 @@ optional_attrs = []
 example = ':-: table-config-schema'
 
 [[directives]]
+name = "list-crawlers"
+description = "List of the crawlers the generated robots.txt allows"
+category = "content"
+required_attrs = []
+optional_attrs = []
+example = ':-: list-crawlers'
+
+[[directives]]
 name = "var"
 description = "Interpolate project metadata value"
 category = "content"

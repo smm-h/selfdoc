@@ -10,6 +10,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/catalog"
 	"github.com/smm-h/selfdoc/internal/config"
+	"github.com/smm-h/selfdoc/internal/robots"
 	"github.com/smm-h/stricttest/go/hygiene"
 
 	// The language packages register their extractors, which is what links
@@ -83,9 +84,9 @@ func rejects(t *testing.T, content string, substrings ...string) {
 func TestContentDirectivesHasEveryEntry(t *testing.T) {
 	want := []string{
 		"callout-danger", "callout-important", "callout-note", "callout-tip",
-		"callout-warning", "cv", "list-glossary", "list-modules", "list-tree",
-		"table-commands", "table-config-schema", "table-dep",
-		"table-directives", "table-endpoint", "var",
+		"callout-warning", "cv", "list-crawlers", "list-glossary",
+		"list-modules", "list-tree", "table-commands", "table-config-schema",
+		"table-dep", "table-directives", "table-endpoint", "var",
 	}
 	got := make([]string, 0, len(ContentDirectives))
 	for name := range ContentDirectives {
@@ -393,6 +394,44 @@ func TestTableConfigSchema(t *testing.T) {
 		}
 		if strings.Contains(line, "`docs`") {
 			wants(t, line, "| no |")
+		}
+	}
+}
+
+// -- list-crawlers ----------------------------------------------------------
+
+// TestListCrawlersRendersTheDeclaredPolicy: the directive is the docs' reading
+// of package robots, so what it renders is that package's list, in its order,
+// and nothing typed out beside it.
+func TestListCrawlersRendersTheDeclaredPolicy(t *testing.T) {
+	isolate(t)
+	rendered, ok := resolve(t, "list-crawlers", nil, nil, t.TempDir(), nil)
+	if !ok {
+		t.Fatal("list-crawlers is a content directive")
+	}
+	var want []string
+	for _, agent := range robots.Agents {
+		want = append(want, "- `"+agent+"`")
+	}
+	if got := strings.Join(want, "\n"); rendered != got {
+		t.Errorf("list-crawlers rendered\n%s\nwant\n%s", rendered, got)
+	}
+}
+
+// TestListCrawlersNamesEveryAgentOnItsOwnLine: a reader has to be able to read
+// one agent per bullet, which is also what keeps the rendering greppable
+// against the generated robots.txt.
+func TestListCrawlersNamesEveryAgentOnItsOwnLine(t *testing.T) {
+	isolate(t)
+	rendered, _ := resolve(t, "list-crawlers", nil, nil, t.TempDir(), nil)
+	lines := strings.Split(rendered, "\n")
+	if len(lines) != len(robots.Agents) {
+		t.Fatalf("list-crawlers rendered %d lines for %d agents:\n%s",
+			len(lines), len(robots.Agents), rendered)
+	}
+	for i, agent := range robots.Agents {
+		if !strings.Contains(lines[i], agent) {
+			t.Errorf("line %d (%q) does not name %q", i, lines[i], agent)
 		}
 	}
 }

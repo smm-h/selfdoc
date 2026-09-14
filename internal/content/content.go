@@ -3,8 +3,8 @@
 //
 // They cover the five callouts, the glossary list, and the filesystem and
 // project-metadata directives (list-tree, table-dep, list-modules,
-// table-commands, table-directives, table-config-schema, table-endpoint, var
-// and cv).
+// table-commands, table-directives, table-config-schema, table-endpoint,
+// list-crawlers, var and cv).
 //
 // # One dispatch, no registry
 //
@@ -44,7 +44,7 @@ var ContentDirectives = map[string]struct{}{
 	"callout-danger": {}, "callout-important": {}, "list-glossary": {},
 	"list-tree": {}, "table-dep": {}, "list-modules": {},
 	"table-commands": {}, "table-directives": {}, "table-config-schema": {},
-	"table-endpoint": {}, "var": {}, "cv": {},
+	"table-endpoint": {}, "list-crawlers": {}, "var": {}, "cv": {},
 }
 
 // resolveCallout produces the HTML for a callout directive.
@@ -141,6 +141,8 @@ func ResolveContent(
 	case "table-endpoint":
 		rendered, err := ResolveTableEndpoint(attrs, baseDir)
 		return rendered, true, err
+	case "list-crawlers":
+		return ResolveListCrawlers(), true, nil
 	case "var":
 		if config == nil {
 			return "> *[selfdoc: var requires project config]*", true, nil

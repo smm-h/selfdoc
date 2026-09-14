@@ -1,6 +1,6 @@
 ---
 title: Directives Guide
-description: "Guide to selfdoc directives: the 6 marker types, all 21 built-in directives with usage examples, and creating custom directives."
+description: "Guide to selfdoc directives: the marker types, every built-in directive with usage examples, and creating custom directives."
 order: 31
 nav_group: "Guides"
 nav_order: 3
@@ -98,7 +98,7 @@ Attributes are parsed into a `dict[str, str]` and passed to the resolver. Each b
 
 ## Built-in Directives
 
-Selfdoc ships with 21 built-in directives in two categories: **code extraction** directives that read source files, and **content** directives that generate content from project metadata or transform body text.
+Selfdoc's built-in directives fall in two categories: **code extraction** directives that read source files, and **content** directives that generate content from project metadata or transform body text. The sections below cover each one; the [directive reference](../directives/) renders the shipped catalogue as a table.
 
 ### Code Extraction Directives
 
@@ -406,6 +406,16 @@ Configuration field reference table from selfdoc's own config schema. Takes no a
 ```
 
 Produces a table with "Field", "Required", and "Description" columns for all non-internal `selfdoc.json` configuration fields.
+
+#### `list-crawlers`
+
+The crawlers selfdoc's generated `robots.txt` allows, one per bullet. Takes no attributes -- reads the same crawler policy the generators render, so a page documenting the policy cannot go out of step with the file.
+
+```markdown
+:-: list-crawlers
+```
+
+Produces a bullet list of user-agent names, in the order `robots.txt` names them. `*` is the wildcard stanza.
 
 #### `var`
 

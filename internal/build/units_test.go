@@ -13,6 +13,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/address"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/page"
+	"github.com/smm-h/selfdoc/internal/robots"
 	"github.com/smm-h/selfdoc/internal/urls"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -390,10 +391,7 @@ func TestGenerateRobotsTxt(t *testing.T) {
 	if !strings.Contains(text, "Sitemap: https://example.com/sitemap.xml") {
 		t.Errorf("robots.txt does not name the sitemap:\n%s", text)
 	}
-	for _, agent := range []string{
-		"GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-		"ClaudeBot", "Googlebot", "OAI-SearchBot", "Claude-SearchBot",
-	} {
+	for _, agent := range robots.Agents {
 		if !strings.Contains(text, "User-agent: "+agent) {
 			t.Errorf("robots.txt does not name %s:\n%s", agent, text)
 		}
