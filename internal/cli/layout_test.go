@@ -116,12 +116,10 @@ func TestLayoutValidatePassesOnABuiltProject(t *testing.T) {
 	if result := run(t, dir, "build", "--no-auto-commit"); result.ExitCode != 0 {
 		t.Fatalf("build exited %d: %s\n%s", result.ExitCode, result.Stdout, result.Stderr)
 	}
-	// Every directory the build did not need is created by hand, because a
-	// repository's layout is bijective with its owners file.
-	for _, rel := range []string{layout.PostsRel, layout.VocabularyRel} {
-		if err := os.MkdirAll(filepath.Join(dir, rel), 0o755); err != nil {
-			t.Fatal(err)
-		}
+	// The posts directory is claimed and granted, so it has to exist; the
+	// vocabulary directory has no row until its files arrive, so it must not.
+	if err := os.MkdirAll(filepath.Join(dir, layout.PostsRel), 0o755); err != nil {
+		t.Fatal(err)
 	}
 
 	result := run(t, dir, "--json", "layout", "validate")
@@ -144,10 +142,8 @@ func TestLayoutValidateRefusesAStaleIgnoreFileAndTheBuildClearsIt(t *testing.T) 
 	if result := run(t, dir, "build", "--no-auto-commit"); result.ExitCode != 0 {
 		t.Fatalf("build exited %d: %s\n%s", result.ExitCode, result.Stdout, result.Stderr)
 	}
-	for _, rel := range []string{layout.PostsRel, layout.VocabularyRel} {
-		if err := os.MkdirAll(filepath.Join(dir, rel), 0o755); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(filepath.Join(dir, layout.PostsRel), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	writeText(t, filepath.Join(dir, layout.Root, layout.IgnoreFileName), "# BEGIN othertool\nx/\n# END othertool\n")
 

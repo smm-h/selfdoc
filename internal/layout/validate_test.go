@@ -16,6 +16,12 @@ func validated(t *testing.T) string {
 	t.Helper()
 	dir := owned(t)
 	for _, declared := range Declared() {
+		if !declared.CreatedByTool {
+			// A directory selfdoc never creates has no row until its
+			// content arrives, so a repository without that content is
+			// laid out correctly without it.
+			continue
+		}
 		if err := EnsureDir(effects.Unbound(), dir, Root+"/"+declared.Name); err != nil {
 			t.Fatalf("EnsureDir %s: %v", declared.Name, err)
 		}
@@ -77,9 +83,8 @@ func TestValidateReportsADirectoryNoRowNames(t *testing.T) {
 func TestValidateReportsARowNothingAnswersTo(t *testing.T) {
 	hygiene.Isolate(t)
 	dir := validated(t)
-	if err := os.RemoveAll(Path(dir, VocabularyRel)); err != nil {
-		t.Fatal(err)
-	}
+	write(t, filepath.Join(dir, Root, OwnersFileName),
+		strings.Join(append(RequiredRows(), VocabularyName+","+Owner), "\n")+"\n")
 	problems := problemsOf(t, dir, CheckOwnership)
 	if len(problems) != 1 {
 		t.Fatalf("ownership problems = %v, want the missing directory's one", problems)

@@ -65,13 +65,16 @@ GENERATED_PAGES_REL = f"{DOCS_STATE_REL}/pages"
 OUTPUT_REL = f"{DOCS_CACHE_REL}/build"
 VERSIONS_REL = f"{DOCS_CACHE_REL}/versions"
 
+# The rows a repository needs for the directories selfdoc creates itself. The
+# vocabulary directory is not among them: selfdoc never creates it, git carries
+# no empty directory, and 'selfdoc layout validate' fails a row naming a
+# directory that does not exist -- so its row is added with its files.
 REQUIRED_ROWS = [
     OWNERS_HEADER,
     f"docs,{OWNER}",
     f"docs-state,{OWNER}",
     f"docs-cache,{OWNER}",
     f"posts,{OWNER}",
-    f"vocabulary,{OWNER}",
 ]
 
 # The file the pre-move URL set is kept in, inside the uncommitted cache.
@@ -392,7 +395,10 @@ def move(project: Path, args) -> int:
         )
 
     urls_before = capture_sitemap(project, output_rel, args.apply)
-    moves = plan_moves(project, docs_rel, output_rel, posts_rel)
+    # A path already at its destination is not a move: a repository part-way
+    # through the move plans only what is left.
+    moves = [(old, new) for old, new in plan_moves(project, docs_rel, output_rel, posts_rel)
+             if old != new]
     pairs = rewrite_map(docs_rel, output_rel, posts_rel)
 
     print(f"project: {project}")
@@ -403,13 +409,22 @@ def move(project: Path, args) -> int:
         print(f"  {old} -> {new}")
     if args.expect_moves is not None and len(moves) != args.expect_moves:
         raise Refusal(f"planned {len(moves)} moves, expected {args.expect_moves}")
-    if not moves:
-        raise Refusal("nothing to move: no tracked file sits at any of the old paths.")
+    # A repository whose files are already in place still has its content to
+    # rewrite: a run that was interrupted between the two commits finishes
+    # here rather than needing the moves undone first.
+    already_moved = not moves
 
-    if args.apply:
+    if args.apply and moves:
         perform_moves(project, moves)
 
     rewrites = plan_rewrites(project, pairs, moves, output_rel)
+    if already_moved and not rewrites:
+        raise Refusal(
+            "nothing to do: no tracked file sits at any of the old paths and no content "
+            "names one."
+        )
+    if already_moved:
+        print("no move is left to make; the content rewrites are what remains.")
     print(f"files to rewrite: {len(rewrites)}")
     for relative, before, after in rewrites:
         diff = changed_lines(before, after)
@@ -436,10 +451,26 @@ def perform_moves(project: Path, moves: list[tuple[str, str]]) -> None:
         raise Refusal(f"safegit mv failed with status {result.returncode}")
 
 
+def write_preserving_mode(path: Path, text: str) -> None:
+    """Write a file whose mode may forbid it, and put the mode back.
+
+    A generated root file is written read-only on purpose, and it is one of the
+    files whose text names a moved path.
+    """
+    mode = path.stat().st_mode if path.exists() else None
+    if mode is not None and not mode & 0o200:
+        path.chmod(mode | 0o200)
+    try:
+        path.write_text(text, encoding="utf-8")
+    finally:
+        if mode is not None:
+            path.chmod(mode)
+
+
 def perform_rewrites(project: Path, rewrites, output_rel: str) -> None:
     written = []
     for name, _, after in rewrites:
-        (project / name).write_text(after, encoding="utf-8")
+        write_preserving_mode(project / name, after)
         written.append(name)
     # The ownership grant is part of the repository, so it travels with the
     # move rather than being left untracked beside it.

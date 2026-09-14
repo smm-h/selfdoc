@@ -159,6 +159,12 @@ type Directory struct {
 	// spelled relative to the repository root. A repository that still has
 	// one of them is refused.
 	DeprecatedNames []string
+	// CreatedByTool is whether selfdoc creates this directory itself once a
+	// row permits it. A directory it never creates is one whose content a
+	// person writes first, so its row is added when that content arrives:
+	// git carries no empty directory, and a row naming one that does not
+	// exist fails [Validate].
+	CreatedByTool bool
 }
 
 // declared is the whole claim, in the order a dump prints it.
@@ -169,6 +175,7 @@ var declared = []Directory{
 		Commitment:      Committed,
 		Description:     "The pages a person writes, the underscore-prefixed templates they include, and the docs configuration that sits beside them.",
 		DeprecatedNames: []string{"docs/"},
+		CreatedByTool:   true,
 	},
 	{
 		Name:            DocsStateName,
@@ -176,6 +183,7 @@ var declared = []Directory{
 		Commitment:      Committed,
 		Description:     "What selfdoc generates and the repository keeps: the manifests, the hash baselines, the post revisions, the generated data files, and the generated pages.",
 		DeprecatedNames: []string{".selfdoc/"},
+		CreatedByTool:   true,
 	},
 	{
 		Name:            DocsCacheName,
@@ -183,6 +191,7 @@ var declared = []Directory{
 		Commitment:      Uncommitted,
 		Description:     "What selfdoc generates and the repository throws away: the built site and one extracted checkout per archived version.",
 		DeprecatedNames: []string{"docs/_build/", ".selfdoc/cache/"},
+		CreatedByTool:   true,
 	},
 	{
 		Name:            PostsName,
@@ -190,6 +199,7 @@ var declared = []Directory{
 		Commitment:      Committed,
 		Description:     "The project's blog posts.",
 		DeprecatedNames: []string{".selfdoc/posts/"},
+		CreatedByTool:   true,
 	},
 	{
 		Name:            VocabularyName,
@@ -244,14 +254,20 @@ func FunctionOf(rel string) (string, bool) {
 	return strings.SplitN(rest, "/", 2)[0], true
 }
 
-// RequiredRows is the owners file this repository needs for selfdoc, header
-// first, one row per claimed directory. Every refusal that asks for a row
-// prints from here, so the text a person is told to paste is generated from the
-// claim rather than typed beside it.
+// RequiredRows is the owners file a repository needs for selfdoc, header
+// first, one row per directory selfdoc creates itself. Every refusal that asks
+// for rows prints from here, so the text a person is told to paste is generated
+// from the claim rather than typed beside it.
+//
+// A directory selfdoc does not create is left out: its row is added when its
+// content is, because git carries no empty directory and [Validate] fails a row
+// naming a directory that does not exist.
 func RequiredRows() []string {
 	rows := []string{OwnersHeader}
 	for _, dir := range declared {
-		rows = append(rows, dir.Name+","+Owner)
+		if dir.CreatedByTool {
+			rows = append(rows, dir.Name+","+Owner)
+		}
 	}
 	return rows
 }

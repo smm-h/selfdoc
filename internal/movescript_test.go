@@ -76,8 +76,7 @@ func oldLayoutProject(t *testing.T) string {
 func grantOwnership(t *testing.T, dir string) {
 	t.Helper()
 	testproject.WriteText(t, filepath.Join(dir, ".stricttools", "OWNERS.csv"),
-		"directory,owner\ndocs,selfdoc\ndocs-state,selfdoc\ndocs-cache,selfdoc\n"+
-			"posts,selfdoc\nvocabulary,selfdoc\n")
+		"directory,owner\ndocs,selfdoc\ndocs-state,selfdoc\ndocs-cache,selfdoc\nposts,selfdoc\n")
 }
 
 // fakeSelfdoc installs a stub binary that writes the given sitemap where a
