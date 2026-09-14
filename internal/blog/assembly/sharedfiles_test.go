@@ -211,6 +211,14 @@ func TestGenerateWritesTheSitesOwnFiles(t *testing.T) {
 
 func TestGenerateReportsEveryPathItWrote(t *testing.T) {
 	tree := threeProjectTree(t)
+	// A grafted page both sweeps change: its stylesheet is re-pointed at the
+	// site-level asset, and its absolute link to this site is re-expressed
+	// relative to the page. It is one written file either way.
+	tree.Page("alpha/style.css", "/* alpha's own copy */")
+	tree.Page("alpha/index.html", strings.Replace(
+		builtPage("style.css", sharedCanonicalBase+"/alpha/"),
+		"<p>body</p>",
+		`<p><a href="`+sharedCanonicalBase+`/blog/">Blog</a></p>`, 1))
 	written := tree.Generate("home")
 	for _, rel := range []string{
 		"projects/index.html", "blog/index.html", "nav.json", "feed.xml",
@@ -221,6 +229,13 @@ func TestGenerateReportsEveryPathItWrote(t *testing.T) {
 		if !slices.Contains(written, path) {
 			t.Errorf("%s was written but not reported", rel)
 		}
+	}
+	seen := make(map[string]bool, len(written))
+	for _, path := range written {
+		if seen[path] {
+			t.Errorf("%s is reported more than once", path)
+		}
+		seen[path] = true
 	}
 }
 

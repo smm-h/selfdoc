@@ -347,7 +347,23 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		written = append(written, sitePath(opts.SiteDir, rel))
 	}
 
-	return written, nil
+	// A page both sweeps changed was written twice and is one file, so the
+	// count the caller prints counts files rather than writes.
+	return dedupePaths(written), nil
+}
+
+// dedupePaths drops repeated paths, keeping each path's first position.
+func dedupePaths(paths []string) []string {
+	seen := make(map[string]bool, len(paths))
+	unique := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if seen[path] {
+			continue
+		}
+		seen[path] = true
+		unique = append(unique, path)
+	}
+	return unique
 }
 
 // sitePath joins a site-relative path onto the tree's root.
