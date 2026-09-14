@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/directives"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
@@ -33,8 +35,8 @@ func write(t *testing.T, path, content string) {
 func makeConfig(overrides map[string]any) map[string]any {
 	config := map[string]any{
 		"source":      []any{},
-		"docs":        "docs/",
-		"output":      "docs/_build/",
+		"docs":        ".stricttools/docs/",
+		"output":      ".stricttools/docs-cache/build/",
 		"description": "A described project.",
 		"directives":  map[string]any{},
 	}
@@ -205,8 +207,8 @@ func TestValidNamesAcceptsAConfigWithNoDirectivesKey(t *testing.T) {
 func TestResolveAllKeysPagesByTheirDocsRelativePath(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# Home\n")
-	write(t, filepath.Join(base, "docs", "api", "reference.md"), "# Reference\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# Home\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "api", "reference.md"), "# Reference\n")
 
 	all := resolveAll(t, makeConfig(nil), "", base, nil)
 
@@ -219,10 +221,10 @@ func TestResolveAllKeysPagesByTheirDocsRelativePath(t *testing.T) {
 func TestResolveAllSkipsUnderscoreTemplatesAndNonMarkdown(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# Home\n")
-	write(t, filepath.Join(base, "docs", "_README.md"), "# Root template\n")
-	write(t, filepath.Join(base, "docs", "_partials", "_nav.md"), "# Nav\n")
-	write(t, filepath.Join(base, "docs", "style.css"), "body{}\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# Home\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "_README.md"), "# Root template\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "_partials", "_nav.md"), "# Nav\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "style.css"), "body{}\n")
 
 	all := resolveAll(t, makeConfig(nil), "", base, nil)
 
@@ -234,12 +236,12 @@ func TestResolveAllSkipsUnderscoreTemplatesAndNonMarkdown(t *testing.T) {
 func TestResolveAllSkipsTheOutputDirectory(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# Home\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# Home\n")
 	// A previous build's artifacts, which the walk must not feed back in.
-	write(t, filepath.Join(base, "docs", "_build", "leftover.md"), "# Stale\n")
-	write(t, filepath.Join(base, "docs", "_build", "deep", "leftover.md"), "# Stale\n")
+	write(t, filepath.Join(base, ".stricttools", "docs-cache", "build", "leftover.md"), "# Stale\n")
+	write(t, filepath.Join(base, ".stricttools", "docs-cache", "build", "deep", "leftover.md"), "# Stale\n")
 
-	config := makeConfig(map[string]any{"output": "docs/_build/"})
+	config := makeConfig(map[string]any{"output": ".stricttools/docs-cache/build/"})
 	all := resolveAll(t, config, "", base, nil)
 
 	if got := keysOf(all); !reflect.DeepEqual(got, []string{"index.md"}) {
@@ -253,10 +255,10 @@ func TestResolveAllSkipsTheOutputDirectory(t *testing.T) {
 func TestResolveAllSkipsAnOutputDirectoryWithoutTheUnderscore(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# Home\n")
-	write(t, filepath.Join(base, "docs", "site", "leftover.md"), "# Stale\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# Home\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "site", "leftover.md"), "# Stale\n")
 
-	config := makeConfig(map[string]any{"output": "docs/site/"})
+	config := makeConfig(map[string]any{"output": ".stricttools/docs/site/"})
 	all := resolveAll(t, config, "", base, nil)
 
 	if got := keysOf(all); !reflect.DeepEqual(got, []string{"index.md"}) {
@@ -267,7 +269,7 @@ func TestResolveAllSkipsAnOutputDirectoryWithoutTheUnderscore(t *testing.T) {
 func TestResolveAllReadsAnExplicitDocsDirectory(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# Home\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# Home\n")
 	write(t, filepath.Join(base, "other", "page.md"), "# Other\n")
 
 	all := resolveAll(t, makeConfig(nil), filepath.Join(base, "other"), base, nil)
@@ -291,7 +293,7 @@ func TestResolveAllOnAMissingDocsDirectoryIsEmpty(t *testing.T) {
 func TestResolveAllOverlayAddsAndReplaces(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# On disk\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# On disk\n")
 
 	overlay := map[string]string{
 		"index.md":      "# From the overlay\n",
@@ -314,7 +316,7 @@ func TestResolveAllOverlayAddsAndReplaces(t *testing.T) {
 func TestResolveAllResolvesDirectivesAgainstTheProject(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"),
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"),
 		"+++\ntitle = \"Home\"\n+++\n"+`Project: :-: var key="project.description"`+"\n")
 
 	all := resolveAll(t, makeConfig(nil), "", base, nil)
@@ -334,7 +336,7 @@ func TestResolveAllResolvesDirectivesAgainstTheProject(t *testing.T) {
 func TestResolveAllRefusesAnUngrammaticalCustomDirectiveName(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
-	write(t, filepath.Join(base, "docs", "index.md"), "# Home\n")
+	write(t, filepath.Join(base, ".stricttools", "docs", "index.md"), "# Home\n")
 
 	config := makeConfig(map[string]any{
 		"directives": map[string]any{"-bad": "scripts/api.py"},
@@ -373,5 +375,49 @@ func TestConversionsNarrowToTheConsumersOwnShapes(t *testing.T) {
 	}
 	if stalenessDocs["index.md"].Frontmatter["title"] != "T" {
 		t.Errorf("staleness frontmatter = %#v", stalenessDocs["index.md"].Frontmatter)
+	}
+}
+
+// TestResolveAllMergesTheTwoDocsRoots pins the merge the layout's two docs
+// roots need: a page keeps the address it had whichever root it is authored
+// in, and the walk reads both.
+func TestResolveAllMergesTheTwoDocsRoots(t *testing.T) {
+	isolate(t)
+	base := t.TempDir()
+	write(t, filepath.Join(base, layout.DocsRel, "index.md"), "# Home\n")
+	write(t, filepath.Join(base, layout.GeneratedPagesRel, "api.md"),
+		"# API\n"+layout.GeneratedMarkerPrefix+", do not edit -->\n")
+	write(t, filepath.Join(base, layout.GeneratedPagesRel, "internal", "deep.md"), "# Deep\n")
+
+	all := resolveAll(t, makeConfig(nil), "", base, nil)
+
+	if got := keysOf(all); !reflect.DeepEqual(got, []string{"api.md", "index.md", "internal/deep.md"}) {
+		t.Errorf("keys = %v, want the pages of both roots", got)
+	}
+}
+
+// TestResolveAllRefusesTwoPagesAtOneAddress pins the collision refusal: the
+// two roots share one URL namespace, so a generated page and a handwritten one
+// cannot both claim an address.
+func TestResolveAllRefusesTwoPagesAtOneAddress(t *testing.T) {
+	isolate(t)
+	base := t.TempDir()
+	handwritten := filepath.Join(base, layout.DocsRel, "guide.md")
+	generated := filepath.Join(base, layout.GeneratedPagesRel, "guide.md")
+	write(t, handwritten, "# Guide\n")
+	write(t, generated, "# Guide\n"+layout.GeneratedMarkerPrefix+", do not edit -->\n")
+
+	_, err := ResolveAll(makeConfig(nil), "", base, nil, effects.Unbound())
+	if err == nil {
+		t.Fatal("two pages claiming one address were accepted")
+	}
+	var collision *CollisionError
+	if !errors.As(err, &collision) {
+		t.Fatalf("err = %T (%v), want a *CollisionError", err, err)
+	}
+	for _, want := range []string{"guide.md", handwritten, generated} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %q: %v", want, err)
+		}
 	}
 }

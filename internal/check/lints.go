@@ -10,6 +10,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/page"
 	"github.com/smm-h/selfdoc/internal/prose"
@@ -103,14 +104,17 @@ func normalizeDQ(text string) string {
 //
 // allDocs maps each page's reporting path to its parsed frontmatter, its
 // resolved content and its raw body -- the docs walk's own result, with the
-// project's published posts merged in by the caller. docsDir is the docs
-// directory the project root is derived from. resolvedDirectives are the
-// successfully resolved directives, nil for a caller that resolved none.
+// project's published posts merged in by the caller. projectRoot is the
+// directory every reported path is relative to and every relative config path
+// resolves against; docsDir is the tree the pages were walked from, which sits
+// inside it. resolvedDirectives are the successfully resolved directives, nil
+// for a caller that resolved none.
 //
 // The Python signature carried the resolver too and never read it; it is left
 // out here rather than accepted and ignored.
 func runLints(
 	allDocs map[string]docs.Doc,
+	projectRoot string,
 	docsDir string,
 	config map[string]any,
 	resolvedDirectives []ResolvedDirective,
@@ -125,11 +129,10 @@ func runLints(
 		pageDirectives[resolved.File] = append(pageDirectives[resolved.File], resolved)
 	}
 
-	absDocsDir, err := filepath.Abs(docsDir)
+	projectRoot, err := filepath.Abs(projectRoot)
 	if err != nil {
 		return nil, err
 	}
-	projectRoot := filepath.Dir(absDocsDir)
 	projectName := filepath.Base(projectRoot)
 	// The project name and description the page wrapper is handed, so the
 	// title rule measures the string the build really renders.
@@ -158,7 +161,7 @@ func runLints(
 	// once for the whole run rather than once per page.
 	spellDocuments := authoredDataDocuments(
 		docsDir,
-		util.PathJoin(projectRoot, configString(config, "output", "docs/_build/")),
+		util.PathJoin(projectRoot, configString(config, "output", layout.OutputDefault)),
 	)
 
 	for _, relPath := range sortedKeys(allDocs) {

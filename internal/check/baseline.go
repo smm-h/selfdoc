@@ -9,6 +9,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/ownership"
 	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/staleness"
@@ -162,12 +163,12 @@ func ComputeStalenessState(
 	}
 
 	docsDir := filepath.Join(
-		dirPath, strings.TrimRight(configString(projectConfig, "docs", "docs/"), "/"),
+		dirPath, strings.TrimRight(configString(projectConfig, "docs", layout.DocsDefault), "/"),
 	)
 	if !isDir(docsDir) {
 		return StalenessState{}, fmt.Errorf(
 			"Docs directory '%s' not found.",
-			configString(projectConfig, "docs", "docs/"),
+			configString(projectConfig, "docs", layout.DocsDefault),
 		)
 	}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -28,21 +29,20 @@ const (
 // a tag still standing at the same commit is not extracted again.
 //
 // The content is moved by streaming "git archive" into "tar -x", so nothing
-// buffers the whole tree. ".selfdoc/cache/.gitignore" is written with "*" the
-// first time, so the entire cache stays out of the repository.
+// buffers the whole tree. The cache is one of selfdoc's uncommitted
+// directories, so the derived ignore file inside the tool-state directory is
+// what keeps it out of the repository.
+//
+// Both docs roots are extracted: the handwritten pages the config names, and
+// the generated pages committed beside them, so an archived version's build
+// sees the same two roots the working tree's build does.
 func ExtractVersionContent(version string, config map[string]any, baseDir string, h *effects.Handle) (string, error) {
-	cacheRoot := filepath.Join(baseDir, ".selfdoc", "cache")
+	cacheRoot := layout.Path(baseDir, layout.VersionsRel)
 	cacheDir := filepath.Join(cacheRoot, version)
 	hashFile := filepath.Join(cacheDir, ".hash")
 
-	if err := h.MkdirAll(cacheRoot); err != nil {
+	if err := layout.EnsureDir(h, baseDir, layout.VersionsRel); err != nil {
 		return "", err
-	}
-	gitignorePath := filepath.Join(cacheRoot, ".gitignore")
-	if !isFile(gitignorePath) {
-		if err := h.Write(gitignorePath, []byte("*\n"), effects.ModeDefault); err != nil {
-			return "", err
-		}
 	}
 
 	tagName := ""
@@ -93,6 +93,22 @@ func ExtractVersionContent(version string, config map[string]any, baseDir string
 
 	docsPath := strings.TrimRight(configString(config, "docs"), "/")
 	archivePaths := []string{docsPath}
+	// The generated pages are the second docs root, and a tag that predates
+	// them carries none: asking git archive for a path the tag does not
+	// hold is an error, so the path is named only when the tag holds it.
+	//
+	// The ownership declaration travels with them: the extracted checkout is
+	// built like any other repository, and creating its output directory
+	// needs the row that permits it.
+	for _, optional := range []string{layout.GeneratedPagesRel, layout.Root + "/" + layout.OwnersFileName} {
+		inTag, err := pathInTag(tagName, optional, baseDir, h)
+		if err != nil {
+			return "", err
+		}
+		if inTag {
+			archivePaths = append(archivePaths, optional)
+		}
+	}
 	if declaresSource(config) {
 		rawSourcePaths, sourceErr := extractors.SourcePaths(config)
 		if sourceErr != nil {
@@ -128,6 +144,18 @@ func ExtractVersionContent(version string, config map[string]any, baseDir string
 		return "", err
 	}
 	return cacheDir, nil
+}
+
+// pathInTag reports whether a tag's tree carries a path.
+func pathInTag(tagName, path, baseDir string, h *effects.Handle) (bool, error) {
+	result, err := h.Run(
+		[]string{"git", "ls-tree", "--name-only", tagName, "--", path},
+		effects.CaptureOutput(), effects.Timeout(gitProbeTimeout),
+		effects.Cwd(baseDir), effects.Read())
+	if err != nil {
+		return false, err
+	}
+	return result.ExitCode == 0 && strings.TrimSpace(string(result.Stdout)) != "", nil
 }
 
 // isFile reports whether path names an existing regular file.

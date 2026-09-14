@@ -9,6 +9,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/blog/editor/registry"
 	"github.com/smm-h/selfdoc/internal/blog/shared"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -31,7 +32,7 @@ import (
 //
 // # What is offered
 //
-// Every local registry entry's .selfdoc/manifest.json: each page (title and
+// Every local registry entry's manifest: each page (title and
 // address) and each of its headings (the manifests carry heading anchors, and
 // the anchor a manifest records is the id the built page really has). The
 // result is one flat list across every repository, because a post's link does
@@ -57,7 +58,7 @@ var PostDepth = len(strings.Split(shared.TargetOutputPath(shared.PostTarget("slu
 var ToSiteRoot = strings.Repeat("../", PostDepth)
 
 // ManifestRel is where a project keeps the manifest the editor reads.
-const ManifestRel = ".selfdoc/manifest.json"
+const ManifestRel = layout.ManifestRel
 
 // ManifestError reports that a manifest exists but cannot be read, and the
 // message says how.

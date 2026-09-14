@@ -26,9 +26,9 @@ func strictcliProject(
 	}
 	write(t, filepath.Join(root, ".strictcli", "schema.json"), string(encoded))
 
-	write(t, filepath.Join(root, "docs", ".keep"), "")
+	write(t, filepath.Join(root, ".stricttools", "docs", ".keep"), "")
 	for relPath, content := range pages {
-		write(t, filepath.Join(root, "docs", relPath), content)
+		write(t, filepath.Join(root, ".stricttools", "docs", relPath), content)
 	}
 	return root
 }
@@ -152,7 +152,7 @@ func TestCLI001(t *testing.T) {
 
 	t.Run("a project with no dumped schema is silent", func(t *testing.T) {
 		root := pythonProject(t)
-		write(t, filepath.Join(root, "docs", "guide.md"),
+		write(t, filepath.Join(root, ".stricttools", "docs", "guide.md"),
 			"+++\ndescription = \"A guide covering everything the project does for a "+
 				"reader.\"\n+++\n# Guide\n\nText.\n")
 		result := checkFixture(t, root)

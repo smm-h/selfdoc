@@ -26,10 +26,10 @@ var reservedWindowsNames = []string{
 // skippedDirs are directories whose contents are build output, caches or the
 // git database rather than module content.
 var skippedDirs = map[string]bool{
-	".git":     true,
-	".selfdoc": true,
-	"bin":      true,
-	"dist":     true,
+	".git":         true,
+	".stricttools": true,
+	"bin":          true,
+	"dist":         true,
 }
 
 // isReserved reports whether a single path element is one of the names Go

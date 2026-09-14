@@ -16,7 +16,7 @@ func today() string { return time.Now().Format("2006-01-02") }
 // postProject creates a minimal project, with the given config overrides.
 func postProject(t *testing.T, overrides map[string]any) string {
 	t.Helper()
-	dir := t.TempDir()
+	dir := testproject.Dir(t)
 	config := map[string]any{
 		"source":        []any{map[string]any{"path": "src/", "language": "python"}},
 		"base_url":      "https://example.com",
@@ -60,23 +60,28 @@ func TestPostNewCreatesTheFile(t *testing.T) {
 	if result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
-	expected := filepath.Join(dir, ".selfdoc", "posts", today()+"-my-first-post.md")
+	expected := filepath.Join(dir, ".stricttools", "posts", today()+"-my-first-post.md")
 	if !exists(expected) {
 		t.Fatalf("no post at %s", expected)
 	}
-	if !strings.Contains(result.Stdout, filepath.Join(".selfdoc", "posts", today()+"-my-first-post.md")) {
+	if !strings.Contains(result.Stdout, filepath.Join(".stricttools", "posts", today()+"-my-first-post.md")) {
 		t.Errorf("the created path is not reported:\n%s", result.Stdout)
 	}
 }
 
 func TestPostNewUsesTheConfiguredPostsDir(t *testing.T) {
 	isolate(t)
-	dir := postProject(t, map[string]any{"posts": map[string]any{"dir": "blog/articles/"}})
+	// A declared posts directory is honoured, and it lives inside the posts
+	// function directory: a posts path outside the tool-state directory is
+	// the layout selfdoc used before, and is refused as that.
+	dir := postProject(t, map[string]any{
+		"posts": map[string]any{"dir": ".stricttools/posts/articles/"},
+	})
 
 	if result := run(t, dir, "blog", "post", "new", "--title", "Custom Dir"); result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
-	if !exists(filepath.Join(dir, "blog", "articles", today()+"-custom-dir.md")) {
+	if !exists(filepath.Join(dir, ".stricttools", "posts", "articles", today()+"-custom-dir.md")) {
 		t.Error("the post did not land in the configured directory")
 	}
 }
@@ -88,7 +93,7 @@ func TestPostNewFrontmatter(t *testing.T) {
 	if result := run(t, dir, "blog", "post", "new", "--title", "Frontmatter Check"); result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
-	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-frontmatter-check.md"))
+	content := readText(t, filepath.Join(dir, ".stricttools", "posts", today()+"-frontmatter-check.md"))
 
 	if !strings.HasPrefix(content, "+++\n") {
 		t.Fatalf("no frontmatter:\n%s", content)
@@ -117,7 +122,7 @@ func TestPostNewFrontmatter(t *testing.T) {
 func TestPostNewRefusesAnExistingFile(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	writeText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-duplicate.md"), "existing")
+	writeText(t, filepath.Join(dir, ".stricttools", "posts", today()+"-duplicate.md"), "existing")
 
 	result := run(t, dir, "blog", "post", "new", "--title", "Duplicate")
 	if result.ExitCode != 1 {
@@ -164,7 +169,7 @@ func TestPostNewRefusesWithoutAConfig(t *testing.T) {
 func TestPostNewCreatesThePostsDirectory(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	postsDir := filepath.Join(dir, ".selfdoc", "posts")
+	postsDir := filepath.Join(dir, ".stricttools", "posts")
 	if exists(postsDir) {
 		t.Fatal("the fixture already carries a posts directory")
 	}
@@ -191,7 +196,7 @@ func TestPostListRefusesWithoutAConfig(t *testing.T) {
 
 func TestPostListSaysSoWhenThereAreNone(t *testing.T) {
 	isolate(t)
-	dir := postProject(t, map[string]any{"posts": map[string]any{"dir": ".selfdoc/posts/"}})
+	dir := postProject(t, map[string]any{"posts": map[string]any{"dir": ".stricttools/posts/"}})
 	result := run(t, dir, "blog", "post", "list")
 	if !strings.Contains(result.Stdout, "No posts found") {
 		t.Errorf("an empty posts directory is not reported:\n%s", result.Stdout)
@@ -201,7 +206,7 @@ func TestPostListSaysSoWhenThereAreNone(t *testing.T) {
 func TestPostListReportsEveryPost(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	postsDir := filepath.Join(dir, ".selfdoc", "posts")
+	postsDir := filepath.Join(dir, ".stricttools", "posts")
 	writePost(t, postsDir, "a.md", []string{"title = \"First Post\"", "date = 2025-01-15"}, "")
 	writePost(t, postsDir, "b.md", []string{"title = \"Second Post\"", "date = 2025-03-20"}, "")
 
@@ -216,7 +221,7 @@ func TestPostListReportsEveryPost(t *testing.T) {
 func TestPostListMarksDrafts(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	postsDir := filepath.Join(dir, ".selfdoc", "posts")
+	postsDir := filepath.Join(dir, ".stricttools", "posts")
 	writePost(t, postsDir, "a.md",
 		[]string{"title = \"Draft Post\"", "date = 2025-01-15", "draft = true"}, "")
 
@@ -229,7 +234,7 @@ func TestPostListMarksDrafts(t *testing.T) {
 func TestPostListLeavesPublishedPostsUnmarked(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	postsDir := filepath.Join(dir, ".selfdoc", "posts")
+	postsDir := filepath.Join(dir, ".stricttools", "posts")
 	writePost(t, postsDir, "a.md", []string{"title = \"Published Post\"", "date = 2025-01-15"}, "")
 
 	result := run(t, dir, "blog", "post", "list")
@@ -244,7 +249,7 @@ func TestPostListLeavesPublishedPostsUnmarked(t *testing.T) {
 func TestPostListIsNewestFirst(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	postsDir := filepath.Join(dir, ".selfdoc", "posts")
+	postsDir := filepath.Join(dir, ".stricttools", "posts")
 	writePost(t, postsDir, "old.md", []string{"title = \"Old\"", "date = 2024-06-01"}, "")
 	writePost(t, postsDir, "new.md", []string{"title = \"New\"", "date = 2025-07-01"}, "")
 	writePost(t, postsDir, "mid.md", []string{"title = \"Mid\"", "date = 2025-01-01"}, "")
@@ -270,7 +275,7 @@ func TestPostListIsNewestFirst(t *testing.T) {
 func TestPostListShowsTheSlug(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
-	writePost(t, filepath.Join(dir, ".selfdoc", "posts"), "a.md",
+	writePost(t, filepath.Join(dir, ".stricttools", "posts"), "a.md",
 		[]string{"title = \"My Great Post\"", "date = 2025-01-15", "slug = \"custom-slug\""}, "")
 
 	result := run(t, dir, "blog", "post", "list")
@@ -287,7 +292,7 @@ func writeManifest(t *testing.T, dir, version string, posts []any) {
 	if posts == nil {
 		posts = []any{}
 	}
-	testproject.WriteJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"), map[string]any{
+	testproject.WriteJSON(t, filepath.Join(dir, ".stricttools", "docs-state", "manifest.json"), map[string]any{
 		"schema_version": 1,
 		"name":           "test",
 		"slug":           "test",
@@ -323,7 +328,7 @@ func TestPostGenerateWritesEveryDeclaredField(t *testing.T) {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 
-	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v2.0.0.md"))
+	content := readText(t, filepath.Join(dir, ".stricttools", "posts", today()+"-release-v2.0.0.md"))
 	for _, want := range []string{
 		"title = \"MyProject v2.0.0\"\n",
 		"date = " + today() + "\n",
@@ -356,7 +361,7 @@ func TestPostGenerateMinimalPost(t *testing.T) {
 	if result := run(t, dir, "blog", "post", "generate", "--from-release", "--version", "1.2.3"); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
-	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v1.2.3.md"))
+	content := readText(t, filepath.Join(dir, ".stricttools", "posts", today()+"-release-v1.2.3.md"))
 	if !strings.Contains(content, "title = \"Release v1.2.3\"\n") {
 		t.Errorf("the default title is wrong:\n%s", content)
 	}
@@ -379,7 +384,7 @@ func TestPostGenerateBodyWithoutChangelog(t *testing.T) {
 		"--version", "0.5.0", "--body-file", filepath.Join(dir, "body.md")); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
-	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v0.5.0.md"))
+	content := readText(t, filepath.Join(dir, ".stricttools", "posts", today()+"-release-v0.5.0.md"))
 	if !strings.Contains(content, "Custom release notes here.") {
 		t.Errorf("the body is missing:\n%s", content)
 	}
@@ -397,7 +402,7 @@ func TestPostGenerateChangelogWithoutBody(t *testing.T) {
 		"--version", "3.1.0", "--changelog-file", filepath.Join(dir, "changes.md")); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
-	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v3.1.0.md"))
+	content := readText(t, filepath.Join(dir, ".stricttools", "posts", today()+"-release-v3.1.0.md"))
 	body := content[strings.LastIndex(content, "\n+++\n")+len("\n+++\n"):]
 	if !strings.HasPrefix(strings.TrimSpace(body), "## Changelog") {
 		t.Errorf("the body does not start with the changelog heading:\n%s", body)
@@ -422,7 +427,7 @@ func TestPostGenerateUpdatesTheManifest(t *testing.T) {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 
-	document := readJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"))
+	document := readJSON(t, filepath.Join(dir, ".stricttools", "docs-state", "manifest.json"))
 	if document["version"] != "1.1.0" {
 		t.Errorf("the manifest version is %v, want 1.1.0", document["version"])
 	}
@@ -452,12 +457,12 @@ func TestPostGeneratePatchPreservesTheManifestsOwnFields(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 	writeManifest(t, dir, "1.0.0", nil)
-	before := readJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"))
+	before := readJSON(t, filepath.Join(dir, ".stricttools", "docs-state", "manifest.json"))
 
 	if result := run(t, dir, "blog", "post", "generate", "--from-release", "--version", "1.1.0"); result.ExitCode != 0 {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
-	after := readJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"))
+	after := readJSON(t, filepath.Join(dir, ".stricttools", "docs-state", "manifest.json"))
 
 	for key := range before {
 		if key == "version" || key == "posts" {
@@ -485,10 +490,10 @@ func TestPostGenerateDryRunRecordsTheWrites(t *testing.T) {
 	}
 
 	filename := today() + "-release-v1.1.0.md"
-	if exists(filepath.Join(dir, ".selfdoc", "posts", filename)) {
+	if exists(filepath.Join(dir, ".stricttools", "posts", filename)) {
 		t.Error("the preview wrote the post")
 	}
-	document := readJSON(t, filepath.Join(dir, ".selfdoc", "manifest.json"))
+	document := readJSON(t, filepath.Join(dir, ".stricttools", "docs-state", "manifest.json"))
 	if document["version"] != "1.0.0" {
 		t.Errorf("the preview changed the manifest version: %v", document["version"])
 	}

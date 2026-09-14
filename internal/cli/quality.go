@@ -18,6 +18,14 @@ func (c *cli) registerQuality() {
 func (c *cli) cmdQuality(ctx *strictcli.Context, kwargs map[string]any) strictcli.Outcome {
 	handle := effects.FromContext(ctx)
 
+	// The score is read off the project's own files, so the config is
+	// loaded first for its refusals -- a repository still laid out the way
+	// selfdoc used to lay one out is refused here as everywhere else. A
+	// directory with no selfdoc.json is still scored: that is tier 1.
+	if _, outcome, ok := c.loadConfig(); !ok {
+		return outcome
+	}
+
 	result, err := quality.Run(c.dir(), handle)
 	if err != nil {
 		// A missing dirstat is the one condition with its own two-line

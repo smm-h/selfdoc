@@ -25,6 +25,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/fleet"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/spelling"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -170,7 +171,7 @@ func ScanProject(
 	}
 
 	postsConfig, _ := project.Config["posts"].(map[string]any)
-	postsRel := ".selfdoc/posts/"
+	postsRel := layout.PostsDefault
 	if postsConfig != nil {
 		if declared, present := postsConfig["dir"]; present {
 			postsRel, _ = declared.(string)

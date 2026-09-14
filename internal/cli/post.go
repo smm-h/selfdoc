@@ -14,6 +14,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/directives"
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/manifest"
 	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/revisions"
@@ -109,7 +110,7 @@ func (c *cli) cmdPostNew(ctx *strictcli.Context, kwargs map[string]any) strictcl
 		return c.failf("Error: Post file already exists: %s", relPath)
 	}
 
-	if err := handle.MkdirAll(filepath.Join(c.dir(), postsDirRel)); err != nil {
+	if err := layout.EnsureDir(handle, c.dir(), postsDirRel); err != nil {
 		return c.fail(err)
 	}
 
@@ -271,7 +272,7 @@ func (c *cli) cmdPostGenerate(ctx *strictcli.Context, kwargs map[string]any) str
 	// Under --dry-run the writes below are recorded by the effects chokepoint
 	// and rendered in the would-do log, which replaces the command's old
 	// local --dry-run (a reserved framework name now).
-	if err := handle.MkdirAll(filepath.Join(c.dir(), postsDirRel)); err != nil {
+	if err := layout.EnsureDir(handle, c.dir(), postsDirRel); err != nil {
 		return c.fail(err)
 	}
 	relPath := filepath.Join(postsDirRel, filename)
@@ -281,7 +282,7 @@ func (c *cli) cmdPostGenerate(ctx *strictcli.Context, kwargs map[string]any) str
 	}
 	c.printf("Created post: %s\n", relPath)
 
-	manifestRel := filepath.Join(".selfdoc", "manifest.json")
+	manifestRel := layout.ManifestRel
 	manifestPath := filepath.Join(c.dir(), manifestRel)
 	existing, err := manifest.Load(manifestPath)
 	if err != nil {
@@ -388,7 +389,7 @@ func (c *cli) cmdPostPublish(ctx *strictcli.Context, kwargs map[string]any) stri
 	}
 
 	// Record revisions for posts whose body content changed.
-	revisionsRel := filepath.Join(".selfdoc", "revisions.json")
+	revisionsRel := layout.RevisionsRel
 	revisionsPath := filepath.Join(dir, revisionsRel)
 	for _, post := range published {
 		summary := ""
@@ -438,7 +439,7 @@ func (c *cli) cmdPostPublish(ctx *strictcli.Context, kwargs map[string]any) stri
 	}
 	sort.Strings(produced)
 
-	postManifestPath := filepath.Join(dir, ".selfdoc", "post-manifest.json")
+	postManifestPath := layout.Path(dir, layout.PostManifestRel)
 	if info, err := os.Stat(postManifestPath); err == nil && !info.IsDir() {
 		data, err := os.ReadFile(postManifestPath)
 		if err != nil {

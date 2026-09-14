@@ -11,12 +11,13 @@ import (
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/gitcommit"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
 // hashStorePath is the content-hash store every build and check auto-commits.
-const hashStorePath = ".selfdoc/hashes/hashes.json"
+const hashStorePath = layout.HashesRel
 
 // hashStoreMessage is the commit message that store is committed under.
 const hashStoreMessage = "selfdoc: update content hashes"
@@ -165,12 +166,12 @@ func (c *cli) buildSite(
 // the config spells it.
 func outputDirOf(cfg config.Config) string {
 	if cfg == nil {
-		return "docs/_build/"
+		return layout.OutputDefault
 	}
 	if out, ok := cfg["output"].(string); ok {
 		return out
 	}
-	return "docs/_build/"
+	return layout.OutputDefault
 }
 
 // formatLint renders one diagnostic in the compiler-style form both the build

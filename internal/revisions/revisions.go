@@ -4,7 +4,7 @@
 // rendered body text. A new revision is appended only when the body content
 // actually changes, so a frontmatter-only edit is invisible.
 //
-// The sidecar file sits at .selfdoc/revisions.json -- separate from the
+// The sidecar file sits in selfdoc's generated-state directory -- separate from the
 // manifest, so no manifest format change can reach it.
 package revisions
 
@@ -17,16 +17,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
-
-// revisionsFilename is the sidecar's name inside the .selfdoc directory.
-const revisionsFilename = "revisions.json"
 
 // Revision is one recorded revision of a post.
 type Revision struct {
@@ -106,13 +103,13 @@ func normalizeBody(body string) string {
 	return util.PythonStrip(strings.Join(result, "\n"))
 }
 
-// LoadRevisions loads revisions.json from dirPath's .selfdoc directory.
+// LoadRevisions loads revisions.json from dirPath's generated-state directory.
 //
 // An absent file is an empty document, not an error: a project that has
 // published nothing yet has no revisions to read. A file that exists and is
 // not readable as the document is an error.
 func LoadRevisions(dirPath string) (*Document, error) {
-	path := filepath.Join(dirPath, ".selfdoc", revisionsFilename)
+	path := layout.Path(dirPath, layout.RevisionsRel)
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() {
 		return &Document{}, nil
@@ -128,14 +125,13 @@ func LoadRevisions(dirPath string) (*Document, error) {
 	return document, nil
 }
 
-// SaveRevisions writes revisions.json into dirPath's .selfdoc directory,
+// SaveRevisions writes revisions.json into dirPath's generated-state directory,
 // atomically, and returns the path it wrote.
 func SaveRevisions(handle *effects.Handle, document *Document, dirPath string) (string, error) {
-	selfdocDir := filepath.Join(dirPath, ".selfdoc")
-	if err := handle.MkdirAll(selfdocDir); err != nil {
+	if err := layout.EnsureDir(handle, dirPath, layout.DocsStateRel); err != nil {
 		return "", err
 	}
-	path := filepath.Join(selfdocDir, revisionsFilename)
+	path := layout.Path(dirPath, layout.RevisionsRel)
 	if err := handle.AtomicWrite(path, render(document), effects.ModeDefault); err != nil {
 		return "", err
 	}

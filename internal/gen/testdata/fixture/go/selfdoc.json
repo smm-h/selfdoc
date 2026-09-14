@@ -1,7 +1,12 @@
 {
-  "source": [{"path": ".", "language": "go"}],
-  "docs": "docs/",
-  "output": "docs/_build/",
+  "source": [
+    {
+      "path": ".",
+      "language": "go"
+    }
+  ],
+  "docs": ".stricttools/docs/",
+  "output": ".stricttools/docs-cache/build/",
   "base_url": "https://example.com",
   "search_engine": "pagefind"
 }

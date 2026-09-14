@@ -1,7 +1,12 @@
 {
-  "source": [{"path": "mylib/", "language": "python"}],
-  "docs": "docs/",
-  "output": "docs/_build/",
+  "source": [
+    {
+      "path": "mylib/",
+      "language": "python"
+    }
+  ],
+  "docs": ".stricttools/docs/",
+  "output": ".stricttools/docs-cache/build/",
   "base_url": "https://example.com",
   "search_engine": "pagefind"
 }

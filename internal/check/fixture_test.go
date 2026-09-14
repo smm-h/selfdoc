@@ -11,6 +11,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/stricttest/go/hygiene"
@@ -46,7 +47,10 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-// writeConfig writes a selfdoc.json carrying the given document.
+// writeConfig writes a selfdoc.json carrying the given document, and the
+// ownership declaration that lets selfdoc create its own directories in the
+// project -- a project is a repository, and the rows are the repository's
+// grant.
 func writeConfig(t *testing.T, dir string, document map[string]any) {
 	t.Helper()
 	encoded, err := json.Marshal(document)
@@ -54,6 +58,8 @@ func writeConfig(t *testing.T, dir string, document map[string]any) {
 		t.Fatalf("encode config: %v", err)
 	}
 	write(t, filepath.Join(dir, "selfdoc.json"), string(encoded))
+	write(t, filepath.Join(dir, layout.Root, layout.OwnersFileName),
+		strings.Join(layout.RequiredRows(), "\n")+"\n")
 }
 
 // pythonProjectConfig is the config document the Python fixture writes.
@@ -72,8 +78,8 @@ func configForSource(entries ...map[string]any) map[string]any {
 	return map[string]any{
 		"version":       "1.0.0",
 		"source":        source,
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 		"base_url":      "https://example.com",
 		"author":        map[string]any{"name": "Test Author", "url": "https://author.example"},
 		"search_engine": "pagefind",
@@ -114,7 +120,7 @@ def helper():
     """Help."""
     pass
 `)
-	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".stricttools", "docs"), 0o755); err != nil {
 		t.Fatalf("mkdir docs: %v", err)
 	}
 	return root
@@ -136,7 +142,7 @@ func lintProject(t *testing.T) lintFixture {
 	t.Helper()
 	isolate(t)
 	root := t.TempDir()
-	docsDir := filepath.Join(root, "docs")
+	docsDir := filepath.Join(root, ".stricttools", "docs")
 	if err := os.MkdirAll(docsDir, 0o755); err != nil {
 		t.Fatalf("mkdir docs: %v", err)
 	}
@@ -189,7 +195,7 @@ func buildAllDocs(t *testing.T, docsDir string) map[string]docs.Doc {
 func runLintsOn(t *testing.T, fixture lintFixture, resolved []ResolvedDirective) []lints.LintResult {
 	t.Helper()
 	results, err := runLints(
-		buildAllDocs(t, fixture.DocsDir), fixture.DocsDir,
+		buildAllDocs(t, fixture.DocsDir), fixture.Root, fixture.DocsDir,
 		fixture.Config, resolved, handle(),
 	)
 	if err != nil {

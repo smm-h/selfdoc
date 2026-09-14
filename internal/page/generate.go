@@ -7,6 +7,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/address"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/themes"
 	"github.com/smm-h/selfdoc/internal/tokenizer"
 	"github.com/smm-h/selfdoc/internal/urls"
@@ -47,8 +48,10 @@ type Options struct {
 	HasCustomCSS bool
 	// Repo is the repository URL the edit links are built from.
 	Repo string
-	// DocsDirName is the docs directory, which the edit links prepend to
-	// each page's source path. Empty becomes "docs/".
+	// DocsDirName is the handwritten docs directory, which the edit links
+	// prepend to a handwritten page's source path. Empty becomes the
+	// layout's own docs directory. A page whose frontmatter declares it
+	// generated is edited where selfdoc wrote it, not here.
 	DocsDirName string
 	// BaseURL is the site's base URL.
 	BaseURL string
@@ -131,7 +134,7 @@ type Options struct {
 // absence means something other than the Go zero value, spelled out.
 func NewOptions() Options {
 	return Options{
-		DocsDirName:  "docs/",
+		DocsDirName:  layout.DocsDefault,
 		Lang:         "en",
 		Branch:       "main",
 		PageNav:      true,
@@ -362,7 +365,12 @@ func GenerateHTML(opts Options) (map[string]string, error) {
 
 		docsDirName := opts.DocsDirName
 		if docsDirName == "" {
-			docsDirName = "docs/"
+			docsDirName = layout.DocsDefault
+		}
+		if generated, ok := opts.Frontmatter[mdPath]["generated"].(bool); ok && generated {
+			// A generated page's file is in the generated root, so that is
+			// where an edit link has to point.
+			docsDirName = layout.GeneratedPagesRel
 		}
 		sourcePath := strings.TrimRight(docsDirName, "/") + "/" + mdPath
 

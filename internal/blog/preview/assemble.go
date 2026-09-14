@@ -59,8 +59,8 @@ type orderedCheckout struct {
 // deploy passes it. Empty when there is none.
 //
 // build decides whether each checkout's build runs. False previews whatever is
-// already in each checkout's "docs/_build", which is what the suite does and
-// what a second look after one edit wants.
+// already in each checkout's build output directory, which is what the suite
+// does and what a second look after one edit wants.
 //
 // theme is a theme name every checkout is built under, overriding each
 // project's own configured theme for this preview only. Empty means every

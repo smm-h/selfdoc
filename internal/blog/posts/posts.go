@@ -275,18 +275,18 @@ func frontmatterRefusal(err error, relPath string) *PostError {
 // A postsDir that is not a directory holds no posts, which is an answer rather
 // than a failure.
 //
-// manifestPath optionally names an existing manifest file. When it is given,
-// slug immutability is enforced against the COMMITTED manifest read out of git
-// HEAD rather than the copy on disk, because gen may already have rewritten
-// that copy with the new slug by the time this runs. A directory that is not a
-// repository, a repository with no commits, and a manifest that was never
-// committed each leave the check with nothing to compare against, and it is
-// skipped.
+// projectRoot optionally names the repository the posts belong to. When it is
+// given, slug immutability is enforced against the COMMITTED manifest read out
+// of git HEAD rather than the copy on disk, because gen may already have
+// rewritten that copy with the new slug by the time this runs. A directory that
+// is not a repository, a repository with no commits, and a manifest that was
+// never committed each leave the check with nothing to compare against, and it
+// is skipped.
 //
 // Files are read in sorted order, so a duplicate-slug refusal always names the
 // same pair in the same direction. The Python walked in directory-listing
 // order and could name either post as the second one.
-func Discover(postsDir, manifestPath string, handle *effects.Handle) ([]Post, error) {
+func Discover(postsDir, projectRoot string, handle *effects.Handle) ([]Post, error) {
 	info, err := os.Stat(postsDir)
 	if err != nil || !info.IsDir() {
 		return []Post{}, nil
@@ -294,9 +294,8 @@ func Discover(postsDir, manifestPath string, handle *effects.Handle) ([]Post, er
 
 	// Build a lookup from path -> slug for the committed manifest's posts.
 	publishedSlugs := map[string]string{}
-	if manifestPath != "" {
-		dirPath := filepath.Dir(filepath.Dir(manifestPath))
-		committed, err := manifest.LoadFromGit(dirPath, handle)
+	if projectRoot != "" {
+		committed, err := manifest.LoadFromGit(projectRoot, handle)
 		if err != nil {
 			return nil, err
 		}

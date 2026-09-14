@@ -11,6 +11,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/staleness"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/stricttest/go/hygiene"
@@ -22,6 +23,21 @@ import (
 	_ "github.com/smm-h/selfdoc/internal/extractors/python"
 	_ "github.com/smm-h/selfdoc/internal/extractors/typescript"
 )
+
+// genDir is where gen writes its pages: the generated root, which the build
+// merges with the handwritten one.
+func genDir(dir string) string { return layout.Path(dir, layout.GeneratedPagesRel) }
+
+// handDir is a project's handwritten docs root.
+func handDir(dir string) string { return layout.Path(dir, layout.DocsRel) }
+
+// owners writes the ownership declaration gen needs before it may create any
+// directory under the tool-state directory.
+func owners(t *testing.T, dir string) {
+	t.Helper()
+	write(t, filepath.Join(dir, layout.Root, layout.OwnersFileName),
+		strings.Join(layout.RequiredRows(), "\n")+"\n")
+}
 
 func isolate(t *testing.T) {
 	t.Helper()
@@ -113,15 +129,16 @@ func pythonProject(t *testing.T) (string, map[string]any) {
 	dir := t.TempDir()
 	cfg := writeConfig(t, dir, map[string]any{
 		"source":        []any{map[string]any{"path": "mylib/", "language": "python"}},
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 		"base_url":      "https://example.com",
 		"search_engine": "pagefind",
 	})
 	write(t, filepath.Join(dir, "mylib", "__init__.py"), `"""My library."""`+"\n")
 	write(t, filepath.Join(dir, "mylib", "core.py"), `"""Core module."""`+"\ndef main(): pass\n")
 	write(t, filepath.Join(dir, "mylib", "utils.py"), `"""Utilities."""`+"\ndef helper(): pass\n")
-	mkdir(t, filepath.Join(dir, "docs"))
+	owners(t, dir)
+	mkdir(t, filepath.Join(dir, ".stricttools", "docs"))
 	return dir, cfg
 }
 
@@ -133,8 +150,8 @@ func goProject(t *testing.T) (string, map[string]any) {
 	write(t, filepath.Join(dir, "go.mod"), "module github.com/user/mygoapp\n\ngo 1.21\n")
 	cfg := writeConfig(t, dir, map[string]any{
 		"source":        []any{map[string]any{"path": ".", "language": "go"}},
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 		"base_url":      "https://example.com",
 		"search_engine": "pagefind",
 	})
@@ -152,7 +169,8 @@ func goProject(t *testing.T) (string, map[string]any) {
 	write(t, filepath.Join(dir, "internal", "commit", "commit_test.go"),
 		"package commit\n\nimport \"testing\"\n\nfunc TestCreate(t *testing.T) {}\n")
 	write(t, filepath.Join(dir, "cmd", "myapp", "main.go"), "package main\n\nfunc main() {}\n")
-	mkdir(t, filepath.Join(dir, "docs"))
+	owners(t, dir)
+	mkdir(t, filepath.Join(dir, ".stricttools", "docs"))
 	return dir, cfg
 }
 
@@ -165,8 +183,8 @@ func multiLanguageProject(t *testing.T) (string, map[string]any) {
 			map[string]any{"path": "pylib/", "language": "python"},
 			map[string]any{"path": "golib/", "language": "go"},
 		},
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 		"base_url":      "https://example.com",
 		"search_engine": "pagefind",
 	})
@@ -175,7 +193,8 @@ func multiLanguageProject(t *testing.T) (string, map[string]any) {
 	write(t, filepath.Join(dir, "golib", "handler.go"),
 		"// Package golib provides handlers.\npackage golib\n\nfunc Handle() {}\n")
 	write(t, filepath.Join(dir, "go.mod"), "module github.com/user/multiproj\n\ngo 1.21\n")
-	mkdir(t, filepath.Join(dir, "docs"))
+	owners(t, dir)
+	mkdir(t, filepath.Join(dir, ".stricttools", "docs"))
 	return dir, cfg
 }
 
@@ -189,8 +208,8 @@ func multiGoSourceProject(t *testing.T) (string, map[string]any) {
 			map[string]any{"path": "router/", "language": "go"},
 			map[string]any{"path": "sdk/", "language": "go"},
 		},
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 		"base_url":      "https://example.com",
 		"search_engine": "pagefind",
 	})
@@ -199,7 +218,8 @@ func multiGoSourceProject(t *testing.T) (string, map[string]any) {
 		"// Package router provides HTTP routing.\npackage router\n\nfunc Route() {}\n")
 	write(t, filepath.Join(dir, "sdk", "client.go"),
 		"// Package sdk provides the client SDK.\npackage sdk\n\nfunc NewClient() {}\n")
-	mkdir(t, filepath.Join(dir, "docs"))
+	owners(t, dir)
+	mkdir(t, filepath.Join(dir, ".stricttools", "docs"))
 	return dir, cfg
 }
 

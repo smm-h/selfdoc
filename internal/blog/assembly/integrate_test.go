@@ -214,9 +214,9 @@ func (a *assemblyTree) writeSourceProject() {
 	a.Write("source/alpha/docs/_build/guide/index.html.br", "brotli")
 	// A full build's manifest carries the posts the build rendered.
 	post := []any{map[string]any{"slug": "hello", "title": "Hello", "date": "2024-06-01"}}
-	a.WriteJSON("source/alpha/.selfdoc/manifest.json",
+	a.WriteJSON("source/alpha/.stricttools/docs-state/manifest.json",
 		integrateManifest("alpha", "Alpha", "1.0.0", post))
-	a.WriteJSON("source/alpha/.selfdoc/post-manifest.json",
+	a.WriteJSON("source/alpha/.stricttools/docs-state/post-manifest.json",
 		integrateManifest("alpha", "Alpha", "1.0.0", post))
 }
 

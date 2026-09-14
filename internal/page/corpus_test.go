@@ -34,6 +34,10 @@ func TestDocsCorpusMatchesReference(t *testing.T) {
 	opts.Author = testAuthor()
 	opts.BaseURL = "https://selfdoc.smmh.dev"
 	opts.Repo = "https://github.com/smm-h/selfdoc"
+	// The corpus was frozen while this project's pages sat at docs/, and the
+	// edit link names the directory it is given; this case measures the page
+	// chrome, not the layout.
+	opts.DocsDirName = "docs/"
 	opts.FeedURL = "feed.xml"
 	opts.ThemeMeta = themeMeta(t, "tinymoon")
 

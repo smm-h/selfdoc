@@ -24,6 +24,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -82,16 +83,15 @@ func Post(opts PostOptions, h *effects.Handle) (string, error) {
 	postsConfig, _ := cfg["posts"].(map[string]any)
 	postsDirRel := util.PythonStrOrEmpty(postsConfig["dir"])
 	if postsDirRel == "" {
-		postsDirRel = ".selfdoc/posts/"
+		postsDirRel = layout.PostsDefault
 	}
 	postsDir := filepath.Join(opts.DirPath, postsDirRel)
-	manifestPath := filepath.Join(opts.DirPath, ".selfdoc", "manifest.json")
 
 	// The rest of the posts come from disk: a post page's navigation and
 	// listing neighbours are whatever is saved. The edited post replaces
 	// its own saved copy in place, so its position in the listing is the
 	// saved one until it is saved again.
-	discovered, err := posts.Discover(postsDir, manifestPath, h)
+	discovered, err := posts.Discover(postsDir, opts.DirPath, h)
 	if err != nil {
 		return "", err
 	}

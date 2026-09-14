@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 )
 
 // TestGeneratedBytesMatchThePython asserts that this package emits the same
@@ -80,13 +81,15 @@ func TestGeneratedBytesMatchThePython(t *testing.T) {
 			for _, rel := range expected {
 				recorded[rel] = true
 			}
-			for name := range mdFilesIn(t, filepath.Join(project, "docs")) {
+			generatedRel := layout.GeneratedPagesRel
+			for name := range mdFilesIn(t, layout.Path(project, generatedRel)) {
 				if strings.HasPrefix(name, "_") {
 					// A root-file template is an input, not an output.
 					continue
 				}
-				if !recorded["docs/"+name] {
-					t.Errorf("docs/%s was generated but the Python wrote no such page", name)
+				if !recorded[generatedRel+"/"+name] {
+					t.Errorf("%s/%s was generated but the Python wrote no such page",
+						generatedRel, name)
 				}
 			}
 		})

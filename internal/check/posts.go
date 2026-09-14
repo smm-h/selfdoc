@@ -14,6 +14,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/directives"
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -21,7 +22,7 @@ import (
 
 // defaultPostsDirRel is where a project keeps its posts when it declares no
 // "posts" block: the convention every post surface reads.
-const defaultPostsDirRel = ".selfdoc/posts/"
+const defaultPostsDirRel = layout.PostsDefault
 
 // postsDirRel reads the configured posts directory, relative to the project
 // root.
@@ -94,7 +95,7 @@ func PostErrorLint(err *posts.PostError, postsDirRelative string) lints.LintResu
 //
 // The result is empty when the posts directory is not on disk and when every
 // post is valid. A project that declares no "posts" block is read at the
-// conventional .selfdoc/posts/, which is where the post lints read it. Each diagnostic
+// conventional posts directory, which is where the post lints read it. Each diagnostic
 // is positioned at the offending post -- its path relative to the project, and
 // its line where the defect has one -- taken from the refusal the detection
 // site raised.
@@ -106,9 +107,7 @@ func CheckPosts(
 		return nil, nil
 	}
 
-	manifestPath := filepath.Join(dirPath, ".selfdoc", "manifest.json")
-
-	if _, err := posts.Discover(postsDir, manifestPath, handle); err != nil {
+	if _, err := posts.Discover(postsDir, dirPath, handle); err != nil {
 		var postError *posts.PostError
 		if errors.As(err, &postError) {
 			return []lints.LintResult{PostErrorLint(postError, postsDirRelative)}, nil
@@ -171,8 +170,7 @@ func postLintDocs(
 		return nil, nil
 	}
 
-	manifestPath := filepath.Join(dirPath, ".selfdoc", "manifest.json")
-	discovered, err := posts.Discover(postsDir, manifestPath, handle)
+	discovered, err := posts.Discover(postsDir, dirPath, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -328,9 +326,9 @@ func LintPostBuffer(
 	}
 
 	docsDir := filepath.Join(
-		dirPath, strings.TrimRight(configString(projectConfig, "docs", "docs/"), "/"),
+		dirPath, strings.TrimRight(configString(projectConfig, "docs", layout.DocsDefault), "/"),
 	)
-	produced, err := runLints(postDocs, docsDir, projectConfig, nil, handle)
+	produced, err := runLints(postDocs, dirPath, docsDir, projectConfig, nil, handle)
 	if err != nil {
 		return nil, err
 	}

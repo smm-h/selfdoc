@@ -10,13 +10,14 @@ import (
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/gen"
 	"github.com/smm-h/selfdoc/internal/gitcommit"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/manifest"
 	"github.com/smm-h/selfdoc/internal/staleness"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
 // defaultPostsDir is where a project keeps its posts when it declares nothing.
-const defaultPostsDir = ".selfdoc/posts/"
+const defaultPostsDir = layout.PostsDefault
 
 // postsDirOf is the posts directory the config declares, relative to the
 // project root.
@@ -81,14 +82,16 @@ func (c *cli) cmdGen(ctx *strictcli.Context, kwargs map[string]any) strictcli.Ou
 		}
 	}
 
-	docsRel := strings.TrimRight(docsDirOf(cfg), "/")
+	// A generated page is committed where gen wrote it, which is the
+	// generated pages directory rather than the handwritten docs root.
+	generatedRel := layout.GeneratedPagesRel
 	var commitFiles []string
 
 	if len(genResult.Written) > 0 {
 		c.printf("Generated %d doc file(s):\n", len(genResult.Written))
 		for _, path := range genResult.Written {
 			c.printf("  %s\n", path)
-			commitFiles = append(commitFiles, filepath.Join(docsRel, path))
+			commitFiles = append(commitFiles, filepath.Join(generatedRel, path))
 		}
 	}
 
@@ -96,7 +99,7 @@ func (c *cli) cmdGen(ctx *strictcli.Context, kwargs map[string]any) strictcli.Ou
 		c.printf("Deleted %d stale doc file(s):\n", len(genResult.Deleted))
 		for _, path := range genResult.Deleted {
 			c.printf("  %s\n", path)
-			commitFiles = append(commitFiles, filepath.Join(docsRel, path))
+			commitFiles = append(commitFiles, filepath.Join(generatedRel, path))
 		}
 	}
 
@@ -135,7 +138,7 @@ func (c *cli) cmdGen(ctx *strictcli.Context, kwargs map[string]any) strictcli.Ou
 	var discovered []posts.Post
 	postsDir := filepath.Join(dir, strings.TrimRight(postsDirOf(cfg), "/"))
 	if info, err := os.Stat(postsDir); err == nil && info.IsDir() {
-		discovered, err = posts.Discover(postsDir, filepath.Join(dir, ".selfdoc", "manifest.json"), handle)
+		discovered, err = posts.Discover(postsDir, dir, handle)
 		if err != nil {
 			return c.fail(err)
 		}
@@ -151,7 +154,7 @@ func (c *cli) cmdGen(ctx *strictcli.Context, kwargs map[string]any) strictcli.Ou
 		posts.ManifestPosts(published), manifest.DefaultOutputName, handle); err != nil {
 		return c.fail(err)
 	}
-	commitFiles = append(commitFiles, ".selfdoc/manifest.json")
+	commitFiles = append(commitFiles, layout.ManifestRel)
 
 	if len(commitFiles) > 0 && autoCommit {
 		if _, _, err := gitcommit.AutoCommit(
@@ -178,5 +181,5 @@ func docsDirOf(cfg map[string]any) string {
 	if dir, ok := cfg["docs"].(string); ok && dir != "" {
 		return dir
 	}
-	return "docs/"
+	return layout.DocsDefault
 }

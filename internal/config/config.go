@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -64,7 +65,31 @@ func Load(dir string) (Config, error) {
 	if err != nil {
 		return nil, configErrorf("selfdoc.json is not valid JSON: %v", err)
 	}
-	return ValidateConfig(raw)
+	validated, err := ValidateConfig(raw)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseOldLayout(dir, validated); err != nil {
+		return nil, err
+	}
+	return validated, nil
+}
+
+// refuseOldLayout is where every command that reads project state meets the
+// repository that has not been moved to the .stricttools/ layout yet.
+//
+// The check sits in the loader because the loader is what every such command
+// runs first, and because the paths it judges are the config's own. There is
+// no dual reading and no migrator: a repository is moved once, by hand, and
+// refused until it is.
+func refuseOldLayout(dir string, validated Config) error {
+	postsDir := ""
+	if posts, ok := validated["posts"].(map[string]any); ok {
+		postsDir, _ = posts["dir"].(string)
+	}
+	docsDir, _ := validated["docs"].(string)
+	outputDir, _ := validated["output"].(string)
+	return layout.RefuseOldLayout(dir, docsDir, outputDir, postsDir)
 }
 
 // ValidateConfig validates a raw config document and returns the resolved

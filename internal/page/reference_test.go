@@ -294,6 +294,10 @@ func TestGeneratedPagesMatchReference(t *testing.T) {
 				"### Config.load\n\n```python\ndef load(path): ...\n```\n\n"+
 				"Load configuration from a file.\n"))
 			opts.Repo = "https://github.com/user/repo"
+			// The recorded page was rendered for a project whose pages sat
+			// at docs/, and the edit link names the directory it is given;
+			// this case measures the code block, not the layout.
+			opts.DocsDirName = "docs/"
 			opts.RunButton = true
 			opts.LineNumbers = true
 			opts.CodeIcons = "monochrome"

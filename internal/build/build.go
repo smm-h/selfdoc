@@ -14,6 +14,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/page"
 	"github.com/smm-h/selfdoc/internal/themes"
 	"github.com/smm-h/selfdoc/internal/urls"
@@ -58,7 +59,7 @@ type Options struct {
 //
 // Locales are the outer loop and versions the inner one. Each combination is
 // built from either the working tree (the current version) or a git tag
-// extracted into .selfdoc/cache (a superseded one). The current version of
+// extracted into the version cache (a superseded one). The current version of
 // every page is emitted at the stable address and every older version under
 // "v/<version>/"; the pages marked "versioned: false" are emitted once at the
 // version-free mount, and the site-level pages (the posts and their listing)
@@ -184,6 +185,12 @@ func Build(opts Options, h *effects.Handle) (map[string]bool, error) {
 		if err := h.RmTree(outputDir); err != nil {
 			return nil, err
 		}
+	}
+	// The output directory is one of selfdoc's own, so it is created
+	// through the layout: the repository's ownership row is what permits
+	// it, and the derived ignore file is brought up to date with it.
+	if err := layout.EnsureDir(h, opts.DirPath, strings.TrimRight(configString(cfg, "output"), "/")); err != nil {
+		return nil, err
 	}
 	if err := h.MkdirAll(outputDir); err != nil {
 		return nil, err

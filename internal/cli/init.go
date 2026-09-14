@@ -10,6 +10,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/gitcommit"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
@@ -124,10 +125,13 @@ func (c *cli) registerInit() {
 			strictcli.StringFlag("base-url", "Base URL the generated site will be served from (e.g. 'https://docs.example.com'). Required: it is the site's own address, which selfdoc cannot infer, and every canonical link, sitemap entry and feed URL is built from it", strictcli.Required()),
 			strictcli.StringFlag("author-name", "Display name of the site's author. Required: every page carries structured data naming who wrote it, and a name is a fact about a person that selfdoc cannot invent", strictcli.Required()),
 			strictcli.StringFlag("author-url", "Canonical URL identifying the site's author (e.g. 'https://you.example'). Required alongside --author-name: the structured data names an identity, and an identity has an address", strictcli.Required()),
-			strictcli.BoolFlag("auto-commit", "Automatically commit the generated selfdoc.json and docs/index.md template files to git. Omitted, it commits; pass --no-auto-commit to leave the files uncommitted", strictcli.Optional()),
+			strictcli.BoolFlag("auto-commit", "Automatically commit the generated selfdoc.json and the starter page template to git. Omitted, it commits; pass --no-auto-commit to leave the files uncommitted", strictcli.Optional()),
 		),
 	)
 }
+
+// indexRel is the starter page init writes, relative to the project root.
+const indexRel = layout.DocsRel + "/index.md"
 
 func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.Outcome {
 	baseURL := strictcli.Get[string](kwargs, "base_url")
@@ -229,8 +233,8 @@ func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.O
 		document = append(document, jsonPair{"source", items})
 	}
 	document = append(document,
-		jsonPair{"docs", "docs/"},
-		jsonPair{"output", "docs/_build/"},
+		jsonPair{"docs", layout.DocsDefault},
+		jsonPair{"output", layout.OutputDefault},
 	)
 	document = append(document, versionDeclaration...)
 	document = append(document,
@@ -247,14 +251,14 @@ func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.O
 		return c.fail(err)
 	}
 
-	if err := handle.MkdirAll(filepath.Join(dir, "docs")); err != nil {
+	if err := layout.EnsureDir(handle, dir, layout.DocsRel); err != nil {
 		return c.fail(err)
 	}
 
 	// The API reference section only appears when there is source code to
 	// extract from -- in a codeless project a 'ref' directive is a hard
 	// error, not an empty section.
-	indexPath := filepath.Join(dir, "docs", "index.md")
+	indexPath := layout.Path(dir, indexRel)
 	if info, err := os.Stat(indexPath); err != nil || info.IsDir() {
 		today := time.Now().Format("2006-01-02")
 		frontmatter, err := util.RenderFrontmatter([]util.FrontmatterField{
@@ -289,7 +293,7 @@ func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.O
 		c.printf("Initialized selfdoc for codeless project '%s' (no source code detected)\n", name)
 	}
 	c.println("  Created: selfdoc.json")
-	c.println("  Created: docs/index.md")
+	c.printf("  Created: %s\n", indexRel)
 	if len(sourcePaths) > 0 {
 		c.printf("  Source:  %s\n", strings.Join(sourcePaths, ", "))
 	}
@@ -299,7 +303,7 @@ func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.O
 
 	if autoCommit {
 		if _, _, err := gitcommit.AutoCommit(
-			[]string{"selfdoc.json", "docs/index.md"}, "selfdoc init", dir, handle,
+			[]string{"selfdoc.json", indexRel}, "selfdoc init", dir, handle,
 		); err != nil {
 			return c.fail(err)
 		}

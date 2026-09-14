@@ -25,6 +25,8 @@
 // first.
 package config
 
+import "github.com/smm-h/selfdoc/internal/layout"
+
 // FieldType is the value shape a [FieldSpec] accepts.
 type FieldType string
 
@@ -215,14 +217,14 @@ var Schema = []FieldSpec{
 	{
 		Name:        "docs",
 		Type:        FieldStr,
-		Default:     "docs/",
-		Description: "Directory containing Markdown documentation templates.",
+		Default:     layout.DocsDefault,
+		Description: "Directory containing the handwritten Markdown documentation templates. It lives inside the tool-state directory, and a value outside it is refused as the layout selfdoc used before.",
 	},
 	{
 		Name:        "output",
 		Type:        FieldStr,
-		Default:     "docs/_build/",
-		Description: "Output directory for generated HTML files.",
+		Default:     layout.OutputDefault,
+		Description: "Output directory for generated HTML files. It lives inside the tool-state directory, in the uncommitted cache.",
 	},
 	// Absent keeps the convention every standalone repo relies on: the
 	// project root's CHANGELOG.md becomes the changelog page. That
@@ -836,7 +838,7 @@ var Schema = []FieldSpec{
 		Description: "Blog post configuration.",
 		Children: []FieldSpec{
 			{
-				Name: "dir", Type: FieldStr, Default: ".selfdoc/posts/",
+				Name: "dir", Type: FieldStr, Default: layout.PostsDefault,
 				Description: "Directory containing post markdown files.",
 			},
 			{

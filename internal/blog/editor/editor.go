@@ -48,6 +48,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/blog/posts"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/render"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -167,7 +168,7 @@ func postsDirRel(cfg config.Config) string {
 
 // defaultPostsDir is where a project keeps its posts when it declares no
 // posts block.
-const defaultPostsDir = ".selfdoc/posts/"
+const defaultPostsDir = layout.PostsDefault
 
 // PostSummary is one post as the sidebar and the publish plan carry it: only
 // what a list needs, because the post bodies are fetched one at a time, when
@@ -195,9 +196,7 @@ func RepoPosts(entry registry.Entry, handle *effects.Handle) ([]PostSummary, err
 	if err != nil {
 		return nil, err
 	}
-	manifestPath := util.PathJoin(path, ".selfdoc", "manifest.json")
-
-	discovered, err := posts.Discover(postsDir, manifestPath, handle)
+	discovered, err := posts.Discover(postsDir, path, handle)
 	var postError *posts.PostError
 	if errors.As(err, &postError) {
 		return nil, badRequest("%s: %s", entry.Name(), postError.Error())

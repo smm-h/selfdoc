@@ -18,6 +18,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	pythonextractor "github.com/smm-h/selfdoc/internal/extractors/python"
+	"github.com/smm-h/selfdoc/internal/testproject"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
@@ -180,7 +181,7 @@ func TestLoadHashesWithNoFile(t *testing.T) {
 }
 
 func TestLoadHashesReadsTheCurrentVersion(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	writeStoreFile(t, base, `{
   "_hash_version": 3,
   "page.md": {
@@ -220,7 +221,7 @@ func TestLoadHashesDiscardsOlderVersions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			base := t.TempDir()
+			base := testproject.Dir(t)
 			writeStoreFile(t, base, test.document)
 			store, err := LoadHashes(base)
 			if err != nil {
@@ -247,7 +248,7 @@ func writeStoreFile(t *testing.T, baseDir, document string) {
 // -- SaveHashes -------------------------------------------------------------
 
 func TestSaveHashesCreatesTheDirectory(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	store := Store{"page.md": {Content: "aaa", Description: "bbb"}}
 	if err := SaveHashes(store, base, effects.Unbound()); err != nil {
 		t.Fatalf("saving the store: %v", err)
@@ -274,7 +275,7 @@ func TestSaveHashesCreatesTheDirectory(t *testing.T) {
 }
 
 func TestSaveHashesOverwritesTheWholeStore(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	if err := SaveHashes(Store{"a.md": {Content: "1", Description: "2"}}, base, handle); err != nil {
 		t.Fatalf("saving the first store: %v", err)
@@ -295,7 +296,7 @@ func TestSaveHashesOverwritesTheWholeStore(t *testing.T) {
 }
 
 func TestSaveHashesStampsTheVersion(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	if err := SaveHashes(Store{"page.md": {Content: "aaa", Description: "bbb"}}, base, effects.Unbound()); err != nil {
 		t.Fatalf("saving the store: %v", err)
 	}
@@ -309,7 +310,7 @@ func TestSaveHashesStampsTheVersion(t *testing.T) {
 // order, the two-space indent, the omission of unrecorded fields and the
 // ensure_ascii escaping are all the Python's.
 func TestTheStoresBytesAreThePythonsBytes(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	store := Store{
 		"en/index.md": {
 			Content:     strings.Repeat("a", 64),
@@ -584,7 +585,7 @@ func TestComputeSchemaHash(t *testing.T) {
 func TestExtractModuleDocstring(t *testing.T) {
 	requirePython3(t)
 	hygiene.Isolate(t)
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	extractor := pythonextractor.New()
 	tests := []struct {
 		name   string
@@ -649,7 +650,7 @@ func TestExtractModuleDocstring(t *testing.T) {
 func TestComputeSourceDocstringHash(t *testing.T) {
 	requirePython3(t)
 	hygiene.Isolate(t)
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	extractor := pythonextractor.New()
 	write := func(name, source string) string {
 		t.Helper()
@@ -705,7 +706,7 @@ func TestComputeSourceDocstringHash(t *testing.T) {
 // -- UpdateHashes -----------------------------------------------------------
 
 func TestUpdateHashesWritesTheStore(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	pages := docs([3]string{"page.md", "A page about things", "# Page\n\nSome content."})
 	if _, _, err := UpdateHashes(pages, base, false, nil, nil, nil, effects.Unbound()); err != nil {
 		t.Fatalf("updating the hashes: %v", err)
@@ -722,7 +723,7 @@ func TestUpdateHashesWritesTheStore(t *testing.T) {
 }
 
 func TestUpdateHashesUnderDryRunWritesNothing(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	pages := docs([3]string{"page.md", "A page about things", "# Page\n\nSome content."})
 	if _, _, err := UpdateHashes(pages, base, true, nil, nil, nil, effects.Unbound()); err != nil {
 		t.Fatalf("updating the hashes: %v", err)
@@ -733,7 +734,7 @@ func TestUpdateHashesUnderDryRunWritesNothing(t *testing.T) {
 }
 
 func TestUpdateHashesDetectsStaleness(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	first := docs([3]string{"page.md", "Original description", "# Page\n\nOriginal content."})
 	stale, _, err := UpdateHashes(first, base, false, nil, nil, nil, handle)
@@ -758,7 +759,7 @@ func TestUpdateHashesDetectsStaleness(t *testing.T) {
 }
 
 func TestUpdateHashesIsQuietWhenBothChange(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	if _, _, err := UpdateHashes(
 		docs([3]string{"page.md", "Desc v1", "# Page\n\nContent v1."}),
@@ -782,7 +783,7 @@ func TestUpdateHashesIsQuietWhenBothChange(t *testing.T) {
 // exists to prevent: a generated, machine-seeded page cannot be hand-fixed,
 // so its baseline must advance rather than be held in a perpetual error.
 func TestUpdateHashesExemptsSkeletonPages(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	first := docs([3]string{"page.md", "Seeded description", "# Page\n\nOriginal content."})
 	if _, _, err := UpdateHashes(first, base, false, nil, nil, nil, handle); err != nil {
@@ -812,7 +813,7 @@ func TestUpdateHashesExemptsSkeletonPages(t *testing.T) {
 func TestUpdateHashesStillReportsANonSkeletonPage(t *testing.T) {
 	// The control for the exemption above: the same mismatch on a page that
 	// is not exempt still reports.
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	if _, _, err := UpdateHashes(
 		docs([3]string{"page.md", "Hand description", "# Page\n\nOriginal content."}),
@@ -833,7 +834,7 @@ func TestUpdateHashesStillReportsANonSkeletonPage(t *testing.T) {
 }
 
 func TestUpdateHashesSkipsPagesWithNoDescription(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	stale, _, err := UpdateHashes(
 		docs([3]string{"no-desc.md", "", "# No Description\n\nJust content."}),
 		base, false, nil, nil, nil, effects.Unbound(),
@@ -861,7 +862,7 @@ func TestUpdateHashesKeysPassThroughUntouched(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			base := t.TempDir()
+			base := testproject.Dir(t)
 			pages := docs([3]string{test.key, "A test page", "# Test\n\nSome content."})
 			if _, _, err := UpdateHashes(pages, base, false, nil, nil, nil, effects.Unbound()); err != nil {
 				t.Fatalf("updating the hashes: %v", err)
@@ -894,7 +895,7 @@ func keysOf(document map[string]any) []string {
 // -- The baseline hold ------------------------------------------------------
 
 func TestStalenessPersistsUntilTheDescriptionIsRewritten(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	if _, _, err := UpdateHashes(
 		docs([3]string{"page.md", "old desc", "# Page\n\nOriginal content."}),
@@ -933,7 +934,7 @@ func TestStalenessPersistsUntilTheDescriptionIsRewritten(t *testing.T) {
 }
 
 func TestTheHoldFreezesEveryFieldOfAPageWithErrors(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	if _, _, err := UpdateHashes(
 		docs([3]string{"page.md", "old desc", "# Page\n\nOriginal content."}),
@@ -966,7 +967,7 @@ func TestTheHoldFreezesEveryFieldOfAPageWithErrors(t *testing.T) {
 }
 
 func TestSchemaDriftPersistsUntilTheDescriptionIsRewritten(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	pages := docs([3]string{"cli-build.md", "Build the project", "# Build\n\nContent."})
 
@@ -1019,7 +1020,7 @@ func TestSchemaDriftPersistsUntilTheDescriptionIsRewritten(t *testing.T) {
 func TestSourceDocstringDriftIsMeasuredThroughTheExtractor(t *testing.T) {
 	requirePython3(t)
 	hygiene.Isolate(t)
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	source := filepath.Join(base, "mod.py")
 	if err := os.WriteFile(source, []byte("\"\"\"Original docstring.\"\"\"\n\ndef foo(): pass\n"), 0o644); err != nil {
@@ -1071,7 +1072,7 @@ func TestSourceDocstringDriftIsMeasuredThroughTheExtractor(t *testing.T) {
 // reads the raw body: a version directive's output moves on every release,
 // and a page whose prose nobody touched is not stale.
 func TestOnlyDirectiveOutputChangingIsNotStaleness(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	raw := "# Page\n\nVersion: :-: var key=\"project.version\"\n"
 	pages := docs([3]string{"page.md", "A page about the project", raw})
@@ -1096,7 +1097,7 @@ func TestOnlyDirectiveOutputChangingIsNotStaleness(t *testing.T) {
 }
 
 func TestProseChangingIsStaleness(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	handle := effects.Unbound()
 	if _, _, err := UpdateHashes(
 		docs([3]string{"page.md", "A page about things", "# Page\n\nOriginal prose.\n"}),
@@ -1119,7 +1120,7 @@ func TestProseChangingIsStaleness(t *testing.T) {
 // -- The two-writer merge ---------------------------------------------------
 
 func TestAdvancingAPageKeepsTheGenOwnedSeedHash(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	writeStoreFile(t, base, `{
   "_hash_version": 3,
   "page.md": {"seed_hash": "the_seed_digest"}

@@ -4,7 +4,7 @@
 //
 // [Build] is the entry point. It loops locales outside versions, builds each
 // combination -- the current version from the working tree, every superseded
-// one from a git tag extracted into .selfdoc/cache -- and then writes the
+// one from a git tag extracted into the version cache -- and then writes the
 // files that belong to the site rather than to a page: the stylesheet, the
 // social cards, the sitemaps, llms.txt, the Atom feed, the favicon,
 // robots.txt, the redirect stubs, the search index and the compressed

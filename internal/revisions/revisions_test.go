@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/testproject"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
@@ -93,7 +94,7 @@ func TestLoadNonexistent(t *testing.T) {
 func TestSaveAndLoadRoundtrip(t *testing.T) {
 	// Data saved with SaveRevisions can be loaded back.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	document := &Document{Posts: []PostRevisions{{
 		Slug: "my-slug",
 		Revisions: []Revision{{
@@ -120,12 +121,12 @@ func TestSaveAndLoadRoundtrip(t *testing.T) {
 func TestSaveCreatesSelfdocDir(t *testing.T) {
 	// SaveRevisions creates .selfdoc/ if it does not exist.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	path, err := SaveRevisions(effects.Unbound(), &Document{}, directory)
 	if err != nil {
 		t.Fatalf("SaveRevisions: %v", err)
 	}
-	if want := filepath.Join(directory, ".selfdoc", "revisions.json"); path != want {
+	if want := filepath.Join(directory, ".stricttools", "docs-state", "revisions.json"); path != want {
 		t.Errorf("wrote %q, want %q", path, want)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -136,8 +137,8 @@ func TestSaveCreatesSelfdocDir(t *testing.T) {
 func TestLoadPreservesDocumentOrder(t *testing.T) {
 	// The sidecar is rewritten whole, so a rewrite must not reorder the posts.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(directory, ".selfdoc"), 0o755); err != nil {
+	directory := testproject.Dir(t)
+	if err := os.MkdirAll(filepath.Join(directory, ".stricttools", "docs-state"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	body := `{
@@ -147,7 +148,7 @@ func TestLoadPreservesDocumentOrder(t *testing.T) {
   }
 }
 `
-	path := filepath.Join(directory, ".selfdoc", "revisions.json")
+	path := filepath.Join(directory, ".stricttools", "docs-state", "revisions.json")
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +214,7 @@ func TestNonASCIIIsEscapedAsThePythonEscapedIt(t *testing.T) {
 func TestFirstRevisionRecorded(t *testing.T) {
 	// The first call creates a revision entry.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	changed, err := RecordRevision(effects.Unbound(), directory, "my-post", "Hello world", "Initial publish")
 	if err != nil {
 		t.Fatalf("RecordRevision: %v", err)
@@ -239,7 +240,7 @@ func TestFirstRevisionRecorded(t *testing.T) {
 func TestSameBodyNoNewRevision(t *testing.T) {
 	// Publishing with an unchanged body does NOT add a revision.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	if _, err := RecordRevision(effects.Unbound(), directory, "my-post", "Hello world", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,7 @@ func TestSameBodyNoNewRevision(t *testing.T) {
 func TestChangedBodyAddsRevision(t *testing.T) {
 	// Publishing with a changed body adds a new revision.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	if _, err := RecordRevision(effects.Unbound(), directory, "my-post", "Version 1", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +286,7 @@ func TestChangedBodyAddsRevision(t *testing.T) {
 func TestMultiplePostsIndependent(t *testing.T) {
 	// Revisions for different slugs are tracked independently.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	for _, entry := range []struct{ slug, body string }{
 		{"post-a", "Content A"},
 		{"post-b", "Content B"},
@@ -308,7 +309,7 @@ func TestMultiplePostsIndependent(t *testing.T) {
 func TestWhitespaceOnlyChangeNoRevision(t *testing.T) {
 	// Whitespace-only changes do not create a new revision.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	if _, err := RecordRevision(effects.Unbound(), directory, "slug", "Content here", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -331,11 +332,11 @@ func TestWhitespaceOnlyChangeNoRevision(t *testing.T) {
 func TestSummaryOptional(t *testing.T) {
 	// With no summary, the key is left out of the written document.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	if _, err := RecordRevision(effects.Unbound(), directory, "slug", "Body text", ""); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(filepath.Join(directory, ".selfdoc", "revisions.json"))
+	raw, err := os.ReadFile(filepath.Join(directory, ".stricttools", "docs-state", "revisions.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +349,7 @@ func TestRecordedTimestampIsTheISOSpelling(t *testing.T) {
 	// The timestamp is what Python's datetime.isoformat() wrote: a UTC
 	// instant with an explicit offset, which a reader can parse.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	if _, err := RecordRevision(effects.Unbound(), directory, "slug", "Body", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +380,7 @@ func TestGetRevisionsNonexistentSlug(t *testing.T) {
 func TestGetLastUpdatedWithRevisions(t *testing.T) {
 	// The most recent revision's timestamp is the answer.
 	hygiene.Isolate(t)
-	directory := t.TempDir()
+	directory := testproject.Dir(t)
 	for _, body := range []string{"V1", "V2"} {
 		if _, err := RecordRevision(effects.Unbound(), directory, "slug", body, ""); err != nil {
 			t.Fatal(err)

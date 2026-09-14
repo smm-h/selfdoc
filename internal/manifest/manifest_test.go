@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/testproject"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
@@ -77,7 +78,7 @@ func generate(t *testing.T, projectConfig map[string]any, pages map[string]Doc, 
 // readDocument reads the written manifest as a generic document.
 func readDocument(t *testing.T, dirPath string) map[string]any {
 	t.Helper()
-	content, err := os.ReadFile(filepath.Join(dirPath, ".selfdoc", DefaultOutputName))
+	content, err := os.ReadFile(filepath.Join(dirPath, ".stricttools", "docs-state", DefaultOutputName))
 	if err != nil {
 		t.Fatalf("reading the manifest: %v", err)
 	}
@@ -150,7 +151,7 @@ func TestExtractTitle(t *testing.T) {
 // -- Generate ---------------------------------------------------------------
 
 func TestGenerateRecordsTheProjectsFacts(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	manifest := generate(t, baseConfig(), basePages(), nil, base)
 	if manifest.SchemaVersion != 1 {
 		t.Errorf("schema version %d, want 1", manifest.SchemaVersion)
@@ -202,7 +203,7 @@ func TestGenerateNameAndSlug(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			base := t.TempDir()
+			base := testproject.Dir(t)
 			wantName, wantSlug := test.wantName, test.wantSlug
 			if test.fromDirName {
 				wantName = filepath.Base(base)
@@ -234,7 +235,7 @@ func TestGeneratePagesAreSortedAndTyped(t *testing.T) {
 			Raw:         "# API Reference\nStuff",
 		},
 	}
-	manifest := generate(t, baseConfig(), pages, nil, t.TempDir())
+	manifest := generate(t, baseConfig(), pages, nil, testproject.Dir(t))
 	want := []Page{
 		{Path: "api.md", Title: "API Reference", Type: "doc", Headings: []Heading{}},
 		{Path: "guide.md", Title: "Guide", Type: "tutorial", Headings: []Heading{}},
@@ -249,19 +250,19 @@ func TestGeneratePosts(t *testing.T) {
 		Path: "blog/first.md", Title: "First Post", Date: "2026-01-01",
 		Slug: "first", Tags: []string{"news"},
 	}}
-	manifest := generate(t, baseConfig(), basePages(), posts, t.TempDir())
+	manifest := generate(t, baseConfig(), basePages(), posts, testproject.Dir(t))
 	if !reflect.DeepEqual(manifest.Posts, posts) {
 		t.Errorf("recorded %+v, want %+v", manifest.Posts, posts)
 	}
 
-	none := generate(t, baseConfig(), basePages(), nil, t.TempDir())
+	none := generate(t, baseConfig(), basePages(), nil, testproject.Dir(t))
 	if len(none.Posts) != 0 {
 		t.Errorf("recorded %+v for a project with no posts", none.Posts)
 	}
 }
 
 func TestGenerateWritesTheFile(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	generate(t, baseConfig(), basePages(), nil, base)
 	document := readDocument(t, base)
 	if document["schema_version"] != float64(1) {
@@ -284,8 +285,8 @@ func TestGenerateWritesTheFile(t *testing.T) {
 // TestGenerateSkipsTheWriteWhenOnlyTheTimestampWouldChange is why a gen over
 // untouched content does not dirty the working tree.
 func TestGenerateSkipsTheWriteWhenOnlyTheTimestampWouldChange(t *testing.T) {
-	base := t.TempDir()
-	path := filepath.Join(base, ".selfdoc", DefaultOutputName)
+	base := testproject.Dir(t)
+	path := filepath.Join(base, ".stricttools", "docs-state", DefaultOutputName)
 
 	generate(t, baseConfig(), basePages(), nil, base)
 	first, err := os.ReadFile(path)
@@ -304,7 +305,7 @@ func TestGenerateSkipsTheWriteWhenOnlyTheTimestampWouldChange(t *testing.T) {
 }
 
 func TestGenerateRewritesWhenTheContentChanges(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	generate(t, baseConfig(), basePages(), nil, base)
 	first := readDocument(t, base)
 
@@ -328,7 +329,7 @@ func TestGenerateRewritesWhenTheContentChanges(t *testing.T) {
 // -- Recorded heading anchors -----------------------------------------------
 
 func TestPagesCarryTheirHeadingAnchors(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	pages := map[string]Doc{
 		"guide.md": {Frontmatter: util.Frontmatter{}, Resolved: pageWithDupes, Raw: pageWithDupes},
 	}
@@ -363,7 +364,7 @@ func TestThePageTitleAnchorFollowsTheFrontmatterTitle(t *testing.T) {
 			Raw:         pageWithDupes,
 		},
 	}
-	manifest := generate(t, map[string]any{"name": "proj"}, pages, nil, t.TempDir())
+	manifest := generate(t, map[string]any{"name": "proj"}, pages, nil, testproject.Dir(t))
 	want := Heading{Level: 1, Text: "Guide", Anchor: "getting-started"}
 	if manifest.Pages[0].Headings[0] != want {
 		t.Errorf("recorded %+v, want %+v", manifest.Pages[0].Headings[0], want)
@@ -371,7 +372,7 @@ func TestThePageTitleAnchorFollowsTheFrontmatterTitle(t *testing.T) {
 }
 
 func TestAPageWithNoHeadingsRecordsAnEmptyList(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	pages := map[string]Doc{
 		"guide.md": {Frontmatter: util.Frontmatter{}, Resolved: "Just a paragraph.\n", Raw: "Just a paragraph.\n"},
 	}
@@ -473,9 +474,9 @@ func TestGenerateProducesTheRecordedDocument(t *testing.T) {
 		},
 		{Path: "posts/bare.md", Title: "Bare", Date: "2026-01-03", Slug: "bare"},
 	}
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	generate(t, projectConfig, pages, posts, base)
-	written, err := os.ReadFile(filepath.Join(base, ".selfdoc", DefaultOutputName))
+	written, err := os.ReadFile(filepath.Join(base, ".stricttools", "docs-state", DefaultOutputName))
 	if err != nil {
 		t.Fatalf("reading the written manifest: %v", err)
 	}
@@ -610,7 +611,7 @@ func TestCompatReadsEveryField(t *testing.T) {
 // -- Load -------------------------------------------------------------------
 
 func TestLoad(t *testing.T) {
-	base := t.TempDir()
+	base := testproject.Dir(t)
 	write := func(name, document string) string {
 		t.Helper()
 		path := filepath.Join(base, name)
@@ -694,7 +695,7 @@ func TestLoadFromGit(t *testing.T) {
 	handle := effects.Unbound()
 
 	t.Run("a directory that is not a repository", func(t *testing.T) {
-		manifest, err := LoadFromGit(t.TempDir(), handle)
+		manifest, err := LoadFromGit(testproject.Dir(t), handle)
 		if err != nil {
 			t.Fatalf("reading outside a repository: %v", err)
 		}
@@ -704,7 +705,7 @@ func TestLoadFromGit(t *testing.T) {
 	})
 
 	t.Run("a repository with no commits", func(t *testing.T) {
-		base := t.TempDir()
+		base := testproject.Dir(t)
 		run(t, base, "git", "init", "--quiet")
 		manifest, err := LoadFromGit(base, handle)
 		if err != nil {
@@ -716,7 +717,7 @@ func TestLoadFromGit(t *testing.T) {
 	})
 
 	t.Run("a manifest that was never committed", func(t *testing.T) {
-		base := t.TempDir()
+		base := testproject.Dir(t)
 		run(t, base, "git", "init", "--quiet")
 		if err := os.WriteFile(filepath.Join(base, "README.md"), []byte("hi\n"), 0o644); err != nil {
 			t.Fatalf("writing a file to commit: %v", err)
@@ -733,9 +734,9 @@ func TestLoadFromGit(t *testing.T) {
 	})
 
 	t.Run("the committed manifest, not the working tree's", func(t *testing.T) {
-		base := t.TempDir()
+		base := testproject.Dir(t)
 		run(t, base, "git", "init", "--quiet")
-		path := filepath.Join(base, ".selfdoc", DefaultOutputName)
+		path := filepath.Join(base, ".stricttools", "docs-state", DefaultOutputName)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatalf("creating .selfdoc: %v", err)
 		}
@@ -744,7 +745,7 @@ func TestLoadFromGit(t *testing.T) {
 		if err := os.WriteFile(path, []byte(committed), 0o644); err != nil {
 			t.Fatalf("writing the manifest: %v", err)
 		}
-		run(t, base, "git", "add", filepath.Join(".selfdoc", DefaultOutputName))
+		run(t, base, "git", "add", filepath.Join(".stricttools", "docs-state", DefaultOutputName))
 		run(t, base, "git", "commit", "--quiet", "-m", "manifest")
 
 		// gen has since rewritten the working-tree copy with a new slug; the

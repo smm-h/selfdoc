@@ -15,7 +15,7 @@ func TestBasicGeneration(t *testing.T) {
 	requirePython3(t)
 	dir, cfg := pythonProject(t)
 	result := generate(t, cfg, dir)
-	docsDir := filepath.Join(dir, "docs")
+	docsDir := genDir(dir)
 
 	t.Run("writes every page it reports", func(t *testing.T) {
 		if len(result.Written) == 0 {
@@ -85,7 +85,7 @@ func TestGeneratedMarker(t *testing.T) {
 	requirePython3(t)
 	dir, cfg := pythonProject(t)
 	generate(t, cfg, dir)
-	docsDir := filepath.Join(dir, "docs")
+	docsDir := genDir(dir)
 
 	if !hasGeneratedMarker(filepath.Join(docsDir, "mylib-core.md")) {
 		t.Error("a generated page is not recognized as generated")
@@ -137,7 +137,7 @@ func TestGeneratedPagesAreReadOnly(t *testing.T) {
 	generate(t, cfg, dir)
 
 	for _, name := range []string{"mylib-core.md", "gen-index.md"} {
-		info, err := os.Stat(filepath.Join(dir, "docs", name))
+		info, err := os.Stat(filepath.Join(genDir(dir), name))
 		if err != nil {
 			t.Fatalf("stat %s: %v", name, err)
 		}
@@ -188,7 +188,7 @@ func TestHandwrittenPages(t *testing.T) {
 
 	t.Run("a hand-written page is never overwritten", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
-		handwritten := filepath.Join(dir, "docs", "mylib-core.md")
+		handwritten := filepath.Join(handDir(dir), "mylib-core.md")
 		write(t, handwritten, "+++\ntitle = \"Core (hand-written)\"\n+++\n# My hand-written core docs\n")
 
 		generate(t, cfg, dir)
@@ -204,7 +204,7 @@ func TestHandwrittenPages(t *testing.T) {
 
 	t.Run("a previously generated page is overwritten", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
-		page := filepath.Join(dir, "docs", "mylib-core.md")
+		page := filepath.Join(genDir(dir), "mylib-core.md")
 		write(t, page, "+++\ntitle = \"mylib.core\"\ngenerated = true\n+++\n# old content\n")
 
 		generate(t, cfg, dir)
@@ -223,7 +223,7 @@ func TestDescriptionSeeding(t *testing.T) {
 	t.Run("a docstring seeds the description", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		generate(t, cfg, dir)
-		content := read(t, filepath.Join(dir, "docs", "mylib-core.md"))
+		content := read(t, filepath.Join(genDir(dir), "mylib-core.md"))
 		if !strings.Contains(content, `description = "Core module."`) {
 			t.Errorf("the docstring did not seed the description:\n%s", content)
 		}
@@ -236,7 +236,7 @@ func TestDescriptionSeeding(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		write(t, filepath.Join(dir, "mylib", "bare.py"), "x = 1\n")
 		generate(t, cfg, dir)
-		content := read(t, filepath.Join(dir, "docs", "mylib-bare.md"))
+		content := read(t, filepath.Join(genDir(dir), "mylib-bare.md"))
 		for _, want := range []string{
 			"API reference for the mylib.bare module", "auto-generated documentation",
 		} {
@@ -257,7 +257,7 @@ func TestDescriptionSeeding(t *testing.T) {
 		write(t, filepath.Join(dir, "mylib", "longdoc.py"), `"""`+longDoc+`"""`+"\ndef func(): pass\n")
 		generate(t, cfg, dir)
 
-		page := filepath.Join(dir, "docs", "mylib-longdoc.md")
+		page := filepath.Join(genDir(dir), "mylib-longdoc.md")
 		if got := pageDescription(t, page); got != longDoc {
 			t.Errorf("description = %q, want the whole sentence", got)
 		}
@@ -270,7 +270,7 @@ func TestDescriptionSeeding(t *testing.T) {
 	t.Run("a generated page with no description key is reseeded", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		write(t, filepath.Join(dir, "mylib", "nodoc.py"), "def something(): pass\n")
-		page := filepath.Join(dir, "docs", "mylib-nodoc.md")
+		page := filepath.Join(genDir(dir), "mylib-nodoc.md")
 		write(t, page, "+++\n"+
 			"title = \"mylib.nodoc\"\n"+
 			"generated = true\n"+
@@ -296,7 +296,7 @@ func TestDescriptionSeeding(t *testing.T) {
 		write(t, filepath.Join(dir, "mylib", "nodoc.py"), "def something(): pass\n")
 		generate(t, cfg, dir)
 		generate(t, cfg, dir)
-		content := read(t, filepath.Join(dir, "docs", "mylib-nodoc.md"))
+		content := read(t, filepath.Join(genDir(dir), "mylib-nodoc.md"))
 		for _, want := range []string{
 			"API reference for the mylib.nodoc module", "auto-generated documentation",
 		} {
@@ -314,7 +314,7 @@ func TestDescriptionPreservation(t *testing.T) {
 	t.Run("a hand edit is preserved", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		generate(t, cfg, dir)
-		page := filepath.Join(dir, "docs", "mylib-core.md")
+		page := filepath.Join(genDir(dir), "mylib-core.md")
 		custom := "Handwritten one-line description of the core module."
 		rewriteDescription(t, page, custom, false)
 
@@ -332,7 +332,7 @@ func TestDescriptionPreservation(t *testing.T) {
 	t.Run("a hand edit is preserved across repeated regenerations", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		generate(t, cfg, dir)
-		page := filepath.Join(dir, "docs", "mylib-utils.md")
+		page := filepath.Join(genDir(dir), "mylib-utils.md")
 		custom := "Utility helpers shared across mylib."
 		rewriteDescription(t, page, custom, false)
 
@@ -348,7 +348,7 @@ func TestDescriptionPreservation(t *testing.T) {
 
 	t.Run("the historical template is reseeded", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
-		page := filepath.Join(dir, "docs", "mylib-core.md")
+		page := filepath.Join(genDir(dir), "mylib-core.md")
 		write(t, page, "+++\n"+
 			"title = \"mylib.core\"\n"+
 			`description = "Documentation for mylib.core"`+"\n"+
@@ -392,7 +392,7 @@ func TestSeedHashOwnership(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		generate(t, cfg, dir)
 
-		page := filepath.Join(dir, "docs", "mylib-core.md")
+		page := filepath.Join(genDir(dir), "mylib-core.md")
 		hand := "A hand-authored deep dive into the core module internals."
 		rewriteDescription(t, page, hand, true)
 
@@ -410,7 +410,7 @@ func TestSeedHashOwnership(t *testing.T) {
 			t.Fatal("the first run recorded no seed hash")
 		}
 
-		page := filepath.Join(dir, "docs", "mylib-core.md")
+		page := filepath.Join(genDir(dir), "mylib-core.md")
 		rewriteDescription(t, page, "Genuinely hand-written prose about the core module.", false)
 
 		generate(t, cfg, dir)
@@ -424,7 +424,7 @@ func TestSeedHashOwnership(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		// A hand-written page keeps gen from ever seeding it, so no entry
 		// for it should exist -- not even an empty one.
-		page := filepath.Join(dir, "docs", "mylib-core.md")
+		page := filepath.Join(genDir(dir), "mylib-core.md")
 		write(t, page, "+++\ntitle = \"mylib.core\"\ngenerated = true\n"+
 			`description = "Handwritten prose about the core module internals."`+"\n+++\n# mylib.core\n")
 
@@ -442,7 +442,7 @@ func TestStaleCleanup(t *testing.T) {
 	dir, cfg := pythonProject(t)
 	generate(t, cfg, dir)
 
-	page := filepath.Join(dir, "docs", "mylib-utils.md")
+	page := filepath.Join(genDir(dir), "mylib-utils.md")
 	if _, err := os.Stat(page); err != nil {
 		t.Fatalf("the first run did not write %s: %v", page, err)
 	}
@@ -472,7 +472,7 @@ func TestStaleCleanupSpareHandwrittenPages(t *testing.T) {
 	isolate(t)
 	requirePython3(t)
 	dir, cfg := pythonProject(t)
-	handwritten := filepath.Join(dir, "docs", "guide.md")
+	handwritten := filepath.Join(handDir(dir), "guide.md")
 	write(t, handwritten, "+++\ntitle = \"Guide\"\n+++\n# Guide\n")
 
 	generate(t, cfg, dir)
@@ -493,11 +493,12 @@ func TestGenerateDocsRefusesACodelessProject(t *testing.T) {
 	isolate(t)
 	dir := t.TempDir()
 	cfg := writeConfig(t, dir, map[string]any{
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 		"base_url":      "https://example.com",
 		"search_engine": "pagefind",
 	})
+	owners(t, dir)
 
 	_, err := GenerateDocs(cfg, dir, "", effects.Unbound())
 	if err == nil {
@@ -516,7 +517,7 @@ func TestGoPackageGeneration(t *testing.T) {
 	isolate(t)
 	dir, cfg := goProject(t)
 	result := generate(t, cfg, dir)
-	docsDir := filepath.Join(dir, "docs")
+	docsDir := genDir(dir)
 	written := names(result.Written)
 
 	t.Run("one page per package", func(t *testing.T) {
@@ -604,7 +605,7 @@ func TestAGeneratedBannerDoesNotSeedAPageDescription(t *testing.T) {
 
 	generate(t, cfg, dir)
 
-	page := filepath.Join(dir, "docs", "internal-enums.md")
+	page := filepath.Join(genDir(dir), "internal-enums.md")
 	description := pageDescription(t, page)
 	if strings.Contains(description, "DO NOT EDIT") ||
 		strings.Contains(description, "stringer") {
@@ -667,7 +668,7 @@ func TestMultiGoSourcePathRootPackages(t *testing.T) {
 	isolate(t)
 	dir, cfg := multiGoSourceProject(t)
 	result := generate(t, cfg, dir)
-	docsDir := filepath.Join(dir, "docs")
+	docsDir := genDir(dir)
 	written := names(result.Written)
 
 	t.Run("both root packages get a page", func(t *testing.T) {
@@ -705,7 +706,7 @@ func TestGoSubPackagesAreSourcePathQualified(t *testing.T) {
 	if !names(result.Written)["router-middleware.md"] {
 		t.Fatalf("missing router-middleware.md from %v", result.Written)
 	}
-	content := read(t, filepath.Join(dir, "docs", "router-middleware.md"))
+	content := read(t, filepath.Join(genDir(dir), "router-middleware.md"))
 	if !strings.Contains(content, `:-: ref path="router/middleware"`) {
 		t.Errorf("the ref path is not source-path qualified:\n%s", content)
 	}
@@ -716,7 +717,7 @@ func TestMultiLanguageGeneration(t *testing.T) {
 	requirePython3(t)
 	dir, cfg := multiLanguageProject(t)
 	generate(t, cfg, dir)
-	docsDir := filepath.Join(dir, "docs")
+	docsDir := genDir(dir)
 
 	t.Run("every language generates", func(t *testing.T) {
 		onDisk := mdFilesIn(t, docsDir)
@@ -798,15 +799,16 @@ func TestDirectoryPruning(t *testing.T) {
 		dir := t.TempDir()
 		cfg := writeConfig(t, dir, map[string]any{
 			"source":        []any{map[string]any{"path": "src/", "language": "typescript"}},
-			"docs":          "docs/",
-			"output":        "docs/_build/",
+			"docs":          ".stricttools/docs/",
+			"output":        ".stricttools/docs-cache/build/",
 			"base_url":      "https://example.com",
 			"search_engine": "pagefind",
 		})
+		owners(t, dir)
 		write(t, filepath.Join(dir, "src", "index.ts"), "export function main() {}\n")
 		write(t, filepath.Join(dir, "src", "node_modules", "some-pkg", "src", "index.ts"),
 			"export function internal() {}\n")
-		mkdir(t, filepath.Join(dir, "docs"))
+		mkdir(t, genDir(dir))
 
 		result := generate(t, cfg, dir)
 
@@ -835,17 +837,18 @@ func TestDirectoryPruning(t *testing.T) {
 		dir := t.TempDir()
 		cfg := writeConfig(t, dir, map[string]any{
 			"source":        []any{map[string]any{"path": ".", "language": "python"}},
-			"docs":          "docs/",
-			"output":        "docs/_build/",
+			"docs":          ".stricttools/docs/",
+			"output":        ".stricttools/docs-cache/build/",
 			"base_url":      "https://example.com",
 			"search_engine": "pagefind",
 		})
+		owners(t, dir)
 		write(t, filepath.Join(dir, "mypkg", "__init__.py"), `"""My package."""`+"\n")
 		write(t, filepath.Join(dir, "mypkg", "core.py"), `"""Core."""`+"\ndef run(): pass\n")
 		site := filepath.Join(dir, ".venv", "lib", "python3.11", "site-packages", "flask")
 		write(t, filepath.Join(site, "__init__.py"), `"""Flask web framework."""`+"\n")
 		write(t, filepath.Join(site, "app.py"), `"""Flask app."""`+"\ndef create_app(): pass\n")
-		mkdir(t, filepath.Join(dir, "docs"))
+		mkdir(t, genDir(dir))
 
 		result := generate(t, cfg, dir)
 		written := names(result.Written)
@@ -868,7 +871,7 @@ func TestIndexDescription(t *testing.T) {
 	t.Run("names the project and counts the modules", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		generate(t, cfg, dir)
-		got := pageDescription(t, filepath.Join(dir, "docs", "gen-index.md"))
+		got := pageDescription(t, filepath.Join(genDir(dir), "gen-index.md"))
 		// The single source path is "mylib/", so the project is mylib and
 		// it covers mylib, mylib.core and mylib.utils.
 		if want := "API reference index for mylib covering 3 modules"; got != want {
@@ -879,7 +882,7 @@ func TestIndexDescription(t *testing.T) {
 	t.Run("a hand edit is preserved", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		generate(t, cfg, dir)
-		index := filepath.Join(dir, "docs", "gen-index.md")
+		index := filepath.Join(genDir(dir), "gen-index.md")
 		rewriteDescription(t, index, "My custom index description", false)
 
 		generate(t, cfg, dir)
@@ -896,7 +899,7 @@ func TestIndexDescription(t *testing.T) {
 	t.Run("an ambiguous project is not named", func(t *testing.T) {
 		dir, cfg := multiLanguageProject(t)
 		generate(t, cfg, dir)
-		got := pageDescription(t, filepath.Join(dir, "docs", "gen-index.md"))
+		got := pageDescription(t, filepath.Join(genDir(dir), "gen-index.md"))
 		if !strings.Contains(got, "API reference index covering") {
 			t.Errorf("description = %q, want the generic form", got)
 		}
@@ -911,7 +914,7 @@ func TestIndexDescription(t *testing.T) {
 		dir, cfg := multiLanguageProject(t)
 		cfg["name"] = "MegaProject"
 		generate(t, cfg, dir)
-		got := pageDescription(t, filepath.Join(dir, "docs", "gen-index.md"))
+		got := pageDescription(t, filepath.Join(genDir(dir), "gen-index.md"))
 		if !strings.Contains(got, "API reference index for MegaProject covering") {
 			t.Errorf("description = %q, want the configured name", got)
 		}
@@ -1059,7 +1062,7 @@ func TestLegacyIndexDescriptionIsReseeded(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		legacy := "Auto-generated API reference index for the selfdoc package — " +
 			"browse all public modules with their docstrings and source locations."
-		index := filepath.Join(dir, "docs", "gen-index.md")
+		index := filepath.Join(genDir(dir), "gen-index.md")
 		writeIndexPage(t, index, legacy, false)
 
 		generate(t, cfg, dir)
@@ -1078,7 +1081,7 @@ func TestLegacyIndexDescriptionIsReseeded(t *testing.T) {
 
 	t.Run("the short legacy phrase", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
-		index := filepath.Join(dir, "docs", "gen-index.md")
+		index := filepath.Join(genDir(dir), "gen-index.md")
 		writeIndexPage(t, index, "Auto-generated API reference index", false)
 
 		generate(t, cfg, dir)
@@ -1095,7 +1098,7 @@ func TestLegacyIndexDescriptionIsReseeded(t *testing.T) {
 	t.Run("a hand-written index description is preserved", func(t *testing.T) {
 		dir, cfg := pythonProject(t)
 		custom := "Our lovingly hand-written module index."
-		index := filepath.Join(dir, "docs", "gen-index.md")
+		index := filepath.Join(genDir(dir), "gen-index.md")
 		writeIndexPage(t, index, custom, false)
 
 		generate(t, cfg, dir)
@@ -1372,7 +1375,9 @@ func TestStalenessStoreKey(t *testing.T) {
 func TestLocaleDocsDirs(t *testing.T) {
 	isolate(t)
 	dir := t.TempDir()
-	mkdir(t, filepath.Join(dir, "docs", "fa"))
+	// The locale layout is read off the handwritten tree, so that is where
+	// the locale directory is created.
+	mkdir(t, filepath.Join(handDir(dir), "fa"))
 
 	cases := []struct {
 		name   string
@@ -1381,38 +1386,50 @@ func TestLocaleDocsDirs(t *testing.T) {
 	}{
 		{
 			name:   "no locales generates into docs",
-			config: map[string]any{"docs": "docs/"},
-			want:   []localeDocsDir{{code: "", dir: filepath.Join(dir, "docs")}},
+			config: map[string]any{"docs": ".stricttools/docs/"},
+			want:   []localeDocsDir{{code: "", dir: genDir(dir), handwritten: handDir(dir)}},
 		},
 		{
 			name: "one locale with no subdirectory generates into docs",
-			config: map[string]any{"docs": "docs/", "locales": []any{
+			config: map[string]any{"docs": ".stricttools/docs/", "locales": []any{
 				map[string]any{"code": "en"},
 			}},
-			want: []localeDocsDir{{code: "", dir: filepath.Join(dir, "docs")}},
+			want: []localeDocsDir{{code: "", dir: genDir(dir), handwritten: handDir(dir)}},
 		},
 		{
 			name: "one locale with a subdirectory generates into it",
-			config: map[string]any{"docs": "docs/", "locales": []any{
+			config: map[string]any{"docs": ".stricttools/docs/", "locales": []any{
 				map[string]any{"code": "fa"},
 			}},
-			want: []localeDocsDir{{code: "fa", dir: filepath.Join(dir, "docs", "fa")}},
+			want: []localeDocsDir{{
+				code:        "fa",
+				dir:         filepath.Join(genDir(dir), "fa"),
+				handwritten: filepath.Join(handDir(dir), "fa"),
+			}},
 		},
 		{
 			name: "several locales generate into each",
-			config: map[string]any{"docs": "docs/", "locales": []any{
+			config: map[string]any{"docs": ".stricttools/docs/", "locales": []any{
 				map[string]any{"code": "en"},
 				map[string]any{"code": "fa"},
 			}},
 			want: []localeDocsDir{
-				{code: "en", dir: filepath.Join(dir, "docs", "en")},
-				{code: "fa", dir: filepath.Join(dir, "docs", "fa")},
+				{
+					code:        "en",
+					dir:         filepath.Join(genDir(dir), "en"),
+					handwritten: filepath.Join(handDir(dir), "en"),
+				},
+				{
+					code:        "fa",
+					dir:         filepath.Join(genDir(dir), "fa"),
+					handwritten: filepath.Join(handDir(dir), "fa"),
+				},
 			},
 		},
 		{
 			name:   "an absent docs key defaults to docs",
 			config: map[string]any{},
-			want:   []localeDocsDir{{code: "", dir: filepath.Join(dir, "docs")}},
+			want:   []localeDocsDir{{code: "", dir: genDir(dir), handwritten: handDir(dir)}},
 		},
 	}
 	for _, testCase := range cases {
@@ -1537,7 +1554,7 @@ func TestStrictcliPagesJoinTheRun(t *testing.T) {
 		if !written[want] {
 			t.Errorf("missing %s from %v", want, first.Written)
 		}
-		if !hasGeneratedMarker(filepath.Join(dir, "docs", want)) {
+		if !hasGeneratedMarker(filepath.Join(genDir(dir), want)) {
 			t.Errorf("%s is not marked generated", want)
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
@@ -118,7 +119,7 @@ func (c *cli) cmdPublishDocs(ctx *strictcli.Context, kwargs map[string]any) stri
 		Slug:         slug,
 		OutputDir:    outputDir,
 		Version:      version,
-		ManifestPath: filepath.Join(dir, ".selfdoc", "manifest.json"),
+		ManifestPath: layout.Path(dir, layout.ManifestRel),
 		Home:         home,
 		SourceDir:    dir,
 	}, handle)

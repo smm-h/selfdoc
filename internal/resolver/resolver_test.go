@@ -50,8 +50,8 @@ func makeConfig(overrides map[string]any) map[string]any {
 		"source": []any{
 			map[string]any{"path": "src/", "language": "python"},
 		},
-		"docs":       "docs/",
-		"output":     "docs/_build/",
+		"docs":       ".stricttools/docs/",
+		"output":     ".stricttools/docs-cache/build/",
 		"deploy":     nil,
 		"directives": map[string]any{},
 	}

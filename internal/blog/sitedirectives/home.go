@@ -10,6 +10,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -19,7 +20,7 @@ import (
 func HomeListingPath(dirPath string, cfg map[string]any) string {
 	docsDir := util.PythonStrOrEmpty(cfg["docs"])
 	if docsDir == "" {
-		docsDir = "docs/"
+		docsDir = layout.DocsDefault
 	}
 	return filepath.Join(dirPath, strings.TrimRight(docsDir, "/"), "projects.toml")
 }
@@ -146,7 +147,7 @@ func BuildHome(
 
 	outputDir := util.PythonStrOrEmpty(cfg["output"])
 	if outputDir == "" {
-		outputDir = "docs/_build/"
+		outputDir = layout.OutputDefault
 	}
 	if _, err := RefreshOutputRegions(
 		filepath.Join(dirPath, strings.TrimRight(outputDir, "/")), context, h,

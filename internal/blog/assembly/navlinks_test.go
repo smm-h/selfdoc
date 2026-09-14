@@ -148,10 +148,10 @@ func buildSiteLikeAlpha(t *testing.T) string {
 			},
 		},
 	})
-	docs := filepath.Join(source, "docs")
+	docs := filepath.Join(source, ".stricttools", "docs")
 	testproject.WriteText(t, filepath.Join(docs, "guide.md"),
 		"# Guide\n\nHow to use the thing.\n")
-	testproject.WriteText(t, filepath.Join(source, ".selfdoc", "posts", "why.md"),
+	testproject.WriteText(t, filepath.Join(source, ".stricttools", "posts", "why.md"),
 		"+++\ntitle = \"Why We Built It\"\ndate = 2024-06-01\n"+
 			"slug = \""+navLinksPostSlug+"\"\ntags = []\ndraft = false\ndirectives = false\n"+
 			"+++\nThe post body.\n")
@@ -176,6 +176,6 @@ func buildSiteLikeAlpha(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("encoding the manifest: %v", err)
 	}
-	testproject.WriteText(t, filepath.Join(source, ".selfdoc", "manifest.json"), string(encoded))
+	testproject.WriteText(t, filepath.Join(source, ".stricttools", "docs-state", "manifest.json"), string(encoded))
 	return source
 }

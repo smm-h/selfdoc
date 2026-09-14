@@ -44,6 +44,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -383,10 +384,10 @@ func CheckSchemaDrift(pagePath, schemaHash, descriptionHash string, stored Store
 
 // HashesPath is where the store file sits under a project root.
 func HashesPath(baseDir string) string {
-	return filepath.Join(baseDir, ".selfdoc", "hashes", "hashes.json")
+	return layout.Path(baseDir, layout.HashesRel)
 }
 
-// LoadHashes loads the hash store from .selfdoc/hashes/hashes.json.
+// LoadHashes loads the hash store from selfdoc's hash directory.
 //
 // It returns an empty store when the file does not exist, and discards an
 // older store wholesale -- nothing a v1 or v2 file holds is reusable under
@@ -434,14 +435,14 @@ func LoadHashes(baseDir string) (Store, error) {
 	return store, nil
 }
 
-// SaveHashes writes the hash store to .selfdoc/hashes/hashes.json, creating
+// SaveHashes writes the hash store to selfdoc's hash directory, creating
 // the directory when it is missing and stamping the current HashVersion.
 //
 // The write is atomic, so an interrupted run can never leave a truncated
 // store -- which would re-baseline every page on the next run.
 func SaveHashes(hashes Store, baseDir string, handle *effects.Handle) error {
-	hashesDir := filepath.Join(baseDir, ".selfdoc", "hashes")
-	if err := handle.MkdirAll(hashesDir); err != nil {
+	hashesDir := layout.Path(baseDir, layout.HashesDirRel)
+	if err := layout.EnsureDir(handle, baseDir, layout.HashesDirRel); err != nil {
 		return err
 	}
 	document := map[string]any{hashVersionKey: HashVersion}

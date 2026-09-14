@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -16,7 +17,7 @@ import (
 // what is machine state.
 var treeExcludes = []string{
 	"__pycache__", ".pyc", ".git", "node_modules", ".egg-info",
-	"docs/_build", ".tox", ".mypy_cache", ".pytest_cache",
+	layout.DocsCacheName, ".tox", ".mypy_cache", ".pytest_cache",
 }
 
 // shouldExcludeFromTree reports whether a file or directory name is excluded

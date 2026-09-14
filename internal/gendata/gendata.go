@@ -3,7 +3,7 @@
 //
 // A project declares its scripts under the "gen_data" key of selfdoc.json;
 // each declaration names the command to run, the file it must produce inside
-// .selfdoc/data, and the paths the sandbox mounts read-only. [GenerateData]
+// the generated-data directory, and the paths the sandbox mounts read-only. [GenerateData]
 // runs each one inside bwrap with no network, no inherited environment and no
 // writable path other than the output directory, then validates the produced
 // file against its extension.
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -59,10 +60,11 @@ const pythonCSVFieldLimit = 131072
 // "gen_data" object's "scripts" array, and a config declaring neither returns
 // no paths and runs nothing. baseDir is the project directory every relative
 // mount and the sandbox's working directory resolve against; the output
-// directory is always baseDir/.selfdoc/data, created before the first script
+// directory is always baseDir joined with selfdoc's generated-data directory,
+// created before the first script
 // runs.
 //
-// Each returned path is baseDir/.selfdoc/data joined with the script's
+// Each returned path is that directory joined with the script's
 // declared output name, so a relative baseDir yields relative paths.
 //
 // Under a handle in preview mode every script is recorded rather than run: the
@@ -77,22 +79,27 @@ func GenerateData(config map[string]any, baseDir string, h *effects.Handle) ([]s
 		return nil, nil
 	}
 
-	outputDir := util.PathJoin(baseDir, ".selfdoc", "data")
-	if err := h.MkdirAll(outputDir); err != nil {
-		return nil, err
+	// Every declaration is checked before anything is created or run: a
+	// malformed script is the config's defect, and it is reported whatever
+	// the machine has installed and whatever the repository has granted.
+	for _, script := range scripts {
+		if err := validateScript(script); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := checkBwrap(); err != nil {
 		return nil, err
 	}
 
+	outputDir := util.PathJoin(baseDir, layout.DataRel)
+	if err := layout.EnsureDir(h, baseDir, layout.DataRel); err != nil {
+		return nil, err
+	}
+
 	var generated []string
 
 	for _, script := range scripts {
-		if err := validateScript(script); err != nil {
-			return nil, err
-		}
-
 		command, err := stringField(script, "command")
 		if err != nil {
 			return nil, err

@@ -137,7 +137,7 @@ type SingleOptions struct {
 	// same-named files, so pages that were never written can be built.
 	OverlayDocs map[string]string
 	// WriteBaselines advances the staleness baselines under
-	// .selfdoc/hashes. False makes the whole call write nothing at all,
+	// the hash store. False makes the whole call write nothing at all,
 	// which -- together with OverlayDocs -- is what makes an in-memory
 	// render possible.
 	WriteBaselines bool
@@ -166,7 +166,7 @@ func NewSingleOptions() SingleOptions {
 // hands the whole result back: [Build] does the output IO.
 //
 // One thing is written here, and only here: the staleness baselines under
-// .selfdoc/hashes. Turn WriteBaselines off and the call touches nothing at
+// the hash store. Turn WriteBaselines off and the call touches nothing at
 // all.
 //
 // The mount is the single input that decides where pages land and how they

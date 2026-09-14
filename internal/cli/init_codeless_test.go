@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/smm-h/selfdoc/internal/testproject"
 )
 
 // `selfdoc init` on a project with no source code.
@@ -22,8 +24,8 @@ const (
 // manifests.
 func codelessProject(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	writeText(t, filepath.Join(dir, "docs", "about.md"),
+	dir := testproject.Dir(t)
+	writeText(t, filepath.Join(dir, ".stricttools", "docs", "about.md"),
 		"+++\ntitle = \"About\"\n"+
 			"description = \"A short page about this site and the person who writes it.\"\n"+
 			"+++\n\n# About\n\nThis page has no code behind it.\n")
@@ -110,7 +112,7 @@ func TestTheCodelessStarterHasNoCodeDirective(t *testing.T) {
 	if code, _, stderr := initProject(t, dir); code != 0 {
 		t.Fatalf("init failed: %s", stderr)
 	}
-	index := readText(t, filepath.Join(dir, "docs", "index.md"))
+	index := readText(t, filepath.Join(dir, ".stricttools", "docs", "index.md"))
 	if strings.Contains(index, ":-: ref") {
 		t.Errorf("the starter page carries an extraction directive:\n%s", index)
 	}
@@ -129,7 +131,7 @@ func TestACodelessProjectBuilds(t *testing.T) {
 
 	run(t, dir, "build", "--no-auto-commit")
 
-	out := filepath.Join(dir, "docs", "_build")
+	out := filepath.Join(dir, ".stricttools", "docs-cache", "build")
 	if !exists(filepath.Join(out, "index.html")) {
 		t.Error("no index.html written")
 	}
@@ -152,7 +154,7 @@ func TestGenSkipsReferencePagesForACodelessProject(t *testing.T) {
 	if result.ExitCode != 0 {
 		t.Fatalf("gen failed: %s\n%s", result.Stdout, result.Stderr)
 	}
-	if exists(filepath.Join(dir, "docs", "gen-index.md")) {
+	if exists(filepath.Join(dir, ".stricttools", "docs", "gen-index.md")) {
 		t.Error("gen wrote an API index for a project with no source")
 	}
 	if !strings.Contains(result.Stdout, "source") {
@@ -164,7 +166,7 @@ func TestInitEmitsALoadableConfigForACodeProject(t *testing.T) {
 	requirePagefind(t)
 	isolate(t)
 	requirePython3(t)
-	dir := t.TempDir()
+	dir := testproject.Dir(t)
 	writeText(t, filepath.Join(dir, "pyproject.toml"),
 		"[project]\nname = \"testproj\"\nversion = \"2.3.4\"\n")
 	writeText(t, filepath.Join(dir, "testproj", "__init__.py"), "\"\"\"Test package.\"\"\"\n")
@@ -188,7 +190,7 @@ func TestInitEmitsALoadableConfigForACodeProject(t *testing.T) {
 	}
 
 	run(t, dir, "build", "--no-auto-commit")
-	if !exists(filepath.Join(dir, "docs", "_build", "index.html")) {
+	if !exists(filepath.Join(dir, ".stricttools", "docs-cache", "build", "index.html")) {
 		t.Error("the scaffolded project does not build")
 	}
 }
@@ -198,7 +200,7 @@ func TestInitRefusesAVersionlessCodeProject(t *testing.T) {
 	// manifest states none, init refuses rather than writing a number the
 	// project never released.
 	isolate(t)
-	dir := t.TempDir()
+	dir := testproject.Dir(t)
 	writeText(t, filepath.Join(dir, "pyproject.toml"), "[project]\nname = \"testproj\"\n")
 	writeText(t, filepath.Join(dir, "testproj", "__init__.py"), "")
 

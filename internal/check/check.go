@@ -15,6 +15,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/resolution"
 	"github.com/smm-h/selfdoc/internal/resolver"
@@ -65,7 +66,7 @@ func CheckDocs(
 		)
 	}
 
-	declaredDocs := configString(projectConfig, "docs", "docs/")
+	declaredDocs := configString(projectConfig, "docs", layout.DocsDefault)
 	docsDir := filepath.Join(dirPath, strings.TrimRight(declaredDocs, "/"))
 	if !isDir(docsDir) {
 		return nil, fmt.Errorf("Docs directory '%s' not found.", declaredDocs)
@@ -188,7 +189,7 @@ func CheckDocs(
 		lintSlice[key] = doc
 	}
 	result.Lints, err = runLints(
-		lintSlice, docsDir, projectConfig, resolvedDirectives, handle,
+		lintSlice, dirPath, docsDir, projectConfig, resolvedDirectives, handle,
 	)
 	if err != nil {
 		return nil, err
@@ -359,7 +360,7 @@ func CheckDocs(
 	outputLints, err := resolution.CheckProjectOutputResolution(
 		filepath.Join(
 			dirPath,
-			strings.TrimRight(configString(projectConfig, "output", "docs/_build/"), "/"),
+			strings.TrimRight(configString(projectConfig, "output", layout.OutputDefault), "/"),
 		),
 		configString(projectConfig, "base_url", ""),
 		mountPrefix,
@@ -421,7 +422,7 @@ func CheckDocs(
 				continue
 			}
 			versionLints, err := runLints(
-				versionDocs, versionDocsDir, projectConfig, versionResolved, handle,
+				versionDocs, cacheDir, versionDocsDir, projectConfig, versionResolved, handle,
 			)
 			if err != nil {
 				return nil, err

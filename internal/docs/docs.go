@@ -17,6 +17,7 @@
 package docs
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,6 +26,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/catalog"
 	"github.com/smm-h/selfdoc/internal/directives"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/manifest"
 	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/staleness"
@@ -170,6 +172,15 @@ func ResolveMarkdown(
 // underscore-prefixed template, which is a partial included by a page rather
 // than a page of its own.
 //
+// # Two roots, one namespace
+//
+// A project's pages come from two directories: the handwritten one the config
+// names, and the generated one selfdoc writes beside the rest of its generated
+// state. A page's key is its path relative to whichever root it came from, so
+// the two roots merge into one namespace and a page keeps its address wherever
+// it is authored. Two pages that would take the same address are a
+// [CollisionError] naming both files, never a silent win for one of them.
+//
 // Directories and files are read in sorted order. The Python walked in
 // directory-listing order, which is arbitrary, and its callers sort where they
 // need determinism; the only thing the order decides here is which of two
@@ -182,9 +193,10 @@ func ResolveAll(
 	handle *effects.Handle,
 ) (map[string]Doc, error) {
 	if docsDir == "" {
-		docsDir = filepath.Join(baseDir, trimmedConfigPath(config, "docs", "docs/"))
+		docsDir = filepath.Join(baseDir, trimmedConfigPath(config, "docs", layout.DocsDefault))
 	}
-	outputDir := filepath.Join(baseDir, trimmedConfigPath(config, "output", "docs/_build/"))
+	generatedDir := layout.Path(baseDir, layout.GeneratedPagesRel)
+	outputDir := filepath.Join(baseDir, trimmedConfigPath(config, "output", layout.OutputDefault))
 
 	pageResolver, err := resolver.MakeResolver(config, baseDir, handle)
 	if err != nil {
@@ -201,15 +213,26 @@ func ResolveAll(
 	}
 
 	result := map[string]Doc{}
-	if err := walkDocs(docsDir, docsDir, absOutput, func(relPath, content string) error {
-		doc, err := ResolveMarkdown(content, relPath, pageResolver.Resolve, validNames)
-		if err != nil {
-			return err
+	origin := map[string]string{}
+	for _, root := range []string{docsDir, generatedDir} {
+		if err := walkDocs(root, root, absOutput, func(relPath, content string) error {
+			if previous, taken := origin[relPath]; taken {
+				return &CollisionError{
+					RelPath: relPath,
+					First:   previous,
+					Second:  filepath.Join(root, filepath.FromSlash(relPath)),
+				}
+			}
+			doc, err := ResolveMarkdown(content, relPath, pageResolver.Resolve, validNames)
+			if err != nil {
+				return err
+			}
+			origin[relPath] = filepath.Join(root, filepath.FromSlash(relPath))
+			result[relPath] = doc
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		result[relPath] = doc
-		return nil
-	}); err != nil {
-		return nil, err
 	}
 
 	for _, relPath := range sortedKeys(overlay) {
@@ -301,4 +324,27 @@ func sortedKeys(overlay map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// CollisionError is two pages, one handwritten and one generated, claiming the
+// same address.
+//
+// The two docs roots merge into one URL namespace, so a page's path relative to
+// its own root is its address. Two files that produce one address would make
+// the published page depend on which root was walked first; this is the refusal
+// instead, and it names both files.
+type CollisionError struct {
+	// RelPath is the address both files claim, relative to their roots.
+	RelPath string
+	// First is the file found first, in the handwritten root.
+	First string
+	// Second is the file found second, in the generated root.
+	Second string
+}
+
+func (e *CollisionError) Error() string {
+	return fmt.Sprintf(
+		"two pages claim the address %q: %s and %s. Delete one of them, or rename it: "+
+			"a handwritten page and a generated page cannot publish to the same address.",
+		e.RelPath, e.First, e.Second)
 }

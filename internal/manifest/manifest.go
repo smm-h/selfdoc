@@ -40,6 +40,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/tokenizer"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -56,7 +57,7 @@ const DefaultTheme = "minimal"
 const SchemaVersion = 1
 
 // DefaultOutputName is the filename a project's manifest is written under
-// inside .selfdoc/.
+// inside selfdoc's generated-state directory.
 const DefaultOutputName = "manifest.json"
 
 // Heading is one heading on a page, with the element id the built page
@@ -207,7 +208,7 @@ func pageHeadings(frontmatter util.Frontmatter, content string) []Heading {
 }
 
 // Generate builds a Manifest from a project's config and its resolved docs,
-// and writes it to .selfdoc/<outputName>.
+// and writes it to <outputName> inside selfdoc's generated-state directory.
 //
 // The write is skipped when everything but the generation timestamp is
 // unchanged, so a gen over untouched content does not dirty the working
@@ -299,11 +300,10 @@ func Generate(
 		Theme:         theme,
 	}
 
-	selfdocDir := filepath.Join(dirPath, ".selfdoc")
-	if err := handle.MkdirAll(selfdocDir); err != nil {
+	if err := layout.EnsureDir(handle, dirPath, layout.DocsStateRel); err != nil {
 		return nil, err
 	}
-	manifestPath := filepath.Join(selfdocDir, outputName)
+	manifestPath := layout.Path(dirPath, layout.DocsStateRel+"/"+outputName)
 
 	document := manifest.document()
 	if unchangedExceptTimestamp(manifestPath, document) {
@@ -458,7 +458,7 @@ func Load(path string) (*Manifest, error) {
 	return Compat(data, path)
 }
 
-// LoadFromGit reads .selfdoc/manifest.json out of the repository's HEAD,
+// LoadFromGit reads the committed manifest out of the repository's HEAD,
 // bypassing the working-tree copy.
 //
 // This is what the slug immutability check compares against: a post's slug
@@ -469,7 +469,7 @@ func Load(path string) (*Manifest, error) {
 // repository, when the repository has no commits, or when the manifest has
 // never been committed.
 func LoadFromGit(dirPath string, handle *effects.Handle) (*Manifest, error) {
-	const manifestRef = "HEAD:.selfdoc/manifest.json"
+	manifestRef := "HEAD:" + layout.ManifestRel
 	existence, err := handle.Run(
 		[]string{"git", "cat-file", "-e", manifestRef},
 		effects.Cwd(dirPath),

@@ -13,13 +13,14 @@ import (
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/manifest"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
 // defaultPostsDir is where a project keeps its posts when it declares no
 // directory of its own.
-const defaultPostsDir = ".selfdoc/posts/"
+const defaultPostsDir = layout.PostsDefault
 
 // RenderPostListing renders the Markdown listing page from published post
 // metadata, frontmatter included.
@@ -123,8 +124,7 @@ func InjectPostsIntoDocs(
 		return nil, nil
 	}
 
-	manifestPath := filepath.Join(dirPath, ".selfdoc", "manifest.json")
-	allPosts, err := posts.Discover(postsDir, manifestPath, h)
+	allPosts, err := posts.Discover(postsDir, dirPath, h)
 	if err != nil {
 		return nil, err
 	}
@@ -277,8 +277,7 @@ func BuildPostsOnly(
 	// the same discovery internally, and the manifest records what was
 	// discovered rather than what was written.
 	postsDir := postsDirOf(dirPath, cfg)
-	manifestPath := filepath.Join(dirPath, ".selfdoc", "manifest.json")
-	discovered, err := posts.Discover(postsDir, manifestPath, h)
+	discovered, err := posts.Discover(postsDir, dirPath, h)
 	if err != nil {
 		return nil, err
 	}

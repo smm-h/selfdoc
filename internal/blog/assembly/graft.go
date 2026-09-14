@@ -11,6 +11,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/blog/shared"
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -59,7 +60,7 @@ func (o GraftOptions) stderr() io.Writer {
 // output is checked against the addresses the assembly owns first, and its
 // curated listing is copied in beside the manifests.
 func ApplyProjectFiles(opts GraftOptions, h *effects.Handle) ([]string, error) {
-	buildRoot := filepath.Join(opts.SourceDir, "docs", "_build")
+	buildRoot := layout.Path(opts.SourceDir, layout.OutputRel)
 	siteDir := filepath.Join(opts.AssemblyDir, "site")
 	siteSlugDir := filepath.Join(siteDir, opts.Slug)
 	manifestsDir := filepath.Join(opts.AssemblyDir, "manifests")
@@ -86,12 +87,12 @@ func ApplyProjectFiles(opts GraftOptions, h *effects.Handle) ([]string, error) {
 				outputs = append(outputs, rel)
 			}
 		}
-		srcManifest = filepath.Join(opts.SourceDir, ".selfdoc", "post-manifest.json")
+		srcManifest = layout.Path(opts.SourceDir, layout.PostManifestRel)
 		destManifest = filepath.Join(manifestsDir, opts.Slug+"-posts.json")
 	} else {
 		owner = "release"
 		outputs = allOutputs
-		srcManifest = filepath.Join(opts.SourceDir, ".selfdoc", "manifest.json")
+		srcManifest = layout.Path(opts.SourceDir, layout.ManifestRel)
 		destManifest = filepath.Join(manifestsDir, opts.Slug+".json")
 	}
 

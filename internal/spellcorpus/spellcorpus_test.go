@@ -57,8 +57,8 @@ func corpusProject(t *testing.T, root, name string, pages map[string]string) str
 		"locales":       []any{map[string]any{"code": "en", "label": "English", "default": true}},
 		"search_engine": "pagefind",
 		"author":        map[string]any{"name": "Test Author", "url": "https://author.example"},
-		"docs":          "docs/",
-		"output":        "docs/_build/",
+		"docs":          ".stricttools/docs/",
+		"output":        ".stricttools/docs-cache/build/",
 	}
 	encoded, err := json.Marshal(projectConfig)
 	if err != nil {
@@ -66,9 +66,9 @@ func corpusProject(t *testing.T, root, name string, pages map[string]string) str
 	}
 	write(t, filepath.Join(projectDir, "selfdoc.json"), string(encoded))
 	write(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
-	write(t, filepath.Join(projectDir, "docs", ".keep"), "")
+	write(t, filepath.Join(projectDir, ".stricttools", "docs", ".keep"), "")
 	for relPath, content := range pages {
-		write(t, filepath.Join(projectDir, "docs", relPath), content)
+		write(t, filepath.Join(projectDir, ".stricttools", "docs", relPath), content)
 	}
 	return projectDir
 }
@@ -131,7 +131,7 @@ func TestScanProjectReportsAMissingDocsDirectory(t *testing.T) {
 	isolate(t)
 	root := t.TempDir()
 	projectDir := corpusProject(t, root, "alpha", nil)
-	if err := os.RemoveAll(filepath.Join(projectDir, "docs")); err != nil {
+	if err := os.RemoveAll(filepath.Join(projectDir, ".stricttools", "docs")); err != nil {
 		t.Fatalf("remove the docs tree: %v", err)
 	}
 
@@ -154,7 +154,7 @@ func TestScanProjectSurveysPostsAtTheirOwnPaths(t *testing.T) {
 	projectDir := corpusProject(t, root, "alpha", map[string]string{"index.md": cleanPage})
 	// A draft is surveyed too: a draft's prose is still prose, and a term
 	// it introduces belongs on the accept list before the draft ships.
-	write(t, filepath.Join(projectDir, ".selfdoc", "posts", "hello.md"),
+	write(t, filepath.Join(projectDir, ".stricttools", "posts", "hello.md"),
 		"+++\ntitle = \"Hello\"\ndate = 2024-01-15\ndraft = true\ndirectives = false\n+++\n"+
 			"This post says correclty.\n")
 
@@ -172,7 +172,7 @@ func TestScanProjectSurveysPostsAtTheirOwnPaths(t *testing.T) {
 	if len(report.Misspellings) != 1 {
 		t.Fatalf("misspellings = %v, want one", report.Misspellings)
 	}
-	want := filepath.Join(".selfdoc", "posts", "hello.md")
+	want := filepath.Join(".stricttools", "posts", "hello.md")
 	if report.Misspellings[0].File != want {
 		t.Errorf("file = %q, want %q", report.Misspellings[0].File, want)
 	}

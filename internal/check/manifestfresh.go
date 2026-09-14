@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/manifest"
 )
@@ -18,7 +19,7 @@ import (
 // A project with no manifest has nothing to disagree with, and neither does a
 // manifest that cannot be read.
 func checkManifestFreshness(config map[string]any, dirPath string) ([]lints.LintResult, error) {
-	manifestPath := filepath.Join(dirPath, ".selfdoc", "manifest.json")
+	manifestPath := layout.Path(dirPath, layout.ManifestRel)
 	if !isFile(manifestPath) {
 		return nil, nil
 	}
@@ -31,7 +32,7 @@ func checkManifestFreshness(config map[string]any, dirPath string) ([]lints.Lint
 		return nil, nil
 	}
 
-	docsDir := filepath.Join(dirPath, configString(config, "docs", "docs/"))
+	docsDir := filepath.Join(dirPath, configString(config, "docs", layout.DocsDefault))
 	postsDir := filepath.Join(dirPath, postsDirRel(config))
 
 	// Pages on disk, excluding the underscore-prefixed templates.

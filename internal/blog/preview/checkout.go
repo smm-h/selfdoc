@@ -7,6 +7,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/themes"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -72,7 +73,7 @@ func BuiltUnderTheme(sourceDir, theme string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	path := filepath.Join(sourceDir, "docs", "_build", filepath.FromSlash(cssRel))
+	path := filepath.Join(layout.Path(sourceDir, layout.OutputRel), filepath.FromSlash(cssRel))
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() {
 		return false, nil

@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/smm-h/selfdoc/internal/layout"
 )
 
 // TB is the slice of testing.TB these helpers use.
@@ -81,8 +83,9 @@ func Make(t TB, overrides map[string]any) string {
 	MkdirAll(t, projectDir)
 
 	WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), DefaultConfig(overrides))
+	Owners(t, projectDir)
 	WriteText(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
-	WriteText(t, filepath.Join(projectDir, "docs", "index.md"),
+	WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
 		"# Test Project\n\nWelcome to the docs.\n")
 	return projectDir
 }
@@ -118,8 +121,9 @@ func MakeVersioned(t TB, versions []string, overrides map[string]any) string {
 		config[key] = value
 	}
 	WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), config)
+	Owners(t, projectDir)
 	WriteText(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
-	WriteText(t, filepath.Join(projectDir, "docs", "index.md"),
+	WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
 		"# Test Project\n\nInitial content.\n")
 
 	Git(t, projectDir, "init")
@@ -127,9 +131,9 @@ func MakeVersioned(t TB, versions []string, overrides map[string]any) string {
 	Git(t, projectDir, "commit", "-m", "initial")
 
 	for _, version := range versions {
-		WriteText(t, filepath.Join(projectDir, "docs", "index.md"),
+		WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
 			fmt.Sprintf("# Test Project\n\nDocumentation for version %s.\n", version))
-		Git(t, projectDir, "add", "docs/index.md")
+		Git(t, projectDir, "add", layout.DocsRel+"/index.md")
 		Git(t, projectDir, "commit", "-m", "docs for "+version)
 		Git(t, projectDir, "tag", "v"+version)
 	}
@@ -163,15 +167,52 @@ func MakeLocalized(t TB, locales []map[string]any, overrides map[string]any) str
 		config[key] = value
 	}
 	WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), config)
+	Owners(t, projectDir)
 	WriteText(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
 
 	for _, locale := range locales {
 		code, _ := locale["code"].(string)
 		label, _ := locale["label"].(string)
-		WriteText(t, filepath.Join(projectDir, "docs", code, "index.md"),
+		WriteText(t, filepath.Join(DocsDir(projectDir), code, "index.md"),
 			fmt.Sprintf("# Test Project (%s)\n\nWelcome — %s.\n", label, label))
 	}
 	return projectDir
+}
+
+// Owners writes the ownership declaration a project needs before selfdoc may
+// create any of its directories.
+//
+// selfdoc never writes this file: a row in it is the permission to create a
+// directory, and granting that permission is the repository's own act. A
+// fixture project is a repository, so it grants it here.
+func Owners(t TB, projectDir string) {
+	t.Helper()
+	WriteText(t, filepath.Join(projectDir, layout.Root, layout.OwnersFileName),
+		strings.Join(layout.RequiredRows(), "\n")+"\n")
+}
+
+// Dir is a fresh project directory with nothing in it but the ownership
+// declaration selfdoc needs before it may create any of its own directories.
+//
+// It is what a test that exercises one piece of the engine starts from: a
+// repository that has granted selfdoc its rows, and no pages, config or source
+// beyond what the test writes itself.
+func Dir(t TB) string {
+	t.Helper()
+	dir := t.TempDir()
+	Owners(t, dir)
+	return dir
+}
+
+// DocsDir is a fixture project's handwritten docs directory.
+func DocsDir(projectDir string) string {
+	return layout.Path(projectDir, layout.DocsRel)
+}
+
+// GeneratedPagesDir is a fixture project's generated pages directory: the
+// second docs root, which the build merges with the handwritten one.
+func GeneratedPagesDir(projectDir string) string {
+	return layout.Path(projectDir, layout.GeneratedPagesRel)
 }
 
 // WriteText writes text to path, creating the parent directories.
@@ -394,9 +435,10 @@ func MakeUnified(t TB, projects []UnifiedProject, overrides map[string]any) stri
 			"author":        Author(),
 			"version":       "1.0.0",
 		})
+		Owners(t, projectDir)
 		WriteText(t, filepath.Join(projectDir, "src", "__init__.py"),
 			`"""`+project.Name+` package."""`+"\n")
-		WriteText(t, filepath.Join(projectDir, "docs", "index.md"),
+		WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
 			fmt.Sprintf("# %s\n\nDocs for %s.\n", project.Name, project.Name))
 		unifiedEntries = append(unifiedEntries, map[string]any{"path": "../" + project.Name})
 	}
@@ -416,11 +458,12 @@ func MakeUnified(t TB, projects []UnifiedProject, overrides map[string]any) stri
 		docsSiteConfig[key] = value
 	}
 	WriteJSON(t, filepath.Join(docsSiteDir, "selfdoc.json"), docsSiteConfig)
+	Owners(t, docsSiteDir)
 	// The docs-site needs a source entry of its own: the config requires
 	// one, and it is a project like any other.
 	WriteText(t, filepath.Join(docsSiteDir, "src", "__init__.py"),
 		`"""Docs-site placeholder."""`+"\n")
-	WriteText(t, filepath.Join(docsSiteDir, "docs", "index.md"),
+	WriteText(t, filepath.Join(DocsDir(docsSiteDir), "index.md"),
 		"# Unified Docs\n\nLanding page for the monorepo.\n")
 	return docsSiteDir
 }

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/smm-h/selfdoc/internal/layout"
 )
 
 // MarkdownLOC returns the project's Markdown line and file counts.
@@ -180,12 +182,16 @@ func SelfdocInfo(projectPath string) Adoption {
 	}
 	info.HasPosts = truthy(config["posts"])
 
-	docsRel := "docs"
+	docsRel := layout.DocsRel
 	if declared, ok := config["docs"].(string); ok {
 		docsRel = declared
 	}
-	docsDir := filepath.Join(projectPath, filepath.FromSlash(docsRel))
-	if stat, err := os.Stat(docsDir); err == nil && stat.IsDir() {
+	for _, root := range []string{docsRel, layout.GeneratedPagesRel} {
+		docsDir := filepath.Join(projectPath, filepath.FromSlash(root))
+		stat, err := os.Stat(docsDir)
+		if err != nil || !stat.IsDir() {
+			continue
+		}
 		walkDocs(docsDir, func(full string) {
 			content, err := os.ReadFile(full)
 			if err != nil {
