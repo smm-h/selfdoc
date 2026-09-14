@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/smm-h/selfdoc/internal/testproject"
 )
 
 // `selfdoc baseline accept` -- the STALE001/DRIFT001 escape hatch.
@@ -171,5 +175,112 @@ func TestBaselineAcceptNamesPagesVariadically(t *testing.T) {
 	}
 	if arg["presence"] != "required" {
 		t.Errorf("the argument's presence is %v", arg["presence"])
+	}
+}
+
+// gitOnlyPath puts a directory holding nothing but git at the front of PATH,
+// so an auto-commit goes through plain git rather than whichever commit
+// wrapper the machine running the tests happens to carry.
+func gitOnlyPath(t *testing.T) {
+	t.Helper()
+	real, err := exec.LookPath("git")
+	if err != nil {
+		t.Skipf("git is not on PATH: %v", err)
+	}
+	bin := t.TempDir()
+	if err := os.Symlink(real, filepath.Join(bin, "git")); err != nil {
+		t.Fatalf("linking git into the test PATH: %v", err)
+	}
+	t.Setenv("PATH", bin)
+}
+
+// stalePageInAGitRepository writes a project inside a git repository, records
+// its baseline, then rewrites the page body so the page is reported stale. It
+// returns the project directory and the page identifier to accept.
+//
+// The repository is what makes the auto-commit decision observable at all:
+// outside one, nothing is committed either way.
+func stalePageInAGitRepository(t *testing.T) (string, string) {
+	t.Helper()
+	dir := baselineProject(t)
+	writePage(t, dir, "Original description", "Original content here.", "page.md")
+
+	testproject.Git(t, dir, "init")
+	testproject.Git(t, dir, "add", "selfdoc.json", "docs/page.md", "src/__init__.py")
+	testproject.Git(t, dir, "commit", "-m", "initial")
+
+	if stale := staleIdentifiers(t, dir); len(stale) != 0 {
+		t.Fatalf("a fresh page is reported stale: %v", stale)
+	}
+	writePage(t, dir, "Original description", "Completely rewritten content.", "page.md")
+	stale := staleIdentifiers(t, dir)
+	if len(stale) != 1 {
+		t.Fatalf("expected one stale page, got %v", stale)
+	}
+	return dir, stale[0]
+}
+
+// headSubject is the subject line of the repository's current commit.
+func headSubject(t *testing.T, dir string) string {
+	t.Helper()
+	command := exec.Command("git", "log", "-1", "--format=%s")
+	command.Dir = dir
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log in %s: %v\n%s", dir, err, output)
+	}
+	return strings.TrimSpace(string(output))
+}
+
+func TestBaselineAcceptCommitsNothingWhenTheFlagRefusesIt(t *testing.T) {
+	isolate(t)
+	gitOnlyPath(t)
+	dir, page := stalePageInAGitRepository(t)
+	before := headSubject(t, dir)
+
+	result := run(t, dir, "baseline", "accept", page, "--no-auto-commit")
+	if result.ExitCode != 0 {
+		t.Fatalf("baseline accept failed: %s\n%s", result.Stdout, result.Stderr)
+	}
+
+	if after := headSubject(t, dir); after != before {
+		t.Fatalf("--no-auto-commit committed %q", after)
+	}
+	if stale := staleIdentifiers(t, dir); len(stale) != 0 {
+		t.Fatalf("the acceptance did not clear STALE001: %v", stale)
+	}
+}
+
+func TestBaselineAcceptCommitsTheStoreByDefault(t *testing.T) {
+	isolate(t)
+	gitOnlyPath(t)
+	dir, page := stalePageInAGitRepository(t)
+
+	result := run(t, dir, "baseline", "accept", page)
+	if result.ExitCode != 0 {
+		t.Fatalf("baseline accept failed: %s\n%s", result.Stdout, result.Stderr)
+	}
+
+	if subject := headSubject(t, dir); subject != "selfdoc baseline accept: "+page {
+		t.Fatalf("HEAD subject = %q, want the acceptance's own message", subject)
+	}
+}
+
+// The "selfdoc: update content hashes" commit belongs to check and build,
+// which commit the hash store by default. Naming it here pins where it comes
+// from: an acceptance never writes that message, so such a commit appearing
+// beside an acceptance came from the check that reported the staleness.
+func TestTheHashStoreMessageBelongsToCheck(t *testing.T) {
+	isolate(t)
+	gitOnlyPath(t)
+	dir, _ := stalePageInAGitRepository(t)
+
+	result := run(t, dir, "check")
+	if result.ExitCode == 0 {
+		t.Fatalf("the stale page did not fail the check: %s", result.Stdout)
+	}
+
+	if subject := headSubject(t, dir); subject != hashStoreMessage {
+		t.Fatalf("HEAD subject = %q, want %q", subject, hashStoreMessage)
 	}
 }
