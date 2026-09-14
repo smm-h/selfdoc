@@ -371,7 +371,7 @@
   "en/internal-content.md": {
     "content": "ac5b9e200df149d3be993b3069f3fbee3277aef6b12dd4c3ee8709b096e55af2",
     "description": "fb9ba463e169af9ba47ff2b803325a2032acc205a5474f01c6069c18b5054ab5",
-    "source_docstring": "f45ee51b77d1e9bc3c47b62130cc8d45046993804b0b67f9cd66f96a2e06b10f"
+    "source_docstring": "5c6aa555e9baefdf33578a36a6259debe24a9f506eb5cc86c54a931e4143c785"
   },
   "en/internal-cv.md": {
     "content": "3be6fdc46286354d321d76394e9d801b4e8fee537961ccfa2ac6ab10a2090bcc",
@@ -619,11 +619,11 @@
     "source_docstring": "5479db471b64fae176fa884d74337d3666fea96998a5766e113656b246e394f7"
   },
   "en/internals.md": {
-    "content": "a707063e5e19025b8f11f3c70097c90a2afc9ac7c8363742c0226b3b15892278",
+    "content": "d2fd6a7420e84fa69c00120aef35465365592b352fe5a9d272dc7ba83aaab28f",
     "description": "368283e2ae5434b431437461e25c722f4ddc31083b2720fe7794ada67c517418"
   },
   "en/llms-txt.md": {
-    "content": "0f7ab37dc6a3807dfe950d7084a94878ff094ea550eaa6d02e34c4bddbd2afe5",
+    "content": "f2b2dbaace9656c8aa7445983484cdd8cd142c49cbe289301dc23871d641d7aa",
     "description": "4638a0a53bc8a5833eeeff4112a7f9a5422488e12860b3735a9a16c3d79ba300"
   },
   "en/monorepo-conversion.md": {
