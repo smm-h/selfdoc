@@ -6,10 +6,12 @@ declared key registry. Documents written before that carry a "---" block in a
 hand-rolled "key: value" dialect, which selfdoc now refuses by name. This
 script is the one-way conversion, run per project by hand.
 
-It converts hand-authored pages and posts only. A generated page (one
-declaring `generated: true`) is left alone: those are rewritten by
-`selfdoc gen` once the emitters write TOML, so converting them here would only
-produce a diff the next gen throws away.
+It converts hand-authored pages and posts by default. A generated page (one
+declaring `generated: true`) is left alone unless --include-generated is
+passed: those are rewritten by `selfdoc gen` once the emitters write TOML, but
+gen reads the existing page first to keep a handwritten description, and it
+cannot read a retired block, so a project converts its generated pages once
+right before that first gen.
 
 Two things it will not do, both of which it refuses by naming the file and the
 line rather than guessing:
@@ -44,6 +46,7 @@ import difflib
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -200,11 +203,13 @@ def collapse_order(path: Path, pairs: list[tuple[int, str, str]], top_level: boo
     return kept, f"order dropped, nav_order {nav_value} kept (page sorts inside its group)"
 
 
-def convert(path: Path, text: str, top_level: bool) -> tuple[str, str] | None:
+def convert(path: Path, text: str, top_level: bool,
+            include_generated: bool = False) -> tuple[str, str] | None:
     """The converted document and a note on what the collapse did, or None.
 
     None means the document needs no conversion: it carries no retired block,
-    or it is a generated page this script leaves to `selfdoc gen`.
+    or it is a generated page this script leaves to `selfdoc gen` unless
+    include_generated asks for it (see --include-generated).
     """
     block = read_block(text)
     if block is None:
@@ -227,8 +232,9 @@ def convert(path: Path, text: str, top_level: bool) -> tuple[str, str] | None:
             raise Refusal(path, line_number, f"{key}: {REFUSED_KEYS[key]}")
         pairs.append((line_number, key, value))
 
-    if any(key == "generated" and unwrap(value).lower() == "true"
-           for _, key, value in pairs):
+    if not include_generated and any(
+            key == "generated" and unwrap(value).lower() == "true"
+            for _, key, value in pairs):
         return None
 
     pairs, note = collapse_order(path, pairs, top_level)
@@ -299,6 +305,13 @@ def main() -> int:
     parser.add_argument("--path", action="append", default=[],
                         help="a file or directory to convert; repeatable. "
                              "Defaults to the project's docs and posts directories.")
+    parser.add_argument("--include-generated", action="store_true",
+                        help="also convert generated pages (`generated = true`). "
+                             "`selfdoc gen` preserves a generated page's handwritten "
+                             "description by reading the page, which it cannot do "
+                             "through a retired block, so a project converts its "
+                             "generated pages once, right before the first gen with "
+                             "the TOML-writing emitters, and gen rewrites them after")
     parser.add_argument("--expect-files", type=int, default=None,
                         help="assert how many files the run changes")
     args = parser.parse_args()
@@ -319,7 +332,7 @@ def main() -> int:
             try:
                 resolved = path.resolve()
                 top_level = (resolved.parent == docs_root)
-                result = convert(path, text, top_level)
+                result = convert(path, text, top_level, args.include_generated)
             except Refusal as refusal:
                 refusals.append(str(refusal))
                 continue
@@ -350,7 +363,15 @@ def main() -> int:
         return 0
 
     for path, _, after, _ in changed:
-        path.write_text(after, encoding="utf-8")
+        # A generated page is write-protected by `selfdoc gen`; the mode is
+        # lifted for the write and put back, so the page stays as protected
+        # as gen left it.
+        mode = path.stat().st_mode
+        path.chmod(mode | stat.S_IWUSR)
+        try:
+            path.write_text(after, encoding="utf-8")
+        finally:
+            path.chmod(mode)
     print(f"Converted {len(changed)} file(s).")
     return 0
 
