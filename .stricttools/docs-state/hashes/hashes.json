@@ -81,11 +81,11 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/architecture.md": {
-    "content": "c7c0f577e7ef5356f0f0ffd01ff5e1de29f64a84b00b2a49b10863d1e2b8a3fe",
+    "content": "a669e33125808137997da172830f933e893aae12a6c6b6a0bfea8eb1f3220591",
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "749c0b20f5755df3f0b99d4fd44af5c2cfcc6fef484e3239e81082df9c4a9d94",
+    "content": "8e1f5eeb313856c617d0dc0fcafbdc55ea8557a47d62c62b3c860b6e610fa412",
     "description": "1c58798b3a1f60d72b4fd53229086fd1fab2f7b2179745c69ac2e8002c5cbd0b"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
@@ -93,7 +93,7 @@
     "description": "a88fdbfd865bb583c35a594a76b0fd7c9f861cd6fd9c0ec5c29a23c60d80da52"
   },
   "en/check-guide.md": {
-    "content": "31d1aeaddcf652fb899c3772819b3bb6f56f984cd6bef4221de764a34d739bd0",
+    "content": "a423dc084a06f736a593b5c766b41505e0130772ce1dd701e7e3efe22a93887d",
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
@@ -197,7 +197,7 @@
     "description": "b54f7343fd127542f1a22fd1fbf5d9ddf2a00c7f244026f00a0b32f74fa47567"
   },
   "en/configuration.md": {
-    "content": "9463f8e11e70dfeb4c290e512b3631ce2d96b1f60c3763d71e66d0bdd481baea",
+    "content": "316e825493563f9c7e999a17234c717009b5b03f9d98b81dc11e0b918f3dc201",
     "description": "e1d263c411830edc0641532859bb6f200d6c5f996f7a8e820013940513d3bcf2"
   },
   "en/custom-directives.md": {
@@ -205,7 +205,7 @@
     "description": "63fbcda5f669cb2860cdb48094349f5bf792e22cd4d1e576fdc29614162824ec"
   },
   "en/deployment.md": {
-    "content": "085a4ee1d4e3656478c2d7d54f5737b1b98967f6e361d483b527522ae04b91c7",
+    "content": "df9b8acbfd316bf1af61e811a1c61a94cca008b4d0d165ca2a644afae097c818",
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "en/directives-guide.md": {
@@ -225,7 +225,7 @@
     "description": "6464fca42fdb52aaa26b9f9e280835b324810beb538bc7d1bfb5d914da1a8ae0"
   },
   "en/frontmatter.md": {
-    "content": "9e0cd567a1066a7f0c807c94bfcafb0340299836e08d687241a61eec49d1e32f",
+    "content": "8501c0529d74ed2ccb1bf52579e11b17db1577bf5122cf2c561e09399a96e854",
     "description": "8914468d2a97db4d6baf5030d2019e415ca220a31e9530016991a76150c41308"
   },
   "en/gen-data-guide.md": {
@@ -238,11 +238,11 @@
     "seed_hash": "99beb11b7e51e27008a3b9a709c4bfe1060053fe10aa997bc143d2ea472496f9"
   },
   "en/getting-started.md": {
-    "content": "c9c125e9c77784ffd3cccbda854180625018b896312ff91651146d6b3581168a",
+    "content": "faa9e27edb743798c0523383395e5027730d8ce407c8a2280f5730c7a7833ef7",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
-    "content": "3d3a7f17813a751585c7327ff066c338a5761068318620749d5609e866ac70c4",
+    "content": "78543261e16ee93d7a854e9446e33a2987bb89d461d59f14e8d82b31d2be9224",
     "description": "b57a52a26e36672bf2285facf5595b96c9233a97ace559bfdf4a20124b97896f"
   },
   "en/glossary-terms.md": {
@@ -250,7 +250,7 @@
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
-    "content": "f5cb12c0d7d8e54fc09526e139094e6881357440314950ecc8e9bc54c2b62d0f",
+    "content": "d4f0224c886f8eef0393e777ff123c15c309ed14eafdc82c6bba4e2bd20b816a",
     "description": "569cfc0e18516b909e82c95a48088c40064ec4f54d403bcad583907fcb4999d3"
   },
   "en/internal-address.md": {
@@ -650,7 +650,7 @@
     "description": "3edf7df236b6d70e9c4fa38475114e867b1449a5b278f66349bcb7f3c82d47e5"
   },
   "en/quality-guide.md": {
-    "content": "bbfbef4f65315d25eb26a07a86fd60ce42167cdaef73d07951f4fae3c05366fd",
+    "content": "ea71dbceff75cdcfd04986bf725ec9175f791b3f13b593025ae69914609d3911",
     "description": "dc4d5de0f56b7095a07fb4de44f00a9bf5d9d3cb6459cdc6a326bb67de529d74"
   },
   "en/rlsbl-integration.md": {
@@ -870,7 +870,7 @@
     "description": "5e3bc8a5c461afb1c43cee84a6e4ce7eeb544c36201849aa061e801b938ad726"
   },
   "en/theming.md": {
-    "content": "98731d441ecbdafa5a1b6da98939b2c9d25aef5a19408c249c0bd438b01bbe8a",
+    "content": "2c825e2f83ec21145379579c28241986e1778b0ee450a256ec17e652876e02f3",
     "description": "1f0a530a8ac11af9c98b997dd759ba0a7b1193280575955dd75f14837a89107c"
   },
   "feeds.md": {
