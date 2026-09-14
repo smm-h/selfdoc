@@ -57,3 +57,20 @@ written.
   Cross-project term linking at assembly reads the roster projects' cloned
   vocabulary files. If the assembly ever gains a lint step, it reads those
   same files rather than a merged copy.
+
+## Open points ruled after the plan was written
+
+- The initial rejected baseline shipped inside the binary is seeded from the
+  owner's prose bans (the banned words and phrases in the owner's
+  instructions file), each with a reason. Ruled by the owner.
+- `<dfn>` tags are removed with the scrape: a `<dfn>` left in a page body is
+  a VOCAB lint error whose remedy names the vocabulary accept command and
+  tells the author to drop the tag. Ruled by the owner.
+- The per-page auto-link opt-out key is `glossary_links = false`. Ruled by
+  the owner.
+- The slug rule for terms containing characters other than letters, digits,
+  spaces and hyphens is still open. The owner rejected collapsing such
+  characters to hyphens because `C++` would become `c`; the candidate under
+  consideration keeps every character legal in a URL path segment as
+  written (`c++`, `uv.lock`, `.strictcli`), percent-encodes only the rest,
+  and refuses two terms that produce one slug.
