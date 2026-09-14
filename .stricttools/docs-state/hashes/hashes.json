@@ -233,9 +233,9 @@
     "description": "b987b85e7d65fca02cfb007948ec96dc77f35fb6b5cf331b0759a8037f2adb82"
   },
   "en/gen-index.md": {
-    "content": "e46808f9ba9e0a3a17180e289673cafd40e42c67e6019f0bedc4ea73e3f2c655",
-    "description": "91e9b309392d4cd3ce586799c36b57a2e9fa18fc0c88e7fb82158eaf35b7b13b",
-    "seed_hash": "91e9b309392d4cd3ce586799c36b57a2e9fa18fc0c88e7fb82158eaf35b7b13b"
+    "content": "292d0942b7fe02edc95d10bfe7b8356bee08e7b9680e1b0d67b393fb5c413f17",
+    "description": "99beb11b7e51e27008a3b9a709c4bfe1060053fe10aa997bc143d2ea472496f9",
+    "seed_hash": "99beb11b7e51e27008a3b9a709c4bfe1060053fe10aa997bc143d2ea472496f9"
   },
   "en/getting-started.md": {
     "content": "c9c125e9c77784ffd3cccbda854180625018b896312ff91651146d6b3581168a",
@@ -517,6 +517,11 @@
     "content": "2bf51f84283dcbf427ba3556d18a9d83672ec1044e69565548d153448f7a9700",
     "description": "c2d07ebe9f656b69db398506b4c9f0f1a3150f8e7f9d7c98dfe7261a125c73ed",
     "source_docstring": "37eaa7932f3f8aadd3bd914a28837a5cf260909943a355323fa6ea389b7eab4e"
+  },
+  "en/internal-layout.md": {
+    "content": "52f92ef04414261f2f49481d476762ebd38a5b6a8947ed602f3b647d8d28bdd8",
+    "description": "d4084f4a33686bdf08cf24243221480cd0d93eaa447d5c20140b892f90c1e40b",
+    "seed_hash": "d4084f4a33686bdf08cf24243221480cd0d93eaa447d5c20140b892f90c1e40b"
   },
   "en/internal-lints.md": {
     "content": "7911da93c39e1c1946c429f921a8ec87c3f58e00e93165f136b092d3ae5aa2e4",

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "go",
   "base_url": "https://smmh.dev/selfdoc",
@@ -5191,6 +5191,11 @@
         },
         {
           "level": 3,
+          "text": "`CollisionError`",
+          "anchor": "collisionerror"
+        },
+        {
+          "level": 3,
           "text": "`ManifestDocs`",
           "anchor": "manifestdocs"
         },
@@ -5215,6 +5220,11 @@
           "anchor": "resolveall"
         },
         {
+          "level": 4,
+          "text": "Two roots, one namespace",
+          "anchor": "two-roots-one-namespace"
+        },
+        {
           "level": 3,
           "text": "`Doc.ManifestDoc`",
           "anchor": "docmanifestdoc"
@@ -5223,6 +5233,11 @@
           "level": 3,
           "text": "`Doc.StalenessDoc`",
           "anchor": "docstalenessdoc"
+        },
+        {
+          "level": 3,
+          "text": "`CollisionError.Error`",
+          "anchor": "collisionerrorerror"
         }
       ]
     },
@@ -7007,6 +7022,353 @@
       ]
     },
     {
+      "path": "internal-layout.md",
+      "title": "internal/layout",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "internal/layout",
+          "anchor": "internallayout"
+        },
+        {
+          "level": 2,
+          "text": "`internal/layout`",
+          "anchor": "internallayout"
+        },
+        {
+          "level": 3,
+          "text": "Ownership",
+          "anchor": "ownership"
+        },
+        {
+          "level": 3,
+          "text": "Sides",
+          "anchor": "sides"
+        },
+        {
+          "level": 3,
+          "text": "The derived ignore file",
+          "anchor": "the-derived-ignore-file"
+        },
+        {
+          "level": 3,
+          "text": "`Root`",
+          "anchor": "root"
+        },
+        {
+          "level": 3,
+          "text": "`Owner`",
+          "anchor": "owner"
+        },
+        {
+          "level": 3,
+          "text": "`OwnersFileName`",
+          "anchor": "ownersfilename"
+        },
+        {
+          "level": 3,
+          "text": "`OwnersHeader`",
+          "anchor": "ownersheader"
+        },
+        {
+          "level": 3,
+          "text": "`IgnoreFileName`",
+          "anchor": "ignorefilename"
+        },
+        {
+          "level": 3,
+          "text": "`MoveScript`",
+          "anchor": "movescript"
+        },
+        {
+          "level": 3,
+          "text": "`GeneratedMarkerPrefix`",
+          "anchor": "generatedmarkerprefix"
+        },
+        {
+          "level": 3,
+          "text": "`Handwritten`",
+          "anchor": "handwritten"
+        },
+        {
+          "level": 3,
+          "text": "`Generated`",
+          "anchor": "generated"
+        },
+        {
+          "level": 3,
+          "text": "`Committed`",
+          "anchor": "committed"
+        },
+        {
+          "level": 3,
+          "text": "`Uncommitted`",
+          "anchor": "uncommitted"
+        },
+        {
+          "level": 3,
+          "text": "`DocsName`",
+          "anchor": "docsname"
+        },
+        {
+          "level": 3,
+          "text": "`DocsStateName`",
+          "anchor": "docsstatename"
+        },
+        {
+          "level": 3,
+          "text": "`DocsCacheName`",
+          "anchor": "docscachename"
+        },
+        {
+          "level": 3,
+          "text": "`PostsName`",
+          "anchor": "postsname"
+        },
+        {
+          "level": 3,
+          "text": "`VocabularyName`",
+          "anchor": "vocabularyname"
+        },
+        {
+          "level": 3,
+          "text": "`DocsRel`",
+          "anchor": "docsrel"
+        },
+        {
+          "level": 3,
+          "text": "`DocsStateRel`",
+          "anchor": "docsstaterel"
+        },
+        {
+          "level": 3,
+          "text": "`DocsCacheRel`",
+          "anchor": "docscacherel"
+        },
+        {
+          "level": 3,
+          "text": "`PostsRel`",
+          "anchor": "postsrel"
+        },
+        {
+          "level": 3,
+          "text": "`VocabularyRel`",
+          "anchor": "vocabularyrel"
+        },
+        {
+          "level": 3,
+          "text": "`GeneratedPagesRel`",
+          "anchor": "generatedpagesrel"
+        },
+        {
+          "level": 3,
+          "text": "`ManifestRel`",
+          "anchor": "manifestrel"
+        },
+        {
+          "level": 3,
+          "text": "`PostManifestRel`",
+          "anchor": "postmanifestrel"
+        },
+        {
+          "level": 3,
+          "text": "`RevisionsRel`",
+          "anchor": "revisionsrel"
+        },
+        {
+          "level": 3,
+          "text": "`HashesDirRel`",
+          "anchor": "hashesdirrel"
+        },
+        {
+          "level": 3,
+          "text": "`HashesRel`",
+          "anchor": "hashesrel"
+        },
+        {
+          "level": 3,
+          "text": "`DataRel`",
+          "anchor": "datarel"
+        },
+        {
+          "level": 3,
+          "text": "`OutputRel`",
+          "anchor": "outputrel"
+        },
+        {
+          "level": 3,
+          "text": "`VersionsRel`",
+          "anchor": "versionsrel"
+        },
+        {
+          "level": 3,
+          "text": "`DocsDefault`",
+          "anchor": "docsdefault"
+        },
+        {
+          "level": 3,
+          "text": "`OutputDefault`",
+          "anchor": "outputdefault"
+        },
+        {
+          "level": 3,
+          "text": "`PostsDefault`",
+          "anchor": "postsdefault"
+        },
+        {
+          "level": 3,
+          "text": "`DeprecatedRoot`",
+          "anchor": "deprecatedroot"
+        },
+        {
+          "level": 3,
+          "text": "`CheckOwnership`",
+          "anchor": "checkownership"
+        },
+        {
+          "level": 3,
+          "text": "`CheckSide`",
+          "anchor": "checkside"
+        },
+        {
+          "level": 3,
+          "text": "`CheckHidden`",
+          "anchor": "checkhidden"
+        },
+        {
+          "level": 3,
+          "text": "`CheckIgnore`",
+          "anchor": "checkignore"
+        },
+        {
+          "level": 3,
+          "text": "`Side`",
+          "anchor": "side"
+        },
+        {
+          "level": 3,
+          "text": "`Commitment`",
+          "anchor": "commitment"
+        },
+        {
+          "level": 3,
+          "text": "`Directory`",
+          "anchor": "directory"
+        },
+        {
+          "level": 3,
+          "text": "`Owners`",
+          "anchor": "owners"
+        },
+        {
+          "level": 3,
+          "text": "`OldLayoutError`",
+          "anchor": "oldlayouterror"
+        },
+        {
+          "level": 3,
+          "text": "`Problem`",
+          "anchor": "problem"
+        },
+        {
+          "level": 3,
+          "text": "`Declared`",
+          "anchor": "declared"
+        },
+        {
+          "level": 3,
+          "text": "`Lookup`",
+          "anchor": "lookup"
+        },
+        {
+          "level": 3,
+          "text": "`Path`",
+          "anchor": "path"
+        },
+        {
+          "level": 3,
+          "text": "`UnderRoot`",
+          "anchor": "underroot"
+        },
+        {
+          "level": 3,
+          "text": "`FunctionOf`",
+          "anchor": "functionof"
+        },
+        {
+          "level": 3,
+          "text": "`RequiredRows`",
+          "anchor": "requiredrows"
+        },
+        {
+          "level": 3,
+          "text": "`OwnersPath`",
+          "anchor": "ownerspath"
+        },
+        {
+          "level": 3,
+          "text": "`ReadOwners`",
+          "anchor": "readowners"
+        },
+        {
+          "level": 3,
+          "text": "`EnsureOwned`",
+          "anchor": "ensureowned"
+        },
+        {
+          "level": 3,
+          "text": "`EnsureDir`",
+          "anchor": "ensuredir"
+        },
+        {
+          "level": 3,
+          "text": "`IgnoreBlock`",
+          "anchor": "ignoreblock"
+        },
+        {
+          "level": 3,
+          "text": "`RenderIgnore`",
+          "anchor": "renderignore"
+        },
+        {
+          "level": 3,
+          "text": "`IgnorePath`",
+          "anchor": "ignorepath"
+        },
+        {
+          "level": 3,
+          "text": "`WriteIgnore`",
+          "anchor": "writeignore"
+        },
+        {
+          "level": 3,
+          "text": "`IgnoreIsCurrent`",
+          "anchor": "ignoreiscurrent"
+        },
+        {
+          "level": 3,
+          "text": "`RefuseOldLayout`",
+          "anchor": "refuseoldlayout"
+        },
+        {
+          "level": 3,
+          "text": "`Validate`",
+          "anchor": "validate"
+        },
+        {
+          "level": 3,
+          "text": "`OldLayoutError.Error`",
+          "anchor": "oldlayouterrorerror"
+        },
+        {
+          "level": 3,
+          "text": "`Problem.Error`",
+          "anchor": "problemerror"
+        }
+      ]
+    },
+    {
       "path": "internal-lints.md",
       "title": "internal/lints",
       "type": "doc",
@@ -7663,6 +8025,16 @@
           "level": 3,
           "text": "`Quality`",
           "anchor": "quality"
+        },
+        {
+          "level": 3,
+          "text": "`LayoutDump`",
+          "anchor": "layoutdump"
+        },
+        {
+          "level": 3,
+          "text": "`LayoutValidate`",
+          "anchor": "layoutvalidate"
         }
       ]
     },
@@ -10129,6 +10501,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T17:05:28.895280+00:00",
+  "last_gen": "2026-09-14T18:38:10.177883+00:00",
   "theme": "minimal"
 }
