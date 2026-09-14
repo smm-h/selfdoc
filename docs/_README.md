@@ -3,7 +3,7 @@ title: README.md
 ---
 # selfdoc
 
-Code-aware documentation site generator. Builds full static sites from Markdown templates and source code. Your code is the documentation -- directives in Markdown pull live content from your codebase at build time.
+selfdoc is a code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code. It is for maintainers who want a repository's documentation built from the repository itself, so API references, CLI help, schemas and tests never drift from the code they describe.
 
 Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL. selfdoc is one Go binary with no runtime to install: stylesheets, scripts, themes and the word list are compiled into it.
 

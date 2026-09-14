@@ -9,7 +9,7 @@
   "docs": "docs/",
   "output": "docs/_build/",
   "changelog": "CHANGELOG.md",
-  "base_url": "https://selfdoc.smmh.dev",
+  "base_url": "https://smmh.dev/selfdoc",
   "author": {
     "name": "SMMH",
     "url": "https://smmh.dev",
