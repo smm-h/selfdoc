@@ -425,7 +425,7 @@ replaced by their local equivalents rather than skipped:
 | Build | Each checkout is built by the toolchain running the command -- the home project through `selfdoc build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
 | Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects`, `_worker.js` and `404.html` left behind. |
 | Membership | A roster rendered from the checkouts named on the command line, and a `projects.json` written by the same `record_membership` the deploy uses. Dropping a `--repo` on a rerun retires that project from the tree. |
-| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, `_worker.js`, the site chrome asset, and the re-pointing pass that aims every grafted page at it. |
+| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, `_worker.js`, the site chrome asset, the re-pointing pass that aims every grafted page at it, and the link repair pass that rewrites every link naming the site's own base document-relatively. |
 | Search | The pagefind pass over the assembled tree. |
 | Verification | The real `verify_assembly`, printed **first and loudly**. |
 
