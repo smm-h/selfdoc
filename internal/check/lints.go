@@ -69,6 +69,16 @@ var refDirectivePattern = regexp.MustCompile(`:-:` + util.PythonSpaceClass + `*r
 // minHelpLength is the shortest help text CLI002 accepts.
 const minHelpLength = 50
 
+// descriptionFloor and descriptionCeiling bound the meta description a page
+// publishes: SEO009 reports one below the floor, SEO010 one above the
+// ceiling. The ceiling is what a search result renders before it cuts the
+// description off; nothing in selfdoc cuts it, so a longer description
+// reaches the page whole and the engine decides where it ends.
+const (
+	descriptionFloor   = 110
+	descriptionCeiling = 160
+)
+
 // normalizeDQ reduces a description or a title to the words DQ001 compares:
 // lowercased, punctuation dropped, separators turned into spaces and the kind
 // words removed.
@@ -255,12 +265,12 @@ func runLints(
 		var effectiveDesc string
 		descriptionValue, descriptionPresent := metadata["description"]
 		if descriptionPresent && descriptionValue != nil {
-			if text, isString := descriptionValue.(string); isString && runeLen(text) > 155 {
+			if text, isString := descriptionValue.(string); isString && runeLen(text) > descriptionCeiling {
 				results = append(results, lints.MustLintResult(
 					relPath, nil, "SEO010",
 					fmt.Sprintf(
-						"Frontmatter description is %d chars (max 155)",
-						runeLen(text),
+						"Frontmatter description is %d chars (max %d)",
+						runeLen(text), descriptionCeiling,
 					),
 				))
 			}
@@ -289,12 +299,12 @@ func runLints(
 		// SEO009 fires only when there IS a description to measure.
 		// With no frontmatter description and no paragraph found the
 		// effective description is empty, which SEO006 already covers.
-		if effectiveDesc != "" && runeLen(effectiveDesc) < 120 {
+		if effectiveDesc != "" && runeLen(effectiveDesc) < descriptionFloor {
 			results = append(results, lints.MustLintResult(
 				relPath, nil, "SEO009",
 				fmt.Sprintf(
-					"Effective description is only %d chars (aim for 120-155)",
-					runeLen(effectiveDesc),
+					"Effective description is only %d chars (aim for %d-%d)",
+					runeLen(effectiveDesc), descriptionFloor, descriptionCeiling,
 				),
 			))
 		}

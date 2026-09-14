@@ -84,8 +84,8 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | SEO006 | error | Missing `description` in frontmatter. Add one for meta tags. |
 | SEO007 | warning | First paragraph after a heading is outside the 30-80 word range. Every page type is held to the same band, generated pages included. |
 | SEO008 | warning | Low numeric data density. Pages with 200+ words should include concrete quantities; version strings and calendar years do not count. |
-| SEO009 | warning | Description is shorter than 120 characters. Aim for 120-155. |
-| SEO010 | warning | Frontmatter description exceeds 155 characters. Trim it. |
+| SEO009 | warning | Description is shorter than 110 characters. Aim for 110-160. |
+| SEO010 | warning | Frontmatter description exceeds 160 characters, which is past what a search result renders. Trim it. |
 | SEO011 | warning | Empty heading section (heading followed by another heading with no content between). |
 | SEO012 | warning | WCAG contrast ratio below threshold for theme colors. Fix in CSS custom properties. |
 | SEO013 | error | No title source: neither frontmatter `title` nor an H1 heading exists on the page. |

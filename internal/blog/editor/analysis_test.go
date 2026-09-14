@@ -29,7 +29,7 @@ import (
 // writes nothing: the buffer is unsaved, and looking at it must not decide
 // that it is saved.
 
-// Long enough to clear SEO009's 120-character floor, so a post the rules have
+// Long enough to clear SEO009's description floor, so a post the rules have
 // nothing to say about really produces no findings.
 const analysisDescription = "A post written to carry no lint findings at all, with a description " +
 	"long enough that the description-length rule has nothing to say about " +

@@ -249,7 +249,7 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 			absent: []string{"SEO009", "SEO010"},
 		},
 		{
-			name: "SEO010 a description over 155 characters",
+			name: "SEO010 a description over the ceiling",
 			page: "---\ndescription: " + strings.Repeat("x", 200) +
 				"\n---\n# Title\n\nText.\n",
 			want: []string{"SEO010"},
@@ -277,6 +277,43 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 			name:   "SEO009 no description and no paragraph is silent",
 			page:   "# Title\n\n## Section\n\n" + repeatWords("word", 50) + "\n",
 			absent: []string{"SEO009"},
+		},
+		{
+			name: "SEO009 a description just under the floor",
+			page: "---\ndescription: " + strings.Repeat("x", 109) +
+				"\n---\n# Title\n\nText.\n",
+			want: []string{"SEO009"},
+			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
+				message := onlyMessage(t, results, "SEO009").Message()
+				if !strings.Contains(message, "110") ||
+					!strings.Contains(message, "160") {
+					t.Errorf("SEO009 does not name the band: %q", message)
+				}
+			},
+		},
+		{
+			name: "SEO009 a description between the old floor and the new one is silent",
+			page: "---\ndescription: " + strings.Repeat("x", 115) +
+				"\n---\n# Title\n\nText.\n",
+			absent: []string{"SEO009", "SEO010"},
+		},
+		{
+			name: "SEO010 a description between the old ceiling and the new one is silent",
+			page: "---\ndescription: " + strings.Repeat("x", 158) +
+				"\n---\n# Title\n\nText.\n",
+			absent: []string{"SEO009", "SEO010"},
+		},
+		{
+			name: "SEO010 a description just over the ceiling",
+			page: "---\ndescription: " + strings.Repeat("x", 161) +
+				"\n---\n# Title\n\nText.\n",
+			want: []string{"SEO010"},
+			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
+				message := onlyMessage(t, results, "SEO010").Message()
+				if !strings.Contains(message, "160") {
+					t.Errorf("SEO010 does not name the ceiling: %q", message)
+				}
+			},
 		},
 	})
 }

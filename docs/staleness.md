@@ -46,7 +46,7 @@ This is an error, not a warning -- it causes `selfdoc check` to exit with code 1
 
 ## Fixing It
 
-Update the frontmatter `description` to reflect the current page content, then run `selfdoc check` again to record the new baseline hashes and clear the error. Aim for 120-155 characters that accurately summarize what the page covers after the content change:
+Update the frontmatter `description` to reflect the current page content, then run `selfdoc check` again to record the new baseline hashes and clear the error. Aim for 110-160 characters that accurately summarize what the page covers after the content change:
 
 ```markdown
 ---

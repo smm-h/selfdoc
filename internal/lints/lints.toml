@@ -54,12 +54,12 @@ description = "Low numeric data density. Pages with 200+ words should include co
 [[lints]]
 code = "SEO009"
 severity = "warning"
-description = "Description is shorter than 120 characters. Aim for 120-155."
+description = "Description is shorter than 110 characters. Aim for 110-160."
 
 [[lints]]
 code = "SEO010"
 severity = "warning"
-description = "Frontmatter description exceeds 155 characters. Trim it."
+description = "Frontmatter description exceeds 160 characters, which is past what a search result renders. Trim it."
 
 [[lints]]
 code = "SEO011"

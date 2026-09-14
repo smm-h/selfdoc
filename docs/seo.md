@@ -26,7 +26,7 @@ Every `selfdoc build` produces a comprehensive set of SEO artifacts for each pag
 
 ### Frontmatter description
 
-The most impactful thing you can set is `description` in your frontmatter. This single string feeds into four different outputs: `<meta name="description">` for search engines, `og:description` for social cards, `twitter:description` for Twitter/X previews, and the search index summary. Aim for 120-155 characters that accurately describe the page content:
+The most impactful thing you can set is `description` in your frontmatter. This single string feeds into four different outputs: `<meta name="description">` for search engines, `og:description` for social cards, `twitter:description` for Twitter/X previews, and the search index summary. Aim for 110-160 characters that accurately describe the page content:
 
 ```markdown
 ---
@@ -35,7 +35,7 @@ description: "Deploy your selfdoc site to Cloudflare Pages or GitHub Pages with 
 ---
 ```
 
-If you omit `description`, selfdoc auto-extracts the first sentence from the page body. `selfdoc check` reports SEO006 as an **error** for a missing description -- it stops the run rather than warning -- and SEO009/SEO010 as warnings for descriptions that are too short or too long (aim for 120-155 characters).
+If you omit `description`, selfdoc auto-extracts the first sentence from the page body. `selfdoc check` reports SEO006 as an **error** for a missing description -- it stops the run rather than warning -- and SEO009/SEO010 as warnings for descriptions that are too short or too long (aim for 110-160 characters). Nothing cuts a description short: what you write is what the page publishes, and 160 is where a search result stops rendering it.
 
 ### The document title
 
