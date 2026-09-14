@@ -25,6 +25,40 @@ var ErrCSSURLRequired = errors.New(
 		"page's reference to the asset chrome.AssetRel names.",
 )
 
+// SharedPage is one shared page's head and body: what [WrapSharedPage] needs
+// to write a complete document.
+type SharedPage struct {
+	// Title titles the document.
+	Title string
+	// BodyHTML is the fragment placed inside the body.
+	BodyHTML string
+	// Description is the page's meta description. Empty emits no meta
+	// description, which is the right answer for a page no engine should
+	// index.
+	Description string
+	// Robots is the meta robots directive ("noindex"). Empty emits none,
+	// which leaves the page indexable.
+	Robots string
+	// JSONLD is one structured-data document, already encoded, written into
+	// the head inside an ld+json script. Empty emits no script.
+	JSONLD string
+	// CanonicalURL is the absolute URL for the page's rel=canonical link --
+	// the assembly site is reachable on more than one host, so the shared
+	// pages declare which one is canonical, and an empty value emits no
+	// canonical link at all.
+	CanonicalURL string
+	// CSSURL is the page's reference to the site-level chrome stylesheet,
+	// relative to the page. It is required: an empty value returns
+	// [ErrCSSURLRequired].
+	CSSURL string
+	// SearchPrefix is the hop from this page back to the site root, where
+	// the assembly's one site-wide Pagefind index lives ("" for a page at
+	// the root, "../" one level in). A shared page carries the same search
+	// as every documentation page, and the hop is a fact about where the
+	// page sits.
+	SearchPrefix string
+}
+
 // WrapSharedPage wraps an HTML fragment in a complete HTML page.
 //
 // The wrapper reuses the theme's own class surface where the theme has one --
@@ -39,58 +73,62 @@ var ErrCSSURLRequired = errors.New(
 // has neither, so it would render as a centred column with two empty gutters.
 // ".shared-page" is the container these pages get instead.
 //
-// title titles the document. bodyHTML is placed inside the body. canonicalURL
-// is the absolute URL for the page's rel=canonical link -- the assembly site
-// is reachable on more than one host, so the shared pages declare which one is
-// canonical, and an empty value emits no canonical link at all.
-//
-// cssURL is the page's reference to the site-level chrome stylesheet, relative
-// to the page. It is required: an empty value returns [ErrCSSURLRequired].
-//
-// searchPrefix is the hop from this page back to the site root, where the
-// assembly's one site-wide Pagefind index lives ("" for a page at the root,
-// "../" one level in). A shared page carries the same search as every
-// documentation page, and the hop is a fact about where the page sits.
-//
 // Which search surface the page carries is read off the stylesheet it already
 // names: a framework theme's sheet is the only one written at
 // themes.FrameworkCSSRel inside its payload directory, and the framework's
 // modules sit beside it. Deriving it beats threading the theme name through
 // every shared-page caller, and it cannot disagree with the stylesheet the
 // page actually loads.
-func WrapSharedPage(title, bodyHTML, canonicalURL, cssURL, searchPrefix string) (string, error) {
-	if cssURL == "" {
+func WrapSharedPage(opts SharedPage) (string, error) {
+	if opts.CSSURL == "" {
 		return "", ErrCSSURLRequired
 	}
-	cssLink := "\n    <link rel=\"stylesheet\" href=\"" + EscapeHTML(cssURL) + "\">"
+	cssLink := "\n    <link rel=\"stylesheet\" href=\"" + EscapeHTML(opts.CSSURL) + "\">"
 	var searchHead, searchDialog, searchScript string
-	if strings.HasSuffix(cssURL, themes.FrameworkCSSRel) {
-		script, err := page.PaletteSearchScript(searchPrefix, cssURL)
+	if strings.HasSuffix(opts.CSSURL, themes.FrameworkCSSRel) {
+		script, err := page.PaletteSearchScript(opts.SearchPrefix, opts.CSSURL)
 		if err != nil {
 			return "", err
 		}
 		searchScript = script
 	} else {
-		searchHead = page.PagefindHeadTags(searchPrefix)
+		searchHead = page.PagefindHeadTags(opts.SearchPrefix)
 		searchDialog = page.PagefindDialogHTML()
-		searchScript = page.PagefindInitScript(searchPrefix)
+		searchScript = page.PagefindInitScript(opts.SearchPrefix)
 	}
 	canonicalLink := ""
-	if canonicalURL != "" {
+	if opts.CanonicalURL != "" {
 		canonicalLink = "\n    <link rel=\"canonical\" href=\"" +
-			EscapeHTML(canonicalURL) + "\">"
+			EscapeHTML(opts.CanonicalURL) + "\">"
+	}
+	descriptionMeta := ""
+	if opts.Description != "" {
+		descriptionMeta = "\n    <meta name=\"description\" content=\"" +
+			EscapeHTML(opts.Description) + "\">"
+	}
+	robotsMeta := ""
+	if opts.Robots != "" {
+		robotsMeta = "\n    <meta name=\"robots\" content=\"" +
+			EscapeHTML(opts.Robots) + "\">"
+	}
+	structuredData := ""
+	if opts.JSONLD != "" {
+		structuredData = "<script type=\"application/ld+json\">\n" +
+			opts.JSONLD + "\n</script>\n"
 	}
 	return "<!DOCTYPE html>\n" +
 		"<html lang=\"en\">\n" +
 		"<head>\n" +
 		"    <meta charset=\"utf-8\">\n" +
 		"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
-		"    <title>" + EscapeHTML(title) + "</title>" + canonicalLink + cssLink + "\n" +
+		"    <title>" + EscapeHTML(opts.Title) + "</title>" +
+		descriptionMeta + robotsMeta + canonicalLink + cssLink + "\n" +
+		structuredData +
 		searchHead +
 		"</head>\n" +
 		"<body>\n" +
 		"<div class=\"shared-page\">\n" +
-		bodyHTML + "\n" +
+		opts.BodyHTML + "\n" +
 		"</div>\n" +
 		"<footer class=\"site-footer\">\n" +
 		"<p>Built with <a href=\"https://github.com/smm-h/selfdoc\">selfdoc</a></p>\n" +
@@ -236,7 +274,17 @@ func GenerateNotFoundPage(cssURL, siteHop string) (string, error) {
 		"  </ul>\n" +
 		"  <p>Or search the whole site from any documentation page.</p>\n" +
 		"</main>"
-	return WrapSharedPage("Page not found", body, "", cssURL, siteHop)
+	return WrapSharedPage(SharedPage{
+		Title:    "Page not found",
+		BodyHTML: body,
+		// An error page is the answer to every address the site does not
+		// serve, so it is the one shared page that asks not to be indexed
+		// and carries no structured data: there is no collection here to
+		// describe, and no address of its own to describe it at.
+		Robots:       "noindex",
+		CSSURL:       cssURL,
+		SearchPrefix: siteHop,
+	})
 }
 
 // sortedByName is every manifest except the home project, ordered by

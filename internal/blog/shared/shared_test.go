@@ -273,7 +273,11 @@ func TestWrapSharedPage(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := WrapSharedPage(tc.title, tc.body, tc.canonical, tc.cssURL, tc.searchPrefix)
+			got, err := WrapSharedPage(SharedPage{
+				Title: tc.title, BodyHTML: tc.body,
+				CanonicalURL: tc.canonical, CSSURL: tc.cssURL,
+				SearchPrefix: tc.searchPrefix,
+			})
 			if err != nil {
 				t.Fatalf("WrapSharedPage: %v", err)
 			}
@@ -289,7 +293,7 @@ func TestWrapSharedPage(t *testing.T) {
 // was optional and unused, and every shared page shipped bare.
 func TestWrapSharedPageRefusesAnEmptyStylesheet(t *testing.T) {
 	t.Parallel()
-	_, err := WrapSharedPage("Plain", "<p>text</p>", "", "", "")
+	_, err := WrapSharedPage(SharedPage{Title: "Plain", BodyHTML: "<p>text</p>"})
 	if err == nil {
 		t.Fatal("WrapSharedPage accepted an empty css_url")
 	}
@@ -302,7 +306,9 @@ func TestWrapSharedPageRefusesAnEmptyStylesheet(t *testing.T) {
 // Pagefind UI's.
 func TestWrapSharedPageLinksExactlyTwoStylesheets(t *testing.T) {
 	t.Parallel()
-	got, err := WrapSharedPage("Plain", "<p>text</p>", "", "_chrome/main.css", "")
+	got, err := WrapSharedPage(SharedPage{
+		Title: "Plain", BodyHTML: "<p>text</p>", CSSURL: "_chrome/main.css",
+	})
 	if err != nil {
 		t.Fatalf("WrapSharedPage: %v", err)
 	}
@@ -330,7 +336,10 @@ func TestWrapSharedPageLinksExactlyTwoStylesheets(t *testing.T) {
 // like every documentation page.
 func TestWrapSharedPageCarriesTheSearchDialog(t *testing.T) {
 	t.Parallel()
-	got, err := WrapSharedPage("Plain", "<p>text</p>", "", "../_chrome/x.css", "../")
+	got, err := WrapSharedPage(SharedPage{
+		Title: "Plain", BodyHTML: "<p>text</p>",
+		CSSURL: "../_chrome/x.css", SearchPrefix: "../",
+	})
 	if err != nil {
 		t.Fatalf("WrapSharedPage: %v", err)
 	}
@@ -350,7 +359,10 @@ func TestWrapSharedPageCarriesTheSearchDialog(t *testing.T) {
 // TestWrapSharedPageOmitsTheCanonicalWhenEmpty: the 404 page's state.
 func TestWrapSharedPageOmitsTheCanonicalWhenEmpty(t *testing.T) {
 	t.Parallel()
-	got, err := WrapSharedPage("Blog", "<p>x</p>", "", "../_chrome/x.css", "../")
+	got, err := WrapSharedPage(SharedPage{
+		Title: "Blog", BodyHTML: "<p>x</p>",
+		CSSURL: "../_chrome/x.css", SearchPrefix: "../",
+	})
 	if err != nil {
 		t.Fatalf("WrapSharedPage: %v", err)
 	}
@@ -363,7 +375,11 @@ func TestWrapSharedPageOmitsTheCanonicalWhenEmpty(t *testing.T) {
 // the head's markup.
 func TestWrapSharedPageEscapesTheCanonicalURL(t *testing.T) {
 	t.Parallel()
-	got, err := WrapSharedPage("Blog", "<p>x</p>", `https://x/"><script>`, "../_chrome/x.css", "../")
+	got, err := WrapSharedPage(SharedPage{
+		Title: "Blog", BodyHTML: "<p>x</p>",
+		CanonicalURL: `https://x/"><script>`,
+		CSSURL:       "../_chrome/x.css", SearchPrefix: "../",
+	})
 	if err != nil {
 		t.Fatalf("WrapSharedPage: %v", err)
 	}

@@ -750,3 +750,154 @@ func TestNavIsTheProjectsWithoutTheHomeOne(t *testing.T) {
 		t.Fatalf("nav lists %v", slugs)
 	}
 }
+
+// -- what a search engine reads off the shared pages -------------------------
+
+// metaDescriptionOf is the content of a page's meta description, "" when it
+// carries none.
+func metaDescriptionOf(t *testing.T, html string) string {
+	t.Helper()
+	match := regexp.MustCompile(
+		`<meta name="description" content="([^"]*)">`,
+	).FindStringSubmatch(html)
+	if match == nil {
+		return ""
+	}
+	return match[1]
+}
+
+func TestSharedPagesCarryAMetaDescriptionInTheRenderedWindow(t *testing.T) {
+	tree := threeProjectTree(t)
+	tree.Generate("home")
+	for _, test := range []struct{ rel, mustName string }{
+		{"projects/index.html", "Alpha"},
+		{"blog/index.html", "blog"},
+	} {
+		t.Run(test.rel, func(t *testing.T) {
+			description := metaDescriptionOf(t, tree.Read(test.rel))
+			if description == "" {
+				t.Fatalf("%s carries no meta description", test.rel)
+			}
+			if n := len([]rune(description)); n < 110 || n > 160 {
+				t.Errorf("%s description is %d chars, want 110-160: %q",
+					test.rel, n, description)
+			}
+			if !strings.Contains(description, test.mustName) {
+				t.Errorf("%s description does not name %q: %q",
+					test.rel, test.mustName, description)
+			}
+			if strings.HasSuffix(description, ",") ||
+				strings.HasSuffix(description, ", .") ||
+				strings.Contains(description, " .") {
+				t.Errorf("%s description ends badly: %q", test.rel, description)
+			}
+		})
+	}
+}
+
+func TestTheProjectsDescriptionNamesTheProjectsItLists(t *testing.T) {
+	tree := threeProjectTree(t)
+	tree.Generate("home")
+	description := metaDescriptionOf(t, tree.Read("projects/index.html"))
+	for _, name := range []string{"Alpha", "Beta"} {
+		if !strings.Contains(description, name) {
+			t.Errorf("the projects description does not name %q: %q",
+				name, description)
+		}
+	}
+	if strings.Contains(description, "Home") == false {
+		t.Errorf("the projects description does not name the site: %q", description)
+	}
+}
+
+func TestTheBlogDescriptionCountsNoPosts(t *testing.T) {
+	tree := threeProjectTree(t)
+	tree.Generate("home")
+	description := metaDescriptionOf(t, tree.Read("blog/index.html"))
+	if strings.ContainsAny(description, "0123456789") {
+		t.Errorf("the blog description carries a number, so it goes stale "+
+			"with every post: %q", description)
+	}
+}
+
+// ldDocsOf is every JSON-LD document a page carries, decoded.
+func ldDocsOf(t *testing.T, html string) []map[string]any {
+	t.Helper()
+	matches := regexp.MustCompile(
+		`(?s)<script type="application/ld\+json">\n(.*?)\n</script>`,
+	).FindAllStringSubmatch(html, -1)
+	docs := make([]map[string]any, 0, len(matches))
+	for _, match := range matches {
+		var doc map[string]any
+		if err := json.Unmarshal([]byte(match[1]), &doc); err != nil {
+			t.Fatalf("decoding JSON-LD %q: %v", match[1], err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs
+}
+
+func TestSharedPagesCarryACollectionPageWithItsBreadcrumbs(t *testing.T) {
+	tree := threeProjectTree(t)
+	tree.Generate("home")
+	for _, test := range []struct{ rel, name, url string }{
+		{"projects/index.html", "Projects", sharedCanonicalBase + "/projects/"},
+		{"blog/index.html", "Blog", sharedCanonicalBase + "/blog/"},
+	} {
+		t.Run(test.rel, func(t *testing.T) {
+			docs := ldDocsOf(t, tree.Read(test.rel))
+			if len(docs) != 1 {
+				t.Fatalf("%s carries %d JSON-LD documents, want 1",
+					test.rel, len(docs))
+			}
+			doc := docs[0]
+			if doc["@type"] != "CollectionPage" {
+				t.Errorf("%s @type = %v, want CollectionPage", test.rel, doc["@type"])
+			}
+			if doc["url"] != test.url {
+				t.Errorf("%s url = %v, want %q", test.rel, doc["url"], test.url)
+			}
+			if doc["description"] != metaDescriptionOf(t, tree.Read(test.rel)) {
+				t.Errorf("%s JSON-LD description differs from the meta one", test.rel)
+			}
+			crumb, ok := doc["breadcrumb"].(map[string]any)
+			if !ok {
+				t.Fatalf("%s carries no breadcrumb: %v", test.rel, doc["breadcrumb"])
+			}
+			if crumb["@type"] != "BreadcrumbList" {
+				t.Errorf("%s breadcrumb @type = %v, want BreadcrumbList",
+					test.rel, crumb["@type"])
+			}
+			items, ok := crumb["itemListElement"].([]any)
+			if !ok || len(items) != 2 {
+				t.Fatalf("%s breadcrumb has %v, want two entries",
+					test.rel, crumb["itemListElement"])
+			}
+			home, _ := items[0].(map[string]any)
+			leaf, _ := items[1].(map[string]any)
+			if home["name"] != "Home" || home["item"] != sharedCanonicalBase+"/" {
+				t.Errorf("%s first crumb = %v, want Home at the canonical base",
+					test.rel, home)
+			}
+			if leaf["name"] != test.name || leaf["item"] != test.url {
+				t.Errorf("%s second crumb = %v, want %q at %q",
+					test.rel, leaf, test.name, test.url)
+			}
+		})
+	}
+}
+
+func TestTheNotFoundPageIsNotIndexedAndCarriesNoStructuredData(t *testing.T) {
+	tree := threeProjectTree(t)
+	tree.Generate("home")
+	notFound := tree.Read("404.html")
+	if want := `<meta name="robots" content="noindex">`; !strings.Contains(notFound, want) {
+		t.Errorf("404.html does not carry %q:\n%s", want, notFound)
+	}
+	if docs := ldDocsOf(t, notFound); len(docs) != 0 {
+		t.Errorf("404.html carries %d JSON-LD documents, want none", len(docs))
+	}
+	if description := metaDescriptionOf(t, notFound); description != "" {
+		t.Errorf("404.html carries a meta description: %q", description)
+	}
+}

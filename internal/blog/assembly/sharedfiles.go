@@ -219,12 +219,22 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		return nil, err
 	}
 	projectsPath := filepath.Join(projectsDir, "index.html")
-	projectsPage, err := shared.WrapSharedPage(
-		"Projects", homepageFragment,
-		canonicalBase+"/projects/",
-		chrome.Href("projects/index.html", homeChrome),
-		"../",
+	projectsDescription := shared.ProjectsDescription(manifests, opts.HomeSlug)
+	projectsLD, err := shared.CollectionPageJSONLD(
+		"Projects", projectsDescription, canonicalBase, "projects",
 	)
+	if err != nil {
+		return nil, err
+	}
+	projectsPage, err := shared.WrapSharedPage(shared.SharedPage{
+		Title:        "Projects",
+		BodyHTML:     homepageFragment,
+		Description:  projectsDescription,
+		JSONLD:       projectsLD,
+		CanonicalURL: canonicalBase + "/projects/",
+		CSSURL:       chrome.Href("projects/index.html", homeChrome),
+		SearchPrefix: "../",
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +256,22 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		return nil, err
 	}
 	blogPath := filepath.Join(blogDir, "index.html")
-	blogPage, err := shared.WrapSharedPage(
-		"Blog", blogFragment,
-		canonicalBase+"/blog/",
-		chrome.Href("blog/index.html", homeChrome),
-		"../",
+	blogDescription := shared.BlogDescription(manifests, opts.HomeSlug)
+	blogLD, err := shared.CollectionPageJSONLD(
+		"Blog", blogDescription, canonicalBase, "blog",
 	)
+	if err != nil {
+		return nil, err
+	}
+	blogPage, err := shared.WrapSharedPage(shared.SharedPage{
+		Title:        "Blog",
+		BodyHTML:     blogFragment,
+		Description:  blogDescription,
+		JSONLD:       blogLD,
+		CanonicalURL: canonicalBase + "/blog/",
+		CSSURL:       chrome.Href("blog/index.html", homeChrome),
+		SearchPrefix: "../",
+	})
 	if err != nil {
 		return nil, err
 	}

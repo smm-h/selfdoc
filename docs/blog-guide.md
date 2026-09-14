@@ -297,9 +297,31 @@ Every constituent build writes a `robots.txt`, an `llms.txt`, a `sitemap.xml` an
 * **`sitemap.xml`** lists every project's pages and every post. Each `<loc>` is absolute under the canonical base -- the sitemap protocol has no relative form -- and an empty or root-relative base is refused.
 * **`robots.txt`** names that sitemap by absolute URL, and carries the same crawler policy the per-project template declares. Both read one declaration (`internal/robots.Agents`), so a crawler the site allows cannot be one its projects disallow.
 * **`llms.txt`** composes the per-project files **by reference**: one line per project, with its name, a link to its own `llms.txt`, and the one-line description from its manifest, plus a link to the blog. It never inlines their contents -- an inlined copy would be a second, staler rendering of a document its owner republishes on its own deploys.
-* **`404.html`** is what Cloudflare Pages serves, with a 404 status, for an address that matches no asset. Its body is deliberately not the front page's: an unknown address that renders the home page is a soft 404, which a crawler indexes as a duplicate of the site root and a reader mistakes for having arrived somewhere. It links home, the project listing and the blog -- relatively, like every other link a reader clicks, so a dead address on a preview offers its way back into the preview.
+* **`404.html`** is what Cloudflare Pages serves, with a 404 status, for an address that matches no asset. Its body is deliberately not the front page's: an unknown address that renders the home page is a soft 404, which a crawler indexes as a duplicate of the site root and a reader mistakes for having arrived somewhere. It links home, the project listing and the blog -- relatively, like every other link a reader clicks, so a dead address on a preview offers its way back into the preview. It asks not to be indexed (`<meta name="robots" content="noindex">`), declares no canonical and carries no structured data: it is the answer to every address the site does not serve, so it has no address of its own to describe.
 
 The home project is left out of `llms.txt` for the same reason it is left out of the listing: it is the site root the file is served from, not one of the projects it points at.
+
+### What a search engine reads off the two generated pages
+
+The project listing at `/projects/` and the blog index at `/blog/` are the
+site's own pages rather than any project's, so nothing upstream writes their
+metadata. The shared-element generator writes it from the manifests it already
+holds:
+
+* A **meta description**. The listing's names the site, says it carries the
+  documentation of every project published on it, and then names as many of
+  those projects as fit -- whole names only, cut at a name boundary, never
+  mid-word. The blog index's names the site's blog and counts nothing: a post
+  count is wrong on the next post published, and nothing re-fetches a search
+  engine's cached copy of it. Both are clamped to the length a search result
+  renders before it truncates.
+* A **`CollectionPage`** JSON-LD document carrying a **`BreadcrumbList`** --
+  Home, then the page. Its URLs are absolute under the canonical base, which is
+  the one place on these pages an absolute address is right: a breadcrumb URL
+  states where a page sits on a site, it is not a link a reader clicks. The
+  rendered links stay document-relative, and the resolution rule that refuses an
+  absolute self-link reads anchors and reference attributes, so it never sees
+  these.
 
 ### The deploy workflow is a generated artifact
 

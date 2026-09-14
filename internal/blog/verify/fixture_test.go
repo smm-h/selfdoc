@@ -333,19 +333,43 @@ func generateSharedFiles(t *testing.T, siteDir, manifestsDir string) {
 	}
 	homeChrome := assets[homeTheme]
 
-	projectsPage, err := shared.WrapSharedPage(
-		"Projects", homepageFragment, canonicalBase+"/projects/",
-		chrome.Href("projects/index.html", homeChrome), "../",
+	projectsDescription := shared.ProjectsDescription(manifests, homeSlug)
+	projectsLD, err := shared.CollectionPageJSONLD(
+		"Projects", projectsDescription, canonicalBase, "projects",
 	)
+	if err != nil {
+		t.Fatalf("CollectionPageJSONLD(projects): %v", err)
+	}
+	projectsPage, err := shared.WrapSharedPage(shared.SharedPage{
+		Title:        "Projects",
+		BodyHTML:     homepageFragment,
+		Description:  projectsDescription,
+		JSONLD:       projectsLD,
+		CanonicalURL: canonicalBase + "/projects/",
+		CSSURL:       chrome.Href("projects/index.html", homeChrome),
+		SearchPrefix: "../",
+	})
 	if err != nil {
 		t.Fatalf("WrapSharedPage(projects): %v", err)
 	}
 	writeFile(t, filepath.Join(siteDir, "projects", "index.html"), projectsPage)
 
-	blogPage, err := shared.WrapSharedPage(
-		"Blog", blogFragment, canonicalBase+"/blog/",
-		chrome.Href("blog/index.html", homeChrome), "../",
+	blogDescription := shared.BlogDescription(manifests, homeSlug)
+	blogLD, err := shared.CollectionPageJSONLD(
+		"Blog", blogDescription, canonicalBase, "blog",
 	)
+	if err != nil {
+		t.Fatalf("CollectionPageJSONLD(blog): %v", err)
+	}
+	blogPage, err := shared.WrapSharedPage(shared.SharedPage{
+		Title:        "Blog",
+		BodyHTML:     blogFragment,
+		Description:  blogDescription,
+		JSONLD:       blogLD,
+		CanonicalURL: canonicalBase + "/blog/",
+		CSSURL:       chrome.Href("blog/index.html", homeChrome),
+		SearchPrefix: "../",
+	})
 	if err != nil {
 		t.Fatalf("WrapSharedPage(blog): %v", err)
 	}

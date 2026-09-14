@@ -437,6 +437,28 @@ func TestNavigationReferencesReadsOnlyAnchors(t *testing.T) {
 	}
 }
 
+// A structured-data document states where a page sits in the world, in
+// absolute URLs, and none of them is a link a reader clicks. The rule that
+// refuses an absolute self-link reads anchors and reference attributes, so a
+// JSON-LD block passes through it untouched.
+func TestStructuredDataURLsAreNotClickableReferences(t *testing.T) {
+	page := `<script type="application/ld+json">` +
+		`{"@type": "CollectionPage", "url": "https://docs.example.com/projects/", ` +
+		`"breadcrumb": {"itemListElement": [{"item": "https://docs.example.com/"}]}}` +
+		`</script><a href="../alpha/">Alpha</a>`
+	if got := NavigationReferences(page); len(got) != 1 || got[0] != "../alpha/" {
+		t.Errorf("NavigationReferences = %q, want just the anchor", got)
+	}
+	if got := ExternalReferences(page); len(got) != 0 {
+		t.Errorf("ExternalReferences = %q, want none", got)
+	}
+	for _, reference := range PageReferences(page) {
+		if strings.Contains(reference.Ref, "docs.example.com") {
+			t.Errorf("a structured-data URL was collected as %v", reference)
+		}
+	}
+}
+
 func TestExternalReferencesSkipsOriginOnlyHints(t *testing.T) {
 	page := `<link rel="preconnect" href="https://fonts.example">` +
 		`<link rel="preload" href="https://cdn.example/f.woff2">` +
