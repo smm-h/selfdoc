@@ -74,3 +74,18 @@ written.
   consideration keeps every character legal in a URL path segment as
   written (`c++`, `uv.lock`, `.strictcli`), percent-encodes only the rest,
   and refuses two terms that produce one slug.
+
+## The nav_order collapse reorders root pages that declared only nav_order
+
+- The plan says: `order` collapses into `nav_order`; the converter rewrites
+  existing `order` values and the schema refuses `order`.
+- What changed: before the collapse, `order` governed the docs root and
+  `nav_order` governed inside a group, so a root page's `nav_order` was
+  inert. After the collapse a root page that declared only `nav_order` is
+  honoured, which is a visible sidebar reorder (in this repository's own
+  corpus fixture one page moved from seventh to third).
+- Built instead: the collapse as planned, honouring the authored value. The
+  alternative, dropping the inert key on conversion to preserve the old
+  order, was not taken because it discards authored intent. Awaiting the
+  owner's ruling; reversible by having the converter drop a root page's
+  `nav_order` when no `order` was declared.
