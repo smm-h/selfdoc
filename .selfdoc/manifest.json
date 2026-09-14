@@ -6733,6 +6733,16 @@
         },
         {
           "level": 3,
+          "text": "`EmittedRef`",
+          "anchor": "emittedref"
+        },
+        {
+          "level": 3,
+          "text": "`SourceRefs`",
+          "anchor": "sourcerefs"
+        },
+        {
+          "level": 3,
           "text": "`MdToHTMLPath`",
           "anchor": "mdtohtmlpath"
         },
@@ -7414,6 +7424,11 @@
           "level": 3,
           "text": "`PagefindWidgetBundle`",
           "anchor": "pagefindwidgetbundle"
+        },
+        {
+          "level": 3,
+          "text": "`DocumentTitleLimit`",
+          "anchor": "documenttitlelimit"
         },
         {
           "level": 3,
@@ -9817,6 +9832,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T15:25:37.014081+00:00",
+  "last_gen": "2026-09-14T15:52:44.454796+00:00",
   "theme": "minimal"
 }
