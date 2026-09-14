@@ -5,7 +5,7 @@
   "version": "0.39.7",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "go",
-  "base_url": "https://selfdoc.smmh.dev",
+  "base_url": "https://smmh.dev/selfdoc",
   "pages": [
     {
       "path": "architecture.md",
@@ -9817,6 +9817,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T15:22:15.336824+00:00",
+  "last_gen": "2026-09-14T15:25:37.014081+00:00",
   "theme": "minimal"
 }
