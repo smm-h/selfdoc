@@ -93,7 +93,7 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | SEO015 | warning | Generic anchor text like "click here" or "read more". Use descriptive link text. |
 | SEO016 | warning | The project `description` in selfdoc.json has no ` that ` clause, so the index page's title cannot say what the project is. Write it as "<thing> that <does>". |
 | STALE001 | error | Page content changed but frontmatter description was not updated. Review and update the description. |
-| STALE002 | warning | Manifest and disk disagree: a page or post exists on disk but is missing from `.selfdoc/manifest.json`, or the manifest lists one that is gone. Run `selfdoc gen`. |
+| STALE002 | warning | Manifest and disk disagree: a page or post exists on disk but is missing from `.stricttools/docs-state/manifest.json`, or the manifest lists one that is gone. Run `selfdoc gen`. |
 | DRIFT001 | error | The source docstrings (or CLI schema) a page documents changed while its description did not. Update the description, or run `selfdoc baseline accept <page>` if it is still accurate. |
 | DQ001 | warning | The frontmatter description restates the page or symbol name instead of describing it. |
 | DQ002 | warning | Frontmatter description is shorter than 20 characters. |
@@ -185,7 +185,7 @@ Suppression reaches warning-severity codes only. Naming an error-severity code -
 
 selfdoc tracks SHA-256 hashes of each page's raw template body (directives unresolved) and its frontmatter description. When the content changes but the description stays the same, it raises a STALE001 error. This catches the common case where you update a page's content but forget to revise the description that feeds into meta tags and search results.
 
-Hashes are stored in `.selfdoc/hashes/hashes.json` and auto-committed after each check (unless you pass `--no-auto-commit` or `--dry-run`).
+Hashes are stored in `.stricttools/docs-state/hashes/hashes.json` and auto-committed after each check (unless you pass `--no-auto-commit` or `--dry-run`).
 
 ## Example Validation
 

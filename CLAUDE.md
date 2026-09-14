@@ -65,7 +65,7 @@ none in its manifest.
 
 ### Multi-version builds
 
-Builds documentation from git tags. Tagged versions are checked out and built from cache (`.selfdoc/cache/`), while the latest version builds from the working tree. The version picker's links are computed by the build from each page's own address, and archived pages carry a dismissable notice keyed per version.
+Builds documentation from git tags. Tagged versions are checked out and built from cache (`.stricttools/docs-cache/versions/`), while the latest version builds from the working tree. The version picker's links are computed by the build from each page's own address, and archived pages carry a dismissable notice keyed per version.
 
 ### Localization
 

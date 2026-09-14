@@ -186,7 +186,7 @@ The rules are the project's own. The buffer is overlaid on the saved post set ex
 
 ### Cross-project links
 
-Type `](` inside a Markdown link and a completion popup offers every page and every section heading of every repository the registry declares, read from each one's `.selfdoc/manifest.json`. Up and down move, Enter accepts, Escape dismisses.
+Type `](` inside a Markdown link and a completion popup offers every page and every section heading of every repository the registry declares, read from each one's `.stricttools/docs-state/manifest.json`. Up and down move, Enter accepts, Escape dismisses.
 
 What is inserted is the address that resolves **from a post**. Posts are site citizens, served from `blog/<slug>/` at the site root, while a project's documentation is served under that project's own slug -- so a link to a project page is the project-mounted address reached from two directories down, and a section link carries the anchor the manifest recorded:
 

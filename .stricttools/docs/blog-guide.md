@@ -18,13 +18,13 @@ Blog posts require a `posts` section in your `selfdoc.json`:
 ```json
 {
   "posts": {
-    "dir": ".selfdoc/posts/",
+    "dir": ".stricttools/posts/",
     "repo": "owner/posts-archive"
   }
 }
 ```
 
-- `dir` -- directory where post Markdown files live (defaults to `.selfdoc/posts/` if omitted)
+- `dir` -- directory where post Markdown files live (defaults to `.stricttools/posts/` if omitted)
 - `repo` -- optional GitHub repository for archiving resolved post content
 
 You also need `topology.slug` configured so that posts are attributed to your project in the unified site:
@@ -50,7 +50,7 @@ Use `selfdoc blog post new` to scaffold a new post file:
 selfdoc blog post new --title "My First Post"
 ```
 
-This creates a file like `.selfdoc/posts/2026-07-29-my-first-post.md` with a frontmatter template:
+This creates a file like `.stricttools/posts/2026-07-29-my-first-post.md` with a frontmatter template:
 
 ```toml
 +++
@@ -168,7 +168,7 @@ Publishing is separate from a full documentation release. You can publish new po
 
 ## Revision Tracking
 
-selfdoc tracks content revisions for blog posts via a sidecar file at `.selfdoc/revisions.json`. Revision tracking is automatic -- it happens during `selfdoc blog post publish`.
+selfdoc tracks content revisions for blog posts via a sidecar file at `.stricttools/docs-state/revisions.json`. Revision tracking is automatic -- it happens during `selfdoc blog post publish`.
 
 ### How it works
 
