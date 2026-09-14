@@ -1198,11 +1198,12 @@ func TestAnUnversionedProjectPassesManifestIdentity(t *testing.T) {
 	}
 }
 
-// -- every project is reachable from an arrival page ------------------------
+// -- every project is reachable by following links from an arrival page ----
 
-// TestAProjectNoArrivalPageLinksFails: a project linked neither from the site
-// root nor from the project listing is published where nobody arrives.
-func TestAProjectNoArrivalPageLinksFails(t *testing.T) {
+// TestAProjectNoLinkPathReachesFails: a project no chain of links from the
+// site root or the project listing arrives at is published where nobody
+// arrives.
+func TestAProjectNoLinkPathReachesFails(t *testing.T) {
 	root := newAssembly(t)
 	front := filepath.Join(root, "site", "index.html")
 	writeFile(t, front, strings.Replace(
@@ -1210,13 +1211,15 @@ func TestAProjectNoArrivalPageLinksFails(t *testing.T) {
 	listing := filepath.Join(root, "site", "projects", "index.html")
 	writeFile(t, listing, strings.ReplaceAll(
 		readFile(t, listing), `href="../beta/"`, `href="../beta-typo/"`))
+	guide := filepath.Join(root, "site", "alpha", "guide", "index.html")
+	writeFile(t, guide, strings.Replace(
+		readFile(t, guide), `<a href="../../beta/">Beta</a>`, "", 1))
 	report := verifyTree(t, root)
-	requireFailure(t, report, "project-reachability", "beta", "projects/index.html")
+	requireFailure(t, report, "project-reachability", "beta", "beta/index.html")
 }
 
 // TestAFrontPageMayCurateItsProjects: a project the front page leaves out is
-// still reachable through the listing, so the front page alone is not asked
-// to name every project.
+// still reached through the listing.
 func TestAFrontPageMayCurateItsProjects(t *testing.T) {
 	root := newAssembly(t)
 	front := filepath.Join(root, "site", "index.html")
@@ -1228,16 +1231,23 @@ func TestAFrontPageMayCurateItsProjects(t *testing.T) {
 	}
 }
 
-// TestAListingMayCurateItsProjects: the listing the home project curates may
-// leave a project out when the front page links it.
-func TestAListingMayCurateItsProjects(t *testing.T) {
+// TestAProjectReachedThroughAnotherPageIsReachable: neither arrival page
+// links beta, but alpha's page does, and alpha is linked, so a reader
+// following links still arrives at beta.
+func TestAProjectReachedThroughAnotherPageIsReachable(t *testing.T) {
 	root := newAssembly(t)
+	front := filepath.Join(root, "site", "index.html")
+	writeFile(t, front, strings.Replace(
+		readFile(t, front), `<a href="beta/">Beta</a>`, "", 1))
 	listing := filepath.Join(root, "site", "projects", "index.html")
 	writeFile(t, listing, strings.ReplaceAll(
 		readFile(t, listing), `href="../beta/"`, `href="../beta-typo/"`))
+	alpha := filepath.Join(root, "site", "alpha", "index.html")
+	writeFile(t, alpha, strings.Replace(
+		readFile(t, alpha), `</article>`, `<a href="../beta/">Beta</a></article>`, 1))
 	report := verifyTree(t, root)
 	for _, message := range messagesOf(report, "project-reachability") {
-		t.Errorf("a curated listing was refused: %s", message)
+		t.Errorf("a project reached through another page was refused: %s", message)
 	}
 }
 

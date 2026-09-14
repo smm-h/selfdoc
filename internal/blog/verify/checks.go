@@ -1093,14 +1093,16 @@ const listingPageRel = "projects/index.html"
 const rootPageRel = "index.html"
 
 // CheckProjectReachability asserts that every roster project's index page is
-// linked from the site root or from the generated project listing.
+// reachable from an arrival page by following clickable links.
 //
 // A project nothing links is published and unreachable: a reader arriving at
-// the site never sees it, and a crawler that follows links never finds it. The
-// two pages asked are the two a reader arrives through: the front page, which
-// every assembled page reaches through its sibling block, and "/projects/",
-// the listing the home project curates. Either one naming the project is
-// enough; a project neither names is the finding.
+// the site never sees it, and a crawler that follows links never finds it.
+// The walk starts at the two pages a reader arrives through, the site root
+// and "/projects/", and follows every clickable link that resolves to an
+// emitted page, so a project the front page curates away is still reached
+// through the listing, and one the listing leaves out is still reached
+// through the sibling block every assembled page carries. A project the walk
+// never reaches is the finding.
 //
 // The home project is not asked for: the site root is its own front page, so
 // it is reached by being the destination rather than by being linked.
@@ -1110,26 +1112,34 @@ const rootPageRel = "index.html"
 // an index.html written out both resolve to the same target.
 func CheckProjectReachability(tree *AssemblyTree) ([]Failure, error) {
 	reached := map[string]bool{}
-	read := 0
+	queue := []string{}
 	for _, rel := range []string{rootPageRel, listingPageRel} {
-		if !tree.Emitted[rel] {
-			// The page's absence is CheckSharedArtifacts's finding; this
-			// check has nothing to read there and says nothing about it.
-			continue
+		if tree.Emitted[rel] && !reached[rel] {
+			// An absent arrival page is CheckSharedArtifacts's finding; this
+			// check walks from whichever exist.
+			reached[rel] = true
+			queue = append(queue, rel)
 		}
+	}
+	if len(queue) == 0 {
+		return nil, nil
+	}
+	for len(queue) > 0 {
+		rel := queue[0]
+		queue = queue[1:]
 		pageHTML, err := tree.Read(rel)
 		if err != nil {
 			return nil, err
 		}
-		read++
 		for _, ref := range resolution.NavigationReferences(pageHTML) {
-			if target, addresses := resolution.ReferenceTarget(rel, ref); addresses {
-				reached[target] = true
+			target, addresses := resolution.ReferenceTarget(rel, ref)
+			if !addresses || reached[target] || !tree.Emitted[target] ||
+				!strings.HasSuffix(target, ".html") {
+				continue
 			}
+			reached[target] = true
+			queue = append(queue, target)
 		}
-	}
-	if read == 0 {
-		return nil, nil
 	}
 
 	var failures []Failure
@@ -1142,13 +1152,14 @@ func CheckProjectReachability(tree *AssemblyTree) ([]Failure, error) {
 			continue
 		}
 		failures = append(failures, Failure{
-			"project-reachability", "site/" + listingPageRel,
+			"project-reachability", "site/" + indexRel,
 			fmt.Sprintf(
-				"neither the site root nor the project listing links a page "+
-					"of %s, which is published at site/%s. A project no "+
-					"arrival page names is one a reader arriving at the site "+
-					"never sees and a crawler following links never reaches.",
-				util.PythonRepr(slug), indexRel,
+				"is not reached by following links from the site root or the "+
+					"project listing, though %s is published there. A project "+
+					"no path of links arrives at is one a reader arriving at "+
+					"the site never sees and a crawler following links never "+
+					"reaches.",
+				util.PythonRepr(slug),
 			),
 		})
 	}
