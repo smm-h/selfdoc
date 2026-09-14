@@ -120,7 +120,7 @@ type checkoutSpec struct {
 
 // writeCheckout writes a source checkout: config, manifest, build output.
 //
-// "docs/_build" is pre-populated rather than built, so the tests assert the
+// the build output directory is pre-populated rather than built, so the tests assert the
 // graft and everything downstream of it without running a full documentation
 // build per case. Every path below is where a real build puts it, which is the
 // only reason the production functions can be pointed at it unchanged.
