@@ -40,12 +40,21 @@ func homeSiteProject(t *testing.T, overrides map[string]any) string {
 		"[[category]]\nname = \"Frameworks\"\n"+
 			"[[category.project]]\nslug = \"alpha\"\n"+
 			"blurb = \"Does the alpha thing.\"\n")
+	writeHomeFrontPage(t, dir, "Prose the author wrote.")
+	return dir
+}
+
+// writeHomeFrontPage writes the home project's front page with the given
+// prose, keeping its description and its site-level markers. The body is a
+// parameter so a test can change what the page says without touching what it
+// claims to say, which is the shape STALE001 reports.
+func writeHomeFrontPage(t *testing.T, dir, prose string) {
+	t.Helper()
 	writeText(t, filepath.Join(dir, "docs", "index.md"),
 		"---\ntitle: Front page\ndescription: The front page of the site.\n---\n\n"+
-			"# Me\n\nProse the author wrote.\n\n"+
+			"# Me\n\n"+prose+"\n\n"+
 			":-: projects-cards\n\n"+
 			`:-: blog-highlights limit="3"`+"\n")
-	return dir
 }
 
 // assemblyReplies are the answers a fake gh gives as the assembly repository:
@@ -232,5 +241,72 @@ func TestPublishDocsBuildsAndPlacesTheHomeProjectAsHome(t *testing.T) {
 	}
 	if !strings.Contains(uploaded, `"path":"manifests/home-listing.json"`) {
 		t.Errorf("the curated listing did not travel with the publish:\n%s", uploaded)
+	}
+}
+
+// Accepting a reviewed baseline on a home page resolves the same site-level
+// markers the check resolves. It registered none of them, so every page of the
+// home project was refused as carrying an unknown directive.
+func TestBaselineAcceptResolvesTheSiteDirectivesOfTheHomeProject(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := homeSiteProject(t, nil)
+	serveAssembly(t, tools, "home")
+
+	// Establish the baseline, then rewrite the front page's prose while
+	// leaving its description alone: that is the STALE001 dead end
+	// `baseline accept` exists to clear.
+	run(t, dir, "check", "--no-auto-commit")
+	writeHomeFrontPage(t, dir, "Completely rewritten prose about the site.")
+	stale := staleIdentifiers(t, dir)
+	if len(stale) != 1 {
+		t.Fatalf("expected one stale page, got %v", stale)
+	}
+
+	result := run(t, dir, "baseline", "accept", stale[0], "--no-auto-commit")
+	report := result.Stdout + result.Stderr
+	if strings.Contains(report, "Unknown directive") {
+		t.Fatalf("the site directives were refused as unknown:\n%s", report)
+	}
+	if result.ExitCode != 0 {
+		t.Fatalf("baseline accept exited %d\n%s", result.ExitCode, report)
+	}
+	if after := staleIdentifiers(t, dir); len(after) != 0 {
+		t.Errorf("STALE001 survived the acceptance: %v", after)
+	}
+}
+
+// gen hashes every page it resolves, so it reaches the same markers. Without
+// them registered it refused the home project outright.
+func TestGenResolvesTheSiteDirectivesOfTheHomeProject(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := homeSiteProject(t, nil)
+	serveAssembly(t, tools, "home")
+
+	result := run(t, dir, "gen", "--no-auto-commit")
+	report := result.Stdout + result.Stderr
+	if strings.Contains(report, "Unknown directive") {
+		t.Fatalf("the site directives were refused as unknown:\n%s", report)
+	}
+	if result.ExitCode != 0 {
+		t.Fatalf("gen exited %d\n%s", result.ExitCode, report)
+	}
+}
+
+// The release-post generator writes a project manifest from every resolved
+// page when the project has none, which is the third path into the home
+// project's markers.
+func TestPostGenerateResolvesTheSiteDirectivesOfTheHomeProject(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := homeSiteProject(t, nil)
+	serveAssembly(t, tools, "home")
+
+	result := run(t, dir, "blog", "post", "generate",
+		"--from-release", "--version", "1.2.3")
+	report := result.Stdout + result.Stderr
+	if strings.Contains(report, "Unknown directive") {
+		t.Fatalf("the site directives were refused as unknown:\n%s", report)
+	}
+	if result.ExitCode != 0 {
+		t.Fatalf("post generate exited %d\n%s", result.ExitCode, report)
 	}
 }

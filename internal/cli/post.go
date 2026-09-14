@@ -324,8 +324,12 @@ func (c *cli) cmdPostGenerate(ctx *strictcli.Context, kwargs map[string]any) str
 		return strictcli.Exit(0)
 	}
 
-	// No existing manifest: generate one fresh.
-	allDocs, err := docs.ResolveAll(cfg, "", c.dir(), nil, handle)
+	// No existing manifest: generate one fresh. The home project's pages
+	// carry site-level markers, so the resolution that enumerates them needs
+	// the same registration the check makes.
+	allDocs, err := docs.ResolveAll(
+		c.withSiteDirectives(cfg, handle), "", c.dir(), nil, handle,
+	)
 	if err != nil {
 		return c.fail(err)
 	}

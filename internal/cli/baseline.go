@@ -36,7 +36,13 @@ func (c *cli) cmdBaselineAccept(ctx *strictcli.Context, kwargs map[string]any) s
 		return outcome
 	}
 
-	accepted, err := check.AcceptBaselines(pages, c.dir(), cfg, handle)
+	// The same config the check runs on: a page of the assembly's home
+	// project carries site-level markers, and a baseline that resolved none of
+	// them would refuse every such page as carrying an unknown directive
+	// rather than accepting the one the reviewer named.
+	accepted, err := check.AcceptBaselines(
+		pages, c.dir(), c.withSiteDirectives(cfg, handle), handle,
+	)
 	if err != nil {
 		return c.fail(err)
 	}

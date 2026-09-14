@@ -48,6 +48,10 @@ func (c *cli) cmdGen(ctx *strictcli.Context, kwargs map[string]any) strictcli.Ou
 	if !ok {
 		return outcome
 	}
+	// gen resolves every page to hash it, and a root-file template resolves
+	// like any other page, so the home project's site-level markers have to be
+	// registered here too -- otherwise gen refuses the whole project.
+	cfg = c.withSiteDirectives(cfg, handle)
 
 	// A codeless project declares no 'source', which is the declaration that
 	// there are no API or CLI reference pages to derive. Say so and go
