@@ -1083,6 +1083,81 @@ func CheckCrossProjectLinks(tree *AssemblyTree) ([]Failure, error) {
 	return failures, nil
 }
 
+// listingPageRel is the site-relative address of the generated project
+// listing, the page whose whole job is to name every project the site
+// publishes.
+const listingPageRel = "projects/index.html"
+
+// rootPageRel is the site root: the home project's front page, and where a
+// reader and a crawler both arrive.
+const rootPageRel = "index.html"
+
+// CheckProjectReachability asserts that every roster project's index page is
+// linked from the site root and from the generated project listing.
+//
+// A project nothing links is published and unreachable: a reader arriving at
+// the site never sees it, and a crawler that follows links never finds it. The
+// two pages asserted are the two that exist to name every project -- the front
+// page, which is where arrival happens, and "/projects/", whose whole content
+// is the list.
+//
+// The home project is not asked for: the site root is its own front page, so
+// it is reached by being the destination rather than by being linked.
+//
+// Links are read the way the resolution rule reads them: as clickable anchors
+// resolved against the page that writes them, so a document-relative link and
+// an index.html written out both resolve to the same target.
+func CheckProjectReachability(tree *AssemblyTree) ([]Failure, error) {
+	linkers := []struct{ rel, what string }{
+		{rootPageRel, "the site root"},
+		{listingPageRel, "the project listing"},
+	}
+	targets := make(map[string]map[string]bool, len(linkers))
+	for _, linker := range linkers {
+		if !tree.Emitted[linker.rel] {
+			// The page's absence is CheckSharedArtifacts's finding; this
+			// check has nothing to read and says nothing about it.
+			continue
+		}
+		pageHTML, err := tree.Read(linker.rel)
+		if err != nil {
+			return nil, err
+		}
+		reached := map[string]bool{}
+		for _, ref := range resolution.NavigationReferences(pageHTML) {
+			if target, addresses := resolution.ReferenceTarget(linker.rel, ref); addresses {
+				reached[target] = true
+			}
+		}
+		targets[linker.rel] = reached
+	}
+
+	var failures []Failure
+	for _, slug := range tree.Roster.Slugs() {
+		if slug == tree.Home {
+			continue
+		}
+		indexRel := slug + "/index.html"
+		for _, linker := range linkers {
+			reached, read := targets[linker.rel]
+			if !read || reached[indexRel] {
+				continue
+			}
+			failures = append(failures, Failure{
+				"project-reachability", "site/" + linker.rel,
+				fmt.Sprintf(
+					"is %s and links no page of %s, which is published at "+
+						"site/%s. A project this page does not name is one a "+
+						"reader arriving at the site never sees and a crawler "+
+						"following links never reaches.",
+					linker.what, util.PythonRepr(slug), indexRel,
+				),
+			})
+		}
+	}
+	return failures, nil
+}
+
 // contains reports whether items holds want.
 func contains(items []string, want string) bool {
 	for _, item := range items {

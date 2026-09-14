@@ -1197,3 +1197,39 @@ func TestAnUnversionedProjectPassesManifestIdentity(t *testing.T) {
 		}
 	}
 }
+
+// -- every project is reachable from the two pages that list them -----------
+
+// TestAProjectTheFrontPageDoesNotLinkFails: the site root is where a reader
+// and a crawler both start, and a project nothing there links is a project
+// neither reaches.
+func TestAProjectTheFrontPageDoesNotLinkFails(t *testing.T) {
+	root := newAssembly(t)
+	front := filepath.Join(root, "site", "index.html")
+	writeFile(t, front, strings.Replace(
+		readFile(t, front), `<a href="alpha/">Alpha</a>`, "", 1))
+	report := verifyTree(t, root)
+	requireFailure(t, report, "project-reachability", "alpha", "index.html")
+}
+
+// TestAProjectTheListingDoesNotLinkFails: /projects/ is the site's own index
+// of what it publishes, so a project missing from it is published but unlisted.
+func TestAProjectTheListingDoesNotLinkFails(t *testing.T) {
+	root := newAssembly(t)
+	listing := filepath.Join(root, "site", "projects", "index.html")
+	writeFile(t, listing, strings.ReplaceAll(
+		readFile(t, listing), `href="../beta/"`, `href="../beta-typo/"`))
+	report := verifyTree(t, root)
+	requireFailure(t, report, "project-reachability", "beta", "projects/index.html")
+}
+
+// TestTheHomeProjectIsNotAskedToLinkItself: the site root is the home
+// project's own page, so it is reached by definition rather than by a link.
+func TestTheHomeProjectIsNotAskedToLinkItself(t *testing.T) {
+	report := verifyTree(t, newAssembly(t))
+	for _, message := range messagesOf(report, "project-reachability") {
+		if strings.Contains(message, homeSlug) {
+			t.Errorf("the home project is asked to link itself: %s", message)
+		}
+	}
+}

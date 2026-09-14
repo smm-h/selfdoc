@@ -28,6 +28,7 @@ var assertions = []check{
 	{"unresolved-directives", CheckUnresolvedDirectives},
 	{"routing-artifacts", CheckRoutingArtifacts},
 	{"cross-project-links", CheckCrossProjectLinks},
+	{"project-reachability", CheckProjectReachability},
 }
 
 // VerifyAssembly asserts every property the assembled tree has to have before

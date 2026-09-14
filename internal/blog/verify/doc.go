@@ -39,6 +39,11 @@
 //     out.
 //   - Cross-project links land somewhere. Extracted from the emitted pages and
 //     checked against what the manifests say exists.
+//   - Every project is reachable. The site root and the generated project
+//     listing each link every declared project's index page, so no project is
+//     published at an address a reader arriving at the site never sees and a
+//     crawler following links never reaches. The home project is exempt: the
+//     site root is its own front page.
 //   - Outbound links still answer, when the assembly declares a list of pages
 //     to check them on. See [github.com/smm-h/selfdoc/internal/blog/site.LoadOutbound].
 //

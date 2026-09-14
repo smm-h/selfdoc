@@ -24,6 +24,7 @@ var Checks = []string{
 	"unresolved-directives",
 	"routing-artifacts",
 	"cross-project-links",
+	"project-reachability",
 	"outbound-links",
 }
 

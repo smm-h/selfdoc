@@ -250,9 +250,14 @@ func newAssembly(t *testing.T) string {
 	writeFile(t, filepath.Join(siteDir, "beta", "index.html"),
 		page("Beta", canonicalBase+"/beta/", pageOptions{Version: "2.0.0"}))
 	// The home project's pages: at the site root, no slug segment.
+	// The front page carries the curated project cards the home project's
+	// build renders from the site-level directive, which is what links every
+	// project from the address a reader arrives at.
 	writeFile(t, filepath.Join(siteDir, "index.html"),
 		page("Front page", canonicalBase+"/", pageOptions{
-			Body: `  <a href="cv/">CV</a>`,
+			Body: `  <a href="cv/">CV</a>` + "\n" +
+				`  <a href="alpha/">Alpha</a>` + "\n" +
+				`  <a href="beta/">Beta</a>`,
 		}))
 	writeFile(t, filepath.Join(siteDir, "cv", "index.html"),
 		page("CV", canonicalBase+"/cv/", pageOptions{}))

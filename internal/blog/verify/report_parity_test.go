@@ -79,9 +79,12 @@ func TestTheReportIsByteIdenticalToThePython(t *testing.T) {
 // the recording covers, so a check dropping out of it is visible rather than
 // silently unmeasured.
 //
-// The two checks absent are cross-project-links, whose finding needs a
-// published target the manifests disagree about, and outbound-links, which is
-// not configured on this tree.
+// The checks the switch below skips are the ones this tree cannot exercise:
+// cross-project-links needs a published target the manifests disagree about,
+// outbound-links is not configured here, and project-reachability postdates
+// the recording -- [breakEverything] may not grow a defect for it without
+// changing the recorded bytes, and its own failures are asserted by the
+// reachability tests beside the other per-check ones.
 func TestTheBrokenTreeExercisesEveryCheckThatCanFailOffline(t *testing.T) {
 	root := newAssembly(t)
 	breakEverything(t, root)
@@ -90,7 +93,7 @@ func TestTheBrokenTreeExercisesEveryCheckThatCanFailOffline(t *testing.T) {
 	for _, check := range Checks {
 		switch check {
 		case "home-project", "manifest-posts-emitted", "feed-links",
-			"cross-project-links", "outbound-links":
+			"cross-project-links", "project-reachability", "outbound-links":
 			continue
 		}
 		if !failed[check] {
