@@ -33,12 +33,17 @@ func checkManifestFreshness(config map[string]any, dirPath string) ([]lints.Lint
 	}
 
 	docsDir := filepath.Join(dirPath, configString(config, "docs", layout.DocsDefault))
+	generatedDir := layout.Path(dirPath, layout.GeneratedPagesRel)
 	postsDir := filepath.Join(dirPath, postsDirRel(config))
 
-	// Pages on disk, excluding the underscore-prefixed templates.
+	// Pages on disk, from both docs roots -- a page is a page wherever it is
+	// authored -- excluding the underscore-prefixed templates.
 	diskPages := map[string]bool{}
-	if isDir(docsDir) {
-		if err := walkMarkdown(docsDir, func(relPath, fileName string) {
+	for _, root := range []string{docsDir, generatedDir} {
+		if !isDir(root) {
+			continue
+		}
+		if err := walkMarkdown(root, func(relPath, fileName string) {
 			if !strings.HasPrefix(fileName, "_") {
 				diskPages[relPath] = true
 			}
