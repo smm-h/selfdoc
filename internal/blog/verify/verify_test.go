@@ -1198,18 +1198,20 @@ func TestAnUnversionedProjectPassesManifestIdentity(t *testing.T) {
 	}
 }
 
-// -- every project is reachable from the two pages that list them -----------
+// -- every project is reachable through the page that lists them -----------
 
-// TestAProjectTheFrontPageDoesNotLinkFails: the site root is where a reader
-// and a crawler both start, and a project nothing there links is a project
-// neither reaches.
-func TestAProjectTheFrontPageDoesNotLinkFails(t *testing.T) {
+// TestAFrontPageMayCurateItsProjects: a project the front page leaves out is
+// still reachable through the listing, so the front page is not asked to
+// name every project, nor to link the listing itself.
+func TestAFrontPageMayCurateItsProjects(t *testing.T) {
 	root := newAssembly(t)
 	front := filepath.Join(root, "site", "index.html")
 	writeFile(t, front, strings.Replace(
 		readFile(t, front), `<a href="alpha/">Alpha</a>`, "", 1))
 	report := verifyTree(t, root)
-	requireFailure(t, report, "project-reachability", "alpha", "index.html")
+	for _, message := range messagesOf(report, "project-reachability") {
+		t.Errorf("a curated front page was refused: %s", message)
+	}
 }
 
 // TestAProjectTheListingDoesNotLinkFails: /projects/ is the site's own index

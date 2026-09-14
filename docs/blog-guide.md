@@ -404,7 +404,7 @@ What it asserts, each failure naming its offender:
 | Every page is addressable | A page with no title, or a canonical that is not under the site's canonical base |
 | Nothing half-built or per-project leaked in | An unresolved directive marker, or a project's own `_headers`, `_redirects`, `_worker.js` or pre-compressed copies |
 | Cross-project links land somewhere | A link from one project's page into a page no other project publishes |
-| Every project is reachable | A declared project whose index page the site root or the generated `/projects/` listing does not link, so it is published where no reader arriving at the site and no crawler following links ever gets to it. The home project is exempt: the site root is its own front page |
+| Every project is reachable | A declared project whose index page the generated `/projects/` listing does not link, so it is published where no reader arriving at the site and no crawler following links ever gets to it. The front page curates what it shows and is not asked. The home project is exempt: the site root is its own front page |
 
 `selfdoc assembly verify --assembly-dir <checkout> --canonical-base <url>`
 runs the same assertions by hand against a checkout. It is read-only.
