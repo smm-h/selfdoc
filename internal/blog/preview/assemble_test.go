@@ -24,7 +24,7 @@ import (
 //
 // One preview of a home project and two others, assembled for real, carries
 // every assertion below: the tree, the verification of it, and the server over
-// it. The build itself is not run -- each checkout's "docs/_build" is
+// it. The build itself is not run -- each checkout's build output directory is
 // pre-populated -- so what is asserted is the graft and everything downstream
 // of it.
 

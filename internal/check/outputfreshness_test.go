@@ -7,7 +7,7 @@ import (
 )
 
 // The emitted-reference pass (LINK001) reads the built tree under
-// docs/_build, which no check invalidates. A page's body there is whatever
+// the build output directory, which no check invalidates. A page's body there is whatever
 // the last build rendered, so after a source doc comment changes, the built
 // page still carries the old rendering -- and a link that rendering named is
 // not evidence about the sources this run is checking.
