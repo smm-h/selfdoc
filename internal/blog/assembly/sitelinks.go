@@ -3,6 +3,7 @@ package assembly
 import (
 	stdhtml "html"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/blog/chrome"
@@ -127,7 +128,10 @@ func directorySlashed(siteDir, rest string) string {
 	if pathPart == "" || strings.HasSuffix(pathPart, "/") {
 		return rest
 	}
-	page := sitePath(siteDir, stdhtml.UnescapeString(pathPart)+"/index.html")
+	// Cleaned against the root so the lookup cannot leave the tree: a
+	// remainder that climbs out is asked about as the path it resolves to.
+	inside := path.Clean("/" + stdhtml.UnescapeString(pathPart))
+	page := sitePath(siteDir, strings.TrimPrefix(inside, "/")+"/index.html")
 	if info, err := os.Stat(page); err != nil || info.IsDir() {
 		return rest
 	}

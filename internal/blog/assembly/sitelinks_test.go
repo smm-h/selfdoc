@@ -343,6 +343,19 @@ func TestRelativeSiteHrefCutsTheAttributeAsWritten(t *testing.T) {
 			hop: "../../", want: "../../llms.txt", ours: true,
 		},
 		{
+			name: "a slashless directory keeps its query after the slash",
+			ref:  siteLinksBase + "/blog?x=1", hop: "../../",
+			want: "../../blog/?x=1", ours: true,
+		},
+		{
+			// The lookup that decides on the slash must stay inside the
+			// tree: a remainder climbing out of it is looked up as the root
+			// path it cleans to, never as a path beside the tree.
+			name: "a remainder that climbs out is looked up inside the tree",
+			ref:  siteLinksBase + "/../blog", hop: "../../",
+			want: "../../../blog/", ours: true,
+		},
+		{
 			name: "a query string, escaping and all",
 			ref:  siteLinksBase + "/search/?q=a&amp;p=2#hit", hop: "../",
 			want: "../search/?q=a&amp;p=2#hit", ours: true,
