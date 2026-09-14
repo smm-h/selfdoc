@@ -639,6 +639,28 @@
       ]
     },
     {
+      "path": "cli-layout.md",
+      "title": "selfdoc layout",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "selfdoc layout",
+          "anchor": "selfdoc-layout"
+        },
+        {
+          "level": 2,
+          "text": "layout dump",
+          "anchor": "layout-dump"
+        },
+        {
+          "level": 2,
+          "text": "layout validate",
+          "anchor": "layout-validate"
+        }
+      ]
+    },
+    {
       "path": "cli-quality.md",
       "title": "selfdoc quality",
       "type": "doc",
@@ -10558,6 +10580,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T18:44:01.591646+00:00",
+  "last_gen": "2026-09-14T18:47:22.038231+00:00",
   "theme": "minimal"
 }

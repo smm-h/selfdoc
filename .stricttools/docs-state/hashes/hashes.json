@@ -160,6 +160,11 @@
     "description": "292d5b1660cfeae08b31c785b6ccf7b94c4067d5ba0c0d1f63fbbbe456684bfb",
     "schema_hash": "c33ec4fc7101b3ca683450f6d78dc7241a7bd0c27bcb76fcd17094f5f92950a9"
   },
+  "en/cli-layout.md": {
+    "content": "35fb94f9f94e08f1e24e18a93a8def87a2e16de038a8c709dd71d8daafd78934",
+    "description": "03a329791ffa7fd6105ea4ccb43d1589ec9bad9ff6cc575a90bdfc1552233410",
+    "seed_hash": "03a329791ffa7fd6105ea4ccb43d1589ec9bad9ff6cc575a90bdfc1552233410"
+  },
   "en/cli-post.md": {
     "content": "86fe01520f627c2342a68880aa7adc42438729597461260c9693e5c99cff1a15",
     "description": "5488fab4e1343794a687326fe9cc36cac645a8d264c0ae668a3598b892960f2a",

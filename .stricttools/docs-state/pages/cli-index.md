@@ -28,6 +28,7 @@ Version: :-: var key="project.version"
 ## Command Groups
 
 - [baseline](../cli-baseline/) -- Manage the content and description hash baselines that drive staleness (STALE001) and source-drift (DRIFT001) detection during selfdoc check
+- [layout](../cli-layout/) -- Inspect and check the per-repository directories selfdoc owns under .stricttools/
 - [assembly](../cli-assembly/) -- Manage the unified multi-project documentation assembly and deployment
 - [blog](../cli-blog/) -- Blog posts, the authoring app, and publishing this project's documentation to the unified site
 
