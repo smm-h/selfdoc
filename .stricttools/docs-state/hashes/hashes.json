@@ -97,9 +97,9 @@
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
-    "content": "bed70a8bf8c82dc23f29d30d1725b764aa7e053af2867a108e84cdb7bc064c71",
+    "content": "0501a283ab10bcdc1fe0163c239ad78d2e12ccfa71e46870180088cf218970ed",
     "description": "c5eee38c282ee28795a6abad2c5c68e590dc64732a326a3e837ffa8ac6ebf2fe",
-    "schema_hash": "77dc0c75582251e05a2bdae1967385801aee9cac797a6e2d3637d53b7006d657",
+    "schema_hash": "3b42fe89e02d1d6b4937a62010db9000c62da046396e609b03fddc9c87530cab",
     "seed_hash": "c5eee38c282ee28795a6abad2c5c68e590dc64732a326a3e837ffa8ac6ebf2fe"
   },
   "en/cli-baseline.md": {
@@ -163,6 +163,7 @@
   "en/cli-layout.md": {
     "content": "35fb94f9f94e08f1e24e18a93a8def87a2e16de038a8c709dd71d8daafd78934",
     "description": "03a329791ffa7fd6105ea4ccb43d1589ec9bad9ff6cc575a90bdfc1552233410",
+    "schema_hash": "d20822ebeb57d1034ec30913b7aa1ccdadf12f010247dfe67263cada8cd92c52",
     "seed_hash": "03a329791ffa7fd6105ea4ccb43d1589ec9bad9ff6cc575a90bdfc1552233410"
   },
   "en/cli-post.md": {
