@@ -13,7 +13,7 @@ This page defines the key terms used throughout the selfdoc documentation.
 :=:
 ::: **Directive**: A marker in Markdown templates that selfdoc resolves into content at build time. Comes in one-liner (`:-:`) and block (`:<: ... :>:`) forms.
 ::: **Extractor**: A language-specific component that reads source code and extracts API information for directives. Selfdoc ships with extractors for Go, Python, TypeScript, Svelte, Zig, Dart, Kotlin, Swift and SQL.
-::: **Frontmatter**: YAML-like metadata at the top of a Markdown file between `---` delimiters. Controls title, description, nav group, and other page settings.
+::: **Frontmatter**: The TOML metadata block at the top of a Markdown file, between `+++` fences. Its keys are a declared registry: title, description, nav group and the rest of a page's settings.
 ::: **Resolver**: The dispatch layer that routes a parsed directive to the correct handler -- content directives, custom directives, or language extractors, in that order.
 ::: **Tokenizer**: A standalone module that splits Markdown into typed block tokens (headings, code blocks, tables, paragraphs, etc.) used by both the renderer and the lint system.
 ::: **Theme**: A set of CSS custom properties controlling colors, typography, layout, and component styling. Every theme's stylesheet is compiled into the binary, and the set of embedded stylesheets is the registry of theme names.
