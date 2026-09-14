@@ -9928,6 +9928,63 @@
       ]
     },
     {
+      "path": "layout.md",
+      "title": "The .stricttools/ layout",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "The .stricttools/ layout",
+          "anchor": "the-stricttools-layout"
+        },
+        {
+          "level": 2,
+          "text": "The directories selfdoc claims",
+          "anchor": "the-directories-selfdoc-claims"
+        },
+        {
+          "level": 3,
+          "text": "Side: handwritten or generated, never both",
+          "anchor": "side-handwritten-or-generated-never-both"
+        },
+        {
+          "level": 3,
+          "text": "Two docs roots, one set of addresses",
+          "anchor": "two-docs-roots-one-set-of-addresses"
+        },
+        {
+          "level": 2,
+          "text": "Ownership: one owner per directory",
+          "anchor": "ownership-one-owner-per-directory"
+        },
+        {
+          "level": 2,
+          "text": "The derived ignore file",
+          "anchor": "the-derived-ignore-file"
+        },
+        {
+          "level": 2,
+          "text": "Checking a repository",
+          "anchor": "checking-a-repository"
+        },
+        {
+          "level": 2,
+          "text": "Moving a repository onto the layout",
+          "anchor": "moving-a-repository-onto-the-layout"
+        },
+        {
+          "level": 3,
+          "text": "What the config declares afterwards",
+          "anchor": "what-the-config-declares-afterwards"
+        },
+        {
+          "level": 3,
+          "text": "A version tagged before the move",
+          "anchor": "a-version-tagged-before-the-move"
+        }
+      ]
+    },
+    {
       "path": "llms-txt.md",
       "title": "llms.txt",
       "type": "doc",
@@ -10501,6 +10558,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T18:38:10.177883+00:00",
+  "last_gen": "2026-09-14T18:44:01.591646+00:00",
   "theme": "minimal"
 }

@@ -633,6 +633,10 @@
     "content": "d2fd6a7420e84fa69c00120aef35465365592b352fe5a9d272dc7ba83aaab28f",
     "description": "368283e2ae5434b431437461e25c722f4ddc31083b2720fe7794ada67c517418"
   },
+  "en/layout.md": {
+    "content": "9a08ecefea6823c10f7edf2743a904c64d314cb1fc7c662e2675af4e87571fdf",
+    "description": "de91dc13f6df065014d6fdecc9779b938471d4956fc09f28066469eb0780abca"
+  },
   "en/llms-txt.md": {
     "content": "f2b2dbaace9656c8aa7445983484cdd8cd142c49cbe289301dc23871d641d7aa",
     "description": "4638a0a53bc8a5833eeeff4112a7f9a5422488e12860b3735a9a16c3d79ba300"
@@ -654,8 +658,8 @@
     "description": "2a2e8455084ba7b525b477d733a74361fb3c90fff9e8a53519214a655aa87e8f"
   },
   "en/root-files.md": {
-    "content": "2abb04373e3d4f4ce53ca2a37c48f19f811acafb152b9cb15debe99dabee3221",
-    "description": "27906c1fb66a36671ec921a5b08d53c07c286db66c013b74611288a09814662e"
+    "content": "c1ec68c697e0543fd479719bfa00b12e35402abc2cbcc8c9733a12ff80a7179c",
+    "description": "93fe7f88e76f0b629eb594e093cd56712d8de7ace00e72519574af39e4acfb00"
   },
   "en/search.md": {
     "content": "70f6175c54f8b55ef6ec371935972b2d80f428d32b7ffc9f02ff1d7c9ff2623d",
