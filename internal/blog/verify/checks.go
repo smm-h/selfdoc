@@ -1088,14 +1088,19 @@ func CheckCrossProjectLinks(tree *AssemblyTree) ([]Failure, error) {
 // publishes.
 const listingPageRel = "projects/index.html"
 
-// CheckProjectReachability asserts that the generated project listing links
-// every roster project's index page.
+// rootPageRel is the site root: the home project's front page, and where a
+// reader arriving at the site starts.
+const rootPageRel = "index.html"
+
+// CheckProjectReachability asserts that every roster project's index page is
+// linked from the site root or from the generated project listing.
 //
 // A project nothing links is published and unreachable: a reader arriving at
-// the site never sees it, and a crawler that follows links never finds it.
-// "/projects/" is the page whose whole content is the list, so it is the one
-// asked to name every project; the front page is the home project's own page
-// and curates what it shows, so it is not asked.
+// the site never sees it, and a crawler that follows links never finds it. The
+// two pages asked are the two a reader arrives through: the front page, which
+// every assembled page reaches through its sibling block, and "/projects/",
+// the listing the home project curates. Either one naming the project is
+// enough; a project neither names is the finding.
 //
 // The home project is not asked for: the site root is its own front page, so
 // it is reached by being the destination rather than by being linked.
@@ -1104,48 +1109,45 @@ const listingPageRel = "projects/index.html"
 // resolved against the page that writes them, so a document-relative link and
 // an index.html written out both resolve to the same target.
 func CheckProjectReachability(tree *AssemblyTree) ([]Failure, error) {
-	reachedFrom := func(rel string) (map[string]bool, bool, error) {
+	reached := map[string]bool{}
+	read := 0
+	for _, rel := range []string{rootPageRel, listingPageRel} {
 		if !tree.Emitted[rel] {
 			// The page's absence is CheckSharedArtifacts's finding; this
-			// check has nothing to read and says nothing about it.
-			return nil, false, nil
+			// check has nothing to read there and says nothing about it.
+			continue
 		}
 		pageHTML, err := tree.Read(rel)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-		reached := map[string]bool{}
+		read++
 		for _, ref := range resolution.NavigationReferences(pageHTML) {
 			if target, addresses := resolution.ReferenceTarget(rel, ref); addresses {
 				reached[target] = true
 			}
 		}
-		return reached, true, nil
 	}
-
-	fromListing, read, err := reachedFrom(listingPageRel)
-	if err != nil {
-		return nil, err
-	}
-	if !read {
+	if read == 0 {
 		return nil, nil
 	}
+
 	var failures []Failure
 	for _, slug := range tree.Roster.Slugs() {
 		if slug == tree.Home {
 			continue
 		}
 		indexRel := slug + "/index.html"
-		if fromListing[indexRel] {
+		if reached[indexRel] {
 			continue
 		}
 		failures = append(failures, Failure{
 			"project-reachability", "site/" + listingPageRel,
 			fmt.Sprintf(
-				"is the project listing and links no page of %s, which is "+
-					"published at site/%s. A project this page does not name "+
-					"is one a reader arriving at the site never sees and a "+
-					"crawler following links never reaches.",
+				"neither the site root nor the project listing links a page "+
+					"of %s, which is published at site/%s. A project no "+
+					"arrival page names is one a reader arriving at the site "+
+					"never sees and a crawler following links never reaches.",
 				util.PythonRepr(slug), indexRel,
 			),
 		})

@@ -1198,11 +1198,25 @@ func TestAnUnversionedProjectPassesManifestIdentity(t *testing.T) {
 	}
 }
 
-// -- every project is reachable through the page that lists them -----------
+// -- every project is reachable from an arrival page ------------------------
+
+// TestAProjectNoArrivalPageLinksFails: a project linked neither from the site
+// root nor from the project listing is published where nobody arrives.
+func TestAProjectNoArrivalPageLinksFails(t *testing.T) {
+	root := newAssembly(t)
+	front := filepath.Join(root, "site", "index.html")
+	writeFile(t, front, strings.Replace(
+		readFile(t, front), `<a href="beta/">Beta</a>`, "", 1))
+	listing := filepath.Join(root, "site", "projects", "index.html")
+	writeFile(t, listing, strings.ReplaceAll(
+		readFile(t, listing), `href="../beta/"`, `href="../beta-typo/"`))
+	report := verifyTree(t, root)
+	requireFailure(t, report, "project-reachability", "beta", "projects/index.html")
+}
 
 // TestAFrontPageMayCurateItsProjects: a project the front page leaves out is
-// still reachable through the listing, so the front page is not asked to
-// name every project, nor to link the listing itself.
+// still reachable through the listing, so the front page alone is not asked
+// to name every project.
 func TestAFrontPageMayCurateItsProjects(t *testing.T) {
 	root := newAssembly(t)
 	front := filepath.Join(root, "site", "index.html")
@@ -1214,15 +1228,17 @@ func TestAFrontPageMayCurateItsProjects(t *testing.T) {
 	}
 }
 
-// TestAProjectTheListingDoesNotLinkFails: /projects/ is the site's own index
-// of what it publishes, so a project missing from it is published but unlisted.
-func TestAProjectTheListingDoesNotLinkFails(t *testing.T) {
+// TestAListingMayCurateItsProjects: the listing the home project curates may
+// leave a project out when the front page links it.
+func TestAListingMayCurateItsProjects(t *testing.T) {
 	root := newAssembly(t)
 	listing := filepath.Join(root, "site", "projects", "index.html")
 	writeFile(t, listing, strings.ReplaceAll(
 		readFile(t, listing), `href="../beta/"`, `href="../beta-typo/"`))
 	report := verifyTree(t, root)
-	requireFailure(t, report, "project-reachability", "beta", "projects/index.html")
+	for _, message := range messagesOf(report, "project-reachability") {
+		t.Errorf("a curated listing was refused: %s", message)
+	}
 }
 
 // TestTheHomeProjectIsNotAskedToLinkItself: the site root is the home
