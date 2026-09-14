@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.39.3",
+  "version": "0.39.4",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "go",
   "base_url": "https://selfdoc.smmh.dev",
@@ -1948,6 +1948,11 @@
         },
         {
           "level": 3,
+          "text": "`FetchRemoteManifests`",
+          "anchor": "fetchremotemanifests"
+        },
+        {
+          "level": 3,
           "text": "`RetireProject`",
           "anchor": "retireproject"
         },
@@ -3358,6 +3363,16 @@
         },
         {
           "level": 3,
+          "text": "`IsManifestDocument`",
+          "anchor": "ismanifestdocument"
+        },
+        {
+          "level": 3,
+          "text": "`ManifestsFromDocuments`",
+          "anchor": "manifestsfromdocuments"
+        },
+        {
+          "level": 3,
           "text": "`ListingSidecarPath`",
           "anchor": "listingsidecarpath"
         },
@@ -3498,6 +3513,11 @@
         },
         {
           "level": 3,
+          "text": "`HomeListingSidecar`",
+          "anchor": "homelistingsidecar"
+        },
+        {
+          "level": 3,
           "text": "`NewRoster`",
           "anchor": "newroster"
         },
@@ -3545,6 +3565,11 @@
           "level": 3,
           "text": "`CheckVersionIsDeclared`",
           "anchor": "checkversionisdeclared"
+        },
+        {
+          "level": 3,
+          "text": "`VersionLabel`",
+          "anchor": "versionlabel"
         },
         {
           "level": 3,
@@ -3670,6 +3695,11 @@
         },
         {
           "level": 3,
+          "text": "`LazyDirectives`",
+          "anchor": "lazydirectives"
+        },
+        {
+          "level": 3,
           "text": "`HomeListingPath`",
           "anchor": "homelistingpath"
         },
@@ -3677,6 +3707,21 @@
           "level": 3,
           "text": "`BuildHomeProject`",
           "anchor": "buildhomeproject"
+        },
+        {
+          "level": 3,
+          "text": "`HomeContext`",
+          "anchor": "homecontext"
+        },
+        {
+          "level": 3,
+          "text": "`BuildHome`",
+          "anchor": "buildhome"
+        },
+        {
+          "level": 3,
+          "text": "`RegisterSiteDirectives`",
+          "anchor": "registersitedirectives"
         },
         {
           "level": 3,
@@ -4489,6 +4534,11 @@
         },
         {
           "level": 3,
+          "text": "`UnversionedVersion`",
+          "anchor": "unversionedversion"
+        },
+        {
+          "level": 3,
           "text": "`FieldStr`",
           "anchor": "fieldstr"
         },
@@ -4566,6 +4616,11 @@
           "level": 3,
           "text": "`ValidateConfig`",
           "anchor": "validateconfig"
+        },
+        {
+          "level": 3,
+          "text": "`IsUnversioned`",
+          "anchor": "isunversioned"
         },
         {
           "level": 3,
@@ -9667,6 +9722,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-13T23:41:08.419828+00:00",
+  "last_gen": "2026-09-14T11:11:50.214474+00:00",
   "theme": "minimal"
 }
