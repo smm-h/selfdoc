@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
 )
@@ -123,6 +124,25 @@ func ListRepoTags(cwd string, handle *effects.Handle) ([]string, error) {
 // same version, and [BuildTargetVersion] is what says which one the build
 // produces.
 func CheckVersionIsDeclared(cfg map[string]any, version string) error {
+	// A project that declares it has no public version is dispatched under
+	// the literal [config.UnversionedVersion]. Its loaded config carries one
+	// anonymous 'versions' entry, which the rewrite derives from the
+	// declaration rather than from anything an author wrote, so checking the
+	// dispatch against that array would refuse the only version such a
+	// project can be dispatched under.
+	if config.IsUnversioned(cfg) {
+		if version != config.UnversionedVersion {
+			return errorf(
+				"selfdoc.json declares 'unversioned': true, so this project "+
+					"has no public version and is dispatched as %s. Version "+
+					"%s would record docs under a version nobody released. "+
+					"Remove the declaration and declare 'versions' if the "+
+					"project does have one.",
+				util.PythonRepr(config.UnversionedVersion), version,
+			)
+		}
+		return nil
+	}
 	entries, _ := asList(cfg["versions"])
 	declared := make([]string, 0, len(entries))
 	for _, entryAny := range entries {
@@ -156,4 +176,16 @@ func CheckVersionIsDeclared(cfg map[string]any, version string) error {
 		)
 	}
 	return nil
+}
+
+// VersionLabel renders a version the way a summary line names it.
+//
+// A released version reads as "v1.2.3"; the unversioned literal reads as
+// "(unversioned)", because "vunversioned" names nothing and a summary that
+// prints it invites the reader to look for a release under that name.
+func VersionLabel(version string) string {
+	if version == config.UnversionedVersion {
+		return "(" + config.UnversionedVersion + ")"
+	}
+	return "v" + version
 }

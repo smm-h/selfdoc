@@ -511,3 +511,26 @@ func postValidate(config Config) error {
 
 	return nil
 }
+
+// UnversionedVersion is what a project declaring "unversioned": true is
+// dispatched and recorded under wherever a version string is required.
+//
+// The assembly's dispatch payload, its derived membership record and the
+// commit message a deploy writes all carry a version. A project with no public
+// version has nothing to put there, and the empty string is not an answer: the
+// membership record refuses an empty field, because a record that lost its
+// version used to read the same as one that never had one. This literal is the
+// answer -- it is never a number, so nothing can mistake it for a release, and
+// every reader that renders a version treats it as "no version to show".
+const UnversionedVersion = "unversioned"
+
+// IsUnversioned reports whether config declares the project has no public
+// version.
+//
+// It reads the declaration, not the rewritten "versions" array [postValidate]
+// derives from it: the array is what the build addresses pages with, and the
+// declaration is what says the project has no version at all.
+func IsUnversioned(config map[string]any) bool {
+	declared, isBool := config["unversioned"].(bool)
+	return isBool && declared
+}

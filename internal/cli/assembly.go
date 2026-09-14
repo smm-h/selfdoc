@@ -14,6 +14,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/blog/serving"
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/blog/verify"
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/strictcli/go/strictcli"
@@ -425,29 +426,47 @@ func (c *cli) cmdAssemblyPush(ctx *strictcli.Context, kwargs map[string]any) str
 	}
 	sourceRepo := strings.TrimSpace(result.StdoutString())
 
-	version, _ := cfg["version"].(string)
-	if version == "" {
-		version = util.DetectProjectVersion(c.dir(), "0.0.0")
-	}
+	// A project that declares it has no public version has no tag to
+	// dispatch at, so it is dispatched at the branch it is on and recorded
+	// under the literal. Both halves are required: a version string would
+	// name a release nobody made, and a ref is what the assembly clones.
+	var version, ref string
+	if config.IsUnversioned(cfg) {
+		version = config.UnversionedVersion
+		branch, outcome, ok := c.currentBranch(handle)
+		if !ok {
+			return outcome
+		}
+		if outcome, ok := c.requireBranchOnOrigin(handle, branch); !ok {
+			return outcome
+		}
+		ref = branch
+	} else {
+		version, _ = cfg["version"].(string)
+		if version == "" {
+			version = util.DetectProjectVersion(c.dir(), "0.0.0")
+		}
 
-	// The assembly builds selfdoc.json's newest declared version, so a
-	// 'versions' array that omits the version being dispatched would publish
-	// something else under this version's name.
-	if err := site.CheckVersionIsDeclared(cfg, version); err != nil {
-		return c.fail(err)
-	}
+		// The assembly builds selfdoc.json's newest declared version, so a
+		// 'versions' array that omits the version being dispatched would
+		// publish something else under this version's name.
+		if err := site.CheckVersionIsDeclared(cfg, version); err != nil {
+			return c.fail(err)
+		}
 
-	// Resolve the tag that names THIS project's version. Never the
-	// repository's newest tag: in a repo that releases more than one thing,
-	// that is a sibling's tag and the assembly builds the wrong source tree
-	// under this project's slug.
-	tags, err := site.ListRepoTags(c.dir(), handle)
-	if err != nil {
-		return c.fail(err)
-	}
-	ref, err := site.ResolveProjectTag(tags, version)
-	if err != nil {
-		return c.fail(err)
+		// Resolve the tag that names THIS project's version. Never the
+		// repository's newest tag: in a repo that releases more than one
+		// thing, that is a sibling's tag and the assembly builds the wrong
+		// source tree under this project's slug.
+		tags, err := site.ListRepoTags(c.dir(), handle)
+		if err != nil {
+			return c.fail(err)
+		}
+		resolved, err := site.ResolveProjectTag(tags, version)
+		if err != nil {
+			return c.fail(err)
+		}
+		ref = resolved
 	}
 
 	dispatch := assembly.AssemblyPush(repo, sourceRepo, slug, version, ref)
@@ -467,7 +486,8 @@ func (c *cli) cmdAssemblyPush(ctx *strictcli.Context, kwargs map[string]any) str
 		return c.failf("Error: Failed to dispatch rebuild: %s", strings.TrimSpace(result.StderrString()))
 	}
 
-	c.printf("Dispatched assembly rebuild for %s v%s (ref: %s)\n", slug, version, ref)
+	c.printf("Dispatched assembly rebuild for %s %s (ref: %s)\n",
+		slug, site.VersionLabel(version), ref)
 	return strictcli.Exit(0)
 }
 
@@ -805,4 +825,61 @@ func environMap() map[string]string {
 		}
 	}
 	return env
+}
+
+// currentBranch is the branch the project's checkout is on.
+//
+// A detached HEAD has no branch name to dispatch at, which is a refusal rather
+// than a fallback: the assembly clones the ref it is handed, and there is no
+// branch to hand it.
+func (c *cli) currentBranch(handle *effects.Handle) (string, strictcli.Outcome, bool) {
+	result, err := handle.Run(
+		[]string{"git", "symbolic-ref", "--short", "HEAD"},
+		effects.CaptureOutput(), effects.Timeout(15*time.Second),
+		effects.Cwd(c.dir()), effects.Read(),
+	)
+	if err != nil {
+		return "", c.fail(err), false
+	}
+	branch := strings.TrimSpace(result.StdoutString())
+	if result.ExitCode != 0 || branch == "" {
+		return "", c.failf(
+			"Error: this checkout is not on a branch, so there is no ref to "+
+				"dispatch an unversioned project at. A project declaring "+
+				"'unversioned': true is cloned by the assembly at the branch "+
+				"it is pushed from; check one out. (%s)",
+			strings.TrimSpace(result.StderrString()),
+		), false
+	}
+	return branch, strictcli.Exit(0), true
+}
+
+// requireBranchOnOrigin refuses a branch the assembly could not clone.
+//
+// The dispatch names a ref the deploy fetches from the source repository, so a
+// branch that exists only in this checkout would send the deploy after
+// something that is not there -- and the failure would surface minutes later,
+// in a workflow log, rather than here.
+func (c *cli) requireBranchOnOrigin(
+	handle *effects.Handle,
+	branch string,
+) (strictcli.Outcome, bool) {
+	result, err := handle.Run(
+		[]string{"git", "ls-remote", "--exit-code", "origin", "refs/heads/" + branch},
+		effects.CaptureOutput(), effects.Timeout(30*time.Second),
+		effects.Cwd(c.dir()), effects.Read(),
+	)
+	if err != nil {
+		return c.fail(err), false
+	}
+	if result.ExitCode != 0 {
+		return c.failf(
+			"Error: origin carries no branch %s, so the assembly cannot "+
+				"clone this project at it. The dispatch names the ref the "+
+				"deploy fetches; push the branch first. (%s)",
+			util.PythonRepr(branch),
+			strings.TrimSpace(result.StderrString()),
+		), false
+	}
+	return strictcli.Exit(0), true
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
@@ -432,5 +433,33 @@ func TestTheCheckAgreesWithWhatTheBuildWouldProduce(t *testing.T) {
 	}
 	if err := CheckVersionIsDeclared(cfg, "1.0"); err == nil {
 		t.Error("want a refusal for the stale dispatch, got none")
+	}
+}
+
+// An unversioned project is dispatched under the literal, and the versions
+// array a loaded config carries for it -- one anonymous entry -- is not the
+// thing to check it against.
+func TestCheckVersionIsDeclaredAcceptsAnUnversionedProject(t *testing.T) {
+	t.Parallel()
+	cfg := map[string]any{
+		"unversioned": true,
+		"versions":    []any{map[string]any{"version": ""}},
+	}
+	if err := CheckVersionIsDeclared(cfg, config.UnversionedVersion); err != nil {
+		t.Errorf("err = %v, want none", err)
+	}
+}
+
+// A version string dispatched for a project that declares it has none is a
+// version nobody released.
+func TestCheckVersionIsDeclaredRefusesAVersionForAnUnversionedProject(t *testing.T) {
+	t.Parallel()
+	cfg := map[string]any{"unversioned": true}
+	err := CheckVersionIsDeclared(cfg, "1.0.0")
+	if err == nil {
+		t.Fatal("want a refusal, got none")
+	}
+	if !strings.Contains(err.Error(), "unversioned") {
+		t.Errorf("the refusal does not name the declaration: %s", err)
 	}
 }

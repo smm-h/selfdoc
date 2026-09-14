@@ -11,6 +11,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/blog/chrome"
 	"github.com/smm-h/selfdoc/internal/blog/site"
+	"github.com/smm-h/selfdoc/internal/config"
 )
 
 // -- the clean tree ---------------------------------------------------------
@@ -1168,5 +1169,31 @@ func TestFailuresAreSortedByCheckThenOffender(t *testing.T) {
 	})
 	if strings.Join(seen, ",") != strings.Join(sorted, ",") {
 		t.Fatalf("failures out of order:\n%v\nwant\n%v", seen, sorted)
+	}
+}
+
+// A project with no public version deploys under the literal, and its pages
+// carry no version attribute at all. The identity check reads that as the
+// agreement it is, rather than as a tree built at some other version.
+func TestAnUnversionedProjectPassesManifestIdentity(t *testing.T) {
+	root := newAssembly(t)
+	writeJSON(t, filepath.Join(root, "manifests", "beta.json"), manifestDoc(
+		"beta", "Beta", config.UnversionedVersion,
+		[]any{map[string]any{"path": "index.md", "title": "Home"}}, nil,
+	))
+	writeJSON(t, filepath.Join(root, "projects.json"), map[string]any{
+		"home":  map[string]any{"repo": "owner/home", "ref": "v0.1.0", "version": "0.1.0"},
+		"alpha": map[string]any{"repo": "owner/alpha", "ref": "v1.0.0", "version": "1.0.0"},
+		"beta": map[string]any{
+			"repo": "owner/beta", "ref": "main", "version": config.UnversionedVersion,
+		},
+	})
+	writeFile(t, filepath.Join(root, "site", "beta", "index.html"),
+		page("Beta", canonicalBase+"/beta/", pageOptions{}))
+	report := verifyTree(t, root)
+	for _, message := range messagesOf(report, "manifest-identity") {
+		if strings.Contains(message, "beta") {
+			t.Errorf("the unversioned project fails manifest-identity: %s", message)
+		}
 	}
 }

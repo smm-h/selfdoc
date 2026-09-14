@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/themes"
 )
 
@@ -675,5 +676,16 @@ func TestTheFragmentIsTheOneTheSurfacesAlreadyRender(t *testing.T) {
 func TestTheSidecarIsTheOneTheDeployAlreadyWrites(t *testing.T) {
 	if got := RenderSidecar(mustParse(t, referenceTOML), "home"); got != referenceSidecar {
 		t.Errorf("RenderSidecar =\n%s\nwant\n%s", got, referenceSidecar)
+	}
+}
+
+// The literal an unversioned project deploys under is not a version to show.
+func TestAnUnversionedProjectCarriesNoVersionBadge(t *testing.T) {
+	html := renderOne(t,
+		"[[category]]\nname = \"A\"\n[[category.project]]\nslug = \"alpha\"\nblurb = \"b\"\n",
+		[]map[string]any{manifest("alpha", "Alpha", config.UnversionedVersion)},
+	)
+	if strings.Contains(html, "version-badge") {
+		t.Errorf("an unversioned card carries a version badge\n%s", html)
 	}
 }

@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/base64"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -694,5 +695,90 @@ func TestRetireCommitsOnTheAssemblysBranch(t *testing.T) {
 	if refCalls != 3 {
 		t.Errorf("expected two ref reads and one ref update, got %d calls: %v",
 			refCalls, tools.Calls())
+	}
+}
+
+// unversionedPushProject is a project that declares it has no public version,
+// on a branch that exists on its origin -- the state `assembly push` has to
+// dispatch.
+func unversionedPushProject(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	testproject.WriteJSON(t, filepath.Join(dir, "selfdoc.json"), map[string]any{
+		"base_url":      "https://example.com",
+		"author":        testproject.Author(),
+		"search_engine": "pagefind",
+		"unversioned":   true,
+		"locales": []any{map[string]any{
+			"code": "en", "label": "English", "default": true,
+		}},
+		"assembly": map[string]any{"repo": "owner/assembly", "pages_project": "site"},
+		"topology": map[string]any{
+			"slug": "portfolio", "docs_base": "https://docs.example.com",
+		},
+	})
+	testproject.Git(t, dir, "init", "--initial-branch=main")
+	testproject.Git(t, dir, "add", "selfdoc.json")
+	testproject.Git(t, dir, "commit", "-m", "initial")
+	origin := filepath.Join(t.TempDir(), "origin.git")
+	testproject.Git(t, dir, "clone", "--bare", dir, origin)
+	testproject.Git(t, dir, "remote", "add", "origin", origin)
+	return dir
+}
+
+func TestAssemblyPushDispatchesAnUnversionedProjectAtItsBranch(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := unversionedPushProject(t)
+	tools.Reply(
+		toolReply{Match: "repo view", Stdout: "owner/portfolio\n"},
+		toolReply{Match: "", Stdout: ""},
+	)
+
+	result := run(t, dir, "assembly", "push")
+	if result.ExitCode != 0 {
+		t.Fatalf("assembly push failed: %s\n%s", result.Stdout, result.Stderr)
+	}
+	dispatches := tools.Matching("/repos/owner/assembly/dispatches")
+	if len(dispatches) != 1 {
+		t.Fatalf("expected one dispatch, got %d: %v", len(dispatches), tools.Calls())
+	}
+	var body map[string]any
+	if err := json.Unmarshal([]byte(dispatches[0].Input), &body); err != nil {
+		t.Fatalf("decoding the payload: %v\n%s", err, dispatches[0].Input)
+	}
+	payload, _ := body["client_payload"].(map[string]any)
+	for key, want := range map[string]string{
+		"slug": "portfolio", "repo": "owner/portfolio",
+		"ref": "main", "version": "unversioned",
+	} {
+		if payload[key] != want {
+			t.Errorf("%s = %v, want %q", key, payload[key], want)
+		}
+	}
+	if !strings.Contains(result.Stdout, "Dispatched assembly rebuild for portfolio (unversioned) (ref: main)") {
+		t.Errorf("the summary is not the declared one:\n%s", result.Stdout)
+	}
+}
+
+// A branch the assembly cannot clone is refused before anything is dispatched:
+// the deploy would fetch a ref that is not there.
+func TestAssemblyPushRefusesABranchOriginDoesNotCarry(t *testing.T) {
+	tools := newFakeTools(t, "gh")
+	dir := unversionedPushProject(t)
+	testproject.Git(t, dir, "checkout", "-b", "unpushed")
+	tools.Reply(
+		toolReply{Match: "repo view", Stdout: "owner/portfolio\n"},
+		toolReply{Match: "", Stdout: ""},
+	)
+
+	result := run(t, dir, "assembly", "push")
+	if result.ExitCode != 1 {
+		t.Fatalf("exit code is %d, want 1\n%s\n%s", result.ExitCode, result.Stdout, result.Stderr)
+	}
+	if !strings.Contains(result.Stderr, "unpushed") {
+		t.Errorf("the refusal does not name the branch: %s", result.Stderr)
+	}
+	if len(tools.Matching("/dispatches")) != 0 {
+		t.Error("the refusal dispatched anyway")
 	}
 }

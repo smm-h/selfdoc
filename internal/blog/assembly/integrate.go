@@ -389,7 +389,8 @@ func IntegrateProject(opts IntegrateOptions, h *effects.Handle) (*IntegrateSumma
 
 		label := "deploy: shared elements"
 		if scope != SharedOnlyScope {
-			label = fmt.Sprintf("deploy: %s v%s", opts.Slug, opts.Version)
+			label = fmt.Sprintf("deploy: %s %s",
+				opts.Slug, site.VersionLabel(opts.Version))
 		}
 		commit, err := runStep(h, []string{
 			"git", "-c", "user.name=" + gitUserName,

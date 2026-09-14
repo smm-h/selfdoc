@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/smm-h/selfdoc/internal/config"
 )
 
 // dispatchPayload decodes the request body a dispatch POSTs.
@@ -240,5 +242,33 @@ func TestRebuildRefusesAnEntryThatIsNotARecord(t *testing.T) {
 	_, err := AssemblyRebuild("org/assembly", map[string]any{"alpha": "v1.0.0"})
 	if err == nil || !strings.Contains(err.Error(), "alpha") {
 		t.Fatalf("err = %v, want the incomplete-record refusal", err)
+	}
+}
+
+// A record whose version is the unversioned literal is complete: the literal
+// is a real answer to "what did this project deploy", and a rebuild replays it
+// rather than refusing the project as hand-edited.
+func TestRebuildReplaysAnUnversionedProject(t *testing.T) {
+	projects := map[string]any{
+		"portfolio": map[string]any{
+			"repo": "org/portfolio", "ref": "main",
+			"version": config.UnversionedVersion,
+		},
+	}
+	dispatches, err := AssemblyRebuild("org/assembly", projects)
+	if err != nil {
+		t.Fatalf("rebuild: %v", err)
+	}
+	if len(dispatches) != 1 {
+		t.Fatalf("dispatched %d project(s), want 1", len(dispatches))
+	}
+	client := clientPayload(t, dispatches[0])
+	for key, want := range map[string]string{
+		"slug": "portfolio", "repo": "org/portfolio",
+		"ref": "main", "version": config.UnversionedVersion,
+	} {
+		if client[key] != want {
+			t.Errorf("%s = %v, want %q", key, client[key], want)
+		}
 	}
 }

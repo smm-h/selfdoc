@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -107,6 +108,12 @@ func RenderHTML(listing Listing, manifests []map[string]any, siteHop string, hom
 				}
 				href = siteHop + project.Slug + "/"
 				version = util.PythonStrOrEmpty(manifest["version"])
+				if version == config.UnversionedVersion {
+					// A project that declares it has no public version
+					// deploys under the literal. It is not a version, so
+					// there is no badge to draw for it.
+					version = ""
+				}
 			}
 			parts = append(parts, `      <article class="card project-card">`)
 			parts = append(parts, `        <div class="card-title-row">`)

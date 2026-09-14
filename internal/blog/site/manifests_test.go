@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/smm-h/selfdoc/internal/blog/listing"
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
@@ -417,4 +418,26 @@ func manifestBySlug(t *testing.T, manifests []map[string]any, slug string) map[s
 	}
 	t.Fatalf("no manifest for %q", slug)
 	return nil
+}
+
+// A project with no public version still deploys, and what it deploys is
+// recorded: the literal every membership reader treats as "no version to
+// show", never an empty field that reads as a lost one.
+func TestRecordMembershipRecordsAnUnversionedProject(t *testing.T) {
+	root := assemblyTree(t)
+	path := filepath.Join(root, ProjectsPath)
+	data, err := RecordMembership(
+		path, fixtureRoster, "alpha", "owner/alpha", "main",
+		config.UnversionedVersion, handle(),
+	)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+	entry, _ := data["alpha"].(map[string]any)
+	want := map[string]any{
+		"repo": "owner/alpha", "ref": "main", "version": config.UnversionedVersion,
+	}
+	if !reflect.DeepEqual(entry, want) {
+		t.Errorf("entry = %v, want %v", entry, want)
+	}
 }
