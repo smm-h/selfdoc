@@ -116,7 +116,7 @@
         },
         {
           "name": "auto-commit",
-          "help": "Automatically commit the generated selfdoc.json and docs/index.md template files to git. Omitted, it commits; pass --no-auto-commit to leave the files uncommitted",
+          "help": "Automatically commit the generated selfdoc.json and the starter page template to git. Omitted, it commits; pass --no-auto-commit to leave the files uncommitted",
           "value_schema": {
             "type": "boolean"
           },
@@ -754,6 +754,139 @@
         }
       }
     },
+    "layout": {
+      "name": "layout",
+      "help": "Inspect and check the per-repository directories selfdoc owns under .stricttools/",
+      "commands": {
+        "dump": {
+          "name": "dump",
+          "help": "Print selfdoc's layout declaration: every directory it claims, whether the directory is handwritten or generated, whether the repository commits it, and the paths it replaced",
+          "effect": "read_only",
+          "payload_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "directories": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "commitment": {
+                      "enum": [
+                        "committed",
+                        "uncommitted"
+                      ],
+                      "type": "string"
+                    },
+                    "deprecated_names": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "side": {
+                      "enum": [
+                        "handwritten",
+                        "generated"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "path",
+                    "side",
+                    "commitment",
+                    "description",
+                    "deprecated_names"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ignore_file": {
+                "type": "string"
+              },
+              "owners_file": {
+                "type": "string"
+              },
+              "owners_header": {
+                "type": "string"
+              },
+              "root": {
+                "type": "string"
+              },
+              "tool": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tool",
+              "root",
+              "owners_file",
+              "owners_header",
+              "ignore_file",
+              "directories"
+            ],
+            "type": "object"
+          }
+        },
+        "validate": {
+          "name": "validate",
+          "help": "Check this repository's .stricttools/ directory: every directory is named in OWNERS.csv and everything named exists, every directory selfdoc owns holds only what its side allows, nothing inside starts with a dot except the derived ignore file, and that ignore file is what selfdoc's declaration renders",
+          "effect": "read_only",
+          "payload_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "ok": {
+                "type": "boolean"
+              },
+              "problems": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "check": {
+                      "enum": [
+                        "ownership",
+                        "side",
+                        "hidden",
+                        "ignore-file"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "check",
+                    "message"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "root": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "root",
+              "ok",
+              "problems"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
     "assembly": {
       "name": "assembly",
       "help": "Manage the unified multi-project documentation assembly and deployment",
@@ -1106,7 +1239,7 @@
             },
             {
               "name": "build",
-              "help": "Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in docs/_build, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.",
+              "help": "Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in its build output directory, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.",
               "value_schema": {
                 "type": "boolean"
               },
