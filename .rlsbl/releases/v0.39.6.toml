@@ -19,3 +19,7 @@ The previous release let a home project's site-level directives resolve, which m
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "853a9488ec60ab6f0938d7453f16f920c758cb89"
+
+[tree_hashes]
+"." = "b3533e9df47f8ffbe7cf6e6a1f0cae350d548b72"
