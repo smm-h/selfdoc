@@ -70,7 +70,7 @@ Builds documentation from git tags. Tagged versions are checked out and built fr
 
 ### Localization
 
-Parallel `docs/<locale>/` directories with per-locale templates. Generates hreflang tags, per-locale sitemaps, and locale picker UI.
+Parallel `.stricttools/docs/<locale>/` directories with per-locale templates. Generates hreflang tags, per-locale sitemaps, and locale picker UI.
 
 ### Monorepo unified sites
 
@@ -100,7 +100,7 @@ Sandboxed script execution via bubblewrap (bwrap). Runs scripts in isolated envi
 
 ### Root file templates
 
-`docs/_CLAUDE.md` and `docs/_README.md` are templates that generate the project root `CLAUDE.md` and `README.md` via `selfdoc gen`. They support directives like any other template.
+`.stricttools/docs/_CLAUDE.md` and `.stricttools/docs/_README.md` are templates that generate the project root `CLAUDE.md` and `README.md` via `selfdoc gen`. They support directives like any other template.
 
 ## Release workflow
 

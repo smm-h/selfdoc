@@ -43,7 +43,7 @@ This does three things:
 
 1. **Detects your project language** from manifest files (`pyproject.toml` for Python, `go.mod` for Go, `tsconfig.json` or `package.json` for TypeScript/JavaScript).
 2. **Creates `selfdoc.json`** -- the base URL you passed, source directories, docs path, output path, the version declaration and the `locales` array with a single entry. The emitted file builds as-is; nothing has to be added by hand. The version comes from your own manifest (`pyproject.toml`, `package.json` or `VERSION`); if your project has code but states no version there, `init` says so and stops rather than writing a number you never released.
-3. **Creates `docs/index.md`** with a starter template that includes a `ref` directive pointing at your main module.
+3. **Creates `.stricttools/docs/index.md`** with a starter template that includes a `ref` directive pointing at your main module.
 
 A project with no detectable language is a **codeless project** -- a portfolio or personal site that is nothing but Markdown pages. `init` initializes it too: the config gets no `source` key, the starter page gets no `ref` directive, and instead of a `versions` array it gets `"unversioned": true` -- the declaration that the project publishes no artifact and therefore has no public version. Its pages carry no version badge, no version search filter and no version picker. Directives that extract from source code are a hard error in such a project, so add a `source` entry before using one (and a `versions` array with it, since `unversioned` and `source` are mutually exclusive).
 
@@ -51,12 +51,12 @@ The `init` command also auto-commits the generated files unless you pass `--no-a
 
 ## Project Structure
 
-After initialization, your project will have a `selfdoc.json` configuration file at the project root and a `docs/` directory containing a starter Markdown template with a `ref` directive already pointing at your main module. Your existing source code is not modified:
+After initialization, your project will have a `selfdoc.json` configuration file at the project root and a `.stricttools/docs/` directory containing a starter Markdown template with a `ref` directive already pointing at your main module. Your existing source code is not modified:
 
 ```
 your-project/
   selfdoc.json        # Configuration file
-  docs/
+  .stricttools/docs/
     index.md          # Starter template
   src/ or lib/        # Your source code (unchanged)
 ```
@@ -71,8 +71,8 @@ The configuration file controls how selfdoc finds your source code, where to loo
   "base_url": "https://my-project.example.com",
   "versions": [{"version": "1.0.0"}],
   "locales": [{"code": "en", "label": "English", "default": true}],
-  "docs": "docs/",
-  "output": "docs/_build/"
+  "docs": ".stricttools/docs/",
+  "output": ".stricttools/docs-cache/build/"
 }
 ```
 
@@ -82,14 +82,14 @@ The configuration file controls how selfdoc finds your source code, where to loo
 | `base_url` | yes | The address the site is served from; every canonical link, sitemap entry and feed URL is built from it |
 | `versions` | yes | Array of `{version}` objects, unless the project declares `"unversioned": true` |
 | `locales` | yes | Array of `{code, label, default}` objects |
-| `docs` | no | Directory containing Markdown templates (default: `docs/`) |
-| `output` | no | Directory for generated HTML output (default: `docs/_build/`) |
+| `docs` | no | Directory containing Markdown templates (default: `.stricttools/docs/`) |
+| `output` | no | Directory for generated HTML output (default: `.stricttools/docs-cache/build/`) |
 | `deploy` | no | Deploy provider config -- see the deployment docs |
 | `directives` | no | Map of custom directive names to script paths |
 
 ### The docs directory
 
-Every `.md` file in `docs/` is a documentation page that selfdoc will process during the build. Each file starts with a frontmatter block -- TOML between `+++` fences -- carrying at least a title and description for SEO metadata:
+Every `.md` file in `.stricttools/docs/` is a documentation page that selfdoc will process during the build. Each file starts with a frontmatter block -- TOML between `+++` fences -- carrying at least a title and description for SEO metadata:
 
 ```markdown
 +++
@@ -129,13 +129,13 @@ covers, so it stays. Nothing compares the description against the first
 paragraph: a layout that changed with the wording would be a layout nobody
 could predict.
 
-Files are organized into a flat structure. The filename (minus `.md`) becomes the URL slug: `docs/api-reference.md` becomes `/api-reference/`.
+Files are organized into a flat structure. The filename (minus `.md`) becomes the URL slug: `.stricttools/docs/api-reference.md` becomes `/api-reference/`.
 
 ## Writing Your First Directive
 
 Directives are the core feature of selfdoc -- inline markers in your Markdown templates that get replaced with content extracted from your source code at build time. They keep your documentation in sync with the implementation automatically.
 
-Open `docs/index.md` (created by `selfdoc init`) and you will see something like:
+Open `.stricttools/docs/index.md` (created by `selfdoc init`) and you will see something like:
 
 ```markdown
 +++
@@ -202,7 +202,7 @@ Once you have written your Markdown templates with directive markers, generate t
 selfdoc build
 ```
 
-This resolves all directives in your `docs/` templates and writes HTML output to `docs/_build/` (or wherever `output` is configured in `selfdoc.json`).
+This resolves all directives in your `.stricttools/docs/` templates and writes HTML output to `.stricttools/docs-cache/build/` (or wherever `output` is configured in `selfdoc.json`).
 
 The build output includes everything needed for a complete static site:
 
@@ -217,7 +217,7 @@ The build output includes everything needed for a complete static site:
 After building, you will see a summary like:
 
 ```
-Built 5 file(s) to docs/_build/
+Built 5 file(s) to .stricttools/docs-cache/build/
 ```
 
 Any SEO warnings or directive errors are printed after the build summary. Errors cause a non-zero exit code; warnings are informational.
@@ -246,7 +246,7 @@ selfdoc serve --port 3000
 The typical development workflow is:
 
 1. Run `selfdoc serve` in one terminal.
-2. Edit your Markdown templates in `docs/`.
+2. Edit your Markdown templates in `.stricttools/docs/`.
 3. Run `selfdoc build` in another terminal.
 4. The browser reloads automatically with your changes.
 
@@ -270,9 +270,9 @@ Example output:
 
 ```
 Directive results:
-  docs/index.md:12  ref path="mypackage"        OK
-  docs/api.md:8     ref path="mypackage.core"    OK
-  docs/api.md:20    table-schema path="..."      OK
+  .stricttools/docs/index.md:12  ref path="mypackage"        OK
+  .stricttools/docs/api.md:8     ref path="mypackage.core"    OK
+  .stricttools/docs/api.md:20    table-schema path="..."      OK
 
 Coverage: 15/23 public symbols documented (65%)
 

@@ -13,7 +13,7 @@ nav_order = 10
 
 A single `selfdoc check` run performs three categories of analysis that together cover directive correctness, API documentation coverage, and SEO best practices. Each category produces structured output with file paths, line numbers, and actionable messages:
 
-1. **Directive validation** -- resolves every directive marker in your `docs/` templates and reports whether each one succeeds or fails.
+1. **Directive validation** -- resolves every directive marker in your `.stricttools/docs/` templates and reports whether each one succeeds or fails.
 2. **Coverage analysis** -- counts public/exported symbols in your source code and checks how many are referenced by directives.
 3. **SEO linting** -- scans templates for heading structure, meta description, alt text, contrast ratio, and other best practices.
 
