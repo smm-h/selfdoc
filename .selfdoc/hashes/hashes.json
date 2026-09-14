@@ -81,11 +81,11 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/architecture.md": {
-    "content": "2d59bb8b38cebcfd75673662ff55927eda55745f00eb1bf8afe892cf4efd024c",
+    "content": "c7c0f577e7ef5356f0f0ffd01ff5e1de29f64a84b00b2a49b10863d1e2b8a3fe",
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "55928b3cef14c8eb04043c071c81b3ec60bdd6626146973476df9cca6295597c",
+    "content": "96e197b60877d2e564bea4671cf42d452c807340eed886f9771939dfe90bb1f5",
     "description": "1c58798b3a1f60d72b4fd53229086fd1fab2f7b2179745c69ac2e8002c5cbd0b"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
@@ -209,7 +209,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "en/directives-guide.md": {
-    "content": "4b8b5816960d46cd900dfcb026d231b491cc85b79f83ef8e17d833576e6b4266",
+    "content": "6b5f62456251591fb07888f4b5e696de05e56d2b59319d47c51300b586192341",
     "description": "a97129def129fe3eac3002e6998e2286ea8312c1a0f1016e68fb48f4d7a12078"
   },
   "en/directives.md": {
@@ -217,11 +217,11 @@
     "description": "17f2e9be72b960c7fb00f3b9bb0caa2d2323ff159d895d528150c2bd174934fb"
   },
   "en/editor-guide.md": {
-    "content": "d818d1dbb5533e473e6da9ee5bcb871c3e550b39fd91648881f8d8978854d26d",
+    "content": "44386b6ddcb3e25599456764fa37238c0952604c21c1b1666fd088bd87f6ce65",
     "description": "38a476c5f710dadace70dd593f9813b47d8a180564628ed6f6f06bfaaaf1516b"
   },
   "en/feeds.md": {
-    "content": "8dd950a320ad0b4c1356a423dc21999c705aff2d0f7236455327667b8c319508",
+    "content": "7b096cc3828610f7abd402164949958e147483a2e148f60c4b559d046e207e9c",
     "description": "6464fca42fdb52aaa26b9f9e280835b324810beb538bc7d1bfb5d914da1a8ae0"
   },
   "en/frontmatter.md": {
@@ -238,7 +238,7 @@
     "seed_hash": "91e9b309392d4cd3ce586799c36b57a2e9fa18fc0c88e7fb82158eaf35b7b13b"
   },
   "en/getting-started.md": {
-    "content": "6c291b4227fb73e7a2305da0eeb1c64d10466b8bce4d2e083f570a855e9f3ef4",
+    "content": "c9c125e9c77784ffd3cccbda854180625018b896312ff91651146d6b3581168a",
     "description": "997a99cc3c95957051c66a6970d4a4e3ec0e79b0819fe0fe9041a71af3a29987"
   },
   "en/glossary-guide.md": {
@@ -246,7 +246,7 @@
     "description": "b57a52a26e36672bf2285facf5595b96c9233a97ace559bfdf4a20124b97896f"
   },
   "en/glossary-terms.md": {
-    "content": "a385e8d77ded743a0ab3aad3639d0be4df96c2e93a69f6640d43a1f729554c98",
+    "content": "9e28724e4469d385bd713c1ce3fd28ac6a5de765617a9ea1680146ee9e949892",
     "description": "390149056440ae9cfa5556e5db36b39704e0903267d7f42db5b529cc23cedfc8"
   },
   "en/index.md": {
@@ -648,11 +648,11 @@
     "description": "2a2e8455084ba7b525b477d733a74361fb3c90fff9e8a53519214a655aa87e8f"
   },
   "en/root-files.md": {
-    "content": "5927ae8103ba83dfdd21b67399ab5ac4d24c5fbc165cab6e78ba343489bc9255",
+    "content": "2abb04373e3d4f4ce53ca2a37c48f19f811acafb152b9cb15debe99dabee3221",
     "description": "27906c1fb66a36671ec921a5b08d53c07c286db66c013b74611288a09814662e"
   },
   "en/search.md": {
-    "content": "fab18b07ae770da07eadccf4348a783b6fe06112d9b1f02c51d5e027423a08c4",
+    "content": "70f6175c54f8b55ef6ec371935972b2d80f428d32b7ffc9f02ff1d7c9ff2623d",
     "description": "d0eb95e9c08253091c73995d81f092b06efd781451b0ab54c3cf0321b9afa6c3"
   },
   "en/selfdoc-__main__.md": {
@@ -852,11 +852,11 @@
     "source_docstring": "08e3de71703233dd44976e0c79149b031754700e2dcb3eca21ef01825328564d"
   },
   "en/seo.md": {
-    "content": "6bf2541f75ce2c144ec33f051e5485fb15ba4f2f535891fb7b93b067d5cc30b6",
+    "content": "1f61cf68a179abaffd40a6aace07fe1f612650ed4bc983bc3d028e86be5f8356",
     "description": "459bf62cb188c627f8b79d9e10f3a47c9304420ad6fdd0464dcdb2541d19df25"
   },
   "en/staleness.md": {
-    "content": "6538b9f9bf9539f32c16ba6a86a2084198562484975a9c18ccd66d643e4cfe1f",
+    "content": "9ce43553cb8e14362be87c127a8875d444e5570f917f1ab06cc46ac2e7cac96f",
     "description": "5e3bc8a5c461afb1c43cee84a6e4ce7eeb544c36201849aa061e801b938ad726"
   },
   "en/theming.md": {
