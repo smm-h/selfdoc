@@ -35,3 +35,25 @@ written.
   `.stricttools/OWNERS.csv`, `.stricttools/.gitignore`, and the function
   directories under it. The sibling repository's program and rulings files
   are not edited; a note beside them records the rename.
+
+## No accept-list bridge into the assembly repository, and no merged word list for CI
+
+- The plan says: a derived copy of the machine-level accept list is pushed
+  into the assembly repository as a bridge until the vocabulary system
+  ships, and the vocabulary system's third layer is a generated,
+  normalized word-per-line file in the assembly repository, merged from
+  every roster project's files, which the CI runner reads.
+- What changed: the premise was measured against the retired Python
+  surface. The Go assembly deploy builds pages through the build package
+  and never runs the lint pass, so no spelling check runs on the CI runner
+  and no run since the Go deploy started shows a spelling failure (the
+  spelling failures in the record come from the last Python-surface run).
+  The spell check runs where the docs are built and pushed: the developer
+  machine at release time, where the accept list exists. The deploy
+  workflow also clones every roster project's source, so any future
+  runner-side lint could read the per-project vocabulary files directly.
+- Built instead: nothing for the bridge. The third layer is not built; the
+  accepted vocabulary has the shipped baseline and the per-project files.
+  Cross-project term linking at assembly reads the roster projects' cloned
+  vocabulary files. If the assembly ever gains a lint step, it reads those
+  same files rather than a merged copy.
