@@ -1,9 +1,9 @@
----
-title: Editor Guide
-description: "Run the local authoring app for blog posts: its registry, its byte-exact preview, its spelling and lint marks, and its publish consent dialog."
-nav_group: "Guides"
-nav_order: 20
----
++++
+title = "Editor Guide"
+description = "Run the local authoring app for blog posts: its registry, its byte-exact preview, its spelling and lint marks, and its publish consent dialog."
+nav_group = "Guides"
+nav_order = 20
++++
 
 # Editor Guide
 
@@ -166,7 +166,7 @@ The rendered page is served at the address the post publishes to, with the repos
 
 The consequence is worth knowing: **if the repository has never been built, the preview is correct but unstyled.** The page bytes are right; the stylesheet they point at does not exist yet. Run a posts build in that repository once and the preview picks it up.
 
-A draft is the one case with no published counterpart. A buffer declaring `draft: true` is rendered the way a drafts build renders it, which is the only way to see a draft at all. The decision is read off the buffer every time, never off a mode the server carries.
+A draft is the one case with no published counterpart. A buffer declaring `draft = true` is rendered the way a drafts build renders it, which is the only way to see a draft at all. The decision is read off the buffer every time, never off a mode the server carries.
 
 ## Inline assistance
 

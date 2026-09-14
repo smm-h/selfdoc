@@ -1338,6 +1338,38 @@
       ]
     },
     {
+      "path": "frontmatter.md",
+      "title": "Frontmatter",
+      "type": "doc",
+      "headings": [
+        {
+          "level": 1,
+          "text": "Frontmatter",
+          "anchor": "frontmatter"
+        },
+        {
+          "level": 2,
+          "text": "The key registry",
+          "anchor": "the-key-registry"
+        },
+        {
+          "level": 2,
+          "text": "Pages and posts",
+          "anchor": "pages-and-posts"
+        },
+        {
+          "level": 2,
+          "text": "Converting a retired block",
+          "anchor": "converting-a-retired-block"
+        },
+        {
+          "level": 3,
+          "text": "The two sort keys became one",
+          "anchor": "the-two-sort-keys-became-one"
+        }
+      ]
+    },
+    {
       "path": "gen-data-guide.md",
       "title": "Data Generation",
       "type": "doc",
@@ -8371,11 +8403,6 @@
           "level": 3,
           "text": "`UpdateHashes`",
           "anchor": "updatehashes"
-        },
-        {
-          "level": 3,
-          "text": "`StripFrontmatter`",
-          "anchor": "stripfrontmatter"
         }
       ]
     },
@@ -8976,6 +9003,31 @@
         },
         {
           "level": 3,
+          "text": "`Fence`",
+          "anchor": "fence"
+        },
+        {
+          "level": 3,
+          "text": "`RetiredFence`",
+          "anchor": "retiredfence"
+        },
+        {
+          "level": 3,
+          "text": "`ConverterScript`",
+          "anchor": "converterscript"
+        },
+        {
+          "level": 3,
+          "text": "`KindPage`",
+          "anchor": "kindpage"
+        },
+        {
+          "level": 3,
+          "text": "`KindPost`",
+          "anchor": "kindpost"
+        },
+        {
+          "level": 3,
           "text": "`UnknownField`",
           "anchor": "unknownfield"
         },
@@ -9006,13 +9058,78 @@
         },
         {
           "level": 3,
+          "text": "`GeneratedBy`",
+          "anchor": "generatedby"
+        },
+        {
+          "level": 3,
+          "text": "`SchemaFormatVersion`",
+          "anchor": "schemaformatversion"
+        },
+        {
+          "level": 3,
           "text": "`Frontmatter`",
           "anchor": "frontmatter"
         },
         {
           "level": 3,
-          "text": "`ParseFrontmatter`",
-          "anchor": "parsefrontmatter"
+          "text": "`Kind`",
+          "anchor": "kind"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDate`",
+          "anchor": "frontmatterdate"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterField`",
+          "anchor": "frontmatterfield"
+        },
+        {
+          "level": 3,
+          "text": "`Block`",
+          "anchor": "block"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDiagnostic`",
+          "anchor": "frontmatterdiagnostic"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterError`",
+          "anchor": "frontmattererror"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterKeyRow`",
+          "anchor": "frontmatterkeyrow"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument`",
+          "anchor": "frontmatterdocument"
+        },
+        {
+          "level": 3,
+          "text": "`SplitFrontmatter`",
+          "anchor": "splitfrontmatter"
+        },
+        {
+          "level": 3,
+          "text": "`StripFrontmatter`",
+          "anchor": "stripfrontmatter"
+        },
+        {
+          "level": 3,
+          "text": "`ReadFrontmatter`",
+          "anchor": "readfrontmatter"
+        },
+        {
+          "level": 3,
+          "text": "`RenderFrontmatter`",
+          "anchor": "renderfrontmatter"
         },
         {
           "level": 3,
@@ -9023,6 +9140,16 @@
           "level": 3,
           "text": "`ParsePythonFloat`",
           "anchor": "parsepythonfloat"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterKeyRows`",
+          "anchor": "frontmatterkeyrows"
+        },
+        {
+          "level": 3,
+          "text": "`RenderFrontmatterKeyTable`",
+          "anchor": "renderfrontmatterkeytable"
         },
         {
           "level": 3,
@@ -9106,6 +9233,21 @@
         },
         {
           "level": 3,
+          "text": "`ValidateBytes`",
+          "anchor": "validatebytes"
+        },
+        {
+          "level": 3,
+          "text": "`ValidateValue`",
+          "anchor": "validatevalue"
+        },
+        {
+          "level": 3,
+          "text": "`ValidateBytesWithEvidence`",
+          "anchor": "validatebyteswithevidence"
+        },
+        {
+          "level": 3,
           "text": "`EscapeHTML`",
           "anchor": "escapehtml"
         },
@@ -9143,6 +9285,161 @@
           "level": 3,
           "text": "`DecodeTOMLOrdered`",
           "anchor": "decodetomlordered"
+        },
+        {
+          "level": 3,
+          "text": "`Block.Keys`",
+          "anchor": "blockkeys"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterError.Error`",
+          "anchor": "frontmattererrorerror"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterError.Names`",
+          "anchor": "frontmattererrornames"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterError.HasCode`",
+          "anchor": "frontmattererrorhascode"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithFormatVersion`",
+          "anchor": "frontmatterdocumentwithformatversion"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithDocumentKind`",
+          "anchor": "frontmatterdocumentwithdocumentkind"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithTitle`",
+          "anchor": "frontmatterdocumentwithtitle"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithDescription`",
+          "anchor": "frontmatterdocumentwithdescription"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithSlug`",
+          "anchor": "frontmatterdocumentwithslug"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithTags`",
+          "anchor": "frontmatterdocumentwithtags"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithDate`",
+          "anchor": "frontmatterdocumentwithdate"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithUpdated`",
+          "anchor": "frontmatterdocumentwithupdated"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithNavGroup`",
+          "anchor": "frontmatterdocumentwithnavgroup"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithNavOrder`",
+          "anchor": "frontmatterdocumentwithnavorder"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithType`",
+          "anchor": "frontmatterdocumentwithtype"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithVersioned`",
+          "anchor": "frontmatterdocumentwithversioned"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithFeed`",
+          "anchor": "frontmatterdocumentwithfeed"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithSchema`",
+          "anchor": "frontmatterdocumentwithschema"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithAutoSteps`",
+          "anchor": "frontmatterdocumentwithautosteps"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithAutoApi`",
+          "anchor": "frontmatterdocumentwithautoapi"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithGlossaryLinks`",
+          "anchor": "frontmatterdocumentwithglossarylinks"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithLocale`",
+          "anchor": "frontmatterdocumentwithlocale"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithGenerated`",
+          "anchor": "frontmatterdocumentwithgenerated"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithSeeded`",
+          "anchor": "frontmatterdocumentwithseeded"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithDraft`",
+          "anchor": "frontmatterdocumentwithdraft"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithDirectives`",
+          "anchor": "frontmatterdocumentwithdirectives"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithVersion`",
+          "anchor": "frontmatterdocumentwithversion"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithPrevVersion`",
+          "anchor": "frontmatterdocumentwithprevversion"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithBumpType`",
+          "anchor": "frontmatterdocumentwithbumptype"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithReleaseUrl`",
+          "anchor": "frontmatterdocumentwithreleaseurl"
+        },
+        {
+          "level": 3,
+          "text": "`FrontmatterDocument.WithRegistryUrls`",
+          "anchor": "frontmatterdocumentwithregistryurls"
         }
       ]
     },
@@ -9832,6 +10129,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T16:07:17.383895+00:00",
+  "last_gen": "2026-09-14T17:05:28.895280+00:00",
   "theme": "minimal"
 }

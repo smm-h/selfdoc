@@ -1,9 +1,9 @@
----
-title: Glossary Guide
-description: "selfdoc's glossary: declare a term with a dfn tag, a definition list or the list-glossary directive -- prose declares nothing -- and get auto-linking, term anchors and a generated page."
-nav_group: "Guides"
-nav_order: 14
----
++++
+title = "Glossary Guide"
+description = "selfdoc's glossary: declare a term with a dfn tag, a definition list or the list-glossary directive -- prose declares nothing -- and get auto-linking, term anchors and a generated page."
+nav_group = "Guides"
+nav_order = 14
++++
 
 # Glossary Guide
 

@@ -1,9 +1,9 @@
----
-title: Internals
-description: "Developer internals: tokenizer design, extractor protocol, resolver dispatch, rendering pipeline, and lint system architecture."
-nav_group: "Contributing"
-nav_order: 1
----
++++
+title = "Internals"
+description = "Developer internals: tokenizer design, extractor protocol, resolver dispatch, rendering pipeline, and lint system architecture."
+nav_group = "Contributing"
+nav_order = 1
++++
 
 # Internals
 

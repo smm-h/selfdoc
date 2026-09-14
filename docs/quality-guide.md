@@ -1,9 +1,9 @@
----
-title: Quality Guide
-description: "How selfdoc quality scores your project's documentation maturity across five tiers and assigns a content grade based on doc-to-source ratio."
-nav_group: "Guides"
-nav_order: 18
----
++++
+title = "Quality Guide"
+description = "How selfdoc quality scores your project's documentation maturity across five tiers and assigns a content grade based on doc-to-source ratio."
+nav_group = "Guides"
+nav_order = 18
++++
 
 # Quality Guide
 

@@ -1,9 +1,9 @@
----
-title: Check Guide
-description: "Run selfdoc check to validate directives, measure coverage, execute marked examples, spell-check page prose against the vendored word list and the shared accept list, lint blog posts alongside documentation pages, and apply every registered lint rule with its declared severity -- suppressing warnings only, never errors."
-nav_group: "Guides"
-nav_order: 10
----
++++
+title = "Check Guide"
+description = "Run selfdoc check to validate directives, measure coverage, execute marked examples, spell-check page prose against the vendored word list and the shared accept list, lint blog posts alongside documentation pages, and apply every registered lint rule with its declared severity -- suppressing warnings only, never errors."
+nav_group = "Guides"
+nav_order = 10
++++
 
 # Check Guide
 

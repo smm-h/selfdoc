@@ -1,9 +1,9 @@
----
-title: Glossary
-description: "Alphabetical glossary of key terms used in the selfdoc documentation, including directives, extractors, frontmatter, themes, and build pipeline concepts."
-nav_group: "Reference"
-nav_order: 50
----
++++
+title = "Glossary"
+description = "Alphabetical glossary of key terms used in the selfdoc documentation, including directives, extractors, frontmatter, themes, and build pipeline concepts."
+nav_group = "Reference"
+nav_order = 50
++++
 
 # Glossary
 
@@ -21,7 +21,7 @@ This page defines the key terms used throughout the selfdoc documentation.
 ::: **Code block**: A fenced block of source code (triple backticks) that gets syntax-highlighted in the rendered output. Consecutive code blocks with different languages become tabbed.
 ::: **OG card**: An OpenGraph image generated for each page, used as the preview image when a link is shared on social media or messaging platforms.
 ::: **Sitemap**: An XML file (`sitemap.xml`) listing all page URLs and their last-modified dates, used by search engines for indexing.
-::: **Atom feed**: An XML feed (`feed.xml`) that allows RSS readers to subscribe to documentation updates. Pages can opt out with `feed: false` in frontmatter.
+::: **Atom feed**: An XML feed (`feed.xml`) that allows RSS readers to subscribe to documentation updates. Pages can opt out with `feed = false` in frontmatter.
 ::: **Canonical URL**: The definitive URL for a page, set via the `base_url` config field. Used in `<link rel="canonical">` tags and sitemaps to avoid duplicate content in search engines.
 ::: **JSON-LD**: Structured data embedded in each HTML page as a `<script type="application/ld+json">` block. Provides search engines with machine-readable metadata about the page.
 ::: **Lint rule**: An SEO or content quality check run by `selfdoc check`. Each rule has a code (e.g., SEO001) and produces warnings or errors with file locations.

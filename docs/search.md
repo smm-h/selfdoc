@@ -1,9 +1,9 @@
----
-title: Search
-description: "Configure Pagefind search in selfdoc: the required search_engine key, the UI modes, the Cmd/Ctrl+K shortcut, and the seven filters pages carry."
-nav_group: "Guides"
-nav_order: 6
----
++++
+title = "Search"
+description = "Configure Pagefind search in selfdoc: the required search_engine key, the UI modes, the Cmd/Ctrl+K shortcut, and the seven filters pages carry."
+nav_group = "Guides"
+nav_order = 6
++++
 
 # Search
 
@@ -87,11 +87,11 @@ Results also carry the page's project, type and publication date as metadata, wh
 Add a `tags` field to your page frontmatter to make pages selectable under the `tags` filter. Use arrays for multiple tags per page:
 
 ```markdown
----
-title: Deployment
-description: "Deploy your documentation site to Cloudflare Pages or GitHub Pages."
-tags: [deploy, cloudflare, hosting]
----
++++
+title = "Deployment"
+description = "Deploy your documentation site to Cloudflare Pages or GitHub Pages."
+tags = ["deploy", "cloudflare", "hosting"]
++++
 ```
 
 Each tag becomes its own filter value, so a page tagged `[deploy, hosting]` appears under both.

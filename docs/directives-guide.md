@@ -1,10 +1,9 @@
----
-title: Directives Guide
-description: "Guide to selfdoc directives: the marker types, every built-in directive with usage examples, and creating custom directives."
-order: 31
-nav_group: "Guides"
-nav_order: 3
----
++++
+title = "Directives Guide"
+description = "Guide to selfdoc directives: the marker types, every built-in directive with usage examples, and creating custom directives."
+nav_group = "Guides"
+nav_order = 31
++++
 
 # Directives Guide
 
@@ -452,11 +451,11 @@ Supported keys:
 Render a curriculum vitae declared as data. The page is a thin host: the whole body comes from a TOML document, so the CV has one source instead of one page and one set of structured data drifting apart.
 
 ```markdown
----
-title: CV
-type: cv
-description: "Curriculum vitae of ..."
----
++++
+title = "CV"
+type = "cv"
+description = "Curriculum vitae of ..."
++++
 
 :-: cv path="docs/cv.toml"
 ```
@@ -476,7 +475,7 @@ The document declares eight sections, all required and non-empty -- an absent on
 
 Prose fields (`summary`, an interest's `body`, an experience's `body`, `contact.body`) are Markdown and may carry links. Validation is strict in every direction: an unknown key, a missing or empty required field, a repeated skill category or project name, and a `format_version` other than `1` are each a hard error naming the declaration.
 
-The page also emits a `Person`: the site's declared `author` -- name, url, `sameAs` -- carrying what the CV knows on top of it (`jobTitle`, `description`, `email`, `address`, `knowsLanguage`, `alumniOf`, and any profile the author block did not already list). A page whose frontmatter declares `type: cv` is a `ProfilePage` in its own structured data.
+The page also emits a `Person`: the site's declared `author` -- name, url, `sameAs` -- carrying what the CV knows on top of it (`jobTitle`, `description`, `email`, `address`, `knowsLanguage`, `alumniOf`, and any profile the author block did not already list). A page whose frontmatter declares `type = "cv"` is a `ProfilePage` in its own structured data.
 
 | Attribute | Required | Description |
 |-----------|----------|-------------|

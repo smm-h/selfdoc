@@ -1,9 +1,9 @@
----
-title: Atom Feeds
-description: "How selfdoc generates an Atom feed from your documentation pages, with date handling, page exclusion, and feed size limits."
-nav_group: "Guides"
-nav_order: 12
----
++++
+title = "Atom Feeds"
+description = "How selfdoc generates an Atom feed from your documentation pages, with date handling, page exclusion, and feed size limits."
+nav_group = "Guides"
+nav_order = 12
++++
 
 # Atom Feeds
 
@@ -19,31 +19,31 @@ Every generated HTML page includes a `<link rel="alternate" type="application/at
 
 selfdoc determines page dates from 2 sources, checked in priority order. Accurate dates are important because they control the sort order of feed entries and the feed-level `<updated>` element that readers use to detect new content. The 2 sources are:
 
-1. **Frontmatter fields** -- `date` and `updated` in your page's YAML frontmatter. If `updated` is present, it takes precedence. Format: `YYYY-MM-DD`.
+1. **Frontmatter fields** -- `date` and `updated` in your page's frontmatter, each written as a bare TOML local date. If `updated` is present, it takes precedence. Format: `YYYY-MM-DD`.
 2. **File modification time** -- if no frontmatter date is set, selfdoc falls back to the file's last-modified timestamp from git (or the filesystem if git is unavailable).
 
 ```markdown
----
-title: My Page
-date: 2025-03-15
-updated: 2025-04-02
----
++++
+title = "My Page"
+date = 2025-03-15
+updated = 2025-04-02
++++
 ```
 
 The feed-level `<updated>` element uses the most recent date across all pages.
 
 ## Excluding Pages from the Feed
 
-Set `feed: false` in a page's frontmatter to keep it out of the feed. This is useful for pages that are not meaningful as feed entries -- like the glossary, changelog, or auto-generated API reference pages.
+Set `feed = false` in a page's frontmatter to keep it out of the feed. This is useful for pages that are not meaningful as feed entries -- like the glossary, changelog, or auto-generated API reference pages.
 
 ```markdown
----
-title: Glossary
-feed: false
----
++++
+title = "Glossary"
+feed = false
++++
 ```
 
-Pages without this field (or with `feed: true`) are included by default.
+Pages without this field (or with `feed = true`) are included by default.
 
 ## Limiting Feed Size
 

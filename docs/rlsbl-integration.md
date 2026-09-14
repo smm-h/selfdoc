@@ -1,9 +1,9 @@
----
-title: rlsbl Integration
-description: "How selfdoc and rlsbl work together: auto-commit preference chain, changelog detection, docs checks during release, and post-release deploy."
-nav_group: "Guides"
-nav_order: 11
----
++++
+title = "rlsbl Integration"
+description = "How selfdoc and rlsbl work together: auto-commit preference chain, changelog detection, docs checks during release, and post-release deploy."
+nav_group = "Guides"
+nav_order = 11
++++
 
 # rlsbl Integration
 

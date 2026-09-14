@@ -1,10 +1,9 @@
----
-title: Architecture
-description: "How selfdoc transforms Markdown templates into a static site: the build pipeline, directive resolution, theme system, and auxiliary outputs."
-order: 60
-nav_group: "Guides"
-nav_order: 5
----
++++
+title = "Architecture"
+description = "How selfdoc transforms Markdown templates into a static site: the build pipeline, directive resolution, theme system, and auxiliary outputs."
+nav_group = "Guides"
+nav_order = 60
++++
 
 # Architecture
 
@@ -64,7 +63,7 @@ See the [Theming](../theming/) page for the full property reference and design t
 After the main HTML pipeline completes, the build generates 6 categories of companion files that enhance search engine discoverability, social sharing, client-side search, AI access, and transfer performance. These are all written to the same output directory alongside the HTML pages:
 
 - **Sitemap** (`sitemap.xml`) -- standard sitemap with page URLs and last-modified dates
-- **Atom feed** (`feed.xml`) -- for RSS readers, respects per-page `feed: false` frontmatter
+- **Atom feed** (`feed.xml`) -- for RSS readers, respects per-page `feed = false` frontmatter
 - **Search index** (`pagefind/`) -- the Pagefind index and search UI, built from the finished HTML
 - **OG images** -- OpenGraph card PNGs for social sharing
 - **`llms.txt`** -- structured plain-text index for LLM consumption, plus `llms-full.txt` with all content

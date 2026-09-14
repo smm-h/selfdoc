@@ -1,10 +1,9 @@
----
-title: Getting Started
-description: "Install selfdoc and generate your first documentation site in minutes. Covers installation, project setup, writing directives, and local development."
-order: 10
-nav_group: "Getting Started"
-nav_order: 1
----
++++
+title = "Getting Started"
+description = "Install selfdoc and generate your first documentation site in minutes. Covers installation, project setup, writing directives, and local development."
+nav_group = "Getting Started"
+nav_order = 10
++++
 
 # Getting Started
 
@@ -90,14 +89,14 @@ The configuration file controls how selfdoc finds your source code, where to loo
 
 ### The docs directory
 
-Every `.md` file in `docs/` is a documentation page that selfdoc will process during the build. Each file should start with YAML frontmatter containing at least a title and description for SEO metadata:
+Every `.md` file in `docs/` is a documentation page that selfdoc will process during the build. Each file starts with a frontmatter block -- TOML between `+++` fences -- carrying at least a title and description for SEO metadata:
 
 ```markdown
----
-title: API Reference
-description: "Complete API reference for mypackage."
-order: 20
----
++++
+title = "API Reference"
+description = "Complete API reference for mypackage."
+nav_order = 20
++++
 
 # API Reference
 
@@ -106,7 +105,11 @@ Your content here...
 
 - `title` -- used in the sidebar navigation and HTML `<title>`
 - `description` -- used in meta tags for SEO, and printed above the H1 on most pages
-- `order` -- controls sidebar sort order (lower numbers appear first)
+- `nav_order` -- controls sidebar sort order (lower numbers appear first)
+
+Every key a block may carry is declared in a schema, and one it does not declare
+is refused rather than ignored. The frontmatter guide carries the whole registry
+and the converter that rewrites a block written in the retired `---` dialect.
 
 #### Where the description is printed on the page
 
@@ -117,7 +120,7 @@ is, never by what it says:
 | Page | Summary block above the H1 |
 |---|---|
 | `index.md` (the home page) | No -- the home page opens with its own lead paragraph |
-| A page declaring `type: post` | No -- a post opens with its own lead paragraph |
+| A page declaring `type = "post"` | No -- a post opens with its own lead paragraph |
 | Every other page | Yes |
 
 Printing it on a home page or a post says the same sentence twice inside one
@@ -135,10 +138,10 @@ Directives are the core feature of selfdoc -- inline markers in your Markdown te
 Open `docs/index.md` (created by `selfdoc init`) and you will see something like:
 
 ```markdown
----
-title: myproject
-description: Documentation for myproject
----
++++
+title = "myproject"
+description = "Documentation for myproject"
++++
 
 # myproject
 

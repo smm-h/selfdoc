@@ -1,9 +1,9 @@
----
-title: Root Files
-description: "How selfdoc generates root-level files like README.md and CLAUDE.md from directive-powered templates in your docs/ directory."
-nav_group: "Guides"
-nav_order: 16
----
++++
+title = "Root Files"
+description = "How selfdoc generates root-level files like README.md and CLAUDE.md from directive-powered templates in your docs/ directory."
+nav_group = "Guides"
+nav_order = 16
++++
 
 # Root Files
 
@@ -39,9 +39,9 @@ Templates are regular Markdown files with optional frontmatter and directives. T
 Example `docs/_README.md`:
 
 ```markdown
----
-title: README template
----
++++
+title = "README template"
++++
 
 # MyProject
 

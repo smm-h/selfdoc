@@ -1,6 +1,6 @@
----
-title: README.md
----
++++
+title = "README.md"
++++
 # selfdoc
 
 selfdoc is a code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code. It is for maintainers who want a repository's documentation built from the repository itself, so API references, CLI help, schemas and tests never drift from the code they describe.

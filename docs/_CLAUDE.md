@@ -1,6 +1,6 @@
----
-title: CLAUDE.md
----
++++
+title = "CLAUDE.md"
++++
 # selfdoc
 
 Code-aware static site generator. Builds full documentation sites from Markdown templates and source code, with directive-based content extraction, auto-generated API/CLI reference pages, multi-version support, localization, monorepo unified sites, faceted search, theming, SEO, blog posts, a unified multi-project assembly, and deploy to Cloudflare Pages or GitHub Pages. Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL.
@@ -78,7 +78,7 @@ Parallel `docs/<locale>/` directories with per-locale templates. Generates hrefl
 
 ### Search filters
 
-Pagefind indexes the built HTML and ships its own UI. Pages emit filter attributes for 7 facets -- version, locale, group, type, target, project and tags -- so the dialog offers each as a filter group. Pages declare tags via frontmatter using bracket syntax: `tags: [a, b, c]`.
+Pagefind indexes the built HTML and ships its own UI. Pages emit filter attributes for 7 facets -- version, locale, group, type, target, project and tags -- so the dialog offers each as a filter group. Pages declare tags via frontmatter as a TOML array: `tags = ["a", "b", "c"]`.
 
 ### Directives
 

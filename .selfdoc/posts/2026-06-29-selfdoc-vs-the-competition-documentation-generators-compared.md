@@ -1,12 +1,12 @@
----
-title: selfdoc vs the Competition: Documentation Generators Compared
-date: 2026-06-29
-slug: selfdoc-vs-the-competition-documentation-generators-compared
-tags: [comparison, documentation, static-site-generators]
-draft: false
-directives: false
-description: A feature-by-feature comparison of selfdoc with Sphinx, Zensical, Docusaurus, Starlight and VitePress across what technical documentation needs.
----
++++
+title = "selfdoc vs the Competition: Documentation Generators Compared"
+date = 2026-06-29
+slug = "selfdoc-vs-the-competition-documentation-generators-compared"
+tags = ["comparison", "documentation", "static-site-generators"]
+draft = false
+directives = false
+description = "A feature-by-feature comparison of selfdoc with Sphinx, Zensical, Docusaurus, Starlight and VitePress across what technical documentation needs."
++++
 
 The documentation generator landscape shifted in 2026. Material for MkDocs entered maintenance mode after years of dominance, and its successor Zensical launched with a Rust-powered build engine. Meanwhile, the JavaScript ecosystem continues to fragment across React, Vue, and Astro-based options. This post compares selfdoc against six major tools across the features that matter most for technical documentation.
 

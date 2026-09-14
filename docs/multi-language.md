@@ -1,9 +1,9 @@
----
-title: Multi-Language Support
-description: "Using selfdoc across languages: per-source-entry language declarations, the nine extractors, directive examples, source detection, and multi-language dispatch."
-nav_group: "Guides"
-nav_order: 15
----
++++
+title = "Multi-Language Support"
+description = "Using selfdoc across languages: per-source-entry language declarations, the nine extractors, directive examples, source detection, and multi-language dispatch."
+nav_group = "Guides"
+nav_order = 15
++++
 
 # Multi-Language Support
 

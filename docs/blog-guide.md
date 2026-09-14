@@ -1,13 +1,13 @@
----
-title: Blog Posts
-description: "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the worker redirects every other address to, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, the verification every deploy has to pass, the local preview that assembles the whole site from checkouts and serves it before anything ships, and the theme override that builds every checkout under one theme so a theme can be judged on the whole site at once."
-nav_group: "Guides"
-nav_order: 19
----
++++
+title = "Blog Posts"
+description = "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the worker redirects every other address to, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, the verification every deploy has to pass, the local preview that assembles the whole site from checkouts and serves it before anything ships, and the theme override that builds every checkout under one theme so a theme can be judged on the whole site at once."
+nav_group = "Guides"
+nav_order = 19
++++
 
 # Blog Posts
 
-selfdoc includes a blog system for publishing chronological content alongside your documentation. Blog posts are Markdown files with YAML frontmatter, stored in a dedicated directory within your project. Posts are unversioned -- they exist outside the multi-version docs system -- and are published to the unified documentation assembly alongside your API reference and guides.
+selfdoc includes a blog system for publishing chronological content alongside your documentation. Blog posts are Markdown files with a TOML frontmatter block, stored in a dedicated directory within your project. Posts are unversioned -- they exist outside the multi-version docs system -- and are published to the unified documentation assembly alongside your API reference and guides.
 
 The blog system is part of the `selfdoc` binary, which carries the post commands (`selfdoc blog post new`, `selfdoc blog post list`, `selfdoc blog post publish`, and the rest) alongside the assembly infrastructure for multi-project documentation sites.
 
@@ -52,15 +52,15 @@ selfdoc blog post new --title "My First Post"
 
 This creates a file like `.selfdoc/posts/2026-07-29-my-first-post.md` with a frontmatter template:
 
-```yaml
----
-title: My First Post
-date: 2026-07-29
-slug: my-first-post
-tags: []
-draft: true
-directives: false
----
+```toml
++++
+title = "My First Post"
+date = 2026-07-29
+slug = "my-first-post"
+tags = []
+draft = true
+directives = false
++++
 ```
 
 The filename is date-prefixed (`YYYY-MM-DD-slug.md`). The command errors if a file with that name already exists.
@@ -82,23 +82,23 @@ selfdoc blog post generate \
   --registry-url "https://pypi.org/project/myproject/1.2.0/"
 ```
 
-Generated release posts are created with `draft: false`, `directives: false`, and release-specific frontmatter fields (`version`, `prev_version`, `bump_type`, `release_url`, `registry_urls`). The command also updates the project manifest with the new post entry.
+Generated release posts are created with `draft = false`, `directives = false`, and release-specific frontmatter fields (`version`, `prev_version`, `bump_type`, `release_url`, `registry_urls`). The command also updates the project manifest with the new post entry.
 
 Use `--dry-run` to preview the generated content without writing files.
 
 ## Frontmatter Format
 
-Every post requires YAML frontmatter delimited by `---`. Required and optional fields:
+Every post requires a frontmatter block -- TOML between `+++` fences, validated against the key registry the frontmatter guide carries. Required and optional fields:
 
 ### Required fields
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `title` | string | Post title. Must be non-empty. |
-| `date` | string | Publication date in `YYYY-MM-DD` format. |
+| `date` | date | Publication date, written as a bare TOML local date (`2026-07-29`). |
 | `directives` | boolean | Whether the post may carry directive markers. No default: a post that omits the key raises `POST006` at discovery. |
 
-A post is authored content that may or may not embed code-extracted material, and a post *about* directive syntax reads exactly like a post that uses it. So the author declares which it is rather than the reader guessing. Declaring `directives: false` and then writing a marker raises `POST007`, naming the marker and the line it sits on -- markers inside fenced code blocks and backtick code spans are examples of the syntax, not uses of it, and are never counted. Declaring `directives: true` resolves the post's directives exactly as a documentation page's are resolved.
+A post is authored content that may or may not embed code-extracted material, and a post *about* directive syntax reads exactly like a post that uses it. So the author declares which it is rather than the reader guessing. Declaring `directives = false` and then writing a marker raises `POST007`, naming the marker and the line it sits on -- markers inside fenced code blocks and backtick code spans are examples of the syntax, not uses of it, and are never counted. Declaring `directives = true` resolves the post's directives exactly as a documentation page's are resolved.
 
 Documentation pages carry no such key. The whole `docs/` tree is directive territory by construction; only posts declare.
 

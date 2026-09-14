@@ -1,9 +1,9 @@
----
-title: Staleness Detection
-description: "How selfdoc detects stale frontmatter descriptions by hashing page content, how to fix STALE001 errors, and how to accept reviewed dead-ends."
-nav_group: "Guides"
-nav_order: 18
----
++++
+title = "Staleness Detection"
+description = "How selfdoc detects stale frontmatter descriptions by hashing page content, how to fix STALE001 errors, and how to accept reviewed dead-ends."
+nav_group = "Guides"
+nav_order = 18
++++
 
 # Staleness Detection
 
@@ -49,10 +49,10 @@ This is an error, not a warning -- it causes `selfdoc check` to exit with code 1
 Update the frontmatter `description` to reflect the current page content, then run `selfdoc check` again to record the new baseline hashes and clear the error. Aim for 110-160 characters that accurately summarize what the page covers after the content change:
 
 ```markdown
----
-title: Getting Started
-description: "Install selfdoc, initialize a project, and build your first documentation site in under five minutes."
----
++++
+title = "Getting Started"
+description = "Install selfdoc, initialize a project, and build your first documentation site in under five minutes."
++++
 ```
 
 Then run `selfdoc check` again. The hashes update and the error clears.

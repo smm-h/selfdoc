@@ -1,9 +1,9 @@
----
-title: Custom Directives
-description: "Write custom directives as scripts: the resolve(attrs, config, body) interface, the out-of-process contract, registration in selfdoc.json, and two worked examples."
-nav_group: "Guides"
-nav_order: 9
----
++++
+title = "Custom Directives"
+description = "Write custom directives as scripts: the resolve(attrs, config, body) interface, the out-of-process contract, registration in selfdoc.json, and two worked examples."
+nav_group = "Guides"
+nav_order = 9
++++
 
 # Custom Directives
 

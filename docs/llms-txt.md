@@ -1,9 +1,9 @@
----
-title: llms.txt
-description: "How selfdoc generates llms.txt and llms-full.txt files for AI discoverability, plus robots.txt rules that allow AI crawlers like GPTBot and ClaudeBot."
-nav_group: "Guides"
-nav_order: 13
----
++++
+title = "llms.txt"
+description = "How selfdoc generates llms.txt and llms-full.txt files for AI discoverability, plus robots.txt rules that allow AI crawlers like GPTBot and ClaudeBot."
+nav_group = "Guides"
+nav_order = 13
++++
 
 # llms.txt
 

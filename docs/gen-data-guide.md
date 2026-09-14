@@ -1,9 +1,9 @@
----
-title: Data Generation
-description: "How to use selfdoc's gen-data command to run sandboxed scripts at build time, producing validated JSON or CSV data files for your documentation."
-nav_group: "Guides"
-nav_order: 17
----
++++
+title = "Data Generation"
+description = "How to use selfdoc's gen-data command to run sandboxed scripts at build time, producing validated JSON or CSV data files for your documentation."
+nav_group = "Guides"
+nav_order = 17
++++
 
 # Data Generation
 

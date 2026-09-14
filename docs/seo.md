@@ -1,9 +1,9 @@
----
-title: SEO
-description: "How selfdoc generates meta tags, Open Graph cards, JSON-LD, sitemaps, robots.txt and llms.txt, plus the required author block behind every page's Person."
-nav_group: "Guides"
-nav_order: 7
----
++++
+title = "SEO"
+description = "How selfdoc generates meta tags, Open Graph cards, JSON-LD, sitemaps, robots.txt and llms.txt, plus the required author block behind every page's Person."
+nav_group = "Guides"
+nav_order = 7
++++
 
 # SEO
 
@@ -29,10 +29,10 @@ Every `selfdoc build` produces a comprehensive set of SEO artifacts for each pag
 The most impactful thing you can set is `description` in your frontmatter. This single string feeds into four different outputs: `<meta name="description">` for search engines, `og:description` for social cards, `twitter:description` for Twitter/X previews, and the search index summary. Aim for 110-160 characters that accurately describe the page content:
 
 ```markdown
----
-title: Deployment
-description: "Deploy your selfdoc site to Cloudflare Pages or GitHub Pages with a single command."
----
++++
+title = "Deployment"
+description = "Deploy your selfdoc site to Cloudflare Pages or GitHub Pages with a single command."
++++
 ```
 
 If you omit `description`, selfdoc auto-extracts the first sentence from the page body. `selfdoc check` reports SEO006 as an **error** for a missing description -- it stops the run rather than warning -- and SEO009/SEO010 as warnings for descriptions that are too short or too long (aim for 110-160 characters). Nothing cuts a description short: what you write is what the page publishes, and 160 is where a search result stops rendering it.
