@@ -170,7 +170,9 @@ func TestCSSCarriesTheThemeAndTheAssemblysOwnRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CSS: %v", err)
 	}
-	for _, want := range []string{"#tm-topbar", ".blog-entry", ".shared-page"} {
+	for _, want := range []string{
+		"#tm-topbar", ".blog-entry", ".shared-page", ".sibling-projects",
+	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("the composed stylesheet does not carry %q", want)
 		}
@@ -178,6 +180,56 @@ func TestCSSCarriesTheThemeAndTheAssemblysOwnRules(t *testing.T) {
 	// Minified: the comment banners the pieces carry are gone.
 	if strings.Contains(css, "assembly shared pages") {
 		t.Error("the composed stylesheet was not minified")
+	}
+}
+
+// TestCSSStylesTheSiblingBlock pins the selectors the assembly's sibling block
+// is painted by.
+//
+// The block is written by the build on every assembled page and is styled
+// nowhere else: no theme carries its class, and a project's own "style.css"
+// never sees it. Without these rules it renders as a bare heading over a
+// bulleted list.
+func TestCSSStylesTheSiblingBlock(t *testing.T) {
+	t.Parallel()
+	for _, theme := range []string{"minimal", "clean", "tinymoon"} {
+		css, err := CSS(theme)
+		if err != nil {
+			t.Fatalf("CSS(%q): %v", theme, err)
+		}
+		for _, want := range []string{
+			// The section, separated from the article above it by
+			// the theme's own border colour.
+			".sibling-projects{",
+			"border-top:1px solid var(--border)",
+			// Its heading, kept a heading element and painted as
+			// secondary text.
+			".sibling-projects > h2{",
+			// The list: a responsive grid carrying no markers.
+			".sibling-projects ul{",
+			"list-style:none",
+			"grid-template-columns:repeat(auto-fill,minmax(",
+			// The one-line description beside each name.
+			".sibling-projects li span{",
+			"color:var(--text-secondary)",
+		} {
+			if !strings.Contains(css, want) {
+				t.Errorf("the %s stylesheet does not carry %q", theme, want)
+			}
+		}
+	}
+}
+
+// TestSiblingBlockCarriesNoColourOfItsOwn: the block's rules name theme
+// tokens, so the light and dark palettes paint it without a second set of
+// rules and a new theme needs no change here.
+func TestSiblingBlockCarriesNoColourOfItsOwn(t *testing.T) {
+	t.Parallel()
+	for _, literal := range []string{"#", "rgb(", "hsl("} {
+		if strings.Contains(siblingCSS, literal) {
+			t.Errorf("the sibling-block rules name a literal colour (%q); "+
+				"they have to read the theme's tokens", literal)
+		}
 	}
 }
 

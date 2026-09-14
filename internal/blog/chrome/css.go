@@ -106,6 +106,63 @@ const sharedPageCSS = `/* --- assembly shared pages --- */
 }
 `
 
+// siblingCSS is the presentation of the sibling block the assembly writes at
+// the end of every page's main column.
+//
+// The block is the assembly's, not any project's: a standalone build never
+// emits it, so the theme carries no rules for its class. It is styled here for
+// the same reason the shared pages are, and out of the same tokens -- the
+// theme's --border and --text-secondary flip with the light and dark palettes,
+// so neither of these rules names a colour of its own.
+//
+// It sits beside the page footer in the document, and is separated from the
+// article above it the way the footer is: one top border in the theme's border
+// colour. The list carries no markers and lays out as a responsive grid, so a
+// wide viewport reads several projects per row and a narrow one reads a column.
+// The heading stays the heading element the block emits; only its size and
+// colour are set here.
+const siblingCSS = `/* --- the assembly's sibling block --- */
+.sibling-projects {
+  margin: 3rem 0 0;
+  padding: 1.5rem 0 0;
+  border-top: 1px solid var(--border);
+}
+.sibling-projects > h2 {
+  margin: 0 0 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+.sibling-projects ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0;
+  padding: 0;
+}
+.sibling-projects li {
+  margin: 0;
+}
+.sibling-projects li a {
+  font-weight: 600;
+}
+.sibling-projects li span {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.85em;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+@media print {
+  .sibling-projects {
+    display: none;
+  }
+}
+`
+
 // ManifestTheme is the theme a loaded manifest declares, or the build's own
 // default.
 //
@@ -159,7 +216,8 @@ func Themes(manifests []map[string]any, homeSlug string, override string) (map[s
 //
 // The theme's own CSS plus the highlight rules its metadata names -- the same
 // two pieces, in the same order, that a project's build writes into its own
-// "style.css" -- plus the assembly's shared-page rules, minified.
+// "style.css" -- plus the assembly's own rules, the shared pages' and the
+// sibling block's, minified.
 func CSS(theme string) (string, error) {
 	meta, err := themes.Meta(theme)
 	if err != nil {
@@ -176,7 +234,7 @@ func CSS(theme string) (string, error) {
 	if highlightCSS != "" {
 		css = css + "\n\n/* Pygments syntax highlighting */\n" + highlightCSS
 	}
-	css = css + "\n\n" + sharedPageCSS
+	css = css + "\n\n" + sharedPageCSS + "\n" + siblingCSS
 	return build.MinifyCSS(css), nil
 }
 
