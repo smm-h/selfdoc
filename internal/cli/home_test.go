@@ -125,6 +125,16 @@ func TestCheckResolvesTheSiteDirectivesOfTheHomeProject(t *testing.T) {
 	dir := homeSiteProject(t, nil)
 	serveAssembly(t, tools, "home")
 
+	// A built page as a home build leaves it: the region the front page's
+	// marker rendered into, carrying the links the assembled site resolves.
+	writeText(t, filepath.Join(dir, "docs", "_build", "index.html"),
+		"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"+
+			`<link rel="canonical" href="https://example.com/">`+"\n"+
+			"</head>\n<body>\n"+
+			`<selfdoc-region data-directive="projects-cards">`+"\n"+
+			`<a href="alpha/">Alpha</a>`+"\n"+
+			"</selfdoc-region>\n</body>\n</html>\n")
+
 	result := run(t, dir, "check", "--no-auto-commit")
 	report := result.Stdout + result.Stderr
 	if strings.Contains(report, "Unknown directive") {
