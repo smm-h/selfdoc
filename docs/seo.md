@@ -41,7 +41,7 @@ If you omit `description`, selfdoc auto-extracts the first sentence from the pag
 
 A page's `<title>` is its own title followed by the project name, as in `Deployment - selfdoc`. The index page is titled with the project name and would otherwise render it twice, which tells a reader and a search engine nothing, so that page's title names the project and then says what it is.
 
-What it is comes from `description` in `selfdoc.json`: the part before its ` that ` clause, cut at a word boundary so the whole title stays at most 70 characters. A description with no such clause leaves the project name alone as the title, and `selfdoc check` reports SEO016.
+What it is comes from `description` in `selfdoc.json`: the part before its ` that ` clause, cut at a word boundary so the whole title stays at most 60 characters -- about what a search result displays, and the same cap `selfdoc check` holds every page's title to under SEO004. A description with no such clause leaves the project name alone as the title, and `selfdoc check` reports SEO016.
 
 ### Author metadata
 

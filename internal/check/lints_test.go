@@ -2,6 +2,7 @@ package check
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -982,5 +983,68 @@ func TestCleanPageHasNoLints(t *testing.T) {
 
 	if len(results) != 0 {
 		t.Errorf("a clean page produced %v", messagesOf(results))
+	}
+}
+
+// --- SEO004 measures the title the page renders ---
+
+// namedLintProject creates a lint fixture whose project root -- and therefore
+// the project name every rendered title carries -- is the given name.
+func namedLintProject(t *testing.T, name string) lintFixture {
+	t.Helper()
+	isolate(t)
+	root := filepath.Join(t.TempDir(), name)
+	docsDir := filepath.Join(root, "docs")
+	if err := os.MkdirAll(docsDir, 0o755); err != nil {
+		t.Fatalf("mkdir docs: %v", err)
+	}
+	return lintFixture{Root: root, DocsDir: docsDir, Config: pythonProjectConfig()}
+}
+
+// seo004On writes one page into a fixture and returns what the rules said.
+func seo004On(t *testing.T, fixture lintFixture, title string) []lints.LintResult {
+	t.Helper()
+	write(t, filepath.Join(fixture.DocsDir, "page.md"),
+		"---\ntitle: "+title+"\ndescription: A description of the page, at a "+
+			"length the description rules have nothing to say about.\n---\n"+
+			"# Heading\n\nText.\n")
+	return runLintsOn(t, fixture, nil)
+}
+
+func TestSEO004WarnsAtSixtyOneRenderedCharacters(t *testing.T) {
+	fixture := namedLintProject(t, "project")
+	// The rendered title of an ordinary page is "<title> - <project name>".
+	title := strings.Repeat("a", 61-len(" - ")-len("project"))
+	results := seo004On(t, fixture, title)
+	if !hasCode(results, "SEO004") {
+		t.Fatalf("SEO004 missing for a 61-character title; got %v", codes(results))
+	}
+	if message := onlyMessage(t, results, "SEO004").Message(); !strings.Contains(
+		message, "61 chars") {
+		t.Errorf("message = %q, want the rendered length", message)
+	}
+}
+
+func TestSEO004IsSilentAtSixtyRenderedCharacters(t *testing.T) {
+	fixture := namedLintProject(t, "project")
+	title := strings.Repeat("a", 60-len(" - ")-len("project"))
+	if results := seo004On(t, fixture, title); hasCode(results, "SEO004") {
+		t.Fatalf("SEO004 fired for a 60-character title: %q",
+			onlyMessage(t, results, "SEO004").Message())
+	}
+}
+
+func TestSEO004MeasuresTheDerivedTitleOfTheProjectIndexPage(t *testing.T) {
+	// A page titled with the project name renders "<project name> - <thing>"
+	// -- the description's first clause, cut to the same cap -- rather than
+	// the project name twice. Measuring the name twice reports a length no
+	// page ever carries, and no edit to the page can clear it.
+	name := strings.Repeat("n", 31)
+	fixture := namedLintProject(t, name)
+	fixture.Config["description"] =
+		"A documentation engine that reads source code and writes pages."
+	if results := seo004On(t, fixture, name); hasCode(results, "SEO004") {
+		t.Fatalf("SEO004 measured a title the page does not render: %q",
+			onlyMessage(t, results, "SEO004").Message())
 	}
 }

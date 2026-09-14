@@ -11,6 +11,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/lints"
+	"github.com/smm-h/selfdoc/internal/page"
 	"github.com/smm-h/selfdoc/internal/prose"
 	"github.com/smm-h/selfdoc/internal/spelling"
 	"github.com/smm-h/selfdoc/internal/tokenizer"
@@ -130,6 +131,9 @@ func runLints(
 	}
 	projectRoot := filepath.Dir(absDocsDir)
 	projectName := filepath.Base(projectRoot)
+	// The project name and description the page wrapper is handed, so the
+	// title rule measures the string the build really renders.
+	projectDescription := configString(config, "description", "")
 
 	// EXAMPLE002/EXAMPLE003 -- validator command templates keyed by fenced
 	// language. An absent config means the feature is off, which turns
@@ -227,27 +231,29 @@ func runLints(
 			}
 		}
 
-		// SEO004 -- title too long once the project name is appended.
+		// SEO004 -- the document title this page renders is too long.
+		//
+		// What renders is not the page's own title: the wrapper derives it,
+		// and a page titled with the project name renders something else
+		// entirely. The rule therefore measures what [page.DocumentTitle]
+		// produces, so no page is reported for a length it never carries.
+		pageTitle := ""
 		titleValue, titlePresent := metadata["title"]
-		if titlePresent && titleValue != nil {
-			combined := util.PythonStr(titleValue) + " - " + projectName
-			if runeLen(combined) > 60 {
+		switch {
+		case titlePresent && titleValue != nil:
+			pageTitle = util.PythonStr(titleValue)
+		case len(h1Tokens) > 0:
+			pageTitle = h1Tokens[0].Text
+		}
+		if pageTitle != "" {
+			rendered := page.DocumentTitle(
+				pageTitle, projectName, projectDescription)
+			if runeLen(rendered) > page.DocumentTitleLimit {
 				results = append(results, lints.MustLintResult(
 					relPath, nil, "SEO004",
 					fmt.Sprintf(
 						`Title too long for SEO (%d chars): "%s"`,
-						runeLen(combined), combined,
-					),
-				))
-			}
-		} else if len(h1Tokens) > 0 {
-			combined := h1Tokens[0].Text + " - " + projectName
-			if runeLen(combined) > 60 {
-				results = append(results, lints.MustLintResult(
-					relPath, nil, "SEO004",
-					fmt.Sprintf(
-						`Title too long for SEO (%d chars): "%s"`,
-						runeLen(combined), combined,
+						runeLen(rendered), rendered,
 					),
 				))
 			}

@@ -172,10 +172,11 @@ type WrapOptions struct {
 	CurrentLocale string
 }
 
-// documentTitleLimit is the longest a derived document title may be: past
-// roughly this length a search result's title is cut by the engine showing
-// it, so the derived form does its own cutting at a word boundary instead.
-const documentTitleLimit = 70
+// DocumentTitleLimit is the longest a document title may be: a search engine
+// displays about 50 to 60 characters of one and cuts the rest, so a derived
+// title does its own cutting at a word boundary instead, and the check that
+// measures a page's title holds every page to the same number.
+const DocumentTitleLimit = 60
 
 // thatClause is what separates the thing a project IS from what it DOES in a
 // project description, which is written in the form "<thing> that <does>".
@@ -191,7 +192,7 @@ const thatClause = " that "
 // before its " that " clause. A description carrying no such clause, or no
 // description at all, leaves the project name alone as the whole title.
 //
-// The derived form is held to documentTitleLimit characters, cut at a word
+// The derived form is held to [DocumentTitleLimit] characters, cut at a word
 // boundary. The project name is never cut: when not even one word of the
 // thing fits beside it, the name alone is the title.
 func DocumentTitle(title, projectName, projectDescription string) string {
@@ -213,7 +214,7 @@ func DocumentTitle(title, projectName, projectDescription string) string {
 		return projectName
 	}
 	thing = trimTitleTail(thing[:clauseAt])
-	budget := documentTitleLimit - len([]rune(projectName)) - len([]rune(" - "))
+	budget := DocumentTitleLimit - len([]rune(projectName)) - len([]rune(" - "))
 	thing = cutAtWord(thing, budget)
 	if thing == "" || thing == projectName {
 		return projectName

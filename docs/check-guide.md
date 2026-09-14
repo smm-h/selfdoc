@@ -80,7 +80,7 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | SEO001 | error | Multiple H1 headings on a page. Use a single `#` heading. |
 | SEO002 | warning | Heading level gaps (e.g., H2 followed by H4 skipping H3). |
 | SEO003 | warning | Image with empty alt text (`![](...)`). Add descriptive alt text. |
-| SEO004 | warning | Page title exceeds 60 characters (combined with project name). Shorten it. |
+| SEO004 | warning | The document title this page renders exceeds 60 characters, which is past what a search result renders. Shorten the page title. |
 | SEO006 | error | Missing `description` in frontmatter. Add one for meta tags. |
 | SEO007 | warning | First paragraph after a heading is outside the 30-80 word range. Every page type is held to the same band, generated pages included. |
 | SEO008 | warning | Low numeric data density. Pages with 200+ words should include concrete quantities; version strings and calendar years do not count. |

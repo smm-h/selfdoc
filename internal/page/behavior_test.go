@@ -818,12 +818,13 @@ func TestDocumentTitleWithoutAThatClauseIsTheNameAlone(t *testing.T) {
 	}
 }
 
-func TestDocumentTitleStaysWithinSeventyCharacters(t *testing.T) {
+func TestDocumentTitleStaysWithinTheLimit(t *testing.T) {
 	got := DocumentTitle("longproject", "longproject",
 		"A very long and thoroughly overqualified documentation generator "+
 			"for source trees that does many things at once.")
-	if runeCount := len([]rune(got)); runeCount > 70 {
-		t.Fatalf("title = %q is %d chars, want at most 70", got, runeCount)
+	if runeCount := len([]rune(got)); runeCount > DocumentTitleLimit {
+		t.Fatalf("title = %q is %d chars, want at most %d",
+			got, runeCount, DocumentTitleLimit)
 	}
 	if !strings.HasPrefix(got, "longproject - ") {
 		t.Fatalf("title = %q must keep the whole project name", got)
@@ -922,4 +923,22 @@ func metaContentOf(t *testing.T, rendered, attr string) string {
 		t.Fatalf("the <meta %s> content attribute is unterminated", attr)
 	}
 	return rest[:end]
+}
+
+// TestTheDerivedIndexTitleNeverExceedsTheLimit holds the derived form to the
+// same cap the title-length check measures against, for a description long
+// enough that an uncut title would run past it.
+func TestTheDerivedIndexTitleNeverExceedsTheLimit(t *testing.T) {
+	for _, description := range []string{
+		"A code-aware static site generator that builds full documentation " +
+			"sites from Markdown templates and source code.",
+		"An extraordinarily elaborate documentation apparatus that does it all.",
+		"Short that does things.",
+	} {
+		got := DocumentTitle("selfdoc", "selfdoc", description)
+		if runeCount := len([]rune(got)); runeCount > DocumentTitleLimit {
+			t.Errorf("title = %q is %d chars, want at most %d",
+				got, runeCount, DocumentTitleLimit)
+		}
+	}
 }

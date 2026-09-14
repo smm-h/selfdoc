@@ -34,7 +34,7 @@ description = "Image with empty alt text (`![](...)`). Add descriptive alt text.
 [[lints]]
 code = "SEO004"
 severity = "warning"
-description = "Page title exceeds 60 characters (combined with project name). Shorten it."
+description = "The document title this page renders exceeds 60 characters, which is past what a search result renders. Shorten the page title."
 
 [[lints]]
 code = "SEO006"
