@@ -744,6 +744,14 @@ func TestGenerateLLMSTxt(t *testing.T) {
 		{"every project", roster(), canonicalBase, "", "llms.txt"},
 		{"home excluded, trailing slash trimmed", roster(), canonicalBase + "/", "home", "llms_home.txt"},
 		{"nothing published yet", nil, canonicalBase, "", "llms_empty.txt"},
+		{
+			"a manifest with no description", []map[string]any{
+				manifest("Alpha", "alpha", "1.0.0", "Does the alpha thing.", nil, nil),
+				manifest("Mute", "mute", "1.0.0", "", nil, nil),
+				manifest("Blank", "blank", "1.0.0", "   \n  ", nil, nil),
+			},
+			canonicalBase, "", "llms_no_description.txt",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -781,6 +789,22 @@ func TestLLMSTxtComposesByReference(t *testing.T) {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("llms.txt carries %q, which it composes by reference:\n%s", unwanted, got)
 		}
+	}
+}
+
+// TestLLMSTxtMarksAMissingDescription: an entry that silently stops after the
+// link reads like a project with nothing to say about itself, and the gap is
+// invisible to whoever could fill it. The marker makes it a thing somebody
+// sees.
+func TestLLMSTxtMarksAMissingDescription(t *testing.T) {
+	t.Parallel()
+	got := GenerateLLMSTxt([]map[string]any{
+		manifest("Mute", "mute", "1.0.0", "", nil, nil),
+	}, canonicalBase, "")
+	want := "- [Mute](" + canonicalBase + "/mute/" + LLMSPath + "): " +
+		MissingDescriptionMarker
+	if !strings.Contains(got, want) {
+		t.Errorf("llms.txt does not carry %q:\n%s", want, got)
 	}
 }
 

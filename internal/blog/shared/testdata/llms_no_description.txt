@@ -1,0 +1,13 @@
+# Documentation
+
+> Every project's documentation is published here. Each entry below links to that project's own llms.txt, which lists its pages.
+
+## Projects
+
+- [Alpha](https://docs.example.com/alpha/llms.txt): Does the alpha thing.
+- [Blank](https://docs.example.com/blank/llms.txt): (no description)
+- [Mute](https://docs.example.com/mute/llms.txt): (no description)
+
+## Blog
+
+- [Blog](https://docs.example.com/blog/): posts from every project, newest first.

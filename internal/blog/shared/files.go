@@ -193,6 +193,15 @@ func GenerateRobotsTxt(canonicalBase string) string {
 	)
 }
 
+// MissingDescriptionMarker stands in for a project whose manifest states no
+// one-line description.
+//
+// An entry that stopped after the link read as a project with nothing to say
+// about itself, and the gap was invisible to the one person who could fill it:
+// whoever maintains that project's selfdoc.json. The marker makes it something
+// a reader of the published file sees.
+const MissingDescriptionMarker = "(no description)"
+
 // GenerateLLMSTxt produces the assembly's llms.txt, composed by reference.
 //
 // Every constituent project's build writes its own llms.txt listing its own
@@ -204,6 +213,11 @@ func GenerateRobotsTxt(canonicalBase string) string {
 // The home project is left out for the same reason it is left out of the
 // listing: it is the site root the file is served from, not one of the
 // projects it points at.
+//
+// Every entry carries the first line of its project's manifest description.
+// A project whose manifest states none gets [MissingDescriptionMarker] rather
+// than a bare link, so the gap is visible in the published file instead of
+// reading as an entry that simply had nothing to add.
 func GenerateLLMSTxt(manifests []map[string]any, canonicalBase string, homeSlug string) string {
 	base := strings.TrimRight(canonicalBase, "/")
 	listed := sortedByName(manifests, homeSlug)
@@ -233,11 +247,11 @@ func GenerateLLMSTxt(manifests []map[string]any, canonicalBase string, homeSlug 
 		if len(description) > 0 {
 			summary = description[0]
 		}
-		entry := "- [" + name + "](" + base + "/" + slug + "/" + LLMSPath + ")"
-		if summary != "" {
-			entry += ": " + summary
+		if summary == "" {
+			summary = MissingDescriptionMarker
 		}
-		lines = append(lines, entry)
+		lines = append(lines,
+			"- ["+name+"]("+base+"/"+slug+"/"+LLMSPath+"): "+summary)
 	}
 
 	lines = append(lines,
