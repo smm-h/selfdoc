@@ -565,3 +565,81 @@ func TestRewriteNavigationReferencesLeavesAPageItAnswersNothingForAlone(t *testi
 		t.Fatalf("RewriteNavigationReferences = %q, want the page unchanged", got)
 	}
 }
+
+// -- The stale-build filter -------------------------------------------------
+
+// checkSourced runs the project-aware resolution check, handing it the current
+// Markdown of the pages it names.
+func checkSourced(
+	t *testing.T, outputDir string, sources map[string]string,
+) []lints.LintResult {
+	t.Helper()
+	results, err := CheckProjectOutputResolution(outputDir, base, "", nil, sources)
+	if err != nil {
+		t.Fatalf("CheckProjectOutputResolution: %v", err)
+	}
+	return results
+}
+
+func TestABrokenLinkTheCurrentSourceWritesIsReported(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "guide", "index.html"),
+		`<main id="tm-content"><a href="../missing/">Guide</a></main>`)
+	results := checkSourced(t, out, map[string]string{
+		"guide/index.html": "# Guide\n\nSee the [Guide](missing.md).\n",
+	})
+	if codes(results) != LintCode {
+		t.Fatalf("codes = %q, want %q -- the source still writes the "+
+			"reference the built page carries", codes(results), LintCode)
+	}
+	if !strings.Contains(results[0].Message(), "missing") {
+		t.Errorf("message = %q", results[0].Message())
+	}
+}
+
+func TestAFragmentTheCurrentSourceWritesIsReported(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "guide", "index.html"),
+		`<main id="tm-content"><a href="../missing/#detail">Guide</a></main>`)
+	if codes(checkSourced(t, out, map[string]string{
+		"guide/index.html": "# Guide\n\n[Guide](missing.md#detail)\n",
+	})) != LintCode {
+		t.Fatal("a reference the source writes with a fragment is still checked")
+	}
+}
+
+func TestALinkOnlyAnOlderRenderingWroteIsNotReported(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "guide", "index.html"),
+		`<main id="tm-content"><a href="../missing/">Gone</a></main>`)
+	if results := checkSourced(t, out, map[string]string{
+		"guide/index.html": "# Guide\n\nThe link is gone from the source.\n",
+	}); len(results) != 0 {
+		t.Fatalf("results = %v -- the built body predates its source", results)
+	}
+}
+
+func TestAPageWithNoCurrentSourceIsCheckedAsBefore(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "guide", "index.html"),
+		`<main id="tm-content"><a href="../missing/">Gone</a></main>`)
+	if codes(checkSourced(t, out, map[string]string{})) != LintCode {
+		t.Fatal("a page this run did not resolve is checked as it always was")
+	}
+}
+
+func TestAReferenceThatIsNotAPageIsTakenFromTheSourceAsWritten(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "guide", "index.html"),
+		`<main id="tm-content"><img src="../assets/logo.png"></main>`)
+	if codes(checkSourced(t, out, map[string]string{
+		"guide/index.html": "# Guide\n\n![Logo](../assets/logo.png)\n",
+	})) != LintCode {
+		t.Fatal("an asset reference the source writes is still checked")
+	}
+}

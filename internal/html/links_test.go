@@ -181,3 +181,50 @@ func TestSplitKeepDelimitersKeepsEveryByte(t *testing.T) {
 		t.Errorf("the split lost or added bytes: %q", got)
 	}
 }
+
+// --- What a page's source would emit ---
+
+// TestSourceRefsSpellsAReferenceTheWayTheBuildEmitsIt asserts the derived set
+// carries the authored reference in its emitted form, which is the only form
+// a built page's href is ever written as.
+func TestSourceRefsSpellsAReferenceTheWayTheBuildEmitsIt(t *testing.T) {
+	refs := SourceRefs("# Guide\n\nSee the [Guide](missing.md).\n", "guide.md")
+	if !refs["../missing/"] {
+		t.Fatalf("refs = %v, want the emitted href \"../missing/\"", refs)
+	}
+	if refs["missing.md"] {
+		t.Error("the authored spelling is not what a built page carries")
+	}
+}
+
+func TestSourceRefsReadsEveryShapeASourceAddressesWith(t *testing.T) {
+	source := "# Page\n\n" +
+		"[Inline](guide.md)\n" +
+		"![Logo](assets/logo.png)\n" +
+		"[Titled](api.md \"The API\")\n" +
+		"[Fragment](api.md#detail)\n" +
+		"<a href=\"raw.md\">Raw</a>\n" +
+		"[def]: notes.md\n" +
+		"[Away](https://example.com/x)\n" +
+		"[Here](#section)\n"
+	refs := SourceRefs(source, "index.md")
+	for _, want := range []string{
+		"guide/", "assets/logo.png", "api/", "api/#detail", "raw/",
+		"notes/", "https://example.com/x", "#section",
+	} {
+		if !refs[want] {
+			t.Errorf("refs = %v, missing %q", refs, want)
+		}
+	}
+}
+
+func TestEmittedRefLeavesWhatThisBuildDoesNotAddressAlone(t *testing.T) {
+	for _, ref := range []string{
+		"https://example.com/", "#section", "/absolute/", "mailto:a@b.c",
+		"assets/logo.png", "../../outside.md", "",
+	} {
+		if got := EmittedRef("guide.md", ref, false); got != ref {
+			t.Errorf("EmittedRef(%q) = %q, want it unchanged", ref, got)
+		}
+	}
+}

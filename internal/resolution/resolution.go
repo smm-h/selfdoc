@@ -63,6 +63,7 @@ import (
 	"sync"
 
 	"github.com/smm-h/selfdoc/internal/address"
+	pagehtml "github.com/smm-h/selfdoc/internal/html"
 	"github.com/smm-h/selfdoc/internal/lints"
 )
 
@@ -423,10 +424,15 @@ func CheckOutputResolution(
 // pages carry whatever the last build rendered: after a source doc comment
 // changes, the built page still shows the old rendering, and a reference only
 // that rendering named is not evidence about the sources being checked. A
-// reference inside the content region of a page whose current source does not
-// carry it is therefore skipped -- the built body predates its source. Every
-// reference the page chrome writes, and every page with no source here, is
-// checked as it always was.
+// reference inside the content region of a page whose current source would
+// not emit it is therefore skipped -- the built body predates its source.
+// Every reference the page chrome writes, and every page with no source here,
+// is checked as it always was.
+//
+// What the source would emit comes from [html.SourceRefs], which runs the
+// source's own references through the rewrite the renderer applies, so the
+// comparison is between two emitted hrefs rather than between an href and the
+// Markdown that produced it.
 func CheckProjectOutputResolution(
 	outputDir, baseURL, mountPrefix string,
 	exemptElements []string,
@@ -477,17 +483,23 @@ func CheckProjectOutputResolution(
 		pageHTML := blankElements(string(raw), exemptElements)
 
 		// A reference the built body carries but the page's current source
-		// does not is a leftover of an older rendering, not a finding about
-		// this tree's sources.
+		// would not emit is a leftover of an older rendering, not a finding
+		// about this tree's sources. What the source writes is compared in
+		// the emitted spelling: the renderer gives "[Guide](missing.md)" the
+		// href "../missing/", so the Markdown text itself never carries the
+		// string a built page's reference is written as.
 		source, hasSource := currentSources[pageRel]
 		contentHTML := ""
+		var sourceRefs map[string]bool
 		if hasSource {
 			contentHTML = contentRegion(pageHTML)
+			sourceRefs = pagehtml.SourceRefs(
+				source, pagehtml.HTMLToMdPath(pageRel))
 		}
 		outdated := func(ref string) bool {
 			return hasSource &&
 				strings.Contains(contentHTML, ref) &&
-				!strings.Contains(source, ref)
+				!sourceRefs[ref]
 		}
 
 		// A post in a mounted build is grafted out of this subtree to the

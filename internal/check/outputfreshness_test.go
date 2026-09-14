@@ -2,6 +2,7 @@ package check
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -98,5 +99,30 @@ func TestALinkTheCurrentSourceCarriesIsStillReported(t *testing.T) {
 
 	if !hasCode(result.Lints, "LINK001") {
 		t.Fatalf("LINK001 missing for a link the source carries: %v", codes(result.Lints))
+	}
+}
+
+func TestALinkTheCurrentSourceWritesAsMarkdownIsStillReported(t *testing.T) {
+	// The source writes the reference the way an author does -- a ".md"
+	// path -- and the build emits it as the directory address that page is
+	// served from. The two are never spelled the same, so reading the
+	// Markdown for the emitted text alone suppresses a real finding.
+	root := goPackageDocProject(t, "../guide/", "../guide/")
+	write(t, filepath.Join(root, "docs", "guide.md"),
+		"---\ndescription: The guide page this fixture links from, described at "+
+			"a length the description rules have nothing to say about.\n---\n"+
+			"# Guide\n\nSee the [manual](manual.md) for the rest of it.\n")
+	builtPage(t, root, "guide/index.html",
+		`<p>See the <a href="../manual/">manual</a> for the rest of it.</p>`)
+
+	result := checkFixture(t, root)
+
+	if !hasCode(result.Lints, "LINK001") {
+		t.Fatalf("LINK001 missing for a link the source writes as Markdown: %v",
+			codes(result.Lints))
+	}
+	if message := withCode(result.Lints, "LINK001")[0].Message(); !strings.Contains(
+		message, "manual") {
+		t.Errorf("message = %q", message)
 	}
 }

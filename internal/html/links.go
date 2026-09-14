@@ -16,6 +16,16 @@ import (
 // -- and rewriting it would corrupt what the page says.
 var pageRefRE = regexp.MustCompile(`\b(href|src)="([^"]*)"`)
 
+// mdLinkRE matches the destination of a Markdown inline link or image --
+// "[text](target)" and "![alt](target)" -- along with the optional title a
+// destination may carry.
+var mdLinkRE = regexp.MustCompile(
+	`\]\(\s*<?([^()<>\s]*)>?(?:\s+(?:"[^"]*"|'[^']*'|\([^()]*\)))?\s*\)`)
+
+// mdRefDefRE matches the destination of a Markdown reference definition --
+// "[id]: target".
+var mdRefDefRE = regexp.MustCompile(`(?m)^[ \t]{0,3}\[[^\]]+\]:[ \t]*<?([^\s<>]+)>?`)
+
 // offsiteRefPrefixes begin a reference that names something other than a
 // page of this build: another origin, a scheme that is not a document, the
 // current page's own fragment, or an absolute path.
@@ -127,36 +137,89 @@ func splitPathParts(p string) []string {
 // pages the way the build emits them, and a stale ".html" link there is a
 // defect LINK001 reports.
 func RewriteInternalLinks(bodyHTML, mdPath string, legacyHTMLLinks bool) string {
+	return replaceAllSubmatchFunc(pageRefRE, bodyHTML, func(whole string, groups []string) string {
+		attr, ref := groups[1], groups[2]
+		emitted := EmittedRef(mdPath, ref, legacyHTMLLinks)
+		if emitted == ref {
+			return whole
+		}
+		return attr + `="` + emitted + `"`
+	})
+}
+
+// EmittedRef returns the href that ref, written on the page whose Markdown
+// source is mdPath, is emitted as.
+//
+// It is the one rule [RewriteInternalLinks] applies, per reference: a
+// reference naming a page of this docs tree comes back as the address the
+// build gives that page, and every other reference -- another origin, a
+// fragment, a path outside the tree, anything that is not a ".md" -- comes
+// back as written, which is how the renderer emits it.
+//
+// legacyHTMLLinks is what [RewriteInternalLinks] documents: it additionally
+// treats a relative "*.html" reference as naming the same page's Markdown
+// source, and is set only for archive builds.
+func EmittedRef(mdPath, ref string, legacyHTMLLinks bool) string {
+	if ref == "" {
+		return ref
+	}
+	for _, prefix := range offsiteRefPrefixes {
+		if strings.HasPrefix(ref, prefix) {
+			return ref
+		}
+	}
+	p, sep, fragment := partition(ref, "#")
+	var sourceRef string
+	switch {
+	case strings.HasSuffix(p, ".md"):
+		sourceRef = p
+	case legacyHTMLLinks && strings.HasSuffix(p, ".html"):
+		sourceRef = strings.TrimSuffix(p, ".html") + ".md"
+	default:
+		return ref
+	}
 	pageDir := path.Dir(MdToHTMLPath(mdPath))
 	if pageDir == "." {
 		pageDir = ""
 	}
-	return replaceAllSubmatchFunc(pageRefRE, bodyHTML, func(whole string, groups []string) string {
-		attr, ref := groups[1], groups[2]
+	target, ok := pageRefTarget(mdPath, sourceRef, pageDir)
+	if !ok {
+		return ref
+	}
+	return target + sep + fragment
+}
+
+// SourceRefs returns every href a page built now from source, whose Markdown
+// path is mdPath, would emit.
+//
+// A reference is anything the source addresses: a Markdown link or image
+// destination, a reference definition's target, or a raw href/src attribute
+// written into the Markdown. Each is mapped through [EmittedRef], the same
+// rule the renderer applies to the converted body, so the answer is in the
+// emitted spelling ("../guide/") rather than the authored one ("guide.md").
+//
+// It exists so a pass over a BUILT tree can tell a reference the current
+// source still writes from one only an older rendering wrote. Comparing an
+// emitted href against the Markdown text directly cannot do that: the two are
+// never spelled the same.
+func SourceRefs(source, mdPath string) map[string]bool {
+	refs := map[string]bool{}
+	add := func(ref string) {
 		if ref == "" {
-			return whole
+			return
 		}
-		for _, prefix := range offsiteRefPrefixes {
-			if strings.HasPrefix(ref, prefix) {
-				return whole
-			}
-		}
-		p, sep, fragment := partition(ref, "#")
-		var sourceRef string
-		switch {
-		case strings.HasSuffix(p, ".md"):
-			sourceRef = p
-		case legacyHTMLLinks && strings.HasSuffix(p, ".html"):
-			sourceRef = strings.TrimSuffix(p, ".html") + ".md"
-		default:
-			return whole
-		}
-		target, ok := pageRefTarget(mdPath, sourceRef, pageDir)
-		if !ok {
-			return whole
-		}
-		return attr + `="` + target + sep + fragment + `"`
-	})
+		refs[EmittedRef(mdPath, ref, false)] = true
+	}
+	for _, match := range mdLinkRE.FindAllStringSubmatch(source, -1) {
+		add(match[1])
+	}
+	for _, match := range mdRefDefRE.FindAllStringSubmatch(source, -1) {
+		add(match[1])
+	}
+	for _, match := range pageRefRE.FindAllStringSubmatch(source, -1) {
+		add(match[2])
+	}
+	return refs
 }
 
 // MdToHTMLPath converts a ".md" path to a directory-index HTML path.
