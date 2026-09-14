@@ -486,3 +486,64 @@ func TestCoverageBelowThreshold(t *testing.T) {
 		t.Error("a run that measured no coverage was reported below threshold")
 	}
 }
+
+// codelessProjectWithDescription writes a project declaring no source whose
+// selfdoc.json carries the given project description.
+func codelessProjectWithDescription(t *testing.T, description string) string {
+	t.Helper()
+	isolate(t)
+	root := t.TempDir()
+	projectConfig := configForSource()
+	if description != "" {
+		projectConfig["description"] = description
+	}
+	writeConfig(t, root, projectConfig)
+	write(t, filepath.Join(root, "docs", "index.md"),
+		"---\ndescription: A home page whose description is long enough to keep "+
+			"the description rules quiet in this fixture.\n---\n# Home\n\nWelcome.\n")
+	return root
+}
+
+func TestSEO016ForADescriptionWithNoThatClause(t *testing.T) {
+	root := codelessProjectWithDescription(t, "Builds documentation sites.")
+
+	result := checkFixture(t, root)
+
+	matching := withCode(result.Lints, "SEO016")
+	if len(matching) != 1 {
+		t.Fatalf("SEO016 count = %d, want 1: %v", len(matching), codes(result.Lints))
+	}
+	if matching[0].Severity() != "warning" {
+		t.Errorf("severity = %q, want warning", matching[0].Severity())
+	}
+	if matching[0].File() != "selfdoc.json" {
+		t.Errorf("file = %q, want selfdoc.json", matching[0].File())
+	}
+	if !strings.Contains(matching[0].Message(), "description") ||
+		!strings.Contains(matching[0].Message(), " that ") {
+		t.Errorf("the message names neither the key nor the form: %q",
+			matching[0].Message())
+	}
+}
+
+func TestSEO016ForAMissingDescription(t *testing.T) {
+	root := codelessProjectWithDescription(t, "")
+
+	result := checkFixture(t, root)
+
+	if !hasCode(result.Lints, "SEO016") {
+		t.Fatalf("SEO016 missing for a project with no description: %v",
+			codes(result.Lints))
+	}
+}
+
+func TestADescriptionWithAThatClauseIsSilent(t *testing.T) {
+	root := codelessProjectWithDescription(t,
+		"Static site generator that builds documentation from source code.")
+
+	result := checkFixture(t, root)
+
+	if hasCode(result.Lints, "SEO016") {
+		t.Error("SEO016 fired for a description written in the expected form")
+	}
+}

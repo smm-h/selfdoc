@@ -48,6 +48,10 @@ type WrapOptions struct {
 	Title string
 	// ProjectName is the project's name, shown as the sidebar's wordmark.
 	ProjectName string
+	// ProjectDescription is the project's configured description, which the
+	// document title draws on when the page's own title is the project
+	// name.
+	ProjectDescription string
 	// Version is the version shown on the badge, "" for no badge.
 	Version string
 	// CSSHref is where this page's stylesheet is, relative to the page.
@@ -166,6 +170,80 @@ type WrapOptions struct {
 	// CurrentLocale is the locale being built, for the locale picker's
 	// selected option and the locale facet.
 	CurrentLocale string
+}
+
+// documentTitleLimit is the longest a derived document title may be: past
+// roughly this length a search result's title is cut by the engine showing
+// it, so the derived form does its own cutting at a word boundary instead.
+const documentTitleLimit = 70
+
+// thatClause is what separates the thing a project IS from what it DOES in a
+// project description, which is written in the form "<thing> that <does>".
+const thatClause = " that "
+
+// DocumentTitle is what a page's <title> element carries.
+//
+// An ordinary page's title is "<page title> - <project name>". A page whose
+// own title IS the project name -- the project index page, and any page
+// titled with the name -- would otherwise render the name twice, which tells
+// a reader and a search engine nothing about the project, so its title
+// becomes "<project name> - <thing>": the part of the project's description
+// before its " that " clause. A description carrying no such clause, or no
+// description at all, leaves the project name alone as the whole title.
+//
+// The derived form is held to documentTitleLimit characters, cut at a word
+// boundary. The project name is never cut: when not even one word of the
+// thing fits beside it, the name alone is the title.
+func DocumentTitle(title, projectName, projectDescription string) string {
+	title = strings.TrimSpace(title)
+	projectName = strings.TrimSpace(projectName)
+	if projectName == "" {
+		return title
+	}
+	if title == "" {
+		return projectName
+	}
+	if title != projectName {
+		return title + " - " + projectName
+	}
+
+	thing := strings.TrimSpace(projectDescription)
+	clauseAt := strings.Index(thing, thatClause)
+	if clauseAt < 0 {
+		return projectName
+	}
+	thing = trimTitleTail(thing[:clauseAt])
+	budget := documentTitleLimit - len([]rune(projectName)) - len([]rune(" - "))
+	thing = cutAtWord(thing, budget)
+	if thing == "" || thing == projectName {
+		return projectName
+	}
+	return projectName + " - " + thing
+}
+
+// cutAtWord shortens text to at most limit runes without cutting a word in
+// half. Text with no word boundary below the limit shortens to nothing, which
+// is what makes the project name alone the answer.
+func cutAtWord(text string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	runes := []rune(text)
+	if len(runes) <= limit {
+		return text
+	}
+	cut := string(runes[:limit])
+	lastSpace := strings.LastIndex(cut, " ")
+	if lastSpace < 0 {
+		return ""
+	}
+	return trimTitleTail(cut[:lastSpace])
+}
+
+// trimTitleTail drops the whitespace and the dangling punctuation a cut can
+// leave at the end of a title.
+func trimTitleTail(text string) string {
+	return strings.TrimRight(strings.TrimSpace(text), " ,;:-")
 }
 
 // WrapPage wraps a converted body in the full HTML document.
@@ -375,8 +453,9 @@ func WrapPage(opts WrapOptions) (string, error) {
 	b.WriteString("<head>\n")
 	b.WriteString("<meta charset=\"UTF-8\">\n")
 	b.WriteString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
-	b.WriteString("<title>" + html.EscapeHTML(opts.Title) + " - " +
-		html.EscapeHTML(opts.ProjectName) + "</title>" + meta.descriptionTag + "\n")
+	b.WriteString("<title>" + html.EscapeHTML(DocumentTitle(
+		opts.Title, opts.ProjectName, opts.ProjectDescription)) +
+		"</title>" + meta.descriptionTag + "\n")
 	b.WriteString("<link rel=\"icon\" type=\"image/svg+xml\" href=\"" +
 		opts.AssetPrefix + "favicon.svg\">\n")
 	b.WriteString(meta.fontTags)

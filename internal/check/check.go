@@ -225,6 +225,22 @@ func CheckDocs(
 		}
 	}
 
+	// SEO016: the project description is what the index page's title says
+	// the project IS, and it can only say it when the description is
+	// written in the form the derivation reads -- "<thing> that <does>".
+	// A description with no such clause, or no description at all, leaves
+	// the title as the bare project name, which describes nothing.
+	if !strings.Contains(configString(projectConfig, "description", ""), " that ") {
+		result.Lints = append(result.Lints, lints.MustLintResult(
+			"selfdoc.json", nil, "SEO016",
+			"The project 'description' has no ' that ' clause, so the "+
+				"index page's title cannot say what this project is. "+
+				"Write description as \"<thing> that <does>\", for "+
+				"example \"Static site generator that builds "+
+				"documentation from source code.\"",
+		))
+	}
+
 	// LANG001: a declared source entry names a language selfdoc has no
 	// extractor for.
 	//

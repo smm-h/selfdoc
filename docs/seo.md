@@ -37,6 +37,12 @@ description: "Deploy your selfdoc site to Cloudflare Pages or GitHub Pages with 
 
 If you omit `description`, selfdoc auto-extracts the first sentence from the page body. `selfdoc check` reports SEO006 as an **error** for a missing description -- it stops the run rather than warning -- and SEO009/SEO010 as warnings for descriptions that are too short or too long (aim for 120-155 characters).
 
+### The document title
+
+A page's `<title>` is its own title followed by the project name, as in `Deployment - selfdoc`. The index page is titled with the project name and would otherwise render it twice, which tells a reader and a search engine nothing, so that page's title names the project and then says what it is.
+
+What it is comes from `description` in `selfdoc.json`: the part before its ` that ` clause, cut at a word boundary so the whole title stays at most 70 characters. A description with no such clause leaves the project name alone as the title, and `selfdoc check` reports SEO016.
+
 ### Author metadata
 
 Every page carries structured data naming who wrote it, so `selfdoc.json` must declare an `author`. It is required: a config without one is refused at load, naming the key. `name` and `url` are both mandatory, and `same_as` optionally lists the author's external identities:

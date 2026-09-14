@@ -1880,7 +1880,7 @@ for (const t of document.querySelectorAll(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>selfdoc - selfdoc</title>
+<title>selfdoc</title>
 <meta name="description" content="Build documentation sites from Markdown and source code. Directives pull live content from your codebase, so init, build and serve keep docs in sync.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preload" href="css/style.css" as="style">

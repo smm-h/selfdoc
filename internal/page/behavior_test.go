@@ -786,3 +786,82 @@ func TestInternalLinksUseDirectoryAddresses(t *testing.T) {
 		}
 	}
 }
+
+// --- The document title the head carries ---
+
+func TestDocumentTitleForAnOrdinaryPage(t *testing.T) {
+	got := DocumentTitle("Guide", "selfdoc", "A generator that builds sites.")
+	if got != "Guide - selfdoc" {
+		t.Fatalf("title = %q, want \"Guide - selfdoc\"", got)
+	}
+}
+
+func TestDocumentTitleNeverRepeatsTheProjectName(t *testing.T) {
+	got := DocumentTitle("selfdoc", "selfdoc",
+		"Code-aware static site generator that resolves directive blocks.")
+	if got == "selfdoc - selfdoc" {
+		t.Fatal("a page titled with the project name rendered the name twice")
+	}
+	if got != "selfdoc - Code-aware static site generator" {
+		t.Fatalf("title = %q, want the name followed by the thing the "+
+			"description names", got)
+	}
+}
+
+func TestDocumentTitleWithoutAThatClauseIsTheNameAlone(t *testing.T) {
+	got := DocumentTitle("selfdoc", "selfdoc", "Builds documentation sites.")
+	if got != "selfdoc" {
+		t.Fatalf("title = %q, want \"selfdoc\"", got)
+	}
+	if empty := DocumentTitle("selfdoc", "selfdoc", ""); empty != "selfdoc" {
+		t.Fatalf("title with no description = %q, want \"selfdoc\"", empty)
+	}
+}
+
+func TestDocumentTitleStaysWithinSeventyCharacters(t *testing.T) {
+	got := DocumentTitle("longproject", "longproject",
+		"A very long and thoroughly overqualified documentation generator "+
+			"for source trees that does many things at once.")
+	if runeCount := len([]rune(got)); runeCount > 70 {
+		t.Fatalf("title = %q is %d chars, want at most 70", got, runeCount)
+	}
+	if !strings.HasPrefix(got, "longproject - ") {
+		t.Fatalf("title = %q must keep the whole project name", got)
+	}
+	if strings.HasSuffix(got, "-") || strings.HasSuffix(got, " ") {
+		t.Fatalf("title = %q must not end mid-separator", got)
+	}
+	for _, word := range strings.Fields(strings.TrimPrefix(got, "longproject - ")) {
+		if !strings.Contains(
+			"A very long and thoroughly overqualified documentation generator "+
+				"for source trees", word) {
+			t.Fatalf("title = %q cut a word in half", got)
+		}
+	}
+}
+
+func TestTheProjectIndexPageTitleNamesWhatTheProjectIs(t *testing.T) {
+	rendered := wrapForTest(t, func(opts *WrapOptions) {
+		opts.Title = "TestProject"
+		opts.ProjectDescription = "A documentation engine that reads source code."
+	})
+	if strings.Contains(rendered, "<title>TestProject - TestProject</title>") {
+		t.Fatal("the index page rendered the project name twice")
+	}
+	if !strings.Contains(rendered,
+		"<title>TestProject - A documentation engine</title>") {
+		t.Fatalf("the head's title is not the derived one: %s",
+			titleOf(t, rendered))
+	}
+}
+
+// titleOf returns what a rendered document's title element carries.
+func titleOf(t *testing.T, rendered string) string {
+	t.Helper()
+	start := strings.Index(rendered, "<title>")
+	end := strings.Index(rendered, "</title>")
+	if start < 0 || end < 0 {
+		t.Fatal("the rendered document carries no title element")
+	}
+	return rendered[start+len("<title>") : end]
+}
