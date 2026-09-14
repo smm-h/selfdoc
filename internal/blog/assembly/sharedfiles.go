@@ -334,6 +334,19 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		written = append(written, sitePath(opts.SiteDir, rel))
 	}
 
+	// And, over the same pages, the rule that a link a reader clicks stays
+	// inside whatever mount the tree is served from. A page that addresses
+	// this site by its own base works on production and silently leaves a
+	// preview or a mirror; the verification below refuses the whole tree over
+	// one, including pages this deploy did not write.
+	relativized, err := RelativizeSiteLinks(opts.SiteDir, canonicalBase, pages, h)
+	if err != nil {
+		return nil, err
+	}
+	for _, rel := range relativized {
+		written = append(written, sitePath(opts.SiteDir, rel))
+	}
+
 	return written, nil
 }
 

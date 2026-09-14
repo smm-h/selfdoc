@@ -503,3 +503,43 @@ func TestAPagesOwnReferenceSurroundingAnExemptElementIsStillChecked(t *testing.T
 		t.Errorf("message = %q", results[0].Message())
 	}
 }
+
+// -- rewriting the references a reader clicks -------------------------------
+
+// The rewriter and the check have to recognise the same elements, or a tree
+// repaired by one still fails the other.
+func TestRewriteNavigationReferencesTouchesOnlyClickableReferences(t *testing.T) {
+	page := `<link rel="canonical" href="` + base + `/guide/">` +
+		`<a class="nav" href="` + base + `/blog/" data-x="1">Posts</a>` +
+		`<img src="` + base + `/og.png">` +
+		`<button data-share-url="` + base + `/guide/">Share</button>` +
+		`<a href="../other/">Other</a>`
+
+	got := RewriteNavigationReferences(page, func(ref string) (string, bool) {
+		rest, ours := SiteRelativePath(ref, base)
+		if !ours {
+			return "", false
+		}
+		return "../" + strings.TrimSuffix(rest, "index.html"), true
+	})
+
+	want := `<link rel="canonical" href="` + base + `/guide/">` +
+		`<a class="nav" href="../blog/" data-x="1">Posts</a>` +
+		`<img src="` + base + `/og.png">` +
+		`<button data-share-url="` + base + `/guide/">Share</button>` +
+		`<a href="../other/">Other</a>`
+	if got != want {
+		t.Fatalf("RewriteNavigationReferences =\n%s\nwant\n%s", got, want)
+	}
+}
+
+// A page nothing answers for comes back byte-identical, so a caller can
+// compare and skip the write.
+func TestRewriteNavigationReferencesLeavesAPageItAnswersNothingForAlone(t *testing.T) {
+	page := `<a href="../guide/">Guide</a><a href="https://elsewhere.example/">Away</a>`
+	if got := RewriteNavigationReferences(page, func(string) (string, bool) {
+		return "", false
+	}); got != page {
+		t.Fatalf("RewriteNavigationReferences = %q, want the page unchanged", got)
+	}
+}

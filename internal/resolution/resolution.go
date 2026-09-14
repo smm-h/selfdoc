@@ -202,6 +202,43 @@ func NavigationReferences(pageHTML string) []string {
 	return refs
 }
 
+// RewriteNavigationReferences returns pageHTML with every <a href> value the
+// rewrite function answers for replaced by what it answered.
+//
+// rewrite is handed each reference as it is written in the attribute, and
+// returns the replacement plus whether it has one; a false second result
+// leaves the attribute exactly as it was, escaping included.
+//
+// It is here, rather than beside its caller, so that the repair a tree gets
+// and the rule this package enforces read the same elements: an <a href> is
+// what a reader clicks, and anything that rewrites those has to recognise them
+// the way the check does or the two drift apart.
+func RewriteNavigationReferences(
+	pageHTML string, rewrite func(ref string) (string, bool),
+) string {
+	matches := anchorHrefRE.FindAllStringSubmatchIndex(pageHTML, -1)
+	if len(matches) == 0 {
+		return pageHTML
+	}
+	var b strings.Builder
+	written := 0
+	for _, match := range matches {
+		start, end := match[2], match[3]
+		replacement, ok := rewrite(pageHTML[start:end])
+		if !ok {
+			continue
+		}
+		b.WriteString(pageHTML[written:start])
+		b.WriteString(replacement)
+		written = end
+	}
+	if written == 0 {
+		return pageHTML
+	}
+	b.WriteString(pageHTML[written:])
+	return b.String()
+}
+
 // blankOriginHints blanks every origin-only resource hint, keeping every other
 // offset.
 //
