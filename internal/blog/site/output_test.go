@@ -231,7 +231,7 @@ func TestCollectSiteFilesAddressesTheProjectsSubtree(t *testing.T) {
 	output := filepath.Join(t.TempDir(), "docs", "_build")
 	write(t, filepath.Join(output, "index.html"), "<html>index</html>")
 	write(t, filepath.Join(output, "guide", "index.html"), "<html>guide</html>")
-	files, err := CollectSiteFiles(output, "alpha")
+	files, err := CollectSiteFiles(output, "alpha", false)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestCollectSiteFilesSendsAPostToTheSiteLevelBlog(t *testing.T) {
 	output := filepath.Join(t.TempDir(), "docs", "_build")
 	write(t, filepath.Join(output, "index.html"), "<html>index</html>")
 	write(t, filepath.Join(output, "blog", "hello", "index.html"), "<html>hello</html>")
-	files, err := CollectSiteFiles(output, "alpha")
+	files, err := CollectSiteFiles(output, "alpha", false)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestCollectSiteFilesDropsTheProjectsOwnBlogListing(t *testing.T) {
 	output := filepath.Join(t.TempDir(), "docs", "_build")
 	write(t, filepath.Join(output, "blog", "index.html"), "<html>listing</html>")
 	write(t, filepath.Join(output, "blog", "hello", "index.html"), "<html>hello</html>")
-	files, err := CollectSiteFiles(output, "alpha")
+	files, err := CollectSiteFiles(output, "alpha", false)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestCollectSiteFilesReadsContentAsBytes(t *testing.T) {
 	if err := writeBytes(filepath.Join(output, "logo.png"), pngBytes); err != nil {
 		t.Fatalf("write png: %v", err)
 	}
-	files, err := CollectSiteFiles(output, "alpha")
+	files, err := CollectSiteFiles(output, "alpha", false)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestCollectSiteFilesAppliesTheDeployArtifactExclusions(t *testing.T) {
 	write(t, filepath.Join(output, "_headers"), "/*\n")
 	write(t, filepath.Join(output, "_redirects"), "/* /x 200\n")
 	write(t, filepath.Join(output, "index.html.gz"), "z")
-	files, err := CollectSiteFiles(output, "alpha")
+	files, err := CollectSiteFiles(output, "alpha", false)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}

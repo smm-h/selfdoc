@@ -10,6 +10,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
@@ -38,10 +39,10 @@ func HomeListingPath(dirPath string, cfg map[string]any) string {
 // deploy, run here so the home project's own build output is correct on its
 // own.
 //
-// The project's selfdoc.json is loaded here rather than taken as an argument:
-// the config this build runs on is not the document on disk, since the
-// site-level directives are registered into it, and the one place that
-// registration belongs is here.
+// The project's selfdoc.json is loaded here rather than taken as an argument,
+// because this entry point's whole input is a directory: the checkout and the
+// assembly's manifests directory. A caller that already holds both the config
+// and the assembly's manifests calls [BuildHome].
 func BuildHomeProject(
 	dirPath string,
 	siteManifests string,
@@ -71,41 +72,62 @@ func BuildHomeProject(
 	if err != nil {
 		return nil, err
 	}
+	manifests, err := site.LoadAssemblyManifests(siteManifests)
+	if err != nil {
+		return nil, err
+	}
+	context, err := HomeContext(dirPath, cfg, manifests)
+	if err != nil {
+		return nil, err
+	}
+	return BuildHome(dirPath, cfg, context, theme, includeDrafts, h)
+}
 
+// HomeContext is the site context the home project's directives resolve
+// against: the assembly's manifests, and the listing this project curates.
+//
+// The listing is read from the project's own docs/projects.toml rather than
+// from the copy the assembly keeps, because that file is the authored source
+// and the copy is what a deploy wrote from it. A build and a check of the same
+// working tree therefore answer from the same document.
+func HomeContext(
+	dirPath string,
+	cfg map[string]any,
+	manifests []map[string]any,
+) (SiteContext, error) {
 	var curated *listing.Listing
 	listingPath := HomeListingPath(dirPath, cfg)
 	if info, err := os.Stat(listingPath); err == nil && info.Mode().IsRegular() {
 		loaded, err := listing.Load(listingPath)
 		if err != nil {
-			return nil, err
+			return SiteContext{}, err
 		}
 		curated = &loaded
 	}
-
-	manifests, err := site.LoadAssemblyManifests(siteManifests)
-	if err != nil {
-		return nil, err
-	}
-	context := SiteContext{
+	return SiteContext{
 		Manifests: manifests,
 		Listing:   curated,
 		HomeSlug:  util.PythonStrOrEmpty(topology(cfg)["slug"]),
-	}
+	}, nil
+}
 
-	buildConfig := make(map[string]any, len(cfg)+1)
-	for key, value := range cfg {
-		buildConfig[key] = value
-	}
-	declared := map[string]any{}
-	if own, isObject := cfg["directives"].(map[string]any); isObject {
-		for name, script := range own {
-			declared[name] = script
-		}
-	}
-	for name, directive := range Directives(&context) {
-		declared[name] = directive
-	}
-	buildConfig["directives"] = declared
+// BuildHome builds the home project with an already-resolved site context.
+//
+// This is [BuildHomeProject] without the directory read: a caller that got the
+// assembly's manifests from somewhere other than a checkout -- the Git Data
+// API, say -- has the context already and builds through here.
+//
+// The site-level directives are registered into the config the build runs on
+// rather than into the document on disk, which stays a document.
+func BuildHome(
+	dirPath string,
+	cfg map[string]any,
+	context SiteContext,
+	theme string,
+	includeDrafts bool,
+	h *effects.Handle,
+) (map[string]bool, error) {
+	buildConfig := RegisterSiteDirectives(cfg, Directives(&context))
 
 	written, err := build.Build(build.Options{
 		DirPath:       dirPath,
@@ -127,6 +149,36 @@ func BuildHomeProject(
 		return nil, err
 	}
 	return written, nil
+}
+
+// RegisterSiteDirectives returns cfg with registered added to its "directives"
+// mapping, leaving cfg itself alone.
+//
+// A name the project declares for itself wins: the config document is the
+// project's own declaration, and a registration that overwrote it would
+// silently replace a script the author wrote.
+func RegisterSiteDirectives(
+	cfg map[string]any,
+	registered map[string]resolver.BuiltinDirective,
+) map[string]any {
+	merged := make(map[string]any, len(cfg)+1)
+	for key, value := range cfg {
+		merged[key] = value
+	}
+	declared := map[string]any{}
+	if own, isObject := cfg["directives"].(map[string]any); isObject {
+		for name, script := range own {
+			declared[name] = script
+		}
+	}
+	for name, directive := range registered {
+		if _, taken := declared[name]; taken {
+			continue
+		}
+		declared[name] = directive
+	}
+	merged["directives"] = declared
+	return merged
 }
 
 // topology is the config's topology block, or an empty one when it declares

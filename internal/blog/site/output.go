@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/address"
+	"github.com/smm-h/selfdoc/internal/blog/listing"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -567,13 +568,14 @@ func ProjectPaths(paths []string, slug string, claimed []string) []string {
 // per-project deploy artifacts the deploy filters out are filtered here -- see
 // [BuildOutputPaths] -- and the output is split the same way a deploy splits
 // it, so a locally built post lands on the site-level blog rather than inside
-// the project's subtree. See [SplitBuildOutput].
-func CollectSiteFiles(outputDir, slug string) (map[string][]byte, error) {
+// the project's subtree, and the home project's pages land at the site root.
+// See [SplitBuildOutput].
+func CollectSiteFiles(outputDir, slug string, home bool) (map[string][]byte, error) {
 	rels, err := BuildOutputPaths(outputDir, true)
 	if err != nil {
 		return nil, err
 	}
-	produced := SplitBuildOutput(rels, slug, false)
+	produced := SplitBuildOutput(rels, slug, home)
 	buildRels := make([]string, 0, len(produced))
 	for buildRel := range produced {
 		buildRels = append(buildRels, buildRel)
@@ -588,4 +590,31 @@ func CollectSiteFiles(outputDir, slug string) (map[string][]byte, error) {
 		files["site/"+produced[buildRel]] = content
 	}
 	return files, nil
+}
+
+// HomeListingSidecar returns where the home project's curated listing belongs
+// in the assembly and the bytes to put there.
+//
+// The listing is authored in the home project ("docs/projects.toml") because
+// it is content, and it is copied into the assembly because both renderings of
+// it -- the front page's cards and the generated "/projects/" page -- are
+// produced on every deploy, including deploys the home project has nothing to
+// do with.
+//
+// A home project that declares no listing is a real state and returns an empty
+// path; a malformed one is a hard error naming the file, reported here rather
+// than at the far end where the document is no longer in reach.
+func HomeListingSidecar(sourceDir, slug string) (string, []byte, error) {
+	source := filepath.Join(sourceDir,
+		filepath.Join(strings.Split(listing.SourceFile, "/")...))
+	info, err := os.Stat(source)
+	if err != nil || !info.Mode().IsRegular() {
+		return "", nil, nil
+	}
+	curated, err := listing.Load(source)
+	if err != nil {
+		return "", nil, err
+	}
+	return "manifests/" + slug + listing.SidecarSuffix,
+		[]byte(listing.RenderSidecar(curated, slug)), nil
 }

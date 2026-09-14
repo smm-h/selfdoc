@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/smm-h/selfdoc/internal/blog/shared"
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -40,6 +41,13 @@ type PublishOptions struct {
 	// Branch is the assembly branch to commit to. Empty means
 	// [DefaultBranch].
 	Branch string
+	// Home routes the documentation to the site root instead of to the
+	// project's own subtree, which is the whole of what being the home
+	// project changes about a publish. See [site.SplitBuildOutput].
+	Home bool
+	// SourceDir is the project's checkout, read for the one file only the
+	// home project has: its curated listing. Empty publishes none.
+	SourceDir string
 }
 
 // PublishProjectDocs pushes a locally built documentation site into the
@@ -83,12 +91,27 @@ func PublishProjectDocs(opts PublishOptions, h *effects.Handle) (*PublishSummary
 	if err != nil {
 		return nil, err
 	}
-	split := site.SplitBuildOutput(buildRels, opts.Slug, false)
+	split := site.SplitBuildOutput(buildRels, opts.Slug, opts.Home)
 	produced := make([]string, 0, len(split))
 	for _, siteRel := range split {
 		produced = append(produced, siteRel)
 	}
 	sort.Strings(produced)
+
+	// The home project emits at the site root, where the assembly's own
+	// generated listing, blog and archives live. A page claiming one of those
+	// addresses is refused here, as the integrate graft refuses it.
+	if opts.Home {
+		docs := make([]string, 0, len(produced))
+		for _, rel := range produced {
+			if strings.Split(rel, "/")[0] != shared.PostsSegment {
+				docs = append(docs, rel)
+			}
+		}
+		if err := site.CheckHomeCollisions(docs, opts.Slug); err != nil {
+			return nil, err
+		}
+	}
 
 	// A full documentation build carries the project's posts too, and a post
 	// is site-level: it addresses "blog/<post-slug>/" with no project segment,
@@ -102,9 +125,24 @@ func PublishProjectDocs(opts PublishOptions, h *effects.Handle) (*PublishSummary
 		return nil, err
 	}
 
-	files, err := site.CollectSiteFiles(opts.OutputDir, opts.Slug)
+	files, err := site.CollectSiteFiles(opts.OutputDir, opts.Slug, opts.Home)
 	if err != nil {
 		return nil, err
+	}
+
+	// Both renderings of the curated listing -- the front page's cards and
+	// the generated "/projects/" page -- are produced on every deploy,
+	// including deploys the home project has nothing to do with, so the
+	// listing travels with its documentation. A home project that declares
+	// none leaves no sidecar.
+	if opts.Home && opts.SourceDir != "" {
+		sidecar, content, err := site.HomeListingSidecar(opts.SourceDir, opts.Slug)
+		if err != nil {
+			return nil, err
+		}
+		if sidecar != "" {
+			files[sidecar] = content
+		}
 	}
 
 	deletePaths, err := site.StagePublishedRecord(

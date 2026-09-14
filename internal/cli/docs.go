@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/blog/assembly"
+	"github.com/smm-h/selfdoc/internal/blog/sitedirectives"
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/strictcli/go/strictcli"
@@ -47,12 +49,43 @@ func (c *cli) cmdPublishDocs(ctx *strictcli.Context, kwargs map[string]any) stri
 
 	version, _ := cfg["version"].(string)
 	if version == "" {
-		version = util.DetectProjectVersion(dir, "0.0.0")
+		if config.IsUnversioned(cfg) {
+			version = config.UnversionedVersion
+		} else {
+			version = util.DetectProjectVersion(dir, "0.0.0")
+		}
 	}
 
+	// Whether this project is the assembly's home project decides both how it
+	// is built and where its pages land, so the roster is read before either.
+	// A publish reads it again inside [assembly.PublishProjectDocs], for the
+	// membership it may not create and the posts it may not overwrite; this
+	// read is the one the build needs.
+	roster, err := assembly.LoadRemoteRoster(handle, repo)
+	if err != nil {
+		return c.fail(err)
+	}
+	home := slug == roster.Home
+
 	// The same build the deploy runs on a cloned checkout, run here on the
-	// working tree.
-	if err := assembly.BuildSourceProject(assembly.BuildOptions{
+	// working tree. The home project builds through the one build that can
+	// resolve a site-level directive, against the assembly's own manifests --
+	// read off the repository, since this publisher never clones it.
+	if home {
+		manifests, err := assembly.FetchRemoteManifests(handle, repo, "")
+		if err != nil {
+			return c.fail(err)
+		}
+		context, err := sitedirectives.HomeContext(dir, cfg, manifests)
+		if err != nil {
+			return c.fail(err)
+		}
+		if _, err := sitedirectives.BuildHome(
+			dir, cfg, context, "", false, handle,
+		); err != nil {
+			return c.fail(err)
+		}
+	} else if err := assembly.BuildSourceProject(assembly.BuildOptions{
 		SourceDir: dir,
 		Scope:     "full",
 	}, handle); err != nil {
@@ -72,6 +105,8 @@ func (c *cli) cmdPublishDocs(ctx *strictcli.Context, kwargs map[string]any) stri
 		OutputDir:    outputDir,
 		Version:      version,
 		ManifestPath: filepath.Join(dir, ".selfdoc", "manifest.json"),
+		Home:         home,
+		SourceDir:    dir,
 	}, handle)
 	if err != nil {
 		return c.fail(err)

@@ -67,47 +67,77 @@ func MergePostLists(basePosts, overlayPosts []any) []any {
 // [manifest.Compat] still runs on every one, which is what refuses a document
 // in a format this reader does not know.
 func LoadAssemblyManifests(manifestsDir string) ([]map[string]any, error) {
-	baseManifests := make([]map[string]any, 0)
-	postOverlays := make([]map[string]any, 0)
+	documents := map[string][]byte{}
 	info, err := os.Stat(manifestsDir)
 	if err == nil && info.IsDir() {
 		entries, err := os.ReadDir(manifestsDir)
 		if err != nil {
 			return nil, err
 		}
-		names := make([]string, 0, len(entries))
 		for _, entry := range entries {
-			names = append(names, entry.Name())
+			name := entry.Name()
+			if !IsManifestDocument(name) {
+				continue
+			}
+			content, err := os.ReadFile(filepath.Join(manifestsDir, name))
+			if err != nil {
+				return nil, err
+			}
+			documents[name] = content
 		}
-		sort.Strings(names)
-		for _, name := range names {
-			if !strings.HasSuffix(name, ".json") {
-				continue
-			}
-			if hasAnySuffix(name, ManifestSidecarSuffixes) {
-				continue
-			}
-			fpath := filepath.Join(manifestsDir, name)
-			content, err := os.ReadFile(fpath)
-			if err != nil {
-				return nil, err
-			}
-			decoded, err := config.DecodeDocument(content)
-			if err != nil {
-				return nil, errorf("%s is not valid JSON: %v", fpath, err)
-			}
-			data, ok := asTable(decoded)
-			if !ok {
-				return nil, errorf("%s must contain a JSON object", fpath)
-			}
-			if _, err := manifest.Compat(data, fpath); err != nil {
-				return nil, err
-			}
-			if strings.HasSuffix(name, "-posts.json") {
-				postOverlays = append(postOverlays, data)
-			} else {
-				baseManifests = append(baseManifests, data)
-			}
+	}
+	return ManifestsFromDocuments(documents, manifestsDir)
+}
+
+// IsManifestDocument reports whether a file name under manifests/ is one of
+// the per-project manifests rather than a sidecar.
+//
+// The rule is one place because two readers ask it: the directory read, and
+// the reader that asks a remote assembly for the same set over the Git Data
+// API and has no directory to walk.
+func IsManifestDocument(name string) bool {
+	return strings.HasSuffix(name, ".json") &&
+		!hasAnySuffix(name, ManifestSidecarSuffixes)
+}
+
+// ManifestsFromDocuments returns the assembly's per-project manifests, decoded
+// from documents keyed by their file name under manifests/, with post overlays
+// applied.
+//
+// This is what [LoadAssemblyManifests] is in terms of, and what a caller that
+// read the same documents off a remote assembly calls with the bytes it
+// fetched. source names where the documents came from, for the diagnostics.
+func ManifestsFromDocuments(
+	documents map[string][]byte,
+	source string,
+) ([]map[string]any, error) {
+	baseManifests := make([]map[string]any, 0)
+	postOverlays := make([]map[string]any, 0)
+	names := make([]string, 0, len(documents))
+	for name := range documents {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if !IsManifestDocument(name) {
+			continue
+		}
+		where := filepath.Join(source, name)
+		decoded, err := config.DecodeDocument(documents[name])
+		if err != nil {
+			return nil, errorf("%s is not valid JSON: %v", where, err)
+		}
+		data, ok := asTable(decoded)
+		if !ok {
+			return nil, errorf("%s must contain a JSON object", where)
+		}
+		if _, err := manifest.Compat(data, where); err != nil {
+			return nil, err
+		}
+		if strings.HasSuffix(name, "-posts.json") {
+			postOverlays = append(postOverlays, data)
+		} else {
+			baseManifests = append(baseManifests, data)
 		}
 	}
 

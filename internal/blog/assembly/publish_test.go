@@ -443,3 +443,67 @@ func TestAGenuine404IsStillAFirstPublish(t *testing.T) {
 		t.Fatalf("the record claims %v", record["docs"])
 	}
 }
+
+// -- the home project --------------------------------------------------------
+
+// publishHome runs a documentation publish for the roster's home project.
+func publishHome(t *testing.T, output, sourceDir string) (*PublishSummary, error) {
+	t.Helper()
+	return PublishProjectDocs(PublishOptions{
+		Repo:      testRepo,
+		Slug:      "home",
+		OutputDir: output,
+		Version:   "1.0.0",
+		Home:      true,
+		SourceDir: sourceDir,
+	}, effects.Unbound())
+}
+
+// The home project's content root IS the site root. Publishing it under its
+// own slug would leave the site root serving whatever was there before, with
+// the front page addressable only at /home/.
+func TestPublishingTheHomeProjectAddressesTheSiteRoot(t *testing.T) {
+	gh := publishFixture(t, nil)
+	if _, err := publishHome(t, buildTree(t), ""); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if got := gh.Text("site/index.html"); got != "<html>index.html</html>" {
+		t.Fatalf("the site root holds %q", got)
+	}
+	if _, taken := gh.Content("site/home/index.html"); taken {
+		t.Fatal("the home project was published under its own slug as well")
+	}
+}
+
+// The site root is shared with the assembly's own generated pages, so an
+// address the assembly owns is refused rather than overwritten.
+func TestPublishingTheHomeProjectRefusesAReservedAddress(t *testing.T) {
+	publishFixture(t, nil)
+	output := buildTree(t)
+	writeBuildFile(t, output, "projects/index.html", []byte("<html>mine</html>"))
+	_, err := publishHome(t, output, "")
+	if err == nil {
+		t.Fatal("a reserved address was published")
+	}
+	if !strings.Contains(err.Error(), "projects/index.html") {
+		t.Errorf("the refusal does not name the address: %v", err)
+	}
+}
+
+// Both renderings of the curated listing are produced on every deploy,
+// including deploys the home project has nothing to do with, so its listing
+// travels with its documentation.
+func TestPublishingTheHomeProjectCarriesItsCuratedListing(t *testing.T) {
+	gh := publishFixture(t, nil)
+	source := t.TempDir()
+	writeBuildFile(t, filepath.Join(source, "docs"), "projects.toml",
+		[]byte("[[category]]\nname = \"Frameworks\"\n"+
+			"[[category.project]]\nslug = \"alpha\"\nblurb = \"Does it.\"\n"))
+	if _, err := publishHome(t, buildTree(t), source); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	sidecar := gh.Text("manifests/home-listing.json")
+	if !strings.Contains(sidecar, "Does it.") {
+		t.Fatalf("the assembly holds no curated listing for the home project: %q", sidecar)
+	}
+}

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/smm-h/selfdoc/internal/blog/listing"
 	"github.com/smm-h/selfdoc/internal/blog/shared"
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/effects"
@@ -233,17 +232,12 @@ func ApplyProjectFiles(opts GraftOptions, h *effects.Handle) ([]string, error) {
 //
 // It returns the sidecar's path, or "" when there was nothing to copy.
 func CopyHomeListing(assemblyDir, sourceDir, slug string, h *effects.Handle) (string, error) {
-	source := filepath.Join(sourceDir, filepath.Join(strings.Split(listing.SourceFile, "/")...))
-	if !isFile(source) {
-		return "", nil
-	}
-	curated, err := listing.Load(source)
-	if err != nil {
+	rel, content, err := site.HomeListingSidecar(sourceDir, slug)
+	if err != nil || rel == "" {
 		return "", err
 	}
-	manifestsDir := filepath.Join(assemblyDir, "manifests")
-	path := site.ListingSidecarPath(manifestsDir, slug)
-	if err := h.Write(path, []byte(listing.RenderSidecar(curated, slug)), effects.ModeDefault); err != nil {
+	path := filepath.Join(assemblyDir, filepath.Join(strings.Split(rel, "/")...))
+	if err := h.Write(path, content, effects.ModeDefault); err != nil {
 		return "", err
 	}
 	return path, nil

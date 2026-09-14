@@ -193,3 +193,48 @@ func sortedKeys(attrs map[string]string) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// LazyDirectives returns the site-level directive registration bound to a
+// context resolved on first use.
+//
+// A caller that would have to reach the network to answer these directives
+// registers through here rather than through [Directives]: the read happens
+// when a page actually carries one of the markers, and a project whose pages
+// carry none pays nothing. resolve is called at most once, and its answer --
+// value or error -- is what every marker on every page of that run sees.
+//
+// A resolve that fails names the directive it failed to answer, because the
+// reader of the diagnostic is looking at a page that carries a marker, not at
+// a command that fetched something.
+func LazyDirectives(
+	resolve func() (*SiteContext, error),
+) map[string]resolver.BuiltinDirective {
+	var (
+		once     bool
+		resolved *SiteContext
+		failure  error
+	)
+	answer := func() (*SiteContext, error) {
+		if !once {
+			once = true
+			resolved, failure = resolve()
+		}
+		return resolved, failure
+	}
+	registered := make(map[string]resolver.BuiltinDirective, len(SiteDirectives))
+	for _, name := range SiteDirectives {
+		directive := name
+		registered[directive] = func(attrs map[string]string, body []string) (string, error) {
+			context, err := answer()
+			if err != nil {
+				return "", errorf(
+					"directive '%s' is site-level and could not be "+
+						"resolved: %s",
+					directive, err,
+				)
+			}
+			return ResolveForBuild(directive, attrs, context)
+		}
+	}
+	return registered
+}

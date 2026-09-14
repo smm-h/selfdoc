@@ -1,12 +1,18 @@
 package cli
 
 import (
+	"fmt"
+
+	"github.com/smm-h/selfdoc/internal/blog/assembly"
+	"github.com/smm-h/selfdoc/internal/blog/sitedirectives"
 	"github.com/smm-h/selfdoc/internal/blog/unifiedcheck"
 	"github.com/smm-h/selfdoc/internal/check"
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/gitcommit"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/payloadschemas"
+	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
@@ -55,7 +61,10 @@ func (c *cli) cmdCheck(ctx *strictcli.Context, kwargs map[string]any) strictcli.
 	if cfg != nil && cfg["unified"] != nil {
 		result, err = unifiedcheck.CheckUnified(cfg, c.dir(), false, handle)
 	} else {
-		result, err = check.CheckDocs(c.dir(), cfg, false, "", versionOverride, handle)
+		result, err = check.CheckDocs(
+			c.dir(), c.withSiteDirectives(cfg, handle), false, "",
+			versionOverride, handle,
+		)
 	}
 	if err != nil {
 		return c.fail(err)
@@ -105,4 +114,58 @@ func (c *cli) cmdCheck(ctx *strictcli.Context, kwargs map[string]any) strictcli.
 		return strictcli.Exit(1)
 	}
 	return strictcli.Exit(0)
+}
+
+// withSiteDirectives returns cfg with the site-level directives registered
+// against the assembly this project belongs to.
+//
+// A page of the assembly's home project carries markers that render from the
+// whole assembled site -- the curated listing with every project's live
+// version, the recent posts across every project -- and no project's own
+// repository holds that state. The build that publishes such a page is handed
+// the assembly's manifests; a check has to go and read them, which is what the
+// registration below does the first time a page actually carries one of the
+// markers. A project whose pages carry none never reaches the assembly at all.
+//
+// Every refusal is the directive's, naming it: a project with no 'assembly'
+// block to read from, a project the assembly's roster does not name as its
+// home, and a read that failed.
+func (c *cli) withSiteDirectives(cfg config.Config, handle *effects.Handle) config.Config {
+	resolve := func() (*sitedirectives.SiteContext, error) {
+		repo := configString(cfg, "assembly", "repo")
+		if repo == "" {
+			return nil, fmt.Errorf(
+				"it renders from an assembled site's manifests, and this " +
+					"project's selfdoc.json declares no 'assembly' block, so " +
+					"there is no assembly to read them from. Declare " +
+					`"assembly": {"repo": "<owner>/<repo>"} if this project ` +
+					"is the assembly's home project; otherwise the marker " +
+					"belongs on that project's pages, not on these",
+			)
+		}
+		slug := configString(cfg, "topology", "slug")
+		roster, err := assembly.LoadRemoteRoster(handle, repo)
+		if err != nil {
+			return nil, err
+		}
+		if slug == "" || slug != roster.Home {
+			return nil, fmt.Errorf(
+				"only the assembly's home project carries it, and %s names "+
+					"%s as its home project while this one is %s",
+				repo, util.PythonRepr(roster.Home), util.PythonRepr(slug),
+			)
+		}
+		manifests, err := assembly.FetchRemoteManifests(handle, repo, "")
+		if err != nil {
+			return nil, err
+		}
+		context, err := sitedirectives.HomeContext(c.dir(), cfg, manifests)
+		if err != nil {
+			return nil, err
+		}
+		return &context, nil
+	}
+	return sitedirectives.RegisterSiteDirectives(
+		cfg, sitedirectives.LazyDirectives(resolve),
+	)
 }

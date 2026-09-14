@@ -231,3 +231,44 @@ func RemotePostClaims(
 	}
 	return claims, nil
 }
+
+// FetchRemoteManifests returns the assembly's per-project manifests, read off
+// the repository through the Git Data API.
+//
+// It is the remote counterpart of [site.LoadAssemblyManifests], for the
+// publishers and checks that never clone the assembly. The home project's
+// pages render from these -- a version badge and a post highlight come from no
+// project's own repository -- so a command that builds or checks the home
+// project reads them from the assembly itself.
+//
+// Only the per-project manifests are fetched: the sidecars beside them
+// (published-file records, revision sidecars, the listing copy) are not
+// manifests, and asking for each one is an API read that answers nothing.
+func FetchRemoteManifests(
+	h *effects.Handle,
+	repo, branch string,
+) ([]map[string]any, error) {
+	if branch == "" {
+		branch = DefaultBranch
+	}
+	paths, err := ListRemotePaths(h, repo, branch)
+	if err != nil {
+		return nil, err
+	}
+	documents := map[string][]byte{}
+	for _, path := range paths {
+		name, ok := strings.CutPrefix(path, "manifests/")
+		if !ok || strings.Contains(name, "/") || !site.IsManifestDocument(name) {
+			continue
+		}
+		text, err := FetchRemoteText(
+			h, repo, path, false,
+			"read the assembly's manifests on "+repo,
+		)
+		if err != nil {
+			return nil, err
+		}
+		documents[name] = []byte(text)
+	}
+	return site.ManifestsFromDocuments(documents, repo+":manifests")
+}
