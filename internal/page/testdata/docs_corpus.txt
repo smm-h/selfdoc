@@ -1898,13 +1898,13 @@ for (const t of document.querySelectorAll(
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "SoftwareSourceCode", "name": "selfdoc", "programmingLanguage": ["markdown", "json", "bash"], "codeRepository": "https://github.com/smm-h/selfdoc"}
 </script>
-<meta property="og:title" content="selfdoc - selfdoc">
+<meta property="og:title" content="selfdoc">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="selfdoc">
 <meta property="og:locale" content="en_US">
 <meta property="og:description" content="Build documentation sites from Markdown and source code. Directives pull live content from your codebase, so init, build and serve keep docs in sync.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="selfdoc - selfdoc">
+<meta name="twitter:title" content="selfdoc">
 <meta name="twitter:description" content="Build documentation sites from Markdown and source code. Directives pull live content from your codebase, so init, build and serve keep docs in sync.">
 <meta property="og:image" content="https://selfdoc.smmh.dev/og-index.png">
 <meta property="og:image:type" content="image/png">

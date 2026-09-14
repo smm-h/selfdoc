@@ -92,6 +92,10 @@ type SEOOptions struct {
 	Author map[string]any
 	// ProjectName is the project's name.
 	ProjectName string
+	// ProjectDescription is the project's configured description, which the
+	// social titles draw on through [DocumentTitle] when the page's own
+	// title is the project name.
+	ProjectDescription string
 	// Repo is the repository URL, which the SoftwareSourceCode entity names
 	// as the code repository.
 	Repo string
@@ -143,7 +147,11 @@ func RenderSEOTags(opts SEOOptions) (seoTags string, securityMeta string, err er
 	if ub == nil && opts.BaseURL != "" {
 		ub = urls.NewSimpleURLBuilder(opts.BaseURL)
 	}
-	escapedTitle := html.EscapeHTML(opts.Title)
+	// The social titles carry the document title itself -- the same string
+	// the head's title element renders -- so a page titled with the project
+	// name never publishes the name twice.
+	escapedDocumentTitle := html.EscapeHTML(DocumentTitle(
+		opts.Title, opts.ProjectName, opts.ProjectDescription))
 	escapedProject := html.EscapeHTML(opts.ProjectName)
 
 	// The canonical is the stable address, from every version including the
@@ -468,15 +476,15 @@ func RenderSEOTags(opts SEOOptions) (seoTags string, securityMeta string, err er
 			ogLocale = effectiveLang + "_" + strings.ToUpper(effectiveLang)
 		}
 
-		b.WriteString("\n<meta property=\"og:title\" content=\"" + escapedTitle +
-			" - " + escapedProject + "\">" +
+		b.WriteString("\n<meta property=\"og:title\" content=\"" +
+			escapedDocumentTitle + "\">" +
 			"\n<meta property=\"og:type\" content=\"" + ogType + "\">" +
 			"\n<meta property=\"og:site_name\" content=\"" + escapedProject + "\">" +
 			"\n<meta property=\"og:locale\" content=\"" + ogLocale + "\">" +
 			ogDescTag +
 			"\n<meta name=\"twitter:card\" content=\"summary_large_image\">" +
-			"\n<meta name=\"twitter:title\" content=\"" + escapedTitle +
-			" - " + escapedProject + "\">" +
+			"\n<meta name=\"twitter:title\" content=\"" +
+			escapedDocumentTitle + "\">" +
 			twitterDescTag +
 			twitterSiteTag)
 

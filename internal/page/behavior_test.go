@@ -865,3 +865,61 @@ func titleOf(t *testing.T, rendered string) string {
 	}
 	return rendered[start+len("<title>") : end]
 }
+
+// TestTheSocialTitlesAreTheDocumentTitle builds a whole project whose index
+// page is titled with the project name and asserts the Open Graph and Twitter
+// Card titles carry what the head's title element carries.
+//
+// The two social titles used to concatenate the page title and the project
+// name themselves, so the page the document title exists for -- the one whose
+// own title IS the project name -- published "<name> - <name>" to every
+// crawler that reads them.
+func TestTheSocialTitlesAreTheDocumentTitle(t *testing.T) {
+	opts := baseOptions(
+		src("index.md", "# TestProject\n\nWelcome.\n"),
+		src("guide.md", "# Guide\n\nProse.\n"),
+	)
+	opts.ConfigDescription = "A documentation engine that reads source code."
+	opts.BaseURL = "https://example.com"
+	files, err := GenerateHTML(opts)
+	if err != nil {
+		t.Fatalf("GenerateHTML: %v", err)
+	}
+	for _, pagePath := range []string{"index.html", "guide/index.html"} {
+		rendered, ok := files[pagePath]
+		if !ok {
+			t.Fatalf("%s was not emitted", pagePath)
+		}
+		want := titleOf(t, rendered)
+		for _, attr := range []string{
+			`property="og:title"`, `name="twitter:title"`,
+		} {
+			got := metaContentOf(t, rendered, attr)
+			if got != want {
+				t.Errorf("%s: %s = %q, want the document title %q",
+					pagePath, attr, got, want)
+			}
+			if name := opts.ProjectName; strings.Contains(
+				got, name+" - "+name) {
+				t.Errorf("%s: %s = %q repeats the project name",
+					pagePath, attr, got)
+			}
+		}
+	}
+}
+
+// metaContentOf returns the content a rendered document's meta element with
+// the given attribute carries.
+func metaContentOf(t *testing.T, rendered, attr string) string {
+	t.Helper()
+	at := strings.Index(rendered, "<meta "+attr+" content=\"")
+	if at < 0 {
+		t.Fatalf("the rendered document carries no <meta %s>", attr)
+	}
+	rest := rendered[at+len("<meta "+attr+" content=\""):]
+	end := strings.Index(rest, `"`)
+	if end < 0 {
+		t.Fatalf("the <meta %s> content attribute is unterminated", attr)
+	}
+	return rest[:end]
+}
