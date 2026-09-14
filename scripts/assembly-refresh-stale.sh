@@ -2,7 +2,10 @@
 # Re-dispatch the assembly rebuild for every roster project whose cached
 # docs lag its latest release tag.
 #
-# Usage: scripts/assembly-refresh-stale.sh --dry-run | --apply
+# Usage: scripts/assembly-refresh-stale.sh (--dry-run | --apply) [--all] [--skip slug,slug]
+#
+# --all treats every roster project as stale, for a toolchain change that
+# every published subtree must pick up (a new page chrome, a new section).
 #
 # --dry-run prints the comparison and the dispatches it would make.
 # --apply dispatches them one at a time, waiting for each deploy run to
@@ -14,12 +17,18 @@ set -euo pipefail
 mode="${1:-}"
 case "$mode" in
   --dry-run|--apply) ;;
-  *) echo "usage: $0 (--dry-run | --apply) [--skip slug,slug]" >&2; exit 2 ;;
+  *) echo "usage: $0 (--dry-run | --apply) [--all] [--skip slug,slug]" >&2; exit 2 ;;
 esac
+shift
+all=0
 skip=","
-if [ "${2:-}" = "--skip" ]; then
-  skip=",${3:-},"
-fi
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --all) all=1; shift ;;
+    --skip) skip=",${2:-},"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
 
 cache_repo="smm-h/selfdoc-cache"
 projects_root="${PROJECTS_ROOT:-$HOME/Projects}"
@@ -48,8 +57,11 @@ while IFS= read -r slug; do
     echo "$slug: no v* tag locally; skipped" >&2
     continue
   fi
-  if [ "$cached" = "$latest" ]; then
+  if [ "$cached" = "$latest" ] && [ "$all" = 0 ]; then
     echo "$slug: cache $cached = tag $latest"
+  elif [ "$cached" = "$latest" ]; then
+    echo "$slug: cache $cached = tag $latest  (refreshing anyway)"
+    stale+=("$slug:$dir")
   else
     echo "$slug: cache ${cached:-<none>} -> tag $latest  (stale)"
     stale+=("$slug:$dir")
