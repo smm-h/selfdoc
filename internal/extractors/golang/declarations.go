@@ -57,9 +57,15 @@ var (
 
 // extractPackageDoc reports a package's name and its doc comment.
 //
-// The doc is the contiguous // comment block immediately above a package
-// declaration. Files are tried in order, and the first one that carries both a
-// package declaration and a comment above it wins -- Go's convention puts the
+// The doc is the contiguous // comment block ADJACENT to a package
+// declaration: a blank line between the two means the package is
+// undocumented, which is the rule go doc applies. The comment that rule
+// excludes is usually a generator's "Code generated ... DO NOT EDIT." banner,
+// which describes the tool rather than the package and must never become the
+// package's documentation.
+//
+// Files are tried in order, and the first one that carries both a package
+// declaration and a comment adjacent to it wins -- Go's convention puts the
 // package doc in doc.go or in the package's main file, and every other file
 // repeats the bare declaration. A second pass reports the name alone when no
 // file documents the package.
@@ -73,7 +79,7 @@ func extractPackageDoc(contents *fileContents) (string, string) {
 				continue
 			}
 			packageName := m[1]
-			doc := collectCommentBlockAbove(lines, i)
+			doc := collectAdjacentCommentBlockAbove(lines, i)
 			if doc != "" {
 				return packageName, doc
 			}
@@ -95,6 +101,13 @@ func extractPackageDoc(contents *fileContents) (string, string) {
 // above a line, crossing any blank lines between them.
 func collectCommentBlockAbove(lines []string, targetLineIdx int) string {
 	return extractors.CollectCommentLinesAbove(lines, targetLineIdx, "//", true)
+}
+
+// collectAdjacentCommentBlockAbove collects the contiguous // comment lines
+// directly above a line, with no blank line between them. A blank line means
+// the comment documents nothing, which is how go doc reads one.
+func collectAdjacentCommentBlockAbove(lines []string, targetLineIdx int) string {
+	return extractors.CollectCommentLinesAbove(lines, targetLineIdx, "//", false)
 }
 
 // goDeclaration is one exported declaration the scanner found.
