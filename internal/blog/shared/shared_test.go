@@ -706,7 +706,7 @@ func TestRobotsNamesTheRootSitemapAbsolutely(t *testing.T) {
 	}
 	for _, agent := range []string{
 		"*", "GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-		"ClaudeBot", "Googlebot", "OAI-SearchBot",
+		"ClaudeBot", "Googlebot", "OAI-SearchBot", "Claude-SearchBot",
 	} {
 		if want := "User-agent: " + agent + "\nAllow: /"; !strings.Contains(got, want) {
 			t.Errorf("robots.txt does not allow %q:\n%s", agent, got)

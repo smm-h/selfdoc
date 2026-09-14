@@ -12,7 +12,7 @@ func TestAgentsAreNamedInOrder(t *testing.T) {
 	t.Parallel()
 	want := []string{
 		"*", "GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-		"ClaudeBot", "Googlebot", "OAI-SearchBot",
+		"ClaudeBot", "Googlebot", "OAI-SearchBot", "Claude-SearchBot",
 	}
 	if len(Agents) != len(want) {
 		t.Fatalf("Agents = %q, want %q", Agents, want)
@@ -45,7 +45,7 @@ func TestNamesTheAICrawlersExplicitly(t *testing.T) {
 	got := RenderRobotsTxt("https://docs.example.com/sitemap.xml")
 	for _, agent := range []string{
 		"GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-		"ClaudeBot", "Googlebot", "OAI-SearchBot",
+		"ClaudeBot", "Googlebot", "OAI-SearchBot", "Claude-SearchBot",
 	} {
 		if !strings.Contains(got, "User-agent: "+agent) {
 			t.Errorf("robots.txt does not name %q:\n%s", agent, got)
@@ -78,6 +78,7 @@ func TestRenderedTextIsByteForByte(t *testing.T) {
 		"User-agent: ClaudeBot\nAllow: /\n\n" +
 		"User-agent: Googlebot\nAllow: /\n\n" +
 		"User-agent: OAI-SearchBot\nAllow: /\n\n" +
+		"User-agent: Claude-SearchBot\nAllow: /\n\n" +
 		"Sitemap: https://example.com/sitemap.xml\n"
 	if got := RenderRobotsTxt("https://example.com/sitemap.xml"); got != want {
 		t.Errorf("RenderRobotsTxt() = %q, want %q", got, want)

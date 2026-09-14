@@ -22,7 +22,7 @@ import "strings"
 // it.
 var Agents = []string{
 	"*", "GPTBot", "ChatGPT-User", "Google-Extended", "PerplexityBot",
-	"ClaudeBot", "Googlebot", "OAI-SearchBot",
+	"ClaudeBot", "Googlebot", "OAI-SearchBot", "Claude-SearchBot",
 }
 
 // RenderRobotsTxt returns robots.txt text allowing every agent in [Agents] and

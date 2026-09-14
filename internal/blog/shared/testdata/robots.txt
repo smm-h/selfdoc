@@ -22,4 +22,7 @@ Allow: /
 User-agent: OAI-SearchBot
 Allow: /
 
+User-agent: Claude-SearchBot
+Allow: /
+
 Sitemap: https://docs.example.com/sitemap.xml

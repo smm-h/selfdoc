@@ -56,10 +56,10 @@ This gives AI systems the full content in a single fetch -- useful for context-h
 
 ## AI Crawler Access
 
-selfdoc's generated `robots.txt` explicitly allows 6 AI crawlers by listing each known AI user agent with `Allow: /`. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
+selfdoc's generated `robots.txt` explicitly allows the AI crawlers listed below, naming each user agent with `Allow: /`. This opt-in approach ensures that AI assistants and search-augmented language models can freely index your documentation, read the sitemap, and fetch the `llms.txt` files without being blocked:
 
 - **GPTBot** and **ChatGPT-User** (OpenAI)
-- **ClaudeBot** (Anthropic)
+- **ClaudeBot** and **Claude-SearchBot** (Anthropic)
 - **PerplexityBot** (Perplexity)
 - **Google-Extended** and **Googlebot** (Google)
 - **OAI-SearchBot** (OpenAI search)
