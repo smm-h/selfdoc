@@ -106,7 +106,7 @@ func splitPathParts(p string) []string {
 // RewriteInternalLinks rewrites the page references bodyHTML wrote to their
 // emitted addresses.
 //
-// An author writes "[checks](checks.md)" -- a path relative to the source
+// An author links to checks.md -- a path relative to the source
 // file's own directory in docs/. Under directory addressing the page
 // writing that link is emitted at "<page>/index.html", one level deeper
 // than its source, so the sibling is reached at "../checks/". Every
