@@ -27,6 +27,7 @@ func TestTheCommandTreeIsTheDeclaredOne(t *testing.T) {
 		"blog.post.publish", "blog.publish-docs",
 		"build", "check", "deploy",
 		"gen", "gen-data", "init",
+		"layout.dump", "layout.validate",
 		"quality", "serve", "spell-corpus",
 	}
 	if strings.Join(registered, " ") != strings.Join(expected, " ") {

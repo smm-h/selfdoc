@@ -275,6 +275,7 @@ func New(opts Options) *strictcli.App {
 	c.registerCheck()
 	c.registerBaseline()
 	c.registerGen()
+	c.registerLayout()
 	c.registerGenData()
 	c.registerSpellCorpus()
 	c.registerQuality()

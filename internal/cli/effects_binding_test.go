@@ -33,8 +33,12 @@ import (
 // commandEffects is the reviewed classification. The comment on each mutating
 // row names the mutation.
 var commandEffects = map[string]string{
-	// writes selfdoc.json + docs/index.md, then auto-commits them
+	// writes selfdoc.json and the starter page, then auto-commits them
 	"init": "mutating",
+	// prints the layout declaration, reading nothing but the binary itself
+	"layout.dump": "read_only",
+	// reads the repository's tool-state directory and reports on it
+	"layout.validate": "read_only",
 	// writes the whole site output tree and the content-hash store, then
 	// auto-commits the store
 	"build": "mutating",

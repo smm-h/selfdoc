@@ -222,3 +222,60 @@ func Quality() map[string]any {
 		false,
 	)
 }
+
+// LayoutDump is the payload of `selfdoc layout dump`: selfdoc's claim on a
+// repository's tool-state directory, as the fleet check reads it.
+//
+// The directories are the one place a consumer learns which paths selfdoc
+// owns, which side of the authorship line each sits on, whether the repository
+// commits it, and what it used to be called -- so a description of the layout
+// is generated from this rather than restated per repository.
+func LayoutDump() map[string]any {
+	directory := strictcli.SchemaObject(
+		map[string]any{
+			"name":             strictcli.SchemaType("string"),
+			"path":             strictcli.SchemaType("string"),
+			"side":             merge(strictcli.SchemaType("string"), strictcli.SchemaEnum("handwritten", "generated")),
+			"commitment":       merge(strictcli.SchemaType("string"), strictcli.SchemaEnum("committed", "uncommitted")),
+			"description":      strictcli.SchemaType("string"),
+			"deprecated_names": strictcli.SchemaArray(strictcli.SchemaType("string")),
+		},
+		[]string{"name", "path", "side", "commitment", "description", "deprecated_names"},
+		false,
+	)
+	return strictcli.SchemaObject(
+		map[string]any{
+			"tool":          strictcli.SchemaType("string"),
+			"root":          strictcli.SchemaType("string"),
+			"owners_file":   strictcli.SchemaType("string"),
+			"owners_header": strictcli.SchemaType("string"),
+			"ignore_file":   strictcli.SchemaType("string"),
+			"directories":   strictcli.SchemaArray(directory),
+		},
+		[]string{"tool", "root", "owners_file", "owners_header", "ignore_file", "directories"},
+		false,
+	)
+}
+
+// LayoutValidate is the payload of `selfdoc layout validate`: whether this
+// repository's tool-state directory is laid out as declared, and every problem
+// found when it is not.
+func LayoutValidate() map[string]any {
+	problem := strictcli.SchemaObject(
+		map[string]any{
+			"check":   merge(strictcli.SchemaType("string"), strictcli.SchemaEnum("ownership", "side", "hidden", "ignore-file")),
+			"message": strictcli.SchemaType("string"),
+		},
+		[]string{"check", "message"},
+		false,
+	)
+	return strictcli.SchemaObject(
+		map[string]any{
+			"root":     strictcli.SchemaType("string"),
+			"ok":       strictcli.SchemaType("boolean"),
+			"problems": strictcli.SchemaArray(problem),
+		},
+		[]string{"root", "ok", "problems"},
+		false,
+	)
+}
