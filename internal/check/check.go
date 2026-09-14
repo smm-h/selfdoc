@@ -14,6 +14,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/extractors"
+	"github.com/smm-h/selfdoc/internal/html"
 	"github.com/smm-h/selfdoc/internal/lints"
 	"github.com/smm-h/selfdoc/internal/resolution"
 	"github.com/smm-h/selfdoc/internal/resolver"
@@ -355,7 +356,7 @@ func CheckDocs(
 	// The project that carries the region writes none of those, so its own
 	// build cannot resolve them and the assembly's pass over the whole tree
 	// is where they are answered.
-	outputLints, err := resolution.CheckOutputResolution(
+	outputLints, err := resolution.CheckProjectOutputResolution(
 		filepath.Join(
 			dirPath,
 			strings.TrimRight(configString(projectConfig, "output", "docs/_build/"), "/"),
@@ -363,6 +364,7 @@ func CheckDocs(
 		configString(projectConfig, "base_url", ""),
 		mountPrefix,
 		[]string{sitedirectives.RegionTag},
+		currentPageSources(allDocs, localePrefixOf(projectConfig)),
 	)
 	if err != nil {
 		return nil, err
@@ -611,4 +613,28 @@ func checkCLIPages(
 	}
 
 	return results, nil
+}
+
+// currentPageSources maps the output-relative path of every page this run
+// resolved to that page's current resolved Markdown.
+//
+// It is what tells the emitted-reference pass which of a built page's
+// references its source still carries: nothing invalidates the built tree, so
+// a page there renders whatever the last build resolved. A page this run did
+// not resolve -- another locale's, an archived version's -- is absent, and is
+// checked exactly as it was before.
+func currentPageSources(allDocs map[string]docs.Doc, localePrefix string) map[string]string {
+	sources := make(map[string]string, len(allDocs)*2)
+	for relPath, doc := range allDocs {
+		outputPath := html.MdToHTMLPath(relPath)
+		// Both mounts this page can have: a project with one locale
+		// serves it from the output root, and a project with several
+		// serves it under its locale segment. Nothing is served from
+		// both, so registering both names cannot mis-key a page.
+		sources[outputPath] = doc.Resolved
+		if localePrefix != "" {
+			sources[localePrefix+"/"+outputPath] = doc.Resolved
+		}
+	}
+	return sources
 }

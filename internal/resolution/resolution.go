@@ -37,6 +37,18 @@
 // Absolute is right for metadata, which says where a page lives in the world:
 // the canonical, the share addresses, sitemap entries and feed links, all
 // checked above and none of them somewhere a click goes.
+//
+// # A built tree can be older than its sources
+//
+// Nothing invalidates a build output, so a page there carries whatever the
+// last build rendered. A check run after a source doc comment changed is
+// reading the old rendering, and a reference only that rendering named says
+// nothing about the sources being checked -- it is an error no source edit
+// can clear, and the whole tree's verdict misleads in both directions.
+// [CheckProjectOutputResolution] takes the pages' current sources for that
+// reason: a reference inside the content region of a page whose source no
+// longer carries it is skipped. Page chrome, and any page whose source the
+// caller does not have, are checked as they always were.
 package resolution
 
 import (
@@ -308,6 +320,22 @@ func hasAnyPrefix(s string, prefixes []string) bool {
 // Blanking rather than skipping is what keeps the exemption per element, as it
 // does for the origin-only resource hints above: a page that writes its own
 // dangling link beside an exempt element still has that link collected.
+// contentRegionRE matches the region a built page renders its own Markdown
+// into. Everything outside it -- the sidebar, the topbar, the pickers, the
+// page-to-page links -- is chrome the build computes from the page set rather
+// than anything a page's source names.
+var contentRegionRE = regexp.MustCompile(`(?s)<main\b[^>]*\bid="tm-content"[^>]*>(.*?)</main>`)
+
+// contentRegion is the markup a built page rendered its own Markdown into, or
+// the empty string when the page carries no such region.
+func contentRegion(pageHTML string) string {
+	match := contentRegionRE.FindStringSubmatch(pageHTML)
+	if match == nil {
+		return ""
+	}
+	return match[1]
+}
+
 func blankElements(pageHTML string, tags []string) string {
 	for _, tag := range tags {
 		if tag == "" {
@@ -383,6 +411,27 @@ func CheckOutputResolution(
 	outputDir, baseURL, mountPrefix string,
 	exemptElements []string,
 ) ([]lints.LintResult, error) {
+	return CheckProjectOutputResolution(
+		outputDir, baseURL, mountPrefix, exemptElements, nil)
+}
+
+// CheckProjectOutputResolution is [CheckOutputResolution] for a tree whose
+// pages' current sources are at hand.
+//
+// currentSources maps an output-relative page path ("api/index.html") to that
+// page's current resolved Markdown. Nothing invalidates a built tree, so its
+// pages carry whatever the last build rendered: after a source doc comment
+// changes, the built page still shows the old rendering, and a reference only
+// that rendering named is not evidence about the sources being checked. A
+// reference inside the content region of a page whose current source does not
+// carry it is therefore skipped -- the built body predates its source. Every
+// reference the page chrome writes, and every page with no source here, is
+// checked as it always was.
+func CheckProjectOutputResolution(
+	outputDir, baseURL, mountPrefix string,
+	exemptElements []string,
+	currentSources map[string]string,
+) ([]lints.LintResult, error) {
 	info, err := os.Stat(outputDir)
 	if err != nil || !info.IsDir() {
 		return nil, nil
@@ -427,6 +476,20 @@ func CheckOutputResolution(
 		}
 		pageHTML := blankElements(string(raw), exemptElements)
 
+		// A reference the built body carries but the page's current source
+		// does not is a leftover of an older rendering, not a finding about
+		// this tree's sources.
+		source, hasSource := currentSources[pageRel]
+		contentHTML := ""
+		if hasSource {
+			contentHTML = contentRegion(pageHTML)
+		}
+		outdated := func(ref string) bool {
+			return hasSource &&
+				strings.Contains(contentHTML, ref) &&
+				!strings.Contains(source, ref)
+		}
+
 		// A post in a mounted build is grafted out of this subtree to the
 		// site root, so it addresses its neighbours from an address this
 		// directory does not have. Nothing here can answer those; the
@@ -434,6 +497,9 @@ func CheckOutputResolution(
 		siteLevelPage := mountDepth != 0 && address.IsSiteLevel(pageRel)
 
 		for _, reference := range PageReferences(pageHTML) {
+			if outdated(reference.Ref) {
+				continue
+			}
 			if strings.HasPrefix(reference.Ref, "/") {
 				fail(pageRel, reference.Attr+`="`+reference.Ref+`" is `+
 					"origin-absolute; the site has to resolve under any "+
@@ -462,6 +528,9 @@ func CheckOutputResolution(
 		}
 
 		for _, ref := range NavigationReferences(pageHTML) {
+			if outdated(ref) {
+				continue
+			}
 			if _, ours := SiteRelativePath(ref, baseURL); !ours {
 				continue
 			}
