@@ -91,6 +91,7 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 | `code-help` | Extract CLI help/usage text and flag definitions |
 | `code-test` | Embed test source code (whole file or specific function) |
 | `cv` | Render a curriculum vitae declared in a TOML document, plus the Person it states |
+| `list-crawlers` | List of the crawlers the generated robots.txt allows |
 | `list-glossary` | Definition list from **Term**: Definition lines |
 | `list-modules` | List source modules with file paths and docstring summaries |
 | `list-tree` | File/directory tree listing |

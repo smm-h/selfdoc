@@ -171,6 +171,11 @@
         },
         {
           "level": 3,
+          "text": "Every assembled page ends by naming the site's other tools",
+          "anchor": "every-assembled-page-ends-by-naming-the-sites-other-tools"
+        },
+        {
+          "level": 3,
           "text": "What a search engine reads off the two generated pages",
           "anchor": "what-a-search-engine-reads-off-the-two-generated-pages"
         },
@@ -1126,6 +1131,11 @@
         },
         {
           "level": 4,
+          "text": "`list-crawlers`",
+          "anchor": "list-crawlers"
+        },
+        {
+          "level": 4,
           "text": "`var`",
           "anchor": "var"
         },
@@ -1985,6 +1995,11 @@
           "level": 3,
           "text": "`IndexSite`",
           "anchor": "indexsite"
+        },
+        {
+          "level": 3,
+          "text": "`SiblingsFor`",
+          "anchor": "siblingsfor"
         },
         {
           "level": 3,
@@ -3071,6 +3086,11 @@
         },
         {
           "level": 3,
+          "text": "`MissingDescriptionMarker`",
+          "anchor": "missingdescriptionmarker"
+        },
+        {
+          "level": 3,
           "text": "`DescriptionMax`",
           "anchor": "descriptionmax"
         },
@@ -4026,6 +4046,11 @@
         },
         {
           "level": 3,
+          "text": "`CheckProjectReachability`",
+          "anchor": "checkprojectreachability"
+        },
+        {
+          "level": 3,
           "text": "`FetchURL`",
           "anchor": "fetchurl"
         },
@@ -4718,6 +4743,11 @@
           "level": 3,
           "text": "`ResolveContent`",
           "anchor": "resolvecontent"
+        },
+        {
+          "level": 3,
+          "text": "`ResolveListCrawlers`",
+          "anchor": "resolvelistcrawlers"
         },
         {
           "level": 3,
@@ -7807,6 +7837,11 @@
         },
         {
           "level": 3,
+          "text": "A built tree can be older than its sources",
+          "anchor": "a-built-tree-can-be-older-than-its-sources"
+        },
+        {
+          "level": 3,
           "text": "`LintCode`",
           "anchor": "lintcode"
         },
@@ -7849,6 +7884,11 @@
           "level": 3,
           "text": "`CheckOutputResolution`",
           "anchor": "checkoutputresolution"
+        },
+        {
+          "level": 3,
+          "text": "`CheckProjectOutputResolution`",
+          "anchor": "checkprojectoutputresolution"
         }
       ]
     },
@@ -9777,6 +9817,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T15:00:23.850929+00:00",
+  "last_gen": "2026-09-14T15:22:15.336824+00:00",
   "theme": "minimal"
 }
