@@ -19,3 +19,7 @@ Both defects were inherited from the Python version and only surface on the unif
 # blog = false
 include = ["go"]
 exclude = []
+candidate_sha = "73b46639a27adc952331b0ee7148d291d34468c5"
+
+[tree_hashes]
+"." = "6d62254d88c6f37f81ec693d7f88cb49ce80ded3"
