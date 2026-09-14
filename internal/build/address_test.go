@@ -24,10 +24,10 @@ import (
 // from the sidebar.
 var addressPages = map[string]string{
 	"index.md":                "# Fixture\n\nRoot page.\n",
-	"guide.md":                "---\ntitle: Guide\n---\n\n# Guide\n\nOne level down.\n",
-	"reference/api.md":        "---\ntitle: API\n---\n\n# API\n\nTwo levels down.\n",
-	"reference/deep/notes.md": "---\ntitle: Notes\n---\n\n# Notes\n\nThree levels down.\n",
-	"about.md": "---\ntitle: About\nversioned: false\n---\n\n" +
+	"guide.md":                "+++\ntitle = \"Guide\"\n+++\n\n# Guide\n\nOne level down.\n",
+	"reference/api.md":        "+++\ntitle = \"API\"\n+++\n\n# API\n\nTwo levels down.\n",
+	"reference/deep/notes.md": "+++\ntitle = \"Notes\"\n+++\n\n# Notes\n\nThree levels down.\n",
+	"about.md": "+++\ntitle = \"About\"\nversioned = false\n+++\n\n" +
 		"# About\n\nThe same page under every version.\n",
 }
 

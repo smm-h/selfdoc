@@ -319,8 +319,8 @@ func TestDocumentWrite(t *testing.T) {
 	})
 
 	t.Run("a put can create a new post", func(t *testing.T) {
-		source := "---\ntitle: Brand New\ndate: 2024-06-01\nslug: brand-new\n" +
-			"tags: []\ndraft: true\ndirectives: false\n---\nFresh.\n"
+		source := "+++\ntitle = \"Brand New\"\ndate = 2024-06-01\nslug = \"brand-new\"\n" +
+			"tags = []\ndraft = true\ndirectives = false\n+++\nFresh.\n"
 		status, _ := requestJSON(t, port, "PUT",
 			"/api/repos/proj/document?path=brand-new.md", source)
 		if status != 200 {
@@ -412,7 +412,7 @@ func TestPreviewWritesNothing(t *testing.T) {
 	})
 
 	t.Run("a broken buffer reports the defect", func(t *testing.T) {
-		broken := "---\ntitle: No Date\ndirectives: false\n---\nbody\n"
+		broken := "+++\ntitle = \"No Date\"\ndirectives = false\n+++\nbody\n"
 		status, body := requestJSON(t, port, "POST",
 			"/api/repos/proj/preview?path=hello.md", broken)
 		if status != 400 {

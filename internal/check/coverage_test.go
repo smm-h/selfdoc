@@ -36,8 +36,8 @@ def helper():
 
 // skeletonPage is a generated, machine-seeded page referencing one module.
 func skeletonPage(title, modulePath string) string {
-	return "---\ntitle: " + title + "\ndescription: \"" + title +
-		"\"\ngenerated: true\nseeded: true\n---\n# " + title + "\n\n" +
+	return "+++\ntitle = \"" + title + "\"\ndescription = \"" + title +
+		"\"\ngenerated = true\nseeded = true\n+++\n# " + title + "\n\n" +
 		":-: ref path=\"" + modulePath + "\"\n"
 }
 
@@ -52,7 +52,7 @@ func TestTwoTierCoverage(t *testing.T) {
 		{
 			name: "a hand-written page documents what it references",
 			pages: map[string]string{
-				"api.md": "---\ndescription: Comprehensive guide to the API with examples.\n---\n" +
+				"api.md": "+++\ndescription = \"Comprehensive guide to the API with examples.\"\n+++\n" +
 					"# API\n\n:-: ref path=\"mylib\"\n\n:-: ref path=\"mylib.utils\"\n",
 			},
 			wantTotal: 3, wantReferenced: 3, wantDocumented: 3,
@@ -69,7 +69,7 @@ func TestTwoTierCoverage(t *testing.T) {
 			name: "a mix counts each page on its own terms",
 			pages: map[string]string{
 				"mylib.md": skeletonPage("mylib", "mylib"),
-				"utils.md": "---\ndescription: Everything the utility module offers a caller.\n---\n" +
+				"utils.md": "+++\ndescription = \"Everything the utility module offers a caller.\"\n+++\n" +
 					"# Utils\n\n:-: ref path=\"mylib.utils\"\n",
 			},
 			wantTotal: 3, wantReferenced: 3, wantDocumented: 1,
@@ -77,8 +77,8 @@ func TestTwoTierCoverage(t *testing.T) {
 		{
 			name: "a generated page with a customized description documents",
 			pages: map[string]string{
-				"mylib.md": "---\ntitle: mylib\ndescription: A hand-written account of " +
-					"what this module is for.\ngenerated: true\n---\n# mylib\n\n" +
+				"mylib.md": "+++\ntitle = \"mylib\"\ndescription = \"A hand-written account of " +
+					"what this module is for.\"\ngenerated = true\n+++\n# mylib\n\n" +
 					":-: ref path=\"mylib\"\n",
 			},
 			wantTotal: 3, wantReferenced: 2, wantDocumented: 2,
@@ -203,7 +203,7 @@ type Widget struct{}
 func TestHandle(t *testing.T) {}
 `)
 	write(t, filepath.Join(root, "docs", "api.md"),
-		"---\ndescription: Every exported name of the handler package, in one page.\n---\n"+
+		"+++\ndescription = \"Every exported name of the handler package, in one page.\"\n+++\n"+
 			"# API\n\n:-: ref path=\"pkg\"\n")
 
 	result := checkFixture(t, root)
@@ -253,7 +253,7 @@ package dep
 func Dep() {}
 `)
 	write(t, filepath.Join(root, "docs", "api.md"),
-		"---\ndescription: Every exported name of the handler package, in one page.\n---\n"+
+		"+++\ndescription = \"Every exported name of the handler package, in one page.\"\n+++\n"+
 			"# API\n\n:-: ref path=\"pkg\"\n")
 
 	result := checkFixture(t, root)
@@ -288,7 +288,7 @@ export class Widget {}
 		`export function testHelper(): void {}
 `)
 	write(t, filepath.Join(root, "docs", "api.md"),
-		"---\ndescription: Every exported name of the source module, in one page.\n---\n"+
+		"+++\ndescription = \"Every exported name of the source module, in one page.\"\n+++\n"+
 			"# API\n\n:-: ref path=\"src/index\"\n")
 
 	result := checkFixture(t, root)
@@ -310,7 +310,7 @@ func TestLANG001ForUnsupportedLanguage(t *testing.T) {
 	))
 	write(t, filepath.Join(root, "src", ".keep"), "")
 	write(t, filepath.Join(root, "docs", "guide.md"),
-		"---\ndescription: A guide covering everything the project does for a reader.\n---\n"+
+		"+++\ndescription = \"A guide covering everything the project does for a reader.\"\n+++\n"+
 			"# Guide\n\nText.\n")
 
 	result := checkFixture(t, root)
@@ -327,7 +327,7 @@ func TestLANG001ForUnsupportedLanguage(t *testing.T) {
 func TestSupportedLanguageHasNoLANG001(t *testing.T) {
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"),
-		"---\ndescription: A guide covering everything the project does for a reader.\n---\n"+
+		"+++\ndescription = \"A guide covering everything the project does for a reader.\"\n+++\n"+
 			"# Guide\n\nText.\n")
 
 	result := checkFixture(t, root)
@@ -340,7 +340,7 @@ func TestSupportedLanguageHasNoLANG001(t *testing.T) {
 func TestXREF002MissingSourceFile(t *testing.T) {
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "api.md"),
-		"---\ndescription: Every public function of the library, with its signature.\n---\n"+
+		"+++\ndescription = \"Every public function of the library, with its signature.\"\n+++\n"+
 			"# API\n\n:-: ref path=\"mylib\"\n")
 
 	result := checkFixture(t, root)

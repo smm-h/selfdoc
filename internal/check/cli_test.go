@@ -64,7 +64,7 @@ func cliFlag(name, help string) map[string]any {
 
 // cliIndexPage is a CLI index page with a description long enough to satisfy
 // the description rules.
-const cliIndexPage = "---\ndescription: CLI index page for the application\n---\n" +
+const cliIndexPage = "+++\ndescription = \"CLI index page for the application\"\n+++\n" +
 	"# CLI\n\nOverview.\n"
 
 func TestCLI001(t *testing.T) {
@@ -107,8 +107,8 @@ func TestCLI001(t *testing.T) {
 			}, nil),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-run.md": "---\ndescription: Reference for the myapp run command " +
-					"with usage details\n---\n# myapp run\n\n## Flags\n\n" +
+				"cli-run.md": "+++\ndescription = \"Reference for the myapp run command " +
+					"with usage details\"\n+++\n# myapp run\n\n## Flags\n\n" +
 					"| Name | Description |\n|------|-------------|\n" +
 					"| `--verbose` | Enable verbose output |\n",
 			},
@@ -138,8 +138,8 @@ func TestCLI001(t *testing.T) {
 			}, nil),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-run.md": "---\ndescription: Reference for the myapp run command " +
-					"with usage details\n---\n# myapp run\n\n## Flags\n\n" +
+				"cli-run.md": "+++\ndescription = \"Reference for the myapp run command " +
+					"with usage details\"\n+++\n# myapp run\n\n## Flags\n\n" +
 					"| Name | Description |\n|------|-------------|\n" +
 					"| `--verbose` | Enable verbose output |\n",
 			},
@@ -153,8 +153,8 @@ func TestCLI001(t *testing.T) {
 	t.Run("a project with no dumped schema is silent", func(t *testing.T) {
 		root := pythonProject(t)
 		write(t, filepath.Join(root, "docs", "guide.md"),
-			"---\ndescription: A guide covering everything the project does for a "+
-				"reader.\n---\n# Guide\n\nText.\n")
+			"+++\ndescription = \"A guide covering everything the project does for a "+
+				"reader.\"\n+++\n# Guide\n\nText.\n")
 		result := checkFixture(t, root)
 		if hasCode(result.Lints, "CLI001") || hasCode(result.Lints, "CLI002") {
 			t.Errorf("a CLI rule fired for a project with no schema: %v",
@@ -175,8 +175,8 @@ func TestCLI002HelpLength(t *testing.T) {
 			}, nil),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-run.md": "---\ndescription: Reference for the myapp run command " +
-					"with usage details\n---\n# myapp run\n\nText.\n",
+				"cli-run.md": "+++\ndescription = \"Reference for the myapp run command " +
+					"with usage details\"\n+++\n# myapp run\n\nText.\n",
 			},
 		)
 		result := checkFixture(t, root)
@@ -205,8 +205,8 @@ func TestCLI002HelpLength(t *testing.T) {
 			}, nil),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-run.md": "---\ndescription: Reference for the myapp run command " +
-					"with usage details\n---\n# myapp run\n\nText.\n",
+				"cli-run.md": "+++\ndescription = \"Reference for the myapp run command " +
+					"with usage details\"\n+++\n# myapp run\n\nText.\n",
 			},
 		)
 		result := checkFixture(t, root)
@@ -227,8 +227,8 @@ func TestCLI002HelpLength(t *testing.T) {
 			}, nil),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-run.md": "---\ndescription: Reference for the myapp run command " +
-					"with usage details\n---\n# myapp run\n\n`--verbose` is a flag.\n",
+				"cli-run.md": "+++\ndescription = \"Reference for the myapp run command " +
+					"with usage details\"\n+++\n# myapp run\n\n`--verbose` is a flag.\n",
 			},
 		)
 		result := checkFixture(t, root)
@@ -256,8 +256,8 @@ func TestCLI002HelpLength(t *testing.T) {
 			}),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-release.md": "---\ndescription: Reference for the myapp release " +
-					"group with usage details\n---\n# myapp release\n\nText.\n",
+				"cli-release.md": "+++\ndescription = \"Reference for the myapp release " +
+					"group with usage details\"\n+++\n# myapp release\n\nText.\n",
 			},
 		)
 		result := checkFixture(t, root)
@@ -286,8 +286,8 @@ func TestCLI002HelpLength(t *testing.T) {
 			}, nil),
 			map[string]string{
 				"cli-index.md": cliIndexPage,
-				"cli-run.md": "---\ndescription: Reference for the myapp run command " +
-					"with usage details\n---\n# myapp run\n\nText.\n",
+				"cli-run.md": "+++\ndescription = \"Reference for the myapp run command " +
+					"with usage details\"\n+++\n# myapp run\n\nText.\n",
 			},
 		)
 		result := checkFixture(t, root)

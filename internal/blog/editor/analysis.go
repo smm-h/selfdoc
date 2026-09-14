@@ -107,7 +107,10 @@ func lineStarts(text []rune) []int {
 // computes. That is a defect in this mapping or in the engine's columns, and
 // painting a mark over the wrong word is worse than saying so.
 func SpellingFindings(content, file string) ([]SpellingFinding, error) {
-	_, body, _ := util.ParseFrontmatter(content)
+	body, err := util.StripFrontmatter(content, file)
+	if err != nil {
+		return nil, err
+	}
 	frontmatterLines := len(strings.Split(content, "\n")) - len(strings.Split(body, "\n"))
 
 	runes := []rune(content)

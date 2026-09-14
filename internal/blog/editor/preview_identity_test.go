@@ -27,17 +27,17 @@ import (
 
 const (
 	identityHelloName = "hello.md"
-	identityHello     = "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"tags: [release]\ndraft: false\ndirectives: false\n---\n" +
+	identityHello     = "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"tags = [\"release\"]\ndraft = false\ndirectives = false\n+++\n" +
 		"# Hello World\n\nThis is the post content.\n\n" +
 		"## Setup\n\nFirst.\n\n## Setup\n\nSecond.\n\n" +
 		"See [the index](../index.md) and [the other post](second.md).\n"
 	identitySecondName = "second.md"
-	identitySecond     = "---\ntitle: Second Post\ndate: 2024-02-01\nslug: second-post\n" +
-		"tags: []\ndraft: false\ndirectives: false\n---\nSecond post body.\n"
+	identitySecond     = "+++\ntitle = \"Second Post\"\ndate = 2024-02-01\nslug = \"second-post\"\n" +
+		"tags = []\ndraft = false\ndirectives = false\n+++\nSecond post body.\n"
 	identityDraftName = "later.md"
-	identityDraft     = "---\ntitle: Later\ndate: 2024-05-01\nslug: later\n" +
-		"tags: []\ndraft: true\ndirectives: false\n---\nNot yet.\n"
+	identityDraft     = "+++\ntitle = \"Later\"\ndate = 2024-05-01\nslug = \"later\"\n" +
+		"tags = []\ndraft = true\ndirectives = false\n+++\nNot yet.\n"
 )
 
 // runPostsBuild builds the project's posts exactly as a publish builds them.
@@ -159,7 +159,7 @@ func TestTheComparisonCanFail(t *testing.T) {
 
 	t.Run("a changed title diverges", func(t *testing.T) {
 		edited := strings.Replace(identityHello,
-			"title: Hello World", "title: Hello Moon", 1)
+			"title = \"Hello World\"", "title = \"Hello Moon\"", 1)
 		if previewOf(t, state, identityHelloName, edited) ==
 			publishedBytes(t, project, "hello-world") {
 			t.Error("a changed title did not change the bytes")

@@ -190,12 +190,15 @@ func resolveRootTemplates(config map[string]any, baseDir string) (map[string]doc
 			return nil, err
 		}
 		content := string(raw)
-		frontmatter, body, _ := util.ParseFrontmatter(content)
-		fmLineCount := len(strings.Split(content, "\n")) - len(strings.Split(body, "\n"))
+		block, err := util.ReadFrontmatter(content, templatePath, util.KindPage)
+		if err != nil {
+			return nil, err
+		}
+		fmLineCount := len(strings.Split(content, "\n")) - len(strings.Split(block.Body, "\n"))
 		result[templatePath] = docs.Doc{
-			Frontmatter:      frontmatter,
-			Resolved:         body,
-			Raw:              body,
+			Frontmatter:      block.Values,
+			Resolved:         block.Body,
+			Raw:              block.Body,
 			FrontmatterLines: fmLineCount,
 		}
 	}

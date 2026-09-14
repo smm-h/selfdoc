@@ -88,28 +88,21 @@ func TestResolveMarkdownParsesAndCountsFrontmatter(t *testing.T) {
 		},
 		{
 			name:             "fence plus one key",
-			content:          "---\ntitle: T\n---\n# H\n",
+			content:          "+++\ntitle = \"T\"\n+++\n# H\n",
 			wantFrontmatter:  map[string]any{"title": "T"},
 			wantBody:         "# H\n",
 			wantFrontmatterL: 3,
 		},
 		{
 			name:             "blank lines after the fence are consumed",
-			content:          "---\ntitle: T\n---\n\n\n# H\n",
+			content:          "+++\ntitle = \"T\"\n+++\n\n\n# H\n",
 			wantFrontmatter:  map[string]any{"title": "T"},
 			wantBody:         "# H\n",
 			wantFrontmatterL: 5,
 		},
 		{
-			name:             "unclosed fence is not frontmatter",
-			content:          "---\ntitle: T\nBody with no close\n",
-			wantFrontmatter:  map[string]any{},
-			wantBody:         "---\ntitle: T\nBody with no close\n",
-			wantFrontmatterL: 0,
-		},
-		{
 			name:             "empty frontmatter block",
-			content:          "---\n---\nBody\n",
+			content:          "+++\n+++\nBody\n",
 			wantFrontmatter:  map[string]any{},
 			wantBody:         "Body\n",
 			wantFrontmatterL: 2,
@@ -117,7 +110,7 @@ func TestResolveMarkdownParsesAndCountsFrontmatter(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			doc, err := ResolveMarkdown(testCase.content, noopResolver, nil)
+			doc, err := ResolveMarkdown(testCase.content, "page.md", noopResolver, nil)
 			if err != nil {
 				t.Fatalf("ResolveMarkdown: %v", err)
 			}
@@ -139,8 +132,8 @@ func TestResolveMarkdownParsesAndCountsFrontmatter(t *testing.T) {
 
 func TestResolveMarkdownResolvesDirectivesAndKeepsTheRawBody(t *testing.T) {
 	isolate(t)
-	content := "---\ntitle: T\n---\nBefore.\n\n:-: ref path=\"x\"\n"
-	doc, err := ResolveMarkdown(content, noopResolver, nil)
+	content := "+++\ntitle = \"T\"\n+++\nBefore.\n\n:-: ref path=\"x\"\n"
+	doc, err := ResolveMarkdown(content, "page.md", noopResolver, nil)
 	if err != nil {
 		t.Fatalf("ResolveMarkdown: %v", err)
 	}
@@ -155,7 +148,7 @@ func TestResolveMarkdownResolvesDirectivesAndKeepsTheRawBody(t *testing.T) {
 func TestResolveMarkdownRefusesAnUnknownDirectiveName(t *testing.T) {
 	isolate(t)
 	validNames := directives.NameSet{"ref": {}}
-	_, err := ResolveMarkdown(":-: nope\n", noopResolver, validNames)
+	_, err := ResolveMarkdown(":-: nope\n", "page.md", noopResolver, validNames)
 	if err == nil {
 		t.Fatal("want an error for a name the valid set does not carry")
 	}
@@ -302,7 +295,7 @@ func TestResolveAllOverlayAddsAndReplaces(t *testing.T) {
 
 	overlay := map[string]string{
 		"index.md":      "# From the overlay\n",
-		"blog/hello.md": "---\ntitle: Hello\n---\nHi.\n",
+		"blog/hello.md": "+++\ntitle = \"Hello\"\n+++\nHi.\n",
 	}
 	all := resolveAll(t, makeConfig(nil), "", base, overlay)
 
@@ -322,7 +315,7 @@ func TestResolveAllResolvesDirectivesAgainstTheProject(t *testing.T) {
 	isolate(t)
 	base := t.TempDir()
 	write(t, filepath.Join(base, "docs", "index.md"),
-		"---\ntitle: Home\n---\n"+`Project: :-: var key="project.description"`+"\n")
+		"+++\ntitle = \"Home\"\n+++\n"+`Project: :-: var key="project.description"`+"\n")
 
 	all := resolveAll(t, makeConfig(nil), "", base, nil)
 

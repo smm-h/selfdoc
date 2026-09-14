@@ -267,9 +267,9 @@ func BuildSingle(opts SingleOptions, h *effects.Handle) (BuildResult, error) {
 		markdownFiles = mergeSources(markdownFiles,
 			[]page.SourceFile{{MdPath: "changelog.md", Content: string(content)}})
 		frontmatter["changelog.md"] = util.Frontmatter{
-			"title": "Changelog",
-			"order": int64(999),
-			"feed":  false,
+			"title":     "Changelog",
+			"nav_order": int64(999),
+			"feed":      false,
 		}
 	}
 

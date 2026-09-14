@@ -46,7 +46,7 @@ func loweredThresholdProjects(t *testing.T) (lib, site string) {
 	writeText(t, filepath.Join(lib, "mylib", "beta.py"),
 		"\"\"\"Beta module.\"\"\"\n\n\ndef beta():\n    \"\"\"Do beta.\"\"\"\n    return 2\n")
 	writeText(t, filepath.Join(lib, "docs", "index.md"),
-		"---\ntitle: Lib\ndescription: "+longDescription+"\n---\n\n# Lib\n\n"+
+		"+++\ntitle = \"Lib\"\ndescription = \""+longDescription+"\"\n+++\n\n# Lib\n\n"+
 			`:-: ref path="mylib/alpha.py"`+"\n")
 
 	testproject.WriteJSON(t, filepath.Join(site, "selfdoc.json"), map[string]any{
@@ -61,7 +61,7 @@ func loweredThresholdProjects(t *testing.T) (lib, site string) {
 		"unified":            map[string]any{"projects": []any{map[string]any{"path": "../lib"}}},
 	})
 	writeText(t, filepath.Join(site, "docs", "index.md"),
-		"---\ntitle: Docs\ndescription: "+longDescription+"\n---\n\n# Docs\n")
+		"+++\ntitle = \"Docs\"\ndescription = \""+longDescription+"\"\n+++\n\n# Docs\n")
 
 	return lib, site
 }
@@ -117,10 +117,10 @@ func TestTheCheckRunsThePostLintsForAnOrdinaryProject(t *testing.T) {
 		"posts": map[string]any{"dir": ".selfdoc/posts/"},
 	})
 	writeText(t, filepath.Join(dir, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: "+longDescription+"\n---\n\n# Home\n")
+		"+++\ntitle = \"Home\"\ndescription = \""+longDescription+"\"\n+++\n\n# Home\n")
 	// A post whose date is not YYYY-MM-DD is POST003.
 	writeText(t, filepath.Join(dir, ".selfdoc", "posts", "broken.md"),
-		"---\ntitle: Broken\ndate: 15-01-2024\ndirectives: false\n---\n\nBad date.\n")
+		"+++\ntitle = \"Broken\"\ndate = \"15-01-2024\"\ndirectives = false\n+++\n\nBad date.\n")
 
 	result := run(t, dir, "check", "--json", "--no-auto-commit")
 	payload := payloadOf(t, result)

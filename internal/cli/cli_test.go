@@ -101,21 +101,21 @@ func TestInitIndexHasFrontmatter(t *testing.T) {
 	dir := initialized(t)
 	content := readText(t, filepath.Join(dir, "docs", "index.md"))
 
-	if !strings.HasPrefix(content, "---\n") {
+	if !strings.HasPrefix(content, "+++\n") {
 		t.Fatalf("starter page has no frontmatter:\n%s", content)
 	}
-	parts := strings.SplitN(content, "---\n", 3)
+	parts := strings.SplitN(content, "+++\n", 3)
 	if len(parts) < 3 {
-		t.Fatalf("frontmatter must have opening and closing ---:\n%s", content)
+		t.Fatalf("frontmatter must have an opening and a closing +++:\n%s", content)
 	}
 	block := parts[1]
-	if !strings.Contains(block, "description: Documentation for") {
+	if !strings.Contains(block, "description = \"Documentation for ") {
 		t.Errorf("frontmatter carries no description:\n%s", block)
 	}
 	dateLine := ""
 	for _, line := range strings.Split(strings.TrimSpace(block), "\n") {
-		if strings.HasPrefix(line, "date: ") {
-			dateLine = strings.TrimPrefix(line, "date: ")
+		if strings.HasPrefix(line, "date = ") {
+			dateLine = strings.TrimPrefix(line, "date = ")
 		}
 	}
 	if dateLine == "" {
@@ -332,7 +332,7 @@ func TestCheckExitsOneOnABrokenValidatedExample(t *testing.T) {
 
 	page := func(name, snippet, summary string) {
 		writeText(t, filepath.Join(dir, "docs", name),
-			"---\ntitle: "+name+"\ndescription: "+summary+"\n---\n\n"+
+			"+++\ntitle = \""+name+"\"\ndescription = \""+summary+"\"\n+++\n\n"+
 				"# "+name+"\n\n```python validate\n"+snippet+"```\n")
 	}
 	page("good.md",

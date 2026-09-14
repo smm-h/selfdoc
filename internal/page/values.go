@@ -35,8 +35,10 @@ func fmBoolTrue(meta util.Frontmatter, key string) bool {
 // carries one.
 //
 // Python's isinstance(value, (int, float)) accepts a bool, because bool is a
-// subclass of int there -- so "nav_order: true" is the number 1 rather than a
-// non-number. That is reproduced.
+// subclass of int there -- so a boolean read out of a numeric key is the number
+// 1 or 0 rather than a non-number. That is reproduced. The frontmatter schema
+// types `nav_order` as an integer, so a block never brings one here; a
+// frontmatter map assembled in memory still can.
 //
 // A plain int is accepted beside an int64 for the same reason the config
 // validator accepts one: a document assembled in memory carries whichever the

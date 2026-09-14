@@ -1,0 +1,229 @@
+# strictspec schema -- selfdoc page and post frontmatter.
+#
+# Governs the TOML block fenced with "+++" at the head of every page under a
+# project's docs directory and every post under its posts directory. The
+# generated validator (internal/util/selfdoc_frontmatter_gen.go) is what
+# util.ReadFrontmatter validates each block against, so a block that reaches a
+# page, a post, the staleness pass or gen has already been through here.
+#
+# THE KEY REGISTRY. The fields below are the whole set of keys a block may
+# carry: a record is closed, so a key that is not declared here is refused
+# rather than silently ignored. A key the code reads is declared here even when
+# no file writes it yet, because the reader is the only door and an undeclared
+# key can never reach a reader.
+#
+# TWO DOCUMENT KINDS, ONE SCHEMA. "document_kind" is supplied by the reader
+# rather than written by an author -- it says which of the two kinds the block
+# was read as, and the conditional-required constraints below are what make a
+# post's title, date and directive declaration mandatory while a page's are
+# optional. It travels with "format_version" as the reader-supplied trailer
+# described beside those two fields.
+#
+# SCOPE (honest subset): this schema owns the block's raw DOCUMENT SHAPE -- the
+# key registry, each value's lexeme class, and which keys a post must carry. It
+# does not own slug derivation, slug immutability, duplicate-slug detection, or
+# the directive-marker scan that a post declaring "directives = false" fails;
+# those are selfdoc-native checks over more than one document.
+
+name = "selfdoc-frontmatter"
+meta_version = 1
+format_version = 1
+document_syntax = "toml"
+role = "schema"
+root = "FrontmatterDocument"
+description = "A selfdoc page or post's frontmatter block: the declared key registry, each key's type, and the keys a post must carry."
+
+[types.FrontmatterDocument]
+type = "record"
+description = "One frontmatter block, read as a page or as a post."
+
+# -- The reader-supplied trailer ----------------------------------------------
+#
+# Neither key is written by an author: util.ReadFrontmatter appends both to the
+# block's bytes before validating, and refuses a block that declares either
+# itself, so each has exactly one author.
+
+[types.FrontmatterDocument.fields.format_version]
+type = "integer"
+required = true
+description = "Document format-version gate. v1 blocks carry 1."
+
+[types.FrontmatterDocument.fields.document_kind]
+type = "enum"
+required = true
+values = ["page", "post"]
+description = "Which kind the block was read as. Supplied by the reader from the call site, never written by an author."
+
+# -- Identity and prose -------------------------------------------------------
+
+[types.FrontmatterDocument.fields.title]
+type = "string"
+required = false
+non_empty = true
+description = "The page or post title: the sidebar label, the document heading and the browser title."
+
+[types.FrontmatterDocument.fields.description]
+type = "string"
+required = false
+description = "The one-sentence description the meta description, the search result and the staleness pass all read."
+
+[types.FrontmatterDocument.fields.slug]
+type = "string"
+required = false
+non_empty = true
+description = "A post's published address segment. Derived from the title when absent, and immutable once published."
+
+[types.FrontmatterDocument.fields.tags]
+type = "array"
+required = false
+description = "The tags the page carries into the search facets and the post listing."
+[types.FrontmatterDocument.fields.tags.item]
+type = "string"
+
+# -- Dates --------------------------------------------------------------------
+
+[types.FrontmatterDocument.fields.date]
+type = "date"
+required = false
+description = "The publication date, as a TOML local date (2026-09-14)."
+
+[types.FrontmatterDocument.fields.updated]
+type = "date"
+required = false
+description = "The modification date, as a TOML local date. Says when the page changed, where date says when it appeared."
+
+# -- Navigation ---------------------------------------------------------------
+
+[types.FrontmatterDocument.fields.nav_group]
+type = "string"
+required = false
+non_empty = true
+description = "The sidebar group title this page's group is labelled with."
+
+[types.FrontmatterDocument.fields.nav_order]
+type = "integer"
+required = false
+description = "The page's sort position: among the top-level pages for a page at the docs root, and within its group for a page in a subdirectory. A page declaring none sorts after every page that does."
+
+# -- Page behaviour switches --------------------------------------------------
+
+[types.FrontmatterDocument.fields.type]
+type = "string"
+required = false
+non_empty = true
+description = "The declared page type, which selects the layout, the content region's class, the structured-data type and the search type facet."
+
+[types.FrontmatterDocument.fields.versioned]
+type = "boolean"
+required = false
+description = "false keeps the page out of the per-version archive, so it is published once at its stable address."
+
+[types.FrontmatterDocument.fields.feed]
+type = "boolean"
+required = false
+description = "false keeps the page out of the Atom feed."
+
+[types.FrontmatterDocument.fields.schema]
+type = "string"
+required = false
+non_empty = true
+description = "The structured-data type this page emits, overriding the one its page type would select."
+
+[types.FrontmatterDocument.fields.auto_steps]
+type = "boolean"
+required = false
+description = "false stops the renderer marking this page's ordered lists up as HowTo steps."
+
+[types.FrontmatterDocument.fields.auto_api]
+type = "boolean"
+required = false
+description = "false stops the renderer marking this page's API sections up as API documentation."
+
+[types.FrontmatterDocument.fields.glossary_links]
+type = "boolean"
+required = false
+description = "false opts the page out of automatic term links. Declared and validated here; the linker is designed to read it and does not yet."
+
+[types.FrontmatterDocument.fields.locale]
+type = "string"
+required = false
+non_empty = true
+description = "The locale this document is written in, when it is not the project's default."
+
+# -- Generation markers -------------------------------------------------------
+
+[types.FrontmatterDocument.fields.generated]
+type = "boolean"
+required = false
+description = "true marks a page selfdoc wrote, which gen may overwrite and delete."
+
+[types.FrontmatterDocument.fields.seeded]
+type = "boolean"
+required = false
+description = "true marks a description selfdoc emitted rather than a person, which gen may freely rewrite."
+
+# -- Post fields --------------------------------------------------------------
+
+[types.FrontmatterDocument.fields.draft]
+type = "boolean"
+required = false
+description = "true keeps the post out of every build that did not ask for drafts."
+
+[types.FrontmatterDocument.fields.directives]
+type = "boolean"
+required = false
+description = "Whether the post may carry directive markers. Required on a post and has no default: a post about directive syntax reads like a post that uses it."
+
+# -- Release-post fields, written by `selfdoc blog post generate` --------------
+
+[types.FrontmatterDocument.fields.version]
+type = "string"
+required = false
+non_empty = true
+description = "The version a release post announces."
+
+[types.FrontmatterDocument.fields.prev_version]
+type = "string"
+required = false
+non_empty = true
+description = "The version a release post's release succeeded."
+
+[types.FrontmatterDocument.fields.bump_type]
+type = "string"
+required = false
+non_empty = true
+description = "The bump a release post's release performed."
+
+[types.FrontmatterDocument.fields.release_url]
+type = "string"
+required = false
+non_empty = true
+description = "The release page a release post links to."
+
+[types.FrontmatterDocument.fields.registry_urls]
+type = "array"
+required = false
+description = "The registry pages a release post links to."
+[types.FrontmatterDocument.fields.registry_urls.item]
+type = "string"
+
+# -- What a post must carry ---------------------------------------------------
+#
+# These are the whole of the presence rules the POST001, POST002 and POST006
+# lints report; the reader maps a diagnostic on one of these fields to its code
+# rather than checking the same fact again.
+
+[[types.FrontmatterDocument.constraints]]
+form = "conditional-required"
+field = "title"
+when = { field = "document_kind", predicate = "equals", value = "post" }
+
+[[types.FrontmatterDocument.constraints]]
+form = "conditional-required"
+field = "date"
+when = { field = "document_kind", predicate = "equals", value = "post" }
+
+[[types.FrontmatterDocument.constraints]]
+form = "conditional-required"
+field = "directives"
+when = { field = "document_kind", predicate = "equals", value = "post" }

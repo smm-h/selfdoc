@@ -251,9 +251,9 @@ func TestServeWithDraftsRebuildsFirst(t *testing.T) {
 		"docs": "docs/", "output": "docs/_build/",
 	})
 	writeText(t, filepath.Join(dir, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: "+longDescription+"\n---\n\n# Home\n")
+		"+++\ntitle = \"Home\"\ndescription = \""+longDescription+"\"\n+++\n\n# Home\n")
 	writePost(t, filepath.Join(dir, ".selfdoc", "posts"), "draft.md",
-		[]string{"title: Draft Post", "date: 2024-01-16", "slug: draft-post", "draft: true"},
+		[]string{"title = \"Draft Post\"", "date = 2024-01-16", "slug = \"draft-post\"", "draft = true"},
 		"Draft content here.\n")
 	// The server refuses an absent output tree, so the rebuild has to be what
 	// produces the draft page below.

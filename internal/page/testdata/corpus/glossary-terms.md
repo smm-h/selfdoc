@@ -1,9 +1,9 @@
----
-title: Glossary
-description: "Alphabetical glossary of key terms used in the selfdoc documentation, including directives, extractors, frontmatter, themes, and build pipeline concepts."
-nav_group: "Reference"
-nav_order: 50
----
++++
+title = "Glossary"
+description = "Alphabetical glossary of key terms used in the selfdoc documentation, including directives, extractors, frontmatter, themes, and build pipeline concepts."
+nav_group = "Reference"
+nav_order = 50
++++
 
 # Glossary
 

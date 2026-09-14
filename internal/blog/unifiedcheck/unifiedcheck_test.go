@@ -37,16 +37,16 @@ func requirePython(t *testing.T) {
 
 // postFrontmatter is a well-formed post frontmatter block whose description is
 // long enough to keep the description rules out of these assertions.
-const postFrontmatter = "---\n" +
-	"title: Hello World\n" +
-	"date: 2024-01-15\n" +
-	"slug: hello-world\n" +
-	"draft: false\n" +
-	"directives: false\n" +
-	"description: A post description written at a comfortable length, so " +
+const postFrontmatter = "+++\n" +
+	"title = \"Hello World\"\n" +
+	"date = 2024-01-15\n" +
+	"slug = \"hello-world\"\n" +
+	"draft = false\n" +
+	"directives = false\n" +
+	"description = \"A post description written at a comfortable length, so " +
 	"that the description-length rules stay out of the assertions these " +
-	"tests actually make.\n" +
-	"---\n"
+	"tests actually make.\"\n" +
+	"+++\n"
 
 // filesOf is every file a result attributes something to: the directive
 // results' pages and the diagnostics' paths.
@@ -305,9 +305,9 @@ func writePostsProject(t *testing.T, root string, posts map[string]string) {
 	testproject.WriteText(t, filepath.Join(root, "src", "__init__.py"),
 		`"""Example package."""`+"\n")
 	testproject.WriteText(t, filepath.Join(root, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: A home page whose description is long "+
-			"enough to keep the description rules quiet in this fixture.\n"+
-			"---\n# Test Project\n\nWelcome.\n")
+		"+++\ntitle = \"Home\"\ndescription = \"A home page whose description is long "+
+			"enough to keep the description rules quiet in this fixture.\"\n"+
+			"+++\n# Test Project\n\nWelcome.\n")
 	for name, content := range posts {
 		testproject.WriteText(t, filepath.Join(root, ".selfdoc", "posts", name), content)
 	}

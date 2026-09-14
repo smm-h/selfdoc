@@ -248,7 +248,7 @@ description = "A post is missing the required `directives` declaration, or decla
 [[lints]]
 code = "POST007"
 severity = "error"
-description = "A post declaring `directives: false` carries a directive marker. The message names the marker and the line it sits on."
+description = "A post declaring `directives = false` carries a directive marker. The message names the marker and the line it sits on."
 
 # -- Emitted references -------------------------------------------------------
 

@@ -160,7 +160,7 @@ func TestBuildPageSummaryRule(t *testing.T) {
 	t.Run("a reference page keeps its summary", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
 			"index.md": "# Home\n\nWelcome.\n",
-			"reference.md": "---\ndescription: Every flag the command takes.\n---\n" +
+			"reference.md": "+++\ndescription = \"Every flag the command takes.\"\n+++\n" +
 				"# Reference\n\nThe flags follow.\n",
 		}})
 		assertCarries(t, "reference/index.html", built.page(t, "reference/index.html"),
@@ -169,7 +169,7 @@ func TestBuildPageSummaryRule(t *testing.T) {
 
 	t.Run("the home page does not repeat its description", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"index.md": "---\ndescription: A curated index of the tools I build.\n---\n" +
+			"index.md": "+++\ndescription = \"A curated index of the tools I build.\"\n+++\n" +
 				"# Home\n\nA curated index of the tools I build, each linking to " +
 				"its documentation.\n",
 		}})
@@ -183,7 +183,7 @@ func TestBuildPageSummaryRule(t *testing.T) {
 	t.Run("a post does not repeat its description", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
 			"index.md": "# Home\n\nWelcome.\n",
-			"writing.md": "---\ntype: post\ndescription: Why the release flow waits for CI.\n---\n" +
+			"writing.md": "+++\ntype = \"post\"\ndescription = \"Why the release flow waits for CI.\"\n+++\n" +
 				"# Waiting for CI\n\nWhy the release flow waits for CI, and what it costs.\n",
 		}})
 		page := built.page(t, "writing/index.html")
@@ -209,9 +209,9 @@ func TestBuildPageType(t *testing.T) {
 		// Only a frontmatter-declared type counts: a derived facet type is
 		// a search filter, not a design decision.
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"cv.md": "---\ntitle: CV\ntype: cv\n" +
-				"description: The curriculum vitae page of this small site.\n" +
-				"---\n\n# CV\n\nA record.\n",
+			"cv.md": "+++\ntitle = \"CV\"\ntype = \"cv\"\n" +
+				"description = \"The curriculum vitae page of this small site.\"\n" +
+				"+++\n\n# CV\n\nA record.\n",
 		}})
 		assertCarries(t, "cv/index.html", built.page(t, "cv/index.html"),
 			`<main id="tm-content" class="content page-cv"`)
@@ -245,13 +245,13 @@ func TestBuildEndToEndWithDirectives(t *testing.T) {
 				"    return sum(items) * (1 + tax_rate)\n",
 		},
 		Docs: map[string]string{
-			"index.md": "---\ntitle: API Reference\ndescription: Auto-generated API docs\n" +
-				"date: 2025-01-01\n---\n\n# API Reference\n\n:-: ref path=\"src\"\n",
-			"notes.md": "---\ntitle: Notes\ndescription: Important notes\n" +
-				"date: 2025-01-01\n---\n\n# Notes\n\n" +
+			"index.md": "+++\ntitle = \"API Reference\"\ndescription = \"Auto-generated API docs\"\n" +
+				"date = 2025-01-01\n+++\n\n# API Reference\n\n:-: ref path=\"src\"\n",
+			"notes.md": "+++\ntitle = \"Notes\"\ndescription = \"Important notes\"\n" +
+				"date = 2025-01-01\n+++\n\n# Notes\n\n" +
 				":<: callout-note\n:=:\n::: This is an important note.\n:>:\n",
-			"glossary.md": "---\ntitle: Glossary\ndescription: Key terms\n" +
-				"date: 2025-01-01\n---\n\n# Glossary\n\n" +
+			"glossary.md": "+++\ntitle = \"Glossary\"\ndescription = \"Key terms\"\n" +
+				"date = 2025-01-01\n+++\n\n# Glossary\n\n" +
 				":<: list-glossary\n:=:\n" +
 				"::: **Directive**: A block in Markdown that selfdoc resolves\n" +
 				"::: **Extractor**: A language-specific module that reads code\n:>:\n",

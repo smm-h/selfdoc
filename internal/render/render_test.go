@@ -22,16 +22,16 @@ import (
 // saved under the posts directory.
 const (
 	postHelloName = "hello.md"
-	postHello     = "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"tags: [release]\ndraft: false\ndirectives: false\n---\n" +
+	postHello     = "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"tags = [\"release\"]\ndraft = false\ndirectives = false\n+++\n" +
 		"# Hello World\n\nThis is the post content.\n\n" +
 		"## Setup\n\nFirst.\n\n## Setup\n\nSecond.\n"
 	postSecondName = "second.md"
-	postSecond     = "---\ntitle: Second Post\ndate: 2024-02-01\nslug: second-post\n" +
-		"tags: []\ndraft: false\ndirectives: false\n---\nSecond post body.\n"
+	postSecond     = "+++\ntitle = \"Second Post\"\ndate = 2024-02-01\nslug = \"second-post\"\n" +
+		"tags = []\ndraft = false\ndirectives = false\n+++\nSecond post body.\n"
 	postDraftName = "draft.md"
-	postDraft     = "---\ntitle: Draft Post\ndate: 2024-03-01\nslug: draft-post\n" +
-		"tags: []\ndraft: true\ndirectives: false\n---\nUnfinished.\n"
+	postDraft     = "+++\ntitle = \"Draft Post\"\ndate = 2024-03-01\nslug = \"draft-post\"\n" +
+		"tags = []\ndraft = true\ndirectives = false\n+++\nUnfinished.\n"
 )
 
 // makeProject writes a minimal project carrying the named posts and returns
@@ -295,8 +295,8 @@ func TestRenderUnsavedAndDraftPosts(t *testing.T) {
 
 	t.Run("a post with no file behind it renders", func(t *testing.T) {
 		dir := makeProject(t, map[string]string{postHelloName: postHello})
-		source := "---\ntitle: Brand New\ndate: 2024-04-01\nslug: brand-new\n" +
-			"tags: []\ndraft: false\ndirectives: false\n---\nNever saved.\n"
+		source := "+++\ntitle = \"Brand New\"\ndate = 2024-04-01\nslug = \"brand-new\"\n" +
+			"tags = []\ndraft = false\ndirectives = false\n+++\nNever saved.\n"
 
 		before, beforeEntries := fingerprint(t, dir)
 		rendered, err := Post(PostOptions{

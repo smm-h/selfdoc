@@ -36,10 +36,10 @@ func TestBuildTargetPosts(t *testing.T) {
 		"docs": "docs/", "output": "docs/_build/",
 	})
 	writeText(t, filepath.Join(dir, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: The landing page of a project whose posts are built alone.\n---\n\n# Home\n")
+		"+++\ntitle = \"Home\"\ndescription = \"The landing page of a project whose posts are built alone.\"\n+++\n\n# Home\n")
 	writePost(t, filepath.Join(dir, ".selfdoc", "posts"), "hello.md",
-		[]string{"title: Hello World", "date: 2024-01-15", "slug: hello-world",
-			"tags: [release]", "draft: false"},
+		[]string{"title = \"Hello World\"", "date = 2024-01-15", "slug = \"hello-world\"",
+			"tags = [\"release\"]", "draft = false"},
 		"This is the post content.\n")
 
 	result := run(t, dir, "build", "--target", "posts", "--no-auto-commit")
@@ -60,13 +60,13 @@ func TestBuildTargetPostsWithDrafts(t *testing.T) {
 		"docs": "docs/", "output": "docs/_build/",
 	})
 	writeText(t, filepath.Join(dir, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: The landing page of a project whose posts are built alone.\n---\n\n# Home\n")
+		"+++\ntitle = \"Home\"\ndescription = \"The landing page of a project whose posts are built alone.\"\n+++\n\n# Home\n")
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
 	writePost(t, postsDir, "hello.md",
-		[]string{"title: Hello World", "date: 2024-01-15", "slug: hello-world", "draft: false"},
+		[]string{"title = \"Hello World\"", "date = 2024-01-15", "slug = \"hello-world\"", "draft = false"},
 		"Published.\n")
 	writePost(t, postsDir, "draft.md",
-		[]string{"title: Draft Post", "date: 2024-01-16", "slug: draft-post", "draft: true"},
+		[]string{"title = \"Draft Post\"", "date = 2024-01-16", "slug = \"draft-post\"", "draft = true"},
 		"Draft content here.\n")
 
 	draftPage := filepath.Join(dir, "docs", "_build", "blog", "draft-post", "index.html")

@@ -39,9 +39,9 @@ func write(t *testing.T, path, content string) {
 }
 
 // cleanPage is a page of ordinary prose with nothing misspelled in it.
-const cleanPage = "---\ntitle: Home\ndescription: " +
+const cleanPage = "+++\ntitle = \"Home\"\ndescription = \"" +
 	"A page of ordinary prose that says something concrete about the " +
-	"project and its documentation for the reader.\n---\n\n" +
+	"project and its documentation for the reader.\"\n+++\n\n" +
 	"# Home\n\nThis page is spelled correctly.\n"
 
 // corpusProject writes a project named name under root, whose docs tree holds
@@ -155,7 +155,7 @@ func TestScanProjectSurveysPostsAtTheirOwnPaths(t *testing.T) {
 	// A draft is surveyed too: a draft's prose is still prose, and a term
 	// it introduces belongs on the accept list before the draft ships.
 	write(t, filepath.Join(projectDir, ".selfdoc", "posts", "hello.md"),
-		"---\ntitle: Hello\ndate: 2024-01-15\ndraft: true\ndirectives: false\n---\n"+
+		"+++\ntitle = \"Hello\"\ndate = 2024-01-15\ndraft = true\ndirectives = false\n+++\n"+
 			"This post says correclty.\n")
 
 	found, err := fleet.DiscoverFleet(root)

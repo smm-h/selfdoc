@@ -122,6 +122,11 @@ type WrapOptions struct {
 	SchemaTypes map[string]string
 	// PageTags are the page's frontmatter tags.
 	PageTags []string
+	// GlossaryLinks is the page's "glossary_links" declaration: false is
+	// the page's opt-out from automatic term links, and a page declaring
+	// nothing carries true. The automatic linker is designed to read it;
+	// the field is the declaration's home until that linker arrives.
+	GlossaryLinks bool
 	// TwitterSite is the site's Twitter handle.
 	TwitterSite string
 	// Search selects the topbar's search trigger: "icon", "bar" or

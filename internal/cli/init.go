@@ -257,11 +257,15 @@ func (c *cli) cmdInit(ctx *strictcli.Context, kwargs map[string]any) strictcli.O
 	indexPath := filepath.Join(dir, "docs", "index.md")
 	if info, err := os.Stat(indexPath); err != nil || info.IsDir() {
 		today := time.Now().Format("2006-01-02")
-		starter := "---\n" +
-			"title: " + name + "\n" +
-			"description: Documentation for " + name + "\n" +
-			"date: " + today + "\n" +
-			"---\n" +
+		frontmatter, err := util.RenderFrontmatter([]util.FrontmatterField{
+			{Key: "title", Value: name},
+			{Key: "description", Value: "Documentation for " + name},
+			{Key: "date", Value: util.FrontmatterDate(today)},
+		})
+		if err != nil {
+			return c.fail(err)
+		}
+		starter := frontmatter +
 			"\n" +
 			"# " + name + "\n" +
 			"\n" +

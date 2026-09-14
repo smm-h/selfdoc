@@ -60,27 +60,26 @@ func postsDirectory(projectConfig map[string]any, dirPath string) (string, strin
 // The coordinates come off the error, not out of the message: the detection
 // site knew the post's path (and, for a stray marker, its line), and
 // everything downstream that positions a diagnostic reads the structured
-// fields rather than parsing prose. The CODE, though, is chosen by matching
-// the message -- the refusals carry no kind of their own, and inventing one
-// would have to be declared at every raise site in the post parser.
+// fields rather than parsing prose. The CODE comes off the error too for
+// every refusal the frontmatter schema decided, which is where a post's
+// required fields and its date's spelling are declared. The refusals this
+// repository decides on its own -- the slug rules and the directive-marker
+// scan -- carry no kind of their own and are still matched by message.
 func PostErrorLint(err *posts.PostError, postsDirRelative string) lints.LintResult {
 	message := err.Error()
 	code := "POST001" // the fallback
 	switch {
-	case strings.Contains(message, "'title' is required"):
-		code = "POST002"
-	case strings.Contains(message, "'date' is required"):
-		code = "POST001"
-	case strings.Contains(message, "must be YYYY-MM-DD"):
-		code = "POST003"
+	// A refusal the frontmatter schema decided carries its own code: the
+	// missing title, the missing or mistyped date, the missing or
+	// non-boolean directive declaration are the schema's facts, and the
+	// post parser read them off the validator's verdict.
+	case err.Code != "":
+		code = err.Code
 	case strings.Contains(message, "Duplicate slug"):
 		code = "POST004"
 	case strings.Contains(message, "Slug immutability violation"):
 		code = "POST005"
-	case strings.Contains(message, "'directives' is required"),
-		strings.Contains(message, "'directives' must be"):
-		code = "POST006"
-	case strings.Contains(message, "declares 'directives: false'"):
+	case strings.Contains(message, "declares 'directives = false'"):
 		code = "POST007"
 	}
 
@@ -213,12 +212,16 @@ func postLintDocs(
 		return nil, nil
 	}
 
-	payloads := build.PostDocsPayloads(published)
+	payloads, err := build.PostDocsPayloads(published)
+	if err != nil {
+		return nil, err
+	}
 
 	result := map[string]docs.Doc{}
 	for _, post := range published {
-		payload := payloads[address.PostsPrefix+"/"+post.Slug+".md"]
-		doc, err := docs.ResolveMarkdown(payload, res.Resolve, validNames)
+		relPath := address.PostsPrefix + "/" + post.Slug + ".md"
+		payload := payloads[relPath]
+		doc, err := docs.ResolveMarkdown(payload, relPath, res.Resolve, validNames)
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +237,10 @@ func postLintDocs(
 			}
 			raw = string(bytes)
 		}
-		_, sourceBody, _ := util.ParseFrontmatter(raw)
+		sourceBody, err := util.StripFrontmatter(raw, sourceRel)
+		if err != nil {
+			return nil, err
+		}
 		fmLineCount := len(strings.Split(raw, "\n")) - len(strings.Split(sourceBody, "\n"))
 
 		result[sourceRel] = docs.Doc{

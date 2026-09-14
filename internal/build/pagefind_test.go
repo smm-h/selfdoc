@@ -69,9 +69,9 @@ func TestPagefindIndexesTheBuild(t *testing.T) {
 	built := buildFixture(t, fixture{
 		Config: map[string]any{"deploy": map[string]any{"provider": "github-pages"}},
 		Docs: map[string]string{
-			"index.md": "---\ntitle: Home\ntags: [intro, overview]\n---\n\n" +
+			"index.md": "+++\ntitle = \"Home\"\ntags = [\"intro\", \"overview\"]\n+++\n\n" +
 				"# Home\n\nWelcome to the documentation site.\n",
-			"guides/deploying.md": "---\ntitle: Deploying\ntype: guide\ntags: [deploy]\n---\n\n" +
+			"guides/deploying.md": "+++\ntitle = \"Deploying\"\ntype = \"guide\"\ntags = [\"deploy\"]\n+++\n\n" +
 				"# Deploying\n\nPublish the built site to a static host.\n",
 		},
 	})

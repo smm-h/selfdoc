@@ -230,16 +230,16 @@ func hasDirectiveMarkerPrefix(line string) bool {
 }
 
 // ComputeContentHash computes the SHA-256 hash of a page's raw body, with the
-// frontmatter stripped and the directive marker lines canonicalized.
+// directive marker lines canonicalized.
 //
-// It receives the pre-resolution template content, so a change in what a
-// directive emits -- a version bump, a regenerated table -- is not a content
-// change. See canonicalizeDirectiveMarkers for what a marker line
-// contributes.
+// It receives the page's BODY -- what the frontmatter reader returned behind
+// the block, pre-resolution -- so a change in what a directive emits (a
+// version bump, a regenerated table) is not a content change. This pass used
+// to strip a frontmatter block of its own before hashing; the reader is the
+// one place that knows what a block looks like, and a body is what it hands
+// out. See canonicalizeDirectiveMarkers for what a marker line contributes.
 func ComputeContentHash(body string) string {
-	body = StripFrontmatter(body)
-	body = canonicalizeDirectiveMarkers(body)
-	return sha256Hex(body)
+	return sha256Hex(canonicalizeDirectiveMarkers(body))
 }
 
 // ComputeDescriptionHash computes the SHA-256 hash of a frontmatter
@@ -681,25 +681,6 @@ func withoutPages(warnings []Warning, exempt map[string]bool) []Warning {
 		return nil
 	}
 	return kept
-}
-
-// StripFrontmatter returns content with its frontmatter block removed.
-//
-// This is the staleness pass's own reading of a frontmatter fence, kept
-// separate from the frontmatter parser because it answers a narrower
-// question: where the body begins. A document that opens with "---" and never
-// closes the fence is returned whole.
-func StripFrontmatter(content string) string {
-	if !strings.HasPrefix(content, "---") {
-		return content
-	}
-	lines := strings.Split(content, "\n")
-	for index := 1; index < len(lines); index++ {
-		if strings.Trim(lines[index], pySpaceCutset) == "---" {
-			return strings.TrimLeft(strings.Join(lines[index+1:], "\n"), "\n")
-		}
-	}
-	return content
 }
 
 // sha256Hex is the hex-encoded SHA-256 digest of text's UTF-8 bytes.

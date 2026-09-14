@@ -39,15 +39,15 @@ func writePost(t *testing.T, postsDir, filename string, lines []string, body str
 	t.Helper()
 	declared := false
 	for _, line := range lines {
-		if strings.HasPrefix(line, "directives:") {
+		if strings.HasPrefix(line, "directives ") {
 			declared = true
 		}
 	}
 	if !declared {
-		lines = append(append([]string{}, lines...), "directives: false")
+		lines = append(append([]string{}, lines...), "directives = false")
 	}
 	writeText(t, filepath.Join(postsDir, filename),
-		"---\n"+strings.Join(lines, "\n")+"\n---\n"+body)
+		"+++\n"+strings.Join(lines, "\n")+"\n+++\n"+body)
 }
 
 // -- post new ---------------------------------------------------------------
@@ -90,26 +90,26 @@ func TestPostNewFrontmatter(t *testing.T) {
 	}
 	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-frontmatter-check.md"))
 
-	if !strings.HasPrefix(content, "---\n") {
+	if !strings.HasPrefix(content, "+++\n") {
 		t.Fatalf("no frontmatter:\n%s", content)
 	}
 	for _, want := range []string{
-		"title: Frontmatter Check\n",
-		"date: " + today() + "\n",
-		"slug: frontmatter-check\n",
-		"tags: []\n",
-		"draft: true\n",
+		"title = \"Frontmatter Check\"\n",
+		"date = " + today() + "\n",
+		"slug = \"frontmatter-check\"\n",
+		"tags = []\n",
+		"draft = true\n",
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("frontmatter does not carry %q:\n%s", want, content)
 		}
 	}
-	if !strings.HasSuffix(content, "---\n\n") {
+	if !strings.HasSuffix(content, "+++\n\n") {
 		t.Errorf("the scaffold does not end with the closing fence and a blank line:\n%q", content)
 	}
 	// The scaffold emits no 'project' key: a post's owning project is the
 	// repository it lives in, and the assembly learns it from the manifest.
-	if strings.Contains(content, "project:") {
+	if strings.Contains(content, "project =") {
 		t.Errorf("the scaffold declares a project key:\n%s", content)
 	}
 }
@@ -202,8 +202,8 @@ func TestPostListReportsEveryPost(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
-	writePost(t, postsDir, "a.md", []string{"title: First Post", "date: 2025-01-15"}, "")
-	writePost(t, postsDir, "b.md", []string{"title: Second Post", "date: 2025-03-20"}, "")
+	writePost(t, postsDir, "a.md", []string{"title = \"First Post\"", "date = 2025-01-15"}, "")
+	writePost(t, postsDir, "b.md", []string{"title = \"Second Post\"", "date = 2025-03-20"}, "")
 
 	result := run(t, dir, "blog", "post", "list")
 	for _, want := range []string{"First Post", "Second Post", "2 post(s) found"} {
@@ -218,7 +218,7 @@ func TestPostListMarksDrafts(t *testing.T) {
 	dir := postProject(t, nil)
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
 	writePost(t, postsDir, "a.md",
-		[]string{"title: Draft Post", "date: 2025-01-15", "draft: true"}, "")
+		[]string{"title = \"Draft Post\"", "date = 2025-01-15", "draft = true"}, "")
 
 	result := run(t, dir, "blog", "post", "list")
 	if !strings.Contains(result.Stdout, "[DRAFT]") {
@@ -230,7 +230,7 @@ func TestPostListLeavesPublishedPostsUnmarked(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
-	writePost(t, postsDir, "a.md", []string{"title: Published Post", "date: 2025-01-15"}, "")
+	writePost(t, postsDir, "a.md", []string{"title = \"Published Post\"", "date = 2025-01-15"}, "")
 
 	result := run(t, dir, "blog", "post", "list")
 	if strings.Contains(result.Stdout, "[DRAFT]") {
@@ -245,9 +245,9 @@ func TestPostListIsNewestFirst(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
-	writePost(t, postsDir, "old.md", []string{"title: Old", "date: 2024-06-01"}, "")
-	writePost(t, postsDir, "new.md", []string{"title: New", "date: 2025-07-01"}, "")
-	writePost(t, postsDir, "mid.md", []string{"title: Mid", "date: 2025-01-01"}, "")
+	writePost(t, postsDir, "old.md", []string{"title = \"Old\"", "date = 2024-06-01"}, "")
+	writePost(t, postsDir, "new.md", []string{"title = \"New\"", "date = 2025-07-01"}, "")
+	writePost(t, postsDir, "mid.md", []string{"title = \"Mid\"", "date = 2025-01-01"}, "")
 
 	result := run(t, dir, "blog", "post", "list")
 	var lines []string
@@ -271,7 +271,7 @@ func TestPostListShowsTheSlug(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 	writePost(t, filepath.Join(dir, ".selfdoc", "posts"), "a.md",
-		[]string{"title: My Great Post", "date: 2025-01-15", "slug: custom-slug"}, "")
+		[]string{"title = \"My Great Post\"", "date = 2025-01-15", "slug = \"custom-slug\""}, "")
 
 	result := run(t, dir, "blog", "post", "list")
 	if !strings.Contains(result.Stdout, "(custom-slug)") {
@@ -325,16 +325,16 @@ func TestPostGenerateWritesEveryDeclaredField(t *testing.T) {
 
 	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v2.0.0.md"))
 	for _, want := range []string{
-		"title: MyProject v2.0.0\n",
-		"date: " + today() + "\n",
-		"slug: release-v2.0.0\n",
-		"draft: false\n",
-		"version: 2.0.0\n",
-		"prev_version: 1.0.0\n",
-		"bump_type: major\n",
-		"release_url: https://github.com/org/repo/releases/tag/v2.0.0\n",
-		"registry_urls: [https://pypi.org/project/myproject/2.0.0/, https://npmjs.com/package/myproject]\n",
-		"tags: [release, v2.0.0]\n",
+		"title = \"MyProject v2.0.0\"\n",
+		"date = " + today() + "\n",
+		"slug = \"release-v2.0.0\"\n",
+		"draft = false\n",
+		"version = \"2.0.0\"\n",
+		"prev_version = \"1.0.0\"\n",
+		"bump_type = \"major\"\n",
+		"release_url = \"https://github.com/org/repo/releases/tag/v2.0.0\"\n",
+		"registry_urls = [\"https://pypi.org/project/myproject/2.0.0/\", \"https://npmjs.com/package/myproject\"]\n",
+		"tags = [\"release\", \"v2.0.0\"]\n",
 		"This is a great release!",
 		"## Changelog",
 		"- Fixed a bug",
@@ -344,7 +344,7 @@ func TestPostGenerateWritesEveryDeclaredField(t *testing.T) {
 			t.Errorf("the post does not carry %q:\n%s", want, content)
 		}
 	}
-	if strings.Contains(content, "project:") {
+	if strings.Contains(content, "project =") {
 		t.Errorf("the post declares a project key:\n%s", content)
 	}
 }
@@ -357,10 +357,10 @@ func TestPostGenerateMinimalPost(t *testing.T) {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v1.2.3.md"))
-	if !strings.Contains(content, "title: Release v1.2.3\n") {
+	if !strings.Contains(content, "title = \"Release v1.2.3\"\n") {
 		t.Errorf("the default title is wrong:\n%s", content)
 	}
-	for _, absent := range []string{"prev_version:", "bump_type:", "release_url:", "registry_urls:"} {
+	for _, absent := range []string{"prev_version = \"", "bump_type = \"", "release_url = \"", "registry_urls = []"} {
 		if strings.Contains(content, absent) {
 			t.Errorf("an unstated field was written: %q\n%s", absent, content)
 		}
@@ -398,7 +398,7 @@ func TestPostGenerateChangelogWithoutBody(t *testing.T) {
 		t.Fatalf("post generate failed: %s", result.Stderr)
 	}
 	content := readText(t, filepath.Join(dir, ".selfdoc", "posts", today()+"-release-v3.1.0.md"))
-	body := content[strings.LastIndex(content, "\n---\n")+len("\n---\n"):]
+	body := content[strings.LastIndex(content, "\n+++\n")+len("\n+++\n"):]
 	if !strings.HasPrefix(strings.TrimSpace(body), "## Changelog") {
 		t.Errorf("the body does not start with the changelog heading:\n%s", body)
 	}

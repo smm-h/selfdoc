@@ -33,7 +33,7 @@ func baselineProject(t *testing.T) string {
 func writePage(t *testing.T, dir, description, body, name string) {
 	t.Helper()
 	writeText(t, filepath.Join(dir, "docs", name),
-		"---\ndescription: "+description+"\n---\n# Page\n\n"+body+"\n")
+		"+++\ndescription = \""+description+"\"\n+++\n# Page\n\n"+body+"\n")
 }
 
 // staleIdentifiers runs the check and returns every page the run reports as

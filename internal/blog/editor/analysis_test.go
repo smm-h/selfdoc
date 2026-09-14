@@ -53,8 +53,8 @@ func analysisPost(body string) string {
 // draft answer.
 func analysisPostAs(title, slug string, draft bool, body string) string {
 	return fmt.Sprintf(
-		"---\ntitle: %s\ndate: 2024-01-15\nslug: %s\ndescription: %s\n"+
-			"tags: [release]\ndraft: %t\ndirectives: false\n---\n%s",
+		"+++\ntitle = \"%s\"\ndate = 2024-01-15\nslug = \"%s\"\ndescription = \"%s\"\n"+
+			"tags = [\"release\"]\ndraft = %t\ndirectives = false\n+++\n%s",
 		title, slug, analysisDescription, draft, body,
 	)
 }
@@ -134,7 +134,7 @@ func TestSpellingOffsets(t *testing.T) {
 		finding := findings[0]
 		// The offset is into the WHOLE buffer, frontmatter included -- which
 		// is the text the editor holds.
-		if finding.From <= strings.Index(content, "---\n") {
+		if finding.From <= strings.Index(content, "+++\n") {
 			t.Errorf("from = %d, want an offset past the frontmatter fence", finding.From)
 		}
 		want := strings.Count(runeSlice(content, 0, finding.From), "\n") + 1
@@ -388,7 +388,7 @@ func TestABufferThatIsNotAValidPost(t *testing.T) {
 	project := analysisProject(t)
 
 	t.Run("a missing date is the post check's own code", func(t *testing.T) {
-		broken := "---\ntitle: No Date\nslug: no-date\ndirectives: false\n---\nBody\n"
+		broken := "+++\ntitle = \"No Date\"\nslug = \"no-date\"\ndirectives = false\n+++\nBody\n"
 		codes := codesOf(lintsOf(t, project, postHelloName, broken))
 		if strings.Join(codes, ",") != "POST001" {
 			t.Errorf("codes = %v, want POST001", codes)
@@ -396,7 +396,7 @@ func TestABufferThatIsNotAValidPost(t *testing.T) {
 	})
 
 	t.Run("a missing title is reported rather than raised", func(t *testing.T) {
-		broken := "---\ndate: 2024-01-15\nslug: no-title\ndirectives: false\n---\nB\n"
+		broken := "+++\ndate = 2024-01-15\nslug = \"no-title\"\ndirectives = false\n+++\nB\n"
 		codes := codesOf(lintsOf(t, project, postHelloName, broken))
 		if strings.Join(codes, ",") != "POST002" {
 			t.Errorf("codes = %v, want POST002", codes)
@@ -405,7 +405,7 @@ func TestABufferThatIsNotAValidPost(t *testing.T) {
 
 	t.Run("spelling still answers for a buffer that is not a post", func(t *testing.T) {
 		// The lanes fail independently, which is why they are two lanes.
-		broken := "---\ntitle: No Date\n---\n\nThis is teh body.\n"
+		broken := "+++\ntitle = \"No Date\"\n+++\n\nThis is teh body.\n"
 		if words := wordsOf(spellingOf(t, broken)); strings.Join(words, ",") != "teh" {
 			t.Errorf("words = %v, want only teh", words)
 		}
@@ -497,7 +497,7 @@ func TestTheAnalysisEndpoint(t *testing.T) {
 
 	t.Run("a buffer the renderer would refuse still gets findings", func(t *testing.T) {
 		// The reason analysis is a sibling of the preview, not a passenger.
-		broken := "---\ntitle: No Date\n---\n\nThis is teh body.\n"
+		broken := "+++\ntitle = \"No Date\"\n+++\n\nThis is teh body.\n"
 		status, body := requestJSON(t, port, "POST",
 			"/api/repos/proj/analysis?path="+postHelloName, broken)
 		if status != 200 {

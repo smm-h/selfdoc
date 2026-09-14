@@ -226,7 +226,7 @@ func TestRootTemplateWithFrontmatter(t *testing.T) {
 	config["root_files"] = []any{"docs/_README.md"}
 	writeConfig(t, root, config)
 	write(t, filepath.Join(root, "docs", "_README.md"),
-		"---\ntitle: Readme\n---\n\n# Project\n\n:-: ref path=\"mylib\"\n")
+		"+++\ntitle = \"Readme\"\n+++\n\n# Project\n\n:-: ref path=\"mylib\"\n")
 
 	result := checkFixture(t, root)
 
@@ -378,7 +378,7 @@ func TestThemeCSSAnswersEveryShippedTheme(t *testing.T) {
 func TestCheckDocsWritesHashStore(t *testing.T) {
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"),
-		"---\ndescription: A guide to the library and everything in it.\n---\n# Guide\n\nText.\n")
+		"+++\ndescription = \"A guide to the library and everything in it.\"\n+++\n# Guide\n\nText.\n")
 
 	checkFixture(t, root)
 
@@ -391,7 +391,7 @@ func TestCheckDocsWritesHashStore(t *testing.T) {
 func TestCheckDocsDryRunLeavesHashStoreAlone(t *testing.T) {
 	root := pythonProject(t)
 	write(t, filepath.Join(root, "docs", "guide.md"),
-		"---\ndescription: A guide to the library and everything in it.\n---\n# Guide\n\nText.\n")
+		"+++\ndescription = \"A guide to the library and everything in it.\"\n+++\n# Guide\n\nText.\n")
 
 	if _, err := CheckDocs(root, nil, true, "", "", handle()); err != nil {
 		t.Fatalf("CheckDocs: %v", err)
@@ -408,8 +408,8 @@ func TestLINK001OverTheBuiltTree(t *testing.T) {
 	t.Run("a project with no build output has nothing to check", func(t *testing.T) {
 		root := pythonProject(t)
 		write(t, filepath.Join(root, "docs", "guide.md"),
-			"---\ndescription: A guide covering everything the project does for a "+
-				"reader.\n---\n# Guide\n\nText.\n")
+			"+++\ndescription = \"A guide covering everything the project does for a "+
+				"reader.\"\n+++\n# Guide\n\nText.\n")
 
 		result := checkFixture(t, root)
 
@@ -422,8 +422,8 @@ func TestLINK001OverTheBuiltTree(t *testing.T) {
 	t.Run("an emitted reference naming nothing is reported", func(t *testing.T) {
 		root := pythonProject(t)
 		write(t, filepath.Join(root, "docs", "guide.md"),
-			"---\ndescription: A guide covering everything the project does for a "+
-				"reader.\n---\n# Guide\n\nText.\n")
+			"+++\ndescription = \"A guide covering everything the project does for a "+
+				"reader.\"\n+++\n# Guide\n\nText.\n")
 		write(t, filepath.Join(root, "docs", "_build", "index.html"),
 			`<a href="missing/">Missing</a>`)
 
@@ -437,8 +437,8 @@ func TestLINK001OverTheBuiltTree(t *testing.T) {
 	t.Run("a resolving tree is silent", func(t *testing.T) {
 		root := pythonProject(t)
 		write(t, filepath.Join(root, "docs", "guide.md"),
-			"---\ndescription: A guide covering everything the project does for a "+
-				"reader.\n---\n# Guide\n\nText.\n")
+			"+++\ndescription = \"A guide covering everything the project does for a "+
+				"reader.\"\n+++\n# Guide\n\nText.\n")
 		write(t, filepath.Join(root, "docs", "_build", "index.html"),
 			`<a href="guide/">Guide</a>`)
 		write(t, filepath.Join(root, "docs", "_build", "guide", "index.html"),
@@ -499,8 +499,8 @@ func codelessProjectWithDescription(t *testing.T, description string) string {
 	}
 	writeConfig(t, root, projectConfig)
 	write(t, filepath.Join(root, "docs", "index.md"),
-		"---\ndescription: A home page whose description is long enough to keep "+
-			"the description rules quiet in this fixture.\n---\n# Home\n\nWelcome.\n")
+		"+++\ndescription = \"A home page whose description is long enough to keep "+
+			"the description rules quiet in this fixture.\"\n+++\n# Home\n\nWelcome.\n")
 	return root
 }
 

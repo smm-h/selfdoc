@@ -199,9 +199,12 @@ func GenerateDocs(config map[string]any, baseDir, versionOverride string, handle
 		existingIndexDesc, hasExistingIndexDesc := readExistingIndexDescription(
 			indexPath, seedHashOf("gen-index.md"),
 		)
-		indexContent := generateIndexContent(
+		indexContent, err := generateIndexContent(
 			localeIndexPages, projectName, existingIndexDesc, hasExistingIndexDesc,
 		)
+		if err != nil {
+			return GenResult{}, err
+		}
 		if err := handle.MkdirAll(localeDocsDir); err != nil {
 			return GenResult{}, err
 		}
@@ -438,12 +441,15 @@ func generateDocsForDir(
 				hasDocstring = true
 			}
 		}
-		pageContent := generatePageContent(
+		pageContent, err := generatePageContent(
 			module.displayName, module.refPath, navOrder,
 			existingDescription, hasExisting,
 			docstringDescription, hasDocstring,
 			language,
 		)
+		if err != nil {
+			return nil, nil, err
+		}
 		if err := writePage(handle, outPath, pageContent); err != nil {
 			return nil, nil, err
 		}
@@ -476,7 +482,7 @@ func generatePageContent(
 	existingDescription string, hasExisting bool,
 	docstringDescription string, hasDocstring bool,
 	language string,
-) string {
+) (string, error) {
 	var desc string
 	var seeded bool
 	switch {
@@ -490,27 +496,32 @@ func generatePageContent(
 		desc = strings.ReplaceAll(ownership.ModuleDescTemplate, "{module}", moduleName)
 		seeded = true
 	}
-	seededLine := ""
+	fields := []util.FrontmatterField{
+		{Key: "title", Value: moduleName},
+		{Key: "description", Value: desc},
+		{Key: "generated", Value: true},
+	}
 	if seeded {
-		seededLine = "seeded: true\n"
+		fields = append(fields, util.FrontmatterField{Key: "seeded", Value: true})
+	}
+	fields = append(fields,
+		util.FrontmatterField{Key: "nav_group", Value: "API Reference"},
+		util.FrontmatterField{Key: "nav_order", Value: int64(navOrder)},
+	)
+	frontmatter, err := util.RenderFrontmatter(fields)
+	if err != nil {
+		return "", err
 	}
 	langAttr := ""
 	if language != "" {
 		langAttr = ` lang="` + language + `"`
 	}
-	return "---\n" +
-		"title: " + moduleName + "\n" +
-		"description: \"" + desc + "\"\n" +
-		"generated: true\n" +
-		seededLine +
-		"nav_group: \"API Reference\"\n" +
-		fmt.Sprintf("nav_order: %d\n", navOrder) +
-		"---\n" +
+	return frontmatter +
 		generatedMarker + "\n" +
 		"\n" +
 		"# " + moduleName + "\n" +
 		"\n" +
-		`:-: ref path="` + modulePath + `"` + langAttr + "\n"
+		`:-: ref path="` + modulePath + `"` + langAttr + "\n", nil
 }
 
 // generateIndexContent builds gen-index.md, the page listing every generated
@@ -525,7 +536,7 @@ func generateIndexContent(
 	pages []indexEntry,
 	projectName string,
 	existingDescription string, hasExisting bool,
-) string {
+) (string, error) {
 	count := len(pages)
 	var desc string
 	var seeded bool
@@ -545,20 +556,23 @@ func generateIndexContent(
 		}
 		seeded = true
 	}
-	lines := []string{
-		"---",
-		"title: API Reference",
-		`description: "` + desc + `"`,
-		"generated: true",
+	fields := []util.FrontmatterField{
+		{Key: "title", Value: "API Reference"},
+		{Key: "description", Value: desc},
+		{Key: "generated", Value: true},
 	}
 	if seeded {
-		lines = append(lines, "seeded: true")
+		fields = append(fields, util.FrontmatterField{Key: "seeded", Value: true})
 	}
-	lines = append(lines,
-		`nav_group: "API Reference"`,
-		"nav_order: 0",
-		"order: 90",
-		"---",
+	fields = append(fields,
+		util.FrontmatterField{Key: "nav_group", Value: "API Reference"},
+		util.FrontmatterField{Key: "nav_order", Value: int64(90)},
+	)
+	frontmatter, err := util.RenderFrontmatter(fields)
+	if err != nil {
+		return "", err
+	}
+	lines := append(strings.Split(strings.TrimRight(frontmatter, "\n"), "\n"),
 		generatedMarker,
 		"",
 		"# API Reference",
@@ -571,7 +585,7 @@ func generateIndexContent(
 		lines = append(lines, "- ["+page.moduleName+"]("+address.RootPageLink(page.mdFilename)+")")
 	}
 	lines = append(lines, "")
-	return strings.Join(lines, "\n")
+	return strings.Join(lines, "\n"), nil
 }
 
 // resolveProjectName resolves the project name the generated index's
@@ -644,25 +658,22 @@ func readExistingIndexDescription(filepath, seedHash string) (string, bool) {
 }
 
 // readFrontmatterDescription reads a page's frontmatter description, reporting
-// false when the file cannot be read, declares no description, declares one
-// that is not a string, or declares an empty one.
-//
-// One pair of wrapping quotes is stripped beyond what the frontmatter parser
-// already strips, so a value written as "'x'" compares as x.
+// false when the file cannot be read, carries a block the reader refuses,
+// declares no description, or declares an empty one.
 func readFrontmatterDescription(path string) (string, bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", false
 	}
-	metadata, _, _ := util.ParseFrontmatter(string(data))
-	raw, isString := metadata["description"].(string)
+	block, err := util.ReadFrontmatter(string(data), path, util.KindPage)
+	if err != nil {
+		return "", false
+	}
+	raw, isString := block.Values["description"].(string)
 	if !isString {
 		return "", false
 	}
 	value := strings.TrimSpace(raw)
-	if len(value) >= 2 && value[0] == value[len(value)-1] && (value[0] == '\'' || value[0] == '"') {
-		value = strings.TrimSpace(value[1 : len(value)-1])
-	}
 	if value == "" {
 		return "", false
 	}
@@ -690,10 +701,13 @@ func recordSeedHashes(
 		if err != nil {
 			continue
 		}
-		metadata, _, _ := util.ParseFrontmatter(string(data))
+		block, readErr := util.ReadFrontmatter(string(data), pagePath, util.KindPage)
+		if readErr != nil {
+			continue
+		}
 		key := stalenessStoreKey(config, localeCode, filename)
-		description, isString := metadata["description"].(string)
-		seeded, isBool := metadata["seeded"].(bool)
+		description, isString := block.Values["description"].(string)
+		seeded, isBool := block.Values["seeded"].(bool)
 		if isBool && seeded && isString {
 			entry := storedHashes[key]
 			entry.SeedHash = ownership.DescriptionSeedHash(description)
@@ -816,31 +830,25 @@ func removeStaleGenerated(docsDir string, newFilenames []string, handle *effects
 }
 
 // hasGeneratedMarker reports whether a Markdown file declares
-// `generated: true` in its frontmatter.
+// `generated = true` in its frontmatter.
 //
-// It is false for a file that does not open with a "---" fence, and for one
-// that cannot be read at all -- an unreadable file is not a file gen wrote,
-// which is the question every caller is asking.
+// The question goes through the one frontmatter reader rather than a string
+// match of its own, so a marker is read the same way here as everywhere else.
+// It is false for a file that carries no block, one whose block the reader
+// refuses, and one that cannot be read at all -- none of those is a file gen
+// wrote, which is the question every caller is asking, and answering false
+// leaves the file alone.
 func hasGeneratedMarker(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return false
 	}
-	text := string(data)
-	if !strings.HasPrefix(text, "---") {
+	block, err := util.ReadFrontmatter(string(data), path, util.KindPage)
+	if err != nil {
 		return false
 	}
-	lines := strings.Split(text, "\n")
-	for index := 1; index < len(lines); index++ {
-		line := strings.TrimSpace(lines[index])
-		if line == "---" {
-			break
-		}
-		if line == "generated: true" {
-			return true
-		}
-	}
-	return false
+	generated, _ := block.Values["generated"].(bool)
+	return generated
 }
 
 // handwrittenPageExists reports whether path holds a page gen did not write,

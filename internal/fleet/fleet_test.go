@@ -387,7 +387,7 @@ func TestLoadProjectConfigWritesTheSanitizedCopyIntoTheScratchDirectory(t *testi
 func TestLoadDocsBodiesReturnsTheLintSliceShape(t *testing.T) {
 	root := t.TempDir()
 	path := project(t, root, "alpha", nil, map[string]string{
-		"index.md": "---\ntitle: Home\n---\n\nBody text.\n",
+		"index.md": "+++\ntitle = \"Home\"\n+++\n\nBody text.\n",
 	})
 	bodies, err := LoadDocsBodies(filepath.Join(path, "docs"))
 	if err != nil {

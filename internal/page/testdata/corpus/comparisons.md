@@ -1,9 +1,9 @@
----
-title: Comparisons
-description: "How selfdoc compares to Sphinx, MkDocs, Docusaurus, VitePress, Rustdoc, Godoc, and TypeDoc -- features, tradeoffs, and where each tool shines."
-nav_group: "Getting Started"
-nav_order: 2
----
++++
+title = "Comparisons"
+description = "How selfdoc compares to Sphinx, MkDocs, Docusaurus, VitePress, Rustdoc, Godoc, and TypeDoc -- features, tradeoffs, and where each tool shines."
+nav_group = "Getting Started"
+nav_order = 2
++++
 
 # Comparisons
 

@@ -18,8 +18,8 @@ func enforcementProject(t *testing.T, pageBody string) string {
 	writeConfig(t, root, pythonProjectConfig())
 	write(t, filepath.Join(root, "mylib", "__init__.py"), `"""My library."""`+"\n")
 	write(t, filepath.Join(root, "docs", "index.md"),
-		"---\ntitle: API\ndescription: API reference page describing the public "+
-			"surface of the library in careful and complete detail\n---\n\n"+
+		"+++\ntitle = \"API\"\ndescription = \"API reference page describing the public "+
+			"surface of the library in careful and complete detail\"\n+++\n\n"+
 			"# API\n\n"+pageBody+"\n")
 	return root
 }

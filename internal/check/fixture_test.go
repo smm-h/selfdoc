@@ -162,11 +162,15 @@ func buildAllDocs(t *testing.T, docsDir string) map[string]docs.Doc {
 			return err
 		}
 		content := string(raw)
-		metadata, body, _ := util.ParseFrontmatter(content)
 		relPath, err := filepath.Rel(docsDir, walked)
 		if err != nil {
 			return err
 		}
+		block, err := util.ReadFrontmatter(content, filepath.ToSlash(relPath), util.KindPage)
+		if err != nil {
+			return err
+		}
+		metadata, body := block.Values, block.Body
 		allDocs[filepath.ToSlash(relPath)] = docs.Doc{
 			Frontmatter:      metadata,
 			Resolved:         "",

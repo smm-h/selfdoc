@@ -61,7 +61,7 @@ func TestBuildNavMatchesReference(t *testing.T) {
 			src("index.md", ""), src("b.md", ""), src("a.md", ""), src("c.md", ""),
 		},
 		map[string]util.Frontmatter{
-			"b.md": {"order": int64(1)}, "c.md": {"order": int64(0)},
+			"b.md": {"nav_order": int64(1)}, "c.md": {"nav_order": int64(0)},
 		}, nil, nil)))
 
 	out = append(out, "## groups\n"+navJSON(t, BuildNav(

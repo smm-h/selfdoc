@@ -19,8 +19,8 @@ func versionProject(
 	writeConfig(t, root, projectConfig)
 	write(t, filepath.Join(root, "mylib", "__init__.py"), `"""Lib."""`+"\n")
 	write(t, filepath.Join(root, "docs", "index.md"),
-		"---\ntitle: Test\ndescription: A test project for version consistency "+
-			"checking across builds\n---\n\n# Test\n")
+		"+++\ntitle = \"Test\"\ndescription = \"A test project for version consistency "+
+			"checking across builds\"\n+++\n\n# Test\n")
 	if pyprojectVersion != "" {
 		write(t, filepath.Join(root, "pyproject.toml"),
 			"[project]\nname = \"mylib\"\nversion = \""+pyprojectVersion+"\"\n")

@@ -16,8 +16,8 @@ func codelessProject(t *testing.T) string {
 	projectConfig := configForSource()
 	writeConfig(t, root, projectConfig)
 	write(t, filepath.Join(root, "docs", "index.md"),
-		"---\ndescription: A home page whose description is long enough to keep "+
-			"the description rules quiet in this fixture.\n---\n# Home\n\nWelcome.\n")
+		"+++\ndescription = \"A home page whose description is long enough to keep "+
+			"the description rules quiet in this fixture.\"\n+++\n# Home\n\nWelcome.\n")
 	return root
 }
 

@@ -40,12 +40,12 @@ func goPackageDocProject(t *testing.T, currentLink, staleLink string) string {
 			"// Convert converts markdown to HTML.\n"+
 			"func Convert(s string) string { return s }\n")
 	write(t, filepath.Join(root, "docs", "internal-html.md"),
-		"---\ndescription: The API page of the html package, described at a "+
-			"length the description rules have nothing to say about.\n---\n"+
+		"+++\ndescription = \"The API page of the html package, described at a "+
+			"length the description rules have nothing to say about.\"\n+++\n"+
 			"# internal html\n\n:-: ref path=\"html\" lang=\"go\"\n")
 	write(t, filepath.Join(root, "docs", "guide.md"),
-		"---\ndescription: The guide page this fixture links to, described at a "+
-			"length the description rules have nothing to say about.\n---\n"+
+		"+++\ndescription = \"The guide page this fixture links to, described at a "+
+			"length the description rules have nothing to say about.\"\n+++\n"+
 			"# Guide\n\nThe guide exists so the link from the package documentation resolves.\n")
 
 	builtPage(t, root, "internal-html/index.html",
@@ -109,8 +109,8 @@ func TestALinkTheCurrentSourceWritesAsMarkdownIsStillReported(t *testing.T) {
 	// Markdown for the emitted text alone suppresses a real finding.
 	root := goPackageDocProject(t, "../guide/", "../guide/")
 	write(t, filepath.Join(root, "docs", "guide.md"),
-		"---\ndescription: The guide page this fixture links from, described at "+
-			"a length the description rules have nothing to say about.\n---\n"+
+		"+++\ndescription = \"The guide page this fixture links from, described at "+
+			"a length the description rules have nothing to say about.\"\n+++\n"+
 			"# Guide\n\nSee the [manual](manual.md) for the rest of it.\n")
 	builtPage(t, root, "guide/index.html",
 		`<p>See the <a href="../manual/">manual</a> for the rest of it.</p>`)

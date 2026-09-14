@@ -31,7 +31,7 @@ func baselineProject(t *testing.T, locales []any) string {
 func writePage(t *testing.T, root, description, body, name string) {
 	t.Helper()
 	write(t, filepath.Join(root, "docs", name),
-		"---\ndescription: "+description+"\n---\n# Page\n\n"+body+"\n")
+		"+++\ndescription = \""+description+"\"\n+++\n# Page\n\n"+body+"\n")
 }
 
 // staleCount is how many STALE001 diagnostics a run produced.

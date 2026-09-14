@@ -118,7 +118,7 @@ func TestSpellCorpusReadsTheNamedRootAndEmitsThePayload(t *testing.T) {
 	root := t.TempDir()
 	project := filepath.Join(root, "one")
 	writeText(t, filepath.Join(project, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: "+longDescription+"\n---\n\n# Home\n\nPlain prose.\n")
+		"+++\ntitle = \"Home\"\ndescription = \""+longDescription+"\"\n+++\n\n# Home\n\nPlain prose.\n")
 	writeText(t, filepath.Join(project, "selfdoc.json"), `{"base_url":"https://example.com",`+
 		`"author":{"name":"Test Author","url":"https://author.example"},`+
 		`"docs":"docs/","output":"docs/_build/","unversioned":true,`+

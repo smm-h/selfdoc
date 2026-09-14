@@ -103,8 +103,11 @@ func GenerateRootFiles(config map[string]any, baseDir, versionOverride string, h
 		// The frontmatter is not part of the output. Its line count is
 		// needed so an attribute error reports the line in the template
 		// file rather than in the stripped body.
-		_, stripped, fmLineCount := util.ParseFrontmatter(string(data))
-		templateBody := stripped
+		block, err := util.ReadFrontmatter(string(data), templatePath, util.KindPage)
+		if err != nil {
+			return nil, err
+		}
+		templateBody, fmLineCount := block.Body, block.Consumed
 
 		// An unknown or missing required attribute is a hard error, before
 		// anything is resolved -- mirroring selfdoc check.

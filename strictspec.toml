@@ -26,3 +26,11 @@ path = ".strictspec/lint-registry.schema.toml"
   lang    = "go"
   output  = "internal/lints/selfdoc_lint_registry_gen.go"
   package = "lints"
+
+[[schemas]]
+path = ".strictspec/frontmatter.schema.toml"
+
+  [[schemas.targets]]
+  lang    = "go"
+  output  = "internal/util/selfdoc_frontmatter_gen.go"
+  package = "util"

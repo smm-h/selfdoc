@@ -1,7 +1,7 @@
----
-title: Test
-description: A template
----
++++
+title = "Test"
+description = "A template"
++++
 
 # :-: var key="project.name"
 

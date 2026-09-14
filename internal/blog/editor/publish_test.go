@@ -143,7 +143,7 @@ func publishProject(t *testing.T) string {
 	return makeProjectWithConfig(t, map[string]string{
 		"hello.md":  postHello,
 		"later.md":  postDraft,
-		"second.md": "---\ntitle: Second Post\ndate: 2024-02-01\nslug: second-post\ntags: []\ndraft: false\ndirectives: false\n---\nSecond post body.\n",
+		"second.md": "+++\ntitle = \"Second Post\"\ndate = 2024-02-01\nslug = \"second-post\"\ntags = []\ndraft = false\ndirectives = false\n+++\nSecond post body.\n",
 	}, map[string]any{
 		"topology": map[string]any{"slug": "proj"},
 		"assembly": map[string]any{"repo": "owner/assembly"},

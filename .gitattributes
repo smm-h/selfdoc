@@ -1,2 +1,3 @@
 internal/catalog/selfdoc_directive_catalogue_gen.go text eol=lf linguist-generated=true
 internal/lints/selfdoc_lint_registry_gen.go text eol=lf linguist-generated=true
+internal/util/selfdoc_frontmatter_gen.go text eol=lf linguist-generated=true

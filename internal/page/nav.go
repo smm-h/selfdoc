@@ -53,8 +53,8 @@ type NavItem struct {
 	// would, read while sorting the posts group and dropped from the
 	// result.
 	date string
-	// sortTier and sortOrder are the top-level sort key: pages declaring
-	// an "order" sort ahead of those that do not.
+	// sortTier and sortOrder are the top-level sort key: pages declaring a
+	// "nav_order" sort ahead of those that do not.
 	sortTier  int
 	sortOrder float64
 }
@@ -66,9 +66,9 @@ var navSlugRE = regexp.MustCompile(`[^a-z0-9]+`)
 
 // BuildNav builds the navigation tree from the Markdown file list.
 //
-// Top-level pages sort by the "order" frontmatter value (lower first) and
-// then alphabetically by source path; a page declaring no order sorts after
-// every page that does. index.md is always first, and its label is always
+// Top-level pages sort by the "nav_order" frontmatter value (lower first) and
+// then alphabetically by source path; a page declaring none sorts after every
+// page that does. index.md is always first, and its label is always
 // "Home" -- a frontmatter title does not reach the sidebar for the home page.
 //
 // A page in a subdirectory joins a collapsible group named after the first
@@ -134,7 +134,7 @@ func BuildNav(
 			continue
 		}
 
-		if order, ok := fmNumberOK(meta, "order"); ok {
+		if order, ok := fmNumberOK(meta, "nav_order"); ok {
 			item.sortTier, item.sortOrder = 0, order
 		} else {
 			item.sortTier, item.sortOrder = 1, 0

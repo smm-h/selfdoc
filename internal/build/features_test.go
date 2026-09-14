@@ -42,7 +42,7 @@ func TestBuildNavigation(t *testing.T) {
 
 	t.Run("nav_group overrides the directory's title", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"api/config.md": "---\nnav_group: Custom Title\n---\n# Configuration\n\nConfig.\n",
+			"api/config.md": "+++\nnav_group = \"Custom Title\"\n+++\n# Configuration\n\nConfig.\n",
 		}})
 		index := built.page(t, "index.html")
 		assertCarries(t, "index.html", index, "Custom Title")
@@ -51,8 +51,8 @@ func TestBuildNavigation(t *testing.T) {
 
 	t.Run("nav_order orders a group's pages", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"guides/intro.md": "---\ntitle: Introduction\nnav_order: 2\n---\n# Introduction\n\nIntro.\n",
-			"guides/setup.md": "---\ntitle: Setup\nnav_order: 1\n---\n# Setup\n\nSetup.\n",
+			"guides/intro.md": "+++\ntitle = \"Introduction\"\nnav_order = 2\n+++\n# Introduction\n\nIntro.\n",
+			"guides/setup.md": "+++\ntitle = \"Setup\"\nnav_order = 1\n+++\n# Setup\n\nSetup.\n",
 		}})
 		index := built.page(t, "index.html")
 		if strings.Index(index, "guides/setup/") > strings.Index(index, "guides/intro/") {
@@ -365,7 +365,7 @@ func TestBuildIsReproducible(t *testing.T) {
 
 	dir := testproject.Make(t, map[string]any{"docs": "docs/", "output": "docs/_build/"})
 	testproject.WriteText(t, filepath.Join(dir, "docs", "guide.md"),
-		"---\ndate: 2024-01-15\n---\n# Guide\n\nA guide page.\n")
+		"+++\ndate = 2024-01-15\n+++\n# Guide\n\nA guide page.\n")
 
 	first := buildTwice(t, dir)
 	second := buildTwice(t, dir)

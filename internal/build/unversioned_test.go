@@ -30,7 +30,7 @@ func TestPartitionPages(t *testing.T) {
 		{
 			name: "versioned: false puts a page in the unversioned set",
 			docs: map[string]string{
-				"about.md": "---\ntitle: About\nversioned: false\n---\n\n# About\n\nUnversioned.\n",
+				"about.md": "+++\ntitle = \"About\"\nversioned = false\n+++\n\n# About\n\nUnversioned.\n",
 			},
 			wantVersioned:   []string{"index.md"},
 			wantUnversioned: []string{"about.md"},
@@ -38,14 +38,14 @@ func TestPartitionPages(t *testing.T) {
 		{
 			name: "versioned: true is the default said out loud",
 			docs: map[string]string{
-				"guide.md": "---\ntitle: Guide\nversioned: true\n---\n\n# Guide\n\nVersioned.\n",
+				"guide.md": "+++\ntitle = \"Guide\"\nversioned = true\n+++\n\n# Guide\n\nVersioned.\n",
 			},
 			wantVersioned: []string{"index.md", "guide.md"},
 		},
 		{
 			name: "a page under the posts prefix is site-level",
 			docs: map[string]string{
-				"blog/hello.md": "---\ntitle: Hello\n---\n\n# Hello\n\nA post.\n",
+				"blog/hello.md": "+++\ntitle = \"Hello\"\n+++\n\n# Hello\n\nA post.\n",
 			},
 			wantVersioned: []string{"index.md"},
 			wantSite:      []string{"blog/hello.md"},
@@ -98,7 +98,7 @@ func TestBuildUnversionedPages(t *testing.T) {
 
 	t.Run("an unversioned page sits at the stable mount", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"about.md": "---\ntitle: About\nversioned: false\n---\n\n# About\n\nUnversioned.\n",
+			"about.md": "+++\ntitle = \"About\"\nversioned = false\n+++\n\n# About\n\nUnversioned.\n",
 		}})
 		if !built.reported("index.html") {
 			t.Error("the versioned home page was not reported written")
@@ -110,7 +110,7 @@ func TestBuildUnversionedPages(t *testing.T) {
 
 	t.Run("a single-version project gets no archive tree", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"guide.md": "---\ntitle: Guide\n---\n\n# Guide\n\nVersioned guide.\n",
+			"guide.md": "+++\ntitle = \"Guide\"\n+++\n\n# Guide\n\nVersioned guide.\n",
 		}})
 		if !built.reported("guide/index.html") {
 			t.Error("the versioned page was not reported written")
@@ -122,7 +122,7 @@ func TestBuildUnversionedPages(t *testing.T) {
 
 	t.Run("a project whose every page is unversioned still builds", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"index.md": "---\ntitle: Home\nversioned: false\n---\n\n# Home\n\nUnversioned home.\n",
+			"index.md": "+++\ntitle = \"Home\"\nversioned = false\n+++\n\n# Home\n\nUnversioned home.\n",
 		}})
 		if !built.reported("index.html") {
 			t.Error("the unversioned home page was not reported written")
@@ -134,7 +134,7 @@ func TestBuildUnversionedPages(t *testing.T) {
 
 	t.Run("no page carries a version or locale segment", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: map[string]string{
-			"guide.md": "---\ntitle: Guide\n---\n\n# Guide\n\nVersioned guide.\n",
+			"guide.md": "+++\ntitle = \"Guide\"\n+++\n\n# Guide\n\nVersioned guide.\n",
 		}})
 		for path := range built.written {
 			if !strings.HasSuffix(path, ".html") {
@@ -158,7 +158,7 @@ func TestBuildSinglePageFilter(t *testing.T) {
 
 	dir := testproject.Make(t, map[string]any{"docs": "docs/", "output": "docs/_build/"})
 	testproject.WriteText(t, filepath.Join(dir, "docs", "guide.md"),
-		"---\ntitle: Guide\n---\n\n# Guide\n\nFiltered guide.\n")
+		"+++\ntitle = \"Guide\"\n+++\n\n# Guide\n\nFiltered guide.\n")
 	cfg, err := config.Load(dir)
 	if err != nil {
 		t.Fatalf("loading the fixture config: %v", err)

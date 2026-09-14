@@ -24,9 +24,9 @@ func codelessProject(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	writeText(t, filepath.Join(dir, "docs", "about.md"),
-		"---\ntitle: About\n"+
-			"description: A short page about this site and the person who writes it.\n"+
-			"---\n\n# About\n\nThis page has no code behind it.\n")
+		"+++\ntitle = \"About\"\n"+
+			"description = \"A short page about this site and the person who writes it.\"\n"+
+			"+++\n\n# About\n\nThis page has no code behind it.\n")
 	return dir
 }
 

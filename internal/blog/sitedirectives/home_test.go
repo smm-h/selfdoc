@@ -24,7 +24,7 @@ func homeProject(t *testing.T) string {
 			"[[category.project]]\nslug = \"alpha\"\n"+
 			"blurb = \"Does the alpha thing.\"\n")
 	testproject.WriteText(t, filepath.Join(project, "docs", "index.md"),
-		"---\ntitle: Front page\n---\n\n"+
+		"+++\ntitle = \"Front page\"\n+++\n\n"+
 			"# Me\n\nProse the author wrote.\n\n"+
 			":-: projects-cards\n\n"+
 			`:-: blog-highlights limit="3"`+"\n")

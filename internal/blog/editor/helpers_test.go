@@ -25,12 +25,12 @@ import (
 // be saved under the posts directory.
 const (
 	postHelloName = "hello.md"
-	postHello     = "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"tags: [release]\ndraft: false\ndirectives: false\n---\n" +
+	postHello     = "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"tags = [\"release\"]\ndraft = false\ndirectives = false\n+++\n" +
 		"# Hello World\n\nThis is the post content.\n"
 	postDraftName = "later.md"
-	postDraft     = "---\ntitle: Later\ndate: 2024-05-01\nslug: later\n" +
-		"tags: []\ndraft: true\ndirectives: false\n---\nNot yet.\n"
+	postDraft     = "+++\ntitle = \"Later\"\ndate = 2024-05-01\nslug = \"later\"\n" +
+		"tags = []\ndraft = true\ndirectives = false\n+++\nNot yet.\n"
 )
 
 // makeProject writes a selfdoc project carrying the named posts and returns

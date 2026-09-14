@@ -1,10 +1,9 @@
----
-title: Architecture
-description: "How selfdoc transforms Markdown templates into a static site: the build pipeline, directive resolution, theme system, and auxiliary outputs."
-order: 60
-nav_group: "Guides"
-nav_order: 5
----
++++
+title = "Architecture"
+description = "How selfdoc transforms Markdown templates into a static site: the build pipeline, directive resolution, theme system, and auxiliary outputs."
+nav_group = "Guides"
+nav_order = 5
++++
 
 # Architecture
 

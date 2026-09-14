@@ -208,8 +208,11 @@ func readExistingCLIDescription(path string, kind PageKind, name, appName, helpT
 	if err != nil {
 		return "", false, nil
 	}
-	metadata, _, _ := util.ParseFrontmatter(string(content))
-	raw, isString := metadata["description"].(string)
+	block, err := util.ReadFrontmatter(string(content), path, util.KindPage)
+	if err != nil {
+		return "", false, err
+	}
+	raw, isString := block.Values["description"].(string)
 	if !isString {
 		return "", false, nil
 	}

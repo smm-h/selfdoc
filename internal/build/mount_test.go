@@ -21,8 +21,8 @@ const (
 // mountPost is the post the mount fixtures publish: it declares a term of its
 // own and mentions the term the guide declares, so the build writes a
 // cross-page term link in each direction.
-const mountPost = "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-	"tags: [release]\ndraft: false\ndirectives: false\n---\n" +
+const mountPost = "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+	"tags = [\"release\"]\ndraft = false\ndirectives = false\n+++\n" +
 	"This is the post content.\n\n" +
 	"## Chained revision\n\n" +
 	"<dfn>Chained revision</dfn> is a recorded edge between two schema states.\n\n" +

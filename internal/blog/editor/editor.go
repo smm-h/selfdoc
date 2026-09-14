@@ -364,8 +364,11 @@ func RenderPreview(entry registry.Entry, rel, content string, handle *effects.Ha
 		return "", err
 	}
 
-	frontmatter, _, _ := util.ParseFrontmatter(content)
-	isDraft, _ := frontmatter["draft"].(bool)
+	block, err := util.ReadFrontmatter(content, safe, util.KindPost)
+	if err != nil {
+		return "", badRequest("%s", err.Error())
+	}
+	isDraft, _ := block.Values["draft"].(bool)
 
 	html, renderErr := render.Post(render.PostOptions{
 		DirPath:       path,

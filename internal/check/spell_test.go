@@ -53,9 +53,9 @@ body = "Write to ada@example.org."
 `
 
 // cvPage is a page whose whole body is the cv directive.
-const cvPage = "---\ntitle: CV\ntype: cv\ndescription: " +
+const cvPage = "+++\ntitle = \"CV\"\ntype = \"cv\"\ndescription = \"" +
 	"The curriculum vitae of Ada Lovelace, analyst, with her skills, " +
-	"projects, interests, education, work and languages.\n---\n\n" +
+	"projects, interests, education, work and languages.\"\n+++\n\n" +
 	":-: cv path=\"docs/cv.toml\"\n"
 
 // spellProject writes a minimal project whose docs tree holds the given pages.
@@ -85,9 +85,9 @@ func cvProject(t *testing.T, document string) string {
 
 func TestAMisspellingOnAPageIsReported(t *testing.T) {
 	root := spellProject(t, map[string]string{
-		"index.md": "---\ntitle: Home\ndescription: A page of ordinary prose " +
+		"index.md": "+++\ntitle = \"Home\"\ndescription = \"A page of ordinary prose " +
 			"that says something concrete about the project and its " +
-			"documentation for the reader.\n---\n\n" +
+			"documentation for the reader.\"\n+++\n\n" +
 			"# Home\n\nThis page is spelled corectly.\n",
 	})
 
@@ -113,9 +113,9 @@ func TestAMisspellingOnAPageIsReported(t *testing.T) {
 
 func TestCleanProseProducesNoSpellingDiagnostic(t *testing.T) {
 	root := spellProject(t, map[string]string{
-		"index.md": "---\ntitle: Home\ndescription: A page of ordinary prose " +
+		"index.md": "+++\ntitle = \"Home\"\ndescription = \"A page of ordinary prose " +
 			"that says something concrete about the project and its " +
-			"documentation for the reader.\n---\n\n" +
+			"documentation for the reader.\"\n+++\n\n" +
 			"# Home\n\nThis page is spelled correctly.\n",
 	})
 
@@ -211,9 +211,9 @@ func TestACopyInTheBuildOutputIsNotReported(t *testing.T) {
 
 func TestASymbolNameADirectiveExtractedIsNotAMisspelling(t *testing.T) {
 	root := spellProject(t, map[string]string{
-		"api.md": "---\ntitle: API\ndescription: The API reference for this " +
+		"api.md": "+++\ntitle = \"API\"\ndescription = \"The API reference for this " +
 			"project's one example package, listing every public symbol it " +
-			"exports for callers to use.\n---\n\n# API\n\n" +
+			"exports for callers to use.\"\n+++\n\n# API\n\n" +
 			":-: ref path=\"src\"\n",
 	})
 	write(t, filepath.Join(root, "docs", "notes.toml"),

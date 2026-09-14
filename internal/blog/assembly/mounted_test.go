@@ -128,9 +128,9 @@ func buildMountedAlpha(t *testing.T, tree *assemblyTree) string {
 			"<dfn>Widget catalog</dfn> is a list of every widget this project ships.\n\n"+
 			"See the notes on chained revision for the history model.\n")
 	testproject.WriteText(t, filepath.Join(source, ".selfdoc", "posts", "hello.md"),
-		"---\ntitle: Hello World\ndate: 2024-06-01\n"+
-			"slug: "+mountedPostSlug+"\ntags: []\ndraft: false\ndirectives: false\n"+
-			"---\nThe post body.\n\n"+
+		"+++\ntitle = \"Hello World\"\ndate = 2024-06-01\n"+
+			"slug = \""+mountedPostSlug+"\"\ntags = []\ndraft = false\ndirectives = false\n"+
+			"+++\nThe post body.\n\n"+
 			"## Chained revision\n\n"+
 			"<dfn>Chained revision</dfn> is a recorded edge between two schema states.\n\n"+
 			"The widget catalog is described at length in the guide.\n")

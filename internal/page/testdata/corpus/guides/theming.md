@@ -1,10 +1,9 @@
----
-title: Theming
-description: "Customize your selfdoc site with the three built-in themes, CSS custom properties, dark mode support, the build-time theme override that lets one theme be judged on real pages, and a visual design tool for iterating on styles."
-order: 40
-nav_group: "Guides"
-nav_order: 3
----
++++
+title = "Theming"
+description = "Customize your selfdoc site with the three built-in themes, CSS custom properties, dark mode support, the build-time theme override that lets one theme be judged on real pages, and a visual design tool for iterating on styles."
+nav_group = "Guides"
+nav_order = 3
++++
 
 # Theming
 

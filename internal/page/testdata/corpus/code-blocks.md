@@ -1,9 +1,9 @@
----
-title: Code Blocks
-description: "Syntax highlighting, language icons, line numbers, run buttons, validated examples, annotations, diff highlighting, code tabs, and copy buttons in selfdoc."
-nav_group: "Guides"
-nav_order: 8
----
++++
+title = "Code Blocks"
+description = "Syntax highlighting, language icons, line numbers, run buttons, validated examples, annotations, diff highlighting, code tabs, and copy buttons in selfdoc."
+nav_group = "Guides"
+nav_order = 8
++++
 
 # Code Blocks
 

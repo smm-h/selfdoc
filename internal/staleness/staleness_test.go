@@ -79,10 +79,17 @@ func TestContentHashDiffersForDifferentContent(t *testing.T) {
 	}
 }
 
-func TestContentHashStripsFrontmatter(t *testing.T) {
-	withFrontmatter := "---\ntitle: Test\ndescription: A page\n---\n# Hello\n\nBody."
-	withoutFrontmatter := "# Hello\n\nBody."
-	if ComputeContentHash(withFrontmatter) != ComputeContentHash(withoutFrontmatter) {
+// TestContentHashTakesTheBodyTheReaderHandsOut covers the seam this pass used
+// to straddle: it once carried a frontmatter stripper of its own, and now
+// hashes what the one frontmatter reader returned behind the block. A page and
+// its body must therefore hash the same.
+func TestContentHashTakesTheBodyTheReaderHandsOut(t *testing.T) {
+	page := "+++\ntitle = \"Test\"\ndescription = \"A page\"\n+++\n# Hello\n\nBody."
+	body, err := util.StripFrontmatter(page, "p.md")
+	if err != nil {
+		t.Fatalf("StripFrontmatter: %v", err)
+	}
+	if ComputeContentHash(body) != ComputeContentHash("# Hello\n\nBody.") {
 		t.Error("the frontmatter reached the content hash")
 	}
 }
@@ -1134,49 +1141,6 @@ func TestAdvancingAPageKeepsTheGenOwnedSeedHash(t *testing.T) {
 	}
 }
 
-// -- StripFrontmatter -------------------------------------------------------
-
-func TestStripFrontmatter(t *testing.T) {
-	tests := []struct {
-		name    string
-		content string
-		want    string
-	}{
-		{
-			name:    "a closed fence",
-			content: "---\ntitle: Test\n---\n# Body\n",
-			want:    "# Body\n",
-		},
-		{
-			name:    "blank lines after the fence are dropped",
-			content: "---\ntitle: Test\n---\n\n\n# Body\n",
-			want:    "# Body\n",
-		},
-		{
-			name:    "no fence at all",
-			content: "# Body\n\nProse.\n",
-			want:    "# Body\n\nProse.\n",
-		},
-		{
-			name:    "an unclosed fence leaves the document whole",
-			content: "---\ntitle: Test\n# Body\n",
-			want:    "---\ntitle: Test\n# Body\n",
-		},
-		{
-			name:    "a closing fence with trailing whitespace still closes",
-			content: "---\ntitle: Test\n---  \n# Body\n",
-			want:    "# Body\n",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := StripFrontmatter(test.content); got != test.want {
-				t.Errorf("stripped to %q, want %q", got, test.want)
-			}
-		})
-	}
-}
-
 // -- Recorded parity with the Python's own digests --------------------------
 
 // TestRecordedDigests pins three digests the Python implementation printed
@@ -1204,7 +1168,7 @@ func TestRecordedDigests(t *testing.T) {
 	}
 
 	const wantContent = "0f9cdd2107863b5332a13206b66c3ae3ba5621ca4c2d2b8b3ac9a397b1321cdb"
-	if got := ComputeContentHash("---\nx: 1\n---\n\n# T\n\n:-: ref path=\"q\"\n"); got != wantContent {
+	if got := ComputeContentHash("# T\n\n:-: ref path=\"q\"\n"); got != wantContent {
 		t.Errorf("content digest %s, want the Python's %s", got, wantContent)
 	}
 }

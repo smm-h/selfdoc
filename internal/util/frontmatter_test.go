@@ -1,129 +1,309 @@
 package util
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-// TestParseFrontmatter drives the parser with the documents the Python
-// implementation was probed on; every metadata map and body below is the
-// output python3 produced for the same input.
-func TestParseFrontmatter(t *testing.T) {
+// TestReadFrontmatterAcceptsTOML drives the reader with the blocks a page and
+// a post carry, and pins the Go value each declared lexeme class binds to.
+func TestReadFrontmatterAcceptsTOML(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		input    string
-		want     Frontmatter
-		wantBody string
-		wantLine int
+		name       string
+		input      string
+		kind       Kind
+		want       Frontmatter
+		wantKeys   []string
+		wantBody   string
+		wantLine   int
+		wantFields []FrontmatterField
 	}{
 		{
-			name:     "no frontmatter",
+			name:     "no block at all",
 			input:    "# Title\n\nBody\n",
+			kind:     KindPage,
 			want:     Frontmatter{},
 			wantBody: "# Title\n\nBody\n",
 			wantLine: 0,
 		},
 		{
-			name:     "unclosed fence leaves the document alone",
-			input:    "---\ntitle: X\n\nBody\n",
-			want:     Frontmatter{},
-			wantBody: "---\ntitle: X\n\nBody\n",
-			wantLine: 0,
-		},
-		{
-			name:     "basic",
-			input:    "---\ntitle: Hello\n---\n\nBody here\n",
-			want:     Frontmatter{"title": "Hello"},
-			wantBody: "Body here\n",
-			wantLine: 4,
-		},
-		{
-			name: "every value rule at once",
-			input: "---\ntitle: Hello\ndraft: TRUE\npublished: false\norder: 12\n" +
-				"ratio: 1.5\nweird: 1_000\nhexish: 0x10\ntags: [a, b , , c]\n" +
-				"quoted: \"[x, y]\"\nqbool: 'true'\nempty:\ncolons: a: b: c\n" +
-				"# comment: skipped\n\nnokey\n---\nbody\n",
-			want: Frontmatter{
-				"title":     "Hello",
-				"draft":     true,
-				"published": false,
-				"order":     int64(12),
-				"ratio":     1.5,
-				"weird":     int64(1000),
-				"hexish":    "0x10",
-				"tags":      []string{"a", "b", "c"},
-				"quoted":    []string{"x", "y"},
-				"qbool":     true,
-				"empty":     "",
-				"colons":    "a: b: c",
-			},
-			wantBody: "body\n",
-			wantLine: 17,
-		},
-		{
-			name:     "blank lines after the fence are stripped",
-			input:    "---\na: 1\n---\n\n\n\nBody\n",
-			want:     Frontmatter{"a": int64(1)},
-			wantBody: "Body\n",
-			wantLine: 6,
-		},
-		{
-			name:     "body without a trailing newline",
-			input:    "---\na: 1\n---\nBody",
-			want:     Frontmatter{"a": int64(1)},
-			wantBody: "Body",
-			wantLine: 3,
-		},
-		{
-			name:     "opening fence need not be the whole line",
-			input:    "---abc\na: 1\n---\nBody",
-			want:     Frontmatter{"a": int64(1)},
-			wantBody: "Body",
-			wantLine: 3,
-		},
-		{
-			name:     "empty frontmatter",
-			input:    "---\n---\nBody",
+			name:     "empty block",
+			input:    "+++\n+++\nBody",
+			kind:     KindPage,
 			want:     Frontmatter{},
 			wantBody: "Body",
 			wantLine: 2,
 		},
 		{
-			name:     "only one pair of quotes is stripped",
-			input:    "---\nk: \"'x'\"\n---\nB",
-			want:     Frontmatter{"k": "'x'"},
-			wantBody: "B",
-			wantLine: 3,
+			name: "every declared lexeme class",
+			input: "+++\n" +
+				"title = \"Hello\"\n" +
+				"nav_order = 12\n" +
+				"draft = true\n" +
+				"feed = false\n" +
+				"date = 2026-09-14\n" +
+				"tags = [\"a\", \"b\"]\n" +
+				"+++\n\n\nbody\n",
+			kind: KindPage,
+			want: Frontmatter{
+				"title":     "Hello",
+				"nav_order": int64(12),
+				"draft":     true,
+				"feed":      false,
+				"date":      "2026-09-14",
+				"tags":      []string{"a", "b"},
+			},
+			wantKeys: []string{"title", "nav_order", "draft", "feed", "date", "tags"},
+			wantFields: []FrontmatterField{
+				{Key: "title", Value: "Hello"},
+				{Key: "nav_order", Value: int64(12)},
+				{Key: "draft", Value: true},
+				{Key: "feed", Value: false},
+				{Key: "date", Value: FrontmatterDate("2026-09-14")},
+				{Key: "tags", Value: []string{"a", "b"}},
+			},
+			wantBody: "body\n",
+			wantLine: 10,
 		},
 		{
-			name:  "numeric spellings",
-			input: "---\nk: 1e3\nn: -0\np: +5\nd: .5\nnegf: -1.25\n---\nB",
+			name: "a value carrying a colon and a double quote",
+			input: "+++\n" +
+				"title = \"selfdoc vs the Competition: Generators Compared\"\n" +
+				"description = \"She said \\\"hello\\\" twice\"\n" +
+				"+++\nB",
+			kind: KindPage,
 			want: Frontmatter{
-				"k":    1000.0,
-				"n":    int64(0),
-				"p":    int64(5),
-				"d":    0.5,
-				"negf": -1.25,
+				"title":       "selfdoc vs the Competition: Generators Compared",
+				"description": `She said "hello" twice`,
 			},
 			wantBody: "B",
-			wantLine: 7,
+			wantLine: 4,
+		},
+		{
+			name:  "a post carrying everything it must",
+			input: "+++\ntitle = \"P\"\ndate = 2026-01-02\ndirectives = false\n+++\nB",
+			kind:  KindPost,
+			want: Frontmatter{
+				"title": "P", "date": "2026-01-02", "directives": false,
+			},
+			wantBody: "B",
+			wantLine: 5,
+		},
+		{
+			name:     "a comment inside the block is not a key",
+			input:    "+++\n# a note\ntitle = \"T\"\n+++\nB",
+			kind:     KindPage,
+			want:     Frontmatter{"title": "T"},
+			wantKeys: []string{"title"},
+			wantBody: "B",
+			wantLine: 4,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, body, lines := ParseFrontmatter(tt.input)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("metadata = %#v, want %#v", got, tt.want)
+			got, err := ReadFrontmatter(tt.input, "page.md", tt.kind)
+			if err != nil {
+				t.Fatalf("ReadFrontmatter: %v", err)
 			}
-			if body != tt.wantBody {
-				t.Errorf("body = %q, want %q", body, tt.wantBody)
+			if !reflect.DeepEqual(got.Values, tt.want) {
+				t.Errorf("values = %#v, want %#v", got.Values, tt.want)
 			}
-			if lines != tt.wantLine {
-				t.Errorf("consumed lines = %d, want %d", lines, tt.wantLine)
+			if got.Body != tt.wantBody {
+				t.Errorf("body = %q, want %q", got.Body, tt.wantBody)
+			}
+			if got.Consumed != tt.wantLine {
+				t.Errorf("consumed = %d, want %d", got.Consumed, tt.wantLine)
+			}
+			if tt.wantKeys != nil && !reflect.DeepEqual(got.Keys(), tt.wantKeys) {
+				t.Errorf("keys = %#v, want %#v", got.Keys(), tt.wantKeys)
+			}
+			if tt.wantFields != nil && !reflect.DeepEqual(got.Fields, tt.wantFields) {
+				t.Errorf("fields = %#v, want %#v", got.Fields, tt.wantFields)
 			}
 		})
+	}
+}
+
+// TestReadFrontmatterRefusals covers every block the reader will not accept,
+// and what each refusal has to say.
+func TestReadFrontmatterRefusals(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		input     string
+		kind      Kind
+		wantParts []string
+	}{
+		{
+			name:      "the retired fence names the converter and the page",
+			input:     "---\ntitle: Hello\n---\nBody\n",
+			kind:      KindPage,
+			wantParts: []string{"page.md", "---", "+++", ConverterScript},
+		},
+		{
+			name:      "an unclosed fence is refused rather than ignored",
+			input:     "+++\ntitle = \"X\"\n\nBody\n",
+			kind:      KindPage,
+			wantParts: []string{"page.md", "never closes"},
+		},
+		{
+			name:      "an undeclared key is refused",
+			input:     "+++\ntitle = \"X\"\nbogus = 1\n+++\nB",
+			kind:      KindPage,
+			wantParts: []string{"page.md", "Unknown key bogus"},
+		},
+		{
+			name:      "order is refused, having collapsed into nav_order",
+			input:     "+++\norder = 5\n+++\nB",
+			kind:      KindPage,
+			wantParts: []string{"Unknown key order"},
+		},
+		{
+			name:      "project is refused",
+			input:     "+++\nproject = \"x\"\n+++\nB",
+			kind:      KindPage,
+			wantParts: []string{"Unknown key project"},
+		},
+		{
+			name:      "a reader-supplied key may not be written by an author",
+			input:     "+++\ndocument_kind = \"post\"\n+++\nB",
+			kind:      KindPage,
+			wantParts: []string{"document_kind", "which the reader supplies"},
+		},
+		{
+			name:      "a date written as anything but a date is refused",
+			input:     "+++\ntitle = \"P\"\ndate = \"nope\"\ndirectives = false\n+++\nB",
+			kind:      KindPost,
+			wantParts: []string{"$.date", "Expected a date"},
+		},
+		{
+			name:      "a post with no title is refused",
+			input:     "+++\ndate = 2026-01-02\ndirectives = false\n+++\nB",
+			kind:      KindPost,
+			wantParts: []string{"title", "document_kind == \"post\""},
+		},
+		{
+			name:      "a page with no title is accepted, the same block",
+			input:     "+++\ndate = 2026-01-02\n+++\nB",
+			kind:      KindPage,
+			wantParts: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := ReadFrontmatter(tt.input, "page.md", tt.kind)
+			if tt.wantParts == nil {
+				if err != nil {
+					t.Fatalf("ReadFrontmatter: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("ReadFrontmatter accepted the block")
+			}
+			for _, part := range tt.wantParts {
+				if !strings.Contains(err.Error(), part) {
+					t.Errorf("refusal %q does not mention %q", err.Error(), part)
+				}
+			}
+		})
+	}
+}
+
+// TestFrontmatterErrorNamesTheKey pins the lift of a diagnostic's key out of
+// the validator's message, which is what the post lints are coded by.
+func TestFrontmatterErrorNamesTheKey(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		kind  Kind
+		field string
+	}{
+		{"missing title", "+++\ndate = 2026-01-02\ndirectives = false\n+++\nB", KindPost, "title"},
+		{"missing date", "+++\ntitle = \"P\"\ndirectives = false\n+++\nB", KindPost, "date"},
+		{"missing directives", "+++\ntitle = \"P\"\ndate = 2026-01-02\n+++\nB", KindPost, "directives"},
+		{"mistyped date", "+++\ntitle = \"P\"\ndate = 7\ndirectives = false\n+++\nB", KindPost, "date"},
+		{"mistyped directives", "+++\ntitle = \"P\"\ndate = 2026-01-02\ndirectives = 1\n+++\nB", KindPost, "directives"},
+		{"unknown key", "+++\nbogus = 1\n+++\nB", KindPage, "bogus"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := ReadFrontmatter(tt.input, "post.md", tt.kind)
+			var blockErr *FrontmatterError
+			if !errors.As(err, &blockErr) {
+				t.Fatalf("want a *FrontmatterError, got %v", err)
+			}
+			if !blockErr.Names(tt.field) {
+				t.Fatalf("refusal %q does not name %q", err.Error(), tt.field)
+			}
+		})
+	}
+}
+
+// TestSplitFrontmatterIsTheOneFenceReader pins the split every caller that
+// wants only the body goes through -- the staleness pass and the editor's
+// spelling analysis among them.
+func TestSplitFrontmatterIsTheOneFenceReader(t *testing.T) {
+	t.Parallel()
+	block, body, consumed, err := SplitFrontmatter("+++\na = 1\n+++\n\nB\n", "p.md")
+	if err != nil {
+		t.Fatalf("SplitFrontmatter: %v", err)
+	}
+	if block != "a = 1" || body != "B\n" || consumed != 4 {
+		t.Fatalf("got (%q, %q, %d)", block, body, consumed)
+	}
+	if _, err := StripFrontmatter("---\na: 1\n---\nB\n", "p.md"); err == nil {
+		t.Fatal("StripFrontmatter accepted the retired fence")
+	}
+}
+
+// TestRenderFrontmatterRoundTrips writes a block through the emitter surface
+// and reads it back, so every emitter's escaping is the reader's.
+func TestRenderFrontmatterRoundTrips(t *testing.T) {
+	t.Parallel()
+	fields := []FrontmatterField{
+		{Key: "title", Value: `A "quoted" title: with a colon`},
+		{Key: "date", Value: FrontmatterDate("2026-09-14")},
+		{Key: "nav_order", Value: int64(3)},
+		{Key: "draft", Value: false},
+		{Key: "tags", Value: []string{"a b", `c"d`}},
+	}
+	rendered, err := RenderFrontmatter(fields)
+	if err != nil {
+		t.Fatalf("RenderFrontmatter: %v", err)
+	}
+	if !strings.HasPrefix(rendered, "+++\n") || !strings.HasSuffix(rendered, "+++\n") {
+		t.Fatalf("rendered block is not fenced: %q", rendered)
+	}
+	block, err := ReadFrontmatter(rendered+"B\n", "p.md", KindPage)
+	if err != nil {
+		t.Fatalf("reading back what was rendered: %v", err)
+	}
+	if !reflect.DeepEqual(block.Fields, fields) {
+		t.Errorf("round trip = %#v, want %#v", block.Fields, fields)
+	}
+}
+
+// TestRenderFrontmatterRefusesWhatItCannotSpell keeps an emitter from writing
+// a value the schema declares no lexeme class for.
+func TestRenderFrontmatterRefusesWhatItCannotSpell(t *testing.T) {
+	t.Parallel()
+	if _, err := RenderFrontmatter([]FrontmatterField{
+		{Key: "tags", Value: map[string]string{"a": "b"}},
+	}); err == nil {
+		t.Fatal("RenderFrontmatter accepted a value it has no spelling for")
+	}
+	if _, err := RenderFrontmatter([]FrontmatterField{
+		{Key: "date", Value: FrontmatterDate("14-09-2026")},
+	}); err == nil {
+		t.Fatal("RenderFrontmatter accepted a date that is not a local date")
 	}
 }
 
@@ -201,5 +381,56 @@ func TestParsePythonFloatRejectsHex(t *testing.T) {
 	t.Parallel()
 	if _, ok := ParsePythonFloat("0x1p-2"); ok {
 		t.Error("ParsePythonFloat accepted a hexadecimal float literal")
+	}
+}
+
+// TestFrontmatterKeyRowsAreTheSchema pins the derivation itself: every key the
+// schema declares appears exactly once, in the schema's own order, and the two
+// keys the reader supplies appear not at all.
+func TestFrontmatterKeyRowsAreTheSchema(t *testing.T) {
+	t.Parallel()
+	rows, err := FrontmatterKeyRows()
+	if err != nil {
+		t.Fatalf("FrontmatterKeyRows: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if seen[row.Key] {
+			t.Errorf("%s appears twice in the registry", row.Key)
+		}
+		seen[row.Key] = true
+		if row.Type == "" {
+			t.Errorf("%s declares no type", row.Key)
+		}
+		if row.Description == "" {
+			t.Errorf("%s declares no description, which the table renders", row.Key)
+		}
+	}
+	for _, reserved := range readerSuppliedKeys {
+		if seen[reserved] {
+			t.Errorf("the table offers %q, which the reader supplies", reserved)
+		}
+	}
+	// The three keys a post must carry are the schema's conditional-required
+	// constraints, read back through the same derivation the table renders.
+	for _, key := range []string{"title", "date", "directives"} {
+		required := false
+		for _, row := range rows {
+			if row.Key == key {
+				required = row.RequiredOnAPost
+			}
+		}
+		if !required {
+			t.Errorf("%s is not marked required on a post", key)
+		}
+	}
+	// Every key the reader accepts is in the table. A block carrying one the
+	// table omits would be undocumented.
+	block, err := ReadFrontmatter("+++\nglossary_links = false\n+++\nB", "p.md", KindPage)
+	if err != nil {
+		t.Fatalf("reading a declared key: %v", err)
+	}
+	if _, ok := block.Values["glossary_links"]; !ok || !seen["glossary_links"] {
+		t.Error("glossary_links is readable but not in the rendered registry")
 	}
 }

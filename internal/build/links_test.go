@@ -21,7 +21,7 @@ var linkedPages = map[string]string{
 		"Root page linking [the guide](guide.md), " +
 		"[a section of it](guide.md#section-two) and " +
 		"[the API](reference/api.md).\n",
-	"guide.md": "---\ntitle: Guide\n---\n\n" +
+	"guide.md": "+++\ntitle = \"Guide\"\n+++\n\n" +
 		"# Guide\n\n" +
 		"A sibling: [checks](checks.md). " +
 		"With an anchor: [detail](checks.md#detail). " +
@@ -29,13 +29,13 @@ var linkedPages = map[string]string{
 		"Home: [index](index.md). " +
 		"Down: [notes](reference/deep/notes.md).\n\n" +
 		"## Section two\n\nSecond section.\n",
-	"checks.md": "---\ntitle: Checks\n---\n\n" +
+	"checks.md": "+++\ntitle = \"Checks\"\n+++\n\n" +
 		"# Checks\n\nBack to [the guide](guide.md).\n\n" +
 		"## Detail\n\nThe detail.\n",
-	"reference/api.md": "---\ntitle: API\n---\n\n" +
+	"reference/api.md": "+++\ntitle = \"API\"\n+++\n\n" +
 		"# API\n\n" +
 		"Up: [guide](../guide.md). Down: [notes](deep/notes.md).\n",
-	"reference/deep/notes.md": "---\ntitle: Notes\n---\n\n" +
+	"reference/deep/notes.md": "+++\ntitle = \"Notes\"\n+++\n\n" +
 		"# Notes\n\n" +
 		"Up: [api](../api.md). Root: [index](../../index.md).\n",
 }
@@ -44,16 +44,16 @@ var linkedPages = map[string]string{
 // which an immutable git tag can carry and the working tree may not.
 var legacyPages = map[string]string{
 	"index.md": "# Fixture\n\nRoot page linking [the guide](guide.html).\n",
-	"guide.md": "---\ntitle: Guide\n---\n\n" +
+	"guide.md": "+++\ntitle = \"Guide\"\n+++\n\n" +
 		"# Guide\n\n" +
 		"A sibling: [checks](checks.html). " +
 		"With an anchor: [detail](checks.html#detail). " +
 		"Home: [index](index.html). " +
 		"Down: [notes](reference/deep/notes.html).\n",
-	"checks.md": "---\ntitle: Checks\n---\n\n" +
+	"checks.md": "+++\ntitle = \"Checks\"\n+++\n\n" +
 		"# Checks\n\nBack to [the guide](guide.html).\n\n" +
 		"## Detail\n\nThe detail.\n",
-	"reference/deep/notes.md": "---\ntitle: Notes\n---\n\n" +
+	"reference/deep/notes.md": "+++\ntitle = \"Notes\"\n+++\n\n" +
 		"# Notes\n\nUp: [index](../../index.html).\n",
 }
 

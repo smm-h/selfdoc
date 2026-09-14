@@ -21,7 +21,7 @@ def greet(name):
     return f'Hello, {name}'
 `)
 	write(t, filepath.Join(root, "docs", "mylib.md"),
-		"---\ndescription: "+description+"\n---\n# My Library\n\n"+
+		"+++\ndescription = \""+description+"\"\n+++\n# My Library\n\n"+
 			":-: ref path=\"mylib\"\n")
 }
 
@@ -83,7 +83,7 @@ func dualDriftProject(t *testing.T, root, firstDoc, secondDoc string) {
 	write(t, filepath.Join(root, "mylib", "__init__.py"), `"""`+firstDoc+`"""`+"\n")
 	write(t, filepath.Join(root, "mylib", "other.py"), `"""`+secondDoc+`"""`+"\n")
 	write(t, filepath.Join(root, "docs", "mylib.md"),
-		"---\ndescription: Hand-written index\n---\n# My Library\n\n"+
+		"+++\ndescription = \"Hand-written index\"\n+++\n# My Library\n\n"+
 			":-: ref path=\"mylib\"\n")
 	// The machine-owned page carries the current module template as its
 	// description, which the ownership predicate recognizes with no
@@ -92,8 +92,8 @@ func dualDriftProject(t *testing.T, root, firstDoc, secondDoc string) {
 		ownership.ModuleDescTemplate, "{module}", "mylib.other",
 	)
 	write(t, filepath.Join(root, "docs", "mylib-other.md"),
-		"---\ntitle: mylib.other\ndescription: \""+machineDescription+"\"\n"+
-			"generated: true\nseeded: true\n---\n# mylib.other\n\n"+
+		"+++\ntitle = \"mylib.other\"\ndescription = \""+machineDescription+"\"\n"+
+			"generated = true\nseeded = true\n+++\n# mylib.other\n\n"+
 			":-: ref path=\"mylib.other\"\n")
 }
 
@@ -155,7 +155,7 @@ func TestDRIFT001Silences(t *testing.T) {
 				))
 				write(t, filepath.Join(root, "src", "__init__.py"), `"""Module."""`+"\n")
 				write(t, filepath.Join(root, "docs", "guide.md"),
-					"---\ndescription: A guide\n---\n# Guide\n\nSome content.\n")
+					"+++\ndescription = \"A guide\"\n+++\n# Guide\n\nSome content.\n")
 			},
 		},
 	} {

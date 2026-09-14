@@ -273,16 +273,19 @@ func LoadDocsBodies(docsDir string) (map[string]DocBody, error) {
 			return err
 		}
 		text := string(content)
-		metadata, body, _ := util.ParseFrontmatter(text)
+		block, readErr := util.ReadFrontmatter(text, relPath, util.KindPage)
+		if readErr != nil {
+			return readErr
+		}
 		// The frontmatter's height is the difference in line counts, which
 		// is what the lint rules map a body line back to its source line
-		// with. It is computed here rather than taken from the parser
+		// with. It is computed here rather than taken from the reader
 		// because it must stay the number the Python reported.
-		frontmatterLines := strings.Count(text, "\n") - strings.Count(body, "\n")
+		frontmatterLines := strings.Count(text, "\n") - strings.Count(block.Body, "\n")
 		bodies[relPath] = DocBody{
-			Frontmatter:      metadata,
+			Frontmatter:      block.Values,
 			Resolved:         "",
-			Body:             body,
+			Body:             block.Body,
 			FrontmatterLines: frontmatterLines,
 		}
 		return nil

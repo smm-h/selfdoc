@@ -356,7 +356,7 @@ func TestNoVersionPickerWhereThereIsNowhereToGo(t *testing.T) {
 	if strings.Contains(single, "version-picker") {
 		t.Fatal("a single version must produce no picker")
 	}
-	// A page marked "versioned: false" has no version to switch away from.
+	// A page marked "versioned = false" has no version to switch away from.
 	unversioned := pickerPage(t, func(o *Options) {
 		o.AvailableVersions = []VersionEntry{{"0.9.0"}, {"1.0.0"}}
 		o.MountVersion = ""

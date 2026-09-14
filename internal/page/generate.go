@@ -170,6 +170,7 @@ type pageState struct {
 	schema                 string
 	pageType               string
 	pageTags               []string
+	glossaryLinks          bool
 	navGroup               string
 	facetType              string
 	pageNumber             int
@@ -381,6 +382,13 @@ func GenerateHTML(opts Options) (map[string]string, error) {
 
 		pageTags := fmStrings(pageMetaFM, "tags")
 
+		// The page's automatic-term-link opt-out. A page that declares
+		// nothing is linked, so absence reads as true.
+		glossaryLinks := true
+		if declared, ok := pageMetaFM["glossary_links"].(bool); ok {
+			glossaryLinks = declared
+		}
+
 		// The landing page: the hero and the feature grid go above the body
 		// of index.md when the project declares branding. The hero replaces
 		// the page summary block.
@@ -450,6 +458,7 @@ func GenerateHTML(opts Options) (map[string]string, error) {
 			schema:                 schema,
 			pageType:               pageType,
 			pageTags:               pageTags,
+			glossaryLinks:          glossaryLinks,
 			navGroup:               pageGroup[mdPath],
 			facetType:              facetType,
 			pageNumber:             pageIdx + 1,
@@ -538,6 +547,7 @@ func GenerateHTML(opts Options) (map[string]string, error) {
 			PageType:           pd.pageType,
 			SchemaTypes:        opts.SchemaTypes,
 			PageTags:           pd.pageTags,
+			GlossaryLinks:      pd.glossaryLinks,
 			TwitterSite:        opts.TwitterSite,
 			Search:             opts.Search,
 			Feedback:           opts.Feedback,

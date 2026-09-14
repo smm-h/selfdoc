@@ -49,7 +49,7 @@ func runSymbolDocsCases(t *testing.T, cases []symbolDocsCase) {
 			fixture := lintProject(t)
 			write(t, filepath.Join(fixture.Root, "src", "mod.py"), testCase.source)
 			write(t, filepath.Join(fixture.DocsDir, "page.md"),
-				"---\ndescription: A page about greet\n---\n# Greet\n\nContent.\n")
+				"+++\ndescription = \"A page about greet\"\n+++\n# Greet\n\nContent.\n")
 
 			attrs := map[string]string{"path": "mod"}
 			if testCase.target != "" {

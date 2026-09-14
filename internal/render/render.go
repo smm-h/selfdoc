@@ -114,7 +114,10 @@ func Post(opts PostOptions, h *effects.Handle) (string, error) {
 			published = append(published, post)
 		}
 	}
-	payloads := build.PostDocsPayloads(published)
+	payloads, err := build.PostDocsPayloads(published)
+	if err != nil {
+		return "", err
+	}
 
 	pageFilter := make(map[string]bool, len(payloads))
 	for relPath := range payloads {

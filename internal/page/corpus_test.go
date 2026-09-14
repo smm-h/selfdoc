@@ -87,7 +87,11 @@ func readCorpus(t *testing.T) ([]SourceFile, map[string]util.Frontmatter) {
 				t.Fatalf("relativizing %s: %v", name, err)
 			}
 			rel = filepath.ToSlash(rel)
-			meta, body, _ := util.ParseFrontmatter(string(raw))
+			block, err := util.ReadFrontmatter(string(raw), rel, util.KindPage)
+			if err != nil {
+				t.Fatalf("reading corpus file %s: %v", name, err)
+			}
+			meta, body := block.Values, block.Body
 			hasH1 := false
 			for _, tok := range tokenizer.Tokenize(body) {
 				if h, ok := tok.(tokenizer.Heading); ok && h.Level == 1 {

@@ -597,7 +597,7 @@ func TestBuildUnifiedEmitsVersionFreePagesOnceAtTheirOwnMount(t *testing.T) {
 	hygiene.Isolate(t)
 	testproject.RequirePagefind(t)
 
-	// A page declaring "versioned: false" is emitted once, at the mount
+	// A page declaring "versioned = false" is emitted once, at the mount
 	// with no version segment, while its neighbours are emitted per
 	// version -- the superseded one under the archive prefix.
 	docsSite := testproject.MakeUnified(t, oneProject, map[string]any{
@@ -609,9 +609,9 @@ func TestBuildUnifiedEmitsVersionFreePagesOnceAtTheirOwnMount(t *testing.T) {
 	})
 	testproject.WriteText(t,
 		filepath.Join(projectDirOf(docsSite, "core"), "docs", "about.md"),
-		"---\nversioned: false\n---\n\n# About Core\n\nThe same at every version.\n")
+		"+++\nversioned = false\n+++\n\n# About Core\n\nThe same at every version.\n")
 	testproject.WriteText(t, filepath.Join(docsSite, "docs", "policy.md"),
-		"---\nversioned: false\n---\n\n# Policy\n\nThe site's own persistent page.\n")
+		"+++\nversioned = false\n+++\n\n# Policy\n\nThe site's own persistent page.\n")
 
 	if _, err := BuildUnified(docsSite, nil, "", false, effects.Unbound()); err != nil {
 		t.Fatalf("BuildUnified: %v", err)

@@ -293,7 +293,7 @@ func TestBuildSEOAndStructuredData(t *testing.T) {
 	built := buildFixture(t, fixture{
 		Docs: map[string]string{
 			"index.md": "# Test Project\n\nWelcome.\n",
-			"guide.md": "---\ndescription: How to use it.\n---\n\n# Guide\n\n" +
+			"guide.md": "+++\ndescription = \"How to use it.\"\n+++\n\n# Guide\n\n" +
 				"Some prose.\n\n```python\nprint(1)\n```\n",
 			"api/reference.md": "# Reference\n\nThe API surface.\n",
 		},
@@ -368,9 +368,9 @@ func TestBuildPageDates(t *testing.T) {
 
 	built := buildFixture(t, fixture{
 		Docs: map[string]string{
-			"updated-only.md": "---\nupdated: 2026-05-01\n---\n# Updated Only\n\nContent.\n",
-			"date-only.md":    "---\ndate: 2026-01-15\n---\n# Date Only\n\nContent.\n",
-			"both.md":         "---\ndate: 2026-01-15\nupdated: 2026-05-01\n---\n# Both\n\nContent.\n",
+			"updated-only.md": "+++\nupdated = 2026-05-01\n+++\n# Updated Only\n\nContent.\n",
+			"date-only.md":    "+++\ndate = 2026-01-15\n+++\n# Date Only\n\nContent.\n",
+			"both.md":         "+++\ndate = 2026-01-15\nupdated = 2026-05-01\n+++\n# Both\n\nContent.\n",
 			"neither.md":      "# Neither\n\nContent.\n",
 		},
 	})

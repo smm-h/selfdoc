@@ -51,7 +51,7 @@ func homeSiteProject(t *testing.T, overrides map[string]any) string {
 func writeHomeFrontPage(t *testing.T, dir, prose string) {
 	t.Helper()
 	writeText(t, filepath.Join(dir, "docs", "index.md"),
-		"---\ntitle: Front page\ndescription: The front page of the site.\n---\n\n"+
+		"+++\ntitle = \"Front page\"\ndescription = \"The front page of the site.\"\n+++\n\n"+
 			"# Me\n\n"+prose+"\n\n"+
 			":-: projects-cards\n\n"+
 			`:-: blog-highlights limit="3"`+"\n")

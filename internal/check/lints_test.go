@@ -89,7 +89,7 @@ func TestSEOStructureRules(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "SEO001 two H1 headings",
-			page: "---\ndescription: test\n---\n" +
+			page: "+++\ndescription = \"test\"\n+++\n" +
 				"# First Title\n\nSome text.\n\n# Second Title\n\nMore text.\n",
 			want: []string{"SEO001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -104,18 +104,18 @@ func TestSEOStructureRules(t *testing.T) {
 		},
 		{
 			name:   "SEO001 single H1 is silent",
-			page:   "---\ndescription: test\n---\n# Only Title\n\nSome text.\n",
+			page:   "+++\ndescription = \"test\"\n+++\n# Only Title\n\nSome text.\n",
 			absent: []string{"SEO001"},
 		},
 		{
 			name: "SEO001 does not count a directive as a heading",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				":::cli app.commands\n:::\n\nText.\n",
 			absent: []string{"SEO001"},
 		},
 		{
 			name: "SEO002 heading level gap",
-			page: "---\ndescription: test\n---\n# Title\n\n## Section\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## Section\n\n" +
 				"Text.\n\n#### Deep\n\nMore.\n",
 			want: []string{"SEO002"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -130,25 +130,25 @@ func TestSEOStructureRules(t *testing.T) {
 		},
 		{
 			name: "SEO002 no gap is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n## Section\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## Section\n\n" +
 				"Text.\n\n### Sub\n\nMore.\n",
 			absent: []string{"SEO002"},
 		},
 		{
 			name: "SEO003 empty alt text",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"Some text.\n\n![](image.png)\n",
 			want: []string{"SEO003"},
 		},
 		{
 			name: "SEO003 alt text present is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"Some text.\n\n![A descriptive caption](image.png)\n",
 			absent: []string{"SEO003"},
 		},
 		{
 			name: "SEO013 no title source at all",
-			page: "---\ndescription: test\n---\nJust a paragraph with no heading.\n",
+			page: "+++\ndescription = \"test\"\n+++\nJust a paragraph with no heading.\n",
 			want: []string{"SEO013"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				if onlyMessage(t, results, "SEO013").Severity() != "error" {
@@ -158,17 +158,17 @@ func TestSEOStructureRules(t *testing.T) {
 		},
 		{
 			name:   "SEO013 an H1 is a title source",
-			page:   "---\ndescription: test\n---\n# Title\n\nText.\n",
+			page:   "+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"SEO013"},
 		},
 		{
 			name:   "SEO013 a frontmatter title is a title source",
-			page:   "---\ntitle: A Title\ndescription: test\n---\nText with no heading.\n",
+			page:   "+++\ntitle = \"A Title\"\ndescription = \"test\"\n+++\nText with no heading.\n",
 			absent: []string{"SEO013"},
 		},
 		{
 			name: "SEO011 an H2 followed by an H2",
-			page: "---\ndescription: test\n---\n# Title\n\n## First\n\n## Second\n\nText.\n",
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## First\n\n## Second\n\nText.\n",
 			want: []string{"SEO011"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				diagnostic := onlyMessage(t, results, "SEO011")
@@ -179,19 +179,19 @@ func TestSEOStructureRules(t *testing.T) {
 		},
 		{
 			name: "SEO011 an H3 followed by an H2",
-			page: "---\ndescription: test\n---\n# Title\n\n## Top\n\nText.\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## Top\n\nText.\n\n" +
 				"### Sub\n\n## Next\n\nMore.\n",
 			want: []string{"SEO011"},
 		},
 		{
 			name: "SEO011 content between headings is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n## First\n\nText.\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## First\n\nText.\n\n" +
 				"## Second\n\nMore.\n",
 			absent: []string{"SEO011"},
 		},
 		{
 			name:   "SEO011 an H2 followed by an H3 is silent",
-			page:   "---\ndescription: test\n---\n# Title\n\n## Top\n\n### Sub\n\nText.\n",
+			page:   "+++\ndescription = \"test\"\n+++\n# Title\n\n## Top\n\n### Sub\n\nText.\n",
 			absent: []string{"SEO011"},
 		},
 	})
@@ -202,7 +202,7 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "SEO004 frontmatter title too long",
-			page: "---\ntitle: " + longTitle + "\ndescription: test\n---\n" +
+			page: "+++\ntitle = \"" + longTitle + "\"\ndescription = \"test\"\n+++\n" +
 				"# Heading\n\nText.\n",
 			want: []string{"SEO004"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -213,12 +213,12 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 		},
 		{
 			name:   "SEO004 short title is silent",
-			page:   "---\ntitle: Short\ndescription: test\n---\n# Heading\n\nText.\n",
+			page:   "+++\ntitle = \"Short\"\ndescription = \"test\"\n+++\n# Heading\n\nText.\n",
 			absent: []string{"SEO004"},
 		},
 		{
 			name:   "SEO004 a long H1 with no frontmatter title still fires",
-			page:   "---\ndescription: test\n---\n# " + longTitle + "\n\nText.\n",
+			page:   "+++\ndescription = \"test\"\n+++\n# " + longTitle + "\n\nText.\n",
 			want:   []string{"SEO004"},
 			absent: []string{"SEO013"},
 		},
@@ -234,25 +234,25 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 		},
 		{
 			name:   "SEO006 a description is silent",
-			page:   "---\ndescription: A description of the page.\n---\n# Title\n\nText.\n",
+			page:   "+++\ndescription = \"A description of the page.\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"SEO006"},
 		},
 		{
 			name:   "SEO009 a short description",
-			page:   "---\ndescription: Too short.\n---\n# Title\n\nText.\n",
+			page:   "+++\ndescription = \"Too short.\"\n+++\n# Title\n\nText.\n",
 			want:   []string{"SEO009"},
 			absent: []string{"SEO010"},
 		},
 		{
 			name: "SEO009 a description in the band is silent",
-			page: "---\ndescription: " + repeatWords("word", 30) +
-				"\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"" + repeatWords("word", 30) +
+				"\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"SEO009", "SEO010"},
 		},
 		{
 			name: "SEO010 a description over the ceiling",
-			page: "---\ndescription: " + strings.Repeat("x", 200) +
-				"\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"" + strings.Repeat("x", 200) +
+				"\"\n+++\n# Title\n\nText.\n",
 			want: []string{"SEO010"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				if !strings.Contains(onlyMessage(t, results, "SEO010").Message(), "200") {
@@ -281,8 +281,8 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 		},
 		{
 			name: "SEO009 a description just under the floor",
-			page: "---\ndescription: " + strings.Repeat("x", 109) +
-				"\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"" + strings.Repeat("x", 109) +
+				"\"\n+++\n# Title\n\nText.\n",
 			want: []string{"SEO009"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				message := onlyMessage(t, results, "SEO009").Message()
@@ -294,20 +294,20 @@ func TestSEOTitleAndDescriptionRules(t *testing.T) {
 		},
 		{
 			name: "SEO009 a description between the old floor and the new one is silent",
-			page: "---\ndescription: " + strings.Repeat("x", 115) +
-				"\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"" + strings.Repeat("x", 115) +
+				"\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"SEO009", "SEO010"},
 		},
 		{
 			name: "SEO010 a description between the old ceiling and the new one is silent",
-			page: "---\ndescription: " + strings.Repeat("x", 158) +
-				"\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"" + strings.Repeat("x", 158) +
+				"\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"SEO009", "SEO010"},
 		},
 		{
 			name: "SEO010 a description just over the ceiling",
-			page: "---\ndescription: " + strings.Repeat("x", 161) +
-				"\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"" + strings.Repeat("x", 161) +
+				"\"\n+++\n# Title\n\nText.\n",
 			want: []string{"SEO010"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				message := onlyMessage(t, results, "SEO010").Message()
@@ -323,7 +323,7 @@ func TestSEO007ParagraphBand(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "a short paragraph after a heading",
-			page: "---\ndescription: test\n---\n# Title\n\n## Section\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## Section\n\n" +
 				"This is short.\n\nMore content here.\n",
 			want: []string{"SEO007"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -344,33 +344,33 @@ func TestSEO007ParagraphBand(t *testing.T) {
 		},
 		{
 			name: "a paragraph inside the band is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n## Section\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## Section\n\n" +
 				repeatWords("word", 50) + "\n\nMore content.\n",
 			absent: []string{"SEO007"},
 		},
 		{
 			name: "a directive straight after the heading suppresses it",
-			page: "---\ndescription: test\n---\n# Title\n\n## release\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## release\n\n" +
 				":::cli app.commands.release\n:::\n",
 			absent: []string{"SEO007"},
 		},
 		{
 			name: "a directive after a short paragraph suppresses it",
-			page: "---\ndescription: test\n---\n# Title\n\n## release\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## release\n\n" +
 				"Orchestrate a release: bump version, validate changelog.\n\n" +
 				":::cli app.commands.release\n:::\n",
 			absent: []string{"SEO007"},
 		},
 		{
 			name: "without a directive it still fires",
-			page: "---\ndescription: test\n---\n# Title\n\n## Section\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n## Section\n\n" +
 				"Short intro text only.\n\nSome other paragraph.\n",
 			want: []string{"SEO007"},
 		},
 		{
 			name: "a generated CLI page gets no exemption",
 			pages: map[string]string{
-				"cli-build.md": "---\ndescription: test\ngenerated: true\n---\n" +
+				"cli-build.md": "+++\ndescription = \"test\"\ngenerated = true\n+++\n" +
 					"# build\n\n## Flags\n\nShort text.\n\nMore.\n",
 			},
 			want: []string{"SEO007"},
@@ -378,7 +378,7 @@ func TestSEO007ParagraphBand(t *testing.T) {
 		{
 			name: "the directive exemption holds on a generated page",
 			pages: map[string]string{
-				"cli-build.md": "---\ndescription: test\ngenerated: true\n---\n" +
+				"cli-build.md": "+++\ndescription = \"test\"\ngenerated = true\n+++\n" +
 					"# build\n\n## Flags\n\n:::cli app.commands.build\n:::\n",
 			},
 			absent: []string{"SEO007"},
@@ -390,7 +390,7 @@ func TestSEO008StatisticsDensity(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "a long page with no numbers",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 250) + "\n",
 			want: []string{"SEO008"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -402,19 +402,19 @@ func TestSEO008StatisticsDensity(t *testing.T) {
 		},
 		{
 			name: "a long page with numbers is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 250) + " 42 87% 12ms\n",
 			absent: []string{"SEO008"},
 		},
 		{
 			name: "a short page is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 50) + "\n",
 			absent: []string{"SEO008"},
 		},
 		{
 			name: "1000 words with too few numbers",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 1000) + " 42\n",
 			want: []string{"SEO008"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -428,19 +428,19 @@ func TestSEO008StatisticsDensity(t *testing.T) {
 		},
 		{
 			name: "1000 words with enough numbers is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 1000) + " 1 2 3 4 5\n",
 			absent: []string{"SEO008"},
 		},
 		{
 			name: "version strings and years are not statistics",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 250) + " v0.36.0 0.36.0 2026 (1999)\n",
 			want: []string{"SEO008"},
 		},
 		{
 			name: "genuine quantities still count",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				repeatWords("word", 250) + " 3.5 **42** 87%\n",
 			absent: []string{"SEO008"},
 		},
@@ -473,29 +473,29 @@ func TestSEOAltAndAnchorRules(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name:   "SEO014 a medium word as alt text",
-			page:   "---\ndescription: test\n---\n# Title\n\nText.\n\n![screenshot](a.png)\n",
+			page:   "+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n\n![screenshot](a.png)\n",
 			want:   []string{"SEO014"},
 			absent: []string{"SEO003"},
 		},
 		{
 			name: "SEO014 a filename as alt text",
-			page: "---\ndescription: test\n---\n# Title\n\nText.\n\n![diagram.png](a.png)\n",
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n\n![diagram.png](a.png)\n",
 			want: []string{"SEO014"},
 		},
 		{
 			name: "SEO014 a single character as alt text",
-			page: "---\ndescription: test\n---\n# Title\n\nText.\n\n![x](a.png)\n",
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n\n![x](a.png)\n",
 			want: []string{"SEO014"},
 		},
 		{
 			name: "SEO014 descriptive alt text is silent",
-			page: "---\ndescription: test\n---\n# Title\n\nText.\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n\n" +
 				"![The build pipeline, from templates to output](a.png)\n",
 			absent: []string{"SEO014"},
 		},
 		{
 			name: "SEO015 generic anchor text",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"For details, [click here](https://example.com).\n",
 			want: []string{"SEO015"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -508,13 +508,13 @@ func TestSEOAltAndAnchorRules(t *testing.T) {
 		},
 		{
 			name: "SEO015 descriptive anchor text is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"See [the release workflow](https://example.com).\n",
 			absent: []string{"SEO015"},
 		},
 		{
 			name: "SEO015 inside a code block is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```markdown\n[click here](https://example.com)\n```\n",
 			absent: []string{"SEO015"},
 		},
@@ -525,7 +525,7 @@ func TestXREF001InternalLinks(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "a link to a page that does not exist",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"See [the guide](guide.md).\n",
 			want: []string{"XREF001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -539,31 +539,31 @@ func TestXREF001InternalLinks(t *testing.T) {
 		{
 			name: "a link to a page that exists is silent",
 			pages: map[string]string{
-				"page.md":  "---\ndescription: test\n---\n# Title\n\nSee [the guide](guide.md).\n",
-				"guide.md": "---\ndescription: test\n---\n# Guide\n\nText.\n",
+				"page.md":  "+++\ndescription = \"test\"\n+++\n# Title\n\nSee [the guide](guide.md).\n",
+				"guide.md": "+++\ndescription = \"test\"\n+++\n# Guide\n\nText.\n",
 			},
 			absent: []string{"XREF001"},
 		},
 		{
 			name: "an external link is ignored",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"See [upstream](https://example.com/doc.md).\n",
 			absent: []string{"XREF001"},
 		},
 		{
 			name: "a relative link resolves against the page's own directory",
 			pages: map[string]string{
-				"sub/page.md": "---\ndescription: test\n---\n# Title\n\n" +
+				"sub/page.md": "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 					"See [the guide](../guide.md).\n",
-				"guide.md": "---\ndescription: test\n---\n# Guide\n\nText.\n",
+				"guide.md": "+++\ndescription = \"test\"\n+++\n# Guide\n\nText.\n",
 			},
 			absent: []string{"XREF001"},
 		},
 		{
 			name: "an anchor fragment is stripped before resolution",
 			pages: map[string]string{
-				"page.md":  "---\ndescription: test\n---\n# Title\n\n[Guide](guide.md#usage)\n",
-				"guide.md": "---\ndescription: test\n---\n# Guide\n\nText.\n",
+				"page.md":  "+++\ndescription = \"test\"\n+++\n# Title\n\n[Guide](guide.md#usage)\n",
+				"guide.md": "+++\ndescription = \"test\"\n+++\n# Guide\n\nText.\n",
 			},
 			absent: []string{"XREF001"},
 		},
@@ -574,27 +574,27 @@ func TestDescriptionQualityRules(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "DQ001 the description restates the title",
-			page: "---\ntitle: Config Module\ndescription: config module\n---\n" +
+			page: "+++\ntitle = \"Config Module\"\ndescription = \"config module\"\n+++\n" +
 				"# Config Module\n\nText.\n",
 			want: []string{"DQ001"},
 		},
 		{
 			name: "DQ001 a real description is silent",
-			page: "---\ntitle: Config\ndescription: Loads and validates a " +
-				"project's settings document, resolving every path.\n---\n# Config\n\nText.\n",
+			page: "+++\ntitle = \"Config\"\ndescription = \"Loads and validates a " +
+				"project's settings document, resolving every path.\"\n+++\n# Config\n\nText.\n",
 			absent: []string{"DQ001"},
 		},
 		{
 			name: "DQ001 a kind suffix is stripped before comparing",
 			pages: map[string]string{
-				"config.md": "---\ndescription: Config module\n---\n# Config\n\nSome content.\n",
+				"config.md": "+++\ndescription = \"Config module\"\n+++\n# Config\n\nSome content.\n",
 			},
 			want: []string{"DQ001"},
 		},
 		{
 			name: "DQ001 the description restates the filename when no title exists",
 			pages: map[string]string{
-				"load_config.md": "---\ndescription: Load config\n---\n# load_config\n\nSome content.\n",
+				"load_config.md": "+++\ndescription = \"Load config\"\n+++\n# load_config\n\nSome content.\n",
 			},
 			want: []string{"DQ001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -605,7 +605,7 @@ func TestDescriptionQualityRules(t *testing.T) {
 		},
 		{
 			name: "DQ002 a description under twenty characters",
-			page: "---\ndescription: Too short\n---\n# Title\n\nText.\n",
+			page: "+++\ndescription = \"Too short\"\n+++\n# Title\n\nText.\n",
 			want: []string{"DQ002"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
 				if !strings.Contains(
@@ -617,7 +617,7 @@ func TestDescriptionQualityRules(t *testing.T) {
 		},
 		{
 			name: "DQ002 an adequate description is silent",
-			page: "---\ndescription: This description is long enough to say something.\n---\n" +
+			page: "+++\ndescription = \"This description is long enough to say something.\"\n+++\n" +
 				"# Title\n\nText.\n",
 			absent: []string{"DQ002"},
 		},
@@ -629,7 +629,7 @@ func TestDescriptionQualityRules(t *testing.T) {
 		},
 		{
 			name: "DQ003 a ref page with a short description",
-			page: "---\ndescription: Short description ok\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"Short description ok\"\n+++\n# Title\n\n" +
 				":-: ref path=\"mylib\"\n",
 			want: []string{"DQ003"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -642,14 +642,14 @@ func TestDescriptionQualityRules(t *testing.T) {
 		},
 		{
 			name: "DQ003 a ref page with a substantive description is silent",
-			page: "---\ndescription: Every public function of the library, with its " +
-				"signature and its documentation.\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"Every public function of the library, with its " +
+				"signature and its documentation.\"\n+++\n# Title\n\n" +
 				":-: ref path=\"mylib\"\n",
 			absent: []string{"DQ003"},
 		},
 		{
 			name:   "DQ003 a page with no ref directive is silent",
-			page:   "---\ndescription: Short description ok\n---\n# Title\n\nText.\n",
+			page:   "+++\ndescription = \"Short description ok\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"DQ003"},
 		},
 	})
@@ -659,13 +659,13 @@ func TestEXAMPLE001SyntaxTier(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "valid Python is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\ndef greet(name):\n    return name\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "invalid Python is reported",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\ndef greet(name)\n    return name\n    return name\n```\n",
 			want: []string{"EXAMPLE001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -681,49 +681,49 @@ func TestEXAMPLE001SyntaxTier(t *testing.T) {
 		},
 		{
 			name: "a snippet under three lines is skipped",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\ndef greet(\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "a block carrying a directive marker is skipped",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\n:-: ref path=\"x\"\ndef greet(\nreturn\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "an indented fragment is exempt",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\n    return value\n    value += 1\n    print(value)\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "an unexpected indent is exempt",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\nvalue = 1\n    value += 1\n    print(value)\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "a dedent matching no outer level is exempt",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\ndef f():\n        a = 1\n    b = 2\n    return a\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "a block that was never indented is exempt",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python\nif ready:\nrun()\nstop()\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "valid JSON is silent",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```json\n{\"a\": 1}\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
 		{
 			name: "invalid JSON is reported",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```json\n{\"a\": 1,}\n```\n",
 			want: []string{"EXAMPLE001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -736,7 +736,7 @@ func TestEXAMPLE001SyntaxTier(t *testing.T) {
 		},
 		{
 			name: "a JSON block carrying a directive marker is skipped",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```json\n{:-: var key=\"x\"}\n```\n",
 			absent: []string{"EXAMPLE001"},
 		},
@@ -747,7 +747,7 @@ func TestEXAMPLE002And003SemanticTier(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "a validate marker with no examples config at all",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python validate\nx = 1\ny = 2\nz = 3\n```\n",
 			want: []string{"EXAMPLE003"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -761,14 +761,14 @@ func TestEXAMPLE002And003SemanticTier(t *testing.T) {
 		{
 			name:   "a validate marker for an unconfigured language",
 			config: map[string]any{"examples": map[string]any{"go": "go vet {file}"}},
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python validate\nx = 1\ny = 2\nz = 3\n```\n",
 			want: []string{"EXAMPLE003"},
 		},
 		{
 			name:   "a failing validator is EXAMPLE002",
 			config: map[string]any{"examples": map[string]any{"text": "false {file}"}},
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```text validate\nnot a program\n```\n",
 			want:   []string{"EXAMPLE002"},
 			absent: []string{"EXAMPLE003"},
@@ -784,14 +784,14 @@ func TestEXAMPLE002And003SemanticTier(t *testing.T) {
 		{
 			name:   "a passing validator is silent",
 			config: map[string]any{"examples": map[string]any{"text": "true {file}"}},
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```text validate\nanything\n```\n",
 			absent: []string{"EXAMPLE002", "EXAMPLE003"},
 		},
 		{
 			name:   "a missing validator binary is EXAMPLE002",
 			config: map[string]any{"examples": map[string]any{"text": "selfdoc-no-such-binary {file}"}},
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```text validate\nanything\n```\n",
 			want: []string{"EXAMPLE002"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -806,7 +806,7 @@ func TestEXAMPLE002And003SemanticTier(t *testing.T) {
 		{
 			name:   "an unmarked block is never executed",
 			config: map[string]any{"examples": map[string]any{"text": "false {file}"}},
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```text\nnot a program\n```\n",
 			absent: []string{"EXAMPLE002", "EXAMPLE003"},
 		},
@@ -817,7 +817,7 @@ func TestExampleValidationLeavesNoScratchFiles(t *testing.T) {
 	fixture := lintProject(t)
 	fixture.Config["examples"] = map[string]any{"text": "true {file}"}
 	write(t, filepath.Join(fixture.DocsDir, "page.md"),
-		"---\ndescription: test\n---\n# Title\n\n```text validate\nanything\n```\n")
+		"+++\ndescription = \"test\"\n+++\n# Title\n\n```text validate\nanything\n```\n")
 
 	runLintsOn(t, fixture, nil)
 
@@ -836,7 +836,7 @@ func TestEXAMPLE003FallsBackToTheSyntaxTier(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "an unconfigured validate marker still gets its syntax verdict",
-			page: "---\ndescription: test\n---\n# Title\n\n" +
+			page: "+++\ndescription = \"test\"\n+++\n# Title\n\n" +
 				"```python validate\ndef greet(name)\n    return name\n    return name\n```\n",
 			want: []string{"EXAMPLE003", "EXAMPLE001"},
 		},
@@ -847,7 +847,7 @@ func TestSEO012Contrast(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name:   "the default theme passes",
-			page:   "---\ndescription: test\n---\n# Title\n\nText.\n",
+			page:   "+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n",
 			absent: []string{"SEO012"},
 		},
 	})
@@ -888,7 +888,7 @@ func TestSEO012CustomCSS(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := lintProject(t)
 			write(t, filepath.Join(fixture.DocsDir, "page.md"),
-				"---\ndescription: test\n---\n# Title\n\nText.\n")
+				"+++\ndescription = \"test\"\n+++\n# Title\n\nText.\n")
 			if testCase.css != "" {
 				write(t, filepath.Join(fixture.DocsDir, "custom.css"), testCase.css)
 			}
@@ -941,7 +941,7 @@ func TestSpellingRuleFires(t *testing.T) {
 	runLintCases(t, []lintCase{
 		{
 			name: "a misspelled word in prose",
-			page: "---\ndescription: A page about the thing it describes here.\n---\n" +
+			page: "+++\ndescription = \"A page about the thing it describes here.\"\n+++\n" +
 				"# Title\n\nThis sentance is wrong.\n",
 			want: []string{"SPELL001"},
 			assert: func(t *testing.T, _ lintFixture, results []lints.LintResult) {
@@ -956,13 +956,13 @@ func TestSpellingRuleFires(t *testing.T) {
 		},
 		{
 			name: "a word inside a code span is not prose",
-			page: "---\ndescription: A page about the thing it describes here.\n---\n" +
+			page: "+++\ndescription = \"A page about the thing it describes here.\"\n+++\n" +
 				"# Title\n\nThe `sentance` identifier is code.\n",
 			absent: []string{"SPELL001"},
 		},
 		{
 			name: "a fenced block is not prose",
-			page: "---\ndescription: A page about the thing it describes here.\n---\n" +
+			page: "+++\ndescription = \"A page about the thing it describes here.\"\n+++\n" +
 				"# Title\n\n```\nsentance\n```\n",
 			absent: []string{"SPELL001"},
 		},
@@ -975,7 +975,7 @@ func TestCleanPageHasNoLints(t *testing.T) {
 		"usage for SEO best practices and documentation quality standards"
 	paragraph := repeatWords("word", 50)
 	write(t, filepath.Join(fixture.DocsDir, "page.md"),
-		"---\ntitle: Clean\ndescription: "+description+"\n---\n"+
+		"+++\ntitle = \"Clean\"\ndescription = \""+description+"\"\n+++\n"+
 			"# Clean\n\n## Section\n\n"+paragraph+"\n\n### Subsection\n\n"+
 			paragraph+"\n\n![diagram](diagram.png)\n")
 
@@ -1005,8 +1005,8 @@ func namedLintProject(t *testing.T, name string) lintFixture {
 func seo004On(t *testing.T, fixture lintFixture, title string) []lints.LintResult {
 	t.Helper()
 	write(t, filepath.Join(fixture.DocsDir, "page.md"),
-		"---\ntitle: "+title+"\ndescription: A description of the page, at a "+
-			"length the description rules have nothing to say about.\n---\n"+
+		"+++\ntitle = \""+title+"\"\ndescription = \"A description of the page, at a "+
+			"length the description rules have nothing to say about.\"\n+++\n"+
 			"# Heading\n\nText.\n")
 	return runLintsOn(t, fixture, nil)
 }

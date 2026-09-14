@@ -10,16 +10,16 @@ import (
 
 // postFrontmatter is a well-formed post frontmatter block whose description is
 // long enough to keep the description rules out of these assertions.
-const postFrontmatter = "---\n" +
-	"title: Hello World\n" +
-	"date: 2024-01-15\n" +
-	"slug: hello-world\n" +
-	"draft: false\n" +
-	"directives: false\n" +
-	"description: A post description written at a comfortable length, so " +
+const postFrontmatter = "+++\n" +
+	"title = \"Hello World\"\n" +
+	"date = 2024-01-15\n" +
+	"slug = \"hello-world\"\n" +
+	"draft = false\n" +
+	"directives = false\n" +
+	"description = \"A post description written at a comfortable length, so " +
 	"that the description-length rules stay out of the assertions these " +
-	"tests actually make.\n" +
-	"---\n"
+	"tests actually make.\"\n" +
+	"+++\n"
 
 // postsProject writes a project with the given posts in the default posts
 // directory, plus one docs page.
@@ -38,9 +38,9 @@ func postsProject(t *testing.T, posts map[string]string) string {
 	// directory at all, and both surfaces of the check look here.
 	write(t, filepath.Join(root, ".selfdoc", "posts", ".keep"), "")
 	write(t, filepath.Join(root, "docs", "index.md"),
-		"---\ntitle: Home\ndescription: A home page whose description is long "+
-			"enough to keep the description rules quiet in this fixture.\n"+
-			"---\n# Test Project\n\nWelcome.\n")
+		"+++\ntitle = \"Home\"\ndescription = \"A home page whose description is long "+
+			"enough to keep the description rules quiet in this fixture.\"\n"+
+			"+++\n# Test Project\n\nWelcome.\n")
 	for name, content := range posts {
 		write(t, filepath.Join(root, ".selfdoc", "posts", name), content)
 	}
@@ -107,8 +107,8 @@ func TestACleanPostProducesNoDiagnostics(t *testing.T) {
 }
 
 func TestAPostMissingADescriptionIsAnError(t *testing.T) {
-	post := "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"draft: false\ndirectives: false\n---\n# Hello World\n\nBody.\n"
+	post := "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"draft = false\ndirectives = false\n+++\n# Hello World\n\nBody.\n"
 	root := postsProject(t, map[string]string{"hello.md": post})
 
 	result := checkFixture(t, root)
@@ -127,8 +127,8 @@ func TestAPostMissingADescriptionIsAnError(t *testing.T) {
 
 func TestADraftIsNotLinted(t *testing.T) {
 	draft := strings.ReplaceAll(
-		strings.ReplaceAll(postFrontmatter, "draft: false", "draft: true"),
-		"slug: hello-world", "slug: draft-post",
+		strings.ReplaceAll(postFrontmatter, "draft = false", "draft = true"),
+		"slug = \"hello-world\"", "slug = \"draft-post\"",
 	) + "Intro paragraph.\n\n![](/img/x.png)\n"
 	root := postsProject(t, map[string]string{"draft.md": draft})
 
@@ -174,15 +174,15 @@ func writePostFrontmatter(
 	t.Helper()
 	declaresDirectives := false
 	for _, line := range frontmatterLines {
-		if strings.HasPrefix(line, "directives:") {
+		if strings.HasPrefix(line, "directives ") {
 			declaresDirectives = true
 		}
 	}
 	if !declaresDirectives {
-		frontmatterLines = append(frontmatterLines, "directives: false")
+		frontmatterLines = append(frontmatterLines, "directives = false")
 	}
 	write(t, filepath.Join(postsDir, name),
-		"---\n"+strings.Join(frontmatterLines, "\n")+"\n---\n"+body)
+		"+++\n"+strings.Join(frontmatterLines, "\n")+"\n+++\n"+body)
 }
 
 func TestCheckPostsCodeMapping(t *testing.T) {
@@ -197,32 +197,32 @@ func TestCheckPostsCodeMapping(t *testing.T) {
 	}{
 		{
 			name:        "a missing title",
-			frontmatter: []string{"date: 2025-01-01"},
+			frontmatter: []string{"date = 2025-01-01"},
 			wantCode:    "POST002",
 			wantFile:    filepath.Join("blog", "p.md"),
 		},
 		{
 			name:        "a missing date",
-			frontmatter: []string{"title: No Date"},
+			frontmatter: []string{"title = \"No Date\""},
 			wantCode:    "POST001",
 			wantFile:    filepath.Join("blog", "p.md"),
 		},
 		{
 			name:        "a date that is not YYYY-MM-DD",
-			frontmatter: []string{"title: Bad", "date: Jan 15 2025"},
+			frontmatter: []string{"title = \"Bad\"", `date = "Jan 15 2025"`},
 			wantCode:    "POST003",
 			wantFile:    filepath.Join("blog", "p.md"),
 		},
 		{
-			name:        "a missing directives declaration",
-			frontmatter: []string{"title: Fine", "date: 2025-01-01", "directives:"},
+			name:        "a directive declaration that is not a boolean",
+			frontmatter: []string{"title = \"Fine\"", "date = 2025-01-01", `directives = "maybe"`},
 			wantCode:    "POST006",
 			wantFile:    filepath.Join("blog", "p.md"),
 		},
 		{
 			name: "a stray marker in a post that declared none",
 			frontmatter: []string{
-				"title: Prose", "date: 2025-01-01", "directives: false",
+				"title = \"Prose\"", "date = 2025-01-01", "directives = false",
 			},
 			body:     "First line.\n\nSecond line.\n\n:-: ref path=\"x\"\n",
 			wantCode: "POST007",
@@ -276,7 +276,7 @@ func TestCheckPostsNamesTheNestedFile(t *testing.T) {
 	root := t.TempDir()
 	writePostFrontmatter(t,
 		filepath.Join(root, "blog"), filepath.Join("nested", "p.md"),
-		[]string{"title: No Date"}, "",
+		[]string{"title = \"No Date\""}, "",
 	)
 
 	results, err := CheckPosts(map[string]any{
@@ -299,9 +299,9 @@ func TestCheckPostsDuplicateSlug(t *testing.T) {
 	root := t.TempDir()
 	postsDir := filepath.Join(root, "blog")
 	writePostFrontmatter(t, postsDir, "a.md",
-		[]string{"title: Same", "date: 2025-01-01"}, "")
+		[]string{"title = \"Same\"", "date = 2025-01-01"}, "")
 	writePostFrontmatter(t, postsDir, "b.md",
-		[]string{"title: Same", "date: 2025-02-01"}, "")
+		[]string{"title = \"Same\"", "date = 2025-02-01"}, "")
 
 	results, err := CheckPosts(map[string]any{
 		"posts": map[string]any{"dir": "blog"},
@@ -340,7 +340,7 @@ func TestCheckPostsReadsTheConventionalDirectoryWithNoPostsBlock(t *testing.T) {
 	root := t.TempDir()
 	writePostFrontmatter(t,
 		filepath.Join(root, ".selfdoc", "posts"), "p.md",
-		[]string{"title: No Date"}, "",
+		[]string{"title = \"No Date\""}, "",
 	)
 
 	results, err := CheckPosts(map[string]any{}, root, handle())
@@ -358,7 +358,7 @@ func TestCheckPostsReadsTheConventionalDirectoryWithNoPostsBlock(t *testing.T) {
 
 func TestCheckDocsReportsPostValidation(t *testing.T) {
 	root := postsProject(t, map[string]string{
-		"broken.md": "---\ntitle: No Date\ndirectives: false\n---\nBody.\n",
+		"broken.md": "+++\ntitle = \"No Date\"\ndirectives = false\n+++\nBody.\n",
 	})
 
 	result := checkFixture(t, root)
@@ -393,7 +393,7 @@ func TestLintPostBuffer(t *testing.T) {
 func TestLintPostBufferJudgesDrafts(t *testing.T) {
 	root := postsProject(t, nil)
 
-	draft := strings.ReplaceAll(postFrontmatter, "draft: false", "draft: true") +
+	draft := strings.ReplaceAll(postFrontmatter, "draft = false", "draft = true") +
 		"Intro paragraph.\n\n![](/img/x.png)\n"
 	results, err := LintPostBuffer(root, "draft.md", draft, nil, handle())
 	if err != nil {
@@ -413,7 +413,7 @@ func TestLintPostBufferWithoutAPostsDirectory(t *testing.T) {
 	))
 	write(t, filepath.Join(root, "src", "__init__.py"), `"""Pkg."""`+"\n")
 	write(t, filepath.Join(root, "docs", "index.md"),
-		"---\ndescription: A home page whose description is long enough.\n---\n# Home\n")
+		"+++\ndescription = \"A home page whose description is long enough.\"\n+++\n# Home\n")
 
 	_, err := LintPostBuffer(root, "hello.md", postFrontmatter+"Body.\n", nil, handle())
 	if err == nil {

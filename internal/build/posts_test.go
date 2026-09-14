@@ -17,14 +17,14 @@ import (
 // The posts the fixtures publish. Each is a full Markdown source, frontmatter
 // fences included, as it would be saved under the posts directory.
 const (
-	postHello = "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"tags: [release]\ndraft: false\ndirectives: false\n---\nThis is the post content.\n"
-	postSecond = "---\ntitle: Second Post\ndate: 2024-01-20\nslug: second-post\n" +
-		"tags: []\ndraft: false\ndirectives: false\n---\nSecond post body.\n"
-	postDraft = "---\ntitle: Draft Post\ndate: 2024-01-16\nslug: draft-post\n" +
-		"tags: []\ndraft: true\ndirectives: false\n---\nDraft content here.\n"
-	postWithDirective = "---\ntitle: Directive Post\ndate: 2024-02-01\n" +
-		"slug: directive-post\ntags: []\ndraft: false\ndirectives: true\n---\n" +
+	postHello = "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"tags = [\"release\"]\ndraft = false\ndirectives = false\n+++\nThis is the post content.\n"
+	postSecond = "+++\ntitle = \"Second Post\"\ndate = 2024-01-20\nslug = \"second-post\"\n" +
+		"tags = []\ndraft = false\ndirectives = false\n+++\nSecond post body.\n"
+	postDraft = "+++\ntitle = \"Draft Post\"\ndate = 2024-01-16\nslug = \"draft-post\"\n" +
+		"tags = []\ndraft = true\ndirectives = false\n+++\nDraft content here.\n"
+	postWithDirective = "+++\ntitle = \"Directive Post\"\ndate = 2024-02-01\n" +
+		"slug = \"directive-post\"\ntags = []\ndraft = false\ndirectives = true\n+++\n" +
 		"# Directive Post\n\n:-: ref path=\"mymod\"\n"
 )
 
@@ -163,11 +163,21 @@ func TestCleanupInjectedPosts(t *testing.T) {
 	})
 }
 
+// mustRenderListing renders the post listing page or fails the test.
+func mustRenderListing(t *testing.T, published []posts.Post) string {
+	t.Helper()
+	listing, err := RenderPostListing(published)
+	if err != nil {
+		t.Fatalf("RenderPostListing: %v", err)
+	}
+	return listing
+}
+
 func TestRenderPostListing(t *testing.T) {
 	t.Parallel()
 
 	t.Run("one post renders with its date, title and address", func(t *testing.T) {
-		listing := RenderPostListing([]posts.Post{
+		listing := mustRenderListing(t, []posts.Post{
 			{Date: "2024-06-15", Title: "Hello World", Slug: "hello-world"},
 		})
 		// The listing is emitted at blog/, so a post is a sibling of it.
@@ -176,7 +186,7 @@ func TestRenderPostListing(t *testing.T) {
 	})
 
 	t.Run("several posts keep the order they came in", func(t *testing.T) {
-		listing := RenderPostListing([]posts.Post{
+		listing := mustRenderListing(t, []posts.Post{
 			{Date: "2024-06-16", Title: "Second Post", Slug: "second-post"},
 			{Date: "2024-06-15", Title: "First Post", Slug: "first-post"},
 		})
@@ -195,19 +205,19 @@ func TestRenderPostListing(t *testing.T) {
 	})
 
 	t.Run("no posts is a page that says so", func(t *testing.T) {
-		assertCarries(t, "the listing", RenderPostListing(nil), "No posts yet.")
+		assertCarries(t, "the listing", mustRenderListing(t, nil), "No posts yet.")
 	})
 
 	t.Run("the listing declares itself unversioned", func(t *testing.T) {
-		listing := RenderPostListing([]posts.Post{
+		listing := mustRenderListing(t, []posts.Post{
 			{Date: "2024-06-15", Title: "Hello", Slug: "hello"},
 		})
-		if !strings.HasPrefix(listing, "---\n") {
+		if !strings.HasPrefix(listing, "+++\n") {
 			t.Fatalf("the listing does not open with a frontmatter fence:\n%s", listing)
 		}
-		parts := strings.SplitN(listing, "---", 3)
+		parts := strings.SplitN(listing, "+++", 3)
 		assertCarries(t, "the listing's frontmatter", parts[1],
-			"versioned: false", "type: post-listing")
+			"versioned = false", "type = \"post-listing\"")
 	})
 }
 
@@ -255,10 +265,10 @@ func TestBuildWithPosts(t *testing.T) {
 
 	t.Run("the listing page is emitted at the posts prefix", func(t *testing.T) {
 		built := buildFixture(t, fixture{Files: postFiles(map[string]string{
-			"alpha.md": "---\ntitle: Alpha Post\ndate: 2024-06-10\nslug: alpha-post\n" +
-				"directives: false\ntags: []\ndraft: false\n---\n# Alpha Post\n\nAlpha content.\n",
-			"beta.md": "---\ntitle: Beta Post\ndate: 2024-06-11\nslug: beta-post\n" +
-				"directives: false\ntags: []\ndraft: false\n---\n# Beta Post\n\nBeta content.\n",
+			"alpha.md": "+++\ntitle = \"Alpha Post\"\ndate = 2024-06-10\nslug = \"alpha-post\"\n" +
+				"directives = false\ntags = []\ndraft = false\n+++\n# Alpha Post\n\nAlpha content.\n",
+			"beta.md": "+++\ntitle = \"Beta Post\"\ndate = 2024-06-11\nslug = \"beta-post\"\n" +
+				"directives = false\ntags = []\ndraft = false\n+++\n# Beta Post\n\nBeta content.\n",
 		})})
 		if !built.reported("blog/index.html") {
 			t.Fatal("the listing page was not reported written")

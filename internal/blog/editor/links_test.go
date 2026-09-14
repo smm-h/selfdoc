@@ -541,9 +541,9 @@ func renderWithLinks(t *testing.T, targets []Target) string {
 	for _, target := range targets {
 		links = append(links, "See ["+target.Title+"]("+target.Href+").")
 	}
-	content := "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"description: " + linkDescription + "\n" +
-		"tags: [release]\ndraft: false\ndirectives: false\n---\n" +
+	content := "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"description = \"" + linkDescription + "\"\n" +
+		"tags = [\"release\"]\ndraft = false\ndirectives = false\n+++\n" +
 		"# Hello World\n\n" + strings.Join(links, "\n\n") + "\n"
 
 	project := makeProject(t, map[string]string{postHelloName: content})

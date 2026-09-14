@@ -18,8 +18,8 @@ func post(title, date, slug string, draft bool) string {
 	if draft {
 		drafted = "true"
 	}
-	return "---\ntitle: " + title + "\ndate: " + date + "\nslug: " + slug +
-		"\ntags: []\ndraft: " + drafted + "\ndirectives: false\n---\n" +
+	return "+++\ntitle = \"" + title + "\"\ndate = " + date + "\nslug = \"" + slug +
+		"\"\ntags = []\ndraft = " + drafted + "\ndirectives = false\n+++\n" +
 		"Body of " + title + ".\n"
 }
 

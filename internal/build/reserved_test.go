@@ -60,9 +60,9 @@ func TestCheckReservedPagePaths(t *testing.T) {
 // The authored page an author committed, and the post a build would inject
 // beside it.
 const (
-	authoredBlogPage = "---\ntitle: My Blog\n---\n\n# My Blog\n\nHand-written.\n"
-	reservedPost     = "---\ntitle: Hello World\ndate: 2024-01-15\nslug: hello-world\n" +
-		"directives: false\ntags: []\ndraft: false\n---\nPost body.\n"
+	authoredBlogPage = "+++\ntitle = \"My Blog\"\n+++\n\n# My Blog\n\nHand-written.\n"
+	reservedPost     = "+++\ntitle = \"Hello World\"\ndate = 2024-01-15\nslug = \"hello-world\"\n" +
+		"directives = false\ntags = []\ndraft = false\n+++\nPost body.\n"
 )
 
 func TestBuildRefusesAnAuthoredReservedPage(t *testing.T) {

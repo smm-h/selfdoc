@@ -127,21 +127,26 @@ func customDirectiveNames(config map[string]any) []string {
 // Every page in a walk result goes through here, whether it came off disk or
 // out of an overlay, and so does any caller that has to resolve a page the
 // walk never sees.
-func ResolveMarkdown(content string, resolve directives.Resolver, validNames directives.NameSet) (Doc, error) {
-	metadata, body, _ := util.ParseFrontmatter(content)
+func ResolveMarkdown(
+	content, source string, resolve directives.Resolver, validNames directives.NameSet,
+) (Doc, error) {
+	block, err := util.ReadFrontmatter(content, source, util.KindPage)
+	if err != nil {
+		return Doc{}, err
+	}
 	// The frontmatter's height is the difference in line counts rather than
-	// the parser's own count, because that is the number the Python
+	// the reader's own count, because that is the number the Python
 	// reported and the number every consumer of a body line offset was
 	// written against.
-	frontmatterLines := strings.Count(content, "\n") - strings.Count(body, "\n")
-	resolved, err := directives.ResolveDirectives(body, resolve, validNames)
+	frontmatterLines := strings.Count(content, "\n") - strings.Count(block.Body, "\n")
+	resolved, err := directives.ResolveDirectives(block.Body, resolve, validNames)
 	if err != nil {
 		return Doc{}, err
 	}
 	return Doc{
-		Frontmatter:      metadata,
+		Frontmatter:      block.Values,
 		Resolved:         resolved,
-		Raw:              body,
+		Raw:              block.Body,
 		FrontmatterLines: frontmatterLines,
 	}, nil
 }
@@ -197,7 +202,7 @@ func ResolveAll(
 
 	result := map[string]Doc{}
 	if err := walkDocs(docsDir, docsDir, absOutput, func(relPath, content string) error {
-		doc, err := ResolveMarkdown(content, pageResolver.Resolve, validNames)
+		doc, err := ResolveMarkdown(content, relPath, pageResolver.Resolve, validNames)
 		if err != nil {
 			return err
 		}
@@ -208,7 +213,7 @@ func ResolveAll(
 	}
 
 	for _, relPath := range sortedKeys(overlay) {
-		doc, err := ResolveMarkdown(overlay[relPath], pageResolver.Resolve, validNames)
+		doc, err := ResolveMarkdown(overlay[relPath], relPath, pageResolver.Resolve, validNames)
 		if err != nil {
 			return nil, err
 		}

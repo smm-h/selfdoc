@@ -26,19 +26,22 @@ const defaultPostsDir = ".selfdoc/posts/"
 //
 // publishedPosts must already be ordered newest-first and filtered -- no
 // drafts unless drafts were asked for.
-func RenderPostListing(publishedPosts []posts.Post) string {
-	lines := []string{
-		"---",
-		"title: Posts",
-		"versioned: false",
-		"type: post-listing",
-		"order: 95",
-		"feed: false",
-		"---",
+func RenderPostListing(publishedPosts []posts.Post) (string, error) {
+	frontmatter, err := util.RenderFrontmatter([]util.FrontmatterField{
+		{Key: "title", Value: "Posts"},
+		{Key: "versioned", Value: false},
+		{Key: "type", Value: "post-listing"},
+		{Key: "nav_order", Value: int64(95)},
+		{Key: "feed", Value: false},
+	})
+	if err != nil {
+		return "", err
+	}
+	lines := append(strings.Split(strings.TrimRight(frontmatter, "\n"), "\n"),
 		"",
 		"# Posts",
 		"",
-	}
+	)
 	if len(publishedPosts) == 0 {
 		lines = append(lines, "No posts yet.")
 	} else {
@@ -49,7 +52,7 @@ func RenderPostListing(publishedPosts []posts.Post) string {
 		}
 	}
 	lines = append(lines, "")
-	return strings.Join(lines, "\n")
+	return strings.Join(lines, "\n"), nil
 }
 
 // PostDocsPayloads returns the docs-tree Markdown for a set of published
@@ -66,35 +69,30 @@ func RenderPostListing(publishedPosts []posts.Post) string {
 //
 // publishedPosts must already be filtered (drafts removed unless they were
 // asked for) and ordered newest-first.
-func PostDocsPayloads(publishedPosts []posts.Post) map[string]string {
+func PostDocsPayloads(publishedPosts []posts.Post) (map[string]string, error) {
 	payloads := map[string]string{}
 	for _, post := range publishedPosts {
-		var fmLines []string
-		for _, key := range post.FrontmatterKeys {
-			value, declared := post.Frontmatter[key]
-			if !declared || value == nil {
+		fields := make([]util.FrontmatterField, 0, len(post.FrontmatterFields))
+		for _, field := range post.FrontmatterFields {
+			if field.Value == nil {
 				continue
 			}
-			switch typed := value.(type) {
-			case bool:
-				if typed {
-					fmLines = append(fmLines, key+": true")
-					continue
-				}
-				fmLines = append(fmLines, key+": false")
-			case []string:
-				fmLines = append(fmLines, key+": ["+strings.Join(typed, ", ")+"]")
-			default:
-				fmLines = append(fmLines, key+": "+util.PythonStr(value))
-			}
+			fields = append(fields, field)
 		}
-		payloads[address.PostsPrefix+"/"+post.Slug+".md"] =
-			"---\n" + strings.Join(fmLines, "\n") + "\n---\n" + post.Content
+		frontmatter, err := util.RenderFrontmatter(fields)
+		if err != nil {
+			return nil, fmt.Errorf("post %s: %w", post.Path, err)
+		}
+		payloads[address.PostsPrefix+"/"+post.Slug+".md"] = frontmatter + post.Content
 	}
 	if len(publishedPosts) > 0 {
-		payloads[address.PostsPrefix+".md"] = RenderPostListing(publishedPosts)
+		listing, err := RenderPostListing(publishedPosts)
+		if err != nil {
+			return nil, err
+		}
+		payloads[address.PostsPrefix+".md"] = listing
 	}
-	return payloads
+	return payloads, nil
 }
 
 // InjectPostsIntoDocs writes the post pages into the docs tree so the normal
@@ -132,7 +130,10 @@ func InjectPostsIntoDocs(
 	}
 	published := publishedPosts(allPosts, includeDrafts)
 
-	payloads := PostDocsPayloads(published)
+	payloads, err := PostDocsPayloads(published)
+	if err != nil {
+		return nil, err
+	}
 	relPaths := make([]string, 0, len(payloads))
 	for relPath := range payloads {
 		relPaths = append(relPaths, relPath)
@@ -460,8 +461,11 @@ func VersionedHTMLPaths(
 		if readErr != nil {
 			return readErr
 		}
-		meta, _, _ := util.ParseFrontmatter(string(content))
-		if versioned, declared := meta["versioned"].(bool); declared && !versioned {
+		block, readErr := util.ReadFrontmatter(string(content), relSlash, util.KindPage)
+		if readErr != nil {
+			return readErr
+		}
+		if versioned, declared := block.Values["versioned"].(bool); declared && !versioned {
 			return nil
 		}
 		paths[html.MdToHTMLPath(relSlash)] = true

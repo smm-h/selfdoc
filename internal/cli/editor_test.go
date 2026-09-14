@@ -248,9 +248,9 @@ func TestThePublisherPlansFromTheProjectsOwnPosts(t *testing.T) {
 	dir := postProject(t, nil)
 	postsDir := filepath.Join(dir, ".selfdoc", "posts")
 	writePost(t, postsDir, "live.md",
-		[]string{"title: Live", "date: 2025-01-15", "slug: live", "draft: false"}, "Body.\n")
+		[]string{"title = \"Live\"", "date = 2025-01-15", "slug = \"live\"", "draft = false"}, "Body.\n")
 	writePost(t, postsDir, "held.md",
-		[]string{"title: Held", "date: 2025-02-15", "slug: held", "draft: true"}, "Body.\n")
+		[]string{"title = \"Held\"", "date = 2025-02-15", "slug = \"held\"", "draft = true"}, "Body.\n")
 
 	plan, err := (&publisher{}).Plan(dir)
 	if err != nil {

@@ -17,6 +17,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/manifest"
 	"github.com/smm-h/selfdoc/internal/resolver"
 	"github.com/smm-h/selfdoc/internal/revisions"
+	"github.com/smm-h/selfdoc/internal/util"
 	"github.com/smm-h/strictcli/go/strictcli"
 )
 
@@ -112,15 +113,18 @@ func (c *cli) cmdPostNew(ctx *strictcli.Context, kwargs map[string]any) strictcl
 		return c.fail(err)
 	}
 
-	content := "---\n" +
-		"title: " + title + "\n" +
-		"date: " + today + "\n" +
-		"slug: " + slug + "\n" +
-		"tags: []\n" +
-		"draft: true\n" +
-		"directives: false\n" +
-		"---\n" +
-		"\n"
+	frontmatter, err := util.RenderFrontmatter([]util.FrontmatterField{
+		{Key: "title", Value: title},
+		{Key: "date", Value: util.FrontmatterDate(today)},
+		{Key: "slug", Value: slug},
+		{Key: "tags", Value: []string{}},
+		{Key: "draft", Value: true},
+		{Key: "directives", Value: false},
+	})
+	if err != nil {
+		return c.fail(err)
+	}
+	content := frontmatter + "\n"
 
 	if err := handle.Write(fullPath, []byte(content), effects.ModeDefault); err != nil {
 		return c.fail(err)
@@ -219,35 +223,37 @@ func (c *cli) cmdPostGenerate(ctx *strictcli.Context, kwargs map[string]any) str
 		title = name + " v" + version
 	}
 
-	frontmatter := []string{
-		"---",
-		"title: " + title,
-		"date: " + today,
-		"slug: " + slug,
-		"draft: false",
+	fields := []util.FrontmatterField{
+		{Key: "title", Value: title},
+		{Key: "date", Value: util.FrontmatterDate(today)},
+		{Key: "slug", Value: slug},
+		{Key: "draft", Value: false},
 		// A generated release post is prose plus a changelog; nothing in it
 		// is meant to be resolved. The declaration is required on every post,
 		// so the scaffold states it rather than leaving the author a file its
 		// own discovery would refuse.
-		"directives: false",
-		"version: " + version,
+		{Key: "directives", Value: false},
+		{Key: "version", Value: version},
 	}
 	if prevVersion != "" {
-		frontmatter = append(frontmatter, "prev_version: "+prevVersion)
+		fields = append(fields, util.FrontmatterField{Key: "prev_version", Value: prevVersion})
 	}
 	if bumpType != "" {
-		frontmatter = append(frontmatter, "bump_type: "+bumpType)
+		fields = append(fields, util.FrontmatterField{Key: "bump_type", Value: bumpType})
 	}
 	if releaseURL != "" {
-		frontmatter = append(frontmatter, "release_url: "+releaseURL)
+		fields = append(fields, util.FrontmatterField{Key: "release_url", Value: releaseURL})
 	}
 	if len(registryURLs) > 0 {
-		frontmatter = append(frontmatter, "registry_urls: ["+strings.Join(registryURLs, ", ")+"]")
+		fields = append(fields, util.FrontmatterField{Key: "registry_urls", Value: registryURLs})
 	}
-	frontmatter = append(frontmatter,
-		"tags: [release, v"+version+"]",
-		"---",
+	fields = append(fields,
+		util.FrontmatterField{Key: "tags", Value: []string{"release", "v" + version}},
 	)
+	frontmatter, err := util.RenderFrontmatter(fields)
+	if err != nil {
+		return c.fail(err)
+	}
 
 	var bodyParts []string
 	if bodyContent != "" {
@@ -260,7 +266,7 @@ func (c *cli) cmdPostGenerate(ctx *strictcli.Context, kwargs map[string]any) str
 		bodyParts = append(bodyParts, "Version "+version+" has been released.")
 	}
 
-	fullContent := strings.Join(frontmatter, "\n") + "\n\n" + strings.Join(bodyParts, "\n\n") + "\n"
+	fullContent := frontmatter + "\n" + strings.Join(bodyParts, "\n\n") + "\n"
 
 	// Under --dry-run the writes below are recorded by the effects chokepoint
 	// and rendered in the would-do log, which replaces the command's old

@@ -255,7 +255,7 @@ func longTableMarkdown() string {
 	}
 	rules := make([]string, len(headers))
 	for i := range rules {
-		rules[i] = "---"
+		rules[i] = "+++"
 	}
 	lines := []string{
 		"| " + strings.Join(headers, " | ") + " |",
@@ -294,11 +294,11 @@ func writeHomeCheckout(t *testing.T, root string) string {
 	}))
 
 	writeText(t, filepath.Join(root, "docs", "index.md"),
-		"---\n"+
-			"title: The Fixture Site\n"+
-			"description: Front page of the fixture assembly.\n"+
-			"date: 2026-02-01\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"The Fixture Site\"\n"+
+			"description = \"Front page of the fixture assembly.\"\n"+
+			"date = 2026-02-01\n"+
+			"+++\n"+
 			"\n"+
 			"# The Fixture Site\n"+
 			"\n"+
@@ -319,12 +319,12 @@ func writeHomeCheckout(t *testing.T, root string) string {
 
 	// The CV page is a thin host: the whole body comes from the TOML.
 	writeText(t, filepath.Join(root, "docs", "cv.md"),
-		"---\n"+
-			"title: CV\n"+
-			"type: cv\n"+
-			"description: Curriculum vitae of the fixture author.\n"+
-			"date: 2026-02-01\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"CV\"\n"+
+			"type = \"cv\"\n"+
+			"description = \"Curriculum vitae of the fixture author.\"\n"+
+			"date = 2026-02-01\n"+
+			"+++\n"+
 			"\n"+
 			":-: cv path=\"docs/cv.toml\"\n")
 	writeText(t, filepath.Join(root, "docs", "cv.toml"), cvTOML)
@@ -336,14 +336,14 @@ func writeHomeCheckout(t *testing.T, root string) string {
 	// Posts are site-level: they land at /blog/<slug>/ under no project slug.
 	postsDir := filepath.Join(root, ".selfdoc", "posts")
 	writeText(t, filepath.Join(postsDir, "first.md"),
-		"---\n"+
-			"title: The First Post\n"+
-			"date: 2026-01-10\n"+
-			"slug: the-first-post\n"+
-			"tags: [notes]\n"+
-			"draft: false\n"+
-			"directives: false\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"The First Post\"\n"+
+			"date = 2026-01-10\n"+
+			"slug = \"the-first-post\"\n"+
+			"tags = [\"notes\"]\n"+
+			"draft = false\n"+
+			"directives = false\n"+
+			"+++\n"+
 			"\n"+
 			"## A heading inside a post\n"+
 			"\n"+
@@ -355,14 +355,14 @@ func writeHomeCheckout(t *testing.T, root string) string {
 			"\n"+
 			"More prose, so the search index has something to return.\n")
 	writeText(t, filepath.Join(postsDir, "second.md"),
-		"---\n"+
-			"title: The Second Post\n"+
-			"date: 2026-01-20\n"+
-			"slug: the-second-post\n"+
-			"tags: [notes]\n"+
-			"draft: false\n"+
-			"directives: false\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"The Second Post\"\n"+
+			"date = 2026-01-20\n"+
+			"slug = \"the-second-post\"\n"+
+			"tags = [\"notes\"]\n"+
+			"draft = false\n"+
+			"directives = false\n"+
+			"+++\n"+
 			"\n"+
 			"## Another post\n"+
 			"\n"+
@@ -389,11 +389,11 @@ func writeAlphaCheckout(t *testing.T, root string) string {
 	}))
 	writeSource(t, root, "alpha")
 
-	indexMD := "---\n" +
-		"title: Alpha\n" +
-		"description: The versioned fixture project.\n" +
-		"date: 2026-02-01\n" +
-		"---\n" +
+	indexMD := "+++\n" +
+		"title = \"Alpha\"\n" +
+		"description = \"The versioned fixture project.\"\n" +
+		"date = 2026-02-01\n" +
+		"+++\n" +
 		"\n" +
 		"# Alpha\n" +
 		"\n" +
@@ -412,11 +412,11 @@ func writeAlphaCheckout(t *testing.T, root string) string {
 	writeText(t, filepath.Join(root, "docs", "index.md"), indexMD)
 
 	writeText(t, filepath.Join(root, "docs", "tables.md"),
-		"---\n"+
-			"title: Settings\n"+
-			"description: A table long enough to scroll under its own header.\n"+
-			"date: 2026-02-01\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"Settings\"\n"+
+			"description = \"A table long enough to scroll under its own header.\"\n"+
+			"date = 2026-02-01\n"+
+			"+++\n"+
 			"\n"+
 			"# Settings\n"+
 			"\n"+
@@ -441,11 +441,11 @@ func writeAlphaCheckout(t *testing.T, root string) string {
 	// The terms page declares the glossary; the build generates
 	// glossary/index.html from every term declared across the project.
 	writeText(t, filepath.Join(root, "docs", "terms.md"),
-		"---\n"+
-			"title: Terms\n"+
-			"description: The terms Alpha's documentation uses.\n"+
-			"date: 2026-02-01\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"Terms\"\n"+
+			"description = \"The terms Alpha's documentation uses.\"\n"+
+			"date = 2026-02-01\n"+
+			"+++\n"+
 			"\n"+
 			"# Terms\n"+
 			"\n"+
@@ -494,11 +494,11 @@ func writeBetaCheckout(t *testing.T, root string) string {
 	writeJSON(t, filepath.Join(root, "selfdoc.json"),
 		projectConfig("beta", "Beta", map[string]any{"unversioned": true}))
 	writeText(t, filepath.Join(root, "docs", "index.md"),
-		"---\n"+
-			"title: Beta\n"+
-			"description: The unversioned fixture project.\n"+
-			"date: 2026-02-01\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"Beta\"\n"+
+			"description = \"The unversioned fixture project.\"\n"+
+			"date = 2026-02-01\n"+
+			"+++\n"+
 			"\n"+
 			"# Beta\n"+
 			"\n"+
@@ -513,11 +513,11 @@ func writeBetaCheckout(t *testing.T, root string) string {
 			"\n"+
 			"So this page has a table of contents too.\n")
 	writeText(t, filepath.Join(root, "docs", "guide.md"),
-		"---\n"+
-			"title: Beta Guide\n"+
-			"description: A second page in the unversioned project.\n"+
-			"date: 2026-02-01\n"+
-			"---\n"+
+		"+++\n"+
+			"title = \"Beta Guide\"\n"+
+			"description = \"A second page in the unversioned project.\"\n"+
+			"date = 2026-02-01\n"+
+			"+++\n"+
 			"\n"+
 			"# Beta Guide\n"+
 			"\n"+

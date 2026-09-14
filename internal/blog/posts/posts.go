@@ -23,10 +23,10 @@
 package posts
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,20 +38,23 @@ import (
 	"github.com/smm-h/selfdoc/internal/util"
 )
 
-// dateRe is the accepted spelling of a post's date: four digits, two, two,
-// hyphen-separated and nothing else.
-var dateRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-
 // PostError reports an invalid post, with the coordinates of where it is
 // invalid.
 //
 // Path is relative to the posts directory, as a Post's own path is. Line is
 // the post file's own line number, or nil for a defect that sits at no
 // particular line (a missing frontmatter field).
+//
+// Code is the POST lint code the refusal is reported under when the refusal
+// came from the frontmatter schema -- the missing title, the missing or
+// misspelled date, the missing or non-boolean directive declaration. It is
+// empty for the refusals this package decides on its own (the slug rules and
+// the directive-marker scan), which the check surface codes by their message.
 type PostError struct {
 	Message string
 	Path    string
 	Line    *int
+	Code    string
 }
 
 // Error renders the refusal.
@@ -102,14 +105,15 @@ type Post struct {
 	// Frontmatter is the post's parsed metadata block with the injected
 	// keys applied -- "type", "versioned" and a defaulted "tags".
 	Frontmatter util.Frontmatter
-	// FrontmatterKeys is the order the frontmatter's keys are written back
-	// in: the order they appeared in the source, then whichever injected
-	// keys the source did not declare.
+	// FrontmatterFields is the block as it is written back out: the keys in
+	// the order they appeared in the source, then whichever injected keys
+	// the source did not declare, each carrying the value in the form it
+	// renders back as.
 	//
 	// Go maps carry no order, and the page the build injects for this post
 	// is rendered by writing the frontmatter back out -- so the order has
 	// to be carried rather than recovered.
-	FrontmatterKeys []string
+	FrontmatterFields []util.FrontmatterField
 }
 
 // ManifestPost narrows p to the slice a project's manifest records.
@@ -141,67 +145,19 @@ func ManifestPosts(all []Post) []manifest.Post {
 // slug immutability violation. Pass "" when the post has never been
 // published.
 func Parse(raw, relPath, publishedSlug string) (Post, error) {
-	frontmatter, content, _ := util.ParseFrontmatter(raw)
-	keys := frontmatterKeyOrder(raw)
-
-	// -- Validate required fields --------------------------------------
-
-	title, titleDeclared := frontmatter["title"]
-	if !titleDeclared || !pyTruthy(title) {
-		return Post{}, &PostError{
-			Message: fmt.Sprintf(
-				"Post %s: 'title' is required and must be non-empty", relPath),
-			Path: relPath,
-		}
+	// The frontmatter schema is what a post's title, date and directive
+	// declaration are required by: the block is validated as a post, and a
+	// refusal naming one of those keys becomes its POST code here. Nothing
+	// below re-checks a fact the schema already decided.
+	block, readErr := util.ReadFrontmatter(raw, relPath, util.KindPost)
+	if readErr != nil {
+		return Post{}, frontmatterRefusal(readErr, relPath)
 	}
+	frontmatter, content, keys := block.Values, block.Body, block.Fields
 
-	rawDate, dateDeclared := frontmatter["date"]
-	if !dateDeclared || !pyTruthy(rawDate) {
-		return Post{}, &PostError{
-			Message: fmt.Sprintf("Post %s: 'date' is required", relPath),
-			Path:    relPath,
-		}
-	}
-	date := pyStrValue(rawDate)
-	if !dateRe.MatchString(date) {
-		return Post{}, &PostError{
-			Message: fmt.Sprintf(
-				"Post %s: 'date' must be YYYY-MM-DD, got %s",
-				relPath, pythonRepr(date)),
-			Path: relPath,
-		}
-	}
-
-	// -- The directive declaration -------------------------------------
-	//
-	// Required, boolean, no default. A post is authored content that may
-	// or may not carry executable markers, and which of the two it is
-	// cannot be inferred from the file: a post about directive syntax
-	// reads like a post that uses it. So the author declares, and a post
-	// that declares nothing is refused rather than guessed at.
-	// Documentation pages carry no such key -- the whole docs tree is
-	// directive territory.
-
-	rawDeclaration, declarationDeclared := frontmatter["directives"]
-	if !declarationDeclared {
-		return Post{}, &PostError{
-			Message: fmt.Sprintf(
-				"Post %s: 'directives' is required and has no default. "+
-					"Declare 'directives: true' if the post carries directive "+
-					"markers, or 'directives: false' if it is plain prose.",
-				relPath),
-			Path: relPath,
-		}
-	}
-	declaration, isBool := rawDeclaration.(bool)
-	if !isBool {
-		return Post{}, &PostError{
-			Message: fmt.Sprintf(
-				"Post %s: 'directives' must be true or false, got %s.",
-				relPath, pythonRepr(rawDeclaration)),
-			Path: relPath,
-		}
-	}
+	title := frontmatter["title"]
+	date := pyStrValue(frontmatter["date"])
+	declaration, _ := frontmatter["directives"].(bool)
 
 	if !declaration {
 		// Line numbers are the post file's own: the scan runs over the
@@ -211,9 +167,9 @@ func Parse(raw, relPath, publishedSlug string) (Post, error) {
 			line := found[0].LineNumber + frontmatterOffset
 			return Post{}, &PostError{
 				Message: fmt.Sprintf(
-					"Post %s: declares 'directives: false' but line "+
+					"Post %s: declares 'directives = false' but line "+
 						"%d carries the directive marker '%s'. Declare "+
-						"'directives: true' to have it resolved, or remove "+
+						"'directives = true' to have it resolved, or remove "+
 						"the marker.",
 					relPath, line, found[0].Marker),
 				Path: relPath,
@@ -245,15 +201,15 @@ func Parse(raw, relPath, publishedSlug string) (Post, error) {
 
 	// -- Inject type and versioned --------------------------------------
 
-	keys = withKey(keys, frontmatter, "type")
+	keys = withField(keys, frontmatter, "type", "post")
 	frontmatter["type"] = "post"
-	keys = withKey(keys, frontmatter, "versioned")
+	keys = withField(keys, frontmatter, "versioned", false)
 	frontmatter["versioned"] = false
 
 	// -- Defaults for optional fields -----------------------------------
 
 	if _, declared := frontmatter["tags"]; !declared {
-		keys = append(keys, "tags")
+		keys = append(keys, util.FrontmatterField{Key: "tags", Value: []string{}})
 		frontmatter["tags"] = []string{}
 	}
 	tags := frontmatterStrings(frontmatter, "tags")
@@ -261,25 +217,56 @@ func Parse(raw, relPath, publishedSlug string) (Post, error) {
 	draft := pyTruthy(frontmatter["draft"])
 
 	return Post{
-		Path:            relPath,
-		Title:           pyStrValue(title),
-		Date:            date,
-		Slug:            slug,
-		Tags:            tags,
-		Draft:           draft,
-		Directives:      declaration,
-		Type:            "post",
-		Versioned:       false,
-		Locale:          frontmatter["locale"],
-		Version:         frontmatter["version"],
-		PrevVersion:     frontmatter["prev_version"],
-		BumpType:        frontmatter["bump_type"],
-		ReleaseURL:      frontmatter["release_url"],
-		RegistryURLs:    frontmatter["registry_urls"],
-		Content:         content,
-		Frontmatter:     frontmatter,
-		FrontmatterKeys: keys,
+		Path:              relPath,
+		Title:             pyStrValue(title),
+		Date:              date,
+		Slug:              slug,
+		Tags:              tags,
+		Draft:             draft,
+		Directives:        declaration,
+		Type:              "post",
+		Versioned:         false,
+		Locale:            frontmatter["locale"],
+		Version:           frontmatter["version"],
+		PrevVersion:       frontmatter["prev_version"],
+		BumpType:          frontmatter["bump_type"],
+		ReleaseURL:        frontmatter["release_url"],
+		RegistryURLs:      frontmatter["registry_urls"],
+		Content:           content,
+		Frontmatter:       frontmatter,
+		FrontmatterFields: keys,
 	}, nil
+}
+
+// frontmatterRefusal turns the frontmatter reader's refusal into this
+// package's own, carrying the POST code the refused key decides.
+//
+// The mapping is from the KEY the validator's diagnostic names, not from its
+// prose: a post's title, date and directive declaration are required by the
+// schema, so a diagnostic about one of them is that key's lint and nothing
+// else has to establish the same fact.
+func frontmatterRefusal(err error, relPath string) *PostError {
+	refusal := &PostError{
+		// The reader's own refusal already opens with the post's path.
+		Message: "Post " + err.Error(),
+		Path:    relPath,
+	}
+	var blockErr *util.FrontmatterError
+	if !errors.As(err, &blockErr) {
+		return refusal
+	}
+	switch {
+	case blockErr.Names("title"):
+		refusal.Code = "POST002"
+	case blockErr.Names("date"):
+		refusal.Code = "POST001"
+		if blockErr.HasCode("STRICTSPEC_TYPE_NOT_DATE") {
+			refusal.Code = "POST003"
+		}
+	case blockErr.Names("directives"):
+		refusal.Code = "POST006"
+	}
+	return refusal
 }
 
 // Discover discovers, validates and returns the posts under postsDir, sorted
@@ -413,58 +400,23 @@ func dateSortKey(date string) int64 {
 	return value
 }
 
-// withKey appends key to the recorded order when the frontmatter does not
-// already carry it. A key the source declared keeps the position it was
-// written at, which is what assigning to an existing dict key does in Python.
-func withKey(keys []string, frontmatter util.Frontmatter, key string) []string {
+// withField appends the injected key to the block's written order, with the
+// value it is injected with, when the source did not declare it. A key the
+// source declared keeps the position it was written at, which is what
+// assigning to an existing dict key does in Python, and takes the injected
+// value there.
+func withField(
+	fields []util.FrontmatterField, frontmatter util.Frontmatter, key string, value any,
+) []util.FrontmatterField {
 	if _, declared := frontmatter[key]; declared {
-		return keys
-	}
-	return append(keys, key)
-}
-
-// frontmatterKeyOrder returns the keys of a document's frontmatter block in
-// the order they were written, each key once.
-//
-// The line rules are the frontmatter parser's own -- a leading "---", a
-// closing line that is "---" after trimming, and a key taken from before the
-// first colon of a line that is neither blank nor a comment -- so this returns
-// the keys of what the parser produced and nothing else. A test pins the two
-// against each other.
-func frontmatterKeyOrder(text string) []string {
-	if !strings.HasPrefix(text, "---") {
-		return nil
-	}
-	lines := strings.Split(text, "\n")
-	end := -1
-	for index := 1; index < len(lines); index++ {
-		if strings.TrimSpace(lines[index]) == "---" {
-			end = index
-			break
+		for index := range fields {
+			if fields[index].Key == key {
+				fields[index].Value = value
+			}
 		}
+		return fields
 	}
-	if end == -1 {
-		return nil
-	}
-	var keys []string
-	seen := map[string]bool{}
-	for _, raw := range lines[1:end] {
-		line := strings.TrimSpace(raw)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		colon := strings.Index(line, ":")
-		if colon == -1 {
-			continue
-		}
-		key := strings.TrimSpace(line[:colon])
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		keys = append(keys, key)
-	}
-	return keys
+	return append(fields, util.FrontmatterField{Key: key, Value: value})
 }
 
 // frontmatterStrings reads a frontmatter key as a list of strings.

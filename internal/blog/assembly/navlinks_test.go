@@ -152,9 +152,9 @@ func buildSiteLikeAlpha(t *testing.T) string {
 	testproject.WriteText(t, filepath.Join(docs, "guide.md"),
 		"# Guide\n\nHow to use the thing.\n")
 	testproject.WriteText(t, filepath.Join(source, ".selfdoc", "posts", "why.md"),
-		"---\ntitle: Why We Built It\ndate: 2024-06-01\n"+
-			"slug: "+navLinksPostSlug+"\ntags: []\ndraft: false\ndirectives: false\n"+
-			"---\nThe post body.\n")
+		"+++\ntitle = \"Why We Built It\"\ndate = 2024-06-01\n"+
+			"slug = \""+navLinksPostSlug+"\"\ntags = []\ndraft = false\ndirectives = false\n"+
+			"+++\nThe post body.\n")
 
 	if _, err := build.Build(build.Options{
 		DirPath: source,
