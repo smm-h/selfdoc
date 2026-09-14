@@ -301,6 +301,30 @@ Every constituent build writes a `robots.txt`, an `llms.txt`, a `sitemap.xml` an
 
 The home project is left out of `llms.txt` for the same reason it is left out of the listing: it is the site root the file is served from, not one of the projects it points at.
 
+### Every assembled page ends by naming the site's other tools
+
+A project's documentation used to link nothing outside its own subtree, so a
+reader who arrived from a search result saw one tool and no sign that the site
+published any others. Every page an assembly build produces now ends, just
+before the footer, with a section headed **More tools from this site**: one
+entry per other project on the roster, with its name and the one-line
+description from its manifest, in name order.
+
+* The home project is left out of the list, for the same reason it is left out
+  of `llms.txt` and the listing: it is the site root every page already reaches,
+  not one of the tools the site publishes. So is the project whose page it is.
+* The roster reaches the build as an argument on the build call, never as
+  ambient state. A build handed none -- which is what a project deploying on its
+  own passes -- emits no section at all; there is no assembled site around it
+  and nothing to invent siblings from.
+* Each link is written against the page's own hop back to the site root, so it
+  resolves on a preview and a mirror as well as on the deployed host. Posts hop
+  differently from documentation pages, because the graft lifts a post out of
+  the project's subtree to the site root.
+* The section sits outside the element the search indexer reads a page's body
+  from, and is marked `data-pagefind-ignore`, so the same list of projects is
+  not indexed once per page on the site.
+
 ### What a search engine reads off the two generated pages
 
 The project listing at `/projects/` and the blog index at `/blog/` are the

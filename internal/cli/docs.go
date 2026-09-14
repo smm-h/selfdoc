@@ -7,6 +7,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/blog/assembly"
 	"github.com/smm-h/selfdoc/internal/blog/sitedirectives"
+	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/util"
@@ -85,11 +86,24 @@ func (c *cli) cmdPublishDocs(ctx *strictcli.Context, kwargs map[string]any) stri
 		); err != nil {
 			return c.fail(err)
 		}
-	} else if err := assembly.BuildSourceProject(assembly.BuildOptions{
-		SourceDir: dir,
-		Scope:     "full",
-	}, handle); err != nil {
-		return c.fail(err)
+	} else {
+		// The sibling block every assembled page ends with is read off the
+		// assembly's manifests, which this publisher fetches rather than
+		// clones. A publish that skipped them would push pages missing a
+		// section every other project's pages carry.
+		manifests, err := assembly.FetchRemoteManifests(handle, repo, "")
+		if err != nil {
+			return c.fail(err)
+		}
+		if err := assembly.BuildSourceProject(assembly.BuildOptions{
+			SourceDir: dir,
+			Scope:     "full",
+			Siblings: build.SiblingsFromManifests(
+				manifests, roster.Home, slug,
+			),
+		}, handle); err != nil {
+			return c.fail(err)
+		}
 	}
 
 	outputRel := strings.TrimRight(outputDirOf(cfg), "/")

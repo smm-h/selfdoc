@@ -100,6 +100,12 @@ type BuildOptions struct {
 	// declares, for this build only. Empty leaves every project on its
 	// configured theme, which is what a deploy always does.
 	Theme string
+	// Siblings are the other projects on the assembled site this build's
+	// output is grafted into, which every built page ends by linking. It is
+	// stated by the caller rather than read from anywhere here: a standalone
+	// build has no assembled site around it, states none, and emits no
+	// section at all.
+	Siblings []build.SiblingProject
 }
 
 // BuildSourceProject builds the cloned source project.
@@ -120,9 +126,10 @@ func BuildSourceProject(opts BuildOptions, h *effects.Handle) error {
 	switch {
 	case opts.Scope == "posts":
 		_, err := build.Build(build.Options{
-			DirPath: opts.SourceDir,
-			Target:  "posts",
-			Theme:   opts.Theme,
+			DirPath:  opts.SourceDir,
+			Target:   "posts",
+			Theme:    opts.Theme,
+			Siblings: opts.Siblings,
 		}, h)
 		return err
 	case opts.Home:
@@ -143,6 +150,7 @@ func BuildSourceProject(opts BuildOptions, h *effects.Handle) error {
 			DirPath:       opts.SourceDir,
 			VersionFilter: latest,
 			Theme:         opts.Theme,
+			Siblings:      opts.Siblings,
 		}, h)
 		return err
 	}
@@ -204,4 +212,22 @@ func IndexSite(siteDir string, h *effects.Handle) error {
 	}
 	_, err := build.PruneUnreferencedPagefindWidget(siteDir, h)
 	return err
+}
+
+// SiblingsFor is the sibling list one project's build is handed: every other
+// project on the assembled site, minus the home project.
+//
+// It reads the assembly's own manifests directory and roster, which is where
+// the site's membership is recorded. A checkout that holds neither yields no
+// siblings, and a build handed none emits no section.
+func SiblingsFor(manifestsDir, assemblyDir, selfSlug string) ([]build.SiblingProject, error) {
+	manifests, err := site.LoadAssemblyManifests(manifestsDir)
+	if err != nil {
+		return nil, err
+	}
+	roster, err := site.LoadRoster(assemblyDir)
+	if err != nil {
+		return nil, err
+	}
+	return build.SiblingsFromManifests(manifests, roster.Home, selfSlug), nil
 }

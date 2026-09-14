@@ -44,6 +44,11 @@ type Options struct {
 	// Stdout is where the build's progress lines go. Nil writes to the
 	// process's standard output.
 	Stdout io.Writer
+	// Siblings are the other projects published on the assembled site this
+	// build's output is grafted into. Each built page ends with a section
+	// linking them. Empty -- which is what a standalone build passes --
+	// emits no section: a project deployed on its own has no siblings.
+	Siblings []SiblingProject
 	// Now supplies the date a page with no date and no file behind it
 	// carries. The zero value takes the current time.
 	Now time.Time
@@ -188,7 +193,8 @@ func Build(opts Options, h *effects.Handle) (map[string]bool, error) {
 
 	if opts.Target == "posts" {
 		return BuildPostsOnly(
-			opts.DirPath, cfg, outputDir, docsDirName, latestDocsDir, opts.IncludeDrafts, h)
+			opts.DirPath, cfg, outputDir, docsDirName, latestDocsDir,
+			opts.IncludeDrafts, opts.Siblings, h)
 	}
 
 	// The posts are injected into the docs tree so the normal pipeline
@@ -256,6 +262,7 @@ func Build(opts Options, h *effects.Handle) (map[string]bool, error) {
 		docsDirName:       docsDirName,
 		partitions:        partitions,
 		sitePages:         sitePages,
+		siblings:          opts.Siblings,
 		now:               opts.Now,
 		stdout:            stdout,
 	}, h)
@@ -289,6 +296,7 @@ type bodyInputs struct {
 	// because page paths are relative to the locale's own docs directory.
 	partitions map[string]Partition
 	sitePages  map[string]bool
+	siblings   []SiblingProject
 	now        time.Time
 	stdout     io.Writer
 }
@@ -398,6 +406,7 @@ func buildBody(in bodyInputs, h *effects.Handle) (map[string]bool, error) {
 			singleOpts.MountArchived = archived
 			singleOpts.VersionOverride = &verStr
 			singleOpts.LocaleOverride = &localeCode
+			singleOpts.Siblings = in.siblings
 			singleOpts.AvailableVersions = in.versions
 			singleOpts.AvailableLocales = in.locales
 			singleOpts.VersionPages = versionPages[localeCode]
@@ -506,6 +515,7 @@ func buildBody(in bodyInputs, h *effects.Handle) (map[string]bool, error) {
 		uvOpts.MountVersion = &empty
 		uvOpts.VersionOverride = &empty
 		uvOpts.LocaleOverride = &localeCode
+		uvOpts.Siblings = in.siblings
 		uvOpts.AvailableVersions = in.versions
 		uvOpts.AvailableLocales = in.locales
 		uvOpts.VersionPages = versionPages[localeCode]

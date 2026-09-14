@@ -129,11 +129,16 @@ func BuildHome(
 ) (map[string]bool, error) {
 	buildConfig := RegisterSiteDirectives(cfg, Directives(&context))
 
+	// The home project's own pages carry the same sibling block every other
+	// project's do, read off the context it is already building against.
 	written, err := build.Build(build.Options{
 		DirPath:       dirPath,
 		Config:        buildConfig,
 		IncludeDrafts: includeDrafts,
 		Theme:         theme,
+		Siblings: build.SiblingsFromManifests(
+			context.Manifests, context.HomeSlug, context.HomeSlug,
+		),
 	}, h)
 	if err != nil {
 		return nil, err

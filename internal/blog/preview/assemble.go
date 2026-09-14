@@ -209,12 +209,22 @@ func PreviewAssembly(
 	membership := roster.Entries()
 	for _, item := range ordered {
 		if build {
+			// The preview is the assembled site, so its pages carry the same
+			// sibling block a deploy writes, read off the manifests written
+			// so far.
+			siblings, siblingsErr := assembly.SiblingsFor(
+				manifestsDir, outDir, item.slug,
+			)
+			if siblingsErr != nil {
+				return nil, siblingsErr
+			}
 			if buildErr := assembly.BuildSourceProject(assembly.BuildOptions{
 				SourceDir:    item.sourceDir,
 				Scope:        "full",
 				Home:         item.home,
 				ManifestsDir: manifestsDir,
 				Theme:        theme,
+				Siblings:     siblings,
 			}, handle); buildErr != nil {
 				return nil, buildErr
 			}

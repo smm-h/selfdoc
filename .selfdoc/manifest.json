@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.39.6",
+  "version": "0.39.7",
   "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
   "language": "go",
   "base_url": "https://selfdoc.smmh.dev",
@@ -168,6 +168,11 @@
           "level": 3,
           "text": "The machine-readable files at the site root",
           "anchor": "the-machine-readable-files-at-the-site-root"
+        },
+        {
+          "level": 3,
+          "text": "What a search engine reads off the two generated pages",
+          "anchor": "what-a-search-engine-reads-off-the-two-generated-pages"
         },
         {
           "level": 3,
@@ -3066,8 +3071,18 @@
         },
         {
           "level": 3,
+          "text": "`DescriptionMax`",
+          "anchor": "descriptionmax"
+        },
+        {
+          "level": 3,
           "text": "`ErrCSSURLRequired`",
           "anchor": "errcssurlrequired"
+        },
+        {
+          "level": 3,
+          "text": "`SharedPage`",
+          "anchor": "sharedpage"
         },
         {
           "level": 3,
@@ -3153,6 +3168,26 @@
           "level": 3,
           "text": "`ValidateCrossProjectLinks`",
           "anchor": "validatecrossprojectlinks"
+        },
+        {
+          "level": 3,
+          "text": "`SiteName`",
+          "anchor": "sitename"
+        },
+        {
+          "level": 3,
+          "text": "`ProjectsDescription`",
+          "anchor": "projectsdescription"
+        },
+        {
+          "level": 3,
+          "text": "`BlogDescription`",
+          "anchor": "blogdescription"
+        },
+        {
+          "level": 3,
+          "text": "`CollectionPageJSONLD`",
+          "anchor": "collectionpagejsonld"
         }
       ]
     },
@@ -7497,6 +7532,11 @@
         },
         {
           "level": 3,
+          "text": "`DocumentTitle`",
+          "anchor": "documenttitle"
+        },
+        {
+          "level": 3,
           "text": "`WrapPage`",
           "anchor": "wrappage"
         },
@@ -9519,6 +9559,11 @@
         },
         {
           "level": 3,
+          "text": "The document title",
+          "anchor": "the-document-title"
+        },
+        {
+          "level": 3,
           "text": "Author metadata",
           "anchor": "author-metadata"
         },
@@ -9732,6 +9777,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T14:35:53.983400+00:00",
+  "last_gen": "2026-09-14T15:00:23.850929+00:00",
   "theme": "minimal"
 }

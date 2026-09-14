@@ -264,12 +264,20 @@ func IntegrateProject(opts IntegrateOptions, h *effects.Handle) (*IntegrateSumma
 	}
 
 	if scope != SharedOnlyScope && !opts.SkipBuild {
+		// The sibling block every built page ends with is stated here, from
+		// the manifests this checkout already holds. A build that is handed
+		// none emits no block, which is what a standalone build gets.
+		siblings, err := SiblingsFor(manifestsDir, assemblyDir, opts.Slug)
+		if err != nil {
+			return nil, err
+		}
 		if err := BuildSourceProject(BuildOptions{
 			SourceDir:    sourceDir,
 			Scope:        scope,
 			Home:         isHome,
 			ManifestsDir: manifestsDir,
 			Theme:        opts.Theme,
+			Siblings:     siblings,
 		}, h); err != nil {
 			return nil, err
 		}

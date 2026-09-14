@@ -141,6 +141,12 @@ type SingleOptions struct {
 	// which -- together with OverlayDocs -- is what makes an in-memory
 	// render possible.
 	WriteBaselines bool
+	// Siblings are the other projects published on the assembled site this
+	// build's output is grafted into. Each built page ends with a section
+	// linking them. Empty -- which is what a standalone build passes --
+	// emits no section at all: a project deployed on its own has no
+	// siblings, and there is nothing to invent them from.
+	Siblings []SiblingProject
 	// Now supplies the modification date of a page that states none and has
 	// no file behind it. The zero value takes the current time.
 	Now time.Time
@@ -413,8 +419,10 @@ func BuildSingle(opts SingleOptions, h *effects.Handle) (BuildResult, error) {
 		if mount != "" {
 			pagePath = outputKey[len(mount)+1:]
 		}
-		htmlFiles[outputKey] = AddImageDimensions(
-			htmlFiles[outputKey], docsDir, html.HTMLToMdPath(pagePath))
+		htmlFiles[outputKey] = withSiblings(
+			AddImageDimensions(
+				htmlFiles[outputKey], docsDir, html.HTMLToMdPath(pagePath)),
+			outputKey, opts.Siblings)
 	}
 
 	navItems := page.BuildNav(markdownFiles, frontmatter, unversionedPages, opts.UnversionedFrontmatter)
