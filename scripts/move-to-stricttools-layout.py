@@ -468,6 +468,24 @@ def write_preserving_mode(path: Path, text: str) -> None:
 
 
 def perform_rewrites(project: Path, rewrites, output_rel: str) -> None:
+    # Every target is checked before the first one is written. A rewrite that
+    # stops half-way leaves the config naming the new paths while the content
+    # still names the old ones, and the old ones are then no longer derivable
+    # from the config -- so the whole set is refused, or none of it is written.
+    blocked = []
+    for name, _, _ in rewrites:
+        path = project / name
+        if not path.exists():
+            blocked.append(f"{name} (gone)")
+            continue
+        if not os.access(path.parent, os.W_OK):
+            blocked.append(f"{name} (its directory is read-only)")
+    if blocked:
+        listed = "\n  ".join(blocked)
+        raise Refusal(
+            "these files cannot be rewritten, and the rewrite is all or nothing:\n  "
+            f"{listed}"
+        )
     written = []
     for name, _, after in rewrites:
         write_preserving_mode(project / name, after)
