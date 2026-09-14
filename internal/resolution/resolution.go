@@ -48,6 +48,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/smm-h/selfdoc/internal/address"
 	"github.com/smm-h/selfdoc/internal/lints"
@@ -264,9 +265,68 @@ func hasAnyPrefix(s string, prefixes []string) bool {
 	return false
 }
 
+// blankElements blanks the content of every element named in tags, keeping
+// every other offset and every line break.
+//
+// Blanking rather than skipping is what keeps the exemption per element, as it
+// does for the origin-only resource hints above: a page that writes its own
+// dangling link beside an exempt element still has that link collected.
+func blankElements(pageHTML string, tags []string) string {
+	for _, tag := range tags {
+		if tag == "" {
+			continue
+		}
+		pattern, ok := exemptElementRE(tag)
+		if !ok {
+			continue
+		}
+		pageHTML = pattern.ReplaceAllStringFunc(pageHTML, func(element string) string {
+			blanked := make([]byte, len(element))
+			for i := range len(element) {
+				if element[i] == '\n' {
+					blanked[i] = '\n'
+					continue
+				}
+				blanked[i] = ' '
+			}
+			return string(blanked)
+		})
+	}
+	return pageHTML
+}
+
+// exemptElementRE is the compiled matcher for one exempt element, memoized
+// because the walk asks for it once per page.
+func exemptElementRE(tag string) (*regexp.Regexp, bool) {
+	exemptREMutex.Lock()
+	defer exemptREMutex.Unlock()
+	if pattern, known := exemptREs[tag]; known {
+		return pattern, pattern != nil
+	}
+	pattern, err := regexp.Compile(
+		`(?s)<` + regexp.QuoteMeta(tag) + `\b[^>]*>.*?</` + regexp.QuoteMeta(tag) + `>`,
+	)
+	if err != nil {
+		exemptREs[tag] = nil
+		return nil, false
+	}
+	exemptREs[tag] = pattern
+	return pattern, true
+}
+
+var (
+	exemptREMutex sync.Mutex
+	exemptREs     = map[string]*regexp.Regexp{}
+)
+
 // CheckOutputResolution checks every emitted reference in outputDir against
 // what the build wrote, returning one LintCode diagnostic per unresolvable
 // reference.
+//
+// exemptElements names the elements whose content this build does not answer
+// for: a region written from an assembled site's own data addresses that site,
+// which the project carrying the region never writes, and the assembly's pass
+// over the whole tree is the only place those references can be resolved.
 //
 // outputDir is the build output directory; a directory that holds no HTML is
 // not a built site and yields no diagnostics. baseURL is the site's configured
@@ -282,7 +342,10 @@ func hasAnyPrefix(s string, prefixes []string) bool {
 // tree, which is the only place they can be answered. What still applies here
 // applies everywhere: no reference a reader clicks may be origin-absolute or
 // absolute against the site's base.
-func CheckOutputResolution(outputDir, baseURL, mountPrefix string) ([]lints.LintResult, error) {
+func CheckOutputResolution(
+	outputDir, baseURL, mountPrefix string,
+	exemptElements []string,
+) ([]lints.LintResult, error) {
 	info, err := os.Stat(outputDir)
 	if err != nil || !info.IsDir() {
 		return nil, nil
@@ -325,7 +388,7 @@ func CheckOutputResolution(outputDir, baseURL, mountPrefix string) ([]lints.Lint
 		if err != nil {
 			return nil, err
 		}
-		pageHTML := string(raw)
+		pageHTML := blankElements(string(raw), exemptElements)
 
 		// A post in a mounted build is grafted out of this subtree to the
 		// site root, so it addresses its neighbours from an address this

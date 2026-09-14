@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smm-h/selfdoc/internal/blog/sitedirectives"
 	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/docs"
@@ -332,6 +333,12 @@ func CheckDocs(
 	if urlBuilder := build.MakeURLBuilder(projectConfig); urlBuilder != nil {
 		mountPrefix = urlBuilder.MountPrefix()
 	}
+	// A site-level region is written from the assembled site's own data --
+	// the curated project listing, the posts across every project -- and its
+	// links address that site: other projects' subtrees, the site-level blog.
+	// The project that carries the region writes none of those, so its own
+	// build cannot resolve them and the assembly's pass over the whole tree
+	// is where they are answered.
 	outputLints, err := resolution.CheckOutputResolution(
 		filepath.Join(
 			dirPath,
@@ -339,6 +346,7 @@ func CheckDocs(
 		),
 		configString(projectConfig, "base_url", ""),
 		mountPrefix,
+		[]string{sitedirectives.RegionTag},
 	)
 	if err != nil {
 		return nil, err

@@ -29,9 +29,13 @@ func write(t *testing.T, path, content string) {
 }
 
 // check runs the resolution check, failing the test on an unexpected error.
-func check(t *testing.T, outputDir, baseURL, mountPrefix string) []lints.LintResult {
+func check(
+	t *testing.T,
+	outputDir, baseURL, mountPrefix string,
+	exemptElements ...string,
+) []lints.LintResult {
 	t.Helper()
-	results, err := CheckOutputResolution(outputDir, baseURL, mountPrefix)
+	results, err := CheckOutputResolution(outputDir, baseURL, mountPrefix, exemptElements)
 	if err != nil {
 		t.Fatalf("CheckOutputResolution: %v", err)
 	}
@@ -453,5 +457,49 @@ func TestExternalReferencesKeepsALinkToAPreconnectedOrigin(t *testing.T) {
 	got := strings.Join(ExternalReferences(page), ",")
 	if got != "https://fonts.example/specimen" {
 		t.Fatalf("ExternalReferences = %q", got)
+	}
+}
+
+// -- elements this build does not answer for --------------------------------
+
+// A site-level region is written from the assembled site's own data and
+// re-rendered by the assembly on every deploy. Its links address the assembled
+// site -- other projects' subtrees, the site-level blog -- which the project
+// that carries the region never writes. The assembly's own pass over the whole
+// tree answers them; this one cannot.
+func TestAReferenceInsideAnExemptElementIsNotThisBuildsToResolve(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "index.html"),
+		"<p>Mine</p>\n"+
+			`<selfdoc-region data-directive="projects-cards">`+"\n"+
+			`<a href="alpha/">Alpha</a>`+"\n"+
+			"</selfdoc-region>\n")
+
+	if results := check(t, out, base, "", "selfdoc-region"); len(results) != 0 {
+		t.Fatalf("the exempt element's reference was reported: %v", results)
+	}
+	if results := check(t, out, base, ""); len(results) != 1 {
+		t.Fatalf("without the exemption the reference is this build's: %v", results)
+	}
+}
+
+// The exemption is per element, not per page: a link the page itself writes is
+// still this build's to resolve.
+func TestAPagesOwnReferenceSurroundingAnExemptElementIsStillChecked(t *testing.T) {
+	isolate(t)
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, filepath.Join(out, "index.html"),
+		`<a href="missing/">Mine</a>`+"\n"+
+			`<selfdoc-region data-directive="projects-cards">`+"\n"+
+			`<a href="alpha/">Alpha</a>`+"\n"+
+			"</selfdoc-region>\n")
+
+	results := check(t, out, base, "", "selfdoc-region")
+	if len(results) != 1 {
+		t.Fatalf("results = %v, want the page's own dangling reference", results)
+	}
+	if !strings.Contains(results[0].Message(), "missing/") {
+		t.Errorf("message = %q", results[0].Message())
 	}
 }

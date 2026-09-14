@@ -75,7 +75,7 @@ func TestAMountedBuildGraftsWithEveryReferenceStillResolving(t *testing.T) {
 
 	// Every reference in the grafted tree resolves, and none of them leaves it.
 	siteDir := filepath.Join(tree.Root, "site")
-	findings, err := resolution.CheckOutputResolution(siteDir, integrateCanonicalBase, "")
+	findings, err := resolution.CheckOutputResolution(siteDir, integrateCanonicalBase, "", nil)
 	if err != nil {
 		t.Fatalf("reading the tree's references: %v", err)
 	}

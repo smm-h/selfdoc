@@ -81,7 +81,7 @@ func TestBuildRewritesMarkdownLinks(t *testing.T) {
 	built := buildFixture(t, fixture{Docs: linkedPages})
 
 	t.Run("every reference the build emitted resolves", func(t *testing.T) {
-		lints, err := resolution.CheckOutputResolution(built.output, "https://example.com", "")
+		lints, err := resolution.CheckOutputResolution(built.output, "https://example.com", "", nil)
 		if err != nil {
 			t.Fatalf("CheckOutputResolution: %v", err)
 		}
@@ -184,7 +184,7 @@ func TestBuildRendersLegacyLinksInAnArchiveOnly(t *testing.T) {
 		if !built.exists("v/0.1.0/guide/index.html") {
 			t.Fatal("the archived guide was not built")
 		}
-		lints, err := resolution.CheckOutputResolution(built.output, "https://example.com", "")
+		lints, err := resolution.CheckOutputResolution(built.output, "https://example.com", "", nil)
 		if err != nil {
 			t.Fatalf("CheckOutputResolution: %v", err)
 		}
@@ -203,7 +203,7 @@ func TestBuildRendersLegacyLinksInAnArchiveOnly(t *testing.T) {
 
 	t.Run("the working tree gets no such tolerance", func(t *testing.T) {
 		built := buildFixture(t, fixture{Docs: legacyPages})
-		lints, err := resolution.CheckOutputResolution(built.output, "https://example.com", "")
+		lints, err := resolution.CheckOutputResolution(built.output, "https://example.com", "", nil)
 		if err != nil {
 			t.Fatalf("CheckOutputResolution: %v", err)
 		}

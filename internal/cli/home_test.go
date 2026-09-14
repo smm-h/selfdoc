@@ -133,6 +133,12 @@ func TestCheckResolvesTheSiteDirectivesOfTheHomeProject(t *testing.T) {
 	if !strings.Contains(report, "2 directive(s): 2 OK, 0 FAILED") {
 		t.Fatalf("the site directives did not resolve:\n%s", report)
 	}
+	// The cards link into other projects' subtrees, which only the assembled
+	// site holds. This project's own build writes none of them, and the
+	// check does not report them as references it should have written.
+	if strings.Contains(report, "LINK001") {
+		t.Errorf("the region's cross-project links were reported:\n%s", report)
+	}
 	// The card's version badge comes from the assembly's manifest for
 	// another project, which is the whole reason this check reaches the
 	// assembly at all.

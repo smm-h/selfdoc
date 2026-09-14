@@ -737,7 +737,12 @@ func searchIndexFailures(tree *AssemblyTree) ([]Failure, error) {
 // to get wrong.
 func CheckReferences(tree *AssemblyTree) ([]Failure, error) {
 	var failures []Failure
-	diagnostics, err := resolution.CheckOutputResolution(tree.SiteDir, tree.CanonicalBase, "")
+	// Nothing is exempt here: this is the assembled tree, where the
+	// site-level regions' cross-project links are exactly what has to
+	// resolve.
+	diagnostics, err := resolution.CheckOutputResolution(
+		tree.SiteDir, tree.CanonicalBase, "", nil,
+	)
 	if err != nil {
 		return nil, err
 	}
