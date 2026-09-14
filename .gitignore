@@ -20,7 +20,6 @@ npm-debug.log*
 Thumbs.db
 
 # Docs build output
-docs/_build/
 
 # Wrangler
 .wrangler/
