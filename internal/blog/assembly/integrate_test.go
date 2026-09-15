@@ -13,6 +13,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/blog/chrome"
 	"github.com/smm-h/selfdoc/internal/blog/site"
+	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/testproject"
 )
@@ -56,6 +57,27 @@ func integratePage(title, address, marker, version string) string {
 		`  <dialog class="search-dialog" data-search-base="./"` + versionAttr + `></dialog>` + "\n" +
 		"  <p>" + marker + "</p>\n" +
 		"</body>\n</html>\n"
+}
+
+// siblingBlock is the section every assembled page ends with, naming the other
+// projects the site publishes.
+//
+// siteHop is the rendering page's hop back to the site root, so each link is
+// document-relative, and the markup is the one internal/build writes -- the
+// fixture's pages are hand-written, so the block has to be stated here rather
+// than rendered.
+func siblingBlock(siteHop string, slugs ...string) string {
+	lines := []string{
+		`<section class="sibling-projects" data-pagefind-ignore ` +
+			`aria-labelledby="sibling-projects-heading">`,
+		`<h2 id="sibling-projects-heading">` + build.SiblingsHeading + "</h2>",
+		"<ul>",
+	}
+	for _, slug := range slugs {
+		lines = append(lines,
+			`<li><a href="`+siteHop+slug+`/">`+slug+"</a></li>")
+	}
+	return strings.Join(append(lines, "</ul>", "</section>"), "\n") + "\n"
 }
 
 // integrateManifest is one project's manifest in the assembly.
@@ -131,8 +153,12 @@ func newAssemblyTree(t *testing.T) *assemblyTree {
 	tree.Write("site/blog/old-post/index.html",
 		integratePage("Old", "blog/old-post/", "old post", ""))
 	tree.Write("site/beta/index.html", integratePage("Beta", "beta/", "beta", "2.0.0"))
-	// The home project's front page, at the site root under no slug.
-	tree.Write("site/index.html", integratePage("Front page", "", "home", ""))
+	// The home project's front page, at the site root under no slug. It
+	// carries the sibling block every assembled page ends with, which is how
+	// a reader arriving at the site reaches a project the curated listing
+	// leaves out.
+	tree.Write("site/index.html",
+		integratePage("Front page", "", "home", "")+siblingBlock("", "alpha", "beta"))
 
 	// Manifests, including a stale posts overlay for alpha.
 	tree.WriteJSON("manifests/alpha.json", integrateManifest("alpha", "Alpha", "0.9.0", nil))

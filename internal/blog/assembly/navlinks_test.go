@@ -25,7 +25,7 @@ const navLinksPostSlug = "why-we-built-it"
 // The project here is configured the way a real constituent of the unified
 // site is, which is what the older mounted-graft test does not cover: a
 // base_url naming a retired per-project subdomain rather than the mount, a
-// declared posts_base, and a projects map. Each of those is a place an
+// declared docs_base and a declared posts_base. Each of those is a place an
 // absolute URL could be taken from, and an <a href> built from any of them
 // resolves on the deployed host alone -- it leaves a preview or a mirror
 // silently, which the file-existence half of the resolution check can never
@@ -143,9 +143,6 @@ func buildSiteLikeAlpha(t *testing.T) string {
 			"docs_base":  integrateCanonicalBase,
 			"slug":       "alpha",
 			"posts_base": integrateCanonicalBase + "/blog",
-			"projects": map[string]any{
-				"beta": integrateCanonicalBase + "/beta",
-			},
 		},
 	})
 	docs := filepath.Join(source, ".stricttools", "docs")
