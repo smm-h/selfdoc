@@ -33,6 +33,7 @@ var expectedCoreNames = []string{
 	"table-config-schema",
 	"table-endpoint",
 	"list-crawlers",
+	"list-lints",
 	"var",
 	"cv",
 }
@@ -262,6 +263,7 @@ var expectedAttrs = map[string]struct {
 	"table-config-schema": {nil, nil},
 	"table-endpoint":      {[]string{"path"}, []string{"endpoint", "method"}},
 	"list-crawlers":       {nil, nil},
+	"list-lints":          {nil, nil},
 	"var":                 {[]string{"key"}, nil},
 	"cv":                  {[]string{"path"}, nil},
 }

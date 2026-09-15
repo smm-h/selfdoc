@@ -6,8 +6,9 @@
 # A lint's severity lives here and nowhere else: LintResult derives it from
 # this document, so a construction site cannot state a severity and cannot
 # emit an unregistered code. The lint-code enum in selfdoc's declared check
-# payload schema (internal/payloadschemas) and the lint-rule table in
-# docs/check-guide.md are both pinned to this document by tests.
+# payload schema (internal/payloadschemas) is pinned to this document by a
+# test, and the check guide's lint-rule table is not a copy at all: the page
+# carries the "list-lints" directive, which renders this document.
 #
 # Entries are in documentation order (the order the table renders in), which
 # groups the families rather than sorting the codes alphabetically.

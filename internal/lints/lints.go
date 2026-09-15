@@ -6,8 +6,9 @@
 // nowhere else. [LintResult] derives its severity from the registry, so a
 // construction site cannot state a severity and cannot emit an unregistered
 // code -- both are refused rather than discouraged. The lint-code enum in the
-// declared check payload schema and the lint-rule table in the check guide are
-// both pinned to the registry by tests.
+// declared check payload schema is pinned to the registry by a test, and the
+// check guide's lint-rule table is rendered from the registry by the
+// "list-lints" directive rather than repeated by hand.
 //
 // selfdoc's check command, the unified check, the post-build lint pass and the
 // posts-only check all decide the same question -- does this run pass? -- and

@@ -85,7 +85,8 @@ func TestContentDirectivesHasEveryEntry(t *testing.T) {
 	want := []string{
 		"callout-danger", "callout-important", "callout-note", "callout-tip",
 		"callout-warning", "cv", "list-crawlers", "list-glossary",
-		"list-modules", "list-tree", "table-commands", "table-config-schema",
+		"list-lints", "list-modules", "list-tree", "table-commands",
+		"table-config-schema",
 		"table-dep", "table-directives", "table-endpoint", "var",
 	}
 	got := make([]string, 0, len(ContentDirectives))

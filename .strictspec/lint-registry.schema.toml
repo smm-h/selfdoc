@@ -11,10 +11,11 @@
 # -- the code grammar, the severity enum, per-entry required fields,
 # unknown-key rejection, and unique codes. It does NOT model where a code is
 # emitted from, which condition raises it, or whether the JSON output schema
-# and the documentation table agree with it. Those are selfdoc-native: the
-# emission side is enforced structurally (LintResult derives severity from this
-# registry and refuses an unregistered code), and the two derived surfaces are
-# pinned to the registry by tests.
+# and the documentation table agree with it. Those are selfdoc-native and both
+# enforced structurally: LintResult derives severity from this registry and
+# refuses an unregistered code, the JSON output schema's code enum is pinned to
+# the registry by a test, and the documentation table is rendered from the
+# registry by the "list-lints" directive rather than written out beside it.
 
 name = "selfdoc-lint-registry"
 meta_version = 1
