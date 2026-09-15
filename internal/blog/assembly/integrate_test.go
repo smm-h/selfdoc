@@ -68,8 +68,7 @@ func integratePage(title, address, marker, version string) string {
 // than rendered.
 func siblingBlock(siteHop string, slugs ...string) string {
 	lines := []string{
-		`<section class="sibling-projects" data-pagefind-ignore ` +
-			`aria-labelledby="sibling-projects-heading">`,
+		build.SiblingsBlockStart,
 		`<h2 id="sibling-projects-heading">` + build.SiblingsHeading + "</h2>",
 		"<ul>",
 	}
@@ -77,7 +76,7 @@ func siblingBlock(siteHop string, slugs ...string) string {
 		lines = append(lines,
 			`<li><a href="`+siteHop+slug+`/">`+slug+"</a></li>")
 	}
-	return strings.Join(append(lines, "</ul>", "</section>"), "\n") + "\n"
+	return strings.Join(append(lines, "</ul>", build.SiblingsBlockEnd), "\n") + "\n"
 }
 
 // integrateManifest is one project's manifest in the assembly.
@@ -1021,6 +1020,65 @@ func TestASoundTreeStillDeploys(t *testing.T) {
 	}
 	if len(tree.GitCallsOf("push ")) == 0 {
 		t.Error("a sound tree was not pushed")
+	}
+}
+
+func TestADeployAfterARetirementClearsTheRetiredProjectsSiblingLinks(t *testing.T) {
+	// The live failure, end to end. A retirement removes one project's
+	// subtree and its manifests; every other project's pages keep the sibling
+	// block their own last deploy rendered, which still links the address the
+	// tree no longer serves. Verification reads the whole tree, so until
+	// something rewrites those blocks every deploy is refused -- and no single
+	// project's rebuild can reach another project's pages.
+	tree := newAssemblyTree(t)
+	tree.Write("site/index.html",
+		integratePage("Front page", "", "home", "")+
+			siblingBlock("", "alpha", "beta", "gamma"))
+	tree.Write("site/beta/index.html",
+		integratePage("Beta", "beta/", "beta", "2.0.0")+
+			siblingBlock("../", "alpha", "gamma"))
+	tree.Write("site/blog/old-post/index.html",
+		integratePage("Old", "blog/old-post/", "old post", "")+
+			siblingBlock("../../", "alpha", "beta", "gamma"))
+	tree.Commit()
+
+	summary := tree.MustIntegrate(nil)
+	if !summary.Committed {
+		t.Fatal("the deploy after a retirement created no commit")
+	}
+	for _, rel := range []string{
+		"site/index.html", "site/beta/index.html", "site/blog/old-post/index.html",
+	} {
+		page := tree.Read(rel)
+		if strings.Contains(page, "gamma/") {
+			t.Errorf("%s still links the retired project:\n%s", rel, page)
+		}
+	}
+	// And the blocks say what the membership is now, descriptions and all.
+	if want := `<li><a href="../alpha/">Alpha</a> <span>Alpha docs</span></li>`; !strings.Contains(
+		tree.Read("site/beta/index.html"), want) {
+		t.Errorf("beta's block does not carry %s:\n%s", want, tree.Read("site/beta/index.html"))
+	}
+	front := tree.Read("site/index.html")
+	for _, want := range []string{`<a href="alpha/">Alpha</a>`, `<a href="beta/">Beta</a>`} {
+		if !strings.Contains(front, want) {
+			t.Errorf("the front page's block does not carry %s:\n%s", want, front)
+		}
+	}
+}
+
+func TestADeployRefreshesTheSiblingBlockOfAProjectThatDidNotDeploy(t *testing.T) {
+	// The other half of the same defect: a project joining, or one whose
+	// description changed, reaches the pages of projects that did not deploy.
+	tree := newAssemblyTree(t)
+	tree.Write("site/beta/index.html",
+		integratePage("Beta", "beta/", "beta", "2.0.0")+siblingBlock("../"))
+	tree.Commit()
+
+	tree.MustIntegrate(nil)
+	page := tree.Read("site/beta/index.html")
+	if want := `<li><a href="../alpha/">Alpha</a> <span>Alpha docs</span></li>`; !strings.Contains(page, want) {
+		t.Errorf("beta's block never learned about alpha; it reads\n%s", page)
 	}
 }
 

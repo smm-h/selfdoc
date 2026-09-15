@@ -353,8 +353,26 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		written = append(written, sitePath(opts.SiteDir, rel))
 	}
 
-	// A page both sweeps changed was written twice and is one file, so the
-	// count the caller prints counts files rather than writes.
+	// And, over the same pages again, the one element of a page that names
+	// the other projects: the sibling block each page ends with. It is
+	// rendered at build time from the membership of that day, so every roster
+	// change leaves it stale everywhere but in the subtree that just
+	// deployed, and a retirement leaves a link to an address the tree no
+	// longer serves. Regenerating it here is what carries a membership change
+	// to the pages of projects that did not deploy.
+	refreshedSiblings, err := RefreshSiblingBlocks(
+		opts.SiteDir, opts.ManifestsDir, manifests, opts.HomeSlug, pages, h,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for _, rel := range refreshedSiblings {
+		written = append(written, sitePath(opts.SiteDir, rel))
+	}
+
+	// A page more than one sweep changed was written more than once and is
+	// one file, so the count the caller prints counts files rather than
+	// writes.
 	return dedupePaths(written), nil
 }
 
