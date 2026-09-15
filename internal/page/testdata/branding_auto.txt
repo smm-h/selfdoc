@@ -284,7 +284,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Welcome - TestProject</title>
+<title>Welcome</title>
 <meta name="description" content="Some intro text.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -302,13 +302,13 @@ document.addEventListener("DOMContentLoaded", function() {
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}
 </script>
-<meta property="og:title" content="Welcome - TestProject">
+<meta property="og:title" content="Welcome">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TestProject">
 <meta property="og:locale" content="en_US">
 <meta property="og:description" content="Some intro text.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Welcome - TestProject">
+<meta name="twitter:title" content="Welcome">
 <meta name="twitter:description" content="Some intro text.">
 <meta property="og:image" content="None/og-index.png">
 <meta property="og:image:type" content="image/png">

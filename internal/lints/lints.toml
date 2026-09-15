@@ -86,11 +86,6 @@ code = "SEO015"
 severity = "warning"
 description = "Generic anchor text like \"click here\" or \"read more\". Use descriptive link text."
 
-[[lints]]
-code = "SEO016"
-severity = "warning"
-description = "The project `description` in selfdoc.json has no ` that ` clause, so the index page's title cannot say what the project is. Write it as \"<thing> that <does>\"."
-
 # -- Staleness, drift and description quality ---------------------------------
 
 [[lints]]

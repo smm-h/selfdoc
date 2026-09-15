@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smm-h/selfdoc/internal/blog/shared"
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/blog/sitedirectives"
 	"github.com/smm-h/selfdoc/internal/build"
@@ -106,6 +107,11 @@ type BuildOptions struct {
 	// build has no assembled site around it, states none, and emits no
 	// section at all.
 	Siblings []build.SiblingProject
+	// SiteName is the name of the assembled site this build's output is
+	// grafted into, which every built page's document title ends with. It is
+	// stated by the caller for the same reason Siblings is: a standalone
+	// build has no site around it and states none.
+	SiteName string
 }
 
 // BuildSourceProject builds the cloned source project.
@@ -130,6 +136,7 @@ func BuildSourceProject(opts BuildOptions, h *effects.Handle) error {
 			Target:   "posts",
 			Theme:    opts.Theme,
 			Siblings: opts.Siblings,
+			SiteName: opts.SiteName,
 		}, h)
 		return err
 	case opts.Home:
@@ -151,6 +158,7 @@ func BuildSourceProject(opts BuildOptions, h *effects.Handle) error {
 			VersionFilter: latest,
 			Theme:         opts.Theme,
 			Siblings:      opts.Siblings,
+			SiteName:      opts.SiteName,
 		}, h)
 		return err
 	}
@@ -230,4 +238,34 @@ func SiblingsFor(manifestsDir, assemblyDir, selfSlug string) ([]build.SiblingPro
 		return nil, err
 	}
 	return build.SiblingsFromManifests(manifests, roster.Home, selfSlug), nil
+}
+
+// SiteName is the name the assembled site goes by, for the builds whose pages
+// end their titles with it: the home project's manifest name.
+//
+// A tree that declares no home project has no front page and therefore no name
+// of its own, and its pages read as a standalone deploy's.
+func SiteName(manifests []map[string]any, homeSlug string) string {
+	if homeSlug == "" {
+		return ""
+	}
+	return shared.SiteName(manifests, homeSlug)
+}
+
+// SiteNameFor is [SiteName] read off the assembly's own manifests directory
+// and roster, which is where the site's membership and its home project are
+// recorded.
+func SiteNameFor(manifestsDir, assemblyDir string) (string, error) {
+	roster, err := site.LoadRoster(assemblyDir)
+	if err != nil {
+		return "", err
+	}
+	if roster.Home == "" {
+		return "", nil
+	}
+	manifests, err := site.LoadAssemblyManifests(manifestsDir)
+	if err != nil {
+		return "", err
+	}
+	return SiteName(manifests, roster.Home), nil
 }

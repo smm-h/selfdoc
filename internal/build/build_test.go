@@ -337,10 +337,25 @@ func TestBuildSEOAndStructuredData(t *testing.T) {
 			`<meta property="og:description" content="How to use it.">`)
 	})
 
-	t.Run("the Twitter title names the page and the project", func(t *testing.T) {
-		if !regexp.MustCompile(
-			`<meta name="twitter:title" content="Test Project - [^"]+">`).MatchString(index) {
-			t.Error("index.html carries no twitter:title naming the page and the project")
+	t.Run("the social titles are the document title", func(t *testing.T) {
+		// A standalone build's index page is titled with its written title
+		// alone, and the social titles carry exactly what the head's title
+		// element carries.
+		assertCarries(t, "index.html", index,
+			`<title>Test Project</title>`,
+			`<meta name="twitter:title" content="Test Project">`,
+			`<meta property="og:title" content="Test Project">`)
+		// The project name is the checkout's directory name, which a
+		// temporary fixture cannot spell, so the inner page is matched.
+		for _, pattern := range []string{
+			`<title>Guide - [^<]+</title>`,
+			`<meta name="twitter:title" content="Guide - [^"]+">`,
+			`<meta property="og:title" content="Guide - [^"]+">`,
+		} {
+			if !regexp.MustCompile(pattern).MatchString(guide) {
+				t.Errorf("guide/index.html carries nothing matching %s",
+					pattern)
+			}
 		}
 	})
 

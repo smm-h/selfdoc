@@ -342,13 +342,13 @@
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}
 </script>
-<meta property="og:title" content="A Page - mypackage">
+<meta property="og:title" content="A Page">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="mypackage">
 <meta property="og:locale" content="en_US">
 <meta property="og:description" content="Body of the page.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="A Page - mypackage">
+<meta name="twitter:title" content="A Page">
 <meta name="twitter:description" content="Body of the page.">
 <meta name="twitter:site" content="@mypackage">
 <meta property="og:image" content="https://example.com/og-index.png">

@@ -92,10 +92,10 @@ type SEOOptions struct {
 	Author map[string]any
 	// ProjectName is the project's name.
 	ProjectName string
-	// ProjectDescription is the project's configured description, which the
-	// social titles draw on through [DocumentTitle] when the page's own
-	// title is the project name.
-	ProjectDescription string
+	// SiteName is the name of the assembled site this page is published on,
+	// which the social titles carry through [DocumentTitle] exactly as the
+	// head's title element does. Empty is a standalone build.
+	SiteName string
 	// Repo is the repository URL, which the SoftwareSourceCode entity names
 	// as the code repository.
 	Repo string
@@ -148,10 +148,14 @@ func RenderSEOTags(opts SEOOptions) (seoTags string, securityMeta string, err er
 		ub = urls.NewSimpleURLBuilder(opts.BaseURL)
 	}
 	// The social titles carry the document title itself -- the same string
-	// the head's title element renders -- so a page titled with the project
-	// name never publishes the name twice.
-	escapedDocumentTitle := html.EscapeHTML(DocumentTitle(
-		opts.Title, opts.ProjectName, opts.ProjectDescription))
+	// the head's title element renders -- so a crawler reading them records
+	// what a reader sees in the tab.
+	escapedDocumentTitle := html.EscapeHTML(DocumentTitle(DocumentTitleParts{
+		PageTitle:   opts.Title,
+		ProjectName: opts.ProjectName,
+		SiteName:    opts.SiteName,
+		IsIndexPage: opts.PagePath == "index.html",
+	}))
 	escapedProject := html.EscapeHTML(opts.ProjectName)
 
 	// The canonical is the stable address, from every version including the

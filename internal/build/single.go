@@ -147,6 +147,12 @@ type SingleOptions struct {
 	// emits no section at all: a project deployed on its own has no
 	// siblings, and there is nothing to invent them from.
 	Siblings []SiblingProject
+	// SiteName is the name of the assembled site this build's output is
+	// grafted into, which every page's document title ends with. It is
+	// stated by the caller for the same reason Siblings is: a standalone
+	// build has no site around it, states none, and its pages end their
+	// titles at the project.
+	SiteName string
 	// Now supplies the modification date of a page that states none and has
 	// no file behind it. The zero value takes the current time.
 	Now time.Time
@@ -374,6 +380,7 @@ func BuildSingle(opts SingleOptions, h *effects.Handle) (BuildResult, error) {
 	genOpts.Branch = branch
 	genOpts.Branding, _ = cfg["branding"].(map[string]any)
 	genOpts.ConfigDescription = configDescription
+	genOpts.SiteName = opts.SiteName
 	genOpts.AutoDetect, _ = cfg["auto_detect"].(map[string]any)
 	genOpts.ThemeMeta = &themeMeta
 	genOpts.DeployTarget = deployProvider(cfg)

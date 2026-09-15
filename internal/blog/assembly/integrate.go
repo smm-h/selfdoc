@@ -271,6 +271,14 @@ func IntegrateProject(opts IntegrateOptions, h *effects.Handle) (*IntegrateSumma
 		if err != nil {
 			return nil, err
 		}
+		// The site name every built page's title ends with is stated here
+		// for the same reason: it is the assembly's fact, not the
+		// checkout's, and a build handed none titles its pages the way a
+		// standalone deploy does.
+		siteName, err := SiteNameFor(manifestsDir, assemblyDir)
+		if err != nil {
+			return nil, err
+		}
 		if err := BuildSourceProject(BuildOptions{
 			SourceDir:    sourceDir,
 			Scope:        scope,
@@ -278,6 +286,7 @@ func IntegrateProject(opts IntegrateOptions, h *effects.Handle) (*IntegrateSumma
 			ManifestsDir: manifestsDir,
 			Theme:        opts.Theme,
 			Siblings:     siblings,
+			SiteName:     siteName,
 		}, h); err != nil {
 			return nil, err
 		}

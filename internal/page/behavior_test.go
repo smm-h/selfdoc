@@ -789,70 +789,156 @@ func TestInternalLinksUseDirectoryAddresses(t *testing.T) {
 
 // --- The document title the head carries ---
 
-func TestDocumentTitleForAnOrdinaryPage(t *testing.T) {
-	got := DocumentTitle("Guide", "selfdoc", "A generator that builds sites.")
+func TestAnInnerPageTitleIsThePageThenTheProject(t *testing.T) {
+	got := DocumentTitle(DocumentTitleParts{
+		PageTitle: "Guide", ProjectName: "selfdoc",
+	})
 	if got != "Guide - selfdoc" {
 		t.Fatalf("title = %q, want \"Guide - selfdoc\"", got)
 	}
 }
 
-func TestDocumentTitleNeverRepeatsTheProjectName(t *testing.T) {
-	got := DocumentTitle("selfdoc", "selfdoc",
-		"Code-aware static site generator that resolves directive blocks.")
-	if got == "selfdoc - selfdoc" {
-		t.Fatal("a page titled with the project name rendered the name twice")
-	}
-	if got != "selfdoc - Code-aware static site generator" {
-		t.Fatalf("title = %q, want the name followed by the thing the "+
-			"description names", got)
+func TestAnInnerPageOnTheSiteEndsWithTheSiteName(t *testing.T) {
+	got := DocumentTitle(DocumentTitleParts{
+		PageTitle: "Guide", ProjectName: "selfdoc", SiteName: "StrictTools",
+	})
+	if got != "Guide - selfdoc - StrictTools" {
+		t.Fatalf("title = %q, want \"Guide - selfdoc - StrictTools\"", got)
 	}
 }
 
-func TestDocumentTitleWithoutAThatClauseIsTheNameAlone(t *testing.T) {
-	got := DocumentTitle("selfdoc", "selfdoc", "Builds documentation sites.")
+func TestAProjectIndexPageOnTheSiteNamesNoProject(t *testing.T) {
+	got := DocumentTitle(DocumentTitleParts{
+		PageTitle: "rlsbl", ProjectName: "rlsbl", SiteName: "StrictTools",
+		IsIndexPage: true,
+	})
+	if got != "rlsbl - StrictTools" {
+		t.Fatalf("title = %q, want \"rlsbl - StrictTools\"", got)
+	}
+}
+
+func TestAStandaloneIndexPageIsTheWrittenTitleAlone(t *testing.T) {
+	got := DocumentTitle(DocumentTitleParts{
+		PageTitle: "selfdoc", ProjectName: "selfdoc", IsIndexPage: true,
+	})
 	if got != "selfdoc" {
 		t.Fatalf("title = %q, want \"selfdoc\"", got)
 	}
-	if empty := DocumentTitle("selfdoc", "selfdoc", ""); empty != "selfdoc" {
-		t.Fatalf("title with no description = %q, want \"selfdoc\"", empty)
+}
+
+// TestTheHomeProjectNeverRendersItsNameTwice covers the site's own front page
+// and its inner pages: the home project's name IS the site name, so a
+// composition that simply appended both would publish it twice.
+func TestTheHomeProjectNeverRendersItsNameTwice(t *testing.T) {
+	home := DocumentTitle(DocumentTitleParts{
+		PageTitle: "StrictTools", ProjectName: "StrictTools",
+		SiteName: "StrictTools", IsIndexPage: true,
+	})
+	if home != "StrictTools" {
+		t.Fatalf("the site's home page title = %q, want %q",
+			home, "StrictTools")
+	}
+	inner := DocumentTitle(DocumentTitleParts{
+		PageTitle: "About", ProjectName: "StrictTools", SiteName: "StrictTools",
+	})
+	if inner != "About - StrictTools" {
+		t.Fatalf("a home project inner page title = %q, want %q",
+			inner, "About - StrictTools")
 	}
 }
 
-func TestDocumentTitleStaysWithinTheLimit(t *testing.T) {
-	got := DocumentTitle("longproject", "longproject",
-		"A very long and thoroughly overqualified documentation generator "+
-			"for source trees that does many things at once.")
-	if runeCount := len([]rune(got)); runeCount > DocumentTitleLimit {
-		t.Fatalf("title = %q is %d chars, want at most %d",
-			got, runeCount, DocumentTitleLimit)
-	}
-	if !strings.HasPrefix(got, "longproject - ") {
-		t.Fatalf("title = %q must keep the whole project name", got)
-	}
-	if strings.HasSuffix(got, "-") || strings.HasSuffix(got, " ") {
-		t.Fatalf("title = %q must not end mid-separator", got)
-	}
-	for _, word := range strings.Fields(strings.TrimPrefix(got, "longproject - ")) {
-		if !strings.Contains(
-			"A very long and thoroughly overqualified documentation generator "+
-				"for source trees", word) {
-			t.Fatalf("title = %q cut a word in half", got)
+// TestNoDocumentTitleEverRepeatsAName sweeps the compositions a build can
+// produce and asserts none of them writes the same name twice in a row.
+func TestNoDocumentTitleEverRepeatsAName(t *testing.T) {
+	names := []string{"", "alpha", "beta", "StrictTools"}
+	for _, pageTitle := range names {
+		for _, projectName := range names {
+			for _, siteName := range names {
+				for _, isIndex := range []bool{false, true} {
+					got := DocumentTitle(DocumentTitleParts{
+						PageTitle:   pageTitle,
+						ProjectName: projectName,
+						SiteName:    siteName,
+						IsIndexPage: isIndex,
+					})
+					for _, name := range names[1:] {
+						if strings.Contains(got, name+" - "+name) {
+							t.Errorf(
+								"DocumentTitle(%q, %q, %q, index=%v) = %q "+
+									"repeats %q",
+								pageTitle, projectName, siteName, isIndex,
+								got, name)
+						}
+					}
+				}
+			}
 		}
 	}
 }
 
-func TestTheProjectIndexPageTitleNamesWhatTheProjectIs(t *testing.T) {
-	rendered := wrapForTest(t, func(opts *WrapOptions) {
-		opts.Title = "TestProject"
-		opts.ProjectDescription = "A documentation engine that reads source code."
-	})
-	if strings.Contains(rendered, "<title>TestProject - TestProject</title>") {
-		t.Fatal("the index page rendered the project name twice")
+// TestTheTitleIsNeverComposedFromTheDescription holds the ruling that titles
+// are authored text: nothing a project writes in its description reaches the
+// title of any page it publishes.
+func TestTheTitleIsNeverComposedFromTheDescription(t *testing.T) {
+	opts := baseOptions(
+		src("index.md", "# TestProject\n\nWelcome.\n"),
+		src("guide.md", "# Guide\n\nProse.\n"),
+	)
+	opts.ConfigDescription =
+		"A documentation engine that reads source code."
+	files, err := GenerateHTML(opts)
+	if err != nil {
+		t.Fatalf("GenerateHTML: %v", err)
 	}
-	if !strings.Contains(rendered,
-		"<title>TestProject - A documentation engine</title>") {
-		t.Fatalf("the head's title is not the derived one: %s",
-			titleOf(t, rendered))
+	for _, pagePath := range []string{"index.html", "guide/index.html"} {
+		if got := titleOf(t, files[pagePath]); strings.Contains(
+			got, "documentation engine") {
+			t.Errorf("%s title = %q draws on the project description",
+				pagePath, got)
+		}
+	}
+}
+
+// TestTheRenderedTitlesOfAStandaloneBuild asserts the two shapes a project
+// deployed on its own publishes.
+func TestTheRenderedTitlesOfAStandaloneBuild(t *testing.T) {
+	opts := baseOptions(
+		src("index.md", "# Home\n\nWelcome.\n"),
+		src("guide.md", "# Guide\n\nProse.\n"),
+	)
+	files, err := GenerateHTML(opts)
+	if err != nil {
+		t.Fatalf("GenerateHTML: %v", err)
+	}
+	for pagePath, want := range map[string]string{
+		"index.html":       "Home",
+		"guide/index.html": "Guide - TestProject",
+	} {
+		if got := titleOf(t, files[pagePath]); got != want {
+			t.Errorf("%s title = %q, want %q", pagePath, got, want)
+		}
+	}
+}
+
+// TestTheRenderedTitlesOfAnAssembledBuild asserts the two shapes a project
+// mounted on the unified site publishes.
+func TestTheRenderedTitlesOfAnAssembledBuild(t *testing.T) {
+	opts := baseOptions(
+		src("index.md", "# TestProject\n\nWelcome.\n"),
+		src("guide.md", "# Guide\n\nProse.\n"),
+	)
+	opts.SiteName = "StrictTools"
+	files, err := GenerateHTML(opts)
+	if err != nil {
+		t.Fatalf("GenerateHTML: %v", err)
+	}
+	for pagePath, want := range map[string]string{
+		"index.html":       "TestProject - StrictTools",
+		"guide/index.html": "Guide - TestProject - StrictTools",
+	} {
+		if got := titleOf(t, files[pagePath]); got != want {
+			t.Errorf("%s title = %q, want %q", pagePath, got, want)
+		}
 	}
 }
 
@@ -867,20 +953,19 @@ func titleOf(t *testing.T, rendered string) string {
 	return rendered[start+len("<title>") : end]
 }
 
-// TestTheSocialTitlesAreTheDocumentTitle builds a whole project whose index
-// page is titled with the project name and asserts the Open Graph and Twitter
-// Card titles carry what the head's title element carries.
+// TestTheSocialTitlesAreTheDocumentTitle builds a whole project mounted on the
+// site and asserts the Open Graph and Twitter Card titles carry what the
+// head's title element carries.
 //
 // The two social titles used to concatenate the page title and the project
-// name themselves, so the page the document title exists for -- the one whose
-// own title IS the project name -- published "<name> - <name>" to every
-// crawler that reads them.
+// name themselves, so a page titled with the project name published
+// "<name> - <name>" to every crawler that reads them.
 func TestTheSocialTitlesAreTheDocumentTitle(t *testing.T) {
 	opts := baseOptions(
 		src("index.md", "# TestProject\n\nWelcome.\n"),
 		src("guide.md", "# Guide\n\nProse.\n"),
 	)
-	opts.ConfigDescription = "A documentation engine that reads source code."
+	opts.SiteName = "StrictTools"
 	opts.BaseURL = "https://example.com"
 	files, err := GenerateHTML(opts)
 	if err != nil {
@@ -923,22 +1008,4 @@ func metaContentOf(t *testing.T, rendered, attr string) string {
 		t.Fatalf("the <meta %s> content attribute is unterminated", attr)
 	}
 	return rest[:end]
-}
-
-// TestTheDerivedIndexTitleNeverExceedsTheLimit holds the derived form to the
-// same cap the title-length check measures against, for a description long
-// enough that an uncut title would run past it.
-func TestTheDerivedIndexTitleNeverExceedsTheLimit(t *testing.T) {
-	for _, description := range []string{
-		"A code-aware static site generator that builds full documentation " +
-			"sites from Markdown templates and source code.",
-		"An extraordinarily elaborate documentation apparatus that does it all.",
-		"Short that does things.",
-	} {
-		got := DocumentTitle("selfdoc", "selfdoc", description)
-		if runeCount := len([]rune(got)); runeCount > DocumentTitleLimit {
-			t.Errorf("title = %q is %d chars, want at most %d",
-				got, runeCount, DocumentTitleLimit)
-		}
-	}
 }

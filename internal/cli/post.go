@@ -404,10 +404,10 @@ func (c *cli) cmdPostPublish(ctx *strictcli.Context, kwargs map[string]any) stri
 	outputRel := strings.TrimRight(outputDirOf(cfg), "/")
 	outputDir := filepath.Join(dir, outputRel)
 	docsDirName := strings.TrimRight(docsDirOf(cfg), "/")
-	// A local posts build is standalone: it has no assembled site around it
-	// and therefore no siblings to link.
+	// A local posts build is standalone: it has no assembled site around it,
+	// so there are no siblings to link and no site name to end a title with.
 	written, err := build.BuildPostsOnly(dir, cfg, outputDir, docsDirName,
-		filepath.Join(dir, docsDirName), false, nil, handle)
+		filepath.Join(dir, docsDirName), false, nil, "", handle)
 	if err != nil {
 		return c.fail(err)
 	}

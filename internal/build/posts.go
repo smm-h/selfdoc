@@ -271,6 +271,7 @@ func BuildPostsOnly(
 	outputDir, docsDirName, docsDir string,
 	includeDrafts bool,
 	siblings []SiblingProject,
+	siteName string,
 	h *effects.Handle,
 ) (map[string]bool, error) {
 	// The posts are discovered here too, for the manifest: injection calls
@@ -292,7 +293,7 @@ func BuildPostsOnly(
 
 	written, buildErr := buildPostsOnlyBody(
 		dirPath, cfg, outputDir, docsDirName, discovered, injectedPaths,
-		docsDir, siblings, h)
+		docsDir, siblings, siteName, h)
 	if cleanupErr := CleanupInjectedPosts(injectedPaths, docsDir, h); cleanupErr != nil && buildErr == nil {
 		return written, cleanupErr
 	}
@@ -309,6 +310,7 @@ func buildPostsOnlyBody(
 	injectedPaths []string,
 	docsDir string,
 	siblings []SiblingProject,
+	siteName string,
 	h *effects.Handle,
 ) (map[string]bool, error) {
 	if len(injectedPaths) == 0 {
@@ -336,6 +338,7 @@ func buildPostsOnlyBody(
 	opts.DirPath = dirPath
 	opts.PageFilter = pageFilter
 	opts.Siblings = siblings
+	opts.SiteName = siteName
 	result, err := BuildSingle(opts, h)
 	if err != nil {
 		return nil, err

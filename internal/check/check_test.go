@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/smm-h/selfdoc/internal/lints"
 )
 
 // checkFixture runs CheckDocs over a fixture project with no version filter
@@ -504,46 +506,31 @@ func codelessProjectWithDescription(t *testing.T, description string) string {
 	return root
 }
 
-func TestSEO016ForADescriptionWithNoThatClause(t *testing.T) {
-	root := codelessProjectWithDescription(t, "Builds documentation sites.")
-
-	result := checkFixture(t, root)
-
-	matching := withCode(result.Lints, "SEO016")
-	if len(matching) != 1 {
-		t.Fatalf("SEO016 count = %d, want 1: %v", len(matching), codes(result.Lints))
+// TestTheProjectDescriptionIsNotJudgedAgainstATitleForm holds the ruling that
+// a page's title is written text: nothing composes one out of the project
+// description, so the description's shape decides nothing and no lint
+// measures it against a form.
+func TestTheProjectDescriptionIsNotJudgedAgainstATitleForm(t *testing.T) {
+	registry, err := lints.Load()
+	if err != nil {
+		t.Fatalf("lints.Load: %v", err)
 	}
-	if matching[0].Severity() != "warning" {
-		t.Errorf("severity = %q, want warning", matching[0].Severity())
+	if registry.Has("SEO016") {
+		t.Error("the registry still declares a lint on the description's form")
 	}
-	if matching[0].File() != "selfdoc.json" {
-		t.Errorf("file = %q, want selfdoc.json", matching[0].File())
-	}
-	if !strings.Contains(matching[0].Message(), "description") ||
-		!strings.Contains(matching[0].Message(), " that ") {
-		t.Errorf("the message names neither the key nor the form: %q",
-			matching[0].Message())
-	}
-}
-
-func TestSEO016ForAMissingDescription(t *testing.T) {
-	root := codelessProjectWithDescription(t, "")
-
-	result := checkFixture(t, root)
-
-	if !hasCode(result.Lints, "SEO016") {
-		t.Fatalf("SEO016 missing for a project with no description: %v",
-			codes(result.Lints))
-	}
-}
-
-func TestADescriptionWithAThatClauseIsSilent(t *testing.T) {
-	root := codelessProjectWithDescription(t,
-		"Static site generator that builds documentation from source code.")
-
-	result := checkFixture(t, root)
-
-	if hasCode(result.Lints, "SEO016") {
-		t.Error("SEO016 fired for a description written in the expected form")
+	for _, description := range []string{
+		"Builds documentation sites.",
+		"",
+		"Static site generator that builds documentation from source code.",
+	} {
+		root := codelessProjectWithDescription(t, description)
+		result := checkFixture(t, root)
+		for _, lint := range result.Lints {
+			if lint.File() == "selfdoc.json" &&
+				strings.Contains(lint.Message(), " that ") {
+				t.Errorf("description %q drew %s: %q",
+					description, lint.Code(), lint.Message())
+			}
+		}
 	}
 }

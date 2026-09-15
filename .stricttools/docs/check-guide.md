@@ -91,7 +91,6 @@ Every `selfdoc check` invocation runs the whole lint registry: SEO and page stru
 | SEO013 | error | No title source: neither frontmatter `title` nor an H1 heading exists on the page. |
 | SEO014 | warning | Meaningless image alt text (e.g., "image", "screenshot", or a bare filename). Write something descriptive. |
 | SEO015 | warning | Generic anchor text like "click here" or "read more". Use descriptive link text. |
-| SEO016 | warning | The project `description` in selfdoc.json has no ` that ` clause, so the index page's title cannot say what the project is. Write it as "<thing> that <does>". |
 | STALE001 | error | Page content changed but frontmatter description was not updated. Review and update the description. |
 | STALE002 | warning | Manifest and disk disagree: a page or post exists on disk but is missing from `.stricttools/docs-state/manifest.json`, or the manifest lists one that is gone. Run `selfdoc gen`. |
 | DRIFT001 | error | The source docstrings (or CLI schema) a page documents changed while its description did not. Update the description, or run `selfdoc baseline accept <page>` if it is still accurate. |

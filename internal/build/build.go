@@ -50,6 +50,11 @@ type Options struct {
 	// linking them. Empty -- which is what a standalone build passes --
 	// emits no section: a project deployed on its own has no siblings.
 	Siblings []SiblingProject
+	// SiteName is the name of the assembled site this build's output is
+	// grafted into, which every page's document title ends with. Empty --
+	// which is what a standalone build passes -- ends a title at the
+	// project: a project deployed on its own has no site above it.
+	SiteName string
 	// Now supplies the date a page with no date and no file behind it
 	// carries. The zero value takes the current time.
 	Now time.Time
@@ -201,7 +206,7 @@ func Build(opts Options, h *effects.Handle) (map[string]bool, error) {
 	if opts.Target == "posts" {
 		return BuildPostsOnly(
 			opts.DirPath, cfg, outputDir, docsDirName, latestDocsDir,
-			opts.IncludeDrafts, opts.Siblings, h)
+			opts.IncludeDrafts, opts.Siblings, opts.SiteName, h)
 	}
 
 	// The posts are injected into the docs tree so the normal pipeline
@@ -270,6 +275,7 @@ func Build(opts Options, h *effects.Handle) (map[string]bool, error) {
 		partitions:        partitions,
 		sitePages:         sitePages,
 		siblings:          opts.Siblings,
+		siteName:          opts.SiteName,
 		now:               opts.Now,
 		stdout:            stdout,
 	}, h)
@@ -304,6 +310,7 @@ type bodyInputs struct {
 	partitions map[string]Partition
 	sitePages  map[string]bool
 	siblings   []SiblingProject
+	siteName   string
 	now        time.Time
 	stdout     io.Writer
 }
@@ -414,6 +421,7 @@ func buildBody(in bodyInputs, h *effects.Handle) (map[string]bool, error) {
 			singleOpts.VersionOverride = &verStr
 			singleOpts.LocaleOverride = &localeCode
 			singleOpts.Siblings = in.siblings
+			singleOpts.SiteName = in.siteName
 			singleOpts.AvailableVersions = in.versions
 			singleOpts.AvailableLocales = in.locales
 			singleOpts.VersionPages = versionPages[localeCode]
@@ -523,6 +531,7 @@ func buildBody(in bodyInputs, h *effects.Handle) (map[string]bool, error) {
 		uvOpts.VersionOverride = &empty
 		uvOpts.LocaleOverride = &localeCode
 		uvOpts.Siblings = in.siblings
+		uvOpts.SiteName = in.siteName
 		uvOpts.AvailableVersions = in.versions
 		uvOpts.AvailableLocales = in.locales
 		uvOpts.VersionPages = versionPages[localeCode]
@@ -577,6 +586,7 @@ func buildBody(in bodyInputs, h *effects.Handle) (map[string]bool, error) {
 		siteOpts.DirPath = in.dirPath
 		siteOpts.PageFilter = in.sitePages
 		siteOpts.Now = in.now
+		siteOpts.SiteName = in.siteName
 		siteResult, err := BuildSingle(siteOpts, h)
 		if err != nil {
 			return written, err

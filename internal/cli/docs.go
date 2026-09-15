@@ -102,6 +102,7 @@ func (c *cli) cmdPublishDocs(ctx *strictcli.Context, kwargs map[string]any) stri
 			Siblings: build.SiblingsFromManifests(
 				manifests, roster.Home, slug,
 			),
+			SiteName: assembly.SiteName(manifests, roster.Home),
 		}, handle); err != nil {
 			return c.fail(err)
 		}

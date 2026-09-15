@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Page - TestProject</title>
+<title>My Page</title>
 <meta name="description" content="Content here.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,13 +22,13 @@
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "Person", "name": "Test Author", "url": "https://author.example", "sameAs": ["https://github.com/testauthor"]}
 </script>
-<meta property="og:title" content="My Page - TestProject">
+<meta property="og:title" content="My Page">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TestProject">
 <meta property="og:locale" content="en_US">
 <meta property="og:description" content="Content here.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="My Page - TestProject">
+<meta name="twitter:title" content="My Page">
 <meta name="twitter:description" content="Content here.">
 <meta property="og:image" content="None/og-index.png">
 <meta property="og:image:type" content="image/png">

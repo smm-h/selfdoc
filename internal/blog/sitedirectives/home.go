@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/blog/listing"
+	"github.com/smm-h/selfdoc/internal/blog/shared"
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/build"
 	"github.com/smm-h/selfdoc/internal/config"
@@ -140,6 +141,9 @@ func BuildHome(
 		Siblings: build.SiblingsFromManifests(
 			context.Manifests, context.HomeSlug, context.HomeSlug,
 		),
+		// The home project's name is the site's name, so its own pages end
+		// their titles with it exactly as every other project's do.
+		SiteName: siteNameOf(context),
 	}, h)
 	if err != nil {
 		return nil, err
@@ -155,6 +159,18 @@ func BuildHome(
 		return nil, err
 	}
 	return written, nil
+}
+
+// siteNameOf is the name the assembled site goes by, for the titles the home
+// project's pages carry: the home project's own manifest name.
+//
+// A context naming no home project describes no site, so there is no name to
+// end a title with and the pages read as a standalone deploy's.
+func siteNameOf(context SiteContext) string {
+	if context.HomeSlug == "" {
+		return ""
+	}
+	return shared.SiteName(context.Manifests, context.HomeSlug)
 }
 
 // RegisterSiteDirectives returns cfg with registered added to its "directives"

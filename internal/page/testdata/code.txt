@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>API Reference - TestProject</title>
+<title>API Reference</title>
 <meta name="description" content="Load configuration from a file.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,13 +25,13 @@
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "SoftwareSourceCode", "name": "API Reference", "programmingLanguage": ["python", "go"], "codeRepository": "https://github.com/user/repo"}
 </script>
-<meta property="og:title" content="API Reference - TestProject">
+<meta property="og:title" content="API Reference">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TestProject">
 <meta property="og:locale" content="en_US">
 <meta property="og:description" content="Load configuration from a file.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="API Reference - TestProject">
+<meta name="twitter:title" content="API Reference">
 <meta name="twitter:description" content="Load configuration from a file.">
 <meta property="og:image" content="None/og-index.png">
 <meta property="og:image:type" content="image/png">

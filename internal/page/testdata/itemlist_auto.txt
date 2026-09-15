@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Many - TestProject</title>
+<title>Many</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,12 +24,12 @@
 <script type="application/ld+json">
 {"@context": "https://schema.org", "@type": "ItemList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "one"}, {"@type": "ListItem", "position": 2, "name": "two"}, {"@type": "ListItem", "position": 3, "name": "three"}, {"@type": "ListItem", "position": 4, "name": "four"}, {"@type": "ListItem", "position": 5, "name": "five"}, {"@type": "ListItem", "position": 6, "name": "six"}]}
 </script>
-<meta property="og:title" content="Many - TestProject">
+<meta property="og:title" content="Many">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TestProject">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Many - TestProject">
+<meta name="twitter:title" content="Many">
 <meta property="og:image" content="None/og-index.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">

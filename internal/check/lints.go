@@ -99,6 +99,20 @@ func normalizeDQ(text string) string {
 	return strings.Join(kept, " ")
 }
 
+// isIndexTemplate reports whether a docs template is the one the build renders
+// as the project's index page: "index.md" at the root of what a locale serves.
+//
+// A project declaring a locale keeps its templates under that locale's own
+// segment, so the segment is stripped before the name is read. A page named
+// "index.md" anywhere deeper is an ordinary page: the build gives it its own
+// directory rather than the mount root.
+func isIndexTemplate(relPath, localePrefix string) bool {
+	if localePrefix != "" {
+		relPath = strings.TrimPrefix(relPath, localePrefix+"/")
+	}
+	return relPath == "index.md"
+}
+
 // runLints runs every page-level lint rule over a set of documentation
 // templates and returns the diagnostics in rule order.
 //
@@ -134,9 +148,10 @@ func runLints(
 		return nil, err
 	}
 	projectName := filepath.Base(projectRoot)
-	// The project name and description the page wrapper is handed, so the
-	// title rule measures the string the build really renders.
-	projectDescription := configString(config, "description", "")
+	// The locale segment a page's template path carries, which is what tells
+	// the project's index template apart from a page named "index.md" inside
+	// a subdirectory.
+	localePrefix := localePrefixOf(config)
 
 	// EXAMPLE002/EXAMPLE003 -- validator command templates keyed by fenced
 	// language. An absent config means the feature is off, which turns
@@ -236,10 +251,13 @@ func runLints(
 
 		// SEO004 -- the document title this page renders is too long.
 		//
-		// What renders is not the page's own title: the wrapper derives it,
-		// and a page titled with the project name renders something else
-		// entirely. The rule therefore measures what [page.DocumentTitle]
-		// produces, so no page is reported for a length it never carries.
+		// What renders is not the page's own title: the wrapper composes it
+		// out of the page title and the names of what publishes the page.
+		// The rule therefore measures what [page.DocumentTitle] produces, so
+		// no page is reported for a length it never carries. It measures the
+		// standalone composition, which is what a checkout can answer: the
+		// name of an assembled site is the assembly's fact, recorded in the
+		// home project's manifest, and no project's own tree holds it.
 		pageTitle := ""
 		titleValue, titlePresent := metadata["title"]
 		switch {
@@ -249,8 +267,11 @@ func runLints(
 			pageTitle = h1Tokens[0].Text
 		}
 		if pageTitle != "" {
-			rendered := page.DocumentTitle(
-				pageTitle, projectName, projectDescription)
+			rendered := page.DocumentTitle(page.DocumentTitleParts{
+				PageTitle:   pageTitle,
+				ProjectName: projectName,
+				IsIndexPage: isIndexTemplate(relPath, localePrefix),
+			})
 			if runeLen(rendered) > page.DocumentTitleLimit {
 				results = append(results, lints.MustLintResult(
 					relPath, nil, "SEO004",

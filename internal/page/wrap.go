@@ -48,10 +48,10 @@ type WrapOptions struct {
 	Title string
 	// ProjectName is the project's name, shown as the sidebar's wordmark.
 	ProjectName string
-	// ProjectDescription is the project's configured description, which the
-	// document title draws on when the page's own title is the project
-	// name.
-	ProjectDescription string
+	// SiteName is the name of the assembled site this page is published on,
+	// which the document title ends with. Empty is a standalone build: a
+	// project deployed on its own has no site above it.
+	SiteName string
 	// Version is the version shown on the badge, "" for no badge.
 	Version string
 	// CSSHref is where this page's stylesheet is, relative to the page.
@@ -177,79 +177,62 @@ type WrapOptions struct {
 	CurrentLocale string
 }
 
-// DocumentTitleLimit is the longest a document title may be: a search engine
-// displays about 50 to 60 characters of one and cuts the rest, so a derived
-// title does its own cutting at a word boundary instead, and the check that
-// measures a page's title holds every page to the same number.
+// DocumentTitleLimit is the longest a document title should be: a search
+// engine displays about 50 to 60 characters of one and cuts the rest, and the
+// check that measures a page's title holds every page to that number.
 const DocumentTitleLimit = 60
 
-// thatClause is what separates the thing a project IS from what it DOES in a
-// project description, which is written in the form "<thing> that <does>".
-const thatClause = " that "
+// documentTitleSeparator joins the written values a document title is made of.
+const documentTitleSeparator = " - "
 
-// DocumentTitle is what a page's <title> element carries.
+// DocumentTitleParts are the written values a page's <title> is composed of.
 //
-// An ordinary page's title is "<page title> - <project name>". A page whose
-// own title IS the project name -- the project index page, and any page
-// titled with the name -- would otherwise render the name twice, which tells
-// a reader and a search engine nothing about the project, so its title
-// becomes "<project name> - <thing>": the part of the project's description
-// before its " that " clause. A description carrying no such clause, or no
-// description at all, leaves the project name alone as the whole title.
-//
-// The derived form is held to [DocumentTitleLimit] characters, cut at a word
-// boundary. The project name is never cut: when not even one word of the
-// thing fits beside it, the name alone is the title.
-func DocumentTitle(title, projectName, projectDescription string) string {
-	title = strings.TrimSpace(title)
-	projectName = strings.TrimSpace(projectName)
-	if projectName == "" {
-		return title
-	}
-	if title == "" {
-		return projectName
-	}
-	if title != projectName {
-		return title + " - " + projectName
-	}
-
-	thing := strings.TrimSpace(projectDescription)
-	clauseAt := strings.Index(thing, thatClause)
-	if clauseAt < 0 {
-		return projectName
-	}
-	thing = trimTitleTail(thing[:clauseAt])
-	budget := DocumentTitleLimit - len([]rune(projectName)) - len([]rune(" - "))
-	thing = cutAtWord(thing, budget)
-	if thing == "" || thing == projectName {
-		return projectName
-	}
-	return projectName + " - " + thing
+// Every one of them is text somebody wrote -- a page's frontmatter title, a
+// project's declared name, a site's declared name. Nothing here is cut out of
+// another field.
+type DocumentTitleParts struct {
+	// PageTitle is the page's own written title.
+	PageTitle string
+	// ProjectName is the name of the project that publishes the page. An
+	// index page leaves it out; see [DocumentTitle].
+	ProjectName string
+	// SiteName is the name of the assembled site that publishes the project.
+	// Empty is a standalone build, which has no site above it.
+	SiteName string
+	// IsIndexPage marks the project's own front page.
+	IsIndexPage bool
 }
 
-// cutAtWord shortens text to at most limit runes without cutting a word in
-// half. Text with no word boundary below the limit shortens to nothing, which
-// is what makes the project name alone the answer.
-func cutAtWord(text string, limit int) string {
-	if limit <= 0 {
-		return ""
+// DocumentTitle is what a page's <title> element carries: the written values
+// in [DocumentTitleParts], joined with " - ".
+//
+// The page's own title comes first, then the project that publishes it, then
+// the site that publishes the project. An empty name is left out, and a name
+// equal to the one before it is written once, so no title ever renders
+// "X - X".
+//
+// An index page names no project. It IS the project's front page, and its
+// written title already says which project a reader arrived at, so only the
+// site name follows it -- and on a standalone build, where there is no site
+// name, the written title stands alone.
+func DocumentTitle(parts DocumentTitleParts) string {
+	written := []string{strings.TrimSpace(parts.PageTitle)}
+	if !parts.IsIndexPage {
+		written = append(written, strings.TrimSpace(parts.ProjectName))
 	}
-	runes := []rune(text)
-	if len(runes) <= limit {
-		return text
-	}
-	cut := string(runes[:limit])
-	lastSpace := strings.LastIndex(cut, " ")
-	if lastSpace < 0 {
-		return ""
-	}
-	return trimTitleTail(cut[:lastSpace])
-}
+	written = append(written, strings.TrimSpace(parts.SiteName))
 
-// trimTitleTail drops the whitespace and the dangling punctuation a cut can
-// leave at the end of a title.
-func trimTitleTail(text string) string {
-	return strings.TrimRight(strings.TrimSpace(text), " ,;:-")
+	kept := make([]string, 0, len(written))
+	for _, value := range written {
+		if value == "" {
+			continue
+		}
+		if len(kept) > 0 && kept[len(kept)-1] == value {
+			continue
+		}
+		kept = append(kept, value)
+	}
+	return strings.Join(kept, documentTitleSeparator)
 }
 
 // WrapPage wraps a converted body in the full HTML document.
@@ -328,30 +311,30 @@ func WrapPage(opts WrapOptions) (string, error) {
 	bodyHTML := meta.bodyHTML
 
 	seoTags, securityMeta, err := RenderSEOTags(SEOOptions{
-		Title:              opts.Title,
-		BaseURL:            opts.BaseURL,
-		URLBuilder:         opts.URLBuilder,
-		PagePath:           opts.PagePath,
-		Description:        opts.Description,
-		BodyHTML:           bodyHTML,
-		Author:             opts.Author,
-		ProjectName:        opts.ProjectName,
-		ProjectDescription: opts.ProjectDescription,
-		Repo:               opts.Repo,
-		DatePublished:      opts.DatePublished,
-		DateModified:       opts.DateModified,
-		Lang:               opts.Lang,
-		Breadcrumbs:        opts.Breadcrumbs,
-		Schema:             opts.Schema,
-		PageType:           opts.PageType,
-		SchemaTypes:        opts.SchemaTypes,
-		PageTags:           opts.PageTags,
-		TwitterSite:        opts.TwitterSite,
-		DeployTarget:       opts.DeployTarget,
-		AvailableLocales:   opts.AvailableLocales,
-		MountLocale:        opts.MountLocale,
-		MountProject:       opts.MountProject,
-		MountVersion:       opts.MountVersion,
+		Title:            opts.Title,
+		BaseURL:          opts.BaseURL,
+		URLBuilder:       opts.URLBuilder,
+		PagePath:         opts.PagePath,
+		Description:      opts.Description,
+		BodyHTML:         bodyHTML,
+		Author:           opts.Author,
+		ProjectName:      opts.ProjectName,
+		SiteName:         opts.SiteName,
+		Repo:             opts.Repo,
+		DatePublished:    opts.DatePublished,
+		DateModified:     opts.DateModified,
+		Lang:             opts.Lang,
+		Breadcrumbs:      opts.Breadcrumbs,
+		Schema:           opts.Schema,
+		PageType:         opts.PageType,
+		SchemaTypes:      opts.SchemaTypes,
+		PageTags:         opts.PageTags,
+		TwitterSite:      opts.TwitterSite,
+		DeployTarget:     opts.DeployTarget,
+		AvailableLocales: opts.AvailableLocales,
+		MountLocale:      opts.MountLocale,
+		MountProject:     opts.MountProject,
+		MountVersion:     opts.MountVersion,
 	})
 	if err != nil {
 		return "", err
@@ -460,9 +443,12 @@ func WrapPage(opts WrapOptions) (string, error) {
 	b.WriteString("<head>\n")
 	b.WriteString("<meta charset=\"UTF-8\">\n")
 	b.WriteString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
-	b.WriteString("<title>" + html.EscapeHTML(DocumentTitle(
-		opts.Title, opts.ProjectName, opts.ProjectDescription)) +
-		"</title>" + meta.descriptionTag + "\n")
+	b.WriteString("<title>" + html.EscapeHTML(DocumentTitle(DocumentTitleParts{
+		PageTitle:   opts.Title,
+		ProjectName: opts.ProjectName,
+		SiteName:    opts.SiteName,
+		IsIndexPage: opts.PagePath == "index.html",
+	})) + "</title>" + meta.descriptionTag + "\n")
 	b.WriteString("<link rel=\"icon\" type=\"image/svg+xml\" href=\"" +
 		opts.AssetPrefix + "favicon.svg\">\n")
 	b.WriteString(meta.fontTags)

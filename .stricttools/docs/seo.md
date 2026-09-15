@@ -39,9 +39,11 @@ If you omit `description`, selfdoc auto-extracts the first sentence from the pag
 
 ### The document title
 
-A page's `<title>` is its own title followed by the project name, as in `Deployment - selfdoc`. The index page is titled with the project name and would otherwise render it twice, which tells a reader and a search engine nothing, so that page's title names the project and then says what it is.
+A page's `<title>` is composed of written values only: the page's own title, then the name of the project that publishes it, then the name of the site that publishes the project. Nothing in it is cut out of another field. A name that is empty is left out, and a name equal to the one before it is written once, so no title renders `X - X`.
 
-What it is comes from `description` in `selfdoc.json`: the part before its ` that ` clause, cut at a word boundary so the whole title stays at most 60 characters -- about what a search result displays, and the same cap `selfdoc check` holds every page's title to under SEO004. A description with no such clause leaves the project name alone as the title, and `selfdoc check` reports SEO016.
+On a project deployed on its own there is no site above it, so an inner page renders `Deployment - selfdoc` and the index page renders its written title alone. On the unified site, the same inner page renders `Deployment - selfdoc - StrictTools` and the project's index page renders `selfdoc - StrictTools` -- the index page names no project, because it is the project's front page and its own title already says which project a reader arrived at.
+
+`og:title` and `twitter:title` carry the same string the `<title>` element does. The JSON-LD headline stays the page's own written title. `selfdoc check` measures the rendered title under SEO004 and warns past 60 characters, about what a search result displays.
 
 ### Author metadata
 

@@ -218,6 +218,12 @@ func PreviewAssembly(
 			if siblingsErr != nil {
 				return nil, siblingsErr
 			}
+			siteName, siteNameErr := assembly.SiteNameFor(
+				manifestsDir, outDir,
+			)
+			if siteNameErr != nil {
+				return nil, siteNameErr
+			}
 			if buildErr := assembly.BuildSourceProject(assembly.BuildOptions{
 				SourceDir:    item.sourceDir,
 				Scope:        "full",
@@ -225,6 +231,7 @@ func PreviewAssembly(
 				ManifestsDir: manifestsDir,
 				Theme:        theme,
 				Siblings:     siblings,
+				SiteName:     siteName,
 			}, handle); buildErr != nil {
 				return nil, buildErr
 			}
