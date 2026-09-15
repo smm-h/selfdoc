@@ -1158,6 +1158,11 @@
         },
         {
           "level": 4,
+          "text": "`list-lints`",
+          "anchor": "list-lints"
+        },
+        {
+          "level": 4,
           "text": "`var`",
           "anchor": "var"
         },
@@ -4805,6 +4810,11 @@
         },
         {
           "level": 3,
+          "text": "`ResolveListLints`",
+          "anchor": "resolvelistlints"
+        },
+        {
+          "level": 3,
           "text": "`ResolveListModules`",
           "anchor": "resolvelistmodules"
         },
@@ -5225,6 +5235,16 @@
           "level": 3,
           "text": "`ValidNames`",
           "anchor": "validnames"
+        },
+        {
+          "level": 3,
+          "text": "`Roots`",
+          "anchor": "roots"
+        },
+        {
+          "level": 3,
+          "text": "`FindPage`",
+          "anchor": "findpage"
         },
         {
           "level": 3,
@@ -10625,6 +10645,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-15T21:22:19.269097+00:00",
+  "last_gen": "2026-09-15T21:52:55.931300+00:00",
   "theme": "minimal"
 }

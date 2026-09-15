@@ -93,6 +93,7 @@ Self-closing directives use `:-:`. Block directives that wrap a body use `:<:` t
 | `cv` | Render a curriculum vitae declared in a TOML document, plus the Person it states |
 | `list-crawlers` | List of the crawlers the generated robots.txt allows |
 | `list-glossary` | Definition list from **Term**: Definition lines |
+| `list-lints` | Table of every lint code selfdoc can emit, with its severity |
 | `list-modules` | List source modules with file paths and docstring summaries |
 | `list-tree` | File/directory tree listing |
 | `prose-desc` | Extract module/package docstring as prose text |
