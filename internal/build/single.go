@@ -427,10 +427,10 @@ func BuildSingle(opts SingleOptions, h *effects.Handle) (BuildResult, error) {
 		if mount != "" {
 			pagePath = outputKey[len(mount)+1:]
 		}
-		htmlFiles[outputKey] = withSiblings(
+		htmlFiles[outputKey] = WithRefreshedSiblings(
 			AddImageDimensions(
 				htmlFiles[outputKey], docsDir, html.HTMLToMdPath(pagePath)),
-			outputKey, opts.Siblings)
+			siteRootHop(outputKey), opts.Siblings)
 	}
 
 	navItems := page.BuildNav(markdownFiles, frontmatter, unversionedPages, opts.UnversionedFrontmatter)

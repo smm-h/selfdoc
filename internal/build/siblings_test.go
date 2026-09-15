@@ -212,3 +212,99 @@ func TestSiblingsFromManifestsDropsTheHomeProjectAndTheProjectItself(t *testing.
 		t.Errorf("the home project's siblings = %+v, want alpha and beta", home)
 	}
 }
+
+// siblingsFooterPage is a page shaped the way a built page is, with the block
+// where the build writes it when one is given.
+func siblingsFooterPage(block string) string {
+	page := "<html><body><article><p>body</p></article>\n"
+	if block != "" {
+		page += block + "\n"
+	}
+	return page + `<footer class="site-footer"><p>footer</p></footer></body></html>`
+}
+
+func TestWithRefreshedSiblingsReplacesTheBlockAPageAlreadyCarries(t *testing.T) {
+	// What the assembly's refresh pass rests on: the block is found and
+	// replaced in place, so a page keeps one block whatever it arrived with.
+	stale := renderSiblings(threeSiblings(), "../")
+	page := siblingsFooterPage(stale)
+	refreshed := WithRefreshedSiblings(page, "../", []SiblingProject{
+		{Slug: "alpha", Name: "Alpha", Description: "Does the alpha thing."},
+	})
+	if strings.Count(refreshed, SiblingsBlockStart) != 1 {
+		t.Fatalf("the page carries %d block(s):\n%s",
+			strings.Count(refreshed, SiblingsBlockStart), refreshed)
+	}
+	for _, gone := range []string{"gamma/", "Gamma", "beta/", "Beta"} {
+		if strings.Contains(refreshed, gone) {
+			t.Errorf("the replaced block still names %q:\n%s", gone, refreshed)
+		}
+	}
+	if !strings.Contains(refreshed, `href="../alpha/"`) {
+		t.Errorf("the replaced block does not name the current sibling:\n%s", refreshed)
+	}
+	if want := siblingsFooterPage(renderSiblings([]SiblingProject{
+		{Slug: "alpha", Name: "Alpha", Description: "Does the alpha thing."},
+	}, "../")); refreshed != want {
+		t.Errorf("the page reads\n%s\nwant\n%s", refreshed, want)
+	}
+}
+
+func TestWithRefreshedSiblingsIsIdempotent(t *testing.T) {
+	siblings := threeSiblings()
+	once := WithRefreshedSiblings(siblingsFooterPage(""), "../", siblings)
+	twice := WithRefreshedSiblings(once, "../", siblings)
+	if once != twice {
+		t.Errorf("a second refresh moved the page:\n%s\nwas\n%s", twice, once)
+	}
+}
+
+func TestWithRefreshedSiblingsRemovesTheBlockWhenNothingIsLeftToList(t *testing.T) {
+	page := siblingsFooterPage(renderSiblings(threeSiblings(), "../"))
+	stripped := WithRefreshedSiblings(page, "../", nil)
+	if want := siblingsFooterPage(""); stripped != want {
+		t.Errorf("the stripped page reads\n%s\nwant\n%s", stripped, want)
+	}
+}
+
+func TestWithRefreshedSiblingsLeavesAFooterlessFragmentAlone(t *testing.T) {
+	// The block ends a page's main column. A fragment with no footer is not a
+	// page, and nothing is written onto it.
+	fragment := "<p>not a page</p>"
+	if got := WithRefreshedSiblings(fragment, "../", threeSiblings()); got != fragment {
+		t.Errorf("a footerless fragment was written onto: %s", got)
+	}
+}
+
+func TestSiblingsBlockRangeFindsTheBlockAndNothingElse(t *testing.T) {
+	block := renderSiblings(threeSiblings(), "../")
+	page := "<section class=\"hero\"><p>hero</p></section>\n" + siblingsFooterPage(block)
+	start, end, carries := SiblingsBlockRange(page)
+	if !carries {
+		t.Fatalf("the block was not found in:\n%s", page)
+	}
+	if got := page[start:end]; got != block {
+		t.Errorf("the range covers\n%s\nwant\n%s", got, block)
+	}
+	if _, _, carries := SiblingsBlockRange(siblingsFooterPage("")); carries {
+		t.Error("a page with no block was reported as carrying one")
+	}
+	// An opened block that is never closed cannot be spliced, and a truncated
+	// page is not one to write a second block onto either.
+	if _, _, carries := SiblingsBlockRange(SiblingsBlockStart + "<ul>"); carries {
+		t.Error("an unclosed block was reported as carrying a range")
+	}
+}
+
+func TestTheRenderedBlockCloseIsTheFirstOneAfterItsOpen(t *testing.T) {
+	// The end marker is found by scanning forward from the start, which only
+	// answers the block's own close because the rendering nests no section.
+	block := renderSiblings(threeSiblings(), "../")
+	if got := strings.Count(block, SiblingsBlockEnd); got != 1 {
+		t.Errorf("the block carries %d closing tag(s), so the end marker is "+
+			"no longer the first one after the start:\n%s", got, block)
+	}
+	if got := strings.Count(block, "<section"); got != 1 {
+		t.Errorf("the block nests a section:\n%s", block)
+	}
+}

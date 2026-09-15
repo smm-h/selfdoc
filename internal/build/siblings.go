@@ -32,6 +32,25 @@ type SiblingProject struct {
 // the last thing in the page's main column, so the block ends the body.
 const footerOpen = "<footer class=\"site-footer\">"
 
+// SiblingsBlockStart and SiblingsBlockEnd delimit the block on a built page.
+//
+// They are markers rather than an internal detail of the rendering because the
+// block is not only written: the assembly regenerates it in place on pages
+// earlier deploys wrote (see [WithRefreshedSiblings]), and finding it is what
+// that needs. The section element itself carries the markers -- an element
+// already on every page the block was ever written on, back to the first one
+// -- so a page published under any earlier toolchain is found by the same
+// rule as a page published today.
+//
+// The start is the whole opening tag, which one page carries at most one of.
+// The end is the closing tag of that element; the rendering below nests no
+// section inside the block, so the first one after the opening tag closes it.
+const (
+	SiblingsBlockStart = `<section class="sibling-projects" ` +
+		`data-pagefind-ignore aria-labelledby="sibling-projects-heading">`
+	SiblingsBlockEnd = "</section>"
+)
+
 // renderSiblings is the sibling section, or "" when there is nothing to list.
 //
 // siteHop is the rendering page's hop back to the site root, so every link is
@@ -59,7 +78,7 @@ func renderSiblings(siblings []SiblingProject, siteHop string) string {
 	})
 
 	parts := []string{
-		`<section class="sibling-projects" data-pagefind-ignore aria-labelledby="sibling-projects-heading">`,
+		SiblingsBlockStart,
 		`<h2 id="sibling-projects-heading">` + SiblingsHeading + "</h2>",
 		"<ul>",
 	}
@@ -75,7 +94,7 @@ func renderSiblings(siblings []SiblingProject, siteHop string) string {
 		}
 		parts = append(parts, line+"</li>")
 	}
-	parts = append(parts, "</ul>", "</section>")
+	parts = append(parts, "</ul>", SiblingsBlockEnd)
 	return strings.Join(parts, "\n")
 }
 
@@ -94,22 +113,66 @@ func siteRootHop(outputKey string) string {
 	return strings.Repeat("../", depth)
 }
 
-// withSiblings is pageHTML with the sibling block written in front of the page
-// footer, or pageHTML unchanged when there is nothing to write.
+// SiblingsBlockRange is the half-open byte range the sibling block occupies in
+// pageHTML, and reports whether the page carries one at all.
 //
-// A page with no footer element is left alone: the wrapper writes one on every
-// page it builds, and a fragment that has none is not a page this block
-// belongs at the end of.
-func withSiblings(pageHTML, outputKey string, siblings []SiblingProject) string {
-	block := renderSiblings(siblings, siteRootHop(outputKey))
+// A page whose block is opened and never closed is reported as carrying none:
+// nothing can be spliced out of a range with no end, and a truncated page is
+// not one to write a second block onto either.
+func SiblingsBlockRange(pageHTML string) (int, int, bool) {
+	start := strings.Index(pageHTML, SiblingsBlockStart)
+	if start < 0 {
+		return 0, 0, false
+	}
+	after := start + len(SiblingsBlockStart)
+	closed := strings.Index(pageHTML[after:], SiblingsBlockEnd)
+	if closed < 0 {
+		return 0, 0, false
+	}
+	return start, after + closed + len(SiblingsBlockEnd), true
+}
+
+// WithRefreshedSiblings is pageHTML carrying the sibling block rendered for
+// siblings at siteHop, whatever it carried before.
+//
+// This is the whole splice, in one place, because two callers need it: the
+// build, which writes the block onto a page that has none, and the assembly's
+// refresh pass, which regenerates it on pages earlier deploys wrote. The
+// assembly is never rebuilt whole -- a project's subtree is replaced only when
+// that project deploys -- so a block naming the membership of the day it was
+// written outlives that membership on every other project's pages, and links a
+// retired project's address until something rewrites it in place.
+//
+// The three cases:
+//
+//   - The page carries a block: it is replaced by the rendered one, which is
+//     what makes the pass idempotent -- the same inputs render the same bytes.
+//   - The page carries none: the block is written in front of the page footer,
+//     the position the build writes it at. A page with no footer element is
+//     left alone -- the wrapper writes one on every page it builds, and a
+//     fragment that has none is not a page this block belongs at the end of.
+//   - There is nothing to list: an existing block is removed, footer and all
+//     else untouched, and no block is written.
+func WithRefreshedSiblings(pageHTML, siteHop string, siblings []SiblingProject) string {
+	block := renderSiblings(siblings, siteHop)
+	start, end, carries := SiblingsBlockRange(pageHTML)
+	if !carries {
+		if block == "" {
+			return pageHTML
+		}
+		at := strings.Index(pageHTML, footerOpen)
+		if at < 0 {
+			return pageHTML
+		}
+		return pageHTML[:at] + block + "\n" + pageHTML[at:]
+	}
+	rest := pageHTML[end:]
 	if block == "" {
-		return pageHTML
+		// The newline the block was written with goes with it, so removing
+		// and re-adding a block leaves the page byte-identical.
+		return pageHTML[:start] + strings.TrimPrefix(rest, "\n")
 	}
-	at := strings.Index(pageHTML, footerOpen)
-	if at < 0 {
-		return pageHTML
-	}
-	return pageHTML[:at] + block + "\n" + pageHTML[at:]
+	return pageHTML[:start] + block + rest
 }
 
 // SiblingsFromManifests is the sibling list for one project, read off the
