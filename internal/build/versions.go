@@ -97,10 +97,19 @@ func ExtractVersionContent(version string, config map[string]any, baseDir string
 	// them carries none: asking git archive for a path the tag does not
 	// hold is an error, so the path is named only when the tag holds it.
 	//
-	// The ownership declaration travels with them: the extracted checkout is
+	// The ownership manifests travel with them: the extracted checkout is
 	// built like any other repository, and creating its output directory
-	// needs the row that permits it.
-	for _, optional := range []string{layout.GeneratedPagesRel, layout.Root + "/" + layout.OwnersFileName} {
+	// needs the manifest that permits it. A manifest already inside an
+	// archived path -- the docs directory's own -- is not named twice.
+	optionalPaths := []string{layout.GeneratedPagesRel}
+	for _, claimed := range layout.Declared() {
+		manifestPath := layout.DirectoryManifestRel(claimed.Name)
+		if strings.HasPrefix(manifestPath, docsPath+"/") {
+			continue
+		}
+		optionalPaths = append(optionalPaths, manifestPath)
+	}
+	for _, optional := range optionalPaths {
 		inTag, err := pathInTag(tagName, optional, baseDir, h)
 		if err != nil {
 			return "", err

@@ -104,8 +104,8 @@ func TestGenerateDataWithNoScriptsCreatesNothing(t *testing.T) {
 	if _, err := GenerateData(map[string]any{}, base, effects.Unbound()); err != nil {
 		t.Fatalf("GenerateData: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(base, ".stricttools", "docs-state")); !os.IsNotExist(err) {
-		t.Errorf("the generated-state directory exists after a run with no scripts (stat err = %v)", err)
+	if _, err := os.Stat(filepath.Join(base, ".stricttools", "docs-state", "data")); !os.IsNotExist(err) {
+		t.Errorf("the data directory exists after a run with no scripts (stat err = %v)", err)
 	}
 }
 
@@ -593,7 +593,7 @@ func TestGenerateDataUnderPreview(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(base, "ran")); !os.IsNotExist(err) {
 		t.Errorf("the recorded sandbox ran anyway (stat err = %v)", err)
 	}
-	if _, err := os.Stat(filepath.Join(base, ".stricttools", "docs-state")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(base, ".stricttools", "docs-state", "data")); !os.IsNotExist(err) {
 		t.Errorf("the output directory was created in a preview (stat err = %v)", err)
 	}
 	log := app.EffectLog()

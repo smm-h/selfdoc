@@ -10,11 +10,13 @@
 //
 // # Ownership
 //
-// Every directory under [Root] has exactly one owner tool, declared in
-// [OwnersFileName]. A row is the permission to create: [EnsureDir] refuses to
-// create a directory no row assigns to selfdoc, naming the row to add. Reading
-// and writing are open to anyone; the owner decides whether what was written is
-// acceptable, which is what [Validate] answers.
+// Every directory under [Root] has exactly one owner tool, declared in the
+// [ManifestFileName] the directory itself carries. The manifest is the
+// permission to write: [EnsureDir] refuses a directory whose manifest does not
+// name selfdoc, printing the file and the line to put in it, and selfdoc never
+// writes one itself. A manifest is also what makes a directory with no content
+// yet exist in git. Reading and writing are open to anyone; the owner decides
+// whether what was written is acceptable, which is what [Validate] answers.
 //
 // # Sides
 //
@@ -28,16 +30,21 @@
 //
 // git needs one file inside [Root] to keep the uncommitted directories out of
 // the repository. It is derived, at [Root]/[IgnoreFileName], from the
-// commitment each tool declares. selfdoc owns only the block between its two
-// marker comments and leaves every other line of that file alone, so several
-// tools can write their own blocks into one file.
+// commitment each tool declares: an uncommitted directory's contents are
+// ignored and its manifest is not, so the permission travels with the
+// repository while the contents do not. selfdoc owns only the block between
+// its two marker comments and leaves every other line of that file alone, so
+// several tools can write their own blocks into one file.
 package layout
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/smm-h/selfdoc/internal/effects"
@@ -47,16 +54,24 @@ import (
 // relative to the repository root.
 const Root = ".stricttools"
 
-// Owner is the name selfdoc is declared under in the owners file.
+// Owner is the name selfdoc is declared under in a directory's manifest.
 const Owner = "selfdoc"
 
-// OwnersFileName is the ownership declaration inside [Root].
-const OwnersFileName = "OWNERS.csv"
+// ManifestFileName is the ownership declaration a directory under [Root]
+// carries, inside the directory it speaks for.
+const ManifestFileName = "manifest.toml"
 
-// OwnersHeader is the first line every owners file carries. The file is read
-// with a header, always, so a reader never has to guess whether its first line
-// is a row.
-const OwnersHeader = "directory,owner"
+// OwnerKey is the one key a manifest declares. The generated validator refuses
+// a manifest carrying any other key.
+const OwnerKey = "owner"
+
+// The schema's format-version gate, which [ReadDirectoryManifest] supplies
+// rather than the file. A manifest that declares it itself is refused, so the
+// key has exactly one author and a manifest on disk stays one line long.
+const (
+	formatVersionKey      = "format_version"
+	manifestFormatVersion = SchemaFormatVersion
+)
 
 // IgnoreFileName is the derived ignore file inside [Root], and the one entry
 // there allowed to start with a dot.
@@ -159,12 +174,6 @@ type Directory struct {
 	// spelled relative to the repository root. A repository that still has
 	// one of them is refused.
 	DeprecatedNames []string
-	// CreatedByTool is whether selfdoc creates this directory itself once a
-	// row permits it. A directory it never creates is one whose content a
-	// person writes first, so its row is added when that content arrives:
-	// git carries no empty directory, and a row naming one that does not
-	// exist fails [Validate].
-	CreatedByTool bool
 }
 
 // declared is the whole claim, in the order a dump prints it.
@@ -175,7 +184,6 @@ var declared = []Directory{
 		Commitment:      Committed,
 		Description:     "The pages a person writes, the underscore-prefixed templates they include, and the docs configuration that sits beside them.",
 		DeprecatedNames: []string{"docs/"},
-		CreatedByTool:   true,
 	},
 	{
 		Name:            DocsStateName,
@@ -183,7 +191,6 @@ var declared = []Directory{
 		Commitment:      Committed,
 		Description:     "What selfdoc generates and the repository keeps: the manifests, the hash baselines, the post revisions, the generated data files, and the generated pages.",
 		DeprecatedNames: []string{".selfdoc/"},
-		CreatedByTool:   true,
 	},
 	{
 		Name:            DocsCacheName,
@@ -191,7 +198,6 @@ var declared = []Directory{
 		Commitment:      Uncommitted,
 		Description:     "What selfdoc generates and the repository throws away: the built site and one extracted checkout per archived version.",
 		DeprecatedNames: []string{"docs/_build/", ".selfdoc/cache/"},
-		CreatedByTool:   true,
 	},
 	{
 		Name:            PostsName,
@@ -199,7 +205,6 @@ var declared = []Directory{
 		Commitment:      Committed,
 		Description:     "The project's blog posts.",
 		DeprecatedNames: []string{".selfdoc/posts/"},
-		CreatedByTool:   true,
 	},
 	{
 		Name:            VocabularyName,
@@ -254,132 +259,123 @@ func FunctionOf(rel string) (string, bool) {
 	return strings.SplitN(rest, "/", 2)[0], true
 }
 
-// RequiredRows is the owners file a repository needs for selfdoc, header
-// first, one row per directory selfdoc creates itself. Every refusal that asks
-// for rows prints from here, so the text a person is told to paste is generated
-// from the claim rather than typed beside it.
+// DirectoryManifestRel is a directory's ownership manifest, as a path relative
+// to the repository root, in slash form.
+func DirectoryManifestRel(name string) string {
+	return Root + "/" + name + "/" + ManifestFileName
+}
+
+// DirectoryManifestPath is where a directory's ownership manifest sits, in the
+// operating system's own spelling.
+func DirectoryManifestPath(baseDir, name string) string {
+	return Path(baseDir, DirectoryManifestRel(name))
+}
+
+// DirectoryManifestContent renders the manifest that declares one tool the
+// owner of a directory. Every refusal that asks for a manifest prints from
+// here, so the text a person is told to write is generated from the
+// declaration rather than typed beside it.
+func DirectoryManifestContent(owner string) string {
+	return OwnerKey + " = " + strconv.Quote(owner) + "\n"
+}
+
+// ReadDirectoryManifest reads and validates one directory's ownership
+// manifest.
 //
-// A directory selfdoc does not create is left out: its row is added when its
-// content is, because git carries no empty directory and [Validate] fails a row
-// naming a directory that does not exist.
-func RequiredRows() []string {
-	rows := []string{OwnersHeader}
-	for _, dir := range declared {
-		if dir.CreatedByTool {
-			rows = append(rows, dir.Name+","+Owner)
-		}
-	}
-	return rows
-}
-
-// Owners is a repository's ownership declaration: which tool owns each
-// directory under [Root].
-type Owners struct {
-	// Order is the directory names in the order the file declares them.
-	Order []string
-	// Owner maps a directory name to the tool that owns it.
-	Owner map[string]string
-	// Path is the file this was read from.
-	Path string
-}
-
-// OwnersPath is where a repository's ownership declaration sits.
-func OwnersPath(baseDir string) string {
-	return Path(baseDir, Root+"/"+OwnersFileName)
-}
-
-// ReadOwners reads a repository's ownership declaration.
+// strictspec is the boundary validator: the file is checked against
+// .strictspec/directory-manifest.schema.toml by the generated validator in
+// this package, so a manifest that reaches a caller declares an owner and
+// nothing else. A missing manifest is returned as the underlying
+// [os.ErrNotExist], which callers answer with the file to create.
 //
-// A missing [Root], a missing owners file, a missing or wrong header, a row
-// that is not two fields, and a directory named twice are each an error whose
-// message names the remedy.
-func ReadOwners(baseDir string) (*Owners, error) {
-	ownersPath := OwnersPath(baseDir)
-	content, err := os.ReadFile(ownersPath)
+// The schema's format-version gate is supplied here rather than written into
+// the file, the way a frontmatter block's is: a manifest on disk is the one
+// [OwnerKey] line, and a file that declares the gate itself is refused, so the
+// key has exactly one author.
+func ReadDirectoryManifest(baseDir, name string) (*DirectoryManifest, error) {
+	manifestPath := DirectoryManifestPath(baseDir, name)
+	raw, err := os.ReadFile(manifestPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf(
-				"%s is missing. selfdoc never creates it: make the directory and write the file yourself, with these lines:\n%s",
-				filepath.Join(Root, OwnersFileName), strings.Join(RequiredRows(), "\n"))
-		}
 		return nil, err
 	}
-	owners := &Owners{Owner: map[string]string{}, Path: ownersPath}
-	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
-	seenHeader := false
-	for number, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		if !seenHeader {
-			if trimmed != OwnersHeader {
-				return nil, fmt.Errorf(
-					"%s line %d: the first line must be the header %q, not %q",
-					ownersPath, number+1, OwnersHeader, trimmed)
-			}
-			seenHeader = true
-			continue
-		}
-		fields := strings.Split(trimmed, ",")
-		if len(fields) != 2 {
-			return nil, fmt.Errorf(
-				"%s line %d: a row is two comma-separated fields, %q; got %q",
-				ownersPath, number+1, OwnersHeader, trimmed)
-		}
-		name := strings.TrimSpace(fields[0])
-		tool := strings.TrimSpace(fields[1])
-		if name == "" || tool == "" {
-			return nil, fmt.Errorf(
-				"%s line %d: both the directory and the owner must be named; got %q",
-				ownersPath, number+1, trimmed)
-		}
-		if _, exists := owners.Owner[name]; exists {
-			return nil, fmt.Errorf(
-				"%s line %d: directory %q is declared twice; one directory has one owner",
-				ownersPath, number+1, name)
-		}
-		owners.Owner[name] = tool
-		owners.Order = append(owners.Order, name)
+	if declaresFormatVersion(string(raw)) {
+		return nil, fmt.Errorf(
+			"%s declares %q, which the reader supplies: remove it, so the manifest is the one %s line",
+			manifestPath, formatVersionKey, OwnerKey)
 	}
-	if !seenHeader {
-		return nil, fmt.Errorf("%s is empty; its first line must be the header %q",
-			ownersPath, OwnersHeader)
+	augmented := string(raw)
+	if augmented != "" && !strings.HasSuffix(augmented, "\n") {
+		augmented += "\n"
 	}
-	return owners, nil
+	augmented += fmt.Sprintf("%s = %d\n", formatVersionKey, manifestFormatVersion)
+	document, diags := ValidateBytes([]byte(augmented), "toml")
+	if len(diags) > 0 {
+		var detail strings.Builder
+		for _, diagnostic := range diags {
+			fmt.Fprintf(&detail, "\n  %s: %s [%s]",
+				diagnostic.Path, diagnostic.Message, diagnostic.Code)
+		}
+		return nil, fmt.Errorf(
+			"%s is not a valid ownership manifest. It declares %s and nothing else:%s",
+			manifestPath, OwnerKey, detail.String())
+	}
+	return document, nil
 }
 
-// EnsureOwned answers whether selfdoc may create one of its function
-// directories in this repository.
+// declaresFormatVersion reports whether a manifest's own text assigns the gate
+// key that [ReadDirectoryManifest] supplies.
+func declaresFormatVersion(text string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		rest, found := strings.CutPrefix(strings.TrimSpace(line), formatVersionKey)
+		if found && strings.HasPrefix(strings.TrimSpace(rest), "=") {
+			return true
+		}
+	}
+	return false
+}
+
+// KnownOwner reports whether a manifest names a tool this machine has: selfdoc
+// itself, or any name PATH answers with an executable.
+func KnownOwner(owner string) bool {
+	if owner == Owner {
+		return true
+	}
+	_, err := exec.LookPath(owner)
+	return err == nil
+}
+
+// EnsureOwned answers whether selfdoc may write into one of the directories
+// under [Root] in this repository.
 //
-// The row is the permission. A repository with no row for the directory, or a
-// row naming another tool, is refused with the row to add.
+// The manifest is the permission. A directory carrying none, or one naming
+// another tool, is refused -- the first with the file and the line to write,
+// which selfdoc never writes itself.
 func EnsureOwned(baseDir, name string) error {
-	owners, err := ReadOwners(baseDir)
+	manifest, err := ReadDirectoryManifest(baseDir, name)
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf(
+			"selfdoc may not write into %s: it carries no %s, and the manifest is the permission. selfdoc never writes one. Create %s holding this line:\n%s",
+			filepath.Join(Root, name), ManifestFileName, DirectoryManifestRel(name),
+			strings.TrimRight(DirectoryManifestContent(Owner), "\n"))
+	}
 	if err != nil {
 		return err
 	}
-	tool, declared := owners.Owner[name]
-	if !declared {
+	if manifest.Owner != Owner {
 		return fmt.Errorf(
-			"selfdoc may not create %s: no row in %s names an owner for it. Add this row:\n%s",
-			filepath.Join(Root, name), owners.Path, name+","+Owner)
-	}
-	if tool != Owner {
-		return fmt.Errorf(
-			"selfdoc may not create %s: %s declares %q as its owner, not %q",
-			filepath.Join(Root, name), owners.Path, tool, Owner)
+			"selfdoc may not write into %s: %s declares %q as its owner, not %q",
+			filepath.Join(Root, name), DirectoryManifestRel(name), manifest.Owner, Owner)
 	}
 	return nil
 }
 
 // EnsureDir creates a directory inside one of selfdoc's function directories,
-// after checking the row that permits it, and refreshes the derived ignore
-// file.
+// after checking the manifest that permits it, and refreshes the derived
+// ignore file.
 //
 // rel is one of this package's slash-form relative paths. Creating anything
 // under [Root] goes through here, so no path can reach the filesystem without
-// its owning row having been checked.
+// its owning manifest having been read.
 func EnsureDir(h *effects.Handle, baseDir, rel string) error {
 	name, ok := FunctionOf(rel)
 	if !ok {
@@ -405,12 +401,21 @@ const (
 )
 
 // IgnoreBlock is selfdoc's block of the derived ignore file: the marker
-// comments around one line per uncommitted directory it owns.
+// comments around the lines that keep each uncommitted directory it owns out
+// of the repository.
+//
+// An uncommitted directory contributes two lines rather than one. Its contents
+// are ignored, and its [ManifestFileName] is not: the manifest is the
+// permission to write into the directory, and a permission that git did not
+// carry would have to be written again in every fresh checkout -- including
+// the ones a multi-version build extracts out of git tags.
 func IgnoreBlock() []string {
 	block := []string{ignoreBegin}
 	for _, dir := range declared {
 		if dir.Commitment == Uncommitted {
-			block = append(block, dir.Name+"/")
+			block = append(block,
+				dir.Name+"/*",
+				"!"+dir.Name+"/"+ManifestFileName)
 		}
 	}
 	return append(block, ignoreEnd)

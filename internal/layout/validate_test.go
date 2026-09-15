@@ -11,17 +11,12 @@ import (
 )
 
 // validated is a repository whose layout is exactly as declared: every claimed
-// directory present, the ignore file derived, nothing else inside.
+// directory present with its manifest, the ignore file derived, nothing else
+// inside.
 func validated(t *testing.T) string {
 	t.Helper()
 	dir := owned(t)
 	for _, declared := range Declared() {
-		if !declared.CreatedByTool {
-			// A directory selfdoc never creates has no row until its
-			// content arrives, so a repository without that content is
-			// laid out correctly without it.
-			continue
-		}
 		if err := EnsureDir(effects.Unbound(), dir, Root+"/"+declared.Name); err != nil {
 			t.Fatalf("EnsureDir %s: %v", declared.Name, err)
 		}
@@ -52,20 +47,31 @@ func problemsOf(t *testing.T, dir, check string) []Problem {
 	return matching
 }
 
+// toolOnPath puts an executable of the given name at the front of PATH, so a
+// manifest naming it names a tool this machine has.
+func toolOnPath(t *testing.T, name string) {
+	t.Helper()
+	binDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(binDir, name), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("writing the stub tool: %v", err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
 func TestValidateRefusesARepositoryWithNoLayoutAtAll(t *testing.T) {
 	hygiene.Isolate(t)
 	_, err := Validate(t.TempDir())
 	if err == nil {
 		t.Fatal("a repository with no tool-state directory validated")
 	}
-	for _, want := range []string{Root, OwnersHeader, DocsName + "," + Owner} {
+	for _, want := range []string{Root, ManifestFileName, `owner = "selfdoc"`} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal does not carry %q: %v", want, err)
 		}
 	}
 }
 
-func TestValidateReportsADirectoryNoRowNames(t *testing.T) {
+func TestValidateReportsADirectoryWithNoManifest(t *testing.T) {
 	hygiene.Isolate(t)
 	dir := validated(t)
 	if err := os.MkdirAll(filepath.Join(dir, Root, "unclaimed"), 0o755); err != nil {
@@ -73,24 +79,74 @@ func TestValidateReportsADirectoryNoRowNames(t *testing.T) {
 	}
 	problems := problemsOf(t, dir, CheckOwnership)
 	if len(problems) != 1 {
-		t.Fatalf("ownership problems = %v, want the unclaimed directory's one", problems)
+		t.Fatalf("ownership problems = %v, want the unowned directory's one", problems)
 	}
-	if !strings.Contains(problems[0].Message, "unclaimed,<owner>") {
-		t.Errorf("the problem does not name the row to add: %s", problems[0].Message)
+	for _, want := range []string{Root + "/unclaimed/" + ManifestFileName, `owner = "<tool>"`} {
+		if !strings.Contains(problems[0].Message, want) {
+			t.Errorf("the problem does not carry %q: %s", want, problems[0].Message)
+		}
 	}
 }
 
-func TestValidateReportsARowNothingAnswersTo(t *testing.T) {
+// A directory selfdoc claims is a directory selfdoc owns: a manifest naming
+// anyone else there is a defect, however real that other tool is.
+func TestValidateReportsAClaimedDirectoryAnotherToolOwns(t *testing.T) {
 	hygiene.Isolate(t)
+	toolOnPath(t, "othertool")
 	dir := validated(t)
-	write(t, filepath.Join(dir, Root, OwnersFileName),
-		strings.Join(append(RequiredRows(), VocabularyName+","+Owner), "\n")+"\n")
+	grant(t, dir, PostsName, "othertool")
+
 	problems := problemsOf(t, dir, CheckOwnership)
 	if len(problems) != 1 {
-		t.Fatalf("ownership problems = %v, want the missing directory's one", problems)
+		t.Fatalf("ownership problems = %v, want the claimed directory's one", problems)
 	}
-	if !strings.Contains(problems[0].Message, VocabularyName) {
-		t.Errorf("the problem does not name the missing directory: %s", problems[0].Message)
+	for _, want := range []string{filepath.Join(Root, PostsName), "othertool", `owner = "selfdoc"`} {
+		if !strings.Contains(problems[0].Message, want) {
+			t.Errorf("the problem does not carry %q: %s", want, problems[0].Message)
+		}
+	}
+}
+
+// An owner is selfdoc itself or a name PATH answers with an executable. A
+// directory selfdoc does not claim may be owned by any such tool.
+func TestValidateAcceptsAnUnclaimedDirectoryOwnedByAToolOnPath(t *testing.T) {
+	hygiene.Isolate(t)
+	toolOnPath(t, "othertool")
+	dir := validated(t)
+	grant(t, dir, "other-state", "othertool")
+
+	if problems := problemsOf(t, dir, CheckOwnership); len(problems) != 0 {
+		t.Errorf("ownership problems = %v, want none for a tool this machine has", problems)
+	}
+}
+
+func TestValidateReportsAnOwnerThisMachineDoesNotHave(t *testing.T) {
+	hygiene.Isolate(t)
+	dir := validated(t)
+	grant(t, dir, "other-state", "no-such-tool-on-this-machine")
+
+	problems := problemsOf(t, dir, CheckOwnership)
+	if len(problems) != 1 {
+		t.Fatalf("ownership problems = %v, want the unknown owner's one", problems)
+	}
+	for _, want := range []string{"no-such-tool-on-this-machine", "PATH"} {
+		if !strings.Contains(problems[0].Message, want) {
+			t.Errorf("the problem does not carry %q: %s", want, problems[0].Message)
+		}
+	}
+}
+
+func TestValidateReportsAFileWhereADirectoryBelongs(t *testing.T) {
+	hygiene.Isolate(t)
+	dir := validated(t)
+	write(t, filepath.Join(dir, Root, "notes.txt"), "loose\n")
+
+	problems := problemsOf(t, dir, CheckOwnership)
+	if len(problems) != 1 {
+		t.Fatalf("ownership problems = %v, want the loose file's one", problems)
+	}
+	if !strings.Contains(problems[0].Message, "notes.txt") {
+		t.Errorf("the problem does not name the file: %s", problems[0].Message)
 	}
 }
 
@@ -147,6 +203,11 @@ func TestValidateReportsAHiddenEntry(t *testing.T) {
 	if strings.Count(joined, IgnoreFileName+" starts with a dot") != 0 {
 		t.Errorf("the derived ignore file was reported: %s", joined)
 	}
+	// A dotted entry breaks one rule, not two: the ownership rule leaves it
+	// to the rule it actually breaks.
+	if ownership := problemsOf(t, dir, CheckOwnership); len(ownership) != 0 {
+		t.Errorf("ownership problems = %v, want the dotted entry reported once", ownership)
+	}
 }
 
 func TestValidateReportsAStaleIgnoreFile(t *testing.T) {
@@ -157,7 +218,7 @@ func TestValidateReportsAStaleIgnoreFile(t *testing.T) {
 	if len(problems) != 1 {
 		t.Fatalf("ignore problems = %v, want the stale file's one", problems)
 	}
-	if !strings.Contains(problems[0].Message, DocsCacheName+"/") {
+	if !strings.Contains(problems[0].Message, DocsCacheName+"/*") {
 		t.Errorf("the problem does not carry the content it should hold: %s", problems[0].Message)
 	}
 

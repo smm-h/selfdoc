@@ -83,7 +83,7 @@ func Make(t TB, overrides map[string]any) string {
 	MkdirAll(t, projectDir)
 
 	WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), DefaultConfig(overrides))
-	Owners(t, projectDir)
+	Manifests(t, projectDir)
 	WriteText(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
 	WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
 		"# Test Project\n\nWelcome to the docs.\n")
@@ -121,7 +121,7 @@ func MakeVersioned(t TB, versions []string, overrides map[string]any) string {
 		config[key] = value
 	}
 	WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), config)
-	Owners(t, projectDir)
+	Manifests(t, projectDir)
 	WriteText(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
 	WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
 		"# Test Project\n\nInitial content.\n")
@@ -167,7 +167,7 @@ func MakeLocalized(t TB, locales []map[string]any, overrides map[string]any) str
 		config[key] = value
 	}
 	WriteJSON(t, filepath.Join(projectDir, "selfdoc.json"), config)
-	Owners(t, projectDir)
+	Manifests(t, projectDir)
 	WriteText(t, filepath.Join(projectDir, "src", "__init__.py"), `"""Example package."""`+"\n")
 
 	for _, locale := range locales {
@@ -179,28 +179,30 @@ func MakeLocalized(t TB, locales []map[string]any, overrides map[string]any) str
 	return projectDir
 }
 
-// Owners writes the ownership declaration a project needs before selfdoc may
-// create any of its directories.
+// Manifests writes the ownership manifest every directory selfdoc claims needs
+// before selfdoc may write into it.
 //
-// selfdoc never writes this file: a row in it is the permission to create a
-// directory, and granting that permission is the repository's own act. A
-// fixture project is a repository, so it grants it here.
-func Owners(t TB, projectDir string) {
+// selfdoc never writes a manifest: the file is the permission, and granting it
+// is the repository's own act. A fixture project is a repository, so it grants
+// every one of them here.
+func Manifests(t TB, projectDir string) {
 	t.Helper()
-	WriteText(t, filepath.Join(projectDir, layout.Root, layout.OwnersFileName),
-		strings.Join(layout.RequiredRows(), "\n")+"\n")
+	for _, claimed := range layout.Declared() {
+		WriteText(t, layout.DirectoryManifestPath(projectDir, claimed.Name),
+			layout.DirectoryManifestContent(layout.Owner))
+	}
 }
 
 // Dir is a fresh project directory with nothing in it but the ownership
-// declaration selfdoc needs before it may create any of its own directories.
+// manifests selfdoc needs before it may write into any of its own directories.
 //
 // It is what a test that exercises one piece of the engine starts from: a
-// repository that has granted selfdoc its rows, and no pages, config or source
-// beyond what the test writes itself.
+// repository that has granted selfdoc its manifests, and no pages, config or
+// source beyond what the test writes itself.
 func Dir(t TB) string {
 	t.Helper()
 	dir := t.TempDir()
-	Owners(t, dir)
+	Manifests(t, dir)
 	return dir
 }
 
@@ -435,7 +437,7 @@ func MakeUnified(t TB, projects []UnifiedProject, overrides map[string]any) stri
 			"author":        Author(),
 			"version":       "1.0.0",
 		})
-		Owners(t, projectDir)
+		Manifests(t, projectDir)
 		WriteText(t, filepath.Join(projectDir, "src", "__init__.py"),
 			`"""`+project.Name+` package."""`+"\n")
 		WriteText(t, filepath.Join(DocsDir(projectDir), "index.md"),
@@ -458,7 +460,7 @@ func MakeUnified(t TB, projects []UnifiedProject, overrides map[string]any) stri
 		docsSiteConfig[key] = value
 	}
 	WriteJSON(t, filepath.Join(docsSiteDir, "selfdoc.json"), docsSiteConfig)
-	Owners(t, docsSiteDir)
+	Manifests(t, docsSiteDir)
 	// The docs-site needs a source entry of its own: the config requires
 	// one, and it is a project like any other.
 	WriteText(t, filepath.Join(docsSiteDir, "src", "__init__.py"),

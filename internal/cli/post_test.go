@@ -2,11 +2,13 @@ package cli
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/testproject"
 )
 
@@ -166,18 +168,24 @@ func TestPostNewRefusesWithoutAConfig(t *testing.T) {
 	}
 }
 
-func TestPostNewCreatesThePostsDirectory(t *testing.T) {
+// A granted posts directory holds nothing but the manifest that grants it
+// until the first post is written into it.
+func TestPostNewWritesIntoTheGrantedPostsDirectory(t *testing.T) {
 	isolate(t)
 	dir := postProject(t, nil)
 	postsDir := filepath.Join(dir, ".stricttools", "posts")
-	if exists(postsDir) {
-		t.Fatal("the fixture already carries a posts directory")
+	entries, err := os.ReadDir(postsDir)
+	if err != nil {
+		t.Fatalf("reading the granted posts directory: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name() != layout.ManifestFileName {
+		t.Fatalf("the fixture's posts directory holds %v, want its manifest alone", entries)
 	}
 	if result := run(t, dir, "blog", "post", "new", "--title", "Dir Creation Test"); result.ExitCode != 0 {
 		t.Fatalf("post new failed: %s", result.Stderr)
 	}
 	if !exists(filepath.Join(postsDir, today()+"-dir-creation-test.md")) {
-		t.Error("the posts directory was not created")
+		t.Error("the post was not written into the posts directory")
 	}
 }
 

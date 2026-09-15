@@ -1,6 +1,6 @@
 +++
 title = "The .stricttools/ layout"
-description = "Where selfdoc keeps a repository's state: one hidden directory of function-named directories, an owners file that grants each one, a derived ignore file, the two layout commands, and the script that moves a repository onto the layout."
+description = "Where selfdoc keeps a repository's state: one hidden directory of function-named directories, a manifest inside each one naming its owner, a derived ignore file, the two layout commands, and the move script."
 nav_group = "Guides"
 nav_order = 4
 +++
@@ -29,7 +29,8 @@ selfdoc layout dump
 ```
 
 It prints one object per directory -- its name and path, its side, its
-commitment, a description, and the paths it replaced -- so a description of the
+commitment, a description, the manifest that grants it and the exact content
+that manifest must hold, and the paths it replaced -- so a description of the
 layout is generated from one source rather than restated per repository.
 
 ### Side: handwritten or generated, never both
@@ -54,26 +55,30 @@ module whose page you have written yourself.
 
 ## Ownership: one owner per directory
 
-`.stricttools/OWNERS.csv` declares who owns each directory. It carries a header
-line and one row per directory:
+Each directory under `.stricttools/` carries a `manifest.toml` that names the
+tool that owns it. The file is one line long:
 
-```csv
-directory,owner
-docs,selfdoc
-docs-state,selfdoc
-docs-cache,selfdoc
-posts,selfdoc
+```toml
+owner = "selfdoc"
 ```
 
-A row is the permission to create. selfdoc creates a directory under
-`.stricttools/` only when a row names it as the owner, and refuses with the exact
-row to add when none does. selfdoc never writes this file and never creates
-`.stricttools/` itself: granting the permission is the repository's own act.
+That line is the permission to write. selfdoc writes into a directory under
+`.stricttools/` only when that directory's manifest names selfdoc as its owner,
+and refuses with the exact file and the exact line to write when it does not.
+selfdoc never writes a manifest itself, and never creates `.stricttools/`
+either: granting the permission is the repository's own act. The one exception
+is the move script below, which writes the manifests of the directories it
+moves content into.
 
-A row whose directory does not exist is a defect, and git carries no empty
-directory -- so a directory selfdoc does not create itself gets its row when its
-content arrives. `.stricttools/vocabulary/` is such a directory: add
-`vocabulary,selfdoc` when you add the vocabulary files.
+A manifest is also what makes a directory exist. git carries no empty
+directory, so a directory whose content has not been written yet -- a project
+that has no vocabulary files yet, say -- exists in the repository because its
+manifest does.
+
+`owner` is the whole of what a manifest declares. The file is validated against
+a schema, so an unknown key is refused rather than silently ignored, and the
+named owner has to be a tool this machine has: either `selfdoc`, or a name that
+resolves to an executable on `PATH`.
 
 Reading and writing are open to anyone. The owner is what validates.
 
@@ -86,9 +91,16 @@ comments:
 
 ```gitignore
 # BEGIN selfdoc -- derived from selfdoc's layout declaration
-docs-cache/
+docs-cache/*
+!docs-cache/manifest.toml
 # END selfdoc
 ```
+
+An uncommitted directory contributes two lines rather than one. Its contents are
+ignored and its manifest is not: the permission travels with the repository
+while the contents do not, so a fresh checkout -- including the one a
+multi-version build extracts out of a git tag -- does not have to be granted
+again.
 
 Every other line belongs to whoever wrote it and is left alone, so several tools
 write their own blocks into one file. `selfdoc build` rewrites selfdoc's block
@@ -104,12 +116,12 @@ selfdoc layout validate
 ```
 
 It answers for the repository it runs in: every directory under
-`.stricttools/` is named in the owners file and everything the owners file names
-exists; every directory selfdoc owns holds only what its side allows; nothing
-inside starts with a dot except the derived ignore file; and that file carries
-what the commitment declarations render. Each problem names its remedy. With
-`--json` it publishes the same answer as a payload, which is what a fleet-wide
-check reads.
+`.stricttools/` carries a `manifest.toml` naming a tool this machine has, and
+every directory selfdoc claims names selfdoc; every directory selfdoc owns holds
+only what its side allows; nothing inside starts with a dot except the derived
+ignore file; and that file carries what the commitment declarations render. Each
+problem names its remedy. With `--json` it publishes the same answer as a
+payload, which is what a fleet-wide check reads.
 
 ## Moving a repository onto the layout
 
@@ -125,17 +137,20 @@ python3 scripts/move-to-stricttools-layout.py --dry-run
 python3 scripts/move-to-stricttools-layout.py --apply
 ```
 
-The dry run prints every move and every content rewrite and changes nothing.
-The apply run moves the tracked files with `safegit mv` as one commit -- a page
-carrying the generated marker into `.stricttools/docs-state/pages/`, every other
-page into `.stricttools/docs/` -- rewrites the paths the moved content names as a
-second commit, and then builds the site and refuses to finish unless the URL set
+The dry run prints every manifest it would write, every move and every content
+rewrite, and changes nothing. The apply run writes the manifests and moves the
+tracked files as one commit -- a page carrying the generated marker into
+`.stricttools/docs-state/pages/`, every other page into `.stricttools/docs/` --
+rewrites the paths the moved content names as a second commit, and then builds
+the site and refuses to finish unless the URL set
 is identical to the one the last build before the move published. Page addresses
 come from the path relative to the docs root, so the move keeps every URL, and
 the comparison is what proves it.
 
-Before running it, create `.stricttools/` and write its `OWNERS.csv`: the script
-prints the rows and refuses until they are there.
+Before running it, create `.stricttools/`: the script refuses until the
+directory is there, and prints the manifests it will write inside it. Those
+manifests are part of the move's first commit, so the permission is committed
+alongside the files it permits.
 
 ### What the config declares afterwards
 

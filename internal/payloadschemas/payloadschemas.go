@@ -239,20 +239,24 @@ func LayoutDump() map[string]any {
 			"commitment":       merge(strictcli.SchemaType("string"), strictcli.SchemaEnum("committed", "uncommitted")),
 			"description":      strictcli.SchemaType("string"),
 			"deprecated_names": strictcli.SchemaArray(strictcli.SchemaType("string")),
+			"manifest_path":    strictcli.SchemaType("string"),
+			"manifest_content": strictcli.SchemaType("string"),
 		},
-		[]string{"name", "path", "side", "commitment", "description", "deprecated_names"},
+		[]string{
+			"name", "path", "side", "commitment", "description", "deprecated_names",
+			"manifest_path", "manifest_content",
+		},
 		false,
 	)
 	return strictcli.SchemaObject(
 		map[string]any{
 			"tool":          strictcli.SchemaType("string"),
 			"root":          strictcli.SchemaType("string"),
-			"owners_file":   strictcli.SchemaType("string"),
-			"owners_header": strictcli.SchemaType("string"),
+			"manifest_file": strictcli.SchemaType("string"),
 			"ignore_file":   strictcli.SchemaType("string"),
 			"directories":   strictcli.SchemaArray(directory),
 		},
-		[]string{"tool", "root", "owners_file", "owners_header", "ignore_file", "directories"},
+		[]string{"tool", "root", "manifest_file", "ignore_file", "directories"},
 		false,
 	)
 }

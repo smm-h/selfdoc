@@ -10,15 +10,31 @@ import (
 	"github.com/smm-h/stricttest/go/hygiene"
 )
 
-// owned writes the ownership declaration a repository grants selfdoc, and
-// returns the repository root.
-func owned(t *testing.T, rows ...string) string {
+// grant writes one directory's ownership manifest, which is what makes the
+// directory exist and what permits its owner to write into it.
+func grant(t *testing.T, dir, name, owner string) {
+	t.Helper()
+	write(t, DirectoryManifestPath(dir, name), DirectoryManifestContent(owner))
+}
+
+// owned is a repository that grants selfdoc every directory it claims.
+func owned(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if len(rows) == 0 {
-		rows = RequiredRows()
+	for _, claimed := range Declared() {
+		grant(t, dir, claimed.Name, Owner)
 	}
-	write(t, filepath.Join(dir, Root, OwnersFileName), strings.Join(rows, "\n")+"\n")
+	return dir
+}
+
+// rooted is a repository that has the tool-state directory and nothing in it,
+// so a test can grant exactly what it wants to grant.
+func rooted(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, Root), 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", Root, err)
+	}
 	return dir
 }
 
@@ -62,38 +78,62 @@ func TestTheDeclarationCoversEveryDirectorySelfdocWrites(t *testing.T) {
 	}
 }
 
-func TestTheOwnersFileNeedsItsHeader(t *testing.T) {
+// The manifest is a closed record: the owner is the whole of what it declares,
+// so a key nobody reads is refused rather than silently ignored.
+func TestTheManifestRefusesAnUnknownKey(t *testing.T) {
 	hygiene.Isolate(t)
-	dir := t.TempDir()
-	write(t, filepath.Join(dir, Root, OwnersFileName), "docs,selfdoc\n")
-	_, err := ReadOwners(dir)
+	dir := rooted(t)
+	write(t, DirectoryManifestPath(dir, DocsName), "owner = \"selfdoc\"\nsince = \"2026\"\n")
+	_, err := ReadDirectoryManifest(dir, DocsName)
 	if err == nil {
-		t.Fatal("a headerless owners file was accepted")
+		t.Fatal("a manifest carrying an undeclared key was accepted")
 	}
-	if !strings.Contains(err.Error(), OwnersHeader) {
-		t.Errorf("the refusal does not name the header: %v", err)
-	}
-}
-
-func TestTheOwnersFileRefusesADirectoryDeclaredTwice(t *testing.T) {
-	hygiene.Isolate(t)
-	dir := owned(t, OwnersHeader, "docs,selfdoc", "docs,other")
-	_, err := ReadOwners(dir)
-	if err == nil || !strings.Contains(err.Error(), "twice") {
-		t.Fatalf("err = %v, want a refusal naming the repeated directory", err)
+	if !strings.Contains(err.Error(), "since") {
+		t.Errorf("the refusal does not name the undeclared key: %v", err)
 	}
 }
 
-func TestCreatingADirectoryNeedsItsRow(t *testing.T) {
+func TestTheManifestNeedsAnOwner(t *testing.T) {
 	hygiene.Isolate(t)
-	dir := owned(t, OwnersHeader, "posts,selfdoc")
+	dir := rooted(t)
+	write(t, DirectoryManifestPath(dir, DocsName), "\n")
+	_, err := ReadDirectoryManifest(dir, DocsName)
+	if err == nil {
+		t.Fatal("a manifest declaring no owner was accepted")
+	}
+	if !strings.Contains(err.Error(), OwnerKey) {
+		t.Errorf("the refusal does not name the missing key: %v", err)
+	}
+}
+
+// The format-version gate has exactly one author: the reader supplies it, so a
+// manifest that writes it is refused rather than accepted twice over.
+func TestTheManifestRefusesTheReaderSuppliedGate(t *testing.T) {
+	hygiene.Isolate(t)
+	dir := rooted(t)
+	write(t, DirectoryManifestPath(dir, DocsName), "format_version = 1\nowner = \"selfdoc\"\n")
+	_, err := ReadDirectoryManifest(dir, DocsName)
+	if err == nil {
+		t.Fatal("a manifest declaring the reader-supplied gate was accepted")
+	}
+	if !strings.Contains(err.Error(), "format_version") {
+		t.Errorf("the refusal does not name the key: %v", err)
+	}
+}
+
+func TestCreatingADirectoryNeedsItsManifest(t *testing.T) {
+	hygiene.Isolate(t)
+	dir := rooted(t)
+	grant(t, dir, PostsName, Owner)
 
 	err := EnsureDir(effects.Unbound(), dir, DocsStateRel)
 	if err == nil {
-		t.Fatal("a directory with no row was created")
+		t.Fatal("a directory with no manifest was written into")
 	}
-	if !strings.Contains(err.Error(), DocsStateName+","+Owner) {
-		t.Errorf("the refusal does not name the row to add: %v", err)
+	for _, want := range []string{DirectoryManifestRel(DocsStateName), `owner = "selfdoc"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not carry %q: %v", want, err)
+		}
 	}
 	if _, statErr := os.Stat(Path(dir, DocsStateRel)); !os.IsNotExist(statErr) {
 		t.Errorf("the directory was created anyway (stat err = %v)", statErr)
@@ -102,7 +142,8 @@ func TestCreatingADirectoryNeedsItsRow(t *testing.T) {
 
 func TestADirectoryAnotherToolOwnsIsRefused(t *testing.T) {
 	hygiene.Isolate(t)
-	dir := owned(t, OwnersHeader, "docs-state,someothertool")
+	dir := rooted(t)
+	grant(t, dir, DocsStateName, "someothertool")
 	err := EnsureDir(effects.Unbound(), dir, DocsStateRel)
 	if err == nil || !strings.Contains(err.Error(), "someothertool") {
 		t.Fatalf("err = %v, want a refusal naming the declared owner", err)
@@ -119,8 +160,13 @@ func TestCreatingADirectoryWritesTheDerivedIgnoreFile(t *testing.T) {
 		t.Fatalf("the output directory was not created: %v", err)
 	}
 	ignore := read(t, IgnorePath(dir))
-	if !strings.Contains(ignore, DocsCacheName+"/") {
+	if !strings.Contains(ignore, DocsCacheName+"/*") {
 		t.Errorf("the derived ignore file does not ignore the uncommitted directory:\n%s", ignore)
+	}
+	// The permission travels with the repository even though the contents do
+	// not, so a fresh checkout does not have to be granted again.
+	if !strings.Contains(ignore, "!"+DocsCacheName+"/"+ManifestFileName) {
+		t.Errorf("the derived ignore file swallows the uncommitted directory's manifest:\n%s", ignore)
 	}
 	if strings.Contains(ignore, DocsStateName+"/") {
 		t.Errorf("the derived ignore file ignores a committed directory:\n%s", ignore)
@@ -131,7 +177,7 @@ func TestTheDerivedIgnoreFileLeavesOtherToolsLinesAlone(t *testing.T) {
 	hygiene.Isolate(t)
 	existing := "# BEGIN othertool\nother-cache/\n# END othertool\n"
 	rendered := RenderIgnore(existing)
-	for _, want := range []string{"# BEGIN othertool", "other-cache/", "# END othertool", DocsCacheName + "/"} {
+	for _, want := range []string{"# BEGIN othertool", "other-cache/", "# END othertool", DocsCacheName + "/*"} {
 		if !strings.Contains(rendered, want) {
 			t.Errorf("the rendered ignore file lost %q:\n%s", want, rendered)
 		}

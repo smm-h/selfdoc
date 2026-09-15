@@ -58,8 +58,15 @@ func writeConfig(t *testing.T, dir string, document map[string]any) {
 		t.Fatalf("encode config: %v", err)
 	}
 	write(t, filepath.Join(dir, "selfdoc.json"), string(encoded))
-	write(t, filepath.Join(dir, layout.Root, layout.OwnersFileName),
-		strings.Join(layout.RequiredRows(), "\n")+"\n")
+	// The two generated directories are the ones a check writes into, so
+	// they are the ones a fixture grants. The handwritten directories --
+	// docs, posts, vocabulary -- are granted by the test that wants one,
+	// because a manifest is what makes the directory exist and several
+	// cases here are about a project that has none.
+	for _, granted := range []string{layout.DocsStateName, layout.DocsCacheName} {
+		write(t, layout.DirectoryManifestPath(dir, granted),
+			layout.DirectoryManifestContent(layout.Owner))
+	}
 }
 
 // pythonProjectConfig is the config document the Python fixture writes.

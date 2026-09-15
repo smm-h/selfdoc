@@ -15,6 +15,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/docs"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/page"
 	"github.com/smm-h/selfdoc/internal/staleness"
 	"github.com/smm-h/selfdoc/internal/themes"
@@ -512,6 +513,11 @@ func collectOtherFiles(docsDir, outputDir string) ([]string, error) {
 		rel, relErr := filepath.Rel(docsDir, path)
 		if relErr != nil {
 			return relErr
+		}
+		if filepath.ToSlash(rel) == layout.ManifestFileName {
+			// The docs directory's ownership manifest is layout state
+			// rather than a page asset: it is never published.
+			return nil
 		}
 		other = append(other, filepath.ToSlash(rel))
 		return nil

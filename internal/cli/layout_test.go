@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,11 +22,8 @@ func TestLayoutDumpCarriesEveryClaimedDirectory(t *testing.T) {
 	if payload["tool"] != layout.Owner || payload["root"] != layout.Root {
 		t.Errorf("the dump names %v at %v", payload["tool"], payload["root"])
 	}
-	if payload["owners_file"] != layout.Root+"/"+layout.OwnersFileName {
-		t.Errorf("owners_file = %v", payload["owners_file"])
-	}
-	if payload["owners_header"] != layout.OwnersHeader {
-		t.Errorf("owners_header = %v", payload["owners_header"])
+	if payload["manifest_file"] != layout.ManifestFileName {
+		t.Errorf("manifest_file = %v", payload["manifest_file"])
 	}
 
 	directories, ok := payload["directories"].([]any)
@@ -62,6 +58,12 @@ func TestLayoutDumpCarriesEveryClaimedDirectory(t *testing.T) {
 		if description, _ := entry["description"].(string); description == "" {
 			t.Errorf("%s carries no description", declared.Name)
 		}
+		if entry["manifest_path"] != layout.DirectoryManifestRel(declared.Name) {
+			t.Errorf("%s manifest_path = %v", declared.Name, entry["manifest_path"])
+		}
+		if entry["manifest_content"] != layout.DirectoryManifestContent(layout.Owner) {
+			t.Errorf("%s manifest_content = %q", declared.Name, entry["manifest_content"])
+		}
 		names, ok := entry["deprecated_names"].([]any)
 		if !ok {
 			t.Errorf("%s deprecated_names = %#v, want a list", declared.Name, entry["deprecated_names"])
@@ -85,6 +87,7 @@ func TestLayoutDumpPrintsTheDeclarationAsJSON(t *testing.T) {
 	for _, want := range []string{
 		`"tool": "` + layout.Owner + `"`,
 		`"name": "` + layout.DocsStateName + `"`,
+		`"manifest_file": "` + layout.ManifestFileName + `"`,
 		`"commitment": "uncommitted"`,
 		layout.DeprecatedRoot + "/",
 	} {
@@ -94,13 +97,17 @@ func TestLayoutDumpPrintsTheDeclarationAsJSON(t *testing.T) {
 	}
 }
 
-func TestLayoutValidateRefusesARepositoryWithNoOwnersFile(t *testing.T) {
+func TestLayoutValidateRefusesARepositoryWithNoLayout(t *testing.T) {
 	isolate(t)
 	result := run(t, t.TempDir(), "layout", "validate")
 	if result.ExitCode != 1 {
 		t.Fatalf("exit code = %d, want 1", result.ExitCode)
 	}
-	for _, want := range []string{layout.Root, layout.OwnersHeader, layout.DocsName + "," + layout.Owner} {
+	for _, want := range []string{
+		layout.Root,
+		layout.ManifestFileName,
+		strings.TrimRight(layout.DirectoryManifestContent(layout.Owner), "\n"),
+	} {
 		if !strings.Contains(result.Stderr, want) {
 			t.Errorf("the refusal lacks %q:\n%s", want, result.Stderr)
 		}
@@ -116,12 +123,6 @@ func TestLayoutValidatePassesOnABuiltProject(t *testing.T) {
 	if result := run(t, dir, "build", "--no-auto-commit"); result.ExitCode != 0 {
 		t.Fatalf("build exited %d: %s\n%s", result.ExitCode, result.Stdout, result.Stderr)
 	}
-	// The posts directory is claimed and granted, so it has to exist; the
-	// vocabulary directory has no row until its files arrive, so it must not.
-	if err := os.MkdirAll(filepath.Join(dir, layout.PostsRel), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
 	result := run(t, dir, "--json", "layout", "validate")
 	if result.ExitCode != 0 {
 		t.Fatalf("layout validate exited %d: %s\n%s", result.ExitCode, result.Stdout, result.Stderr)
@@ -141,9 +142,6 @@ func TestLayoutValidateRefusesAStaleIgnoreFileAndTheBuildClearsIt(t *testing.T) 
 	dir := initialized(t)
 	if result := run(t, dir, "build", "--no-auto-commit"); result.ExitCode != 0 {
 		t.Fatalf("build exited %d: %s\n%s", result.ExitCode, result.Stdout, result.Stderr)
-	}
-	if err := os.MkdirAll(filepath.Join(dir, layout.PostsRel), 0o755); err != nil {
-		t.Fatal(err)
 	}
 	writeText(t, filepath.Join(dir, layout.Root, layout.IgnoreFileName), "# BEGIN othertool\nx/\n# END othertool\n")
 

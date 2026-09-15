@@ -1,0 +1,47 @@
+# strictspec schema -- the manifest that declares who owns one directory under
+# a repository's .stricttools/ root.
+#
+# Governs .stricttools/<directory>/manifest.toml: the one-key document that
+# says which tool owns the directory it sits in. The generated validator
+# (internal/layout/selfdoc_directory_manifest_gen.go) is what layout.ReadManifest
+# validates each file against, so a manifest that reaches the permission check
+# or the layout validation has already been through here.
+#
+# THE KEY REGISTRY. "owner" is the whole set of keys a manifest FILE may carry:
+# a record is closed, so a key that is not declared here is refused rather than
+# silently ignored.
+#
+# THE READER-SUPPLIED TRAILER. "format_version" is not written by the person
+# who writes a manifest: layout.ReadDirectoryManifest appends it to the file's
+# bytes before validating, and refuses a file that declares it, so the key has
+# exactly one author. A manifest on disk is therefore one line long.
+#
+# SCOPE (honest subset): this schema owns the file's raw DOCUMENT SHAPE -- the
+# key registry and the owner value's lexeme class. It does not own whether the
+# named owner is a tool this machine has, whether selfdoc's own claim on the
+# directory agrees with it, or whether the directory the manifest sits in
+# exists at all; those are selfdoc-native checks over the tree rather than over
+# one document.
+
+name = "selfdoc-directory-manifest"
+meta_version = 1
+format_version = 1
+document_syntax = "toml"
+role = "schema"
+root = "DirectoryManifest"
+description = "One directory's ownership manifest under a repository's .stricttools/ root: the single key naming the tool that owns the directory."
+
+[types.DirectoryManifest]
+type = "record"
+description = "The manifest file a directory under .stricttools/ carries."
+
+[types.DirectoryManifest.fields.format_version]
+type = "integer"
+required = true
+description = "Document format-version gate. v1 manifests carry 1. Supplied by the reader, never written into the file."
+
+[types.DirectoryManifest.fields.owner]
+type = "string"
+required = true
+non_empty = true
+description = "The tool that owns this directory. Only the owner creates the directory and decides whether what is written into it is acceptable; reading and writing are open to anyone."

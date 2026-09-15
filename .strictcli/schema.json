@@ -759,7 +759,7 @@
       "commands": {
         "dump": {
           "name": "dump",
-          "help": "Print selfdoc's layout declaration: every directory it claims, whether the directory is handwritten or generated, whether the repository commits it, and the paths it replaced",
+          "help": "Print selfdoc's layout declaration: every directory it claims, whether the directory is handwritten or generated, whether the repository commits it, the manifest.toml that grants it and what that file must hold, and the paths it replaced",
           "effect": "read_only",
           "payload_schema": {
             "additionalProperties": false,
@@ -784,6 +784,12 @@
                     "description": {
                       "type": "string"
                     },
+                    "manifest_content": {
+                      "type": "string"
+                    },
+                    "manifest_path": {
+                      "type": "string"
+                    },
                     "name": {
                       "type": "string"
                     },
@@ -804,7 +810,9 @@
                     "side",
                     "commitment",
                     "description",
-                    "deprecated_names"
+                    "deprecated_names",
+                    "manifest_path",
+                    "manifest_content"
                   ],
                   "type": "object"
                 },
@@ -813,10 +821,7 @@
               "ignore_file": {
                 "type": "string"
               },
-              "owners_file": {
-                "type": "string"
-              },
-              "owners_header": {
+              "manifest_file": {
                 "type": "string"
               },
               "root": {
@@ -829,8 +834,7 @@
             "required": [
               "tool",
               "root",
-              "owners_file",
-              "owners_header",
+              "manifest_file",
               "ignore_file",
               "directories"
             ],
@@ -839,7 +843,7 @@
         },
         "validate": {
           "name": "validate",
-          "help": "Check this repository's .stricttools/ directory: every directory is named in OWNERS.csv and everything named exists, every directory selfdoc owns holds only what its side allows, nothing inside starts with a dot except the derived ignore file, and that ignore file is what selfdoc's declaration renders",
+          "help": "Check this repository's .stricttools/ directory: every directory carries a manifest.toml naming a tool this machine has, every directory selfdoc claims names selfdoc, every directory selfdoc owns holds only what its side allows, nothing inside starts with a dot except the derived ignore file, and that ignore file is what selfdoc's declaration renders",
           "effect": "read_only",
           "payload_schema": {
             "additionalProperties": false,

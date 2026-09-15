@@ -34,3 +34,11 @@ path = ".strictspec/frontmatter.schema.toml"
   lang    = "go"
   output  = "internal/util/selfdoc_frontmatter_gen.go"
   package = "util"
+
+[[schemas]]
+path = ".strictspec/directory-manifest.schema.toml"
+
+  [[schemas.targets]]
+  lang    = "go"
+  output  = "internal/layout/selfdoc_directory_manifest_gen.go"
+  package = "layout"

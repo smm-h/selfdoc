@@ -31,12 +31,14 @@ func genDir(dir string) string { return layout.Path(dir, layout.GeneratedPagesRe
 // handDir is a project's handwritten docs root.
 func handDir(dir string) string { return layout.Path(dir, layout.DocsRel) }
 
-// owners writes the ownership declaration gen needs before it may create any
+// owners writes the ownership manifests gen needs before it may write into any
 // directory under the tool-state directory.
 func owners(t *testing.T, dir string) {
 	t.Helper()
-	write(t, filepath.Join(dir, layout.Root, layout.OwnersFileName),
-		strings.Join(layout.RequiredRows(), "\n")+"\n")
+	for _, claimed := range layout.Declared() {
+		write(t, layout.DirectoryManifestPath(dir, claimed.Name),
+			layout.DirectoryManifestContent(layout.Owner))
+	}
 }
 
 func isolate(t *testing.T) {

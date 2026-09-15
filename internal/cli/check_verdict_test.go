@@ -29,8 +29,8 @@ func loweredThresholdProjects(t *testing.T) (lib, site string) {
 	root := t.TempDir()
 	lib = filepath.Join(root, "lib")
 	site = filepath.Join(root, "docs-site")
-	testproject.Owners(t, lib)
-	testproject.Owners(t, site)
+	testproject.Manifests(t, lib)
+	testproject.Manifests(t, site)
 
 	testproject.WriteJSON(t, filepath.Join(lib, "selfdoc.json"), map[string]any{
 		"source":             []any{map[string]any{"path": "mylib/", "language": "python"}},

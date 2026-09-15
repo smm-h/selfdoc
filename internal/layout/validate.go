@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,46 +33,48 @@ const (
 // Validate checks one repository's layout and returns every problem it finds,
 // in check order.
 //
-// The rules: every directory under [Root] is named in the owners file and
-// everything the owners file names exists; every directory selfdoc owns holds
-// only what its side allows; nothing under [Root] starts with a dot except the
-// derived ignore file; and that file's selfdoc block is what the declaration
-// says it should be.
+// The rules: every directory under [Root] carries a [ManifestFileName] naming
+// a tool this machine has, and every directory selfdoc claims that exists
+// names selfdoc; every directory selfdoc owns holds only what its side allows;
+// nothing under [Root] starts with a dot except the derived ignore file; and
+// that file's selfdoc block is what the declaration says it should be.
 //
-// An unreadable owners file is returned as an error rather than a problem: the
-// rest of the rules are unanswerable without it.
+// A missing [Root] is returned as an error rather than a problem: the rest of
+// the rules are unanswerable without it.
 func Validate(baseDir string) ([]Problem, error) {
 	rootPath := Path(baseDir, Root)
 	info, err := os.Stat(rootPath)
 	if err != nil || !info.IsDir() {
 		return nil, fmt.Errorf(
-			"%s is missing. selfdoc never creates it: make the directory and write %s yourself, with these lines:\n%s",
-			Root, filepath.Join(Root, OwnersFileName), strings.Join(RequiredRows(), "\n"))
-	}
-	owners, err := ReadOwners(baseDir)
-	if err != nil {
-		return nil, err
+			"%s is missing. selfdoc never creates it: make the directory yourself, and give each directory inside it a %s naming its owner -- %s holding:\n%s",
+			Root, ManifestFileName, DirectoryManifestRel(DocsName),
+			strings.TrimRight(DirectoryManifestContent(Owner), "\n"))
 	}
 
-	var problems []Problem
-	problems = append(problems, bijectionProblems(baseDir, owners)...)
+	owners, problems := ownershipProblems(baseDir)
 	problems = append(problems, sideProblems(baseDir, owners)...)
 	problems = append(problems, hiddenProblems(baseDir, owners)...)
 	problems = append(problems, ignoreProblems(baseDir)...)
 	return problems, nil
 }
 
-// bijectionProblems reports the directories the owners file does not name and
-// the names it declares that nothing on disk answers to.
-func bijectionProblems(baseDir string, owners *Owners) []Problem {
-	var problems []Problem
+// ownershipProblems reads every directory's manifest under [Root] and reports
+// the ones that declare nothing, declare a tool this machine does not have, or
+// declare another tool for a directory selfdoc claims.
+//
+// It returns the owner each directory declares, which is what the side and
+// hidden rules read to decide whose directory they are looking at. A dotted
+// entry is left to [hiddenProblems], which is the rule it breaks.
+func ownershipProblems(baseDir string) (map[string]string, []Problem) {
+	owners := map[string]string{}
 	entries, err := os.ReadDir(Path(baseDir, Root))
 	if err != nil {
-		return []Problem{{Check: CheckOwnership, Message: err.Error()}}
+		return owners, []Problem{{Check: CheckOwnership, Message: err.Error()}}
 	}
+	var problems []Problem
 	for _, entry := range entries {
 		name := entry.Name()
-		if name == OwnersFileName || name == IgnoreFileName {
+		if name == IgnoreFileName || strings.HasPrefix(name, ".") {
 			continue
 		}
 		if !entry.IsDir() {
@@ -83,31 +86,45 @@ func bijectionProblems(baseDir string, owners *Owners) []Problem {
 			})
 			continue
 		}
-		if _, declared := owners.Owner[name]; !declared {
+		manifest, readErr := ReadDirectoryManifest(baseDir, name)
+		if errors.Is(readErr, os.ErrNotExist) {
 			suggested := Owner
 			if _, claimed := Lookup(name); !claimed {
-				suggested = "<owner>"
+				suggested = "<tool>"
 			}
 			problems = append(problems, Problem{
 				Check: CheckOwnership,
 				Message: fmt.Sprintf(
-					"%s exists but no row in %s names its owner. Add this row:\n%s",
-					filepath.Join(Root, name), owners.Path, name+","+suggested),
+					"%s carries no %s, so nothing declares who owns it. Create %s holding this line:\n%s",
+					filepath.Join(Root, name), ManifestFileName, DirectoryManifestRel(name),
+					strings.TrimRight(DirectoryManifestContent(suggested), "\n")),
 			})
+			continue
 		}
-	}
-	for _, name := range owners.Order {
-		info, err := os.Stat(Path(baseDir, Root+"/"+name))
-		if err != nil || !info.IsDir() {
+		if readErr != nil {
+			problems = append(problems, Problem{Check: CheckOwnership, Message: readErr.Error()})
+			continue
+		}
+		owners[name] = manifest.Owner
+		if !KnownOwner(manifest.Owner) {
 			problems = append(problems, Problem{
 				Check: CheckOwnership,
 				Message: fmt.Sprintf(
-					"%s names %q, which does not exist. Create the directory, or drop its row from %s.",
-					owners.Path, filepath.Join(Root, name), owners.Path),
+					"%s declares %q as the owner of %s, and this machine has no such tool. An owner is %q itself, or a name PATH answers with an executable.",
+					DirectoryManifestRel(name), manifest.Owner, filepath.Join(Root, name), Owner),
+			})
+		}
+		if _, claimed := Lookup(name); claimed && manifest.Owner != Owner {
+			problems = append(problems, Problem{
+				Check: CheckOwnership,
+				Message: fmt.Sprintf(
+					"%s is a directory selfdoc claims, and %s declares %q as its owner. Write this line instead, or rename the directory to one selfdoc does not claim:\n%s",
+					filepath.Join(Root, name), DirectoryManifestRel(name), manifest.Owner,
+					strings.TrimRight(DirectoryManifestContent(Owner), "\n")),
 			})
 		}
 	}
-	return problems
+	return owners, problems
 }
 
 // sideProblems reports the files sitting on the wrong side of the authorship
@@ -117,10 +134,10 @@ func bijectionProblems(baseDir string, owners *Owners) []Problem {
 // generated pages directory; one without it belongs in the handwritten docs
 // directory. The uncommitted cache is not checked: it holds extracted
 // checkouts and built output, which carry whatever the source tree carries.
-func sideProblems(baseDir string, owners *Owners) []Problem {
+func sideProblems(baseDir string, owners map[string]string) []Problem {
 	var problems []Problem
 	for _, dir := range Declared() {
-		if owners.Owner[dir.Name] != Owner || dir.Commitment == Uncommitted {
+		if owners[dir.Name] != Owner || dir.Commitment == Uncommitted {
 			continue
 		}
 		root := Path(baseDir, Root+"/"+dir.Name)
@@ -166,7 +183,7 @@ func sideProblems(baseDir string, owners *Owners) []Problem {
 // ignore file is the one exception, because git will not read it under another
 // name. Only the committed directories are walked through: an uncommitted one
 // holds extracted checkouts, whose dotted entries are the source tree's.
-func hiddenProblems(baseDir string, owners *Owners) []Problem {
+func hiddenProblems(baseDir string, owners map[string]string) []Problem {
 	var problems []Problem
 	entries, err := os.ReadDir(Path(baseDir, Root))
 	if err != nil {
@@ -187,7 +204,7 @@ func hiddenProblems(baseDir string, owners *Owners) []Problem {
 			continue
 		}
 		declared, claimed := Lookup(name)
-		if !claimed || owners.Owner[name] != Owner || declared.Commitment == Uncommitted {
+		if !claimed || owners[name] != Owner || declared.Commitment == Uncommitted {
 			continue
 		}
 		_ = filepath.WalkDir(Path(baseDir, Root+"/"+name), func(full string, walked os.DirEntry, err error) error {
