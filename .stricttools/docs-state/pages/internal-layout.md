@@ -1,8 +1,7 @@
 +++
 title = "internal/layout"
-description = "Package layout is selfdoc's declaration of the per-repository directories it owns, and the single authority for every path it reads or writes inside them."
+description = "The directories selfdoc owns under the hidden tool-state root, the manifest that grants each one, and the authority for every path inside them."
 generated = true
-seeded = true
 nav_group = "API Reference"
 nav_order = 47
 +++
