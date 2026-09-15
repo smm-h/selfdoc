@@ -1158,8 +1158,8 @@
         },
         {
           "level": 4,
-          "text": "`list-lints`",
-          "anchor": "list-lints"
+          "text": "`table-lints`",
+          "anchor": "table-lints"
         },
         {
           "level": 4,
@@ -4810,8 +4810,8 @@
         },
         {
           "level": 3,
-          "text": "`ResolveListLints`",
-          "anchor": "resolvelistlints"
+          "text": "`ResolveTableLints`",
+          "anchor": "resolvetablelints"
         },
         {
           "level": 3,
@@ -10645,6 +10645,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-15T21:52:55.931300+00:00",
+  "last_gen": "2026-09-15T21:55:39.649485+00:00",
   "theme": "minimal"
 }
