@@ -280,12 +280,12 @@ def rewrite_map(docs_rel: str, output_rel: str, posts_rel: str) -> list[tuple[st
     pairs = [
         # The config keys by their exact JSON spelling, slashed or not, so a
         # repository that declares `"docs": "docs"` is rewritten too.
-        (f'"docs": "{docs_rel}/"', f'"docs": "{DOCS_REL}"'),
-        (f'"docs": "{docs_rel}"', f'"docs": "{DOCS_REL}"'),
-        (f'"output": "{output_rel}/"', f'"output": "{OUTPUT_REL}"'),
-        (f'"output": "{output_rel}"', f'"output": "{OUTPUT_REL}"'),
-        (f'"dir": "{posts_rel}/"', f'"dir": "{POSTS_REL}"'),
-        (f'"dir": "{posts_rel}"', f'"dir": "{POSTS_REL}"'),
+        (f'"docs": "{docs_rel}/"', f'"docs": "{DOCS_REL}/"'),
+        (f'"docs": "{docs_rel}"', f'"docs": "{DOCS_REL}/"'),
+        (f'"output": "{output_rel}/"', f'"output": "{OUTPUT_REL}/"'),
+        (f'"output": "{output_rel}"', f'"output": "{OUTPUT_REL}/"'),
+        (f'"dir": "{posts_rel}/"', f'"dir": "{POSTS_REL}/"'),
+        (f'"dir": "{posts_rel}"', f'"dir": "{POSTS_REL}/"'),
         (f"{DEPRECATED_ROOT}/post-manifest.json", f"{DOCS_STATE_REL}/post-manifest.json"),
         (f"{DEPRECATED_ROOT}/manifest.json", f"{DOCS_STATE_REL}/manifest.json"),
         (f"{DEPRECATED_ROOT}/revisions.json", f"{DOCS_STATE_REL}/revisions.json"),

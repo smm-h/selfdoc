@@ -507,7 +507,7 @@ func TestTheMoveScriptRewritesAnUnslashedDocsKey(t *testing.T) {
 		t.Fatalf("the move refused:\n%s", out)
 	}
 	moved := testproject.ReadText(t, config)
-	for _, want := range []string{`"docs": ".stricttools/docs"`, `"output": ".stricttools/docs-cache/build"`} {
+	for _, want := range []string{`"docs": ".stricttools/docs/"`, `"output": ".stricttools/docs-cache/build/"`} {
 		if !strings.Contains(moved, want) {
 			t.Errorf("selfdoc.json does not declare %s after the move:\n%s", want, moved)
 		}
