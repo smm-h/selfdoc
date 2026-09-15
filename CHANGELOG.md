@@ -2,6 +2,14 @@
 
 # Changelog
 
+## 0.42.1
+
+The assembly refreshes every page's sibling-projects block from the current roster on each deploy, so retiring or adding a project no longer leaves stale links that refuse every following deploy.
+
+### Fixes
+
+- **A retired or newly added project no longer leaves every other project's page listing the wrong tools.** The "More tools from this site" section each assembled page ends with was rendered once, when that project last deployed, and nothing refreshed it afterwards: a project joining the site reached nobody else's pages, and retiring one left its address linked from every other project's -- an address the site no longer serves, which made every following deploy fail verification. Every deploy now regenerates the section on every page in the tree.
+
 ## 0.42.0
 
 Every selfdoc-owned directory lives under .stricttools/ with a manifest.toml per directory, moved by a dry-run-capable script; titles compose written values only; topology.projects, legacy_blog_host and the Pages worker are gone; the lint table renders from the registry; check resolves generated pages through both docs roots.
