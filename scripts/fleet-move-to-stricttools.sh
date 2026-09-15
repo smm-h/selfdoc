@@ -5,7 +5,11 @@
 # build the move needs before it: the sitemap of the old layout, always
 # rebuilt rather than read from an earlier build's output.
 #
-# Usage: scripts/fleet-move-to-stricttools.sh (--dry-run | --apply) [--skip slug,slug]
+# Usage: scripts/fleet-move-to-stricttools.sh (--dry-run | --apply) [--skip slug,slug] [--old-selfdoc <path>]
+#
+# --old-selfdoc names a selfdoc binary that still reads the old layout, for
+# the pre-move build; it defaults to the installed `selfdoc`, which is wrong
+# once the new-layout release is installed.
 #
 # --dry-run runs the move script's dry run in every project not yet moved
 # and prints its plan. --apply, per project: archives regenerable caches the
@@ -28,13 +32,14 @@ installed="$(command -v selfdoc || true)"
 mode="${1:-}"
 case "$mode" in
   --dry-run|--apply) ;;
-  *) echo "usage: $0 (--dry-run | --apply) [--skip slug,slug]" >&2; exit 2 ;;
+  *) echo "usage: $0 (--dry-run | --apply) [--skip slug,slug] [--old-selfdoc <path>]" >&2; exit 2 ;;
 esac
 shift
 skip=","
 while [ $# -gt 0 ]; do
   case "$1" in
     --skip) skip=",${2:-},"; shift 2 ;;
+    --old-selfdoc) installed="${2:-}"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
