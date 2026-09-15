@@ -14,6 +14,7 @@ import (
 
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/testproject"
 	"github.com/smm-h/stricttest/go/hygiene"
 )
@@ -648,5 +649,34 @@ func TestBuildUnifiedThemeOverrideDecidesTheSharedStylesheet(t *testing.T) {
 	// the call does.
 	if got := loadFixtureConfig(t, docsSite)["theme"]; got != "minimal" {
 		t.Errorf("the config's theme is now %v, want it left at minimal", got)
+	}
+}
+
+// TestBuildUnifiedCreatesItsOutputThroughTheLayout pins that the unified
+// build's output directory is created the way every other directory under the
+// layout root is: through the ownership check that reads the directory's
+// manifest. A raw mkdir here would write into a directory another tool owns.
+func TestBuildUnifiedCreatesItsOutputThroughTheLayout(t *testing.T) {
+	hygiene.Isolate(t)
+	docsSite := testproject.MakeUnified(t, oneProject, nil)
+	if err := os.Remove(layout.DirectoryManifestPath(docsSite, layout.DocsCacheName)); err != nil {
+		t.Fatalf("removing the output directory's manifest: %v", err)
+	}
+	if err := os.RemoveAll(layout.Path(docsSite, layout.DocsCacheRel)); err != nil {
+		t.Fatalf("removing the output tree: %v", err)
+	}
+	_, err := BuildUnified(docsSite, nil, "", false, effects.Unbound())
+	if err == nil {
+		t.Fatal("a build wrote into a directory carrying no manifest")
+	}
+	for _, want := range []string{
+		layout.DirectoryManifestRel(layout.DocsCacheName), `owner = "selfdoc"`,
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not carry %q: %v", want, err)
+		}
+	}
+	if _, statErr := os.Stat(layout.Path(docsSite, layout.OutputRel)); !os.IsNotExist(statErr) {
+		t.Errorf("the output directory was created anyway (stat err = %v)", statErr)
 	}
 }

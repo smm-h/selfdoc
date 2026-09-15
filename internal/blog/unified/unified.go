@@ -13,6 +13,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/html"
+	"github.com/smm-h/selfdoc/internal/layout"
 	"github.com/smm-h/selfdoc/internal/page"
 	"github.com/smm-h/selfdoc/internal/themes"
 	"github.com/smm-h/selfdoc/internal/urls"
@@ -113,7 +114,8 @@ func BuildUnified(
 	defaultLocaleCode := build.DefaultLocaleOf(cfg)
 	latestVersion := util.PythonStrOrEmpty(versions[len(versions)-1]["version"])
 
-	outputDir := filepath.Join(dirPath, strings.TrimRight(configString(cfg, "output"), "/"))
+	outputRel := strings.TrimRight(configString(cfg, "output"), "/")
+	outputDir := filepath.Join(dirPath, outputRel)
 	docsDirName := strings.TrimRight(configString(cfg, "docs"), "/")
 	docsDir := filepath.Join(dirPath, docsDirName)
 	if !isDir(docsDir) {
@@ -126,7 +128,10 @@ func BuildUnified(
 			return nil, err
 		}
 	}
-	if err := h.MkdirAll(outputDir); err != nil {
+	// Creating anything under the layout root goes through EnsureDir: it
+	// reads the directory's ownership manifest before writing and refreshes
+	// the derived ignore file after.
+	if err := layout.EnsureDir(h, dirPath, outputRel); err != nil {
 		return nil, err
 	}
 
