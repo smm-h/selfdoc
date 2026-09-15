@@ -302,6 +302,16 @@ description from its manifest, in name order.
 * The section sits outside the element the search indexer reads a page's body
   from, and is marked `data-pagefind-ignore`, so the same list of projects is
   not indexed once per page on the site.
+* **The assembly regenerates the section on every deploy**, over every page in
+  the tree rather than over the subtree being deployed. What a build renders is
+  the membership of the day it ran, and the assembly is never rebuilt whole: a
+  project's subtree is replaced only when that project deploys. Without the
+  sweep, a project joining or changing its description would reach nobody
+  else's pages, and a retirement would leave its address linked from every
+  other project's -- addresses the tree no longer serves, which the
+  whole-tree verification then refuses every following deploy over. A page
+  published before the section existed gains one on the sweep, so an old
+  subtree converges too.
 
 ### What a search engine reads off the two generated pages
 
@@ -450,7 +460,7 @@ replaced by their local equivalents rather than skipped:
 | Build | Each checkout is built by the toolchain running the command -- the home project through `selfdoc build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
 | Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects` and `404.html` left behind. |
 | Membership | A roster rendered from the checkouts named on the command line, and a `projects.json` written by the same `record_membership` the deploy uses. Dropping a `--repo` on a rerun retires that project from the tree. |
-| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, the site chrome asset, the re-pointing pass that aims every grafted page at it, and the link repair pass that rewrites every link naming the site's own base document-relatively. |
+| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, the site chrome asset, the re-pointing pass that aims every grafted page at it, the link repair pass that rewrites every link naming the site's own base document-relatively, and the sibling-block pass that regenerates every page's **More tools from this site** section from the membership as it is now. |
 | Search | The pagefind pass over the assembled tree. |
 | Verification | The real `verify_assembly`, printed **first and loudly**. |
 
