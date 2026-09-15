@@ -2057,6 +2057,16 @@
         },
         {
           "level": 3,
+          "text": "`SiteName`",
+          "anchor": "sitename"
+        },
+        {
+          "level": 3,
+          "text": "`SiteNameFor`",
+          "anchor": "sitenamefor"
+        },
+        {
+          "level": 3,
           "text": "`GenerateWorkerJS`",
           "anchor": "generateworkerjs"
         },
@@ -7908,6 +7918,11 @@
         },
         {
           "level": 3,
+          "text": "`DocumentTitleParts`",
+          "anchor": "documenttitleparts"
+        },
+        {
+          "level": 3,
           "text": "`NewOptions`",
           "anchor": "newoptions"
         },
@@ -10580,6 +10595,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-14T18:47:22.038231+00:00",
+  "last_gen": "2026-09-15T20:46:24.498422+00:00",
   "theme": "minimal"
 }
