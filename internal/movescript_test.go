@@ -483,3 +483,33 @@ func TestTheMoveScriptAcceptsTheCountsItPlans(t *testing.T) {
 		}
 	}
 }
+
+// TestTheMoveScriptRewritesAnUnslashedDocsKey: a repository may declare its
+// paths without a trailing slash (`"docs": "docs"`), and the config keys are
+// rewritten by their meaning, not by matching a slashed spelling.
+func TestTheMoveScriptRewritesAnUnslashedDocsKey(t *testing.T) {
+	requirePython3(t)
+	requireSafegit(t)
+	hygiene.Isolate(t)
+	root := moduleRoot(t)
+	dir := oldLayoutProject(t)
+	config := filepath.Join(dir, "selfdoc.json")
+	text := testproject.ReadText(t, config)
+	text = strings.Replace(text, `"docs/"`, `"docs"`, 1)
+	text = strings.Replace(text, `"docs/_build/"`, `"docs/_build"`, 1)
+	testproject.WriteText(t, config, text)
+	testproject.Git(t, dir, "commit", "--quiet", "-am", "unslashed paths")
+	makeToolRoot(t, dir)
+	stub := fakeSelfdoc(t, dir, sitemapXML("https://example.com/", "https://example.com/guide/"))
+
+	out, status := runMove(t, root, dir, "--apply", "--selfdoc", stub)
+	if status != 0 {
+		t.Fatalf("the move refused:\n%s", out)
+	}
+	moved := testproject.ReadText(t, config)
+	for _, want := range []string{`"docs": ".stricttools/docs"`, `"output": ".stricttools/docs-cache/build"`} {
+		if !strings.Contains(moved, want) {
+			t.Errorf("selfdoc.json does not declare %s after the move:\n%s", want, moved)
+		}
+	}
+}
