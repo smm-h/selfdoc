@@ -93,7 +93,7 @@
     "description": "a88fdbfd865bb583c35a594a76b0fd7c9f861cd6fd9c0ec5c29a23c60d80da52"
   },
   "en/check-guide.md": {
-    "content": "4c404edae175bad8922b262b96a760384b8ed7fa0d76ab1543e15109f7c73673",
+    "content": "c136f6ad0f50193180edb8daac3bfd70841d5310f7f236ab4203c5e8c89d59a7",
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
@@ -215,7 +215,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "en/directives-guide.md": {
-    "content": "6b5f62456251591fb07888f4b5e696de05e56d2b59319d47c51300b586192341",
+    "content": "12c2783d47bd7d48b1238e292db9ca59ccfe2f0b719b55a2d812dbefd8fdc411",
     "description": "a97129def129fe3eac3002e6998e2286ea8312c1a0f1016e68fb48f4d7a12078"
   },
   "en/directives.md": {
@@ -382,7 +382,7 @@
   "en/internal-content.md": {
     "content": "ac5b9e200df149d3be993b3069f3fbee3277aef6b12dd4c3ee8709b096e55af2",
     "description": "fb9ba463e169af9ba47ff2b803325a2032acc205a5474f01c6069c18b5054ab5",
-    "source_docstring": "5c6aa555e9baefdf33578a36a6259debe24a9f506eb5cc86c54a931e4143c785"
+    "source_docstring": "ce206334af6100131272320f830b1d696ae8939b9dd9ab3064629ba75c4a3934"
   },
   "en/internal-cv.md": {
     "content": "3be6fdc46286354d321d76394e9d801b4e8fee537961ccfa2ac6ab10a2090bcc",
@@ -532,7 +532,7 @@
   "en/internal-lints.md": {
     "content": "7911da93c39e1c1946c429f921a8ec87c3f58e00e93165f136b092d3ae5aa2e4",
     "description": "272fab59a75327bef99b4d4bebcb779def86de3e176e872dbd4b1d67e0a6ffeb",
-    "source_docstring": "7e6f082dac68ce30a2d317cc501cebb5816d1fd027b7ffa53c416037e497ab7b"
+    "source_docstring": "6187be47fad3e9cba917a5ed679ef229a7813618964af9b2ee4ba9cf09c48a04"
   },
   "en/internal-manifest.md": {
     "content": "d7667a632c3fc2b01763e3801c5e5f476fbd89fb9274c76729f3c275c05ba61d",
