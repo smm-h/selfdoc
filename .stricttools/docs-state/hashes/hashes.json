@@ -85,8 +85,8 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "8e1f5eeb313856c617d0dc0fcafbdc55ea8557a47d62c62b3c860b6e610fa412",
-    "description": "1c58798b3a1f60d72b4fd53229086fd1fab2f7b2179745c69ac2e8002c5cbd0b"
+    "content": "1f3de5055ead7926d1cc821b338094eb7b304cab115c34a9a2ac1d04f1d8938f",
+    "description": "da5e696cb7cfa14507c0e08db1ad866230e25e4b74cbc7c29247b7d71ca42d06"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
     "content": "c25c2417c6524d0e16a73c7a1655ef888c96902c9751d25dec542bb4159c3309",
@@ -99,7 +99,7 @@
   "en/cli-assembly.md": {
     "content": "0501a283ab10bcdc1fe0163c239ad78d2e12ccfa71e46870180088cf218970ed",
     "description": "c5eee38c282ee28795a6abad2c5c68e590dc64732a326a3e837ffa8ac6ebf2fe",
-    "schema_hash": "3b42fe89e02d1d6b4937a62010db9000c62da046396e609b03fddc9c87530cab",
+    "schema_hash": "862300196eff29d354de457c25b27c8a0d3850d1fab66005357233a72ef5f1ed",
     "seed_hash": "c5eee38c282ee28795a6abad2c5c68e590dc64732a326a3e837ffa8ac6ebf2fe"
   },
   "en/cli-baseline.md": {
