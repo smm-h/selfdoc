@@ -387,8 +387,12 @@ def main() -> int:
     parser.add_argument("--selfdoc", default="./bin/selfdoc",
                         help="the selfdoc binary the after-the-move build runs, relative to "
                              "the project or absolute; defaults to ./bin/selfdoc")
+    parser.add_argument("--expect-manifests", type=int, default=None,
+                        help="fail unless the plan writes exactly this many ownership manifests")
     parser.add_argument("--expect-moves", type=int, default=None,
                         help="fail unless the plan holds exactly this many moves")
+    parser.add_argument("--expect-rewrites", type=int, default=None,
+                        help="fail unless the plan rewrites exactly this many files")
     args = parser.parse_args()
 
     project = Path(args.project).resolve()
@@ -436,16 +440,15 @@ def move(project: Path, args) -> int:
     print(f"moves planned: {len(moves)}")
     for old, new in moves:
         print(f"  {old} -> {new}")
-    if args.expect_moves is not None and len(moves) != args.expect_moves:
-        raise Refusal(f"planned {len(moves)} moves, expected {args.expect_moves}")
     # A repository whose files are already in place still has its content to
     # rewrite: a run that was interrupted between the two commits finishes
     # here rather than needing the moves undone first.
     already_moved = not moves
 
-    if args.apply and (moves or manifests):
-        perform_moves(project, moves, manifests)
-
+    # The rewrite plan is read off the tree before anything is written: a file
+    # that is about to move is read where it still sits and reported under the
+    # name the move gives it, so the whole plan -- manifests, moves and
+    # rewrites -- is known, printed and asserted before the first commit.
     rewrites = plan_rewrites(project, pairs, moves, output_rel)
     if already_moved and not rewrites:
         raise Refusal(
@@ -461,10 +464,22 @@ def move(project: Path, args) -> int:
         for line in diff[:30]:
             print(f"    {line}")
 
+    # Every stated count is checked against the plan before a single file is
+    # written, so a mismatch refuses a tree nothing has touched.
+    for label, planned, expected in (
+        ("manifests", len(manifests), args.expect_manifests),
+        ("moves", len(moves), args.expect_moves),
+        ("rewrites", len(rewrites), args.expect_rewrites),
+    ):
+        if expected is not None and planned != expected:
+            raise Refusal(f"planned {planned} {label}, expected {expected}")
+
     if not args.apply:
         print("dry run: nothing was moved and nothing was written.")
         return 0
 
+    if moves or manifests:
+        perform_moves(project, moves, manifests)
     perform_rewrites(project, rewrites, output_rel)
     return verify_urls(project, args.selfdoc, urls_before)
 

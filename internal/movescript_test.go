@@ -60,6 +60,14 @@ func oldLayoutProject(t *testing.T) string {
 	testproject.WriteText(t, filepath.Join(dir, ".selfdoc", "hashes", "hashes.json"), "{}\n")
 	testproject.WriteText(t, filepath.Join(dir, ".selfdoc", "posts", "hello.md"),
 		"+++\ntitle = \"Hello\"\n+++\n\nA post that names docs/index.md.\n")
+	// The root file gen wrote from docs/_README.md. selfdoc writes a
+	// generated file read-only, and its text names a path the move rewrites,
+	// so it is the case the rewrite has to write through a forbidding mode.
+	readme := filepath.Join(dir, "README.md")
+	testproject.WriteText(t, readme, "# Readme\n\nThe pages are under docs/ and the guide is docs/guide.md.\n")
+	if err := os.Chmod(readme, 0o444); err != nil {
+		t.Fatalf("making the generated root file read-only: %v", err)
+	}
 
 	testproject.Git(t, dir, "init", "--quiet")
 	testproject.Git(t, dir, "add", ".")
@@ -184,22 +192,6 @@ func TestTheMoveScriptDryRunChangesNothing(t *testing.T) {
 	}
 	if got := testproject.ReadText(t, filepath.Join(dir, "selfdoc.json")); !strings.Contains(got, `"docs": "docs/"`) {
 		t.Errorf("the dry run rewrote the config:\n%s", got)
-	}
-}
-
-func TestTheMoveScriptRefusesAWrongExpectedCount(t *testing.T) {
-	requirePython3(t)
-	hygiene.Isolate(t)
-	root := moduleRoot(t)
-	dir := oldLayoutProject(t)
-	makeToolRoot(t, dir)
-
-	out, status := runMove(t, root, dir, "--dry-run", "--expect-moves", "99")
-	if status == 0 {
-		t.Fatalf("a wrong expected count was accepted:\n%s", out)
-	}
-	if !strings.Contains(out, "expected 99") {
-		t.Errorf("the refusal does not name the mismatch:\n%s", out)
 	}
 }
 
@@ -381,4 +373,104 @@ func gitOutput(t *testing.T, dir string, args ...string) string {
 func gitStatus(t *testing.T, dir string) string {
 	t.Helper()
 	return strings.TrimSpace(gitOutput(t, dir, "status", "--porcelain"))
+}
+
+// TestTheMoveScriptRewritesAReadOnlyGeneratedFile pins the write a generated
+// root file needs: selfdoc writes one read-only, and the move still has to
+// rewrite the paths its text names -- then leave the mode as it found it, so
+// the next generation still meets a read-only file.
+func TestTheMoveScriptRewritesAReadOnlyGeneratedFile(t *testing.T) {
+	requirePython3(t)
+	requireSafegit(t)
+	hygiene.Isolate(t)
+	root := moduleRoot(t)
+	dir := oldLayoutProject(t)
+	makeToolRoot(t, dir)
+	stub := fakeSelfdoc(t, dir, sitemapXML("https://example.com/", "https://example.com/guide/"))
+
+	readme := filepath.Join(dir, "README.md")
+	before, err := os.Stat(readme)
+	if err != nil {
+		t.Fatalf("stat the generated root file: %v", err)
+	}
+	if before.Mode().Perm()&0o200 != 0 {
+		t.Fatalf("the fixture's generated root file is writable: %v", before.Mode())
+	}
+
+	out, status := runMove(t, root, dir, "--apply", "--selfdoc", stub)
+	if status != 0 {
+		t.Fatalf("the move refused:\n%s", out)
+	}
+
+	rewritten := testproject.ReadText(t, readme)
+	if !strings.Contains(rewritten, ".stricttools/docs/guide.md") {
+		t.Errorf("the read-only generated file was not rewritten:\n%s", rewritten)
+	}
+	after, err := os.Stat(readme)
+	if err != nil {
+		t.Fatalf("stat the generated root file after the move: %v", err)
+	}
+	if after.Mode().Perm() != before.Mode().Perm() {
+		t.Errorf("the mode became %v, want it left at %v",
+			after.Mode().Perm(), before.Mode().Perm())
+	}
+}
+
+// TestTheMoveScriptAssertsEveryPlannedCount pins the dry run's contract for
+// each of the three counts it prints: a stated count that the plan does not
+// hold refuses the run, and nothing is written.
+func TestTheMoveScriptAssertsEveryPlannedCount(t *testing.T) {
+	requirePython3(t)
+	hygiene.Isolate(t)
+	root := moduleRoot(t)
+
+	for _, testCase := range []struct {
+		name string
+		flag string
+		want string
+	}{
+		{"manifests", "--expect-manifests", "manifests"},
+		{"moves", "--expect-moves", "moves"},
+		{"rewrites", "--expect-rewrites", "rewrites"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			dir := oldLayoutProject(t)
+			makeToolRoot(t, dir)
+
+			out, status := runMove(t, root, dir, "--dry-run", testCase.flag, "99")
+			if status == 0 {
+				t.Fatalf("a wrong expected %s count was accepted:\n%s", testCase.want, out)
+			}
+			if !strings.Contains(out, "expected 99") ||
+				!strings.Contains(out, testCase.want) {
+				t.Errorf("the refusal does not name the %s mismatch:\n%s", testCase.want, out)
+			}
+			if _, err := os.Stat(filepath.Join(dir, ".stricttools", "docs")); !os.IsNotExist(err) {
+				t.Errorf("the refused run created a directory (stat err = %v)", err)
+			}
+		})
+	}
+}
+
+// TestTheMoveScriptAcceptsTheCountsItPlans pins the other side: the counts the
+// dry run prints are the counts it accepts.
+func TestTheMoveScriptAcceptsTheCountsItPlans(t *testing.T) {
+	requirePython3(t)
+	hygiene.Isolate(t)
+	root := moduleRoot(t)
+	dir := oldLayoutProject(t)
+	makeToolRoot(t, dir)
+
+	out, status := runMove(t, root, dir, "--dry-run",
+		"--expect-manifests", "4", "--expect-moves", "7", "--expect-rewrites", "5")
+	if status != 0 {
+		t.Fatalf("the dry run refused its own counts:\n%s", out)
+	}
+	for _, want := range []string{
+		"manifests to write: 4", "moves planned: 7", "files to rewrite: 5",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the dry run does not report %q:\n%s", want, out)
+		}
+	}
 }
