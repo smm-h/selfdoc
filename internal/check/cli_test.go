@@ -27,8 +27,10 @@ func strictcliProject(
 	write(t, filepath.Join(root, ".strictcli", "schema.json"), string(encoded))
 
 	write(t, filepath.Join(root, ".stricttools", "docs", ".keep"), "")
+	// The CLI reference pages go where gen writes them: the generated docs
+	// root, not the handwritten one.
 	for relPath, content := range pages {
-		write(t, filepath.Join(root, ".stricttools", "docs", relPath), content)
+		write(t, filepath.Join(root, ".stricttools", "docs-state", "pages", relPath), content)
 	}
 	return root
 }
@@ -297,6 +299,51 @@ func TestCLI002HelpLength(t *testing.T) {
 		}
 		if !strings.Contains(matching[0].Message(), "arg 'target'") {
 			t.Errorf("message = %q", matching[0].Message())
+		}
+	})
+}
+
+// TestCLIPagesResolveAcrossBothDocsRoots pins that CLI001 looks for a CLI
+// reference page in both roots a project's pages come from: the generated root
+// gen writes them into, and the handwritten root a project may author one in
+// instead.
+func TestCLIPagesResolveAcrossBothDocsRoots(t *testing.T) {
+	schema := cliSchema(map[string]any{
+		"run": map[string]any{
+			"name":  "run",
+			"help":  "Run the project's own build pipeline end to end, writing output",
+			"flags": []any{}, "args": []any{},
+		},
+	}, nil)
+	const runPage = "+++\ndescription = \"Reference for the myapp run command " +
+		"with usage details\"\n+++\n# myapp run\n\nText.\n"
+
+	t.Run("a page only in the generated root", func(t *testing.T) {
+		root := strictcliProject(t, schema, map[string]string{
+			"cli-index.md": cliIndexPage,
+			"cli-run.md":   runPage,
+		})
+		generated := filepath.Join(root, ".stricttools", "docs-state", "pages", "cli-run.md")
+		if !isFile(generated) {
+			t.Fatalf("fixture did not write %s", generated)
+		}
+		if isFile(filepath.Join(root, ".stricttools", "docs", "cli-run.md")) {
+			t.Fatal("fixture wrote the page into the handwritten root too")
+		}
+		result := checkFixture(t, root)
+		if hasCode(result.Lints, "CLI001") {
+			t.Errorf("CLI001 fired for a page in the generated root: %v",
+				messagesOf(withCode(result.Lints, "CLI001")))
+		}
+	})
+
+	t.Run("a page only in the handwritten root", func(t *testing.T) {
+		root := strictcliProject(t, schema, map[string]string{"cli-index.md": cliIndexPage})
+		write(t, filepath.Join(root, ".stricttools", "docs", "cli-run.md"), runPage)
+		result := checkFixture(t, root)
+		if hasCode(result.Lints, "CLI001") {
+			t.Errorf("CLI001 fired for a page in the handwritten root: %v",
+				messagesOf(withCode(result.Lints, "CLI001")))
 		}
 	})
 }

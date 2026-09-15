@@ -421,3 +421,53 @@ func TestResolveAllRefusesTwoPagesAtOneAddress(t *testing.T) {
 		}
 	}
 }
+
+// TestFindPageLooksInBothRoots pins the lookup every caller that reads a page
+// off disk goes through: a page is found at its docs-relative address whether
+// it is authored in the handwritten root or written into the generated one,
+// and a page in neither is reported absent.
+func TestFindPageLooksInBothRoots(t *testing.T) {
+	isolate(t)
+	base := t.TempDir()
+	handwritten := filepath.Join(base, layout.DocsRel, "guide.md")
+	generated := filepath.Join(base, layout.GeneratedPagesRel, "cli-run.md")
+	write(t, handwritten, "# Guide\n")
+	write(t, generated, "# Run\n")
+	if err := os.MkdirAll(filepath.Join(base, layout.DocsRel, "section"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	config := makeConfig(nil)
+
+	if got, ok := FindPage(config, "", base, "guide.md"); !ok || got != handwritten {
+		t.Errorf("FindPage(guide.md) = %q, %v; want %q, true", got, ok, handwritten)
+	}
+	if got, ok := FindPage(config, "", base, "cli-run.md"); !ok || got != generated {
+		t.Errorf("FindPage(cli-run.md) = %q, %v; want %q, true", got, ok, generated)
+	}
+	if got, ok := FindPage(config, "", base, "absent.md"); ok {
+		t.Errorf("FindPage(absent.md) = %q, true; want absent", got)
+	}
+	if got, ok := FindPage(config, "", base, "section"); ok {
+		t.Errorf("FindPage on a directory = %q, true; want absent", got)
+	}
+}
+
+// TestRootsNamesTheHandwrittenRootFirst pins the order [ResolveAll] walks, and
+// that an explicit handwritten root overrides the config's declaration.
+func TestRootsNamesTheHandwrittenRootFirst(t *testing.T) {
+	base := t.TempDir()
+	want := []string{
+		filepath.Join(base, layout.DocsRel),
+		filepath.Join(base, layout.GeneratedPagesRel),
+	}
+	if got := Roots(makeConfig(nil), "", base); !reflect.DeepEqual(got, want) {
+		t.Errorf("Roots = %v, want %v", got, want)
+	}
+
+	explicit := filepath.Join(base, "elsewhere")
+	want[0] = explicit
+	if got := Roots(makeConfig(nil), explicit, base); !reflect.DeepEqual(got, want) {
+		t.Errorf("Roots with an explicit docs dir = %v, want %v", got, want)
+	}
+}

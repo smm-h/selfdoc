@@ -253,7 +253,7 @@ func CheckDocs(
 		return nil, err
 	}
 	if cliSchema != nil {
-		cliLints, err := checkCLIPages(cliSchema, dirPath, docsDir)
+		cliLints, err := checkCLIPages(cliSchema, projectConfig, dirPath, docsDir)
 		if err != nil {
 			return nil, err
 		}
@@ -473,14 +473,17 @@ func pagefindAvailable(handle *effects.Handle) bool {
 // CLI001 reports a page that was never generated, and a flag token the page
 // does not mention. CLI002 reports help text too short to document anything.
 func checkCLIPages(
-	cliSchema *strictclisupport.Structure, dirPath, docsDir string,
+	cliSchema *strictclisupport.Structure, config map[string]any, dirPath, docsDir string,
 ) ([]lints.LintResult, error) {
 	var results []lints.LintResult
 
 	for _, pageName := range strictclisupport.ExpectedCLIPageFilenames(cliSchema) {
-		pagePath := filepath.Join(docsDir, pageName)
+		// A CLI reference page is authored in either docs root -- gen
+		// writes it into the generated one -- so it is looked up through
+		// the same two-root resolution the build walks.
+		pagePath, present := docs.FindPage(config, docsDir, dirPath, pageName)
 		commandName := strings.TrimSuffix(strings.TrimPrefix(pageName, "cli-"), ".md")
-		if !isFile(pagePath) {
+		if !present {
 			results = append(results, lints.MustLintResult(
 				pageName, nil, "CLI001",
 				fmt.Sprintf("missing CLI page for command '%s'", commandName),

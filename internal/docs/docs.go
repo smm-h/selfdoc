@@ -124,6 +124,41 @@ func customDirectiveNames(config map[string]any) []string {
 	return names
 }
 
+// Roots returns the directories a project's pages come from, in the order
+// [ResolveAll] walks them: the handwritten root the config names, then the
+// generated root selfdoc writes its own pages into.
+//
+// docsDir names the handwritten root; pass "" to take it from the config's
+// "docs" key, resolved against baseDir. baseDir is the project root every
+// relative path in the config resolves against.
+//
+// Every caller that has to find a page by its docs-relative path asks here,
+// so the two-root namespace is declared once rather than re-derived.
+func Roots(config map[string]any, docsDir, baseDir string) []string {
+	if docsDir == "" {
+		docsDir = filepath.Join(baseDir, trimmedConfigPath(config, "docs", layout.DocsDefault))
+	}
+	return []string{docsDir, layout.Path(baseDir, layout.GeneratedPagesRel)}
+}
+
+// FindPage returns the path of the page at relPath -- a docs-relative path
+// with forward slashes -- looked up across the roots [Roots] reports, and
+// reports whether one of them holds it.
+//
+// A page keeps its address wherever it is authored, so a caller that reads a
+// page off disk must look in both roots or it will report a generated page
+// missing.
+func FindPage(config map[string]any, docsDir, baseDir, relPath string) (string, bool) {
+	for _, root := range Roots(config, docsDir, baseDir) {
+		candidate := filepath.Join(root, filepath.FromSlash(relPath))
+		info, err := os.Stat(candidate)
+		if err == nil && !info.IsDir() {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
 // ResolveMarkdown parses and resolves one Markdown source into a Doc.
 //
 // Every page in a walk result goes through here, whether it came off disk or
@@ -192,10 +227,7 @@ func ResolveAll(
 	overlay map[string]string,
 	handle *effects.Handle,
 ) (map[string]Doc, error) {
-	if docsDir == "" {
-		docsDir = filepath.Join(baseDir, trimmedConfigPath(config, "docs", layout.DocsDefault))
-	}
-	generatedDir := layout.Path(baseDir, layout.GeneratedPagesRel)
+	roots := Roots(config, docsDir, baseDir)
 	outputDir := filepath.Join(baseDir, trimmedConfigPath(config, "output", layout.OutputDefault))
 
 	pageResolver, err := resolver.MakeResolver(config, baseDir, handle)
@@ -214,7 +246,7 @@ func ResolveAll(
 
 	result := map[string]Doc{}
 	origin := map[string]string{}
-	for _, root := range []string{docsDir, generatedDir} {
+	for _, root := range roots {
 		if err := walkDocs(root, root, absOutput, func(relPath, content string) error {
 			if previous, taken := origin[relPath]; taken {
 				return &CollisionError{
