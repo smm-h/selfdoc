@@ -279,15 +279,26 @@ var (
 	pagefindCommand []string
 )
 
+// startupPath is PATH as the test binary was started with, captured before any
+// test narrows it.
+//
+// A suite that pins PATH to a fixed set of system directories -- so a fake
+// tool at the front shadows the real one and nothing else is reachable --
+// hides a Pagefind installed under the developer's own bin directory. The
+// search runs against this value instead of the live one, so where a test
+// points PATH decides nothing about whether Pagefind is found.
+var startupPath = os.Getenv("PATH")
+
 // RequirePagefind skips the test unless a Pagefind installation the build can
 // reach is available, and makes it reachable when it is installed somewhere
 // the build would not look.
 //
-// The build runs "python3 -m pagefind" and then "pagefind". When neither
-// answers but an interpreter under the user's uv tool directory carries the
-// module, a "pagefind" shim naming that interpreter is written into a
-// directory prepended to PATH -- which is the second thing the build tries, so
-// nothing about the build changes.
+// The build runs "python3 -m pagefind" and then "pagefind". Whatever answered
+// the search is reached through a "pagefind" shim -- a one-line script naming
+// the absolute command -- written into a directory prepended to PATH, which is
+// the second thing the build tries, so nothing about the build changes. The
+// shim is what makes a Pagefind outside the system directories reachable from
+// a test that has narrowed PATH to shadow an external tool.
 //
 // Every candidate is probed with HOME and the XDG base directories pointed at
 // a directory that does not exist, because the isolation floor repoints them
@@ -308,12 +319,6 @@ func RequirePagefind(t TB) {
 			"Install with 'pip install pagefind[bin]' or 'npm install -g pagefind'.")
 		return
 	}
-	if len(pagefindCommand) == 1 && pagefindCommand[0] == "pagefind" {
-		return
-	}
-	if len(pagefindCommand) == 3 && pagefindCommand[0] == "python3" {
-		return
-	}
 	shimDir := filepath.Join(t.TempDir(), "pagefind-shim")
 	MkdirAll(t, shimDir)
 	shim := filepath.Join(shimDir, "pagefind")
@@ -326,10 +331,18 @@ func RequirePagefind(t TB) {
 
 // findPagefind returns an argv prefix that runs Pagefind under the isolation
 // floor's environment, or nil when none does.
+//
+// Every candidate's program is an absolute path, resolved against
+// [startupPath] rather than against whatever PATH the calling test has set, so
+// the answer is the same whether the search runs before or after a suite
+// narrows PATH.
 func findPagefind() []string {
-	candidates := [][]string{
-		{"python3", "-m", "pagefind"},
-		{"pagefind"},
+	var candidates [][]string
+	if interpreter := lookInStartupPath("python3"); interpreter != "" {
+		candidates = append(candidates, []string{interpreter, "-m", "pagefind"})
+	}
+	if binary := lookInStartupPath("pagefind"); binary != "" {
+		candidates = append(candidates, []string{binary})
 	}
 	for _, interpreter := range uvToolInterpreters() {
 		candidates = append(candidates, []string{interpreter, "-m", "pagefind"})
@@ -342,6 +355,23 @@ func findPagefind() []string {
 		}
 	}
 	return nil
+}
+
+// lookInStartupPath returns the absolute path of an executable named name on
+// [startupPath], or "" when no directory on it carries one.
+func lookInStartupPath(name string) string {
+	for _, dir := range filepath.SplitList(startupPath) {
+		if dir == "" {
+			continue
+		}
+		candidate := filepath.Join(dir, name)
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() || info.Mode().Perm()&0o111 == 0 {
+			continue
+		}
+		return candidate
+	}
+	return ""
 }
 
 // unreachableHome is a path no home directory occupies. It is what the
