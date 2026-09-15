@@ -29,7 +29,7 @@
       "default": true
     }
   ],
-  "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
+  "description": "Static Site Generator that builds a project's documentation site directly from its source code, so the docs can never drift from the code they describe, with SEO/AEO, first-class blog, search, and cross-project linking built in",
   "search_engine": "pagefind",
   "gen": {
     "exclude": [

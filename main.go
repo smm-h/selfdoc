@@ -1,6 +1,10 @@
-// Command selfdoc is the single binary for the selfdoc documentation
-// generator: it builds documentation sites from Markdown templates and source
-// code, and publishes them.
+// Command selfdoc: Static Site Generator that builds a project's
+// documentation site directly from its source code, so the docs can never
+// drift from the code they describe, with SEO/AEO, first-class blog, search,
+// and cross-project linking built in.
+//
+// All of that ships as one binary, which builds the site, checks it, and
+// publishes it.
 //
 // The entry point is the module root, so the binary installs with
 // "go install github.com/smm-h/selfdoc@v0" and takes its name from the

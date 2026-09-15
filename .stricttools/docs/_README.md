@@ -3,7 +3,7 @@ title = "README.md"
 +++
 # selfdoc
 
-selfdoc is a code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code. It is for maintainers who want a repository's documentation built from the repository itself, so API references, CLI help, schemas and tests never drift from the code they describe.
+Static Site Generator that builds a project's documentation site directly from its source code, so the docs can never drift from the code they describe, with SEO/AEO, first-class blog, search, and cross-project linking built in. It is for maintainers who want a repository's documentation built from the repository itself, so API references, CLI help, schemas and tests are written by the code rather than beside it.
 
 Extractors ship for Go, Python, TypeScript/JavaScript, Svelte, Zig, Dart, Kotlin, Swift and SQL. selfdoc is one Go binary with no runtime to install: stylesheets, scripts, themes and the word list are compiled into it.
 
