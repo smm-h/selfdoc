@@ -158,7 +158,7 @@ func TestTopologyURLBuilderPageURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			b := NewTopologyURLBuilder(tt.docsBase, "selfdoc", nil)
+			b := NewTopologyURLBuilder(tt.docsBase, "selfdoc")
 			if got := b.PageURL(tt.path); got != tt.want {
 				t.Errorf("PageURL(%q) = %q, want %q", tt.path, got, tt.want)
 			}
@@ -175,7 +175,7 @@ func TestTopologyURLBuilderPageURL(t *testing.T) {
 // project page's link to its own post used to be.
 func TestTopologyURLBuilderSiteLevelPaths(t *testing.T) {
 	t.Parallel()
-	b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc", nil)
+	b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
 	tests := []struct {
 		name string
 		path string
@@ -209,7 +209,7 @@ func TestTopologyURLBuilderSiteLevelPaths(t *testing.T) {
 // project gives.
 func TestTopologyURLBuilderIsMounted(t *testing.T) {
 	t.Parallel()
-	b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc", nil)
+	b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
 	if !b.Mounted() {
 		t.Error("Mounted() = false, want true")
 	}
@@ -225,7 +225,7 @@ func TestTopologyURLBuilderIsMounted(t *testing.T) {
 // classes.
 func TestTopologyURLBuilderAssetAndFeedURL(t *testing.T) {
 	t.Parallel()
-	b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc", nil)
+	b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
 	if got, want := b.AssetURL("og-index.png"), "https://docs.smmh.dev/selfdoc/og-index.png"; got != want {
 		t.Errorf("AssetURL() = %q, want %q", got, want)
 	}
@@ -242,62 +242,48 @@ func TestTopologyURLBuilderBase(t *testing.T) {
 	t.Parallel()
 	for _, base := range []string{"https://docs.smmh.dev", "https://docs.smmh.dev/"} {
 		want := "https://docs.smmh.dev/selfdoc"
-		if got := NewTopologyURLBuilder(base, "selfdoc", nil).Base(); got != want {
+		if got := NewTopologyURLBuilder(base, "selfdoc").Base(); got != want {
 			t.Errorf("NewTopologyURLBuilder(%q, ...).Base() = %q, want %q", base, got, want)
 		}
 	}
 }
 
-// TestCrossProjectURL is the ported TestTopologyURLBuilderCrossProject class.
+// TestCrossProjectURL asserts that a link into another project is the docs
+// base, that project's slug and the path -- for every slug, with nothing
+// declared per project anywhere.
 func TestCrossProjectURL(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		projects map[string]string
-		slug     string
-		path     string
-		want     string
+		name string
+		slug string
+		path string
+		want string
 	}{
 		{
-			name:     "a known project",
-			projects: map[string]string{"rlsbl": "https://docs.smmh.dev/rlsbl"},
-			slug:     "rlsbl", path: "guide/",
+			name: "a project on the site",
+			slug: "rlsbl", path: "guide/",
 			want: "https://docs.smmh.dev/rlsbl/guide/",
 		},
 		{
-			name:     "a known project with an empty path",
-			projects: map[string]string{"rlsbl": "https://docs.smmh.dev/rlsbl"},
-			slug:     "rlsbl", path: "",
+			name: "an empty path is the project's front page",
+			slug: "rlsbl", path: "",
 			want: "https://docs.smmh.dev/rlsbl/",
 		},
 		{
-			name: "an unknown project falls back to the docs base",
+			name: "a slug nothing declares resolves the same way",
 			slug: "unknown", path: "page/",
 			want: "https://docs.smmh.dev/unknown/page/",
 		},
 		{
-			name:     "a trailing slash on a mapped base is stripped",
-			projects: map[string]string{"rlsbl": "https://docs.smmh.dev/rlsbl/"},
-			slug:     "rlsbl", path: "guide/",
-			want: "https://docs.smmh.dev/rlsbl/guide/",
-		},
-		{
-			name:     "a mapped base on another host is used as given",
-			projects: map[string]string{"rlsbl": "https://rlsbl.example"},
-			slug:     "rlsbl", path: "guide/",
-			want: "https://rlsbl.example/guide/",
-		},
-		{
-			name:     "a leading slash on the path is stripped",
-			projects: map[string]string{"rlsbl": "https://docs.smmh.dev/rlsbl"},
-			slug:     "rlsbl", path: "/guide/",
+			name: "a leading slash on the path is stripped",
+			slug: "rlsbl", path: "/guide/",
 			want: "https://docs.smmh.dev/rlsbl/guide/",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc", tt.projects)
+			b := NewTopologyURLBuilder("https://docs.smmh.dev", "selfdoc")
 			if got := b.CrossProjectURL(tt.slug, tt.path); got != tt.want {
 				t.Errorf("CrossProjectURL(%q, %q) = %q, want %q",
 					tt.slug, tt.path, got, tt.want)

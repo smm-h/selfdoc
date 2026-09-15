@@ -112,11 +112,20 @@ func ValidateConfig(raw any) (Config, error) {
 			`"source": [{"path": "src/", "language": "python"}]`}
 	}
 
-	// Migration error: topology.assembly duplicated assembly.repo
+	// Migration errors: two retired topology keys. The block is not strict,
+	// so a key nothing declares is read by nobody; each retired one is
+	// refused by name instead, saying what took its place.
 	if rawTopology, isMap := document["topology"].(map[string]any); isMap {
 		if _, present := rawTopology["assembly"]; present {
 			return nil, &ConfigError{Message: "'topology.assembly' is no longer supported. The assembly repo " +
 				`has one home: "assembly": {"repo": "owner/repo"}`}
+		}
+		if _, present := rawTopology["projects"]; present {
+			return nil, &ConfigError{Message: "'topology.projects' is no longer supported. " +
+				"Every project the site serves is mounted under its own " +
+				"slug, so a link into another project resolves to " +
+				"'<topology.docs_base>/<slug>/' for any slug and there is " +
+				"nothing to declare per project. Delete the key."}
 		}
 	}
 

@@ -76,22 +76,7 @@
     "slug": "selfdoc",
     "docs_base": "https://smmh.dev",
     "posts_base": "https://smmh.dev/blog",
-    "legacy_blog_host": "blog.smmh.dev",
-    "projects": {
-      "pixelweaver": "https://smmh.dev/pixelweaver",
-      "claudestream": "https://smmh.dev/claudestream",
-      "claudewheel": "https://smmh.dev/claudewheel",
-      "go-toml-edit": "https://smmh.dev/go-toml-edit",
-      "howmuchleft": "https://smmh.dev/howmuchleft",
-      "orxtra": "https://smmh.dev/orxtra",
-      "pgdesign": "https://smmh.dev/pgdesign",
-      "predraw": "https://smmh.dev/predraw",
-      "rlsbl": "https://smmh.dev/rlsbl",
-      "safegit": "https://smmh.dev/safegit",
-      "saferm": "https://smmh.dev/saferm",
-      "strictcli": "https://smmh.dev/strictcli",
-      "wesktop": "https://smmh.dev/wesktop"
-    }
+    "legacy_blog_host": "blog.smmh.dev"
   },
   "posts": {
     "repo": "smm-h/posts"

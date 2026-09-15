@@ -1117,30 +1117,19 @@ func TestPostsTopologyAssembly(t *testing.T) {
 			},
 		},
 		{
-			name: "topology.projects maps slugs to base URLs",
+			name: "topology.projects is retired: a slug is the whole address",
 			data: base(map[string]any{"topology": map[string]any{"projects": map[string]any{
-				"rlsbl":     "https://docs.smmh.dev/rlsbl",
-				"strictcli": "https://docs.smmh.dev/strictcli",
+				"rlsbl": "https://docs.smmh.dev/rlsbl",
 			}}}),
-			check: func(t *testing.T, cfg Config) {
-				projects := cfg["topology"].(map[string]any)["projects"].(map[string]any)
-				if projects["rlsbl"] != "https://docs.smmh.dev/rlsbl" ||
-					projects["strictcli"] != "https://docs.smmh.dev/strictcli" {
-					t.Fatalf("projects = %#v", projects)
-				}
-			},
+			wantErr: "'topology.projects' is no longer supported",
 		},
 		{
-			name: "an empty topology.projects object validates",
-			data: base(map[string]any{"topology": map[string]any{"projects": map[string]any{}}}),
-			check: func(t *testing.T, cfg Config) {
-				projects := cfg["topology"].(map[string]any)["projects"]
-				if !reflect.DeepEqual(projects, map[string]any{}) {
-					t.Fatalf("projects = %#v", projects)
-				}
-			},
+			name: "the retirement says what a cross-project link resolves to",
+			data: base(map[string]any{"topology": map[string]any{"projects": map[string]any{
+				"rlsbl": "https://docs.smmh.dev/rlsbl",
+			}}}),
+			wantErr: "'<topology.docs_base>/<slug>/'",
 		},
-		{name: "topology.projects must be an object", data: base(map[string]any{"topology": map[string]any{"projects": "not-a-dict"}}), wantErr: "'topology.projects' must be an object"},
 		{
 			name: "a full topology block loads",
 			data: base(map[string]any{"topology": map[string]any{
@@ -1148,7 +1137,6 @@ func TestPostsTopologyAssembly(t *testing.T) {
 				"docs_base":        "https://docs.smmh.dev",
 				"posts_base":       "https://docs.smmh.dev/blog",
 				"legacy_blog_host": "blog.smmh.dev",
-				"projects":         map[string]any{"rlsbl": "https://docs.smmh.dev/rlsbl"},
 			}}),
 			check: func(t *testing.T, cfg Config) {
 				topology := cfg["topology"].(map[string]any)
@@ -1156,9 +1144,6 @@ func TestPostsTopologyAssembly(t *testing.T) {
 					topology["posts_base"] != "https://docs.smmh.dev/blog" ||
 					topology["legacy_blog_host"] != "blog.smmh.dev" {
 					t.Fatalf("topology = %#v", topology)
-				}
-				if topology["projects"].(map[string]any)["rlsbl"] != "https://docs.smmh.dev/rlsbl" {
-					t.Fatalf("projects = %#v", topology["projects"])
 				}
 			},
 		},
@@ -1360,7 +1345,6 @@ func TestDiagnosticsMatchThePythonSurface(t *testing.T) {
 		{map[string]any{"source": []any{"src/"}}, `source[0] is a plain string ('src/'). Source entries must be objects with 'path' and 'language': {"path": "src/", "language": "python"}`},
 		{map[string]any{"root_files": []any{123}}, "'root_files[0]' must be a string"},
 		{map[string]any{"posts": map[string]any{"dir": 123}}, "'posts.dir' must be a string"},
-		{map[string]any{"topology": map[string]any{"projects": "not-a-dict"}}, "'topology.projects' must be an object"},
 		{map[string]any{"versions": []any{map[string]any{"version": "1.0", "indexed": true}}}, "invalid <item> key 'indexed'; must be one of: projects, version"},
 		{map[string]any{"foo": "bar"}, "unknown config key 'foo'"},
 		{map[string]any{"lint_ignore": []any{"SEO007", "SEO0O8"}}, `invalid lint_ignore[1] 'SEO0O8'; must match pattern ^[A-Z]+\d+$`},

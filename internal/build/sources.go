@@ -105,12 +105,7 @@ func MakeURLBuilder(config map[string]any) urls.URLBuilder {
 	docsBase := util.PythonStrOrEmpty(topology["docs_base"])
 	slug := util.PythonStrOrEmpty(topology["slug"])
 	if docsBase != "" && slug != "" {
-		projects := map[string]string{}
-		declared, _ := topology["projects"].(map[string]any)
-		for name, value := range declared {
-			projects[name] = util.PythonStrOrEmpty(value)
-		}
-		return urls.NewTopologyURLBuilder(docsBase, slug, projects)
+		return urls.NewTopologyURLBuilder(docsBase, slug)
 	}
 	if baseURL := util.PythonStrOrEmpty(config["base_url"]); baseURL != "" {
 		return urls.NewSimpleURLBuilder(baseURL)

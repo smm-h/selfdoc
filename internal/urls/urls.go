@@ -137,19 +137,14 @@ func (b *SimpleURLBuilder) SiteRoot() string {
 type TopologyURLBuilder struct {
 	docsBase string
 	slug     string
-	projects map[string]string
 }
 
 // NewTopologyURLBuilder returns a builder for a project the site at docsBase
 // serves under slug.
-//
-// projects maps another project's slug to its base URL, for
-// [TopologyURLBuilder.CrossProjectURL]; it may be nil.
-func NewTopologyURLBuilder(docsBase, slug string, projects map[string]string) *TopologyURLBuilder {
+func NewTopologyURLBuilder(docsBase, slug string) *TopologyURLBuilder {
 	return &TopologyURLBuilder{
 		docsBase: strings.TrimRight(docsBase, "/"),
 		slug:     slug,
-		projects: projects,
 	}
 }
 
@@ -203,16 +198,16 @@ func (b *TopologyURLBuilder) SiteRoot() string {
 	return b.docsBase + "/"
 }
 
-// CrossProjectURL builds a URL to another project's content, reading the base
-// from the projects mapping the builder was constructed with and falling back
-// to the docs base plus the project slug when the mapping does not name it.
+// CrossProjectURL builds a URL to another project's content: the docs base,
+// the project's slug, and the path.
+//
+// Every project the site serves is mounted under its own slug, so the slug is
+// the whole address and there is nothing to declare per project. A slug the
+// site does not serve is not an address this function can tell apart from one
+// it does -- the assembly's verification is what refuses a link naming a
+// project the roster does not carry.
 func (b *TopologyURLBuilder) CrossProjectURL(projectSlug, path string) string {
-	base, ok := b.projects[projectSlug]
-	if !ok {
-		base = b.docsBase + "/" + projectSlug
-	} else {
-		base = strings.TrimRight(base, "/")
-	}
+	base := b.docsBase + "/" + projectSlug
 	path = strings.TrimLeft(path, "/")
 	if path == "" {
 		return base + "/"

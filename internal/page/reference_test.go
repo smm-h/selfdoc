@@ -391,7 +391,7 @@ func TestGeneratedPagesMatchReference(t *testing.T) {
 				"blog/hello.md": {"title": "Hello", "type": "post"},
 			}
 			opts.URLBuilder = urls.NewTopologyURLBuilder(
-				"https://docs.example.com", "myproj", nil)
+				"https://docs.example.com", "myproj")
 			opts.BaseURL = "https://docs.example.com/myproj"
 			opts.MountProject = "myproj"
 			opts.FeedURL = "feed.xml"

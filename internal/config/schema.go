@@ -870,10 +870,6 @@ var Schema = []FieldSpec{
 				Name: "legacy_blog_host", Type: FieldStr, Required: false,
 				Description: "Hostname of a retired blog subdomain (e.g., 'blog.smmh.dev'). When set, every request arriving on that host is 301'd by the generated assembly worker onto '<docs_base>/blog' -- the canonical blog URL the worker derives from topology.docs_base, not from posts_base. Omit when no such subdomain exists.",
 			},
-			{
-				Name: "projects", Type: FieldDict, Required: false, StrictKeys: false,
-				Description: "Maps other project slugs to their base URLs for cross-linking.",
-			},
 		},
 	},
 	{

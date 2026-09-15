@@ -739,6 +739,24 @@ func TestACrossProjectLinkToAPageNobodyPublishesFails(t *testing.T) {
 	requireFailure(t, report, "cross-project-links", "beta/ghost/")
 }
 
+// TestACrossProjectLinkToASlugTheRosterDoesNotCarryFails covers the link a
+// cross-project reference resolves to now that nothing declares a per-project
+// base URL: every slug addresses "<docs_base>/<slug>/", including a slug the
+// site does not serve, and the assembled tree is where that is caught.
+func TestACrossProjectLinkToASlugTheRosterDoesNotCarryFails(t *testing.T) {
+	root := newAssembly(t)
+	writeFile(t, filepath.Join(root, "site", "alpha", "guide", "index.html"),
+		page("Alpha Guide", canonicalBase+"/alpha/guide/", pageOptions{
+			Body:    `  <a href="../../undeclared/guide/">Undeclared</a>`,
+			Version: "1.0.0",
+		}))
+	report := verifyTree(t, root)
+	if len(report.FailuresOf("internal-references")) == 0 {
+		t.Fatal("a link to a slug the roster does not carry was not refused")
+	}
+	requireFailure(t, report, "internal-references", "undeclared/guide/")
+}
+
 // TestALinkToAPublishedPostResolves: a post is addressed at the site level
 // from every project's pages.
 func TestALinkToAPublishedPostResolves(t *testing.T) {
