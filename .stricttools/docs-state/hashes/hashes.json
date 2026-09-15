@@ -85,7 +85,7 @@
     "description": "1ee13e582c9284732da29c0074d4ca4314922dfcd10408571d770a2159971fb9"
   },
   "en/blog-guide.md": {
-    "content": "1f3de5055ead7926d1cc821b338094eb7b304cab115c34a9a2ac1d04f1d8938f",
+    "content": "e93cd1eabe9605e36da85cb20e8fd67e48a7857fbf4e2f777bb6c004272671f8",
     "description": "da5e696cb7cfa14507c0e08db1ad866230e25e4b74cbc7c29247b7d71ca42d06"
   },
   "en/blog/selfdoc-vs-the-competition-documentation-generators-compared.md": {
@@ -93,7 +93,7 @@
     "description": "a88fdbfd865bb583c35a594a76b0fd7c9f861cd6fd9c0ec5c29a23c60d80da52"
   },
   "en/check-guide.md": {
-    "content": "c136f6ad0f50193180edb8daac3bfd70841d5310f7f236ab4203c5e8c89d59a7",
+    "content": "33ef0a368e199862e9f6f2fa51ab39d1f1f7e63d356c0d9196f2d49babca0175",
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
@@ -215,7 +215,7 @@
     "description": "a06732d81dedac36b59c719e5e6ddb4f6e39b7250cb46cd8575ac4368d270663"
   },
   "en/directives-guide.md": {
-    "content": "12c2783d47bd7d48b1238e292db9ca59ccfe2f0b719b55a2d812dbefd8fdc411",
+    "content": "634aab7309401784df5dc1ec0bc978808c433cd725f46fc4c835fa331e0d1dcb",
     "description": "a97129def129fe3eac3002e6998e2286ea8312c1a0f1016e68fb48f4d7a12078"
   },
   "en/directives.md": {
@@ -382,7 +382,7 @@
   "en/internal-content.md": {
     "content": "ac5b9e200df149d3be993b3069f3fbee3277aef6b12dd4c3ee8709b096e55af2",
     "description": "fb9ba463e169af9ba47ff2b803325a2032acc205a5474f01c6069c18b5054ab5",
-    "source_docstring": "ce206334af6100131272320f830b1d696ae8939b9dd9ab3064629ba75c4a3934"
+    "source_docstring": "1063878d5ca585c0af6205c5aacbd0557ec298574cd21858ad10792b3f8c22ff"
   },
   "en/internal-cv.md": {
     "content": "3be6fdc46286354d321d76394e9d801b4e8fee537961ccfa2ac6ab10a2090bcc",
@@ -532,7 +532,7 @@
   "en/internal-lints.md": {
     "content": "7911da93c39e1c1946c429f921a8ec87c3f58e00e93165f136b092d3ae5aa2e4",
     "description": "272fab59a75327bef99b4d4bebcb779def86de3e176e872dbd4b1d67e0a6ffeb",
-    "source_docstring": "6187be47fad3e9cba917a5ed679ef229a7813618964af9b2ee4ba9cf09c48a04"
+    "source_docstring": "ddaf076081dba1a0e05a469bf8b26b1589898d2bd92a50f01ef4c52c601ec6a7"
   },
   "en/internal-manifest.md": {
     "content": "d7667a632c3fc2b01763e3801c5e5f476fbd89fb9274c76729f3c275c05ba61d",
