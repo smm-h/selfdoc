@@ -89,3 +89,37 @@ written.
   order, was not taken because it discards authored intent. Awaiting the
   owner's ruling; reversible by having the converter drop a root page's
   `nav_order` when no `order` was declared.
+
+## Ownership is a manifest.toml per directory, not OWNERS.csv
+
+- The plan says: ownership is declared in a single two-column file at the
+  layout root, and a row there is the permission to create a directory.
+- What changed: the owner rejected the single file (its name and its
+  inflexible format) in favour of a `manifest.toml` inside each function
+  directory, carrying `owner` only for now; function-level facts stay in the
+  tool's layout declaration so nothing is copied into every repository.
+- Built instead: `.stricttools/<dir>/manifest.toml`, strictspec-validated;
+  the manifest is the permission to create and is what makes an empty
+  function directory exist in git.
+
+## Glossary slugs keep the term's written casing
+
+- The plan says: the slug is the case-folded word with phrases hyphenated.
+- What changed: the owner ruled that folding makes proper nouns, acronyms
+  and constants look wrong (`C++`, `UUID`, `GENERATED_BY`) and that each
+  term has exactly one canonical casing instead.
+- Built instead: the slug is the word as written, spaces to hyphens, every
+  path-legal character kept literally, the rest percent-encoded; two
+  accepted terms or aliases that fold to the same string are a VOCAB error
+  naming both, so one page per term holds without lowercasing.
+
+## Titles are written, never derived
+
+- The plan said nothing about titles; a search-surface change made after
+  it derived a project's index title from its description.
+- What changed: the owner ruled that titles are authored text, never
+  composed from another field.
+- Built instead: every page title composes written values only, page then
+  project then site name; the index page's title is its own frontmatter
+  title plus the site name; the description-derived title and its lint are
+  gone.
