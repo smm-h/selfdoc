@@ -93,7 +93,7 @@
     "description": "a88fdbfd865bb583c35a594a76b0fd7c9f861cd6fd9c0ec5c29a23c60d80da52"
   },
   "en/check-guide.md": {
-    "content": "a423dc084a06f736a593b5c766b41505e0130772ce1dd701e7e3efe22a93887d",
+    "content": "4c404edae175bad8922b262b96a760384b8ed7fa0d76ab1543e15109f7c73673",
     "description": "f441c3b055ea08876a70e1c3c790d81ec1e8b23776ad95b1577df3085783770d"
   },
   "en/cli-assembly.md": {
@@ -122,7 +122,7 @@
   "en/cli-check.md": {
     "content": "6d2ecbb6184759e17d05a3bbf746625531f0c8548a11d176953844e53fe72c86",
     "description": "7ded848e80672d3121d55b1298869333328ceeb3bab2ed722fd190f4f36865dd",
-    "schema_hash": "7622cfd9e5faa6e742318c7f9e645f812afe3782169cc27b9a64767acb542846"
+    "schema_hash": "84fa2260203e3d45be2ecd68b0f9ac5953263354b8c1da3ec53332e084f9d04e"
   },
   "en/cli-deploy.md": {
     "content": "5f2c7b3815dd00bf1e296d241c328d80019676afe6790d08616316a3b19a65cb",
@@ -868,7 +868,7 @@
     "source_docstring": "08e3de71703233dd44976e0c79149b031754700e2dcb3eca21ef01825328564d"
   },
   "en/seo.md": {
-    "content": "1f61cf68a179abaffd40a6aace07fe1f612650ed4bc983bc3d028e86be5f8356",
+    "content": "55551dd3da912f0b93217a3aa2c98e06e8a865f17e1236f327505579c77b49e7",
     "description": "459bf62cb188c627f8b79d9e10f3a47c9304420ad6fdd0464dcdb2541d19df25"
   },
   "en/staleness.md": {
