@@ -2,10 +2,10 @@
   "schema_version": 1,
   "name": "selfdoc",
   "slug": "selfdoc",
-  "version": "0.37.1",
-  "description": "Code-aware static site generator that resolves directive blocks in Markdown templates into live content extracted from source code.",
-  "language": "python",
-  "base_url": "https://selfdoc.smmh.dev",
+  "version": "0.41.0",
+  "description": "Static Site Generator that builds a project's documentation site directly from its source code, so the docs can never drift from the code they describe, with SEO/AEO, first-class blog, search, and cross-project linking built in",
+  "language": "go",
+  "base_url": "https://smmh.dev/selfdoc",
   "pages": [],
   "posts": [
     {
@@ -20,5 +20,6 @@
       ]
     }
   ],
-  "last_gen": "2026-08-12T14:52:48.179207+00:00"
+  "last_gen": "2026-09-15T20:59:26.820139+00:00",
+  "theme": "minimal"
 }
