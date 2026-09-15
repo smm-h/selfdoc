@@ -160,7 +160,7 @@ func ScanProject(
 
 	declaredDocs := util.PythonStrOrEmpty(project.Config["docs"])
 	if declaredDocs == "" {
-		declaredDocs = "docs/"
+		declaredDocs = layout.DocsDefault
 	}
 	docsDir := util.PathJoin(project.Path, strings.TrimRight(declaredDocs, "/"))
 	if !isDir(docsDir) {

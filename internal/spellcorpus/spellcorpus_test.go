@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/smm-h/selfdoc/internal/config"
 	"github.com/smm-h/selfdoc/internal/effects"
 	"github.com/smm-h/selfdoc/internal/fleet"
 	"github.com/smm-h/selfdoc/internal/spelling"
@@ -400,5 +401,35 @@ func TestUniqueWordsOrdering(t *testing.T) {
 		if got[index] != expected {
 			t.Errorf("entry %d = %v, want %v", index, got[index], expected)
 		}
+	}
+}
+
+// TestScanProjectFallsBackToTheLayoutDocsRoot pins the docs root a project
+// that declares no "docs" key is surveyed at: the layout's own default, the
+// same directory every other reader falls back to, not the path selfdoc used
+// before the layout moved under one hidden directory.
+func TestScanProjectFallsBackToTheLayoutDocsRoot(t *testing.T) {
+	isolate(t)
+	root := t.TempDir()
+	projectDir := corpusProject(t, root, "alpha", map[string]string{
+		"index.md": strings.ReplaceAll(cleanPage, "spelled correctly", "spelled correclty"),
+	})
+
+	undeclared := fleet.FleetProject{
+		Name: "alpha",
+		Path: projectDir,
+		Config: config.Config{
+			"source": []any{map[string]any{"path": "src/", "language": "python"}},
+		},
+	}
+	report, err := ScanProject(undeclared, spelling.LoadWordlist(), spelling.Vocab{})
+	if err != nil {
+		t.Fatalf("ScanProject: %v", err)
+	}
+	if report.Error != "" {
+		t.Fatalf("error = %q, want the layout's docs root surveyed", report.Error)
+	}
+	if report.Pages != 1 {
+		t.Errorf("pages = %d, want 1", report.Pages)
 	}
 }
