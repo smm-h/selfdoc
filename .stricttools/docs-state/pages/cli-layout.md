@@ -14,12 +14,12 @@ Inspect and check the per-repository directories selfdoc owns under .stricttools
 
 ## layout dump
 
-Print selfdoc's layout declaration: every directory it claims, whether the directory is handwritten or generated, whether the repository commits it, and the paths it replaced
+Print selfdoc's layout declaration: every directory it claims, whether the directory is handwritten or generated, whether the repository commits it, the manifest.toml that grants it and what that file must hold, and the paths it replaced
 
 **Effect:** read_only
 
 ## layout validate
 
-Check this repository's .stricttools/ directory: every directory is named in OWNERS.csv and everything named exists, every directory selfdoc owns holds only what its side allows, nothing inside starts with a dot except the derived ignore file, and that ignore file is what selfdoc's declaration renders
+Check this repository's .stricttools/ directory: every directory carries a manifest.toml naming a tool this machine has, every directory selfdoc claims names selfdoc, every directory selfdoc owns holds only what its side allows, nothing inside starts with a dot except the derived ignore file, and that ignore file is what selfdoc's declaration renders
 
 **Effect:** read_only

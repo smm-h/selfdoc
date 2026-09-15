@@ -527,7 +527,6 @@
   "en/internal-layout.md": {
     "content": "52f92ef04414261f2f49481d476762ebd38a5b6a8947ed602f3b647d8d28bdd8",
     "description": "af3462390e8feacf50d8b9b9eb76c082d5026b07d60939b31c2fe787bf24c6bf",
-    "seed_hash": "d4084f4a33686bdf08cf24243221480cd0d93eaa447d5c20140b892f90c1e40b",
     "source_docstring": "e2e1bf190c16979d11fe9c714a7bebbfd31e63f66c0defc2a69035d92b8ab6a7"
   },
   "en/internal-lints.md": {

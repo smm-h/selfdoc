@@ -7080,13 +7080,13 @@
         },
         {
           "level": 3,
-          "text": "`OwnersFileName`",
-          "anchor": "ownersfilename"
+          "text": "`ManifestFileName`",
+          "anchor": "manifestfilename"
         },
         {
           "level": 3,
-          "text": "`OwnersHeader`",
-          "anchor": "ownersheader"
+          "text": "`OwnerKey`",
+          "anchor": "ownerkey"
         },
         {
           "level": 3,
@@ -7240,6 +7240,16 @@
         },
         {
           "level": 3,
+          "text": "`GeneratedBy`",
+          "anchor": "generatedby"
+        },
+        {
+          "level": 3,
+          "text": "`SchemaFormatVersion`",
+          "anchor": "schemaformatversion"
+        },
+        {
+          "level": 3,
           "text": "`CheckOwnership`",
           "anchor": "checkownership"
         },
@@ -7275,13 +7285,13 @@
         },
         {
           "level": 3,
-          "text": "`Owners`",
-          "anchor": "owners"
+          "text": "`OldLayoutError`",
+          "anchor": "oldlayouterror"
         },
         {
           "level": 3,
-          "text": "`OldLayoutError`",
-          "anchor": "oldlayouterror"
+          "text": "`DirectoryManifest`",
+          "anchor": "directorymanifest"
         },
         {
           "level": 3,
@@ -7315,18 +7325,28 @@
         },
         {
           "level": 3,
-          "text": "`RequiredRows`",
-          "anchor": "requiredrows"
+          "text": "`DirectoryManifestRel`",
+          "anchor": "directorymanifestrel"
         },
         {
           "level": 3,
-          "text": "`OwnersPath`",
-          "anchor": "ownerspath"
+          "text": "`DirectoryManifestPath`",
+          "anchor": "directorymanifestpath"
         },
         {
           "level": 3,
-          "text": "`ReadOwners`",
-          "anchor": "readowners"
+          "text": "`DirectoryManifestContent`",
+          "anchor": "directorymanifestcontent"
+        },
+        {
+          "level": 3,
+          "text": "`ReadDirectoryManifest`",
+          "anchor": "readdirectorymanifest"
+        },
+        {
+          "level": 3,
+          "text": "`KnownOwner`",
+          "anchor": "knownowner"
         },
         {
           "level": 3,
@@ -7370,6 +7390,21 @@
         },
         {
           "level": 3,
+          "text": "`ValidateBytes`",
+          "anchor": "validatebytes"
+        },
+        {
+          "level": 3,
+          "text": "`ValidateValue`",
+          "anchor": "validatevalue"
+        },
+        {
+          "level": 3,
+          "text": "`ValidateBytesWithEvidence`",
+          "anchor": "validatebyteswithevidence"
+        },
+        {
+          "level": 3,
           "text": "`Validate`",
           "anchor": "validate"
         },
@@ -7377,6 +7412,16 @@
           "level": 3,
           "text": "`OldLayoutError.Error`",
           "anchor": "oldlayouterrorerror"
+        },
+        {
+          "level": 3,
+          "text": "`DirectoryManifest.WithFormatVersion`",
+          "anchor": "directorymanifestwithformatversion"
+        },
+        {
+          "level": 3,
+          "text": "`DirectoryManifest.WithOwner`",
+          "anchor": "directorymanifestwithowner"
         },
         {
           "level": 3,
@@ -10580,6 +10625,6 @@
       ]
     }
   ],
-  "last_gen": "2026-09-15T20:58:17.264163+00:00",
+  "last_gen": "2026-09-15T21:22:19.269097+00:00",
   "theme": "minimal"
 }
