@@ -25,8 +25,8 @@ var embeddedSchema = map[string]string{
 #
 # Governs .stricttools/<directory>/manifest.toml: the one-key document that
 # says which tool owns the directory it sits in. The generated validator
-# (internal/layout/selfdoc_directory_manifest_gen.go) is what layout.ReadManifest
-# validates each file against, so a manifest that reaches the permission check
+# (internal/layout/selfdoc_directory_manifest_gen.go) is what
+# layout.ReadDirectoryManifest validates each file against, so a manifest that reaches the permission check
 # or the layout validation has already been through here.
 #
 # THE KEY REGISTRY. "owner" is the whole set of keys a manifest FILE may carry:

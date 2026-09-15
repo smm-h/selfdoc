@@ -80,9 +80,12 @@ func DetectLatestVersion(sourceDir string) (string, error) {
 // PruneDeployArtifacts deletes per-project deploy artifacts under root and
 // returns their paths, sorted.
 //
-// A project build emits _headers, _redirects, _worker.js and pre-compressed
-// .gz / .br copies for its own standalone hosting. Inside the assembly those
-// files would fight the site-wide ones the shared generator writes.
+// A project build emits _headers, _redirects and pre-compressed .gz / .br
+// copies for its own standalone hosting. Inside the assembly those files would
+// fight the site-wide ones the shared generator writes. The set also covers
+// _worker.js, which nothing emits any more: a subtree deployed before the
+// redirect worker was dropped still carries one, and this is what takes it
+// out.
 func PruneDeployArtifacts(root string, handle *effects.Handle) ([]string, error) {
 	removed := make([]string, 0)
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
