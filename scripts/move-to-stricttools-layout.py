@@ -48,6 +48,7 @@ import argparse
 import difflib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -345,10 +346,21 @@ def plan_rewrites(
             # tool-state directory covers the new one.
             after = drop_stale_ignore_lines(after, output_rel)
         for old, new in pairs:
-            after = after.replace(old, new)
+            after = replace_path(after, old, new)
         if after != before:
             planned.append((name, before, after))
     return planned
+
+
+def replace_path(text: str, old: str, new: str) -> str:
+    """Every mention of the repository path `old` in `text`, rewritten to `new`.
+
+    A mention is the path at the start of a path: not preceded by a word
+    character, a slash or a hyphen. That leaves alone the same letters inside
+    a longer name (`mydocs/`) and inside an address on another host
+    (`https://example.org/docs/`), neither of which this repository moved.
+    """
+    return re.sub(r"(?<![\w/-])" + re.escape(old), lambda _: new, text)
 
 
 def changed_lines(before: str, after: str) -> list[str]:

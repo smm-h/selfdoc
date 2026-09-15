@@ -51,7 +51,10 @@ func oldLayoutProject(t *testing.T) string {
 	testproject.WriteText(t, filepath.Join(dir, "src", "__init__.py"), `"""Example."""`+"\n")
 	testproject.WriteText(t, filepath.Join(dir, "docs", "index.md"),
 		"# Home\n\nThe guide is at [the guide](guide/), and the template is docs/_README.md.\n")
-	testproject.WriteText(t, filepath.Join(dir, "docs", "guide.md"), "# Guide\n\nHandwritten.\n")
+	// An address on another host and a word that merely ends in the docs
+	// path's name: neither is a path of this repository, so neither moves.
+	testproject.WriteText(t, filepath.Join(dir, "docs", "guide.md"),
+		"# Guide\n\nHandwritten. See https://example.org/docs/git/ and the mydocs/ folder.\n")
 	testproject.WriteText(t, filepath.Join(dir, "docs", "_README.md"), "# Readme template\n")
 	testproject.WriteText(t, filepath.Join(dir, "docs", "api.md"),
 		"+++\ntitle = \"API\"\ngenerated = true\n+++\n"+
@@ -264,6 +267,12 @@ func TestTheMoveScriptMovesAndRewrites(t *testing.T) {
 	}
 	// A path spelled inside the moved content is rewritten too.
 	page := testproject.ReadText(t, filepath.Join(dir, ".stricttools", "docs", "index.md"))
+	guide := testproject.ReadText(t, filepath.Join(dir, ".stricttools", "docs", "guide.md"))
+	for _, kept := range []string{"https://example.org/docs/git/", "the mydocs/ folder"} {
+		if !strings.Contains(guide, kept) {
+			t.Errorf("the rewrite touched text that is not a path of this repository; guide.md:\n%s", guide)
+		}
+	}
 	if !strings.Contains(page, ".stricttools/docs/_README.md") {
 		t.Errorf("the page still names the old path:\n%s", page)
 	}
