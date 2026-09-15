@@ -200,7 +200,6 @@ func TestGenerateWritesTheSitesOwnFiles(t *testing.T) {
 	for _, rel := range []string{
 		"projects/index.html", "blog/index.html", "nav.json", "feed.xml",
 		"sitemap.xml", "robots.txt", "llms.txt", "404.html", "_headers",
-		"_worker.js",
 	} {
 		if _, err := os.Stat(filepath.Join(tree.Site,
 			filepath.Join(strings.Split(rel, "/")...))); err != nil {
@@ -223,7 +222,6 @@ func TestGenerateReportsEveryPathItWrote(t *testing.T) {
 	for _, rel := range []string{
 		"projects/index.html", "blog/index.html", "nav.json", "feed.xml",
 		"sitemap.xml", "robots.txt", "llms.txt", "404.html", "_headers",
-		"_worker.js",
 	} {
 		path := filepath.Join(tree.Site, filepath.Join(strings.Split(rel, "/")...))
 		if !slices.Contains(written, path) {
@@ -385,34 +383,38 @@ func TestTheRoot404IsNotTheFrontPage(t *testing.T) {
 	}
 }
 
-// -- the worker's address space ----------------------------------------------
+// -- the retired redirect worker ---------------------------------------------
 
-func TestTheWorkerReadsItsAddressSpaceOffTheManifests(t *testing.T) {
+// TestNoWorkerIsEmitted holds the ruling that host redirects belong to the
+// zone rather than to a generated Pages worker, and that a historical path
+// shape answers with the site's 404 rather than a redirect.
+func TestNoWorkerIsEmitted(t *testing.T) {
 	tree := threeProjectTree(t)
-	tree.Generate("home")
-	worker := tree.Read("_worker.js")
-	if !strings.Contains(worker, `const PROJECT_SLUGS = new Set(["alpha", "beta", "home"])`) {
-		t.Errorf("the worker's project set is wrong:\n%s", worker)
+	written := tree.Generate("home")
+	path := filepath.Join(tree.Site, "_worker.js")
+	if _, err := os.Stat(path); err == nil {
+		t.Error("the shared-files pass wrote a _worker.js")
 	}
-	if !strings.Contains(worker, `const POST_SLUGS = new Set(["hello"])`) {
-		t.Errorf("the worker's post set is wrong:\n%s", worker)
+	if slices.Contains(written, path) {
+		t.Error("the shared-files pass reported a _worker.js")
 	}
 }
 
-func TestTheWorkerTakesTheLegacyBlogHostThroughTheGenerator(t *testing.T) {
+// TestAStaleWorkerFromAnEarlierDeployIsDeleted covers the tree an assembly
+// that deployed before this ruling still carries: the file sits at the site
+// root, nothing rewrites it, and the routing check refuses it.
+func TestAStaleWorkerFromAnEarlierDeployIsDeleted(t *testing.T) {
 	tree := threeProjectTree(t)
-	if _, err := GenerateSharedFiles(SharedFilesOptions{
-		SiteDir:        tree.Site,
-		ManifestsDir:   tree.Manifs,
-		CanonicalBase:  sharedCanonicalBase,
-		DocsBase:       sharedCanonicalBase,
-		LegacyBlogHost: "blog.example.com",
-		HomeSlug:       "home",
-	}, effects.Unbound()); err != nil {
-		t.Fatalf("generate: %v", err)
+	path := filepath.Join(tree.Site, "_worker.js")
+	if err := os.MkdirAll(tree.Site, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
 	}
-	if !strings.Contains(tree.Read("_worker.js"), `["blog.example.com", "/blog"]`) {
-		t.Fatal("the worker does not declare the retired subdomain's prefix")
+	if err := os.WriteFile(path, []byte("export default {}\n"), 0o644); err != nil {
+		t.Fatalf("writing the stale worker: %v", err)
+	}
+	tree.Generate("home")
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("the stale worker is still in the tree")
 	}
 }
 
@@ -668,9 +670,6 @@ func TestARetiredProjectLosesItsListingRows(t *testing.T) {
 	}
 	if strings.Contains(tree.Read("sitemap.xml"), "/beta/") {
 		t.Error("the retired project is still in the sitemap")
-	}
-	if strings.Contains(tree.Read("_worker.js"), `"beta"`) {
-		t.Error("the retired project is still in the worker's address space")
 	}
 }
 

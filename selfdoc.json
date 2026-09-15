@@ -75,8 +75,7 @@
   "topology": {
     "slug": "selfdoc",
     "docs_base": "https://smmh.dev",
-    "posts_base": "https://smmh.dev/blog",
-    "legacy_blog_host": "blog.smmh.dev"
+    "posts_base": "https://smmh.dev/blog"
   },
   "posts": {
     "repo": "smm-h/posts"

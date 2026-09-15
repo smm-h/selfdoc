@@ -64,7 +64,7 @@ func TestTheCheckouts(t *testing.T) {
 			Version: "1.0.0", Pages: []fixturePage{{Path: "index.md", Title: "Twin"}},
 		})
 		_, err := PreviewAssembly(home, []string{twin}, filepath.Join(t.TempDir(), "out"),
-			canonicalBase, "", false, "", handle)
+			canonicalBase, false, "", handle)
 		if err == nil || !strings.Contains(err.Error(), "declare the slug 'home'") {
 			t.Fatalf("PreviewAssembly = %v, want the refusal", err)
 		}
@@ -73,7 +73,7 @@ func TestTheCheckouts(t *testing.T) {
 	t.Run("a canonical base is required", func(t *testing.T) {
 		home := homeCheckout(t, filepath.Join(t.TempDir(), "home"))
 		_, err := PreviewAssembly(home, nil, filepath.Join(t.TempDir(), "out"),
-			"", "", false, "", handle)
+			"", false, "", handle)
 		if err == nil || !strings.Contains(err.Error(), "canonical_base is required") {
 			t.Fatalf("PreviewAssembly = %v, want the refusal", err)
 		}
@@ -82,7 +82,7 @@ func TestTheCheckouts(t *testing.T) {
 	t.Run("an unknown theme is refused by name", func(t *testing.T) {
 		home := homeCheckout(t, filepath.Join(t.TempDir(), "home"))
 		_, err := PreviewAssembly(home, nil, filepath.Join(t.TempDir(), "out"),
-			canonicalBase, "", false, "nosuchtheme", handle)
+			canonicalBase, false, "nosuchtheme", handle)
 		if err == nil || !strings.Contains(err.Error(), "unknown theme 'nosuchtheme'") {
 			t.Fatalf("PreviewAssembly = %v, want the refusal", err)
 		}
@@ -151,7 +151,7 @@ func TestTheThemeOfAnAlreadyBuiltTree(t *testing.T) {
 	t.Run("no build with a theme refuses every stale checkout by name", func(t *testing.T) {
 		home := homeCheckout(t, filepath.Join(t.TempDir(), "home"))
 		_, err := PreviewAssembly(home, nil, filepath.Join(t.TempDir(), "out"),
-			canonicalBase, "", false, theme, handle)
+			canonicalBase, false, theme, handle)
 		if err == nil {
 			t.Fatal("the stale build tree was accepted")
 		}

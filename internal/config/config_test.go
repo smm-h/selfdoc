@@ -1099,22 +1099,14 @@ func TestPostsTopologyAssembly(t *testing.T) {
 			wantErr: `"repo"`,
 		},
 		{
-			name: "topology.legacy_blog_host loads",
-			data: base(map[string]any{"topology": map[string]any{"legacy_blog_host": "blog.smmh.dev"}}),
-			check: func(t *testing.T, cfg Config) {
-				if cfg["topology"].(map[string]any)["legacy_blog_host"] != "blog.smmh.dev" {
-					t.Fatalf("topology = %#v", cfg["topology"])
-				}
-			},
+			name:    "topology.legacy_blog_host is retired with the redirect worker",
+			data:    base(map[string]any{"topology": map[string]any{"legacy_blog_host": "blog.smmh.dev"}}),
+			wantErr: "'topology.legacy_blog_host' is no longer supported",
 		},
 		{
-			name: "topology.legacy_blog_host is optional and not injected",
-			data: base(map[string]any{"topology": map[string]any{"slug": "selfdoc"}}),
-			check: func(t *testing.T, cfg Config) {
-				if _, present := cfg["topology"].(map[string]any)["legacy_blog_host"]; present {
-					t.Fatalf("legacy_blog_host was injected: %#v", cfg["topology"])
-				}
-			},
+			name:    "the retirement sends the reader to the DNS zone",
+			data:    base(map[string]any{"topology": map[string]any{"legacy_blog_host": "blog.smmh.dev"}}),
+			wantErr: "redirect rule on the DNS zone",
 		},
 		{
 			name: "topology.projects is retired: a slug is the whole address",
@@ -1133,16 +1125,14 @@ func TestPostsTopologyAssembly(t *testing.T) {
 		{
 			name: "a full topology block loads",
 			data: base(map[string]any{"topology": map[string]any{
-				"slug":             "selfdoc",
-				"docs_base":        "https://docs.smmh.dev",
-				"posts_base":       "https://docs.smmh.dev/blog",
-				"legacy_blog_host": "blog.smmh.dev",
+				"slug":       "selfdoc",
+				"docs_base":  "https://docs.smmh.dev",
+				"posts_base": "https://docs.smmh.dev/blog",
 			}}),
 			check: func(t *testing.T, cfg Config) {
 				topology := cfg["topology"].(map[string]any)
 				if topology["slug"] != "selfdoc" || topology["docs_base"] != "https://docs.smmh.dev" ||
-					topology["posts_base"] != "https://docs.smmh.dev/blog" ||
-					topology["legacy_blog_host"] != "blog.smmh.dev" {
+					topology["posts_base"] != "https://docs.smmh.dev/blog" {
 					t.Fatalf("topology = %#v", topology)
 				}
 			},

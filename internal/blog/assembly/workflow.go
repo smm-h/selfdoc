@@ -81,7 +81,6 @@ jobs:
           --source-repo '${{ github.event.client_payload.repo }}'
           --scope '${{ github.event.client_payload.scope }}'
           --canonical-base '@@CANONICAL_BASE@@'
-          --legacy-blog-host '@@LEGACY_BLOG_HOST@@'
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy site/ --project-name '@@PAGES_PROJECT@@'
@@ -102,9 +101,6 @@ jobs:
 // canonicalBase is the absolute canonical base URL of the assembly site, from
 // topology.docs_base. Required.
 //
-// legacyBlogHost is the hostname of a retired blog subdomain, from
-// topology.legacy_blog_host. Empty when none exists.
-//
 // pins are the versions the install step names. Required and complete: this
 // function renders pins, it never resolves them, so it reads neither the
 // environment nor the network. [ResolveToolchainPins] does the resolving and
@@ -112,7 +108,6 @@ jobs:
 func GenerateWorkflowYAML(
 	pagesProject string,
 	canonicalBase string,
-	legacyBlogHost string,
 	pins ToolchainPins,
 ) (string, error) {
 	if pagesProject == "" {
@@ -138,7 +133,6 @@ func GenerateWorkflowYAML(
 		"@@GO_MODULE@@", GoModulePath,
 		"@@PAGES_PROJECT@@", pagesProject,
 		"@@CANONICAL_BASE@@", canonicalBase,
-		"@@LEGACY_BLOG_HOST@@", legacyBlogHost,
 		"@@SELFDOC_VERSION@@", pins.Selfdoc,
 		"@@PAGEFIND_VERSION@@", pins.Pagefind,
 	)
@@ -154,16 +148,14 @@ func GitignoreContent() string {
 //
 // pagesProject is the Cloudflare Pages project the workflow deploys to.
 // canonicalBase is the absolute canonical base URL of the assembly site.
-// legacyBlogHost is a retired blog subdomain, or "" when none exists.
 // pins are the toolchain versions the generated workflow installs.
 func AssemblyInit(
 	pagesProject string,
 	canonicalBase string,
-	legacyBlogHost string,
 	pins ToolchainPins,
 ) (map[string]string, error) {
 	workflow, err := GenerateWorkflowYAML(
-		pagesProject, canonicalBase, legacyBlogHost, pins,
+		pagesProject, canonicalBase, pins,
 	)
 	if err != nil {
 		return nil, err

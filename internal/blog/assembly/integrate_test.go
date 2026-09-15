@@ -710,11 +710,15 @@ func TestFullIntegrateRegeneratesTheSharedFiles(t *testing.T) {
 	for _, rel := range []string{
 		"projects/index.html", "index.html", "blog/index.html", "nav.json",
 		"feed.xml", "sitemap.xml", "robots.txt", "llms.txt", "404.html",
-		"_headers", "_worker.js",
+		"_headers",
 	} {
 		if !names[rel] {
 			t.Errorf("%s was not reported as written", rel)
 		}
+	}
+	// No redirect worker: the assembly emits none.
+	if names["_worker.js"] {
+		t.Error("the deploy reported a _worker.js")
 	}
 }
 

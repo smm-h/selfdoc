@@ -682,7 +682,7 @@ func TestAPerProjectRoutingArtifactFails(t *testing.T) {
 
 func TestTheSitesOwnRoutingFilesAreNotADefect(t *testing.T) {
 	root := newAssembly(t)
-	for _, name := range []string{"_headers", "_worker.js"} {
+	for _, name := range []string{"_headers", "404.html"} {
 		if _, err := os.Stat(filepath.Join(root, "site", name)); err != nil {
 			t.Fatalf("stat %s: %v", name, err)
 		}
@@ -691,6 +691,18 @@ func TestTheSitesOwnRoutingFilesAreNotADefect(t *testing.T) {
 	if got := report.FailuresOf("routing-artifacts"); len(got) != 0 {
 		t.Fatalf("routing-artifacts reported %v", got)
 	}
+}
+
+// TestAWorkerAtTheSiteRootFails covers the tree a deploy that predates the
+// worker's retirement left behind: the assembly emits none, so one at the
+// site root is an artifact nothing routes through and the next integration's
+// shared-files pass deletes it.
+func TestAWorkerAtTheSiteRootFails(t *testing.T) {
+	root := newAssembly(t)
+	writeFile(t, filepath.Join(root, "site", "_worker.js"),
+		"export default {};\n")
+	report := verifyTree(t, root)
+	requireFailure(t, report, "routing-artifacts", "_worker.js")
 }
 
 // -- cross-project links ----------------------------------------------------

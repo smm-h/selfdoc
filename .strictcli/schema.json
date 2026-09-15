@@ -995,7 +995,7 @@
         },
         "generate-shared": {
           "name": "generate-shared",
-          "help": "Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page, a security headers file and the redirect worker in the site output directory.",
+          "help": "Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page and a security headers file in the site output directory. It also deletes the redirect worker a deploy made before the worker was retired left at the site root.",
           "effect": "mutating",
           "flags": [
             {
@@ -1024,19 +1024,11 @@
             },
             {
               "name": "canonical-base",
-              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.",
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.",
               "value_schema": {
                 "type": "string"
               },
               "presence": "required"
-            },
-            {
-              "name": "legacy-blog-host",
-              "help": "Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Omitted when no such subdomain exists.",
-              "value_schema": {
-                "type": "string"
-              },
-              "presence": "optional"
             },
             {
               "name": "home-slug",
@@ -1097,19 +1089,11 @@
             },
             {
               "name": "canonical-base",
-              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.",
+              "help": "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is the base of every sitemap entry and it targets the rel=canonical links.",
               "value_schema": {
                 "type": "string"
               },
               "presence": "required"
-            },
-            {
-              "name": "legacy-blog-host",
-              "help": "Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Omitted when no such subdomain exists.",
-              "value_schema": {
-                "type": "string"
-              },
-              "presence": "optional"
             },
             {
               "name": "assembly-dir",
@@ -1227,14 +1211,6 @@
                 "type": "string"
               },
               "presence": "required"
-            },
-            {
-              "name": "legacy-blog-host",
-              "help": "Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Omitted when no such subdomain exists.",
-              "value_schema": {
-                "type": "string"
-              },
-              "presence": "optional"
             },
             {
               "name": "build",

@@ -619,7 +619,7 @@ func buildFixtureSite(t *testing.T, root, theme string) *preview.Summary {
 
 	summary, err := preview.PreviewAssembly(
 		home, []string{alpha, beta}, filepath.Join(root, "out"),
-		CanonicalBase, "", true, theme, effects.Unbound(),
+		CanonicalBase, true, theme, effects.Unbound(),
 	)
 	if err != nil {
 		t.Fatalf("[%s] assembling the fixture site: %v", theme, err)

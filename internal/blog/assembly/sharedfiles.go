@@ -12,8 +12,12 @@ import (
 	"github.com/smm-h/selfdoc/internal/blog/site"
 	"github.com/smm-h/selfdoc/internal/blog/sitedirectives"
 	"github.com/smm-h/selfdoc/internal/effects"
-	"github.com/smm-h/selfdoc/internal/util"
 )
+
+// retiredWorkerName is the Cloudflare Pages worker the assembly used to
+// generate at the site root. Nothing writes one now; the name lives on as the
+// path the shared-files pass deletes.
+const retiredWorkerName = "_worker.js"
 
 // headersContent is the one set of response headers the whole assembled site
 // is served with.
@@ -94,9 +98,6 @@ type SharedFilesOptions struct {
 	// DocsBase is the base the Atom feed's entries are written against. Only
 	// the feed reads it.
 	DocsBase string
-	// LegacyBlogHost is a retired blog subdomain the generated worker 301s
-	// onto the canonical blog URL. Empty when none exists.
-	LegacyBlogHost string
 	// HomeSlug is the roster's home project.
 	HomeSlug string
 	// Theme names one theme every page's chrome asset is built from,
@@ -112,10 +113,14 @@ type SharedFilesOptions struct {
 //
 // The files are the project listing at "projects/index.html", the blog index at
 // "blog/index.html", "nav.json", "feed.xml", "sitemap.xml", "robots.txt",
-// "llms.txt", "404.html", "_headers" and "_worker.js". Both generated pages sit
-// at fixed, generator-owned addresses; the site root belongs to the home
-// project, whose own pages are grafted there and are never written by this
-// function.
+// "llms.txt", "404.html" and "_headers". Both generated pages sit at fixed,
+// generator-owned addresses; the site root belongs to the home project, whose
+// own pages are grafted there and are never written by this function.
+//
+// The pass also owns the site root's retired routing file: an assembly that
+// deployed before the redirect worker was dropped still carries a "_worker.js"
+// there, nothing rewrites it, and the routing-artifact check refuses it. It is
+// deleted here, on the next integration of any project.
 //
 // "robots.txt", "llms.txt" and "404.html" are the site's, not any project's:
 // every constituent build writes its own set at its own output root, where they
@@ -287,29 +292,11 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		return nil, err
 	}
 
-	// The worker's redirect map is data read out of the manifests here, at
-	// generation time: which slugs exist and which posts exist is what makes a
-	// historical-looking path a real redirect rather than a guess.
-	var projectSlugs []string
-	for _, loaded := range manifests {
-		if slug := util.PythonStrOrEmpty(loaded["slug"]); slug != "" {
-			projectSlugs = append(projectSlugs, slug)
-		}
-	}
-	posts, err := shared.MergeProjectPosts(manifests)
-	if err != nil {
-		return nil, err
-	}
-	var postSlugs []string
-	for _, post := range posts {
-		if post.Slug != "" {
-			postSlugs = append(postSlugs, post.Slug)
-		}
-	}
-	workerJS, err := GenerateWorkerJS(
-		canonicalBase, opts.LegacyBlogHost, projectSlugs, postSlugs,
-	)
-	if err != nil {
+	// The redirect worker an earlier deploy left at the site root. Host
+	// redirects are the zone's now and a historical path shape answers 404,
+	// so the file routes nothing; it is removed rather than left for the
+	// routing-artifact check to refuse forever.
+	if err := h.RemoveIfExists(filepath.Join(opts.SiteDir, retiredWorkerName)); err != nil {
 		return nil, err
 	}
 
@@ -324,7 +311,6 @@ func GenerateSharedFiles(opts SharedFilesOptions, h *effects.Handle) ([]string, 
 		{"llms.txt", shared.GenerateLLMSTxt(manifests, canonicalBase, opts.HomeSlug)},
 		{"404.html", notFound},
 		{"_headers", headersContent},
-		{"_worker.js", workerJS},
 	} {
 		path := filepath.Join(opts.SiteDir, file.name)
 		if err := h.AtomicWrite(path, []byte(file.content), effects.ModeDefault); err != nil {

@@ -866,10 +866,6 @@ var Schema = []FieldSpec{
 				Transform:   stripTrailingSlashes,
 				Description: "Canonical base URL under which blog posts and the unified blog index are served. This is a path on the docs site, not a separate host (e.g., 'https://docs.smmh.dev/blog').",
 			},
-			{
-				Name: "legacy_blog_host", Type: FieldStr, Required: false,
-				Description: "Hostname of a retired blog subdomain (e.g., 'blog.smmh.dev'). When set, every request arriving on that host is 301'd by the generated assembly worker onto '<docs_base>/blog' -- the canonical blog URL the worker derives from topology.docs_base, not from posts_base. Omit when no such subdomain exists.",
-			},
 		},
 	},
 	{

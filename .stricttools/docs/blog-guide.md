@@ -1,6 +1,6 @@
 +++
 title = "Blog Posts"
-description = "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the worker redirects every other address to, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, the verification every deploy has to pass, the local preview that assembles the whole site from checkouts and serves it before anything ships, and the theme override that builds every checkout under one theme so a theme can be judged on the whole site at once."
+description = "How to create, manage, and publish blog posts in selfdoc, covering frontmatter, the required directive declaration every post carries, release-generated posts, revision tracking, the post lints check runs, publishing documentation without a release, the declared roster, the home project served at the site root with its curated listing, project retirement, the single canonical hostname the site serves content on, the four machine-readable files the assembly writes at the site root, the generated deploy workflow and its pins, the verification every deploy has to pass, the local preview that assembles the whole site from checkouts and serves it before anything ships, and the theme override that builds every checkout under one theme so a theme can be judged on the whole site at once."
 nav_group = "Guides"
 nav_order = 19
 +++
@@ -251,44 +251,22 @@ The project a post came from is a row on the blog index, not part of its address
 
 ### One hostname
 
-A Cloudflare Pages project can carry several custom domains, and all of them serve the same site. Left alone that means every page is reachable at more than one address, which splits ranking signals between duplicates. The assembly resolves this to one hostname: `topology.docs_base`, and nothing else serves content.
+A Cloudflare Pages project can carry several custom domains, and all of them serve the same site. Left alone that means every page is reachable at more than one address, which splits ranking signals between duplicates. The site resolves this to one hostname: `topology.docs_base`, and nothing else serves content.
 
-| Request | Result |
-| --- | --- |
-| canonical host, any path | served |
-| any other host, any path | `301` to the same path on the canonical host |
-| `<topology.legacy_blog_host>/<path>` | `301` to `<docs_base>/blog/<path>` |
+selfdoc emits nothing for this. A host that should answer somewhere else is a redirect rule on the DNS zone, applied where the site is hosted; the assembly writes no `_worker.js` and reads no retired-host setting. An assembly tree that still carries a `_worker.js` from a deploy made before this was true is refused by `selfdoc assembly verify` and deleted by the next integration's shared-element pass.
 
-The retired blog subdomain is the one host that does not map to the same path: its whole document space was the blog, so `blog.example.com/hello/` is `<docs_base>/blog/hello/`. Mapping it to the same path would send every live post link to the site root, where nothing answers.
-
-Every redirect is single-hop and is implemented in the `_worker.js` that the shared-element generator writes into the site output (`selfdoc assembly integrate` during a deploy, `selfdoc assembly generate-shared` when run by hand). The worker takes its target from `--canonical-base` (the generated deploy workflow passes `topology.docs_base` to `integrate`) and its retired-subdomain prefix from `--legacy-blog-host` (`topology.legacy_blog_host`, omitted when no such subdomain exists). Nothing is hardcoded, and `--canonical-base` has no default -- generate-shared fails without it.
+The shared homepage and blog index carry a `rel="canonical"` link pointing at the canonical host, so a crawler that reaches them through a non-canonical domain still records the canonical address. Set `topology.posts_base` to the canonical blog URL; it is a path on the docs site, not a separate host.
 
 #### Historical addresses
 
-The worker also carries the redirect map for the address schemes the site has retired. It is generated as *data* from the manifests at shared-generation time -- the assembly knows every project slug and every post slug -- so a path that merely looks historical without naming a real one is not redirected at all: it falls through to the root 404, which is the honest answer for an address that never existed.
-
-| Retired shape | Result |
-| --- | --- |
-| `/<slug>/<locale>/<version>/<rest>` | `301` to `/<slug>/<rest>` |
-| `/<slug>/posts/<post>/` | `301` to `/blog/<post>/` |
-| `/<slug>/<page>/` | served -- this is the current scheme |
-
-The version segment is **not** preserved: any version collapses to the stable address. Archived versions are still served at `/<slug>/v/<version>/`, but an old deep link is far more likely to want the page as it is now than the page as it was at whatever version happened to be current when the URL was copied.
-
-A historical path arriving on a non-canonical host is resolved together with the host, so it still costs exactly one 301 rather than two.
-
-The map is patterns plus two sets of names, never one entry per page, so the worker's size tracks the number of projects and posts rather than the size of the site.
-
-The shared homepage and blog index also carry a `rel="canonical"` link pointing at the canonical host, so a crawler that reaches them through a non-canonical domain still records the canonical address.
-
-Set `topology.posts_base` to the same canonical blog URL. It is a path on the docs site, not a separate host.
+An address shape the site has retired -- `/<slug>/<locale>/<version>/<rest>` and `/<slug>/posts/<post>/` are the two with links in the wild -- is answered by the site's root 404. Nothing rewrites it. `/<slug>/<page>/` is the current scheme and is served; archived versions are served at `/<slug>/v/<version>/`.
 
 #### Operator steps (outside selfdoc)
 
 Two pieces of this topology live on platform dashboards and are not automated:
 
-1. **Custom domains.** Every hostname the worker redirects *from* must be attached to the assembly's Cloudflare Pages project, otherwise the worker never runs for it and the request does not reach the redirect. Add them under the Pages project's *Custom domains* tab.
-2. **Search Console.** Register a **Domain property** for the root domain rather than one URL-prefix property per subdomain. A Domain property covers the canonical host, the retired blog subdomain, and the apex in a single property, so the consolidation is visible as redirects instead of appearing as unrelated sites competing with each other.
+1. **Custom domains and their redirects.** Every hostname the site answers on is attached to the assembly's Cloudflare Pages project under its *Custom domains* tab, and every hostname that should redirect instead is a zone rule written there.
+2. **Search Console.** Register a **Domain property** for the root domain rather than one URL-prefix property per subdomain. A Domain property covers the canonical host, any retired subdomain, and the apex in a single property, so the consolidation is visible as redirects instead of appearing as unrelated sites competing with each other.
 
 ### The machine-readable files at the site root
 
@@ -447,7 +425,7 @@ selfdoc assembly preview \
   --build
 ```
 
-Every flag is required except `--legacy-blog-host`. `--home` names the one
+Every flag is required except `--theme`. `--home` names the one
 project served at the site root; `--repo` is repeated once per other
 project and each is served under the slug its own `selfdoc.json` declares.
 `--canonical-base` is the **deployed** base, not the loopback address: the
@@ -472,7 +450,7 @@ replaced by their local equivalents rather than skipped:
 | Build | Each checkout is built by the toolchain running the command -- the home project through `selfdoc build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
 | Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects`, `_worker.js` and `404.html` left behind. |
 | Membership | A roster rendered from the checkouts named on the command line, and a `projects.json` written by the same `record_membership` the deploy uses. Dropping a `--repo` on a rerun retires that project from the tree. |
-| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, `_worker.js`, the site chrome asset, the re-pointing pass that aims every grafted page at it, and the link repair pass that rewrites every link naming the site's own base document-relatively. |
+| Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, the site chrome asset, the re-pointing pass that aims every grafted page at it, and the link repair pass that rewrites every link naming the site's own base document-relatively. |
 | Search | The pagefind pass over the assembled tree. |
 | Verification | The real `verify_assembly`, printed **first and loudly**. |
 

@@ -398,7 +398,6 @@ func generateSharedFiles(t *testing.T, siteDir, manifestsDir string) {
 	writeFile(t, filepath.Join(siteDir, "_headers"),
 		"/*\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n"+
 			"  Referrer-Policy: strict-origin-when-cross-origin\n")
-	writeFile(t, filepath.Join(siteDir, "_worker.js"), "export default {};\n")
 
 	// Last, once every page this deploy writes exists: aim every stylesheet
 	// reference in the tree at the site-level asset.

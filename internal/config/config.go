@@ -112,7 +112,7 @@ func ValidateConfig(raw any) (Config, error) {
 			`"source": [{"path": "src/", "language": "python"}]`}
 	}
 
-	// Migration errors: two retired topology keys. The block is not strict,
+	// Migration errors: three retired topology keys. The block is not strict,
 	// so a key nothing declares is read by nobody; each retired one is
 	// refused by name instead, saying what took its place.
 	if rawTopology, isMap := document["topology"].(map[string]any); isMap {
@@ -126,6 +126,13 @@ func ValidateConfig(raw any) (Config, error) {
 				"slug, so a link into another project resolves to " +
 				"'<topology.docs_base>/<slug>/' for any slug and there is " +
 				"nothing to declare per project. Delete the key."}
+		}
+		if _, present := rawTopology["legacy_blog_host"]; present {
+			return nil, &ConfigError{Message: "'topology.legacy_blog_host' is no longer supported. " +
+				"The assembly emits no redirect worker: a host that should " +
+				"answer somewhere else is a redirect rule on the DNS zone, " +
+				"applied where the site is hosted rather than generated into " +
+				"its output. Delete the key and add the zone rule."}
 		}
 	}
 

@@ -13,7 +13,6 @@ import (
 const (
 	testPagesProject  = "smmh"
 	testCanonicalBase = "https://docs.smmh.dev"
-	testLegacyHost    = "blog.smmh.dev"
 )
 
 // workflowYAML renders the workflow the assertions read, failing the test when
@@ -21,7 +20,7 @@ const (
 func workflowYAML(t *testing.T) string {
 	t.Helper()
 	yaml, err := GenerateWorkflowYAML(
-		testPagesProject, testCanonicalBase, testLegacyHost, testPins,
+		testPagesProject, testCanonicalBase, testPins,
 	)
 	if err != nil {
 		t.Fatalf("generating the workflow: %v", err)
@@ -153,13 +152,18 @@ func TestWorkflowHandsEveryPayloadFieldToIntegrate(t *testing.T) {
 
 func TestWorkflowHandsTheConfigValuesToIntegrate(t *testing.T) {
 	yaml := workflowYAML(t)
-	for _, want := range []string{
-		"--canonical-base '" + testCanonicalBase + "'",
-		"--legacy-blog-host '" + testLegacyHost + "'",
-	} {
-		if !strings.Contains(yaml, want) {
-			t.Errorf("the workflow does not pass %s", want)
-		}
+	if want := "--canonical-base '" + testCanonicalBase + "'"; !strings.Contains(yaml, want) {
+		t.Errorf("the workflow does not pass %s", want)
+	}
+}
+
+// TestWorkflowPassesNoRetiredRedirectFlag covers the flag the deploy used to
+// carry for the redirect worker: the worker is gone, the flag with it, and a
+// regenerated workflow that still named it would fail at parse time on every
+// deploy.
+func TestWorkflowPassesNoRetiredRedirectFlag(t *testing.T) {
+	if yaml := workflowYAML(t); strings.Contains(yaml, "--legacy-blog-host") {
+		t.Error("the generated workflow still passes --legacy-blog-host")
 	}
 }
 
@@ -257,7 +261,7 @@ func TestWorkflowDeploysThroughWrangler(t *testing.T) {
 
 func TestWorkflowTrimsATrailingSlashFromTheCanonicalBase(t *testing.T) {
 	yaml, err := GenerateWorkflowYAML(
-		testPagesProject, testCanonicalBase+"/", "", testPins,
+		testPagesProject, testCanonicalBase+"/", testPins,
 	)
 	if err != nil {
 		t.Fatalf("generating the workflow: %v", err)
@@ -268,13 +272,13 @@ func TestWorkflowTrimsATrailingSlashFromTheCanonicalBase(t *testing.T) {
 }
 
 func TestWorkflowRefusesWithoutAPagesProject(t *testing.T) {
-	if _, err := GenerateWorkflowYAML("", testCanonicalBase, "", testPins); err == nil {
+	if _, err := GenerateWorkflowYAML("", testCanonicalBase, testPins); err == nil {
 		t.Fatal("a workflow was generated with no deploy target")
 	}
 }
 
 func TestWorkflowRefusesWithoutACanonicalBase(t *testing.T) {
-	if _, err := GenerateWorkflowYAML(testPagesProject, "", "", testPins); err == nil {
+	if _, err := GenerateWorkflowYAML(testPagesProject, "", testPins); err == nil {
 		t.Fatal("a workflow was generated with no canonical base")
 	}
 }
@@ -282,7 +286,7 @@ func TestWorkflowRefusesWithoutACanonicalBase(t *testing.T) {
 func TestWorkflowRefusesToGenerateWithoutPins(t *testing.T) {
 	// The generator renders pins and never invents them.
 	_, err := GenerateWorkflowYAML(
-		testPagesProject, testCanonicalBase, "", ToolchainPins{},
+		testPagesProject, testCanonicalBase, ToolchainPins{},
 	)
 	if err == nil {
 		t.Fatal("a workflow was generated with no pins")
@@ -295,7 +299,7 @@ func TestWorkflowRefusesToGenerateWithoutPins(t *testing.T) {
 func initFiles(t *testing.T) map[string]string {
 	t.Helper()
 	files, err := AssemblyInit(
-		testPagesProject, testCanonicalBase, testLegacyHost, testPins,
+		testPagesProject, testCanonicalBase, testPins,
 	)
 	if err != nil {
 		t.Fatalf("init: %v", err)
@@ -353,7 +357,7 @@ func TestInitRosterIsTheScaffoldedDeclaration(t *testing.T) {
 
 func TestInitRefusesIncompletePins(t *testing.T) {
 	if _, err := AssemblyInit(
-		testPagesProject, testCanonicalBase, "", ToolchainPins{Selfdoc: "1.0"},
+		testPagesProject, testCanonicalBase, ToolchainPins{Selfdoc: "1.0"},
 	); err == nil {
 		t.Fatal("a fresh assembly was scaffolded with an incomplete toolchain")
 	}

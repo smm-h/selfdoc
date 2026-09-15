@@ -55,9 +55,6 @@ type orderedCheckout struct {
 // not the loopback address the preview is served from: the pages carry the
 // canonicals they would ship with, and verification asserts against those.
 //
-// legacyBlogHost is a retired blog subdomain the generated worker 301s, as the
-// deploy passes it. Empty when there is none.
-//
 // build decides whether each checkout's build runs. False previews whatever is
 // already in each checkout's build output directory, which is what the suite
 // does and what a second look after one edit wants.
@@ -73,7 +70,6 @@ func PreviewAssembly(
 	projectDirs []string,
 	outDir string,
 	canonicalBase string,
-	legacyBlogHost string,
 	build bool,
 	theme string,
 	handle *effects.Handle,
@@ -257,13 +253,12 @@ func PreviewAssembly(
 	}
 
 	shared, err := assembly.GenerateSharedFiles(assembly.SharedFilesOptions{
-		SiteDir:        siteDir,
-		ManifestsDir:   manifestsDir,
-		CanonicalBase:  canonicalBase,
-		DocsBase:       canonicalBase,
-		LegacyBlogHost: legacyBlogHost,
-		HomeSlug:       homeSlug,
-		Theme:          theme,
+		SiteDir:       siteDir,
+		ManifestsDir:  manifestsDir,
+		CanonicalBase: canonicalBase,
+		DocsBase:      canonicalBase,
+		HomeSlug:      homeSlug,
+		Theme:         theme,
 	}, handle)
 	if err != nil {
 		return nil, err

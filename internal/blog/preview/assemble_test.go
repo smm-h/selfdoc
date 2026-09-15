@@ -53,7 +53,7 @@ func previewOnce(t *testing.T) *Summary {
 		Pages:   []fixturePage{{Path: "index.md", Title: "Beta"}},
 	})
 	summary, err := PreviewAssembly(home, []string{alpha, beta},
-		filepath.Join(root, "out"), canonicalBase, "", false, "", effects.Unbound())
+		filepath.Join(root, "out"), canonicalBase, false, "", effects.Unbound())
 	if err != nil {
 		t.Fatalf("PreviewAssembly: %v", err)
 	}
@@ -102,7 +102,6 @@ func TestThePreviewedAssembly(t *testing.T) {
 		for _, rel := range []string{
 			"projects/index.html", "blog/index.html", "nav.json", "feed.xml",
 			"sitemap.xml", "robots.txt", "llms.txt", "404.html", "_headers",
-			"_worker.js",
 		} {
 			if !isFile(inSite(filepath.FromSlash(rel))) {
 				t.Errorf("the shared generator did not write %s", rel)

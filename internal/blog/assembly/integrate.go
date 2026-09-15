@@ -127,9 +127,6 @@ type IntegrateOptions struct {
 	// SourceDir is the cloned source project. Empty means
 	// "<AssemblyDir>/source/<Slug>", where the deploy workflow clones it.
 	SourceDir string
-	// LegacyBlogHost is a retired blog subdomain the generated worker 301s
-	// onto the canonical blog URL. Empty when none exists.
-	LegacyBlogHost string
 	// Branch is the assembly branch to commit and push to. Empty means
 	// [DefaultBranch].
 	Branch string
@@ -361,13 +358,12 @@ func IntegrateProject(opts IntegrateOptions, h *effects.Handle) (*IntegrateSumma
 		}
 
 		sharedFiles, err := GenerateSharedFiles(SharedFilesOptions{
-			SiteDir:        siteDir,
-			ManifestsDir:   manifestsDir,
-			CanonicalBase:  opts.CanonicalBase,
-			DocsBase:       opts.CanonicalBase,
-			LegacyBlogHost: opts.LegacyBlogHost,
-			HomeSlug:       roster.Home,
-			Theme:          opts.Theme,
+			SiteDir:       siteDir,
+			ManifestsDir:  manifestsDir,
+			CanonicalBase: opts.CanonicalBase,
+			DocsBase:      opts.CanonicalBase,
+			HomeSlug:      roster.Home,
+			Theme:         opts.Theme,
 		}, h)
 		if err != nil {
 			return nil, err

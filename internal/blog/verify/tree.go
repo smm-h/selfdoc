@@ -21,7 +21,12 @@ const NotFoundPage = "404.html"
 // SharedRoutingFiles is what the assembly itself is allowed to serve at the
 // site root. Every other routing artifact belongs to a single project's own
 // standalone hosting and fights the site-wide one wherever it lands.
-var SharedRoutingFiles = []string{"_headers", "_worker.js", NotFoundPage}
+//
+// A redirect worker is not among them: the assembly emits none, a host that
+// should answer somewhere else is a rule on the DNS zone, and a "_worker.js"
+// left at the root by a deploy that predates that is refused here and deleted
+// by the next integration's shared-files pass.
+var SharedRoutingFiles = []string{"_headers", NotFoundPage}
 
 // RoutingArtifactNames is every routing file a per-project build emits for its
 // own standalone hosting.

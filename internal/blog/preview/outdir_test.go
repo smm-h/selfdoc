@@ -128,7 +128,7 @@ func TestTheOutputDirectory(t *testing.T) {
 		repo := initRepo(t, filepath.Join(t.TempDir(), "repo"))
 		out := filepath.Join(repo, "preview")
 		home := homeCheckout(t, filepath.Join(t.TempDir(), "home"))
-		_, err := PreviewAssembly(home, nil, out, canonicalBase, "", false, "", handle)
+		_, err := PreviewAssembly(home, nil, out, canonicalBase, false, "", handle)
 		if err == nil || !strings.Contains(err.Error(), "does not ignore it") {
 			t.Fatalf("PreviewAssembly = %v, want the refusal", err)
 		}

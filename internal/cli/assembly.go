@@ -141,15 +141,14 @@ func (c *cli) registerAssembly() {
 	)
 
 	group.Command("generate-shared",
-		"Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page, a security headers file and the redirect worker in the site output directory.",
+		"Generate the shared cross-project elements for the assembled documentation site. Reads per-project manifest JSON files, merges post overlays, and produces a homepage, blog index, navigation JSON, RSS feed, XML sitemap, robots.txt, a site-wide llms.txt linking to each project's own, a root 404 page and a security headers file in the site output directory. It also deletes the redirect worker a deploy made before the worker was retired left at the site root.",
 		c.cmdAssemblyGenerateShared,
 		strictcli.WithEffect(strictcli.EffectMutating),
 		strictcli.WithFlags(
 			strictcli.StringFlag("site-dir", "Path to the combined site output directory where shared HTML files are written", strictcli.Required()),
 			strictcli.StringFlag("manifests-dir", "Path to the directory containing per-project manifest JSON files for the assembly", strictcli.Required()),
 			strictcli.StringFlag("docs-base", "Base URL the Atom feed's entries are written against. Only the feed reads it: every entry there is an absolute URL by protocol. Nothing a reader clicks does -- the generated listing, the blog index and the 404 address the site relative to their own page, so they resolve under any mount. The sitemap does not read it either: it is generated from --canonical-base whatever this says.", strictcli.Optional()),
-			strictcli.StringFlag("canonical-base", "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content and every other host 301s onto it, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.", strictcli.Required()),
-			strictcli.StringFlag("legacy-blog-host", "Hostname of a retired blog subdomain (e.g. 'blog.smmh.dev') to 301 onto the canonical blog URL. Omitted when no such subdomain exists.", strictcli.Optional()),
+			strictcli.StringFlag("canonical-base", "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://docs.smmh.dev'). Required: it is the one hostname that serves content, it is the base of every sitemap entry, and it targets the rel=canonical links on the homepage and blog index, so it cannot be root-relative like --docs-base.", strictcli.Required()),
 			strictcli.StringFlag("home-slug", "The roster's home project: the one project served at the site root. Its pages are left out of the generated listing and out of nav, and every site-level directive region it emitted is re-rendered from the current manifests. Omitted means the tree carries no home project (which the deploy path never does -- the roster requires one).", strictcli.Optional()),
 		),
 	)
@@ -180,8 +179,7 @@ func (c *cli) registerAssembly() {
 			strictcli.StringFlag("ref", "Git ref (tag) the source project was cloned at, recorded in projects.json", strictcli.Optional()),
 			strictcli.StringFlag("source-repo", "Source project repository (owner/name), recorded in projects.json", strictcli.Optional()),
 			strictcli.StringFlag("scope", "What this dispatch replaces: 'full' (the whole project subtree plus this project's posts), 'posts' (only this project's posts, at the site-level site/blog/<post-slug>/), or 'shared-only' (no project files, just the cross-project elements). Omitted means 'full'.", strictcli.Optional()),
-			strictcli.StringFlag("canonical-base", "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it targets the redirect worker and the rel=canonical links.", strictcli.Required()),
-			strictcli.StringFlag("legacy-blog-host", "Hostname of a retired blog subdomain to 301 onto the canonical blog URL. Omitted when no such subdomain exists.", strictcli.Optional()),
+			strictcli.StringFlag("canonical-base", "Absolute canonical base URL of the assembly site, from topology.docs_base. Required: it is the base of every sitemap entry and it targets the rel=canonical links.", strictcli.Required()),
 			strictcli.StringFlag("assembly-dir", "Path to the assembly repository checkout being updated. Omitted, the current directory is used", strictcli.Optional()),
 			strictcli.StringFlag("source-dir", "Path to the cloned source project. Omitted, <assembly-dir>/source/<slug> is used, where the deploy workflow clones it.", strictcli.Optional()),
 			strictcli.StringFlag("branch", "Assembly repository branch the deploy commits and pushes to. Omitted, 'main' is used", strictcli.Optional()),
@@ -224,7 +222,6 @@ func (c *cli) registerAssembly() {
 			strictcli.StringFlag("out", "Directory the preview tree is written to. Required. Refused when it sits inside a git working tree at a path git does not ignore, because a generated site dropped into a checkout is untracked noise in every session sharing it.", strictcli.Required()),
 			strictcli.IntFlag("port", "Port to bind on 127.0.0.1. Required and has no default: which port a long-running local server occupies is a decision the caller states rather than inherits.", strictcli.Required()),
 			strictcli.StringFlag("canonical-base", "Absolute canonical base URL of the assembly site, from topology.docs_base (e.g. 'https://smmh.dev'). Required, and it is the DEPLOYED base rather than the loopback one: the preview shows the pages with the canonicals, sitemap entries and cross-project links they would ship with, and verifies those.", strictcli.Required()),
-			strictcli.StringFlag("legacy-blog-host", "Hostname of a retired blog subdomain the generated worker 301s onto the canonical blog URL, passed through to the shared generator exactly as the deploy passes it. Omitted when no such subdomain exists.", strictcli.Optional()),
 			strictcli.BoolFlag("build", "Whether to build each checkout before grafting it. Required with no default: --build is the honest preview of what would ship, --no-build re-assembles whatever each checkout already has in its build output directory, which is what a second look after one edit wants and the only way to iterate without rebuilding every project. Choosing is the point -- a preview of a stale build tree is a preview of nothing in particular.", strictcli.Required()),
 			strictcli.StringFlag("theme", "Build every checkout under this theme instead of the one its selfdoc.json declares, for this preview only. Omitted, every project stays on its configured theme, which is what a deploy does. This exists to judge a theme on the real pages: the same site, every project flipped at once, without editing a config anywhere. Validated against the theme registry, and refused with --no-build, because a theme is baked into build output and re-grafting an existing tree cannot restyle it.", strictcli.Optional()),
 		),
@@ -273,8 +270,6 @@ func (c *cli) cmdAssemblyInit(ctx *strictcli.Context, kwargs map[string]any) str
 	if canonicalBase == "" {
 		return c.failf("Error: topology.docs_base not configured in selfdoc.json.")
 	}
-	legacyBlogHost := configString(cfg, "topology", "legacy_blog_host")
-
 	// The workflow init writes pins its toolchain exactly as the one
 	// sync-workflow rewrites later, and refuses an unpublishable pin the same
 	// way -- a fresh assembly must not start life with a deploy that cannot
@@ -290,7 +285,7 @@ func (c *cli) cmdAssemblyInit(ctx *strictcli.Context, kwargs map[string]any) str
 		return c.fail(err)
 	}
 
-	files, err := assembly.AssemblyInit(pagesProject, canonicalBase, legacyBlogHost, pins)
+	files, err := assembly.AssemblyInit(pagesProject, canonicalBase, pins)
 	if err != nil {
 		return c.fail(err)
 	}
@@ -635,12 +630,11 @@ func (c *cli) cmdAssemblyGenerateShared(ctx *strictcli.Context, kwargs map[strin
 	// The generator's own API spells "not given" as the empty string; the CLI
 	// spells absence as absence, so the two meet here.
 	written, err := assembly.GenerateSharedFiles(assembly.SharedFilesOptions{
-		SiteDir:        strictcli.Get[string](kwargs, "site_dir"),
-		ManifestsDir:   strictcli.Get[string](kwargs, "manifests_dir"),
-		CanonicalBase:  strictcli.Get[string](kwargs, "canonical_base"),
-		DocsBase:       optString(kwargs, "docs_base"),
-		LegacyBlogHost: optString(kwargs, "legacy_blog_host"),
-		HomeSlug:       optString(kwargs, "home_slug"),
+		SiteDir:       strictcli.Get[string](kwargs, "site_dir"),
+		ManifestsDir:  strictcli.Get[string](kwargs, "manifests_dir"),
+		CanonicalBase: strictcli.Get[string](kwargs, "canonical_base"),
+		DocsBase:      optString(kwargs, "docs_base"),
+		HomeSlug:      optString(kwargs, "home_slug"),
 	}, handle)
 	if err != nil {
 		return c.fail(err)
@@ -657,19 +651,18 @@ func (c *cli) cmdAssemblyIntegrate(ctx *strictcli.Context, kwargs map[string]any
 	handle := effects.FromContext(ctx)
 
 	summary, err := assembly.IntegrateProject(assembly.IntegrateOptions{
-		Slug:           optString(kwargs, "slug"),
-		Version:        optString(kwargs, "version"),
-		Ref:            optString(kwargs, "ref"),
-		SourceRepo:     optString(kwargs, "source_repo"),
-		Scope:          optString(kwargs, "scope"),
-		CanonicalBase:  strictcli.Get[string](kwargs, "canonical_base"),
-		AssemblyDir:    absentMeans(kwargs, "assembly_dir", "."),
-		SourceDir:      optString(kwargs, "source_dir"),
-		LegacyBlogHost: optString(kwargs, "legacy_blog_host"),
-		Branch:         absentMeans(kwargs, "branch", assemblyDefaultBranch),
-		Attempts:       absentMeans(kwargs, "attempts", assembly.DefaultAttempts),
-		RetryDelay:     assembly.DefaultRetryDelay,
-		Stderr:         c.errOut(),
+		Slug:          optString(kwargs, "slug"),
+		Version:       optString(kwargs, "version"),
+		Ref:           optString(kwargs, "ref"),
+		SourceRepo:    optString(kwargs, "source_repo"),
+		Scope:         optString(kwargs, "scope"),
+		CanonicalBase: strictcli.Get[string](kwargs, "canonical_base"),
+		AssemblyDir:   absentMeans(kwargs, "assembly_dir", "."),
+		SourceDir:     optString(kwargs, "source_dir"),
+		Branch:        absentMeans(kwargs, "branch", assemblyDefaultBranch),
+		Attempts:      absentMeans(kwargs, "attempts", assembly.DefaultAttempts),
+		RetryDelay:    assembly.DefaultRetryDelay,
+		Stderr:        c.errOut(),
 	}, handle)
 	if err != nil {
 		return c.fail(err)
@@ -720,7 +713,6 @@ func (c *cli) cmdAssemblyPreview(ctx *strictcli.Context, kwargs map[string]any) 
 		stringList(kwargs, "repo"),
 		strictcli.Get[string](kwargs, "out"),
 		strictcli.Get[string](kwargs, "canonical_base"),
-		optString(kwargs, "legacy_blog_host"),
 		strictcli.Get[bool](kwargs, "build"),
 		optString(kwargs, "theme"),
 		handle,
@@ -782,8 +774,7 @@ func (c *cli) cmdAssemblySyncWorkflow(ctx *strictcli.Context, kwargs map[string]
 		return c.fail(err)
 	}
 
-	content, err := assembly.GenerateWorkflowYAML(pagesProject, canonicalBase,
-		configString(cfg, "topology", "legacy_blog_host"), pins)
+	content, err := assembly.GenerateWorkflowYAML(pagesProject, canonicalBase, pins)
 	if err != nil {
 		return c.fail(err)
 	}
