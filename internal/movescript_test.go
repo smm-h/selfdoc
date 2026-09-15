@@ -72,11 +72,20 @@ func oldLayoutProject(t *testing.T) string {
 	return dir
 }
 
-// grantOwnership writes the rows that let selfdoc own its directories here.
-func grantOwnership(t *testing.T, dir string) {
+// makeToolRoot creates the hidden directory the script refuses without. The
+// script writes the ownership manifests inside it; the person creates the
+// directory itself.
+func makeToolRoot(t *testing.T, dir string) {
 	t.Helper()
-	testproject.WriteText(t, filepath.Join(dir, ".stricttools", "OWNERS.csv"),
-		"directory,owner\ndocs,selfdoc\ndocs-state,selfdoc\ndocs-cache,selfdoc\nposts,selfdoc\n")
+	testproject.MkdirAll(t, filepath.Join(dir, ".stricttools"))
+}
+
+// grantTo writes one directory's ownership manifest, naming the given owner.
+func grantTo(t *testing.T, dir, name, owner string) {
+	t.Helper()
+	testproject.WriteText(t,
+		filepath.Join(dir, ".stricttools", name, "manifest.toml"),
+		"owner = \""+owner+"\"\n")
 }
 
 // fakeSelfdoc installs a stub binary that writes the given sitemap where a
@@ -124,7 +133,7 @@ func TestTheMoveScriptRefusesARepositoryThatGrantedNothing(t *testing.T) {
 	if status == 0 {
 		t.Fatalf("the script moved a repository that granted no ownership:\n%s", out)
 	}
-	for _, want := range []string{".stricttools/OWNERS.csv", "directory,owner", "docs-state,selfdoc"} {
+	for _, want := range []string{".stricttools", "manifest.toml", `owner = "selfdoc"`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the refusal does not carry %q:\n%s", want, out)
 		}
@@ -139,7 +148,7 @@ func TestTheMoveScriptDryRunChangesNothing(t *testing.T) {
 	hygiene.Isolate(t)
 	root := moduleRoot(t)
 	dir := oldLayoutProject(t)
-	grantOwnership(t, dir)
+	makeToolRoot(t, dir)
 
 	out, status := runMove(t, root, dir, "--dry-run", "--expect-moves", "7")
 	if status != 0 {
@@ -155,10 +164,20 @@ func TestTheMoveScriptDryRunChangesNothing(t *testing.T) {
 		"sitemap URLs captured: 2",
 		"files to rewrite:",
 		"dry run: nothing was moved",
+		// The manifests are the permission the move writes, and the dry
+		// run says which ones and what each will hold.
+		".stricttools/docs/manifest.toml",
+		".stricttools/docs-state/manifest.toml",
+		".stricttools/docs-cache/manifest.toml",
+		".stricttools/posts/manifest.toml",
+		`owner = "selfdoc"`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the dry run does not report %q:\n%s", want, out)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".stricttools", "docs", "manifest.toml")); !os.IsNotExist(err) {
+		t.Errorf("the dry run wrote a manifest (stat err = %v)", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".stricttools", "docs", "index.md")); !os.IsNotExist(err) {
 		t.Errorf("the dry run moved a page (stat err = %v)", err)
@@ -173,7 +192,7 @@ func TestTheMoveScriptRefusesAWrongExpectedCount(t *testing.T) {
 	hygiene.Isolate(t)
 	root := moduleRoot(t)
 	dir := oldLayoutProject(t)
-	grantOwnership(t, dir)
+	makeToolRoot(t, dir)
 
 	out, status := runMove(t, root, dir, "--dry-run", "--expect-moves", "99")
 	if status == 0 {
@@ -190,7 +209,7 @@ func TestTheMoveScriptMovesAndRewrites(t *testing.T) {
 	hygiene.Isolate(t)
 	root := moduleRoot(t)
 	dir := oldLayoutProject(t)
-	grantOwnership(t, dir)
+	makeToolRoot(t, dir)
 	stub := fakeSelfdoc(t, dir, sitemapXML("https://example.com/", "https://example.com/guide/"))
 
 	out, status := runMove(t, root, dir, "--apply", "--selfdoc", stub)
@@ -209,6 +228,30 @@ func TestTheMoveScriptMovesAndRewrites(t *testing.T) {
 	} {
 		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(want))); err != nil {
 			t.Errorf("%s was not moved: %v", want, err)
+		}
+	}
+	// The manifests the move wrote are part of the move commit, not left
+	// untracked beside it: the permission is committed with the files it
+	// permits.
+	moved := strings.Split(strings.TrimSpace(
+		gitOutput(t, dir, "show", "--name-only", "--format=", "HEAD~1")), "\n")
+	for _, want := range []string{
+		".stricttools/docs/manifest.toml",
+		".stricttools/docs-state/manifest.toml",
+		".stricttools/docs-cache/manifest.toml",
+		".stricttools/posts/manifest.toml",
+	} {
+		if testproject.ReadText(t, filepath.Join(dir, filepath.FromSlash(want))) != "owner = \"selfdoc\"\n" {
+			t.Errorf("%s does not name selfdoc as the owner", want)
+		}
+		found := false
+		for _, name := range moved {
+			if name == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s is not in the move commit, which carries %v", want, moved)
 		}
 	}
 	for _, gone := range []string{"docs/index.md", ".selfdoc/manifest.json", ".selfdoc/posts/hello.md"} {
@@ -256,8 +299,11 @@ func TestTheMoveScriptMovesAndRewrites(t *testing.T) {
 	// tells the person to delete.
 	for _, line := range strings.Split(gitStatus(t, dir), "\n") {
 		trimmed := strings.TrimSpace(line)
+		// The uncommitted cache is what the derived ignore file covers, and
+		// that file is written by the build the person runs next -- which is
+		// what the closing report tells them to commit.
 		if trimmed == "" || strings.HasSuffix(trimmed, "docs/") ||
-			strings.HasSuffix(trimmed, ".stricttools/docs-cache/") {
+			strings.Contains(trimmed, ".stricttools/docs-cache/") {
 			continue
 		}
 		t.Errorf("the move left %q uncommitted", trimmed)
@@ -270,13 +316,34 @@ func TestTheMoveScriptMovesAndRewrites(t *testing.T) {
 	}
 }
 
+// A directory that already exists with a manifest naming another tool is not
+// selfdoc's to move into, and the refusal names the owner it found.
+func TestTheMoveScriptRefusesADirectoryAnotherToolOwns(t *testing.T) {
+	requirePython3(t)
+	hygiene.Isolate(t)
+	root := moduleRoot(t)
+	dir := oldLayoutProject(t)
+	makeToolRoot(t, dir)
+	grantTo(t, dir, "docs-state", "someothertool")
+
+	out, status := runMove(t, root, dir, "--dry-run")
+	if status == 0 {
+		t.Fatalf("the script moved into a directory another tool owns:\n%s", out)
+	}
+	for _, want := range []string{"someothertool", ".stricttools/docs-state"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the refusal does not carry %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestTheMoveScriptRefusesAChangedURLSet(t *testing.T) {
 	requirePython3(t)
 	requireSafegit(t)
 	hygiene.Isolate(t)
 	root := moduleRoot(t)
 	dir := oldLayoutProject(t)
-	grantOwnership(t, dir)
+	makeToolRoot(t, dir)
 	stub := fakeSelfdoc(t, dir, sitemapXML("https://example.com/", "https://example.com/moved/"))
 
 	out, status := runMove(t, root, dir, "--apply", "--selfdoc", stub)
