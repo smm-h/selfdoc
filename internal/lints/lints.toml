@@ -8,7 +8,7 @@
 # emit an unregistered code. The lint-code enum in selfdoc's declared check
 # payload schema (internal/payloadschemas) is pinned to this document by a
 # test, and the check guide's lint-rule table is not a copy at all: the page
-# carries the "list-lints" directive, which renders this document.
+# carries the "table-lints" directive, which renders this document.
 #
 # Entries are in documentation order (the order the table renders in), which
 # groups the families rather than sorting the codes alphabetically.

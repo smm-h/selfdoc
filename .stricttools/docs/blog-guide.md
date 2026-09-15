@@ -380,7 +380,7 @@ What it asserts, each failure naming its offender:
 | The shared artifacts exist, parse, and say what they are for | A missing or malformed front page, project listing, blog index, `nav.json`, sitemap, feed, `robots.txt`, `llms.txt`, root 404, or an empty search index; a 404 whose body repeats the front page or offers no way back; a `robots.txt` naming no sitemap or one the tree does not carry; an `llms.txt` missing a declared project |
 | Every reference resolves | An internal link, canonical, sitemap entry or feed link naming a file the assembly did not write |
 | Every page is addressable | A page with no title, or a canonical that is not under the site's canonical base |
-| Nothing half-built or per-project leaked in | An unresolved directive marker, or a project's own `_headers`, `_redirects`, `_worker.js` or pre-compressed copies |
+| Nothing half-built or per-project leaked in | An unresolved directive marker, or a project's own `_headers`, `_redirects` or pre-compressed copies |
 | Cross-project links land somewhere | A link from one project's page into a page no other project publishes |
 | Every project is reachable | A declared project whose index page no chain of clickable links from the site root or the `/projects/` listing arrives at, so it is published where no reader arriving at the site and no crawler following links ever gets to it. Either arrival page may curate what it shows. The home project is exempt: the site root is its own front page |
 
@@ -448,7 +448,7 @@ replaced by their local equivalents rather than skipped:
 | Step | What runs |
 |---|---|
 | Build | Each checkout is built by the toolchain running the command -- the home project through `selfdoc build --target home`, everybody else through `selfdoc build`, exactly as `assembly integrate` does. The home project builds last, so its front page reads the other projects' freshly grafted manifests. |
-| Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects`, `_worker.js` and `404.html` left behind. |
+| Graft | `split_build_output` and the same pruning graft: the home project at the site root, everybody else under `site/<slug>/`, posts site-level under `blog/`, per-project `_headers`, `_redirects` and `404.html` left behind. |
 | Membership | A roster rendered from the checkouts named on the command line, and a `projects.json` written by the same `record_membership` the deploy uses. Dropping a `--repo` on a rerun retires that project from the tree. |
 | Shared elements | The real `generate_shared_files`: listing, blog index, `nav.json`, feed, sitemap, `robots.txt`, `llms.txt`, root 404, `_headers`, the site chrome asset, the re-pointing pass that aims every grafted page at it, and the link repair pass that rewrites every link naming the site's own base document-relatively. |
 | Search | The pagefind pass over the assembled tree. |

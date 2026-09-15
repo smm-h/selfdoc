@@ -15,7 +15,7 @@
 # enforced structurally: LintResult derives severity from this registry and
 # refuses an unregistered code, the JSON output schema's code enum is pinned to
 # the registry by a test, and the documentation table is rendered from the
-# registry by the "list-lints" directive rather than written out beside it.
+# registry by the "table-lints" directive rather than written out beside it.
 
 name = "selfdoc-lint-registry"
 meta_version = 1

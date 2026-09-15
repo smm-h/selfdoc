@@ -4,7 +4,7 @@
 // They cover the five callouts, the glossary list, and the filesystem and
 // project-metadata directives (list-tree, table-dep, list-modules,
 // table-commands, table-directives, table-config-schema, table-endpoint,
-// list-crawlers, list-lints, var and cv).
+// list-crawlers, table-lints, var and cv).
 //
 // # One dispatch, no registry
 //
@@ -44,7 +44,7 @@ var ContentDirectives = map[string]struct{}{
 	"callout-danger": {}, "callout-important": {}, "list-glossary": {},
 	"list-tree": {}, "table-dep": {}, "list-modules": {},
 	"table-commands": {}, "table-directives": {}, "table-config-schema": {},
-	"table-endpoint": {}, "list-crawlers": {}, "list-lints": {},
+	"table-endpoint": {}, "list-crawlers": {}, "table-lints": {},
 	"var": {}, "cv": {},
 }
 
@@ -144,8 +144,8 @@ func ResolveContent(
 		return rendered, true, err
 	case "list-crawlers":
 		return ResolveListCrawlers(), true, nil
-	case "list-lints":
-		rendered, err := ResolveListLints()
+	case "table-lints":
+		rendered, err := ResolveTableLints()
 		return rendered, true, err
 	case "var":
 		if config == nil {

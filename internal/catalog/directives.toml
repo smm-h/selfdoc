@@ -174,12 +174,12 @@ optional_attrs = []
 example = ':-: list-crawlers'
 
 [[directives]]
-name = "list-lints"
+name = "table-lints"
 description = "Table of every lint code selfdoc can emit, with its severity"
 category = "content"
 required_attrs = []
 optional_attrs = []
-example = ':-: list-lints'
+example = ':-: table-lints'
 
 [[directives]]
 name = "var"

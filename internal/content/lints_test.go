@@ -7,14 +7,14 @@ import (
 	"github.com/smm-h/selfdoc/internal/lints"
 )
 
-// TestResolveListLintsRendersTheWholeRegistry pins the directive that keeps
+// TestResolveTableLintsRendersTheWholeRegistry pins the directive that keeps
 // the check guide's lint table from being a second copy of the registry: every
 // registered code renders, in the registry's own documentation order, with the
 // severity and description the registry declares.
-func TestResolveListLintsRendersTheWholeRegistry(t *testing.T) {
-	rendered, err := ResolveListLints()
+func TestResolveTableLintsRendersTheWholeRegistry(t *testing.T) {
+	rendered, err := ResolveTableLints()
 	if err != nil {
-		t.Fatalf("ResolveListLints: %v", err)
+		t.Fatalf("ResolveTableLints: %v", err)
 	}
 	registry := lints.Registered()
 
@@ -40,15 +40,15 @@ func TestResolveListLintsRendersTheWholeRegistry(t *testing.T) {
 	}
 }
 
-// TestResolveListLintsIsDispatched pins that the directive is reachable by
+// TestResolveTableLintsIsDispatched pins that the directive is reachable by
 // name, not only as a function.
-func TestResolveListLintsIsDispatched(t *testing.T) {
-	rendered, handled, err := ResolveContent("list-lints", nil, nil, "", nil)
+func TestResolveTableLintsIsDispatched(t *testing.T) {
+	rendered, handled, err := ResolveContent("table-lints", nil, nil, "", nil)
 	if err != nil {
 		t.Fatalf("ResolveContent: %v", err)
 	}
 	if !handled {
-		t.Fatal("list-lints is not dispatched by ResolveContent")
+		t.Fatal("table-lints is not dispatched by ResolveContent")
 	}
 	if !strings.Contains(rendered, "SEO001") {
 		t.Errorf("the dispatched directive rendered no registry row:\n%s", rendered)

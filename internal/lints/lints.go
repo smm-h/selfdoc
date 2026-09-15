@@ -8,7 +8,7 @@
 // code -- both are refused rather than discouraged. The lint-code enum in the
 // declared check payload schema is pinned to the registry by a test, and the
 // check guide's lint-rule table is rendered from the registry by the
-// "list-lints" directive rather than repeated by hand.
+// "table-lints" directive rather than repeated by hand.
 //
 // selfdoc's check command, the unified check, the post-build lint pass and the
 // posts-only check all decide the same question -- does this run pass? -- and

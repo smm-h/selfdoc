@@ -75,7 +75,7 @@ Modules listed in `gen.exclude` are excluded from both coverage calculations and
 
 Every `selfdoc check` invocation runs the whole lint registry: SEO and page structure, description staleness and source drift, cross-references and symbol documentation, example validation, CLI reference completeness, version consistency, blog posts, and unified sites. Each rule has a unique code, a severity, and an actionable message explaining what is wrong and how to fix it. Errors cause a non-zero exit; warnings are informational. Each code and its severity are declared once, in the lint registry embedded in the binary, and the table below is rendered from it.
 
-:-: list-lints
+:-: table-lints
 
 ### Spelling (SPELL001)
 

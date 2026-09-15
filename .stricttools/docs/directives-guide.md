@@ -416,12 +416,12 @@ The crawlers selfdoc's generated `robots.txt` allows, one per bullet. Takes no a
 
 Produces a bullet list of user-agent names, in the order `robots.txt` names them. `*` is the wildcard stanza.
 
-#### `list-lints`
+#### `table-lints`
 
 Every lint code `selfdoc check` can emit, as a table. Takes no attributes -- reads the same lint registry the check runs from, so a page documenting the codes cannot go out of step with the ones selfdoc actually emits.
 
 ```markdown
-:-: list-lints
+:-: table-lints
 ```
 
 Produces a table with "Code", "Severity" and "What it checks" columns, one row per registered code, in the registry's own documentation order (families grouped, not sorted alphabetically).

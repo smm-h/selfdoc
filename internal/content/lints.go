@@ -5,7 +5,7 @@ import (
 	"github.com/smm-h/selfdoc/internal/tables"
 )
 
-// ResolveListLints produces a Markdown table of every lint code selfdoc can
+// ResolveTableLints produces a Markdown table of every lint code selfdoc can
 // emit, in the registry's documentation order.
 //
 // A lint's severity and its one-line description are declared once, in the
@@ -14,7 +14,7 @@ import (
 // changes severity, and nothing fails when they do. This directive makes the
 // page read the registry instead -- the same move list-crawlers makes for the
 // crawler policy.
-func ResolveListLints() (string, error) {
+func ResolveTableLints() (string, error) {
 	registry := lints.Registered()
 	codes := registry.Codes()
 	rows := make([][]string, 0, len(codes))
